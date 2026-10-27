@@ -34,11 +34,15 @@ stack (subnet, function, box, buckets, distribution), with the ACM certificate r
 c-storage's Go binary for arm64, sent to its box over the Instance Connect tunnel and run under
 systemd; the BFF's function for arm64, its zip shipped through the template.
 
-## 6. The nightly backup's restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
 
 The box's role may only put, so it cannot restore itself: the restore runs from the human's
 terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
 Instance Connect tunnel.
+
+The backup's copy goes through SQLite's own backup (`VACUUM INTO`, or the shell's `.backup`), or
+is taken with the service stopped: a plain tarball taken mid-write can miss saves or hold a torn
+file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
 
 ## 7. The first box needs c-storage's listener on its private address, not loopback — the machine; waits for a signed client (the app frame plan, 2026-10-27)
 
