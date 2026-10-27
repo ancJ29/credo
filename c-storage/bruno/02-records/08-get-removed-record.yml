@@ -1,0 +1,28 @@
+info:
+  name: Get the removed record
+  type: http
+  seq: 8
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/records/{{serviceCode}}/{{recordKey}}"
+  headers:
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("404, the record is gone", function() {
+          expect(res.getStatus()).to.equal(404);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

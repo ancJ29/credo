@@ -1,6 +1,7 @@
 package sqlitedb
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"strings"
@@ -112,4 +113,30 @@ func seed(t *testing.T, path, sql string) string {
 		t.Fatalf("seed %s: %v", path, err)
 	}
 	return path
+}
+
+// busy_timeout is what makes a second writer wait its turn instead of failing:
+// every connection the pool opens carries it, not only the first.
+func TestEveryConnectionWaitsForTheWriteLock(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "a.db"), schema)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Close()
+	first, err := db.Conn(t.Context())
+	if err != nil {
+		t.Fatalf("conn: %v", err)
+	}
+	defer first.Close()
+	second, err := db.Conn(t.Context())
+	if err != nil {
+		t.Fatalf("conn: %v", err)
+	}
+	defer second.Close()
+	for _, conn := range []*sql.Conn{first, second} {
+		var ms int
+		if err := conn.QueryRowContext(t.Context(), `PRAGMA busy_timeout`).Scan(&ms); err != nil || ms != 5000 {
+			t.Errorf("busy_timeout = %d, %v; want 5000", ms, err)
+		}
+	}
 }

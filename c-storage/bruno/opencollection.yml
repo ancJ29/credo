@@ -1,0 +1,33 @@
+opencollection: 1.0.0
+
+info:
+  name: "[Credo] c-storage"
+
+docs:
+  content: |-
+    ## c-storage
+
+    Key-value records for the BFF, one SQLite file behind one binary. One request per
+    route a caller reaches and per refusal a caller can meet, each asserting its status
+    and the fields callers read. How to start the server and run this:
+    [the README](../README.md).
+
+    ### Headers
+
+    | Header | Must equal | Needed by |
+    | --- | --- | --- |
+    | `X-Internal-Access-Key` | the server's `INTERNAL_ACCESS_KEY` | every route but `GET /health`; 401 |
+    | `X-Super-Admin-Key` | the server's `X_SUPER_ADMIN_KEY` | `POST /api/services/register`; 401 |
+    | `X-Access-Key` | the key the service registered with | `/api/records/*`; 403 |
+
+    ### One run is one valid sequence
+
+    The folders run in order on a fresh database: register the collection's own service,
+    then push, read and remove its records, then the boundary. On a database that already
+    holds the service, *Register service* answers 409.
+
+    `environments/local.yml` holds loopback development keys, not secrets. Every other
+    environment file is git-ignored.
+  type: text/markdown
+bundled: false
+extensions: {}

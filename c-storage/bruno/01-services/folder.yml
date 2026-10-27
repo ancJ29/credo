@@ -1,0 +1,15 @@
+info:
+  name: Services
+  type: folder
+  seq: 1
+
+request: {}
+
+docs:
+  content: |-
+    ## Services
+
+    A service is one caller's records: a code and the access key they need. Registering
+    needs `X-Super-Admin-Key` as well as the internal key. A taken code is 409, which a
+    caller that only needs the service to exist reads as registered.
+  type: text/markdown

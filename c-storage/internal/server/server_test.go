@@ -242,7 +242,7 @@ func TestARecordReadsBackAsPushed(t *testing.T) {
 func with(s *Server, method, path, body string, headers ...[2]string) int {
 	r := request(method, path, body, allKeys)
 	for _, h := range headers {
-		r.Header.Set(h[0], h[1])
+		r.Header.Add(h[0], h[1])
 	}
 	return serve(s, r).Code
 }
@@ -256,6 +256,10 @@ func TestNoWriteIgnoresAPrecondition(t *testing.T) {
 		{{"If-Match", "*"}},
 		{{"If-Match", "abc"}},
 		{stale, {"If-None-Match", "*"}},
+		{{"If-Match", ""}},
+		{{"If-None-Match", ""}},
+		{stale, stale},
+		{{"If-None-Match", "*"}, {"If-None-Match", "*"}},
 	}
 	readable := [][][2]string{{stale}, {{"If-None-Match", "*"}}}
 	for _, rt := range everyRoute {
@@ -310,6 +314,18 @@ func TestAWriteNamingAMovedRecordIsRefused(t *testing.T) {
 	if got := with(s, "POST", "/api/records/svc", `{"key":"new","data":{}}`, [2]string{"If-None-Match", "*"}); got != http.StatusCreated {
 		t.Errorf("a push naming no record, over none = %d, want 201", got)
 	}
+
+	// A tag never meets an absent record: the one a read returned, and the
+	// record gone since.
+	call(t, s, "DELETE", "/api/records/svc/k", "", http.StatusNoContent)
+	earlier := [2]string{"If-Match", read.Record.Tag}
+	if got := with(s, "POST", "/api/records/svc", put, earlier); got != http.StatusPreconditionFailed {
+		t.Errorf("a push naming a tag, over no record = %d, want 412", got)
+	}
+	if got := with(s, "DELETE", "/api/records/svc/k", "", earlier); got != http.StatusPreconditionFailed {
+		t.Errorf("a remove naming a tag, over no record = %d, want 412", got)
+	}
+	call(t, s, "GET", "/api/records/svc/k", "", http.StatusNotFound)
 }
 
 func TestAPushNeedsAKeyAndObjectData(t *testing.T) {

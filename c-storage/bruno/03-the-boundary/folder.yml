@@ -1,0 +1,15 @@
+info:
+  name: The Boundary
+  type: folder
+  seq: 3
+
+request: {}
+
+docs:
+  content: |-
+    ## What a caller without the internal key can learn
+
+    Nothing but `/health`. The internal key stands in front of every other path, unknown
+    ones included, so a status code maps no route; and no path answers 405, which would say
+    that it exists.
+  type: text/markdown

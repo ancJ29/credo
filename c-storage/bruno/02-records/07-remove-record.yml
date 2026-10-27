@@ -1,0 +1,31 @@
+info:
+  name: Remove record
+  type: http
+  seq: 7
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/records/{{serviceCode}}/{{recordKey}}"
+  headers:
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204", function() {
+          expect(res.getStatus()).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  **Expected: 204.** A removal is 204, present or not.

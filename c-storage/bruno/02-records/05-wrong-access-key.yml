@@ -1,0 +1,35 @@
+info:
+  name: With a wrong access key
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/records/{{serviceCode}}/{{recordKey}}"
+  headers:
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: not-the-service-key
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("403", function() {
+          expect(res.getStatus()).to.equal(403);
+        });
+
+        test("the body says nothing of the record", function() {
+          expect(res.getBody()).to.deep.equal({ error: "Invalid access key" });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  *Get record by key* with another key. **Expected: 403**, the record present or not.
