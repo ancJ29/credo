@@ -1,14 +1,12 @@
 # The visual report: the walks page, rebuilt from the old suite
 
-**Where it stands — 2026-10-28 02:02 +07:** every call is answered, each under its call
-([the human's calls](#the-humans-calls)), every 👤 row of [the case table](#the-case-table) is kept
-as written, and the app frame plan carries the six edits, B1 to B6
-([the amendments](#where-it-conflicts-and-the-amendments)): steps 2, 2b and 3 are ticked. The
-report is a live page: one HTML file that draws each walk screen from the app's own components,
-built by the machine in its sandbox after each step. The pixel bases come from the human's
-terminal on one Mac, `pnpm visual` run once a piece at its walk, before the merge into `main`
-(call 7, A). Partners get a claude.ai page only on request, and nothing runs in CI. Nothing is
-built; `app-frame` is merged in at `5ecbbfe`, `main` at `e64b92d`. **Next:** step 4, the build.
+**Where it stands — 2026-10-28 02:49 +07:** step 4 is done as far as the machine reaches: `ui/`
+has its one export, `visual/` holds the walks page, and `pnpm report` writes it to the credo root's
+`walks/` in the machine's sandbox, no browser. `pnpm check` is green with `visual/` at 100 %, and
+the page has been read back: the map, the seven screens in both languages with their questions
+and words, all fourteen not yet asked. **Not seen:** the page drawn in a browser, which is the
+human's, from the newest folder of `walks/`. `app-frame` is merged in (`973a3f4`). Pictures and
+bases wait for step 5, the human's terminal. **Next:** the human opens the page; then step 5.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask: "plz add new worktree and refactor
 > visual report, like old code", with the old app's visual suite as the reference and, as the
@@ -508,7 +506,7 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   names no one, and every relative link in both plans resolves; `git merge-tree --write-tree
   app-frame` against this branch's tree is clean, the merged tree this branch's own, since
   `app-frame` is still at `fdc517c`, the merge base.
-- [ ] **4. The build: `ui/`'s one export, `visual/` and the live walks page.** Who: 🤖, after
+- [x] **4. The build: `ui/`'s one export, `visual/` and the live walks page.** Who: 🤖, after
   steps 2b (the rows it holds) and 3 (the walk's seven screens), 5 hours. If `app-frame` moved
   since `5ecbbfe`, merge it in first, so the page draws its newest UI. Everything is built and read
   in the machine's sandbox. Done when:
@@ -521,6 +519,24 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   path, the git author's name and email and a key's shape, none found (row 8). **Not seen by the
   machine:** the page drawn in a browser. It hands the human the folder's path; the human opens
   the page from disk, and the look is the human's to judge.
+  *Evidence:* `3b744f5` (the export) and `7609f20` (the package). `pnpm check` green: `shared`,
+  `bff`, `ui`, `scripts` and `visual` each at 100 % of statements, branches, functions and lines
+  (`visual`: 309, 137, 106, 266 of as many), no ignore hint, knip silent, no warning. Rows 1 to 5,
+  7 to 10, 12, 14 to 19 each held by a unit test seen red once by breaking its rule, the red from
+  the assertion on it (row 4's on the answer shown, row 18's on the half folder left); row 13 by a
+  unit test of two draws and by the read-back; row 6 by this step's own `pnpm report`. Read back
+  from `walks/2026-10-28-024824-7609f20a1/` (a clean tree at `7609f20`): `walks.json` has the
+  map's three people and five parts with one cell filled and fourteen hatched, one walk of seven
+  screens (1 to 7, main path 1, 3, 4, 5, then 2, 6, 7), 14 words lists, every one not yet asked,
+  no orphan; screen 7 is the mock's `3 save-failed` and its English words hold the failed-save
+  alert and the typed name. The page is one 1.48 MB file: no `src`, no `<link>`, no `@import`, no
+  `url(` to a host; the font is inline; its inlined data equals `walks.json` and holds no raw `<`;
+  its script, run on jsdom, mounts the page with 14 frames at 1280 and 14 hatched cells. A second
+  build, `walks/2026-10-28-024829-7609f20a1/`, gives the same words for all 14 (row 13). The page
+  and `walks.json` hold no home path, no author name or email and no key shape (row 8). Host
+  names do appear inside the bundled libraries' strings (React's error links, SVG and MathML
+  namespaces, JSON-schema ids): none is loaded. **Not seen:** the page in a browser, and any
+  pixel; the look is the human's to judge.
 - [ ] **5. `pnpm visual`, the human's pictures and the bases.** Who: 🤖 writes, after step 4 (it
   opens the built page), 1.5 hours; 👤 runs it in the terminal on the one Mac, then once a piece at
   its walk, before the merge into `main` (call 7). Done when: `pnpm check` green with

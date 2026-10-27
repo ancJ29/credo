@@ -68,3 +68,13 @@ when a third caller appears, in a package both already depend on.
 the port in between makes the child exit, and the stack stops naming the child and the end of its
 log; running it again is the remedy. The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
+
+## 10. Two places inline a Vite build into one HTML file — the machine; *parked* until a third caller (the visual report plan, step 4, 2026-10-28)
+
+`ui/vite.mock.config.ts` (a plugin, for `pnpm mock`) and `visual/src/build.ts` (`onePage`, for
+`pnpm report`) each fold Vite's script and styles into the one HTML file a browser opens from
+`file://`, with the same two patterns. They differ in where they run: the plugin inside the
+bundle's own write, `onePage` on the in-memory output so it can add the report's data. A shared
+helper would make `visual` depend on `ui`'s config, or `ui` on `visual`. Join them when a third
+page needs it, in a package both already depend on, or when Vite changes the tags it emits and the
+two patterns must be fixed twice.
