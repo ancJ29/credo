@@ -1,5 +1,5 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.25 · Gate: pnpm check; make check in c-storage/ · Ship: none yet
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: pnpm check; make check in c-storage/ · Ship: none yet
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
