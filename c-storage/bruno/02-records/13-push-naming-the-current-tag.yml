@@ -1,0 +1,43 @@
+info:
+  name: Push naming the current tag
+  type: http
+  seq: 13
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+    - name: If-Match
+      value: "{{recordTag}}"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}",
+        "data": { "name": "Dan" }
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201 {}", function() {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody()).to.deep.equal({});
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The tag *Get the record and its tag* read: 201. The tag it named is stale after.

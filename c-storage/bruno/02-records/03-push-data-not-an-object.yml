@@ -1,0 +1,42 @@
+info:
+  name: Push data that is not an object
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}",
+        "data": ["not", "an", "object"]
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("400, with details the caller can act on", function() {
+          expect(res.getStatus()).to.equal(400);
+          expect(res.getBody().details).to.be.a("string").and.not.empty;
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  **Expected: 400 `{ error, details }`**, and the record keeps what it held, as
+  *Get record by key* reads next.

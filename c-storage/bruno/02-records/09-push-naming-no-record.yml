@@ -1,0 +1,43 @@
+info:
+  name: Push naming no record
+  type: http
+  seq: 9
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+    - name: If-None-Match
+      value: "*"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}",
+        "data": { "name": "Bob" }
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201 {}, the record being gone", function() {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody()).to.deep.equal({});
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  A push with `If-None-Match: *` writes only where no record is: 201.

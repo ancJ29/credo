@@ -1,5 +1,5 @@
 # c-storage
-Stack: Go 1.25, modernc.org/sqlite · Gate: make check · Ship: none yet
+Stack: Go 1.26, modernc.org/sqlite · Gate: make check · Ship: none yet
 
 Key-value records for the BFF, each under its own service: one Go binary, one SQLite file, one
 listener. Five routes, each with a caller in [the app frame](../docs/plans/2026-10-27-app-frame.md).
@@ -35,3 +35,17 @@ Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decis
   shutdown order is only visible there). In the agent's sandbox: set `GOCACHE` under `$TMPDIR`, and
   `GOPROXY=off GOFLAGS=-mod=mod` where the module cache holds everything; `/usr/bin/make` may print
   `couldn't create cache file … xcrun_db` and run anyway.
+- **`make check` never runs the Bruno collection; the `e2e` job in CI does, through
+  `scripts/e2e.sh`.** A route or answer that changes updates its request in `bruno/` in the same
+  commit, and `bash scripts/e2e.sh` from here is the check (needs Bruno CLI 4.2.0). `make check`
+  does hold that every route has a request outside `03-the-boundary`, none reaches a route the
+  service lacks, and every request has a tests script, because `bru` exits 0 for a request that
+  asserts nothing (`internal/server/collection_test.go`). `e2e.sh` also holds that every request
+  file ran, passed and asserted (`bru` exits 0 for a file it cannot parse), that the HTML report
+  carries no key, and the entry point's three outcomes (a bad configuration exits 1, a port
+  already taken exits 1, SIGTERM exits 0), which is why `scripts/cover.sh` leaves `cmd/server` out
+  as `elsewhere`. See the [README](README.md).
+- **The Bruno collection and the e2e job are the human's call,** not a request that fell out of
+  "nothing enters unless called": on 10-27 he asked for a collection ("bruno is simple and help
+  human a lot when need debug"), then for c-storage verified end to end in GitHub Actions, as the
+  QA proof of how a service is delivered with confidence. Nobody deletes them as unconsumed.

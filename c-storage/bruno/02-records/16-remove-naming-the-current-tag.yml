@@ -1,0 +1,33 @@
+info:
+  name: Remove naming the current tag
+  type: http
+  seq: 16
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/api/records/{{serviceCode}}/{{recordKey}}"
+  headers:
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+    - name: If-Match
+      value: "{{recordTag}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("204", function() {
+          expect(res.getStatus()).to.equal(204);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Removes only where the record is as read: 204.

@@ -1,0 +1,48 @@
+info:
+  name: Register service
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/register"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Super-Admin-Key
+      value: "{{superAdminKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}",
+        "accessKey": "{{accessKey}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201", function() {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("answers the code, and nothing else", function() {
+          expect(res.getBody()).to.deep.equal({ code: bru.getEnvVar("serviceCode") });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  **Body:** `code` and `accessKey`, non-empty strings, else 400.
+
+  The access key is stored as its SHA-256. Every record request then needs it in
+  `X-Access-Key`. On a database that already holds the service this answers 409:
+  start from a fresh `DB_PATH`.
