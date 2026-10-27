@@ -81,8 +81,9 @@ The diagram above, drawn from this plan; no code holds it yet.
 **Assumption, one client:** 50 staff × 26 days × about 750 BFF calls a day ≈ 1 M calls a month,
 answers of 20 KB → 20 GB; the UI's files, 2 MB a person a day → 3 GB; 1 KB per call to the origin
 → 1 GB; two c-storage calls per BFF call → 42 GB inside one zone. Lambda: arm64, 256 MB, 100 ms
-billed a call; logs 0.8 KB a call. **Staff in Vietnam**, for the human to confirm: CloudFront
-prices by the viewer's place, and Vietnam shares a price group with Singapore and Malaysia.
+billed a call; logs 0.8 KB a call. **Staff in Vietnam**, confirmed by the human 2026-10-27, 17:21
++07: CloudFront prices by the viewer's place, and Vietnam shares a price group with Singapore and
+Malaysia.
 
 | Component | Malaysia | Singapore | Source |
 | --- | --- | --- | --- |
