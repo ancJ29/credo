@@ -1,13 +1,14 @@
 # The visual report: the walks page, rebuilt from the old suite
 
-**Where it stands — 2026-10-28 01:44 +07:** the human's six calls are answered, each under its call
-([the human's calls](#the-humans-calls)), and step 2 is ticked. The report is a live page: one HTML
-file that draws each walk screen from the app's own components, built by the machine in its sandbox
-after each step. Pictures are the human's terminal option, partners get a claude.ai page only on
-request, and nothing runs in CI. Nothing is built; `app-frame` is merged in at `5ecbbfe`.
-**Waiting on the human** (step 2b): call 7, where the pixel bases come from, which the answers
-leave open under QA rule 7; and the 👤 rows of [the case table](#the-case-table), six of them new
-or changed. **Next:** step 3, the app frame's amendments; step 4, the build, after step 2b.
+**Where it stands — 2026-10-28 01:48 +07:** the human's six calls are answered, each under its call
+([the human's calls](#the-humans-calls)), and the app frame plan carries their six edits, B1 to B6
+([the amendments](#where-it-conflicts-and-the-amendments)): steps 2 and 3 are ticked. The report is
+a live page: one HTML file that draws each walk screen from the app's own components, built by the
+machine in its sandbox after each step. Pictures are the human's terminal option, partners get a
+claude.ai page only on request, and nothing runs in CI. Nothing is built; `app-frame` is merged in
+at `5ecbbfe`. **Waiting on the human** (step 2b): call 7, where the pixel bases come from, which
+the answers leave open under QA rule 7; and the 👤 rows of [the case table](#the-case-table), six
+of them new or changed. **Next:** step 4, the build, once step 2b is answered.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask: "plz add new worktree and refactor
 > visual report, like old code", with the old app's visual suite as the reference and, as the
@@ -132,46 +133,48 @@ made, and a pixel compared, only when the human runs `pnpm visual` in the termin
 compares words, never pixels. The answers do not say whether that meets the rule. This plan does
 not decide it, and does not edit `qa.md`.
 
-**[The app frame plan](2026-10-27-app-frame.md)** takes six edits (calls 3 and 6; B1 and B4 follow
-call 2), made at step 3 on this branch, each with its own *Amended* stamp. The line numbers are
-those at `5ecbbfe`, the merge of `app-frame`; each edit is found by its text, should a later merge
-move it. B2, B3 and B5 are worded to the answers on calls 1, 4 and 5: no GitHub runner and no
-gallery. B2 and B3 hold under call 7's recommendation; its other answers re-word them again.
+**[The app frame plan](2026-10-27-app-frame.md)** took six edits at step 3, on this branch (calls
+3 and 6; B1 and B4 follow call 2), each stamped "*Amended 2026-10-28 01:47 +07 by the human: B<n>
+of the visual report.*" Each *Was* is the text at `5ecbbfe`, the merge of `app-frame`, found by
+its text; each link points at the amended lines. B2, B3 and B5 are worded to the answers on calls
+1, 4 and 5: no GitHub runner and no gallery. B2 and B3 hold under call 7's recommendation; its
+other answers re-word them again.
 
-- **B1, the answers' home** ([app-frame#L173](2026-10-27-app-frame.md#L173), lines 173 to 179).
-  *Now:* "The answers, dated, written here by the machine from the human's reply:" and a table of
-  six screens by two languages. *Then:* "Their answers, dated, are written by the machine from the
+- **B1, the answers' home** ([app-frame#L178](2026-10-27-app-frame.md#L178), lines 178 to 181).
+  *Was:* "The answers, dated, written here by the machine from the human's reply:" and a table of
+  six screens by two languages. *Is:* "Their answers, dated, are written by the machine from the
   human's reply into `visual/answers.json`, each with the words it was given on, and the walks page
-  shows them ([the visual report](2026-10-28-visual-report.md#the-answers))." The table goes: one
+  shows them ([the visual report](2026-10-28-visual-report.md#the-answers))." The table went: one
   home for an answer.
-- **B2, the least tooling** ([app-frame#L181](2026-10-27-app-frame.md#L181), lines 181 to 185).
-  *Now:* "… the committed base images are the machine's reader. The human walks live after `pnpm
+- **B2, the least tooling** ([app-frame#L183](2026-10-27-app-frame.md#L183), lines 183 to 189).
+  *Was:* "… the committed base images are the machine's reader. The human walks live after `pnpm
   stack`, or reads the images. **Not built:** a walks page or answers file, a gallery, a script to
-  rewrite bases, a nightly run, Bruno, WebKit." *Then:* "… the committed base images, made in the
+  rewrite bases, a nightly run, Bruno, WebKit." *Is:* "… the committed base images, made in the
   human's terminal, are the machine's reader. The human walks live after `pnpm stack`, or reads
   the walks page the machine builds ([the visual report](2026-10-28-visual-report.md)). **Not
   built:** a gallery, a script to rewrite bases, a nightly run, Bruno, WebKit."
-- **B3, the need** ([app-frame#L187](2026-10-27-app-frame.md#L187), lines 187 and 188), a
-  correction the probe found. *Now:* "**Needs:** the code session's sandbox to bind local ports
+- **B3, the need** ([app-frame#L191](2026-10-27-app-frame.md#L191), lines 191 to 195), a
+  correction the probe found. *Was:* "**Needs:** the code session's sandbox to bind local ports
   (`sandbox.network.allowLocalBinding`). Without it the machine asks for that setting, and the
-  human runs the walk meanwhile." *Then:* "**Needs:** a browser, which the code session's sandbox
+  human runs the walk meanwhile." *Is:* "**Needs:** a browser, which the code session's sandbox
   cannot start: it refuses Chromium's registration of a Mach service, and no sandbox setting
   allows one. The human runs the spec in the terminal; the walks page needs no browser
   ([where it runs](2026-10-28-visual-report.md#where-it-runs))."
-- **B4, step 8's done-when** ([app-frame#L316](2026-10-27-app-frame.md#L316), lines 316 and 317).
-  *Now:* "Done when: each screen's answers are in the table above, dated, and none is an open
-  "no"." *Then:* "Done when: each screen's answers are in `visual/answers.json`, dated, and the
+- **B4, step 8's done-when** ([app-frame#L323](2026-10-27-app-frame.md#L323), lines 323 to 325).
+  *Was:* "Done when: each screen's answers are in the table above, dated, and none is an open
+  "no"." *Is:* "Done when: each screen's answers are in `visual/answers.json`, dated, and the
   walks page of the walk's commit shows none waiting and no open "no"."
-- **B5, left behind** ([app-frame#L338](2026-10-27-app-frame.md#L338)). *Now:* "**The old visual
-  suite's gallery, walks page, Bruno and nightly run:** the walk spec does." *Then:* "**The old
-  visual suite's gallery, Bruno and nightly run:** the walk spec does. Its walks page returns with
-  [the visual report](2026-10-28-visual-report.md), on the human's ask of 10-28."
-- **B6, a seventh screen** (call 6), after [app-frame#L44](2026-10-27-app-frame.md#L44): "| 7. A
-  save that failed, what was typed kept | Would the admin know the save did not happen, and that
-  nothing typed is lost? |". Case row 8 of piece 1
-  ([app-frame#L149](2026-10-27-app-frame.md#L149)) names the walk as holding it.
-- The stamp ([app-frame#L9](2026-10-27-app-frame.md#L9)) gains "**Amended** 2026-10-28 by the
-  human: the walks page and its answers file, and a seventh walk screen, from the visual report."
+- **B5, left behind** ([app-frame#L346](2026-10-27-app-frame.md#L346), lines 346 to 348). *Was:*
+  "**The old visual suite's gallery, walks page, Bruno and nightly run:** the walk spec does."
+  *Is:* "**The old visual suite's gallery, Bruno and nightly run:** the walk spec does. Its walks
+  page returns with [the visual report](2026-10-28-visual-report.md), on the human's ask of 10-28."
+- **B6, a seventh screen** (call 6), [app-frame#L47](2026-10-27-app-frame.md#L47), after screen 6:
+  "| 7. A save that failed, what was typed kept | Would the admin know the save did not happen, and
+  that nothing typed is lost? |", its stamp on the line below the table. Case row 8 of piece 1
+  ([app-frame#L154](2026-10-27-app-frame.md#L154)) names the walk as holding it.
+- The header stamp ([app-frame#L13](2026-10-27-app-frame.md#L13)) gained "**Amended** 2026-10-28
+  01:47 +07 by the human: the walks page and its answers file, and a seventh walk screen, from the
+  visual report."
 
 ## What it reports in piece 1
 
@@ -488,10 +491,15 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   page at 01:26 +07, which made call 1 moot; calls 2, 3 and 6 as recommended.
 - [ ] **2b. The human's second read.** Who: 👤, 10-28, 10 minutes. Done when: call 7 answered under
   it, dated; each 👤 row kept or corrected, the six marked *new* or *changed* first.
-- [ ] **3. The amendments.** Who: 🤖, after step 2 (calls 2, 3 and 6), 30 minutes. Done when: the
+- [x] **3. The amendments.** Who: 🤖, after step 2 (calls 2, 3 and 6), 30 minutes. Done when: the
   app frame plan carries B1 to B6, each with its stamp, and its header stamp, each found by its
   text, committed on this branch; `qa.md` untouched (call 1); the path, name and link checks
-  clean; `git merge-tree` against `app-frame` read and reported.
+  clean; `git merge-tree` against `app-frame` read and reported. *Evidence:* the commit that ticks
+  this step, [the amendments](#where-it-conflicts-and-the-amendments) linking each edit; `qa.md`
+  not in its diff; the path grep finds only the documentation convention's own pattern, the diff
+  names no one, and every relative link in both plans resolves; `git merge-tree --write-tree
+  app-frame` against this branch's tree is clean, the merged tree this branch's own, since
+  `app-frame` is still at `fdc517c`, the merge base.
 - [ ] **4. The build: `ui/`'s one export, `visual/` and the live walks page.** Who: 🤖, after
   steps 2b (the rows it holds) and 3 (the walk's seven screens), 5 hours. If `app-frame` moved
   since `5ecbbfe`, merge it in first, so the page draws its newest UI. Everything is built and read
