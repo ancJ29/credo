@@ -35,6 +35,8 @@ export default defineConfig({
   plugins: [react(), inlineIntoHtml()],
   base: './',
   build: {
+    // The fonts go into the one file too: a browser refuses them from `file://`.
+    assetsInlineLimit: Number.MAX_SAFE_INTEGER,
     outDir: 'dist/mock',
     rolldownOptions: { input: 'mock.html', output: { codeSplitting: false } },
   },

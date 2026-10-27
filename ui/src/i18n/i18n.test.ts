@@ -19,6 +19,6 @@ describe('createI18n', () => {
     const en = createI18n('en');
 
     expect(vi.t('auth.submit')).toBe('Đăng nhập');
-    expect(en.t('auth.submit')).toBe('Sign in');
+    expect(en.t('auth.submit')).toBe('Sign In');
   });
 });

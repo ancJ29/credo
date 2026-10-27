@@ -167,6 +167,9 @@ catalogs:
     '@eslint/js':
       specifier: ^10.0.0
       version: 10.0.1
+    '@fontsource-variable/noto-sans':
+      specifier: 5.3.0
+      version: 5.3.0
     '@mantine/core':
       specifier: 9.6.3
       version: 9.6.3
@@ -315,6 +318,9 @@ importers:
       '@credo/shared':
         specifier: workspace:*
         version: link:../shared
+      '@fontsource-variable/noto-sans':
+        specifier: 'catalog:'
+        version: 5.3.0
       '@mantine/core':
         specifier: 'catalog:'
         version: 9.6.3(@mantine/hooks@9.6.3(react@19.3.1))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -600,6 +606,9 @@ packages:
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+
+  '@fontsource-variable/noto-sans@5.3.0':
+    resolution: {integrity: sha512-e3ZuxzY9AL2psXPZlhwhnYrHUHv6PMoyK9MQ7croF0CUgURLqu9EMjW7q2FgVLwij1tjLsIHQrnwQ8aUcg4BiA==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -2481,6 +2490,8 @@ snapshots:
       tabbable: 6.5.1
 
   '@floating-ui/utils@0.2.12': {}
+
+  '@fontsource-variable/noto-sans@5.3.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

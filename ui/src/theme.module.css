@@ -1,0 +1,33 @@
+/* Fields are underlined, pickers too: a row mixing a line and a box reads as two kinds of
+   control. The line is the brand's at rest; Mantine's own focus and error colours replace it. */
+.input {
+  border-width: 0 0 1px;
+  border-radius: 0;
+}
+
+.input:not([data-error]):not(:focus):not(:focus-within) {
+  --input-bd: var(--mantine-color-brand-6);
+}
+
+/* The password's eye at the old app's sizes, which Mantine 9 grew. */
+.passwordRoot {
+  --psi-icon-size-xs: 12px;
+  --psi-icon-size-sm: 15px;
+  --psi-icon-size-md: 17px;
+  --psi-icon-size-lg: 19px;
+  --psi-icon-size-xl: 21px;
+}
+
+/* A password's line stays grey at rest, as the old app draws it. */
+.password:not([data-error]):not(:focus):not(:focus-within) {
+  --input-bd: var(--mantine-color-default-border);
+}
+
+/* The value starts where its label does, or 2rem in where an icon stands. */
+.wrapper:not([data-with-left-section]) {
+  --input-padding-inline-start: 0;
+}
+
+.wrapper[data-with-left-section] {
+  --input-padding-inline-start: 2rem;
+}
