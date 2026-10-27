@@ -8,10 +8,10 @@ cd "$(dirname "$0")/.."
 
 module="$(go list -m)"
 
-# untested: the one file left out is the entry point, which no in-process test
+# elsewhere: the one file left out is the entry point, which no in-process test
 # can start. It keeps only the wiring and two exits (a bad config, a stop that
-# failed); the local stack starts the binary and waits on /health, which reads
-# back the happy path alone.
+# failed); the e2e job (scripts/e2e.sh, .github/workflows/c-storage.yml) starts
+# the binary and waits on /health, which reads back the happy path alone.
 measured="$(go list ./... | grep -vx "$module/cmd/server")"
 
 # A package without a test file of its own is measured through -coverpkg; asked

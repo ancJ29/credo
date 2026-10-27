@@ -1,0 +1,49 @@
+info:
+  name: Push naming no record, over one
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+    - name: If-None-Match
+      value: "*"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}",
+        "data": { "name": "Carol" }
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("412", function() {
+          expect(res.getStatus()).to.equal(412);
+        });
+
+        test("the refusal says the record moved", function() {
+          expect(res.getBody()).to.deep.equal({
+            error: "Precondition failed",
+            details: "the record moved since it was read",
+          });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The record now exists: **Expected: 412**, nothing written.

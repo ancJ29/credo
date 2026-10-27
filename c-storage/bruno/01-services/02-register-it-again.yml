@@ -1,0 +1,41 @@
+info:
+  name: Register it again
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/register"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Super-Admin-Key
+      value: "{{superAdminKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}",
+        "accessKey": "another-access-key"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("409, the code is taken", function() {
+          expect(res.getStatus()).to.equal(409);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  *Register service* with another access key. **Expected: 409**, and the code keeps
+  its first key: every request in *Records* sends that one.

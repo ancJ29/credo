@@ -1,0 +1,20 @@
+info:
+  name: Records
+  type: folder
+  seq: 2
+
+request: {}
+
+docs:
+  content: |-
+    ## Records
+
+    JSON objects under a service code, by key. Every request here needs `X-Access-Key`,
+    the key the service registered with: a missing or wrong key and an unknown service all
+    answer 403, so no answer says which services exist.
+
+    A record is answered as `{ record: { data, tag } }`. A push is 201 `{}`; a removal
+    204, present or not. A write naming `If-Match: <tag>`, or a push naming
+    `If-None-Match: *`, is 412 where the record is not as named. The tag comes from a
+    read; never compute one.
+  type: text/markdown

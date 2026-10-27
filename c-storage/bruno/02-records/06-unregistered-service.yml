@@ -1,0 +1,41 @@
+info:
+  name: Push to an unregistered service
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}-unregistered"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}",
+        "data": {}
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("403, as for a wrong key", function() {
+          expect(res.getStatus()).to.equal(403);
+          expect(res.getBody()).to.deep.equal({ error: "Invalid access key" });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  **Expected: 403.** A service code never registered meets it on its first push.

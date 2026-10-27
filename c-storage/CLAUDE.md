@@ -35,3 +35,7 @@ Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decis
   shutdown order is only visible there). In the agent's sandbox: set `GOCACHE` under `$TMPDIR`, and
   `GOPROXY=off GOFLAGS=-mod=mod` where the module cache holds everything; `/usr/bin/make` may print
   `couldn't create cache file … xcrun_db` and run anyway.
+- **`make check` never runs the Bruno collection; the `e2e` job in CI does, through
+  `scripts/e2e.sh`.** A route or answer that changes updates its request in `bruno/` in the same
+  commit, and `bash scripts/e2e.sh` from here is the check (needs Bruno CLI 4.2.0). It is why
+  `scripts/cover.sh` leaves `cmd/server` out as `elsewhere`. See the [README](README.md).

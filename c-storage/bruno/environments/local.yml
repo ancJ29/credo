@@ -1,0 +1,13 @@
+variables:
+  - name: baseUrl
+    value: http://127.0.0.1:3181
+  - name: internalAccessKey
+    value: dev-internal-access-key
+  - name: superAdminKey
+    value: dev-super-admin-key
+  - name: serviceCode
+    value: bruno-collection
+  - name: accessKey
+    value: dev-access-key
+  - name: recordKey
+    value: sample-record

@@ -1,0 +1,7 @@
+*.json
+*.bru
+!*.bru.example
+*.yml
+!*.yml.example
+# Loopback development keys for a throwaway local server: not secrets.
+!local.yml

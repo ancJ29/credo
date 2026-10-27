@@ -1,0 +1,34 @@
+info:
+  name: Get the record and its tag
+  type: http
+  seq: 11
+
+http:
+  method: GET
+  url: "{{baseUrl}}/api/records/{{serviceCode}}/{{recordKey}}"
+  headers:
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200, the first push's data, a 64-character hex tag", function() {
+          expect(res.getStatus()).to.equal(200);
+          expect(res.getBody().record.data).to.deep.equal({ name: "Bob" });
+          expect(res.getBody().record.tag).to.match(/^[0-9a-f]{64}$/);
+          bru.setVar("recordTag", res.getBody().record.tag);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The read keeps the tag in `recordTag` for the requests that name it.
