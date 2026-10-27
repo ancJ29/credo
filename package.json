@@ -1,0 +1,23 @@
+{
+  "name": "credo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "scripts": {
+    "check": "pnpm -r run typecheck && eslint . && prettier --check . && pnpm -r run test && knip",
+    "mock": "pnpm --filter @credo/ui run build:mock"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "knip": "catalog:",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
+  }
+}

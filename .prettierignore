@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+# CLAUDE.md line 2 is a convention prettier would break by inserting a blank line.
+*.md
+# A Go project with its own face and gate (its CLAUDE.md line 2).
+c-storage/
+node_modules/
+dist/
+coverage/
+# The workflows are c-storage's CI, written by hand in its own style.
+.github/
