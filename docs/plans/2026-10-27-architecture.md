@@ -121,10 +121,9 @@ then adding $2.76. The ceiling is each client's box: every call lands on one SQL
    cold start (the old app's first call took 333 ms, its warm p95 199 ms). With no internet route,
    the BFF reaches c-storage and S3 (via the gateway endpoint) alone; its keys sit in its
    environment, encrypted at rest by Lambda with an AWS-managed key, free. *Trigger to
-   revisit:* a first call outside AWS, or to a service with no free endpoint: a NAT gateway,
-   $36.61 a month in Malaysia ($43.07 in Singapore) plus per GB, or an interface endpoint, $8.54
-   ($9.49) each plus $0.01/GB. *Rejected:* the BFF on
-   the box beside c-storage, the previous draft: $0.90 a client less, no cold start, but it scales
+   revisit:* the BFF's first call outside AWS, or to an AWS service with no free gateway endpoint:
+   inside the VPC it has no internet route, so such a call fails until a way out is decided, then
+   and not before. *Rejected:* the BFF on the box beside c-storage, the previous draft: $0.90 a client less, no cold start, but it scales
    only as far as the nano. *Rejected:* Lambda outside the VPC on the box's public IPv4: ≈ $4.07 a
    client more, c-storage on the internet. *Rejected:* the function in several zones: $0.84 a
    client across zones, for availability the one box lacks.
