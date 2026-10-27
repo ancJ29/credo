@@ -1,0 +1,30 @@
+# c-storage's gate runs on every change to c-storage, on a branch or in a pull
+# request. A red here is a defect to fix, never a run to repeat.
+name: c-storage
+
+on:
+  push:
+    paths:
+      - "c-storage/**"
+      - ".github/workflows/c-storage.yml"
+  pull_request:
+    paths:
+      - "c-storage/**"
+      - ".github/workflows/c-storage.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: c-storage/go.mod
+          cache-dependency-path: c-storage/go.sum
+      - name: make check
+        working-directory: c-storage
+        run: make check
