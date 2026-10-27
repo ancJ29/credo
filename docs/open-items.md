@@ -26,18 +26,20 @@ plan, since it decides each walk's words.
 
 Home: [the ridge plan](plans/2026-10-28-ridge.md#the-templates). Hand-written CloudFormation, shipped
 through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with no internet
-gateway, its Instance Connect Endpoint; the S3 gateway endpoint with its first caller), and
-`ops/env.yml`, one environment's stack (subnet, box; with piece 1 its function, bucket and
+gateway, its Instance Connect Endpoint; the S3 gateway endpoint with its first caller),
+`ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
+environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. A signed client's stack is one more from
 `env.yml`, and still waits for a client, with its ACM certificate requested in `us-east-1` and its
 name in Cloudflare.
 
-## 5. The arm64 builds and how each release lands — the machine writes, the human runs; c-storage's first, for ridge (the architecture plan, 2026-10-27)
+## 5. The arm64 builds and how each release lands — the machine writes, GitHub Actions runs on the human's push to main; c-storage's first, for ridge (the architecture plan, 2026-10-27)
 
-Home: [the ridge plan](plans/2026-10-28-ridge.md#the-release). c-storage's Go binary for arm64,
-built from `main` alone, sent to its box over the Instance Connect tunnel and run under systemd:
-`ops/release.sh`, in the ridge plan's steps 5 to 10. The BFF's function for arm64, its bundle
-shipped through the template, comes with piece 1, in the ridge plan's fourth layer.
+Home: [the ridge plan](plans/2026-10-28-ridge.md#deploys-from-github-actions). c-storage's Go binary
+for arm64, built from `main` alone, sent to its box over the Instance Connect tunnel and run under
+systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each push to `main`, or
+by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
+plan's fourth layer, which decides how CD ships it.
 
 ## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
 
