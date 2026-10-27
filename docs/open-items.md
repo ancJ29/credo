@@ -56,15 +56,26 @@ loopback.
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
 `bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`
-(`pnpm stack`) each build and start the real c-storage on a free port, with the same keys and the
-same health wait. They differ in what they need: the tests retry a port taken between the probe
-and the bind and stop at the process's exit; the stack logs to a file and reports a child that
-exited. A shared helper would make `bff` or `scripts` depend on the other for test code. Join them
-when a third caller appears, in a package both already depend on.
+(`pnpm stack`) each start the real c-storage on a free port, with the same keys and the same health
+wait. They share only the build (`bff/tests/build.ts`). They differ in what they need: the tests
+retry a port taken between the probe and the bind and stop at the process's exit; the stack logs
+to a file and reports a child that exited. A shared start would make `bff` or `scripts` depend on
+the other for test code. Join them when a third caller appears, in a package both already depend
+on.
 
 ## 9. A free port can be taken before the child binds it — the machine; *parked* until it bites (the app frame plan, step 6, 2026-10-28)
 
 `pnpm stack` asks for a free port, then starts c-storage and the BFF on it. Another process taking
 the port in between makes the child exit, and the stack stops naming the child and the end of its
-log; running it again is the remedy. The route tests retry on another port. *Trigger:* a second
+log; running it again is the remedy. A stranger already answering on that port is not mistaken for
+the child: `waitUntilUp` also needs the child's own log to say it is listening
+(`scripts/src/processes.ts`). The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
+
+## 10. A session is keyed by a client-chosen device id — the machine; *parked* until piece 2 (the app frame plan, step 7, 2026-10-28)
+
+`x-device-id` names the session record (`session.<device>`), and sign-in replaces what is there. A
+user who can sign in can therefore replace another device's session by naming its id. Harmless
+with one root; with staff sign-ins (piece 2) it is not. Piece 2's plan decides: a session record
+keyed by a minted id with the device id beside it, or a sign-in refused over another user's
+session on that device.
