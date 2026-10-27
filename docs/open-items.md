@@ -16,6 +16,12 @@ its box on c-storage holding in a `t4g.nano` with swap. The nano is read on the 
 memory and any OOM kill. The rest is read on the first client's first bill, with whether the BFF's
 answers to CloudFront are billed.
 
+## 3. The demo's language — *parked* until the first feature's plan (the big picture, 2026-10-27)
+
+The 11-04 screenshots and video come from the demo, and the old app's screens came in English
+and Vietnamese. Which one the demo shows, or both, is the human's call, at the first feature's
+plan, since it decides each walk's words.
+
 ## 4. The network's and a client's YAML templates — the machine writes, the human runs; waits for a signed client (the architecture plan, 2026-10-27)
 
 Hand-written CloudFormation, shipped through change sets, in Malaysia: the shared network (one VPC
