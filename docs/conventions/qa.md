@@ -2,8 +2,9 @@
 
 > **Decided** 2026-10-27, after reading the old app's QA process. **Amended** 2026-10-27 by the
 > human: rules 7 and 8. **Amended** 2026-10-27 by the
-> human: rules picked from the old repo's standing preferences. Binds every feature's plan, every
-> test and every merge into `main`.
+> human: rules picked from the old repo's standing preferences. **Amended** 2026-10-27 by the
+> human: the gate's scope and cadence, in rule 6. Binds every feature's plan, every test and every
+> merge into `main`.
 
 ## At a glance
 
@@ -30,7 +31,8 @@ The eight rules, numbered as [below](#the-rules):
 3. Each case is tested as close to its code as it can be.
 4. Each test is named after its case; there is no second list.
 5. A different AI model reviews the code before it merges.
-6. A test that fails only sometimes is a bug, never rerun until it passes.
+6. A test that fails only sometimes is a bug, never rerun until it passes; and only the gate that
+   can change a conclusion is run.
 7. The screens are the final check: each person's day, on their device, yes or no.
 8. Every line is tested, or says why not, as in "we choose not to test this".
 
@@ -83,6 +85,11 @@ The map of walks. A dash is a part of the day not built yet.
    green is no verdict. A rerun gone green teaches a session to rerun past a real red, and with
    several worktrees running at once, load is the normal case. *Rejected:* a retry setting,
    which greens the real red too; a longer timeout, which hides the cause.
+
+   **Run the gate that can change a conclusion:** nothing for a read-only task, typecheck and one
+   test while iterating, the touched package's gate at a commit, the whole only before shipping.
+   *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
+   minutes buy no verdict a smaller gate does not already give.
 7. **The screens are the end-to-end check.** Each person's part of the business's day is walked
    screen by screen, on that person's device. The map places each walk: the day's stages
    across, its people down; an empty cell shows what is missing. A walk shows the main path and

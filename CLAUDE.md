@@ -1,5 +1,5 @@
 # credo
-Stack: not chosen yet · Gate: none yet · Ship: none yet
+Stack: TypeScript on Node 26, one pnpm 11 workspace; c-storage in Go 1.25 · Gate: pnpm check; make check in c-storage/ · Ship: none yet
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
@@ -20,3 +20,6 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   and retry a bounded number of times; a genuine conflict on the record still surfaces.
 - **A field added to a contract whose halves deploy apart** gets a default at the client's wire
   boundary in the same commit.
+- **Wire-contract code goes into the shared package, extended generically, not into a new
+  standalone package per service.** The one shared package is `shared/`
+  ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).
