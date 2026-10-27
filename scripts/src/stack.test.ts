@@ -4,7 +4,8 @@ import { join } from 'node:path';
 import { HASH_HEADER, sha256Hex } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commandOf, runStack } from './cli';
-import { type Artifacts, buildArtifacts, withStack } from './stack';
+import { BFF_ENV_KEYS } from '@credo/bff/env';
+import { type Artifacts, bffEnvironment, buildArtifacts, withStack } from './stack';
 
 let dir: string;
 let artifacts: Artifacts;
@@ -47,12 +48,17 @@ describe('pnpm stack', () => {
 
   it('The password is stored nowhere readable: not in the database, not in a log', async () => {
     await withStack(artifacts, async (stack) => {
-      await signIn(stack.url, stack.rootName, stack.rootPassword);
+      const signedIn = await signIn(stack.url, stack.rootName, stack.rootPassword);
+      expect(signedIn.status).toBe(200);
 
+      let hashes = 0;
       for (const file of await readdir(stack.dataDir)) {
         const bytes = await readFile(join(stack.dataDir, file)).catch(() => Buffer.alloc(0));
         expect(bytes.includes(stack.rootPassword), file).toBe(false);
+        if (bytes.includes('scrypt$')) hashes++;
       }
+      // The scan looked at the bytes that hold the root: its hash is there, its password is not.
+      expect(hashes).toBeGreaterThan(0);
     });
   });
 
@@ -97,6 +103,30 @@ describe('pnpm stack', () => {
   });
 });
 
+describe('what the stack builds', () => {
+  it('puts the UI and c-storage in its own folder, so a running stack’s files are never emptied', async () => {
+    expect(artifacts.uiDir).toBe(join(dir, 'ui'));
+    expect(artifacts.cStorage.startsWith(dir)).toBe(true);
+    expect(await readFile(join(artifacts.uiDir, 'index.html'), 'utf8')).toContain(
+      '<div id="root">',
+    );
+  });
+});
+
+describe('what the BFF is given', () => {
+  it('The BFF never holds the super-admin key: its environment is exactly the variables it reads', () => {
+    const environment = bffEnvironment({
+      port: 4000,
+      cStorageUrl: 'http://127.0.0.1:4001',
+      internalAccessKey: 'internal',
+      service: { code: 'demo', accessKey: 'service' },
+    });
+
+    expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
+    expect(environment.HOST).toBe('127.0.0.1');
+  });
+});
+
 describe('pnpm stack -- <command>', () => {
   const build = () => Promise.resolve(artifacts);
   const printed: string[] = [];
@@ -133,6 +163,46 @@ describe('pnpm stack -- <command>', () => {
 
     expect(await runStack(kill('SIGINT'), build, out)).toBe(130);
     expect(await runStack(kill('SIGTERM'), build, out)).toBe(143);
+    expect(await runStack(kill('SIGKILL'), build, out)).toBe(137);
+  });
+
+  it('hands a signal it catches on to the command, and reads the command’s own status', async () => {
+    const ready = join(dir, 'ready');
+    const script = `
+      process.on('SIGTERM', () => process.exit(9));
+      require('fs').writeFileSync(${JSON.stringify(ready)}, 'up');
+      setTimeout(() => process.exit(0), 8000);`;
+    const running = runStack(['--', process.execPath, '-e', script], build, out);
+    while (!(await readFile(ready, 'utf8').catch(() => ''))) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    process.emit('SIGTERM');
+
+    expect(await running).toBe(9);
+    await rm(ready);
+  });
+
+  it('keeps a signal that comes during the build from starting the command, and ends with the signal’s status', async () => {
+    const marker = join(dir, 'ran');
+    const signalled = () => {
+      process.emit('SIGTERM');
+      return Promise.resolve(artifacts);
+    };
+
+    const status = await runStack(
+      [
+        '--',
+        process.execPath,
+        '-e',
+        `require('fs').writeFileSync(${JSON.stringify(marker)}, 'ran')`,
+      ],
+      signalled,
+      out,
+    );
+
+    expect(status).toBe(143);
+    expect(await readFile(marker, 'utf8').catch(() => 'never ran')).toBe('never ran');
   });
 
   it('stops, with the stack taken down, when the command cannot start', async () => {
@@ -150,5 +220,19 @@ describe('pnpm stack -- <command>', () => {
 
     expect(await running).toBe(0);
     expect(printed.filter((line) => line.includes('the password'))).toHaveLength(1);
+  });
+
+  it('with no command waits as well for a termination or a hang-up, the first of several ending it', async () => {
+    for (const signals of [['SIGTERM'], ['SIGHUP', 'SIGINT']] as const) {
+      printed.length = 0;
+      const running = runStack([], build, out);
+      while (!printed.some((line) => line.includes('Ctrl-C'))) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+
+      for (const signal of signals) process.emit(signal);
+
+      expect(await running, signals.join()).toBe(0);
+    }
   });
 });

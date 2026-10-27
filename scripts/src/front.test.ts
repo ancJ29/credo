@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { connect } from 'node:net';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -140,6 +141,41 @@ describe('the local front', () => {
     } finally {
       await close(lonely);
     }
+  });
+
+  it('answers 500, and stays up, when the app’s page is missing', async () => {
+    const empty = await mkdtemp(join(tmpdir(), 'credo-front-empty-'));
+    await mkdir(join(empty, 'assets'));
+    await writeFile(join(empty, 'assets', 'app.js'), 'console.log(2)');
+    const rebuilding = createFront({ staticDir: empty, bffUrl: 'http://127.0.0.1:1' });
+    const rebuildingUrl = await listen(rebuilding);
+    try {
+      for (const path of ['/', '/settings', '/assets/missing.js']) {
+        expect((await fetch(`${rebuildingUrl}${path}`)).status, path).toBe(500);
+      }
+      const still = await fetch(`${rebuildingUrl}/assets/app.js`);
+      expect(still.status).toBe(200);
+      expect(await still.text()).toBe('console.log(2)');
+    } finally {
+      await close(rebuilding);
+      await rm(empty, { recursive: true, force: true });
+    }
+  });
+
+  it('answers 400, and stays up, to a request line that names no path', async () => {
+    const { port } = front.address() as AddressInfo;
+    const raw = await new Promise<string>((resolve) => {
+      const socket = connect(port, '127.0.0.1', () =>
+        socket.write('GET // HTTP/1.1\r\nHost: x\r\n\r\n'),
+      );
+      let received = '';
+      socket.on('data', (chunk) => (received += chunk.toString()));
+      socket.on('close', () => resolve(received));
+      socket.setTimeout(2000, () => socket.destroy());
+    });
+
+    expect(raw.split('\r\n')[0]).toBe('HTTP/1.1 400 Bad Request');
+    expect((await fetch(`${url}/`)).status).toBe(200);
   });
 
   it('refuses a body of more than a megabyte', async () => {

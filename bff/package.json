@@ -4,7 +4,9 @@
   "type": "module",
   "exports": {
     ".": "./src/app.ts",
-    "./password": "./src/password.ts"
+    "./password": "./src/password.ts",
+    "./env": "./src/env.ts",
+    "./tests/build": "./tests/build.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

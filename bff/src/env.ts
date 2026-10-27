@@ -11,6 +11,9 @@ const envSchema = z.object({
   SERVICE_ACCESS_KEY: z.string().min(1),
 });
 
+/** The variables the BFF reads, and so the only ones it is given. */
+export const BFF_ENV_KEYS = Object.keys(envSchema.shape);
+
 /** The BFF's configuration from its environment. It never holds c-storage's super-admin key: that
  * key registers the service at stack start and is the stack's alone. An error names the variables
  * at fault and never a value, which may be a key. */

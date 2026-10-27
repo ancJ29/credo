@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import type { Server } from 'node:http';
@@ -6,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
+import { buildCStorage } from '@credo/bff/tests/build';
 import { createCStorageClient } from '@credo/shared';
 import { build } from 'vite';
 import { createFront } from './front';
@@ -22,16 +21,15 @@ export type Artifacts = { cStorage: string; uiDir: string; dir: string };
 
 /**
  * What the stack runs, built from the checkout: c-storage as a binary for this machine, and the
- * UI's files. Built once and started as often as needed; `dir` holds the binary.
+ * UI's files. Built once and started as often as needed. Both go into `dir`, never into the
+ * checkout: Vite empties its output folder first, and a running stack's front serves from it.
  */
 export async function buildArtifacts(dir: string): Promise<Artifacts> {
   const cStorage = join(dir, 'c-storage');
-  await promisify(execFile)('go', ['build', '-o', cStorage, './cmd/server'], {
-    cwd: join(ROOT, 'c-storage'),
-    env: { ...process.env, CGO_ENABLED: '0' },
-  });
-  await build({ root: UI_DIR, logLevel: 'warn' });
-  return { cStorage, uiDir: join(UI_DIR, 'dist/app'), dir };
+  const uiDir = join(dir, 'ui');
+  await buildCStorage(cStorage);
+  await build({ root: UI_DIR, logLevel: 'warn', build: { outDir: uiDir, emptyOutDir: true } });
+  return { cStorage, uiDir, dir };
 }
 
 export type RunningStack = {
@@ -50,6 +48,27 @@ const listening = (server: Server) =>
   });
 
 const key = () => randomBytes(24).toString('hex');
+
+/**
+ * Exactly the variables the BFF reads, each given here and none taken from this process: the
+ * stack holds c-storage's super-admin key and every other secret of the machine it runs on, and
+ * the BFF gets none of them. `HOST` is set, so an exported `HOST` cannot move it off loopback.
+ */
+export function bffEnvironment(settings: {
+  port: number;
+  cStorageUrl: string;
+  internalAccessKey: string;
+  service: { code: string; accessKey: string };
+}) {
+  return {
+    PORT: String(settings.port),
+    HOST: '127.0.0.1',
+    C_STORAGE_URL: settings.cStorageUrl,
+    INTERNAL_ACCESS_KEY: settings.internalAccessKey,
+    SERVICE_CODE: settings.service.code,
+    SERVICE_ACCESS_KEY: settings.service.accessKey,
+  };
+}
 
 /**
  * The local stack for the length of `use`: c-storage on a fresh database, the BFF's service
@@ -99,13 +118,7 @@ export async function withStack<T>(
       process.execPath,
       ['--import', import.meta.resolve('tsx'), join(ROOT, 'bff/src/main.ts')],
       {
-        env: {
-          PORT: String(bffPort),
-          C_STORAGE_URL: cStorageUrl,
-          INTERNAL_ACCESS_KEY: internalAccessKey,
-          SERVICE_CODE: service.code,
-          SERVICE_ACCESS_KEY: service.accessKey,
-        },
+        env: bffEnvironment({ port: bffPort, cStorageUrl, internalAccessKey, service }),
         logFile: join(dataDir, 'bff.log'),
       },
     );

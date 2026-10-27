@@ -81,7 +81,7 @@ export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: 
   }
 
   /** The file the path names inside the UI's folder; anything else is the app's own page, which
-   * routes it. */
+   * routes it. A page that cannot be read answers 500 and leaves the front standing. */
   async function page(response: ServerResponse, pathname: string) {
     let wanted = resolve(root, 'index.html');
     try {
@@ -90,13 +90,23 @@ export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: 
     } catch {
       // a path that does not decode names no file
     }
-    const bytes = await readFile(wanted).catch(() => null);
-    if (bytes) return send(response, 200, bytes, TYPES[extname(wanted)]);
-    return send(response, 200, await readFile(resolve(root, 'index.html')), TYPES['.html']);
+    try {
+      const bytes = await readFile(wanted).catch(() => null);
+      if (bytes) return send(response, 200, bytes, TYPES[extname(wanted)]);
+      return send(response, 200, await readFile(resolve(root, 'index.html')), TYPES['.html']);
+    } catch {
+      return sendError(response, 500, 'The page could not be read');
+    }
   }
 
   return createServer((request, response) => {
-    const url = new URL(request.url as string, 'http://front');
+    let url: URL;
+    try {
+      url = new URL(request.url as string, 'http://front');
+    } catch {
+      // a request line that names no path, such as `GET // HTTP/1.1`
+      return sendError(response, 400, 'Bad request');
+    }
     void (url.pathname.startsWith('/api/')
       ? api(request, response, url)
       : page(response, url.pathname));

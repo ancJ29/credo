@@ -22,8 +22,9 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   boundary in the same commit.
 - **`pnpm check` needs Go and loopback ports:** the BFF's route tests build the real c-storage with
   `go build` and run it per test file (`bff/tests/`), so the product's own client meets the real
-  server. In the agent's sandbox set `GOPROXY=off GOFLAGS=-mod=mod`; the helper sets `GOCACHE` under
-  the temp folder when none is set.
+  server. In the agent's sandbox set `GOPROXY=off GOFLAGS=-mod=mod`. One helper, `bff/tests/build.ts`,
+  builds c-storage for the route tests and for `pnpm stack` alike, and sets `GOCACHE` under the temp
+  folder when none is set.
 - **Wire-contract code goes into the shared package, extended generically, not into a new
   standalone package per service.** The one shared package is `shared/`
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).
