@@ -15,3 +15,8 @@ export function draw(screen: ReactNode, language: Language = 'en') {
   const drawn = render(inApp(screen, language));
   return { ...drawn, rerender: (next: ReactNode) => drawn.rerender(inApp(next, language)) };
 }
+
+/** The whole app, which brings its own look and words, at `path`. */
+export function drawApp(app: ReactNode, path = '/') {
+  return render(<MemoryRouter initialEntries={[path]}>{app}</MemoryRouter>);
+}

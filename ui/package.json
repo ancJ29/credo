@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "build:mock": "vite build --config vite.mock.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage"
@@ -30,5 +31,8 @@
     "jsdom": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "exports": {
+    "./words": "./src/i18n/index.ts"
   }
 }

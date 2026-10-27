@@ -5,5 +5,5 @@
     "jsx": "react-jsx",
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "tests", "vite.mock.config.ts", "vitest.config.ts"]
+  "include": ["src", "tests", "vite.config.ts", "vite.mock.config.ts", "vitest.config.ts"]
 }

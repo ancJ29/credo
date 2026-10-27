@@ -25,6 +25,7 @@ export function Providers({ colour, language, scheme, root, test, children }: Pr
   return (
     <MantineProvider
       theme={theme}
+      defaultColorScheme="auto"
       forceColorScheme={scheme}
       getRootElement={root}
       env={test ? 'test' : 'default'}
