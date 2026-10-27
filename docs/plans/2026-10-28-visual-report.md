@@ -1,12 +1,19 @@
 # The visual report: the walks page, rebuilt from the old suite
 
-**Where it stands — 2026-10-28 02:49 +07:** step 4 is done as far as the machine reaches: `ui/`
-has its one export, `visual/` holds the walks page, and `pnpm report` writes it to the credo root's
-`walks/` in the machine's sandbox, no browser. `pnpm check` is green with `visual/` at 100 %, and
-the page has been read back: the map, the seven screens in both languages with their questions
-and words, all fourteen not yet asked. **Not seen:** the page drawn in a browser, which is the
-human's, from the newest folder of `walks/`. `app-frame` is merged in (`973a3f4`). Pictures and
-bases wait for step 5, the human's terminal. **Next:** the human opens the page; then step 5.
+**Where it stands — 2026-10-28 03:15 +07:** step 4's follow-up, from the human's look at the walks
+page, is built as far as the machine reaches (`c85b9c2`). The page now has Yes and No and a reason
+box for each screen in each language, a "Copy my answers" button that builds one block naming the
+build and the fingerprint of the words each answer was given on, and a line at its top saying how
+to answer; each screen is drawn at PC 1280, tablet 768 and phone 390, on a page that uses the whole
+window; and `pnpm answers <file>` writes the pasted block into `visual/answers.json`, refusing by
+line what is stale or unknown. `pnpm check` is green, every package at 100 %; the page was built
+with `pnpm report` and read back (42 frames, the controls, the block). **Not seen:** the page in a
+browser, which is the human's, from the newest folder of `walks/`; so the look at three widths and
+at 390 pixels is theirs to judge. **Recorded, not built:** an eighth walk screen, the save
+conflict, answered yes; it enters on `app-frame` with the walk spec, not here
+([step 4's follow-up](#steps)). Pictures and bases wait for step 5, the human's terminal.
+**Next:** the human opens the page and answers by it; the next block they paste goes through `pnpm
+answers`; then step 5.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask: "plz add new worktree and refactor
 > visual report, like old code", with the old app's visual suite as the reference and, as the
@@ -17,7 +24,10 @@ bases wait for step 5, the human's terminal. **Next:** the human opens the page;
 > to artifacts automatically, but only push when requested"; at 01:26, "yes" to a live page drawn
 > from the app's own components that needs no browser to build, offered on the human's "can you
 > generate visual report from this repo?". **Amended** 2026-10-28 02:02 +07 by the human: at 01:59,
-> call 7's A, "yes, me", and every business row kept, "keep all".
+> call 7's A, "yes, me", and every business row kept, "keep all". **Amended** 2026-10-28 03:15 +07
+> by the human: at about 03:00, after opening the walks page, three answers: buttons plus a copy
+> block (call 2 revisited), the page at the full width and each screen at three widths, and an
+> eighth walk screen, the save conflict.
 
 ## At a glance
 
@@ -42,7 +52,7 @@ Drawn from this plan; no code holds it yet.
 | Each run a folder of its own beside the worktrees | **kept**, in the credo root's `walks/` |
 | Screenshots and their pixel differences | **changed**: the human's terminal option, `pnpm visual`, local only; its bases made there, once a piece at its walk (call 7) |
 | The partners' page on claude.ai | **kept**, published only when the human asks |
-| Answers clicked on a page `pnpm walks` served | **left**: the human answers in the chat; the machine writes `visual/answers.json` |
+| Answers clicked on a page `pnpm walks` served | **changed**: Yes, No and a reason on the page; "Copy my answers" builds a block the human pastes into the chat; `pnpm answers` writes `visual/answers.json`. No server, no network |
 | The gallery, the script that rewrites bases, the seeding, the nightly run, demo mode | **left** |
 
 **Built by** the machine, in its sandbox, after each step: no browser, no wait on the human
@@ -182,7 +192,7 @@ stock, orders, delivery), the people down, each on their device (the client's ad
 staff at a PC, the driver on a phone). Piece 1 fills one cell, the client's admin at set-up; the
 other fourteen are hatched. Each piece's plan adds its cells, and a new column only by its plan.
 
-**The walk:** the client's admin, at a PC, 1280 pixels wide, light. The screens keep the app
+**The walk:** the client's admin, at a PC, light; drawn at three widths (row 2). The screens keep the app
 frame's numbers; the page shows the main path first, then what can go wrong.
 
 | # | The screen ([at a glance](2026-10-27-app-frame.md#at-a-glance)) | Path | The mock's state | The one question |
@@ -201,8 +211,9 @@ question is in English, the human's to answer.
 
 **How a screen is drawn.** The walk names, for each screen, the mock's state it shows. `ui/` gives
 `visual/` one export, its mock's screens and states with the frame that draws one; the page draws
-each walk screen in that frame at its person's device width, so the app's breakpoints answer to
-1280, scaled down to fit the page, in each language. These are the app's own components, so the
+each walk screen in that frame at three widths, PC 1280, tablet 768 and phone 390, so the app's
+breakpoints answer to each, scaled down to fit the page, in each language. The person's device
+stays on the map; the walk is drawn at all three whoever it is for. These are the app's own components, so the
 page changes with the app at each build. The model files: `ui/vite.mock.config.ts` (one file,
 script and styles inlined), `ui/src/mock/Frame.tsx` (a screen at its width), `ui/tests/render.tsx`
 and `ui/src/mock/screens.test.tsx` (a screen drawn on jsdom, in a language).
@@ -228,9 +239,19 @@ As the model run: "A business's day in Credo", "Who does what, on the device the
 2. **The map:** a built walk is a card with its title, its count of screens and what waits in it;
    an empty cell is hatched, so what is missing shows.
 3. **Each walk:** the main path, then what can go wrong; each screen with its number, its sentence
-   in both languages, its one question, and its drawn screen in each language beside that
-   language's answer: not yet asked, a dated yes, a "no" with its reason, or asked again with the
-   words before and now. Approved screens fold away.
+   in both languages, its one question, and, for each language in turn, its three drawn widths
+   (PC, tablet, phone), side by side from a window 1000 pixels wide and stacked below that, each
+   column as wide as its device so the three scale alike; then that language's answer (not yet
+   asked, a dated yes, a "no" with its reason, or asked again with the words before and now) beside
+   the Yes, No and reason the human picks. Approved screens fold away.
+4. **At its top, one or two lines** on how to answer, and that the block goes to the chat.
+5. **A bar at the foot**, always in view: how many answers are chosen, "Copy my answers", and, once
+   pressed, the block in a box to select where the clipboard refuses.
+
+**The whole window.** The page has no maximum width; a window, a tablet or a phone is filled, with
+a 16-pixel gutter and no sideways scroll at 390 pixels (the map falls to one column at 480). jsdom
+lays nothing out, so `page.test.tsx` holds the rules (no maximum width; the columns from 1000
+pixels), and the look is the human's.
 
 One HTML file, script and styles inlined, as the mock is, its data computed by the build and
 inlined with every `<` escaped; `walks.json` beside it holds the same data for the machine's
@@ -246,17 +267,40 @@ screens keep the app's look.
 day, in one form; `reason` a "no"'s, quoting the human; `words` the screen's words it was given
 on, a line each, so a changed screen shows what changed.
 
-The human answers in the chat, a line such as "1 vi yes; 2 en no: the message is too small". The
-machine of the piece, relayed by the orchestrator, writes the rows on the piece's branch and
-commits them; a "no" also becomes a case in the piece's table ([QA](../conventions/qa.md#the-rules)
-rule 7). The next build's page shows them. A "no" fixed in looks alone keeps its words, so the
-fix's commit deletes its row and the screen is asked again.
+The human answers on the page: Yes or No for a screen in a language, and a reason, required for a
+No. "Copy my answers" builds one plain-text block, to paste into the chat:
+
+```text
+Credo walks answers
+Build: branch <branch>, commit <commit>
+admin-setup:3-settings:vi | yes | 0123456789ab
+admin-setup:3-settings:en | no | 0123456789ab | the save button is hard to find
+```
+
+A line is the screen's key (`<walk>:<screen>:<language>`), `yes` or `no`, the **fingerprint** of the
+words the answer was given on (twelve hex digits of their hash, computed by the build and only
+copied by the page) and a no's reason on one line. The page sends nothing, calls no network, and
+keeps unsent choices in `localStorage` when the browser allows it, dropping any given on words that
+have since changed; without storage it works the same.
+
+The machine of the piece, relayed by the orchestrator, runs **`pnpm answers <file>`** on the pasted
+block (a file, or stdin when none is named; a relative path is the caller's). It draws every walk
+screen as the build does and holds each line against its words now: a line whose fingerprint is no
+longer the screen's (stale), whose screen or language is unknown, whose no has no reason, or that is
+no answer at all is **refused, by its line number, saying why**; the lines that hold are written
+over their rows, dated in Vietnam's day, with the words they were given on, keys sorted, and the
+rows of other screens stay. The exit status is 1 when any line was refused. The machine commits the
+rows on the piece's branch; a "no" also becomes a case in the piece's table
+([QA](../conventions/qa.md#the-rules) rule 7). The next build's page shows them. A "no" fixed in
+looks alone keeps its words, so the fix's commit deletes its row and the screen is asked again.
 
 *Rejected* (call 2): the old served mode, `pnpm walks` on a fixed port with a yes or no clicked on
 the page. *Its price:* about 260 lines and their tests; answers outside git on one Mac, or a server
 writing into a worktree; a refused answer whenever another worktree's run becomes the newest; and a
 partners' page that shows no answer. In the model run, 45 of 48 answers came by reply anyway.
 *Trigger to revisit:* a walk too long to answer in a line, or the human asking for the buttons.
+*Fired 10-28 03:15:* the human asked, and chose the buttons with a copy block, still no server
+(call 2, revisited); the served mode stays rejected.
 *Rejected:* the plan's table as the input, a doc made a format code must parse; answers kept in the
 browser, one set a browser.
 
@@ -319,8 +363,9 @@ visual/pictures/   from step 5: pnpm visual's Playwright config, its spec, the M
 - **A package of its own.** *Rejected:* the page inside `ui/`, beside the mock: the report's walks,
   answers and build would join the app's package. *Price:* one export from `ui/`, and React and
   Mantine declared in both.
-- **Scripts:** the root's `pnpm report`, the machine's, builds the page into its folder; from step
-  5, `pnpm visual`, the human's, builds it and adds the pictures. No `visual:update`, no `pnpm
+- **Scripts:** the root's `pnpm report`, the machine's, builds the page into its folder; the
+  machine's `pnpm answers <file>` writes a pasted block into `visual/answers.json`; from step 5,
+  `pnpm visual`, the human's, builds the page and adds the pictures. No `visual:update`, no `pnpm
   walks`.
 - **Tests:** Vitest, on jsdom for the page and the words, in Node for the build and the folder's
   home, tested on a temporary repository; coverage at 100 % of `visual/src/`
@@ -334,7 +379,8 @@ visual/pictures/   from step 5: pnpm visual's Playwright config, its spec, the M
   `test-results/`.
 - **The gate:** `pnpm check` runs `visual/`'s unit tests; `pnpm report` runs after each step,
   outside the check; `pnpm visual` is the human's.
-- **Nothing enters before its caller:** the page's caller is the machine's build after each step;
+- **Nothing enters before its caller:** `pnpm answers` is called each time the human pastes a
+  block, so it enters now; the page's caller is the machine's build after each step;
   Playwright's is the human's `pnpm visual`, at step 5; the walks hold piece 1's alone.
 
 ## The case table
@@ -347,7 +393,7 @@ row 14, the machine's.
 | # | 👤 | The case | Held by |
 | --- | --- | --- | --- |
 | 1 | 👤 | The page opens on the map: the parts of the day across, the people down with their device; a built walk is a card with its title and its count of screens, and an empty cell is hatched, so what is missing shows | unit, `page.test.tsx` |
-| 2 | 👤 | The page draws each walk screen live from the app's own components, in its state, in Vietnamese and in English, at its person's device width | unit, `page.test.tsx`; read back |
+| 2 | 👤 | The page draws each walk screen live from the app's own components, in its state, in Vietnamese and in English, at three widths: PC 1280, tablet 768 and phone 390 (amended 10-28 at the human's own ask, answered; was "at its person's device width") | unit, `page.test.tsx`, `report.test.ts`, `walks.test.ts`; read back |
 | 3 | 👤 | Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question | unit, `page.test.tsx` |
 | 4 | 👤 | Each drawn screen shows its language's answer: not yet asked, a dated yes, or a "no" with its reason | unit, `states.test.ts`, `page.test.tsx` |
 | 5 | 👤 | A yes holds while the screen's words stay the same; a changed word asks again, showing the words before and now; a change of look alone asks nothing | unit, `words.test.tsx`, `states.test.ts` |
@@ -368,6 +414,16 @@ row 14, the machine's.
 | 20 | | The published page is the folder's page less the doctype, charset and viewport lines the tool's skeleton adds | read back, at each publish |
 | 21 | | Pictures are compared on the human's Mac alone, each base with its platform in its path (step 5) | the config |
 | 22 | | No run is retried | the config, `retries: 0` ([QA](../conventions/qa.md#the-rules) rule 6) |
+| 23 | 👤 | Each screen, in each language, has Yes and No and a reason box; the reason is required for a No; the human answers once per screen per language, not per width (answered 10-28) | unit, `page.test.tsx` |
+| 24 | 👤 | "Copy my answers" builds one plain-text block naming the build, and for each answered screen and language its screen, language, yes or no, the reason and the fingerprint of the words it was answered on; with a No lacking its reason, or nothing answered, it gives no block and says so (answered 10-28) | unit, `block.test.ts`, `choices.test.ts`, `page.test.tsx`; read back |
+| 25 | 👤 | The page says at its top, in a line or two, how to answer and that the block goes to the chat (answered 10-28) | unit, `page.test.tsx` |
+| 26 | 👤 | The page sends nothing and calls no network; unsent choices are kept across a reload in `localStorage`, dropped when their words changed, and the page works without storage (answered 10-28) | unit, `choices.test.ts`, `page.test.tsx`, `build.test.ts` (row 7) |
+| 27 | 👤 | The page uses the whole width of the window and reads on a PC, a tablet and a phone: a language's three widths side by side on a PC, stacked on a phone, no sideways scroll at 390 pixels (answered 10-28) | unit, `page.test.tsx` (the rules); the look is the human's |
+| 28 | 👤 | `pnpm answers <file>` (or stdin) writes the pasted block's answers into `visual/answers.json`, dated, on the words the screens draw now, keeping the other rows (answered 10-28) | unit, `take.test.ts`, `cli.test.ts` |
+| 29 | 👤 | `pnpm answers` refuses, by line, an answer whose fingerprint no longer matches the screen's words (stale), and says which (answered 10-28) | unit, `take.test.ts`, `cli.test.ts` |
+| 30 | 👤 | `pnpm answers` refuses, by line, an unknown screen and an unknown language, and says which (answered 10-28) | unit, `take.test.ts` |
+| 31 | | A line that is no answer, a no without its reason, or text with no block title is refused by line or stops the command; with every line refused the file is left as it was and the exit status is 1 | unit, `block.test.ts`, `take.test.ts`, `cli.test.ts` |
+| 32 | | A screen's fingerprint is twelve hex digits of its words, computed by the build; the page's and the command's are the same | unit, `fingerprint.test.ts`, `report.test.ts`, `cli.test.ts` |
 
 ## Hazards no gate catches
 
@@ -418,6 +474,12 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
    buttons; an answer shows at the next build, not at once. *The other way,* the old served mode,
    is priced at [the answers](#the-answers).
    **Answered** 2026-10-28 by the human: as recommended.
+   **Answered** 2026-10-28 about 03:00 +07 by the human, revisiting this call after opening the
+   walks page ("no way to send feedback, is it under-implemented?"): **buttons plus copy**. The
+   trigger above fired. Yes and No and a reason on each screen in each language; a "Copy my
+   answers" button builds one block to paste into the chat; no server, no network; the machine's
+   `pnpm answers <file>` writes `visual/answers.json` from it ([the answers](#the-answers); rows 23
+   to 32).
 3. **The app frame's lines B1 to B5.** *Recommended:* yes, as drafted. B1 and B4 follow call 2; B2
    and B5 follow the human's ask; B3 corrects what the walk needs.
    **Answered** 2026-10-28 by the human: as recommended, B2, B3 and B5 worded to the answers on
@@ -537,6 +599,40 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   names do appear inside the bundled libraries' strings (React's error links, SVG and MathML
   namespaces, JSON-schema ids): none is loaded. **Not seen:** the page in a browser, and any
   pixel; the look is the human's to judge.
+  **Follow-up, from the human's look at the walks page** (10-28, about 03:00 +07), three answers,
+  each the recommended option, all the human's own asks:
+  1. **Feedback: buttons plus copy** (call 2, revisited). Built at `c85b9c2`: rows 23 to 26 and 28
+     to 32.
+  2. **"Make the UI full width, and cover PC, Tablet and Mobile": both.** The page itself fills the
+     window and reads on a PC, a tablet and a phone; each walk screen is drawn at PC 1280, tablet
+     768 and phone 390 (`DEVICE_WIDTH` gains the tablet; the mock's `Width` type gains 768, the one
+     change in `ui/src/mock/`), the three of a language side by side on a PC and stacked on a
+     phone, scaled alike. The human still answers once per screen per language, not per width.
+     Built at `c85b9c2`: rows 2 and 27.
+  3. **An eighth walk screen, the save conflict ("someone else saved first"): yes.** *Not added
+     here.* The walk spec on `app-frame` must gain it at the same time, or `visual/src/walks.test.ts`
+     (its guard that the walk's screens equal the spec's) goes red. The orchestrator adds it on
+     `app-frame` after this branch merges there: the walk spec's eighth step, this plan's
+     [walk table](#what-it-reports-in-piece-1) and `walks.ts` together. The mock already draws it, as
+     the settings screen's `conflict` state in `ui/src/mock/screens.tsx`. When it enters, the
+     walk is 16 answers, not 14, and the case table gains its row.
+
+  *Evidence:* `c85b9c2`. `pnpm check` green, every package at 100 % of statements, branches,
+  functions and lines (`visual`: 450, 200, 142, 393 of as many), knip silent, no warning. Each new
+  rule seen red once by breaking it: the stale, unknown-screen, unknown-language and no-reason
+  refusals; the block's reason, title and fingerprint; the No's missing reason; the changed-words
+  drop and the storage fallback; the required reason, the how-to line, the three widths, the
+  clipboard write and the page's width; the tablet width; the day and the exit count of the
+  command. `pnpm report` wrote `walks/2026-10-28-031337-c85b9c260/`; read back from it, by a jsdom
+  run of the page's script: 42 frames (14 each at 1280, 768 and 390), 14 pairs of Yes and No, 14
+  reason boxes, the how-to line, and, after choosing a yes and a no with a reason, a block whose
+  text equals the clipboard's (the build line, `…:1-sign-in:en | yes | <fingerprint>` and
+  `…:7-save-failed:vi | no | <fingerprint> | <reason>`). That block fed to `pnpm answers` in a
+  scratch copy wrote both rows; a block with a wrong fingerprint, an unknown screen, an unknown
+  language and a stale line wrote none, refused each by line, and exited 1. The page and
+  `walks.json` hold no home path, no key shape and no author email (row 8). **Not seen:** the page
+  in a browser, at any of the three widths or at 390 pixels, and no pixel; the look is the human's
+  to judge.
 - [ ] **5. `pnpm visual`, the human's pictures and the bases.** Who: 🤖 writes, after step 4 (it
   opens the built page), 1.5 hours; 👤 runs it in the terminal on the one Mac, then once a piece at
   its walk, before the merge into `main` (call 7). Done when: `pnpm check` green with
@@ -565,7 +661,8 @@ Each until something calls it.
   login. Call 7's trigger would bring one back, for the bases alone (its C).
 - **An address on ridge for partners** (call 5): a path beside the UI's files on ridge's CloudFront,
   with its fourth layer, when called.
-- **The served answers,** `pnpm walks` and its buttons (call 2): answers by reply.
+- **The served answers,** `pnpm walks` and a server writing the answers (call 2): the buttons
+  came back on 10-28 without a server, as a copy block.
 - **The gallery** (call 1): the mock stays at `pnpm mock`.
 - **Pictures at every step:** `pnpm visual` is the human's, once a piece at its walk (call 7), and
   when wanted.
