@@ -6,13 +6,18 @@ so is in [the memo](../docs/memo/c-storage.md).
 
 ## Try it in 10 minutes
 
-You need Go 1.25 and Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`, then `bru --version`).
+You need Go 1.26 (the `toolchain` line in `go.mod` fetches it) and Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`, then `bru --version`).
 
 **The whole check, one command**, from this directory. It builds the server, starts it on a fresh
-database, runs the [Bruno collection](bruno) against it, checks the process's exits (a missing
-variable, SIGTERM) and stops it. This is what the `e2e` job in CI runs. It exits non-zero if any
-request or assertion fails, if fewer requests ran than `bruno/` holds, if the port is already
-taken, or if an exit is wrong.
+database, runs the [Bruno collection](bruno) against it, checks the process's exits (a bad
+configuration, a port already taken, SIGTERM) and stops it. This is what the `e2e` job in CI runs.
+It exits non-zero if any request or assertion fails, if a request file did not run, pass and
+assert, if the port is already taken, or if an exit is wrong.
+
+It also writes an HTML report a reviewer can read without the code: in the credo root's `logs/`
+folder as `c-storage-e2e-report.html` (set `E2E_REPORT` to put it elsewhere), and it prints the
+path. Open it with `open <path>`. In CI it is the `c-storage-e2e-report` artifact of the run, kept
+14 days, failed runs included. It carries no key, and the script fails if it finds one.
 
 ```bash
 bash scripts/e2e.sh
