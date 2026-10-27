@@ -154,3 +154,6 @@ vite.config.ts.timestamp-*
 # The walk spec's run: Playwright's report and its failed screens
 playwright-report/
 test-results/
+
+# The walks page's builds live in the credo root, outside every worktree; this guards a root that is a worktree
+/walks/

@@ -1,0 +1,287 @@
+:root {
+  --ground: #f3f5f7;
+  --surface: #fff;
+  --ink: #17202b;
+  --muted: #5a6776;
+  --line: #d6dde5;
+  --accent: #0f6b5c;
+  --wait: #9a6410;
+  --wait-soft: #fbf0dc;
+  --ok: #2b7a4b;
+  --ok-soft: #e3f3e9;
+  --no: #b8322f;
+  --no-soft: #fbe8e7;
+  --changed: #6347ad;
+  --changed-soft: #eee9fa;
+  --hatch: #e6eaef;
+  --shadow: 0 1px 2px rgb(23 32 43 / 0.08);
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground: #11161c;
+    --surface: #19212a;
+    --ink: #e5eaef;
+    --muted: #9aa6b3;
+    --line: #2c3742;
+    --accent: #5cc0ac;
+    --wait: #e2ad55;
+    --wait-soft: #3a2c14;
+    --ok: #6cc690;
+    --ok-soft: #173426;
+    --no: #f08a86;
+    --no-soft: #3d1c1c;
+    --changed: #b5a1ef;
+    --changed-soft: #2a2245;
+    --hatch: #222b35;
+    --shadow: none;
+  }
+  html.walks:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --ground: #11161c;
+  --surface: #19212a;
+  --ink: #e5eaef;
+  --muted: #9aa6b3;
+  --line: #2c3742;
+  --accent: #5cc0ac;
+  --wait: #e2ad55;
+  --wait-soft: #3a2c14;
+  --ok: #6cc690;
+  --ok-soft: #173426;
+  --no: #f08a86;
+  --no-soft: #3d1c1c;
+  --changed: #b5a1ef;
+  --changed-soft: #2a2245;
+  --hatch: #222b35;
+  --shadow: none;
+}
+html.walks[data-theme='dark'] {
+  color-scheme: dark;
+}
+html.walks {
+  color-scheme: light;
+}
+
+/* The page's own rules sit under `html.walks` or in `.w-` classes: the screens are drawn in frames
+   that copy this page's styles, and must not meet a rule meant for the page. */
+html.walks body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font:
+    15px/1.55 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+.w-wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  display: grid;
+  gap: 24px;
+}
+.w-wrap h1,
+.w-wrap h2,
+.w-wrap h3 {
+  margin: 0;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+.w-wrap h1 {
+  font-size: clamp(24px, 4vw, 34px);
+}
+.w-wrap h2 {
+  font-size: 20px;
+}
+.w-wrap h3 {
+  font-size: 16px;
+  margin-top: 16px;
+}
+.w-sub {
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+.w-build {
+  font-size: 13px;
+  color: var(--muted);
+  border-left: 3px solid var(--line);
+  padding-left: 10px;
+  max-width: 70ch;
+}
+.w-wrap code {
+  font: 13px var(--mono);
+}
+.w-label {
+  font: 500 11px/1.3 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+.w-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.w-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: start;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.w-pill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.w-waiting {
+  color: var(--wait);
+  background: var(--wait-soft);
+}
+.w-yes {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+.w-no {
+  color: var(--no);
+  background: var(--no-soft);
+}
+.w-changed {
+  color: var(--changed);
+  background: var(--changed-soft);
+}
+
+.w-map {
+  display: grid;
+  grid-template-columns: 150px repeat(var(--parts), minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.w-row,
+.w-cell-group {
+  display: contents;
+}
+.w-colhead {
+  padding: 0 4px 2px;
+}
+.w-person {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 4px;
+}
+.w-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 104px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+a.w-cell:hover {
+  border-color: var(--accent);
+}
+.w-cell.w-empty {
+  background: repeating-linear-gradient(135deg, transparent 0 8px, var(--hatch) 8px 10px);
+  border-style: dashed;
+  box-shadow: none;
+}
+@media (max-width: 860px) {
+  .w-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .w-colhead {
+    display: none;
+  }
+  .w-person {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+  }
+}
+
+.w-walk {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.w-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 12px 16px;
+}
+.w-card > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  cursor: pointer;
+}
+.w-number {
+  font: 700 15px var(--mono);
+  color: var(--accent);
+}
+.w-sentence {
+  display: grid;
+  margin-right: auto;
+  min-width: 0;
+}
+.w-sentence span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.w-question {
+  font-weight: 600;
+  margin: 12px 0;
+}
+.w-languages {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 16px;
+}
+.w-language {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  min-width: 0;
+}
+.w-scaled {
+  width: 100%;
+  overflow: hidden;
+}
+.w-reason {
+  margin: 0;
+}
+.w-compare {
+  display: grid;
+  gap: 8px;
+}
+.w-words {
+  margin: 0;
+  font: 12px/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+}

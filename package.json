@@ -9,6 +9,7 @@
   "scripts": {
     "check": "pnpm -r run typecheck && eslint . && prettier --check . && pnpm -r run test && knip",
     "mock": "pnpm --filter @credo/ui run build:mock",
+    "report": "pnpm --filter @credo/visual run report",
     "stack": "pnpm --filter @credo/scripts run stack"
   },
   "devDependencies": {
