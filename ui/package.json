@@ -33,6 +33,7 @@
     "vitest": "catalog:"
   },
   "exports": {
+    "./mock": "./src/mock/index.ts",
     "./words": "./src/i18n/index.ts"
   }
 }
