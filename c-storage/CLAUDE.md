@@ -27,7 +27,7 @@ Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decis
 - **`schema.sql` applies only to a new file:** a schema change needs the version raised and a step
   that carries a version-1 file to it
   ([why](../docs/memo/c-storage.md#the-schema-version-is-checked-at-open)).
-- **The listener binds loopback only;** the first box needs its private address
+- **The listener binds loopback only;** the BFF's layer four on ridge needs its private address
   ([open item 7](../docs/open-items.md), [why](../docs/memo/c-storage.md#loopback-only-for-now)).
 - **The database file is the only copy since its last backup;** a live copy goes through SQLite's
   own backup, never a plain file copy ([why](../docs/memo/c-storage.md#the-file-is-the-only-copy)).
