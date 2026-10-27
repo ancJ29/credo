@@ -1,4 +1,4 @@
-# c-storage's gate runs on every change to c-storage, on a branch or in a pull
+# c-storage's gate runs on every change to c-storage or its ops, on a branch or in a pull
 # request. A red here is a defect to fix, never a run to repeat.
 name: c-storage
 
@@ -6,10 +6,12 @@ on:
   push:
     paths:
       - "c-storage/**"
+      - "ops/**"
       - ".github/workflows/c-storage.yml"
   pull_request:
     paths:
       - "c-storage/**"
+      - "ops/**"
       - ".github/workflows/c-storage.yml"
 
 permissions:
@@ -28,3 +30,22 @@ jobs:
       - name: make check
         working-directory: c-storage
         run: make check
+
+  # The templates and scripts of ridge's stacks, linted, and the two guards seen red in
+  # ops/test.sh: the change-set filter and the check of /health. Nothing here touches AWS.
+  ops:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: ShellCheck
+        run: shellcheck -x ops/*.sh
+      - name: cfn-lint
+        run: |
+          python3 -m venv "$RUNNER_TEMP/lint"
+          "$RUNNER_TEMP/lint/bin/pip" install --quiet cfn-lint==1.46.0
+          "$RUNNER_TEMP/lint/bin/cfn-lint" ops/network.yml ops/github.yml ops/env.yml
+      - name: The guards
+        run: bash ops/test.sh
