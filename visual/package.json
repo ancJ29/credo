@@ -5,7 +5,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
-    "report": "node run.mjs"
+    "report": "node run.mjs report",
+    "answers": "node run.mjs answers"
   },
   "dependencies": {
     "@credo/shared": "workspace:*",

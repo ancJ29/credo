@@ -1,10 +1,13 @@
 import { LANGUAGES, type Language } from '@credo/shared';
 import type { MockScreen } from '@credo/ui/mock';
 import type { Answers } from './answers';
+import { fingerprintOf } from './fingerprint';
 import { type Source, vietnamTime } from './home';
 import { type Orphan, orphansOf, type Shown, shownFor, type Tally, tallyOf } from './states';
 import {
+  answerKey,
   type Bilingual,
+  DEVICE_LABEL,
   DEVICE_WIDTH,
   type Device,
   type DeviceWidth,
@@ -14,8 +17,8 @@ import {
   type Walk,
 } from './walks';
 
-/** One screen in one language: its words now, and what to show beside it. */
-type ScreenInLanguage = { words: string[]; shown: Shown };
+/** One screen in one language: its words now, the fingerprint of them, and what to show beside it. */
+type ScreenInLanguage = { words: string[]; fingerprint: string; shown: Shown };
 
 export type ReportScreen = {
   id: string;
@@ -32,8 +35,6 @@ export type ReportWalk = {
   person: string;
   part: string;
   title: Bilingual;
-  /** The width its person's device is drawn at. */
-  width: DeviceWidth;
   tally: Tally;
   screens: ReportScreen[];
 };
@@ -42,6 +43,8 @@ export type ReportWalk = {
 export type Report = {
   title: string;
   build: { branch: string; commit: string; changed: boolean; committed: string; built: string };
+  /** The widths every screen is drawn at, widest first. */
+  devices: { id: Device; label: string; width: DeviceWidth }[];
   people: (Person & { width: DeviceWidth })[];
   parts: Part[];
   walks: ReportWalk[];
@@ -57,6 +60,31 @@ export type ReadWords = (
   navigation: boolean,
 ) => string[];
 
+/**
+ * Every walk screen's words now, in each language, under its answer's key: the one reader both the
+ * page and the answers command hold an answer's fingerprint against.
+ */
+export function currentWords(
+  walks: readonly Walk[],
+  mock: readonly MockScreen[],
+  readWords: ReadWords,
+) {
+  const states = resolveStates(walks, mock);
+  const words = new Map<string, string[]>();
+  for (const walk of walks) {
+    for (const screen of walk.screens) {
+      const state = states.get(`${walk.id}:${screen.id}`)!;
+      for (const language of LANGUAGES) {
+        words.set(
+          answerKey(walk.id, screen.id, language),
+          readWords(state, language, screen.navigation === true),
+        );
+      }
+    }
+  }
+  return words;
+}
+
 export function makeReport(input: {
   walks: readonly Walk[];
   people: readonly Person[];
@@ -68,18 +96,19 @@ export function makeReport(input: {
   readWords: ReadWords;
 }): Report {
   const { walks, people, parts, mock, answers, source, builtAt, readWords } = input;
-  const states = resolveStates(walks, mock);
+  const words = currentWords(walks, mock, readWords);
   const widthOf = (device: Device) => DEVICE_WIDTH[device];
 
   const reportWalks = walks.map((walk): ReportWalk => {
-    const person = people.find((candidate) => candidate.id === walk.person)!;
     const screens = walk.screens.map((screen): ReportScreen => {
-      const state = states.get(`${walk.id}:${screen.id}`)!;
       const languages = Object.fromEntries(
         LANGUAGES.map((language) => {
-          const words = readWords(state, language, screen.navigation === true);
-          const answer = answers[`${walk.id}:${screen.id}:${language}`];
-          return [language, { words, shown: shownFor(answer, words) }];
+          const key = answerKey(walk.id, screen.id, language);
+          const now = words.get(key)!;
+          return [
+            language,
+            { words: now, fingerprint: fingerprintOf(now), shown: shownFor(answers[key], now) },
+          ];
         }),
       ) as Record<Language, ScreenInLanguage>;
       return {
@@ -98,7 +127,6 @@ export function makeReport(input: {
       person: walk.person,
       part: walk.part,
       title: walk.title,
-      width: widthOf(person.device),
       tally: tallyOf(shown),
       screens,
     };
@@ -117,6 +145,11 @@ export function makeReport(input: {
       committed: vietnamTime(source.committedAt).shown,
       built: vietnamTime(builtAt).shown,
     },
+    devices: (Object.keys(DEVICE_WIDTH) as Device[]).map((id) => ({
+      id,
+      label: DEVICE_LABEL[id],
+      width: widthOf(id),
+    })),
     people: people.map((person) => ({ ...person, width: widthOf(person.device) })),
     parts: [...parts],
     walks: reportWalks,

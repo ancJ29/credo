@@ -1,6 +1,7 @@
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import type { Answers } from './answers';
+import { fingerprintOf } from './fingerprint';
 import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
@@ -40,11 +41,23 @@ describe('the report', () => {
     expect(report.walks[0].tally).toEqual(report.tally);
   });
 
-  it('draws each walk at its person’s device width', () => {
+  it('draws every screen at three widths, widest first, and keeps each person’s device width for the map', () => {
     const report = reportOf({});
 
-    expect(report.walks[0].width).toBe(1280);
+    expect(report.devices).toEqual([
+      { id: 'pc', label: 'PC', width: 1280 },
+      { id: 'tablet', label: 'tablet', width: 768 },
+      { id: 'phone', label: 'phone', width: 390 },
+    ]);
     expect(report.people.map((person) => person.width)).toEqual([1280, 1280, 390]);
+  });
+
+  it('gives each screen in a language the fingerprint of its words now, the same for the same words', () => {
+    const screens = reportOf({}).walks[0].screens;
+
+    expect(screens[0].languages.vi.fingerprint).toBe(fingerprintOf(['text: vi']));
+    expect(screens[0].languages.vi.fingerprint).not.toBe(screens[0].languages.en.fingerprint);
+    expect(screens[0].languages.vi.fingerprint).toBe(screens[6].languages.vi.fingerprint);
   });
 
   it('says what it was built from: the branch, the commit and its time, and when', () => {

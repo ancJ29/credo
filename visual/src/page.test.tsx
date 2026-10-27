@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Answers } from './answers';
+import { fingerprintsOf } from './choices';
 import { Page } from './page';
 import { makeReport, type Report } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
@@ -110,17 +113,24 @@ describe('the walks page: a walk', () => {
   it('says the person and the width the walk is drawn at', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getByText(/The client’s admin on a PC, drawn 1280 pixels wide/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /The client’s admin on a PC; every screen is drawn at PC 1280, tablet 768, phone 390 pixels/,
+      ),
+    ).toBeTruthy();
   });
 });
 
 describe('the walks page: the drawn screens', () => {
-  it('The page draws each walk screen live from the app’s own components, in its state, in Vietnamese and in English, at its person’s device width', () => {
+  it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', () => {
     render(<Page report={reportWith()} />);
 
-    const frames = screen.getAllByTitle(/ · (vi|en) · 1280$/);
-    expect(frames).toHaveLength(14);
-    expect(frames.every((frame) => frame.getAttribute('width') === '1280')).toBe(true);
+    expect(screen.getAllByTitle(/ · (vi|en) · \d+$/)).toHaveLength(42);
+    for (const width of ['1280', '768', '390']) {
+      const frames = screen.getAllByTitle(new RegExp(` · (vi|en) · ${width}$`));
+      expect(frames).toHaveLength(14);
+      expect(frames.every((frame) => frame.getAttribute('width') === width)).toBe(true);
+    }
 
     const inFrame = (title: string) => {
       const frame = screen.getByTitle<HTMLIFrameElement>(title);
@@ -139,6 +149,26 @@ describe('the walks page: the drawn screens', () => {
     expect(vi.documentElement.lang).toBe('vi');
     // Screen 1 is the sign-in in the company's name.
     expect(inFrame('1 1-sign-in · en · 1280').body.textContent).toContain('Minh Phát');
+  });
+
+  it('The three widths of a language sit together, widest first, each in a column as wide as its device so they scale alike', () => {
+    render(<Page report={reportWith()} />);
+
+    const en = within(document.querySelector<HTMLElement>('#admin-setup-3-settings')!).getByRole(
+      'region',
+      { name: 'English' },
+    );
+    const group = en.querySelector<HTMLElement>('.w-frames')!;
+
+    expect([...group.querySelectorAll('figcaption')].map((c) => c.textContent)).toEqual([
+      'PC · 1280',
+      'tablet · 768',
+      'phone · 390',
+    ]);
+    expect(group.style.getPropertyValue('--cols')).toBe(
+      'minmax(0, 1280fr) minmax(0, 768fr) minmax(0, 390fr)',
+    );
+    expect(en.querySelectorAll('iframe')).toHaveLength(3);
   });
 
   it('scales a screen down to the room it has, and its box to the same', () => {
@@ -280,6 +310,203 @@ describe('the walks page: the answers', () => {
     render(<Page report={reportWith()} />);
 
     expect(screen.queryByText('Answers whose screen left the walks')).toBeNull();
+  });
+});
+
+describe('the walks page: its width', () => {
+  // jsdom lays nothing out, so the page's width is read from its rules; the look is the human's.
+  const css = readFileSync(join(process.cwd(), 'src/page.css'), 'utf8');
+
+  it('The page uses the whole width of the window and reads on a PC, a tablet and a phone: the widths side by side from 1000 pixels, stacked below, the map in one column on a phone', () => {
+    const wrap = /\.w-wrap \{[^}]*\}/.exec(css)![0];
+
+    expect(wrap).not.toContain('max-width');
+    expect(wrap).toContain('grid-template-columns: minmax(0, 1fr)');
+    expect(css).toMatch(
+      /@media \(min-width: 1000px\) \{\s*\.w-frames \{[^}]*grid-template-columns: var\(--cols\)/,
+    );
+    expect(css).toMatch(/@media \(max-width: 480px\) \{\s*\.w-map \{[^}]*minmax\(0, 1fr\)/);
+  });
+});
+
+describe('the walks page: answering', () => {
+  const region = (id: string, name: string) =>
+    within(document.querySelector<HTMLElement>(`#admin-setup-${id}`)!).getByRole('region', {
+      name,
+    });
+  const choose = (id: string, name: string, answer: 'Yes' | 'No') =>
+    fireEvent.click(within(region(id, name)).getByLabelText(answer));
+  const reason = (id: string, name: string, text: string) =>
+    fireEvent.change(within(region(id, name)).getByLabelText('Reason'), {
+      target: { value: text },
+    });
+  const clipboard = (write: (text: string) => Promise<void>) =>
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: write },
+    });
+  const press = async () => {
+    await act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy my answers' }));
+      return Promise.resolve();
+    });
+  };
+  afterEach(() => {
+    localStorage.clear();
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('The page says at its top how to answer and that the block goes to the chat', () => {
+    render(<Page report={reportWith()} />);
+
+    const line = document.querySelector('.w-howto')!.textContent;
+
+    expect(line).toContain('Yes or No, and a reason for any No');
+    expect(line).toContain('paste the block into the chat');
+    expect(line).toContain('sends nothing');
+  });
+
+  it('Each screen, in each language, has Yes and No and a reason box', () => {
+    render(<Page report={reportWith()} />);
+
+    expect(screen.getAllByLabelText('Yes')).toHaveLength(14);
+    expect(screen.getAllByLabelText('No')).toHaveLength(14);
+    expect(screen.getAllByLabelText('Reason')).toHaveLength(14);
+    for (const name of ['Tiếng Việt', 'English']) {
+      const one = within(region('3-settings', name));
+      expect(one.getByRole('group', { name: 'Your answer' })).toBeTruthy();
+      expect(one.getByLabelText<HTMLInputElement>('Yes').checked).toBe(false);
+    }
+  });
+
+  it('The reason is required for a No, marked until it is given, and a Yes needs none', () => {
+    render(<Page report={reportWith()} />);
+    const box = () => within(region('3-settings', 'English')).getByLabelText('Reason');
+
+    expect(box().hasAttribute('required')).toBe(false);
+    choose('3-settings', 'English', 'Yes');
+    expect(box().hasAttribute('required')).toBe(false);
+    choose('3-settings', 'English', 'No');
+    expect(box().hasAttribute('required')).toBe(true);
+    expect(box().getAttribute('aria-invalid')).toBe('true');
+    reason('3-settings', 'English', 'too small');
+    expect(box().getAttribute('aria-invalid')).toBe('false');
+    expect((box() as HTMLTextAreaElement).value).toBe('too small');
+  });
+
+  it('answers one screen in one language at a time, and Clear takes the choice back', () => {
+    render(<Page report={reportWith()} />);
+
+    choose('3-settings', 'English', 'No');
+    reason('3-settings', 'English', 'too small');
+
+    const vi = within(region('3-settings', 'Tiếng Việt'));
+    expect(vi.getByLabelText<HTMLInputElement>('No').checked).toBe(false);
+    fireEvent.click(within(region('3-settings', 'English')).getByRole('button', { name: 'Clear' }));
+    const en = within(region('3-settings', 'English'));
+    expect(en.getByLabelText<HTMLInputElement>('No').checked).toBe(false);
+    expect(en.getByLabelText<HTMLTextAreaElement>('Reason').value).toBe('');
+  });
+
+  it('Copy my answers builds one block naming the build, with each answered screen and language, its fingerprint and a no’s reason, and puts it on the clipboard', async () => {
+    const write = vi.fn(() => Promise.resolve());
+    clipboard(write);
+    const report = reportWith();
+    render(<Page report={report} />);
+    choose('1-sign-in', 'Tiếng Việt', 'Yes');
+    choose('3-settings', 'English', 'No');
+    reason('3-settings', 'English', 'the save button\nis hard to find');
+
+    await press();
+
+    const prints = fingerprintsOf(report);
+    const expected = [
+      'Credo walks answers',
+      'Build: branch a-piece, commit abc123def',
+      `admin-setup:1-sign-in:vi | yes | ${prints.get('admin-setup:1-sign-in:vi')}`,
+      `admin-setup:3-settings:en | no | ${prints.get('admin-setup:3-settings:en')} | the save button is hard to find`,
+    ].join('\n');
+    expect(write).toHaveBeenCalledWith(expected);
+    expect(
+      screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat').value,
+    ).toBe(expected);
+    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into the chat.');
+    expect(screen.getByText('2 answers chosen')).toBeTruthy();
+  });
+
+  it('shows the block to select when the clipboard refuses', async () => {
+    clipboard(() => Promise.reject(new Error('denied')));
+    render(<Page report={reportWith()} />);
+    choose('1-sign-in', 'English', 'Yes');
+
+    await press();
+
+    expect(screen.getByRole('status').textContent).toContain('Select the text below');
+    expect(
+      screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat').value,
+    ).toContain('admin-setup:1-sign-in:en | yes | ');
+    const area = screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat');
+    fireEvent.focus(area);
+    expect(area.selectionEnd - area.selectionStart).toBe(area.value.length);
+  });
+
+  it('gives no block, and says so, when nothing is answered', async () => {
+    render(<Page report={reportWith()} />);
+
+    await press();
+
+    expect(screen.getByRole('status').textContent).toBe('Nothing answered yet.');
+    expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
+    expect(screen.getByText('0 answers chosen')).toBeTruthy();
+  });
+
+  it('gives no block while a No lacks its reason, naming the screen', async () => {
+    const write = vi.fn(() => Promise.resolve());
+    clipboard(write);
+    render(<Page report={reportWith()} />);
+    choose('1-sign-in', 'English', 'Yes');
+    choose('3-settings', 'English', 'No');
+
+    await press();
+
+    expect(screen.getByRole('status').textContent).toBe(
+      'A No needs its reason: admin-setup:3-settings:en',
+    );
+    expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
+    expect(write).not.toHaveBeenCalled();
+    expect(screen.getByText('2 answers chosen')).toBeTruthy();
+  });
+
+  it('keeps the unsent choices across a reload', () => {
+    const { unmount } = render(<Page report={reportWith()} />);
+    choose('3-settings', 'English', 'No');
+    reason('3-settings', 'English', 'too small');
+    unmount();
+
+    render(<Page report={reportWith()} />);
+
+    const en = within(region('3-settings', 'English'));
+    expect(en.getByLabelText<HTMLInputElement>('No').checked).toBe(true);
+    expect(en.getByLabelText<HTMLTextAreaElement>('Reason').value).toBe('too small');
+  });
+
+  it('works without the browser’s storage', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+      clear: () => {},
+    });
+    render(<Page report={reportWith()} />);
+
+    choose('3-settings', 'English', 'Yes');
+
+    expect(
+      within(region('3-settings', 'English')).getByLabelText<HTMLInputElement>('Yes').checked,
+    ).toBe(true);
   });
 });
 

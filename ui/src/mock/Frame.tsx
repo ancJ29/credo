@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { Providers } from '../Providers';
 
 export type Scheme = 'light' | 'dark';
-export type Width = 390 | 1280;
+export type Width = 390 | 768 | 1280;
 
 type StageProps = {
   colour: string;

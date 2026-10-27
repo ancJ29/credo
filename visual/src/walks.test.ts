@@ -45,7 +45,7 @@ describe('the walks', () => {
     expect(PEOPLE.map((person) => person.id)).toContain(walk.person);
     expect(PARTS.map((part) => part.id)).toContain(walk.part);
     expect(PEOPLE.find((person) => person.id === walk.person)!.device).toBe('pc');
-    expect(DEVICE_WIDTH).toEqual({ pc: 1280, phone: 390 });
+    expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
   it('keys an answer by walk, screen and language, fourteen for the seven screens', () => {
