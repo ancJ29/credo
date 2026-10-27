@@ -3,11 +3,10 @@
 > **Decided** 2026-10-27, after reading the old app's QA process. **Amended** 2026-10-27 by the
 > human: rules 7 and 8. Binds every feature's plan, every test and every merge into `main`.
 
-**A behaviour counts as tested only when a test fails without it.** The human says what a
-feature must do and judges its screens. The machine proves each behaviour is held, and a second
-model checks the proof.
+## At a glance
 
-## The flow of a feature
+**The human does two steps of each feature:** reads its business cases before any code, and
+walks its screens, yes or no. The machine does the rest.
 
 ```mermaid
 flowchart LR
@@ -20,6 +19,17 @@ flowchart LR
   review -. a finding .-> red
   walks -. a no .-> table
 ```
+
+The eight rules, numbered as [below](#the-rules):
+
+1. Each feature starts with a table of cases, one behaviour a line.
+2. A test counts only if it fails when its behaviour breaks, so each is seen failing once.
+3. Each case is tested as close to its code as it can be.
+4. Each test is named after its case; there is no second list.
+5. A different AI model reviews the code before it merges.
+6. A test that fails only sometimes is a bug, never rerun until it passes.
+7. The screens are the final check: each person's day, on their device, yes or no.
+8. Every line is tested, or says why not, as in "we choose not to test this".
 
 ## The shapes, from an invented feature
 

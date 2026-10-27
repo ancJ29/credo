@@ -2,20 +2,46 @@
 
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". **Amended** 2026-10-27: nothing
-> machine-local or personal in a committed file. Read this before writing any doc, `CLAUDE.md`
-> or code comment, or committing any path.
+> machine-local or personal in a committed file. **Amended** 2026-10-27 by the human: every doc
+> opens with its human version. Read this before writing any doc, `CLAUDE.md` or code comment,
+> or committing any path.
+
+## At a glance
 
 **Docs explain WHY; the code states WHAT.** A line earns its place only if a competent reader,
 without it, would get the next change wrong.
 
-## Two readers
-
 | Reader | Reads | Form |
 | --- | --- | --- |
-| 👤 human | `README.md`, plans, recaps | **Visual first**: a diagram or a table wherever the content is a flow, a structure or a comparison. Prose only for the why |
-| 🤖 machine | `CLAUDE.md`, `docs/memo/`, these conventions | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
+| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo and plan | **Visual first**: a diagram or a table wherever the content is a flow, a structure or a comparison. Prose only for the why |
+| 🤖 machine | `CLAUDE.md`, and the detail below each "At a glance" | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
 | both | the code | the what. No doc copies it |
 
+- Each doc a human reads opens with a short version for the human ([two readers](#two-readers)).
+- A doc holds a decision and what it beat, a risk no check catches, or steps whose order
+  matters ([what earns a line](#what-earns-a-line)).
+- Each fact is written once, where its rule is enforced; a copy goes stale
+  ([one fact, one home](#one-fact-one-home)).
+- Progress lives in three files: the plan, the to-do log and the recap
+  ([where progress lives](#where-progress-lives-three-files-one-job-each)).
+- Never written down: what was deployed or checked by eye ([never in a doc](#never-in-a-doc));
+  a path on one machine, or a person's name
+  ([nothing machine-local](#nothing-machine-local-or-personal-in-a-committed-file)).
+
+## Two readers
+
+The table [at a glance](#at-a-glance) says who reads what.
+
+- **Every doc a human reads opens with its human version, in the same file**, under
+  `## At a glance`: each convention, memo and plan. A recap is the human's already; `CLAUDE.md`
+  stays the machine's alone. The human version fits one screen: about 150 words of plain prose,
+  no jargon, a diagram or a table first, and each line pointing to the rule or section below
+  that holds it. The machine's detail follows, unchanged in kind. Nothing in the human version
+  is new: it is a view of the detail, which stays the one home. *Rejected:* a separate human
+  file per doc. It is a second home for the same rules, and the copy is the one that rots: the
+  change that alters a rule touches no line there. *Hazard no gate catches:* the two drift
+  apart. *Guard:* a change to a rule changes its line in the human version in the same commit,
+  and [QA](qa.md)'s rule 5 reviewer reads both.
 - **A diagram is drawn from committed code and names the files it is drawn from.** A change to
   those files redraws it. Use Mermaid, about twelve boxes at most, drawn by hand; a generated
   dump is not a picture. *Rejected:* no component diagrams because "the code shows them". It

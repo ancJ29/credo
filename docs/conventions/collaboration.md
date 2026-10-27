@@ -2,9 +2,30 @@
 
 > **Decided** 2026-10-27. Binds every person and every agent working here.
 
+## At a glance
+
 **The human brings the business need, the sense and the final evaluation. The machine brings
 knowledge, measurement and the code.** Several humans work here, each directing their own
 sessions under these same rules.
+
+```mermaid
+flowchart LR
+  need["need<br/>👤"] --> plan["plan<br/>🤖 drafts · 👤 corrects"]
+  plan --> code["code + tests<br/>🤖"]
+  code --> recap["recap + evidence<br/>🤖"]
+  recap --> evaluation["evaluation<br/>👤"]
+  evaluation --> feedback["feedback<br/>👤 → 🤖 memory"]
+  feedback -.-> need
+```
+
+- **Who decides** ([who owns what](#who-owns-what)): the human, what is worth building and
+  anything touching money, a client, personal data or production. The machine decides the
+  rest, and says why.
+- **The five hand-offs** ([the loop](#the-loop)): 1. the plan is made right before any code; 2. the
+  machine stops only for the human's decisions; 3. nothing is claimed that was not checked; 4. the
+  recap is written for the human; 5. a correction given twice becomes a rule.
+- **One piece at a time** ([pacing](#pacing-one-piece-at-a-time)): one piece per session; a
+  surprise is logged, not chased; nothing is built before something needs it.
 
 ## Who owns what
 
@@ -17,17 +38,7 @@ sessions under these same rules.
 
 ## The loop
 
-```mermaid
-flowchart LR
-  need["need<br/>👤"] --> plan["plan<br/>🤖 drafts · 👤 corrects"]
-  plan --> code["code + tests<br/>🤖"]
-  code --> recap["recap + evidence<br/>🤖"]
-  recap --> evaluation["evaluation<br/>👤"]
-  evaluation --> feedback["feedback<br/>👤 → 🤖 memory"]
-  feedback -.-> need
-```
-
-Five hand-offs, each with its rule:
+The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rule:
 
 1. **A plan is made true before it is made fast.** The machine drafts it from measurement: who
    calls what, and what the wire carries. The human corrects it at the level of principle, not
