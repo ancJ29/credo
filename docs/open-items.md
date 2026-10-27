@@ -39,3 +39,12 @@ systemd; the BFF's function for arm64, its zip shipped through the template.
 The box's role may only put, so it cannot restore itself: the restore runs from the human's
 terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
 Instance Connect tunnel.
+
+## 7. The first box needs c-storage's listener on its private address, not loopback — the machine; waits for a signed client (the app frame plan, 2026-10-27)
+
+c-storage binds `127.0.0.1` only (`Listen` in `c-storage/internal/server/server.go`,
+`TestListenBindsLoopbackOnly`). The architecture puts the BFF in a Lambda that calls the box's
+private address ([the architecture](plans/2026-10-27-architecture.md)), which a loopback listener
+never answers. Before the first box: the bind address becomes configuration (the private address,
+never every interface), with its test, alongside open item 5's arm64 build. The local stack keeps
+loopback.
