@@ -37,5 +37,9 @@ Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decis
   `couldn't create cache file … xcrun_db` and run anyway.
 - **`make check` never runs the Bruno collection; the `e2e` job in CI does, through
   `scripts/e2e.sh`.** A route or answer that changes updates its request in `bruno/` in the same
-  commit, and `bash scripts/e2e.sh` from here is the check (needs Bruno CLI 4.2.0). It is why
-  `scripts/cover.sh` leaves `cmd/server` out as `elsewhere`. See the [README](README.md).
+  commit, and `bash scripts/e2e.sh` from here is the check (needs Bruno CLI 4.2.0). `make check`
+  does hold that every route has a request outside `03-the-boundary`, none reaches a route the
+  service lacks, and every request has a tests script, because `bru` exits 0 for a request that
+  asserts nothing (`internal/server/collection_test.go`). `e2e.sh` also checks the run reached
+  every request file and the entry point's two exits, which is why `scripts/cover.sh` leaves
+  `cmd/server` out as `elsewhere`. See the [README](README.md).

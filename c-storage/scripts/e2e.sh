@@ -7,7 +7,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-for tool in curl go; do
+for tool in curl go node; do
   command -v "$tool" >/dev/null || { echo "e2e: needs $tool on PATH" >&2; exit 2; }
 done
 # One CLI version reads the collection, so a pass means the same thing on any
@@ -35,14 +35,27 @@ DIR="$(mktemp -d "${TMPDIR:-/tmp}/c-storage-e2e.XXXXXX")"
 PID=""
 trap '[[ -z "$PID" ]] || kill "$PID" 2>/dev/null || true; rm -rf "$DIR"' EXIT
 
-go build -o "$DIR/server" ./cmd/server
+# The flags the box's artifact ships with (Makefile's GO_BUILD), for this machine.
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "$DIR/server" ./cmd/server
 
-PORT="$PORT" DB_PATH="$DIR/data/c-storage.db" \
-  INTERNAL_ACCESS_KEY="$(var internalAccessKey)" X_SUPER_ADMIN_KEY="$(var superAdminKey)" \
-  "$DIR/server" >"$DIR/server.log" 2>&1 &
+fail=0
+check() { # name expected actual
+  if [[ "$2" == "$3" ]]; then echo "  ok   $1"; else echo "  FAIL $1: got $3, want $2"; fail=1; fi
+}
+exit_of() { # env arguments → the binary's exit status; its output in exit.log
+  env "$@" "$DIR/server" >"$DIR/exit.log" 2>&1 && echo 0 || echo $?
+}
+KEYS=(INTERNAL_ACCESS_KEY="$(var internalAccessKey)" X_SUPER_ADMIN_KEY="$(var superAdminKey)")
+
+# A stranger already answering on the port would pass for the server below.
+if curl -s -o /dev/null -m 2 "$BASE/health"; then
+  echo "e2e: something already answers $BASE/health; free port $PORT first" >&2
+  exit 1
+fi
+
+env PORT="$PORT" DB_PATH="$DIR/data/c-storage.db" "${KEYS[@]}" "$DIR/server" >"$DIR/server.log" 2>&1 &
 PID=$!
 
-# A server that died, or another one already on the port, must not read as up.
 up=0
 for _ in $(seq 1 50); do
   kill -0 "$PID" 2>/dev/null || break
@@ -55,5 +68,32 @@ if [[ "$up" != 1 ]]; then
   exit 1
 fi
 
-cd bruno
-bru run --env local
+echo "== the collection, whole, against a fresh database"
+requests="$(find bruno -name '*.yml' ! -name folder.yml ! -name opencollection.yml ! -path '*/environments/*' | wc -l | tr -d ' ')"
+ran=0
+(cd bruno && bru run --env local --reporter-json "$DIR/report.json") || ran=$?
+check "bru run exits 0" 0 "$ran"
+# A run that reaches no request exits 0 too, so the count is the proof.
+results="$(node -e 'const r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  console.log(r.reduce((n, run) => n + run.results.length, 0));' "$DIR/report.json")"
+if [[ "$results" != "$requests" ]]; then
+  echo "e2e: the run reached $results requests, but bruno/ holds $requests request files" >&2
+  exit 1
+fi
+check "every request ran ($requests)" "$requests" "$results"
+
+# The coverage gate leaves cmd/server out as elsewhere (scripts/cover.sh): these
+# are the exits main.go keeps.
+echo "== the entry point: a dead process at start-up, a clean one at SIGTERM"
+check "a missing variable exits 1" 1 \
+  "$(exit_of PORT="$PORT" DB_PATH="$DIR/other.db" INTERNAL_ACCESS_KEY=x)"
+check "  and logs why" 1 "$(grep -c 'invalid configuration' "$DIR/exit.log")"
+kill -TERM "$PID"
+stopped=0
+wait "$PID" || stopped=$?
+PID=""
+check "SIGTERM exits 0" 0 "$stopped"
+check "  and logs it" 1 "$(grep -c '"msg":"stopped"' "$DIR/server.log")"
+
+[[ "$fail" == 0 ]] || { echo "e2e: FAILURES"; exit 1; }
+echo "e2e: all checks passed"

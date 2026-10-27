@@ -9,8 +9,10 @@ so is in [the memo](../docs/memo/c-storage.md).
 You need Go 1.25 and Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`, then `bru --version`).
 
 **The whole check, one command**, from this directory. It builds the server, starts it on a fresh
-database, runs the [Bruno collection](bruno) against it and stops it. This is what the `e2e` job in
-CI runs, and it exits non-zero if any request or assertion fails.
+database, runs the [Bruno collection](bruno) against it, checks the process's exits (a missing
+variable, SIGTERM) and stops it. This is what the `e2e` job in CI runs. It exits non-zero if any
+request or assertion fails, if fewer requests ran than `bruno/` holds, if the port is already
+taken, or if an exit is wrong.
 
 ```bash
 bash scripts/e2e.sh
