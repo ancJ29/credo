@@ -22,17 +22,22 @@ The 11-04 screenshots and video come from the demo, and the old app's screens ca
 and Vietnamese. Which one the demo shows, or both, is the human's call, at the first feature's
 plan, since it decides each walk's words.
 
-## 4. The network's and a client's YAML templates — the machine writes, the human runs; waits for a signed client (the architecture plan, 2026-10-27)
+## 4. The network's and an environment's YAML templates — the machine writes, the human runs; built first for ridge (the architecture plan, 2026-10-27)
 
-Hand-written CloudFormation, shipped through change sets, in Malaysia: the shared network (one VPC
-with no internet gateway, its S3 gateway endpoint, its Instance Connect Endpoint) and a client's
-stack (subnet, function, box, buckets, distribution), with the ACM certificate requested in
-`us-east-1` and the client's name in Cloudflare.
+Home: [the ridge plan](plans/2026-10-28-ridge.md#the-templates). Hand-written CloudFormation, shipped
+through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with no internet
+gateway, its Instance Connect Endpoint; the S3 gateway endpoint with its first caller), and
+`ops/env.yml`, one environment's stack (subnet, box; with piece 1 its function, bucket and
+distribution). ridge is the first stack from each. A signed client's stack is one more from
+`env.yml`, and still waits for a client, with its ACM certificate requested in `us-east-1` and its
+name in Cloudflare.
 
-## 5. The arm64 builds and how each release lands — the machine; waits for a signed client (the architecture plan, 2026-10-27)
+## 5. The arm64 builds and how each release lands — the machine writes, the human runs; c-storage's first, for ridge (the architecture plan, 2026-10-27)
 
-c-storage's Go binary for arm64, sent to its box over the Instance Connect tunnel and run under
-systemd; the BFF's function for arm64, its zip shipped through the template.
+Home: [the ridge plan](plans/2026-10-28-ridge.md#the-release). c-storage's Go binary for arm64,
+built from `main` alone, sent to its box over the Instance Connect tunnel and run under systemd:
+`ops/release.sh`, in the ridge plan's steps 5 to 10. The BFF's function for arm64, its bundle
+shipped through the template, comes with piece 1, in the ridge plan's fourth layer.
 
 ## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
 
@@ -44,11 +49,17 @@ The backup's copy goes through SQLite's own backup (`VACUUM INTO`, or the shell'
 is taken with the service stopped: a plain tarball taken mid-write can miss saves or hold a torn
 file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
 
-## 7. The first box needs c-storage's listener on its private address, not loopback — the machine; waits for a signed client (the app frame plan, 2026-10-27)
+ridge, the first box, holds no real data, so the backup still waits for a signed client
+([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint and the box's
+put-only role come with it.
 
-c-storage binds `127.0.0.1` only (`Listen` in `c-storage/internal/server/server.go`,
-`TestListenBindsLoopbackOnly`). The architecture puts the BFF in a Lambda that calls the box's
-private address ([the architecture](plans/2026-10-27-architecture.md)), which a loopback listener
-never answers. Before the first box: the bind address becomes configuration (the private address,
-never every interface), with its test, alongside open item 5's arm64 build. The local stack keeps
-loopback.
+## 7. c-storage's listener on the box's private address, not loopback — the machine; with the BFF on ridge (the app frame plan, 2026-10-27)
+
+Home: [the ridge plan](plans/2026-10-28-ridge.md#the-listener-open-item-7). c-storage binds
+`127.0.0.1` only (`Listen` in `c-storage/internal/server/server.go`, `TestListenBindsLoopbackOnly`).
+The architecture puts the BFF in a Lambda that calls the box's private address
+([the architecture](plans/2026-10-27-architecture.md)), which a loopback listener never answers.
+ridge's first three layers reach c-storage through ssh's forward to loopback. The change therefore
+waits for the first caller of the private address: the BFF on ridge, in the ridge plan's fourth
+layer, with piece 1. It becomes `LISTEN_ADDR`, one IP address and never an unspecified one,
+loopback when unset, with its tests. The local stack keeps loopback.
