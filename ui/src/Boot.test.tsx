@@ -12,11 +12,11 @@ describe('Boot', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('says the service is not answering, that it is not the user’s doing, and offers a retry', async () => {
+  it('says the service is unavailable and offers a retry', async () => {
     const onRetry = vi.fn();
     draw(<Boot status="unavailable" onRetry={onRetry} />);
 
-    expect(screen.getByRole('alert').textContent).toContain('not your doing');
+    expect(screen.getByRole('alert').textContent).toContain('service is unavailable');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });

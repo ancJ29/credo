@@ -9,6 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"

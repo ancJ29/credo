@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@credo/shared": "workspace:*",
+    "@fontsource-variable/noto-sans": "catalog:",
     "@mantine/core": "catalog:",
     "@mantine/hooks": "catalog:",
     "@tabler/icons-react": "catalog:",

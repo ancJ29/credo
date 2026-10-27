@@ -14,11 +14,15 @@ import {
   Group,
   Image,
   NativeSelect,
+  Paper,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
+  ThemeIcon,
   Title,
 } from '@mantine/core';
+import { IconBuilding } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from './i18n';
@@ -68,7 +72,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
 
   return (
     <form onSubmit={submit}>
-      <Stack gap="lg" maw={560}>
+      <Stack gap="lg">
         {outcome === 'saved' && (
           <Alert color="green" role="alert">
             {t('settings.saved')}
@@ -89,75 +93,91 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
             </Stack>
           </Alert>
         )}
-        <TextInput
-          label={t('settings.name')}
-          required
-          value={draft.name}
-          onChange={(event) => change({ name: event.currentTarget.value })}
-        />
-        <Stack gap={6}>
-          <Text size="sm" fw={500}>
-            {t('settings.logo')}
-          </Text>
-          <Group>
-            {draft.logo ? (
-              <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
-            ) : (
-              <Text size="sm" c="dimmed">
-                {t('settings.logoNone')}
-              </Text>
-            )}
-            <FileButton
-              accept="image/*"
-              onChange={(file) => {
-                if (file) void readAsDataUrl(file).then((logo) => change({ logo }));
-              }}
-            >
-              {(props) => (
-                <Button variant="default" size="xs" {...props}>
-                  {t('settings.logoChoose')}
-                </Button>
-              )}
-            </FileButton>
-            {draft.logo && (
-              <Button
-                variant="subtle"
-                color="gray"
-                size="xs"
-                onClick={() => change({ logo: null })}
+        <Paper withBorder p="md">
+          <Stack gap="lg">
+            <Group gap={8} wrap="nowrap">
+              <ThemeIcon variant="light" color="gray" size={22} radius="sm" aria-hidden>
+                <IconBuilding size={14} />
+              </ThemeIcon>
+              <Title order={3} fz="xs" fw={700} tt="uppercase" lts={0.5}>
+                {t('settings.basics')}
+              </Title>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
+              <TextInput
+                label={t('settings.name')}
+                required
+                value={draft.name}
+                onChange={(event) => change({ name: event.currentTarget.value })}
+              />
+              <Stack gap={6}>
+                <Text size="sm" fw={500}>
+                  {t('settings.logo')}
+                </Text>
+                <Group>
+                  {draft.logo ? (
+                    <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
+                  ) : (
+                    <Text size="sm" c="dimmed">
+                      {t('settings.logoNone')}
+                    </Text>
+                  )}
+                  <FileButton
+                    accept="image/*"
+                    onChange={(file) => {
+                      if (file) void readAsDataUrl(file).then((logo) => change({ logo }));
+                    }}
+                  >
+                    {(props) => (
+                      <Button variant="default" size="xs" {...props}>
+                        {t('settings.logoChoose')}
+                      </Button>
+                    )}
+                  </FileButton>
+                  {draft.logo && (
+                    <Button
+                      variant="subtle"
+                      color="gray"
+                      size="xs"
+                      onClick={() => change({ logo: null })}
+                    >
+                      {t('settings.logoRemove')}
+                    </Button>
+                  )}
+                </Group>
+              </Stack>
+              <ColorInput
+                label={t('settings.colour')}
+                format="hex"
+                withEyeDropper={false}
+                value={draft.colour}
+                onChange={(colour) => change({ colour })}
+              />
+              <Checkbox.Group
+                label={t('settings.languages')}
+                value={draft.languages}
+                onChange={chooseLanguages}
               >
-                {t('settings.logoRemove')}
-              </Button>
-            )}
-          </Group>
-        </Stack>
-        <ColorInput
-          label={t('settings.colour')}
-          format="hex"
-          withEyeDropper={false}
-          value={draft.colour}
-          onChange={(colour) => change({ colour })}
-        />
-        <Checkbox.Group
-          label={t('settings.languages')}
-          value={draft.languages}
-          onChange={chooseLanguages}
-        >
-          <Group mt="xs">
-            {LANGUAGES.map((language) => (
-              <Checkbox key={language} value={language} label={LANGUAGE_NAMES[language]} />
-            ))}
-          </Group>
-        </Checkbox.Group>
-        <NativeSelect
-          label={t('settings.defaultLanguage')}
-          value={draft.defaultLanguage}
-          data={draft.languages.map((language) => ({
-            value: language,
-            label: LANGUAGE_NAMES[language],
-          }))}
-          onChange={(event) => change({ defaultLanguage: event.currentTarget.value as Language })}
-        />
+                <Group mt="xs">
+                  {LANGUAGES.map((language) => (
+                    <Checkbox key={language} value={language} label={LANGUAGE_NAMES[language]} />
+                  ))}
+                </Group>
+              </Checkbox.Group>
+              <NativeSelect
+                label={t('settings.defaultLanguage')}
+                value={draft.defaultLanguage}
+                data={draft.languages.map((language) => ({
+                  value: language,
+                  label: LANGUAGE_NAMES[language],
+                }))}
+                onChange={(event) =>
+                  change({ defaultLanguage: event.currentTarget.value as Language })
+                }
+              />
+            </SimpleGrid>
+          </Stack>
+        </Paper>
         <Group>
           <Button type="submit" loading={saving} disabled={!valid}>
             {t('settings.save')}

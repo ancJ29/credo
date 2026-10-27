@@ -16,15 +16,19 @@ type Props = {
   children: ReactNode;
 };
 
-const HEIGHT: Record<Width, number> = { 390: 780, 1280: 720 };
+/** The least a frame stands, and where it starts before its screen has told its height. */
+const FLOOR = 320;
 
 /**
  * One screen in its own page: an iframe is the only box whose width is the viewport's, so the
  * app's breakpoints answer to the frame's width, not the mock's. The screen is drawn into it
- * with the page's own styles copied in.
+ * with the page's own styles copied in, and the frame is as tall as the screen, never shorter
+ * than `FLOOR`: a screen that fills the viewport (the sign-in's centred card) is then centred in
+ * a frame that fits it, with no empty block above.
  */
 export function Frame({ title, colour, language, scheme, width, children }: Props) {
   const [body, setBody] = useState<HTMLElement | null>(null);
+  const [height, setHeight] = useState(FLOOR);
 
   const load = (frame: HTMLIFrameElement) => {
     const inner = frame.contentDocument!;
@@ -33,6 +37,8 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
     }
     inner.documentElement.lang = language;
     setBody(inner.body);
+    const fit = () => setHeight(Math.max(FLOOR, inner.documentElement.scrollHeight));
+    new ResizeObserver(fit).observe(inner.documentElement);
   };
 
   return (
@@ -40,7 +46,7 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
       <iframe
         title={title}
         width={width}
-        height={HEIGHT[width]}
+        height={height}
         loading="lazy"
         srcDoc="<!doctype html><html><head><meta charset=utf-8></head><body></body></html>"
         style={{ border: '1px solid #8886', background: 'white', flex: 'none' }}

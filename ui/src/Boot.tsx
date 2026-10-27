@@ -16,8 +16,8 @@ export function Boot({ status, onRetry }: Props) {
             <Title order={1} size="h4">
               {t('app.name')}
             </Title>
-            <Alert color="orange" role="alert" title={t('boot.unavailableTitle')}>
-              {t('boot.unavailable')}
+            <Alert color="red" role="alert">
+              {t('common.unavailable')}
             </Alert>
             <Button onClick={onRetry}>{t('common.retry')}</Button>
           </Stack>
