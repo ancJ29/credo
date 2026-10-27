@@ -19,6 +19,8 @@ const config = {
 };
 const user = { name: 'root', root: true };
 
+const TAG = 'a'.repeat(64);
+
 describe('the wire contract', () => {
   it('names the four routes under /api', () => {
     expect(Object.values(ROUTES).every((path) => path.startsWith('/api/'))).toBe(true);
@@ -35,5 +37,23 @@ describe('the wire contract', () => {
     expect(saveConfigRequestSchema.safeParse({ config }).success).toBe(false);
     expect(conflictReplySchema.safeParse({ error: 'Conflict', current: null }).success).toBe(true);
     expect(errorReplySchema.safeParse({ error: 'Bad request', details: 'x' }).success).toBe(true);
+  });
+
+  it('takes a save’s version only as a c-storage tag or null: anything else can never match', () => {
+    const save = (version: unknown) => saveConfigRequestSchema.safeParse({ config, version });
+    expect(save(TAG).success).toBe(true);
+    for (const version of ['v1', '', 'A'.repeat(64), `${TAG}0`, TAG.slice(1), undefined]) {
+      expect(save(version).success, String(version)).toBe(false);
+    }
+  });
+
+  it('takes a name and password that are well-formed text of a bounded length', () => {
+    const signIn = (name: string, password: string) =>
+      signInRequestSchema.safeParse({ name, password }).success;
+    expect(signIn('n'.repeat(200), 'p'.repeat(1024))).toBe(true);
+    expect(signIn('n'.repeat(201), 'x')).toBe(false);
+    expect(signIn('x', 'p'.repeat(1025))).toBe(false);
+    expect(signIn('\ud800', 'x')).toBe(false);
+    expect(signIn('x', 'a\udc00b')).toBe(false);
   });
 });

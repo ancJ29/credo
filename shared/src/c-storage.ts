@@ -27,6 +27,7 @@ async function send(
   connection: Connection,
   path: string,
   init: { method: string; headers: Record<string, string>; body?: unknown },
+  what: string,
 ) {
   const {
     baseUrl,
@@ -47,11 +48,15 @@ async function send(
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
-    throw new CStorageError(null, `c-storage did not answer ${init.method} ${path}`, {
+    throw new CStorageError(null, `c-storage did not answer ${what}`, {
       cause: error,
     });
   }
 }
+
+/** How an error names a record call: its verb and the record's kind (`user`, `session`, `config`),
+ * never its key, which may be a sign-in name and would land in a log. */
+const recordCall = (method: string, key: string) => `${method} a ${key.split('.')[0]} record`;
 
 const refused = (response: Response, what: string) =>
   new CStorageError(response.status, `c-storage answered ${response.status} to ${what}`);
@@ -84,9 +89,10 @@ export function createCStorageClient(
   return {
     async getRecord(key) {
       const path = `${base}/${encodeURIComponent(key)}`;
-      const response = await send(connection, path, { method: 'GET', headers: keyed });
+      const what = recordCall('GET', key);
+      const response = await send(connection, path, { method: 'GET', headers: keyed }, what);
       if (response.status === 404) return null;
-      if (response.status !== 200) throw refused(response, `GET ${path}`);
+      if (response.status !== 200) throw refused(response, what);
       const parsed = recordReplySchema.safeParse(await response.json().catch(() => null));
       if (!parsed.success)
         throw new CStorageError(null, `c-storage sent a record in no known shape`);
@@ -94,25 +100,34 @@ export function createCStorageClient(
     },
 
     async putRecord(key, data, ifTag) {
-      const response = await send(connection, base, {
-        method: 'POST',
-        headers: { ...keyed, ...preconditionHeaders(ifTag) },
-        body: { key, data },
-      });
+      const what = recordCall('POST', key);
+      const response = await send(
+        connection,
+        base,
+        {
+          method: 'POST',
+          headers: { ...keyed, ...preconditionHeaders(ifTag) },
+          body: { key, data },
+        },
+        what,
+      );
       if (response.status === 201) return 'saved';
       if (response.status === 412) return 'moved';
-      throw refused(response, `POST ${base}`);
+      throw refused(response, what);
     },
 
     async removeRecord(key, ifTag) {
       const path = `${base}/${encodeURIComponent(key)}`;
-      const response = await send(connection, path, {
-        method: 'DELETE',
-        headers: { ...keyed, ...preconditionHeaders(ifTag) },
-      });
+      const what = recordCall('DELETE', key);
+      const response = await send(
+        connection,
+        path,
+        { method: 'DELETE', headers: { ...keyed, ...preconditionHeaders(ifTag) } },
+        what,
+      );
       if (response.status === 204) return 'removed';
       if (response.status === 412) return 'moved';
-      throw refused(response, `DELETE ${path}`);
+      throw refused(response, what);
     },
   };
 }
@@ -124,13 +139,14 @@ export async function registerCStorageService(
   connection: Connection & { superAdminKey: string },
   service: { code: string; accessKey: string },
 ): Promise<'registered' | 'exists'> {
-  const path = '/api/services/register';
-  const response = await send(connection, path, {
-    method: 'POST',
-    headers: { 'x-super-admin-key': connection.superAdminKey },
-    body: service,
-  });
+  const what = 'POST /api/services/register';
+  const response = await send(
+    connection,
+    '/api/services/register',
+    { method: 'POST', headers: { 'x-super-admin-key': connection.superAdminKey }, body: service },
+    what,
+  );
   if (response.status === 201) return 'registered';
   if (response.status === 409) return 'exists';
-  throw refused(response, `POST ${path}`);
+  throw refused(response, what);
 }

@@ -16,9 +16,18 @@ export const HASH_HEADER = 'x-amz-content-sha256';
 /** The device id the UI minted, on sign-in. */
 export const DEVICE_HEADER = 'x-device-id';
 
+/** Text the BFF puts in a record key or hashes. A lone surrogate cannot be encoded into a URL, and
+ * an unbounded one is a body-sized key, so both are refused here as a 400. */
+const boundedText = (maxLength: number) =>
+  z
+    .string()
+    .min(1)
+    .max(maxLength)
+    .refine((text) => text.isWellFormed(), 'well-formed text');
+
 export const signInRequestSchema = z.strictObject({
-  name: z.string().min(1),
-  password: z.string().min(1),
+  name: boundedText(200),
+  password: boundedText(1024),
 });
 export type SignInRequest = z.infer<typeof signInRequestSchema>;
 
@@ -42,10 +51,14 @@ export const configDocSchema = z.strictObject({
 });
 export type ConfigDoc = z.infer<typeof configDocSchema>;
 
+/** c-storage's tag as it sends it back in `If-Match`: 64 lowercase hex digits. Anything else can
+ * never match, so it is refused here as a 400 and not left to c-storage's. */
+const TAG = /^[0-9a-f]{64}$/;
+
 /** `version` is null only for the first save, when no settings exist yet. */
 export const saveConfigRequestSchema = z.strictObject({
   config: tenantConfigSchema,
-  version: z.string().nullable(),
+  version: z.string().regex(TAG).nullable(),
 });
 export type SaveConfigRequest = z.infer<typeof saveConfigRequestSchema>;
 

@@ -160,3 +160,28 @@ describe('registering a service', () => {
     });
   });
 });
+
+describe('what an error says of a record', () => {
+  const key = 'user.nguyen.van.a@example.com';
+
+  it('names the call and the record’s kind, never its key, which may be a sign-in name', async () => {
+    const calls = [
+      (client: ReturnType<typeof connect>) => client.getRecord(key),
+      (client: ReturnType<typeof connect>) => client.putRecord(key, {}),
+      (client: ReturnType<typeof connect>) => client.removeRecord(key),
+    ];
+    const messages: string[] = [];
+    for (const call of calls) {
+      for (const answer of [new Response('{}', { status: 500 }), new TypeError('fetch failed')]) {
+        const error = await call(connect(fake(answer).call)).catch((e: unknown) => e);
+        messages.push((error as Error).message);
+      }
+    }
+
+    expect(messages).toHaveLength(6);
+    for (const message of messages) {
+      expect(message).toContain('a user record');
+      expect(message).not.toContain('nguyen');
+    }
+  });
+});

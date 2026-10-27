@@ -86,6 +86,18 @@ describe('A config that does not parse is refused on save and stops the boot', (
     expect(await t.client.getRecord(recordKeys.config)).toEqual(stored);
   });
 
+  it('refuses a save whose version is not a tag c-storage could have sent, 400, before c-storage', async () => {
+    const t = await rootSession();
+    await t.save(company, null);
+    const stored = await t.client.getRecord(recordKeys.config);
+    for (const version of ['v1', '', 'not a tag']) {
+      const refused = await t.save({ ...company, name: 'Changed' }, version);
+      expect(refused.statusCode, version).toBe(400);
+      expect(refused.json<{ details: string }>().details).toContain('version');
+    }
+    expect(await t.client.getRecord(recordKeys.config)).toEqual(stored);
+  });
+
   it('refuses a body that is not a config and a bad language set', async () => {
     const t = await rootSession();
     const notObject = await t.app.inject({

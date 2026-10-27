@@ -124,7 +124,8 @@ describe('A wrong name or password gets one message that does not say which', ()
 
   it('opens no session on a refusal', async () => {
     const { app, client } = await tenantWithRoot(cs);
-    await signIn(app, { name: ROOT.name, password: 'not it' });
+    const { response } = await signIn(app, { name: ROOT.name, password: 'not it' });
+    expect(response.statusCode).toBe(401);
     expect(await client.getRecord(recordKeys.session(DEVICE))).toBeNull();
   });
 
@@ -254,6 +255,20 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
     }
   });
 
+  it('refuses a name or password c-storage could not key or the BFF should not hash, 400', async () => {
+    const { app, client } = await tenantWithRoot(cs);
+    for (const credentials of [
+      { name: '\ud800', password: ROOT.password },
+      { name: 'n'.repeat(201), password: ROOT.password },
+      { name: ROOT.name, password: 'p'.repeat(1025) },
+      { name: ROOT.name, password: 'a\udc00' },
+    ]) {
+      const { response } = await signIn(app, credentials);
+      expect(response.statusCode).toBe(400);
+    }
+    expect(await client.getRecord(recordKeys.session(DEVICE))).toBeNull();
+  });
+
   it('refuses a session whose record cannot be read as a session, and a user no longer there', async () => {
     const { app, client } = await tenantWithRoot(cs);
     const { body } = await signIn(app);
@@ -281,7 +296,7 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
     const { body } = await signIn(app);
     const before = await sessionRecord(client);
     time.advance(3 * DAY_MS);
-    await me(app, body.authId);
+    expect((await me(app, body.authId)).statusCode).toBe(200);
     expect((await sessionRecord(client)).tag).toBe(before.tag);
   });
 });
