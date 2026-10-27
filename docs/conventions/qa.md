@@ -1,7 +1,9 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process. **Amended** 2026-10-27 by the
-> human: rules 7 and 8. Binds every feature's plan, every test and every merge into `main`.
+> human: rules 7 and 8. **Amended** 2026-10-27 by the
+> human: rules picked from the old repo's standing preferences. Binds every feature's plan, every
+> test and every merge into `main`.
 
 ## At a glance
 
@@ -23,7 +25,8 @@ flowchart LR
 The eight rules, numbered as [below](#the-rules):
 
 1. Each feature starts with a table of cases, one behaviour a line.
-2. A test counts only if it fails when its behaviour breaks, so each is seen failing once.
+2. A test counts only if it fails when its behaviour breaks, so each is seen failing once; a
+   route only a test calls is dead.
 3. Each case is tested as close to its code as it can be.
 4. Each test is named after its case; there is no second list.
 5. A different AI model reviews the code before it merges.
@@ -62,7 +65,8 @@ The map of walks. A dash is a part of the day not built yet.
    held, coverage that no line is left undecided. *Rejected:* coverage as the measure of a case.
    A line can run with nothing checking its outcome: the old app sat at 100 % of lines beside 41
    behaviours no test held. *Rejected:* a mutation tool, hundreds of mutants to sort for a
-   question about behaviours.
+   question about behaviours. A route only a test calls is dead: move the test onto the path the
+   product uses, or retire it; a negative test must fail if the feature vanishes.
 3. **Each case is tested at the lowest layer that can hold it**: a unit test where its rule lives
    in one package; the BFF's route where it crosses to c-storage; the browser only where the
    browser meets the stack. A lower test runs faster, and its red sits nearer the line that

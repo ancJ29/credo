@@ -4,7 +4,8 @@
 > visualize as much as possible; for machine to read: detail". **Amended** 2026-10-27: nothing
 > machine-local or personal in a committed file. **Amended** 2026-10-27 by the human: every doc
 > opens with its human version. Read this before writing any doc, `CLAUDE.md` or code comment,
-> or committing any path.
+> or committing any path. **Amended** 2026-10-27 by the human: rules picked from the old repo's
+> standing preferences.
 
 ## At a glance
 
@@ -17,11 +18,12 @@ without it, would get the next change wrong.
 | 🤖 machine | `CLAUDE.md`, and the detail below each "At a glance" | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
 | both | the code | the what. No doc copies it |
 
-- Each doc a human reads opens with a short version for the human ([two readers](#two-readers)).
+- Each doc a human reads opens with a short version for the human; a README gets a newcomer
+  started in 30 minutes ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters ([what earns a line](#what-earns-a-line)).
-- Each fact is written once, where its rule is enforced; a copy goes stale
-  ([one fact, one home](#one-fact-one-home)).
+- Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
+  rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
 - Progress lives in three files: the plan, the to-do log and the recap
   ([where progress lives](#where-progress-lives-three-files-one-job-each)).
 - Never written down: what was deployed or checked by eye ([never in a doc](#never-in-a-doc));
@@ -42,6 +44,8 @@ The table [at a glance](#at-a-glance) says who reads what.
   change that alters a rule touches no line there. *Hazard no gate catches:* the two drift
   apart. *Guard:* a change to a rule changes its line in the human version in the same commit,
   and [QA](qa.md)'s rule 5 reviewer reads both.
+- **A README lets a newcomer grasp the project in 30 minutes**: what it is in three plain
+  sentences, then a tested "try it in 10 minutes"; internals last.
 - **A diagram is drawn from committed code and names the files it is drawn from.** A change to
   those files redraws it. Use Mermaid, about twelve boxes at most, drawn by hand; a generated
   dump is not a picture. *Rejected:* no component diagrams because "the code shows them". It
@@ -68,6 +72,11 @@ CLAUDE.md      a one-line pointer to the memo; line 2 is  Stack · Gate · Ship
 
 The argument lives once, where the rule is enforced. A copy anywhere else is the one most certain
 to rot, because the change that breaks it touches no line there.
+
+- **A comment or doc states the rule that holds here, never how the old code got it wrong.**
+- **Before writing a WHY, grep a distinctive phrase of it.** If a home exists, extend it there.
+  Delete any comment whose loss costs nothing.
+- **A Decided or Amended stamp is read from `date`, never typed from memory.**
 
 ## Where progress lives: three files, one job each
 
