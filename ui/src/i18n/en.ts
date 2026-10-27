@@ -4,7 +4,7 @@ export const en = {
   common: {
     loading: 'Loading',
     retry: 'Try again',
-    loadFailed: 'This page could not be loaded. Nothing you typed is lost: try again.',
+    loadFailed: 'This page could not be loaded. Try again.',
     unavailable: 'The service is unavailable. Try again in a moment.',
   },
   auth: {
@@ -27,12 +27,16 @@ export const en = {
     logoNone: 'No logo yet',
     logoChoose: 'Choose a logo',
     logoRemove: 'Remove the logo',
+    logoTooLarge: 'That logo is larger than {{max}} KB, so it was not used. The logo is as it was.',
+    logoNotImage: 'That file is not an image, so it was not used. The logo is as it was.',
     colour: 'Brand colour',
     languages: 'Languages offered',
     defaultLanguage: 'Language when someone first opens the app',
     save: 'Save',
     saved: 'Saved. The new name and colour show on every screen.',
     saveFailed: 'The settings were not saved. What you typed is still here: try again.',
+    saveRefused:
+      'The settings were refused as they are. Check the logo, the name and the colour: what you typed is still here.',
     conflict: 'Someone saved newer settings first. Your changes were not saved.',
     conflictReload: 'Show the newer settings',
   },

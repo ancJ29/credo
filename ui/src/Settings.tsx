@@ -3,6 +3,7 @@ import {
   type Language,
   LANGUAGES,
   languagesAreValid,
+  MAX_LOGO_BYTES,
   type TenantConfig,
 } from '@credo/shared';
 import {
@@ -33,7 +34,7 @@ type Props = {
   /** The stored settings, or what was typed when the last save failed. */
   config: TenantConfig;
   /** How the last save ended; a save over a newer one is a conflict. */
-  outcome: 'saved' | 'failed' | 'conflict' | null;
+  outcome: 'saved' | 'failed' | 'refused' | 'conflict' | null;
   saving: boolean;
   onSave: (config: TenantConfig) => void;
   onRetry: () => void;
@@ -52,6 +53,19 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(config);
   const change = (next: Partial<TenantConfig>) => setDraft((was) => ({ ...was, ...next }));
+  /** Why the file just chosen was not taken as the logo; the draft's logo is as it was. */
+  const [logoRefused, setLogoRefused] = useState<'logoNotImage' | 'logoTooLarge' | null>(null);
+
+  const chooseLogo = (file: File | null) => {
+    if (!file) return;
+    const refusal = !file.type.startsWith('image/')
+      ? 'logoNotImage'
+      : file.size > MAX_LOGO_BYTES
+        ? 'logoTooLarge'
+        : null;
+    setLogoRefused(refusal);
+    if (!refusal) void readAsDataUrl(file).then((logo) => change({ logo }));
+  };
 
   const chooseLanguages = (languages: string[]) => {
     const offered = LANGUAGES.filter((language) => languages.includes(language));
@@ -81,6 +95,11 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
         {outcome === 'failed' && (
           <Alert color="red" role="alert">
             {t('settings.saveFailed')}
+          </Alert>
+        )}
+        {outcome === 'refused' && (
+          <Alert color="red" role="alert">
+            {t('settings.saveRefused')}
           </Alert>
         )}
         {outcome === 'conflict' && (
@@ -122,12 +141,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
                       {t('settings.logoNone')}
                     </Text>
                   )}
-                  <FileButton
-                    accept="image/*"
-                    onChange={(file) => {
-                      if (file) void readAsDataUrl(file).then((logo) => change({ logo }));
-                    }}
-                  >
+                  <FileButton accept="image/*" onChange={chooseLogo}>
                     {(props) => (
                       <Button variant="default" size="xs" {...props}>
                         {t('settings.logoChoose')}
@@ -145,6 +159,11 @@ function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
                     </Button>
                   )}
                 </Group>
+                {logoRefused && (
+                  <Text size="sm" c="red" role="alert">
+                    {t(`settings.${logoRefused}`, { max: MAX_LOGO_BYTES / 1024 })}
+                  </Text>
+                )}
               </Stack>
               <ColorInput
                 label={t('settings.colour')}

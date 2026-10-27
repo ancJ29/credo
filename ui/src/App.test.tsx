@@ -172,6 +172,44 @@ describe('the app', () => {
     expect(await screen.findByText('Sign in to your account')).toBeTruthy();
   });
 
+  it('A device that has booted before speaks the language it showed while the settings load or fail', async () => {
+    setup({ getConfig: () => Promise.reject(new ApiError(503)) }, { 'credo.shown': 'en' });
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      DICTIONARIES.en.common.unavailable,
+    );
+  });
+
+  it('A device that never booted and chose nothing speaks Vietnamese until the settings load', async () => {
+    setup({ getConfig: () => Promise.reject(new ApiError(503)) });
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      DICTIONARIES.vi.common.unavailable,
+    );
+  });
+
+  it('Each successful boot keeps the language it showed: the choice, else the company’s default', async () => {
+    const first = setup();
+    await screen.findByText('Sign in to your account');
+    expect(first.device.shownLanguage()).toBe('en');
+    first.unmount();
+
+    const chosen = setup({}, { 'credo.language': 'vi' });
+    await screen.findByText(DICTIONARIES.vi.auth.title);
+    expect(chosen.device.shownLanguage()).toBe('vi');
+    chosen.unmount();
+
+    const gone = setup(
+      {
+        getConfig: () =>
+          Promise.resolve({ config: { ...config, languages: ['en'] }, version: 'v1' }),
+      },
+      { 'credo.language': 'vi', 'credo.shown': 'vi' },
+    );
+    await screen.findByText(DICTIONARIES.en.auth.title);
+    expect(gone.device.shownLanguage()).toBe('en');
+  });
+
   it('A language the company no longer offers gives way to its default', async () => {
     const saved = { config: { ...config, languages: ['en' as const] }, version: 'v2' };
     setup(
@@ -227,6 +265,21 @@ describe('the app', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('were not saved');
     expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Typed and kept');
     expect(saveConfig).toHaveBeenCalledOnce();
+  });
+
+  it('A save the BFF refuses with a 400 says it was refused, not that the service is down, and keeps what was typed', async () => {
+    const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(400)));
+    setup({ saveConfig }, signedIn);
+
+    const name = await screen.findByLabelText(/Company name/);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Typed and kept');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const alert = (await screen.findByRole('alert')).textContent;
+    expect(alert).toContain('were refused');
+    expect(alert).not.toContain('try again');
+    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Typed and kept');
   });
 
   it('A save refused with a 401 signs out', async () => {

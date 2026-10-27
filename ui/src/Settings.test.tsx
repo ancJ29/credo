@@ -1,4 +1,4 @@
-import { type TenantConfig } from '@credo/shared';
+import { MAX_LOGO_BYTES, type TenantConfig } from '@credo/shared';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,7 +40,7 @@ describe('Settings', () => {
     const onRetry = vi.fn();
     draw(<Settings {...props({ status: 'failed', onRetry })} />);
 
-    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe('This page could not be loaded. Try again.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
@@ -138,6 +138,62 @@ describe('Settings', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove the logo' }));
     expect(screen.getByText('No logo yet')).toBeTruthy();
+  });
+
+  it('refuses a logo over the limit at the chooser, says why, and keeps the draft’s logo', async () => {
+    draw(<Settings {...props()} />);
+    const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
+
+    await userEvent.upload(
+      input,
+      new File([new Uint8Array(MAX_LOGO_BYTES + 1)], 'big.png', { type: 'image/png' }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toContain('larger than 200 KB');
+    expect(document.querySelector('img')!.getAttribute('src')).toBe(config.logo);
+  });
+
+  it('takes a logo of exactly the limit, and the refusal goes with it', async () => {
+    draw(<Settings {...props()} />);
+    const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
+    const choose = (bytes: number) =>
+      userEvent.upload(input, new File([new Uint8Array(bytes)], 'logo.png', { type: 'image/png' }));
+
+    await choose(MAX_LOGO_BYTES + 1);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await choose(MAX_LOGO_BYTES);
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    await waitFor(() =>
+      expect(document.querySelector('img')!.getAttribute('src')).not.toBe(config.logo),
+    );
+  });
+
+  it('refuses a file that is not an image at the chooser, in either language', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const { unmount } = draw(<Settings {...props()} />);
+    const choose = () =>
+      user.upload(
+        document.querySelector<HTMLInputElement>('input[type=file]')!,
+        new File(['hello'], 'notes.txt', { type: 'text/plain' }),
+      );
+
+    await choose();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'That file is not an image, so it was not used. The logo is as it was.',
+    );
+    expect(document.querySelector('img')!.getAttribute('src')).toBe(config.logo);
+    unmount();
+
+    draw(<Settings {...props()} />, 'vi');
+    await choose();
+    expect((await screen.findByRole('alert')).textContent).toContain('không phải là ảnh');
+  });
+
+  it('says a refused save was refused, in its own words', () => {
+    draw(<Settings {...props({ outcome: 'refused' })} />);
+
+    expect(screen.getByRole('alert').textContent).toContain('were refused as they are');
   });
 
   it('ignores a file chooser closed without a file', () => {

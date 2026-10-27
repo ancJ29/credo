@@ -15,7 +15,7 @@ type Props = {
  * not "saved" keeps what was typed. */
 export function SettingsPage({ api, doc, onDoc, onSignedOut }: Props) {
   const [status, setStatus] = useState<'loading' | 'failed' | 'ready'>('ready');
-  const [outcome, setOutcome] = useState<'saved' | 'failed' | 'conflict' | null>(null);
+  const [outcome, setOutcome] = useState<'saved' | 'failed' | 'refused' | 'conflict' | null>(null);
   const [saving, setSaving] = useState(false);
 
   async function save(config: TenantConfig) {
@@ -27,7 +27,8 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut }: Props) {
       setOutcome(result.kind === 'saved' ? 'saved' : 'conflict');
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onSignedOut();
-      else setOutcome('failed');
+      // A 400 is the BFF refusing these settings: trying again as they are can never succeed.
+      else setOutcome(error instanceof ApiError && error.status === 400 ? 'refused' : 'failed');
     } finally {
       setSaving(false);
     }

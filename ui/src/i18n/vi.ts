@@ -5,7 +5,7 @@ export const vi: Dictionary = {
   common: {
     loading: 'Đang tải',
     retry: 'Thử lại',
-    loadFailed: 'Không tải được trang này. Những gì bạn đã nhập không mất: hãy thử lại.',
+    loadFailed: 'Không tải được trang này. Hãy thử lại.',
     unavailable: 'Dịch vụ đang tạm ngưng. Vui lòng thử lại sau giây lát.',
   },
   auth: {
@@ -28,12 +28,16 @@ export const vi: Dictionary = {
     logoNone: 'Chưa có logo',
     logoChoose: 'Chọn logo',
     logoRemove: 'Bỏ logo',
+    logoTooLarge: 'Logo này lớn hơn {{max}} KB nên chưa dùng. Logo vẫn như cũ.',
+    logoNotImage: 'Tệp này không phải là ảnh nên chưa dùng. Logo vẫn như cũ.',
     colour: 'Màu thương hiệu',
     languages: 'Ngôn ngữ cho phép dùng',
     defaultLanguage: 'Ngôn ngữ khi ai đó mở ứng dụng lần đầu',
     save: 'Lưu',
     saved: 'Đã lưu. Tên và màu mới hiện trên mọi màn hình.',
     saveFailed: 'Chưa lưu được cài đặt. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
+    saveRefused:
+      'Cài đặt bị từ chối. Hãy kiểm tra logo, tên và màu: những gì bạn đã nhập vẫn còn đây.',
     conflict: 'Có người đã lưu cài đặt mới hơn. Thay đổi của bạn chưa được lưu.',
     conflictReload: 'Xem cài đặt mới hơn',
   },

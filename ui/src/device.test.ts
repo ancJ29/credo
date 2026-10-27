@@ -42,4 +42,17 @@ describe('what the device keeps', () => {
     storage.setItem('credo.language', 'fr');
     expect(device.language()).toBeNull();
   });
+
+  it('keeps the language the last boot showed, apart from the one chosen, and reads no language it does not offer', () => {
+    const storage = memory();
+    const device = createDeviceStore(storage);
+    expect(device.shownLanguage()).toBeNull();
+
+    device.setShownLanguage('en');
+    expect(createDeviceStore(storage).shownLanguage()).toBe('en');
+    expect(device.language()).toBeNull();
+
+    storage.setItem('credo.shown', 'fr');
+    expect(device.shownLanguage()).toBeNull();
+  });
 });

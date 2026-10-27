@@ -19,6 +19,11 @@ type Props = {
 
 const SIGNED_OUT = 401;
 
+/** The language a device shows once the settings are known: its user's choice, while the company
+ * still offers it, else the company's default. */
+const languageShown = (config: ConfigDoc['config'], chosen: Language | null) =>
+  chosen && config.languages.includes(chosen) ? chosen : config.defaultLanguage;
+
 /** The company's settings, then who is signed in; null when the service cannot say. A stored
  * handle the BFF refuses is dropped; any other failure is not a sign-out. */
 async function boot(api: Api, device: DeviceStore) {
@@ -49,6 +54,7 @@ export function App({ api, device, test }: Props) {
   const [doc, setDoc] = useState<ConfigDoc | null>(null);
   const [user, setUser] = useState<UserView | null>(null);
   const [chosen, setChosen] = useState<Language | null>(() => device.language());
+  const [shown] = useState<Language | null>(() => device.shownLanguage());
   const [signIn, setSignIn] = useState<'idle' | 'busy' | 'refused'>('idle');
 
   const [attempt, setAttempt] = useState(0);
@@ -56,6 +62,8 @@ export function App({ api, device, test }: Props) {
   useEffect(() => {
     void boot(api, device).then((found) => {
       if (!found) return setPhase('unavailable');
+      // Kept, so the next boot speaks this language while the settings load, or fail to.
+      device.setShownLanguage(languageShown(found.doc.config, device.language()));
       setDoc(found.doc);
       setUser(found.user);
     });
@@ -72,7 +80,7 @@ export function App({ api, device, test }: Props) {
     return (
       <Providers
         colour={BEFORE_CONFIG.colour}
-        language={chosen ?? BEFORE_CONFIG.language}
+        language={chosen ?? shown ?? BEFORE_CONFIG.language}
         test={test}
       >
         <Boot status={phase} onRetry={retry} />
@@ -82,7 +90,7 @@ export function App({ api, device, test }: Props) {
 
   const { config } = doc;
   // A language the company stopped offering gives way to its default.
-  const language = chosen && config.languages.includes(chosen) ? chosen : config.defaultLanguage;
+  const language = languageShown(config, chosen);
   const signedOut = () => {
     device.clearAuthId();
     setUser(null);
