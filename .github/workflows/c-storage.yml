@@ -71,8 +71,9 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # The templates and scripts of ridge's stacks, linted, and the two guards seen red in
-  # ops/test.sh: the change-set filter and the check of /health. Nothing here touches AWS.
+  # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
+  # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
+  # code, and the check of /health against the real c-storage (hence Go). Nothing here touches AWS.
   ops:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -82,9 +83,28 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: ShellCheck
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: c-storage/go.mod
+          cache-dependency-path: c-storage/go.sum
+      # The image's ShellCheck is whatever version it ships, so the job installs the pinned one,
+      # from its release, after checking the archive's SHA-256 (the runner's architecture: x86_64
+      # on GitHub, aarch64 under act on an Apple machine). Both sums are the release's own digests.
+      - name: ShellCheck 0.11.0
         timeout-minutes: 2
-        run: shellcheck -x ops/*.sh
+        run: |
+          case "$(uname -m)" in
+            x86_64) arch=x86_64; sum=b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6 ;;
+            aarch64) arch=aarch64; sum=68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc ;;
+            *) echo "no ShellCheck 0.11.0 is pinned for $(uname -m)" >&2; exit 1 ;;
+          esac
+          archive="$RUNNER_TEMP/shellcheck.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.$arch.tar.gz"
+          echo "$sum  $archive" | sha256sum -c -
+          mkdir "$RUNNER_TEMP/shellcheck"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/shellcheck" --strip-components=1
+          "$RUNNER_TEMP/shellcheck/shellcheck" --version | grep -qx 'version: 0.11.0'
+          "$RUNNER_TEMP/shellcheck/shellcheck" -x ops/*.sh
       - name: cfn-lint
         timeout-minutes: 5
         run: |
@@ -92,5 +112,5 @@ jobs:
           "$RUNNER_TEMP/lint/bin/pip" install --quiet cfn-lint==1.46.0
           "$RUNNER_TEMP/lint/bin/cfn-lint" ops/network.yml ops/github.yml ops/env.yml
       - name: The guards
-        timeout-minutes: 2
+        timeout-minutes: 5
         run: bash ops/test.sh
