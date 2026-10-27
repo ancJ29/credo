@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ancJ29/credo/c-storage/internal/sqlitedb"
+	"credo/c-storage/internal/sqlitedb"
 )
 
 func open(t *testing.T) *Store {

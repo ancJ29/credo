@@ -10,8 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ancJ29/credo/c-storage/internal/config"
-	"github.com/ancJ29/credo/c-storage/internal/lifecycle"
+	"credo/c-storage/internal/config"
+	"credo/c-storage/internal/lifecycle"
 )
 
 func main() {

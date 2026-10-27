@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/ancJ29/credo/c-storage/internal/httpx"
-	"github.com/ancJ29/credo/c-storage/internal/store"
+	"credo/c-storage/internal/httpx"
+	"credo/c-storage/internal/store"
 )
 
 // Each answer carries what a caller reads and no more. A field no rule reads

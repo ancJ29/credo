@@ -9,7 +9,7 @@ import (
 	"crypto/subtle"
 	"net/http"
 
-	"github.com/ancJ29/credo/c-storage/internal/httpx"
+	"credo/c-storage/internal/httpx"
 )
 
 // The header names a caller sends.

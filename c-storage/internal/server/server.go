@@ -6,9 +6,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/ancJ29/credo/c-storage/internal/auth"
-	"github.com/ancJ29/credo/c-storage/internal/httpx"
-	"github.com/ancJ29/credo/c-storage/internal/store"
+	"credo/c-storage/internal/auth"
+	"credo/c-storage/internal/httpx"
+	"credo/c-storage/internal/store"
 )
 
 // AccessKeyHeader carries a service's own key, which every record route needs.

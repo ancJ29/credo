@@ -1,4 +1,4 @@
-module github.com/ancJ29/credo/c-storage
+module credo/c-storage
 
 go 1.25.0
 

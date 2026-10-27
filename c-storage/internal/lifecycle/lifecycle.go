@@ -12,10 +12,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ancJ29/credo/c-storage/internal/config"
-	"github.com/ancJ29/credo/c-storage/internal/server"
-	"github.com/ancJ29/credo/c-storage/internal/sqlitedb"
-	"github.com/ancJ29/credo/c-storage/internal/store"
+	"credo/c-storage/internal/config"
+	"credo/c-storage/internal/server"
+	"credo/c-storage/internal/sqlitedb"
+	"credo/c-storage/internal/store"
 )
 
 // shutdownGrace bounds how long in-flight requests have to finish before the

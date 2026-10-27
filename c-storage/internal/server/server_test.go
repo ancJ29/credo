@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ancJ29/credo/c-storage/internal/auth"
-	"github.com/ancJ29/credo/c-storage/internal/sqlitedb"
-	"github.com/ancJ29/credo/c-storage/internal/store"
+	"credo/c-storage/internal/auth"
+	"credo/c-storage/internal/sqlitedb"
+	"credo/c-storage/internal/store"
 )
 
 const (
