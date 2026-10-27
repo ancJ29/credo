@@ -1,0 +1,16 @@
+{
+  "name": "@credo/walk",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "walk": "playwright test"
+  },
+  "dependencies": {
+    "@credo/shared": "workspace:*",
+    "@credo/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:"
+  }
+}

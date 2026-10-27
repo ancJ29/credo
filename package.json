@@ -8,7 +8,8 @@
   },
   "scripts": {
     "check": "pnpm -r run typecheck && eslint . && prettier --check . && pnpm -r run test && knip",
-    "mock": "pnpm --filter @credo/ui run build:mock"
+    "mock": "pnpm --filter @credo/ui run build:mock",
+    "stack": "pnpm --filter @credo/scripts run stack"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

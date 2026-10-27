@@ -2,8 +2,10 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {},
-    "bff": {},
+    "bff": { "entry": ["src/main.ts"] },
+    "scripts": {},
     "shared": {},
-    "ui": {}
+    "ui": {},
+    "walk": {}
   }
 }

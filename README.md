@@ -14,3 +14,15 @@ pnpm mock
 
 Then open `ui/dist/mock/mock.html` in a browser. The page's filters narrow it to a language, a
 theme or a width.
+
+## Try the stack
+
+The whole app on your machine: c-storage, the BFF and the UI, with a demo company and its root.
+Needs Node 26, pnpm 12 and Go.
+
+```sh
+pnpm install
+pnpm stack
+```
+
+It prints the address and the root's sign-in, once; Ctrl-C takes it all down, the database with it.

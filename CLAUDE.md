@@ -1,5 +1,5 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.25 · Gate: pnpm check; make check in c-storage/ · Ship: none yet
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: pnpm check; make check in c-storage/ · Ship: none yet
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
@@ -27,3 +27,12 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
 - **Wire-contract code goes into the shared package, extended generically, not into a new
   standalone package per service.** The one shared package is `shared/`
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).
+- **`pnpm stack -- <command>` is one invocation: up, the command, down.** The sandbox cannot signal a
+  process an earlier command started. The command gets `CREDO_URL`, `CREDO_ROOT_NAME` and
+  `CREDO_ROOT_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
+  the BFF's service (a 409 is read by status, then the key is checked)
+  ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
+- **The walk spec (`walk/`) needs a browser, so it runs in the human's terminal, never in the
+  agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not
+  run it; its base images are made by the human's run, once a piece, on one Mac
+  ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)).

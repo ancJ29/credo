@@ -52,3 +52,19 @@ private address ([the architecture](plans/2026-10-27-architecture.md)), which a 
 never answers. Before the first box: the bind address becomes configuration (the private address,
 never every interface), with its test, alongside open item 5's arm64 build. The local stack keeps
 loopback.
+
+## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
+
+`bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`
+(`pnpm stack`) each build and start the real c-storage on a free port, with the same keys and the
+same health wait. They differ in what they need: the tests retry a port taken between the probe
+and the bind and stop at the process's exit; the stack logs to a file and reports a child that
+exited. A shared helper would make `bff` or `scripts` depend on the other for test code. Join them
+when a third caller appears, in a package both already depend on.
+
+## 9. A free port can be taken before the child binds it — the machine; *parked* until it bites (the app frame plan, step 6, 2026-10-28)
+
+`pnpm stack` asks for a free port, then starts c-storage and the BFF on it. Another process taking
+the port in between makes the child exit, and the stack stops naming the child and the end of its
+log; running it again is the remedy. The route tests retry on another port. *Trigger:* a second
+`pnpm stack` failing this way, when it retries too.
