@@ -1,8 +1,8 @@
 # The big picture: the new credo app
 
 **Where it stands — 2026-10-27:** the starting point, drafted with the human, changed by the
-human at 21:07 +07 to six pieces built end to end; nothing is built. **Next:**
-[piece 1](#the-first-feature), client config and login, walked by the 10-30 checkpoint.
+human at 21:07 +07 to six pieces built end to end, and settled at 23:05 +07; nothing is built.
+**Next:** [piece 1](#the-first-feature), client config and login, walked by the 10-30 checkpoint.
 
 > **Starting point** 2026-10-27, the human's answers to the machine's short questions. **Not
 > fixed:** the human changes any line at a review, as
@@ -11,21 +11,22 @@ human at 21:07 +07 to six pieces built end to end; nothing is built. **Next:**
 
 ## At a glance
 
-**An SME of about 50 staff that delivers goods takes each order from sale to settled, in one
-app, set up in 30 minutes from its Excel, with no per-client code** ([the goal](#the-goal)).
+**An SME of about 50 staff that delivers goods takes each order from sale to delivered, with its
+stock, in one app, set up in 30 minutes from its Excel, with no per-client code**
+([the goal](#the-goal)).
 
 ```mermaid
 flowchart LR
-  order["sales order<br/>piece 5"] --> dispatch["dispatch"]
-  dispatch --> driver["the driver<br/>on a phone"]
-  driver --> delivered["delivered<br/>with a photo"]
-  delivered --> settled["đối soát<br/>settled"]
+  receipt["goods receipt<br/>stock in · piece 4"] --> stock[("stock on hand<br/>piece 3")]
+  stock -. "locked by" .-> order["sales order<br/>piece 5"]
+  order --> note["delivery note · piece 6<br/>dispatch · the driver on a phone<br/>delivered with a photo"]
+  note -. "takes out" .-> stock
 ```
 
 | When | What must be true ([dates](#dates)) |
 | --- | --- |
-| 10-30 | piece 1, client config and login, walked (the human's change, 10-27 21:07 +07) |
-| 11-04 | sales-ready: the demo shows the whole flow, for the launch week's screenshots and video; *under review:* 11-11 proposed, [the app frame's calls](2026-10-27-app-frame.md#the-humans-calls) |
+| 10-30 | piece 1, client config and login, walked |
+| 11-11 | sales-ready: the demo shows all six pieces, for the launch week's screenshots and video; outreach after it |
 | a client signs | its server, its import, its first day |
 
 Seven criteria, each a check someone runs ([criteria](#success-criteria)): setup in 30 minutes ·
@@ -34,18 +35,19 @@ client · the first client's 100 orders.
 
 **Built in six pieces**, each end to end with its walk (the human, 10-27 21:07 +07): client config
 and login, the employee list, products and inventory, goods receipts, sales orders, delivery notes
-([the first feature](#the-first-feature)). Where they and this page disagree is the human's call,
-[the app frame's calls](2026-10-27-app-frame.md#the-humans-calls).
+([the first feature](#the-first-feature)).
 
 The new app **replaces the old one** ([the old app](#the-old-app)). **Not yet:** anything past
-the flow, a client's server, the import before 11-04 ([not yet](#not-yet)).
+the six pieces, đối soát, a client's server, the import before 11-04 ([not yet](#not-yet)).
 
 ## The goal
 
-**An SME of about 50 staff that delivers goods takes each order from sale to settled (sales
-order → dispatch → driver → delivered → đối soát) in one app, set up in 30 minutes from its
-Excel, with no per-client code.** *The human, 2026-10-27*, choosing the machine's draft of the
-human's 2-week launch memo of 10-21, kept outside the repo.
+**An SME of about 50 staff that delivers goods takes each order from sale to delivered (sales
+order → delivery note: dispatch, the driver, delivered with a photo), with its stock beside it
+(goods receipts in, stock on hand), in one app, set up in 30 minutes from its Excel, with no
+per-client code.** *The human, 2026-10-27*, choosing the machine's draft of the human's 2-week
+launch memo of 10-21, kept outside the repo; *changed by the human, 10-27 23:05 +07:* đối soát
+moved to [not yet](#not-yet), the stock added.
 
 For whom: SMEs of about 50 staff; heavy read, under 1,000 writes a working hour (the human,
 10-27). *Rejected:* "the old credo's UI and concept on a simpler stack": it says why we rebuild,
@@ -56,18 +58,18 @@ not what a client gets.
 **The new app replaces it** (the human, 10-27). The old app takes no more launch work; it stays
 a read-only reference to pick pieces from.
 
-**11-04 means sales-ready** (the human, 10-27). The demo tenant shows the whole flow, real
-enough for the launch week's screenshots and video. A first paying client goes live later, on a
-date fixed when one signs: outreach starts only after 11-04. *Under review* since the human's
-change of 10-27 21:07 +07: [the app frame's calls](2026-10-27-app-frame.md#the-humans-calls), call 1.
+**11-11 means sales-ready** (the human, 10-27 23:05 +07, moved from 11-04). The demo tenant
+shows all six pieces, real enough for the launch week's screenshots and video. A first paying
+client goes live later, on a date fixed when one signs: outreach starts only after 11-11.
+*Price:* the launch week a week later.
 
 **The human's time:** the product's share goes to the new app alone, never split between two
 apps. The sales preparation stays the human's, in parallel, outside this repo.
 
 *Rejected:* the machine's "follows it", the old app serving new clients from 11-04 while the
 new one is built. The price of replacing: no client can go live on the old app meanwhile.
-*Rejected:* "client-ready on 11-04", eight days from no code, which would cut the flow to one
-stage.
+*Rejected:* "client-ready" in place of sales-ready, a client's server and import on top, which
+would cut the flow to one stage.
 
 *Hazard no gate catches:* a client signs before the flow is walked, and no other app can take
 it. *Trigger to revisit:* a signed client whose first day falls before the flow's walks are
@@ -83,9 +85,10 @@ Seven at most; each is done when its check reads back (the human, 10-27).
   minutes or less.
 - [ ] **2. The driver as simple as Zalo.** Who: 👤. Done when: from open to delivered with its
   photo takes three screens at most, and the driver's walk holds the human's yes on each, on a
-  phone ([QA](../conventions/qa.md) rule 7).
-- [ ] **3. The core flow walked.** Who: 👤. Done when: each stage, sales order to đối soát, has
-  its walk on the map, and none holds an open "no".
+  phone ([QA](../conventions/qa.md) rule 7). Read at piece 6's walk (the human, 10-27 23:05 +07).
+- [ ] **3. The core flow walked.** Who: 👤. Done when: each of the six pieces has its walk on the
+  map, and none holds an open "no" (the human, 10-27 23:05 +07; it read "sales order to đối
+  soát").
 - [ ] **4. No per-client code.** Who: 🤖. Done when: a grep of the source for every client's
   code finds nothing, and two tenants with different configs walk the same build.
 - [ ] **5. A client's server holds 50 staff.** Who: 🤖. Done when: a load probe at twice the
@@ -111,17 +114,20 @@ ends; the frame is built with piece 1, never as a layer of its own. Each piece's
 case table and its walk ([QA](../conventions/qa.md) rules 1 and 7);
 [the app frame](2026-10-27-app-frame.md) is piece 1's.
 
-*Replaced* by the human, 10-27 21:07 +07: "sign in, then enter a sales order", the first feature
-of that morning, now piece 5's starting draft. *Rejected:* the Excel import first, an internal
-tool behind an upload, with no staff's screen for the demo.
+*Replaced* by the human, 10-27 21:07 +07: "sign in, then enter a sales order", now piece 5's
+starting draft. *Rejected:* the Excel import first, an internal tool behind an upload, with no
+staff's screen for the demo.
 
 ## Not yet
 
 Each comes back at a review (the human, 10-27).
 
-- **Nothing past the core flow** until the first client has run its first month: "no polish, no
-  extension", the memo's rule. *Disagrees* with the six pieces (10-27 21:07 +07), which add staff,
-  settings, stock and receipts: [the app frame's calls](2026-10-27-app-frame.md#the-humans-calls), call 4.
+- **Nothing past the six pieces** until the first client has run its first month: "no polish, no
+  extension", the memo's rule (the human, 10-27 23:05 +07; it read "the core flow").
+- **Đối soát**, the settling, comes back at a review after the six pieces (the human, 10-27
+  23:05 +07).
+- **No page for customers or vendors:** the demo's generator writes them until the import
+  (the human, 10-27 23:05 +07).
 - **No more work on the old app.**
 - **No client's server before a client signs.** The demo runs on the local stack for the
   screenshots and video.
@@ -136,11 +142,11 @@ Each comes back at a review (the human, 10-27).
 
 | Date | What | Who reads it |
 | --- | --- | --- |
-| 2026-10-30 | Checkpoint: piece 1 walked (the human's change, 10-27 21:07 +07) | 👤 |
-| 2026-11-04 | Sales-ready, as [the old app](#the-old-app) says; *under review:* 11-11 proposed, [the app frame's calls](2026-10-27-app-frame.md#the-humans-calls), call 1 | 👤 |
+| 2026-10-30 | Checkpoint: piece 1 walked (the human, 10-27 21:07 +07) | 👤 |
+| 2026-11-01 to 11-10 | Pieces 2 to 6, each walked on its date in [the app frame](2026-10-27-app-frame.md#the-pieces) | 👤 |
+| 2026-11-11 | Sales-ready, as [the old app](#the-old-app) says (the human, 10-27 23:05 +07) | 👤 |
 | when a client signs | its server, its import, its first day | 👤 |
 
-*The human, 2026-10-27.* *Rejected:* 11-04 alone, where a slip shows only on 11-03.
-*Hazard no gate catches:* five stages in eight days from no code. *Guard:* the 10-30
-checkpoint. *The human, 10-27 21:07 +07:* "let's delay", accepting that 10-30 as first planned does
-not hold.
+*The human, 2026-10-27.* *Rejected:* sales-ready alone, where a slip shows only the day before.
+*Hazard no gate catches:* six pieces in fifteen days from no code. *Guard:* each piece's walk on
+its date, so a slip shows the day it happens.
