@@ -1,0 +1,23 @@
+{
+  "name": "@credo/scripts",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/stack.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "stack": "node --import tsx src/main.ts"
+  },
+  "dependencies": {
+    "@credo/bff": "workspace:*",
+    "@credo/shared": "workspace:*",
+    "tsx": "catalog:",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}

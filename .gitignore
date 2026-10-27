@@ -150,3 +150,7 @@ vite.config.ts.timestamp-*
 
 # Machine-local files stay off GitHub (docs/conventions/documentation.md)
 *.local*
+
+# The walk spec's run: Playwright's report and its failed screens
+playwright-report/
+test-results/
