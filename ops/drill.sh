@@ -21,6 +21,7 @@ STEPS=7
 
 log_start drill "$ENVNAME"
 mkwork
+main_synced
 
 health() { box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; }
 

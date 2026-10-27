@@ -3,8 +3,9 @@
 # Makes or changes one stack through a change set built from the template in origin/main, so only a
 # reviewed template reaches AWS. A change set that removes or replaces anything is deleted and
 # named, unless the plan's step names that logical id with --take. --plan builds and reads the
-# change set, deletes it, and changes nothing.
-# Run by the human, from a worktree, in a terminal holding an AWS session. Never by CI.
+# change set, deletes it, and changes nothing: for a first creation it also deletes the empty stack
+# that CloudFormation keeps for the change set (REVIEW_IN_PROGRESS), so the next run is a creation too.
+# Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
 # Expected length: about 5 minutes for network and env (the endpoint and the box take the time),
 # about a minute for github.
 set -euo pipefail
@@ -73,6 +74,24 @@ esac
 
 log_start stack "${ENVNAME:-$KIND}"
 mkwork
+main_synced
+
+CS=''
+CS_OPEN=0
+# cleanup_extra: a change set left behind is deleted, whatever ended the run; and a stack that
+# holds nothing but that change set (REVIEW_IN_PROGRESS) is deleted with it. After an execute,
+# CS_OPEN is 0 and the stack is left alone.
+cleanup_extra() {
+  local status
+  if [ "$CS_OPEN" = 1 ]; then
+    aws cloudformation delete-change-set --stack-name "$STACK" --change-set-name "$CS" >/dev/null 2>&1 || true
+    status=$(aws cloudformation describe-stacks --stack-name "$STACK" --query 'Stacks[0].StackStatus' --output text 2>/dev/null) || status=''
+    if [ "$status" = REVIEW_IN_PROGRESS ]; then
+      aws cloudformation delete-stack --stack-name "$STACK" >/dev/null 2>&1 || true
+      aws cloudformation wait stack-delete-complete --stack-name "$STACK" >/dev/null 2>&1 || true
+    fi
+  fi
+}
 
 # stack_events: what failed, from the stack's events
 stack_events() {
@@ -112,7 +131,8 @@ region_enabled
 if [ "$KIND" = github ]; then
   step "the account's providers"
   stack_load "$STACK"
-  if [ -z "$STACK_JSON" ]; then
+  choose_change_type
+  if [ "$CS_TYPE" = CREATE ]; then
     arn=$(aws iam list-open-id-connect-providers --query "OpenIDConnectProviderList[].Arn" --output text |
       tr '\t' '\n' | grep "/$GITHUB_ISSUER\$" || true)
     if [ -n "$arn" ]; then
@@ -128,13 +148,12 @@ fi
 
 # --- the change set ---
 step "the parameters"
-git -C "$REPO_DIR" fetch --quiet origin main
 git -C "$REPO_DIR" show "origin/main:ops/$TEMPLATE" >"$WORK/template.yml" ||
   die "origin/main holds no ops/$TEMPLATE: the template must be merged first"
 echo "template: ops/$TEMPLATE at origin/main $(git -C "$REPO_DIR" rev-parse --short origin/main)"
 
 stack_load "$STACK"
-if [ -z "$STACK_JSON" ]; then CS_TYPE=CREATE; else CS_TYPE=UPDATE; fi
+choose_change_type
 echo "stack $STACK: $CS_TYPE"
 PARAMS='[]'
 case "$KIND" in
@@ -154,8 +173,8 @@ case "$KIND" in
     net=$(aws cloudformation describe-stacks --stack-name "$NETWORK_STACK" --output json 2>/dev/null) ||
       die "$NETWORK_STACK does not exist: ops/stack.sh network first"
     add_param Env "$ENVNAME"
-    add_param Repository "$(repository)"
     if [ "$CS_TYPE" = CREATE ]; then
+      add_param Repository "$(repository)"
       vpc=$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "VpcId").OutputValue' <<<"$net")
       vpc_cidr=$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "VpcCidr").OutputValue' <<<"$net")
       cidr=$(free_cidr "$vpc_cidr" "$vpc")
@@ -166,6 +185,9 @@ case "$KIND" in
       add_param SubnetCidr "$cidr"
       add_param ImageId "$image"
     else
+      # The deploy role trusts this repository: a fork's clone must not move it.
+      repository_matches_stack "$(repository)"
+      add_param Repository
       add_param SubnetCidr
       add_param ImageId
     fi
@@ -177,6 +199,7 @@ step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"
 caps=()
 if [ -n "$CAPS" ]; then caps=(--capabilities "$CAPS"); fi
+CS_OPEN=1
 aws cloudformation create-change-set --stack-name "$STACK" --change-set-name "$CS" --change-set-type "$CS_TYPE" \
   --template-body "file://$WORK/template.yml" --parameters "$PARAMS" ${caps[@]+"${caps[@]}"} \
   >/dev/null
@@ -188,13 +211,6 @@ if ! aws cloudformation wait change-set-create-complete --stack-name "$STACK" --
     *) die "the change set failed: $reason" ;;
   esac
 fi
-cleanup_extra() {
-  # a change set left behind is deleted, whatever ended the run
-  if [ "${CS_OPEN:-0}" = 1 ]; then
-    aws cloudformation delete-change-set --stack-name "$STACK" --change-set-name "$CS" >/dev/null 2>&1 || true
-  fi
-}
-CS_OPEN=1
 if [ "$no_changes" = 1 ]; then
   echo "no changes: the stack is as the template says"
 else
@@ -231,7 +247,9 @@ fi
 # --- read back ---
 step "the outputs"
 stack_load "$STACK"
-jq -r '.Stacks[0].Outputs[]? | "  \(.OutputKey) = \(.OutputValue)"' <<<"$STACK_JSON"
+# The deploy role's ARN holds the account's id: it is searched for in this log, never printed.
+mask "$(out DeployRoleArn)"
+jq -r '.Stacks[0].Outputs[]? | "  \(.OutputKey) = " + (if .OutputKey == "DeployRoleArn" then "(not printed: it holds the account id)" else .OutputValue end)' <<<"$STACK_JSON"
 
 if [ "$KIND" = network ]; then
   vpc=$(out VpcId)
@@ -261,7 +279,8 @@ echo "ssm agent: $(systemctl is-active amazon-ssm-agent || true)"
 echo "memory: $(free -m | awk '/^Mem:/{print $7" MiB available of "$2}')"
 REMOTE
   step "GitHub's environment $ENVNAME and its secret"
-  repo=$(repository)
+  repo=$(stack_param Repository)
+  [ -n "$repo" ] || die "stack $STACK holds no Repository parameter"
   gh api -X PUT "repos/$repo/environments/$ENVNAME" --input - >/dev/null <<'JSON'
 {"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
 JSON

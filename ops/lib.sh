@@ -12,9 +12,11 @@ CREDO_REGION=${CREDO_REGION:-ap-southeast-5}
 export AWS_REGION=$CREDO_REGION AWS_DEFAULT_REGION=$CREDO_REGION
 
 BOX_USER=ec2-user
-# A release stops below these free amounts on the box (MiB).
+# A release stops below these amounts on the box (MiB): free disk, available memory, total swap
+# (the box is made with 2 GiB of swap, which a t4g.nano needs).
 FLOOR_DISK_MB=1024
 FLOOR_MEM_MB=96
+FLOOR_SWAP_MB=1024
 
 LOG=''
 WORK=''
@@ -64,14 +66,19 @@ verdict() {
 }
 
 # log_start <script> <env>: all output goes to the terminal and to logs/<date>-<time>-<script>-<env>.log
-# in the credo root, the folder that holds .bare, derived from git. The log ends on == exit <n>.
+# in the credo root, the folder that holds .bare, derived from git (OPS_LOG_DIR names another
+# folder, for the test). The log ends on == exit <n>: 130 after Ctrl-C, 143 after SIGTERM, 129 after
+# SIGHUP, since a signal's trap must exit for on_exit to see a code.
 # A named pipe feeds tee, since the sandbox the machine works in refuses process substitution.
 TEE_PID=''
 log_start() {
-  local root
-  root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
-  mkdir -p "$root/logs"
-  LOG="$root/logs/$(date +%Y-%m-%d-%H%M%S)-$1-${2:-all}.log"
+  local root dir=${OPS_LOG_DIR:-}
+  if [ -z "$dir" ]; then
+    root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
+    dir=$root/logs
+  fi
+  mkdir -p "$dir"
+  LOG="$dir/$(date +%Y-%m-%d-%H%M%S)-$1-${2:-all}.log"
   mkwork
   mkfifo "$WORK/log.fifo"
   exec 3>&1
@@ -79,6 +86,9 @@ log_start() {
   TEE_PID=$!
   exec >"$WORK/log.fifo" 2>&1
   trap on_exit EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
   echo "== $1 ${2:-} started $(date '+%Y-%m-%d %H:%M:%S %z')"
 }
 
@@ -134,6 +144,23 @@ repository() {
   git -C "$REPO_DIR" remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##'
 }
 
+# main_synced: fetches origin/main, then refuses unless ops/ here is exactly origin/main's, so a
+# script that acts under the human's AWS session is always a reviewed one.
+main_synced() {
+  git -C "$REPO_DIR" fetch --quiet origin main || die "cannot fetch origin main: the scripts here cannot be compared with main's"
+  ops_match_main
+}
+
+# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) equals origin/main's
+ops_match_main() {
+  git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
+  if ! git -C "$REPO_DIR" diff --quiet origin/main -- ops ||
+    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
+    die "ops/ here differs from origin/main's: run the scripts from a worktree at main, never unreviewed ones"
+  fi
+  ok "ops/ is origin/main's"
+}
+
 region_enabled() {
   local s
   s=$(aws account get-region-opt-status --region-name "$CREDO_REGION" --query RegionOptStatus --output text)
@@ -158,6 +185,41 @@ stack_load() {
   fi
   cat "$err" >&2
   die "describe-stacks $1 failed"
+}
+
+# stack_param <ParameterKey> → the stack's value of it in STACK_JSON, empty if none
+stack_param() {
+  jq -r --arg k "$1" '.Stacks[0].Parameters // [] | map(select(.ParameterKey == $k))[0].ParameterValue // empty' <<<"$STACK_JSON"
+}
+
+# choose_change_type: sets CS_TYPE from STACK_JSON. No stack, or one that only holds a change set
+# (REVIEW_IN_PROGRESS, left by a planned, failed or interrupted creation), is a CREATE with fresh
+# parameters; any other is an UPDATE; a stack that rolled back is deleted by hand first.
+CS_TYPE=''
+# shellcheck disable=SC2034 # stack.sh reads CS_TYPE
+choose_change_type() {
+  local status
+  if [ -z "$STACK_JSON" ]; then
+    CS_TYPE=CREATE
+    return 0
+  fi
+  status=$(jq -r '.Stacks[0].StackStatus // empty' <<<"$STACK_JSON")
+  case "$status" in
+    REVIEW_IN_PROGRESS) CS_TYPE=CREATE ;;
+    ROLLBACK_COMPLETE) die "the stack is in ROLLBACK_COMPLETE: delete the stack (console or aws cloudformation delete-stack), then run this again" ;;
+    '') die "the stack's description names no StackStatus" ;;
+    *) CS_TYPE=UPDATE ;;
+  esac
+}
+
+# repository_matches_stack <owner/name>: an update never moves the deploy role's trust to another
+# repository, such as a fork's clone; a stack with no Repository yet passes
+repository_matches_stack() {
+  local have
+  have=$(stack_param Repository)
+  if [ -n "$have" ] && [ "$have" != "$1" ]; then
+    die "this clone's origin is $1, but the stack's Repository is $have: run from a clone of $have"
+  fi
 }
 
 # out <OutputKey> → its value in STACK_JSON, empty if none
@@ -232,11 +294,29 @@ REMOTE
   echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free"
 }
 
-# box_floor: stops below the free disk and memory the box needs to take a release
-box_floor() {
-  box_resources
+# floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release
+floor_verdict() {
   [ "$DISK_MB" -ge "$FLOOR_DISK_MB" ] || die "disk: $DISK_MB MiB free, below the floor of $FLOOR_DISK_MB"
   [ "$MEM_MB" -ge "$FLOOR_MEM_MB" ] || die "memory: $MEM_MB MiB available, below the floor of $FLOOR_MEM_MB"
+  [ "$SWAP_MB" -ge "$FLOOR_SWAP_MB" ] || die "swap: $SWAP_MB MiB, below the floor of $FLOOR_SWAP_MB"
+}
+
+# box_floor: reads the box, then stops below the floor
+box_floor() {
+  box_resources
+  floor_verdict
+}
+
+# keys_sum → the sha256 of the box's keys file, empty if it does not exist yet
+keys_sum() {
+  box 'sudo sha256sum /etc/c-storage/keys.env 2>/dev/null || true' | cut -d' ' -f1
+}
+
+# keys_unchanged <sum before> <sum after>: no release rewrites the keys. The first release makes
+# them (nothing before, something after); any later one leaves the file as it was.
+keys_unchanged() {
+  if [ -z "$1" ] && [ -n "$2" ]; then return 0; fi
+  [ -n "$2" ] && [ "$1" = "$2" ] || die "the keys file changed during the release (before: ${1:-none}, after: ${2:-none}): a release never rewrites it"
 }
 
 # read_keys: INTERNAL_KEY and ADMIN_KEY from the box's file, masked before anything is printed

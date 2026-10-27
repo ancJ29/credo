@@ -4,7 +4,7 @@
 # under systemd, and reads /health until it names the commit shipped. The deploy job runs it, and
 # so can the human while GitHub Actions is down.
 #   By hand: builds <sha> (main's tip when none) in a throwaway worktree, after c-storage's whole
-#   gate; a sha main lacks is refused.
+#   gate; a sha main lacks is refused. Run from a worktree whose ops/ is origin/main's.
 #   In the job: RELEASE_BINARY names the binary `make box` built from the commit the job runs on.
 # Needs `make box` in c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
 # Expected length: about 4 minutes by hand (the gate and the build), under a minute in the job.
@@ -28,7 +28,7 @@ cleanup_extra() {
 }
 
 step "the commit, which main must hold"
-git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
+main_synced
 if [ -n "${RELEASE_BINARY:-}" ]; then
   [ -f "$RELEASE_BINARY" ] || die "RELEASE_BINARY $RELEASE_BINARY does not exist"
   sha=$(git -C "$REPO_DIR" rev-parse HEAD)
@@ -60,18 +60,19 @@ step "the tunnel to $ENVNAME's box"
 box_open "$ENVNAME" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
 
-step "the box's disk and memory, read first"
+step "the box's disk, memory and swap, read first"
 box_floor
 
 step "the binary and the unit, sent"
+# Nothing here changes what runs: the binary waits beside the old one as c-storage.new and the unit
+# in /opt/c-storage, until the install in the restart step.
 box 'sudo install -d -m 0755 /opt/c-storage /etc/c-storage'
 box 'sudo tee /opt/c-storage/c-storage.new >/dev/null' <"$binary"
 got_sum=$(box 'sudo sha256sum /opt/c-storage/c-storage.new' | cut -d' ' -f1)
 [ "$got_sum" = "$want_sum" ] || die "the binary arrived as $got_sum, sent as $want_sum"
-# A rename in one directory is atomic: the old binary runs until the restart.
-box 'sudo chmod 0755 /opt/c-storage/c-storage.new && sudo mv -f /opt/c-storage/c-storage.new /opt/c-storage/c-storage'
-box 'sudo tee /etc/systemd/system/c-storage.service >/dev/null' <"$unit"
+box 'sudo tee /opt/c-storage/c-storage.service.new >/dev/null' <"$unit"
 ok "sent, checksum matches"
+keys_before=$(keys_sum)
 
 step "the keys, made once"
 # 32 random bytes each, from the kernel, written root-only; a release never rewrites the file.
@@ -93,15 +94,22 @@ fi
 stat -c 'keys file: mode %a, owner %U' "$f"
 REMOTE
 
-step "c-storage restarted"
-box 'sudo systemctl daemon-reload && sudo systemctl enable c-storage 2>/dev/null && sudo systemctl restart c-storage'
+# The keys, read now to search this log for them at the end, before the restart or any journal line.
+read_keys
+step "installed, and c-storage restarted"
+# The renames come last, one after another, in one command: a failure before it leaves the box
+# running what it ran. A rename in one directory is atomic. From here a failure leaves the new
+# binary on disk (the way back is the plan's: a re-run of the last green deploy).
+box 'sudo chmod 0755 /opt/c-storage/c-storage.new &&
+  sudo mv -f /opt/c-storage/c-storage.service.new /etc/systemd/system/c-storage.service &&
+  sudo mv -f /opt/c-storage/c-storage.new /opt/c-storage/c-storage &&
+  sudo systemctl daemon-reload && sudo systemctl enable c-storage 2>/dev/null && sudo systemctl restart c-storage'
 box 'systemctl is-active c-storage'
 
 step "/health names the commit"
 if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; then
   box 'sudo journalctl -u c-storage -n 20 --no-pager' || true
-  die "release of $sha failed: the box is as it is"
+  die "release of $sha failed: the new binary is installed, c-storage did not name it"
 fi
-# The keys, read only to search this log for them at the end.
-read_keys
+keys_unchanged "$keys_before" "$(keys_sum)"
 echo "released $sha"

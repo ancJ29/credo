@@ -3,8 +3,9 @@
 # Reads <env> from AWS and from the box, then runs c-storage's Bruno collection through the tunnel.
 # Green is every read below passing; the log ends on == green, or names each red.
 # Runs after each release in the deploy job, and by hand.
-# Needs c-storage/bruno/ (the collection) and Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`),
-# and /health's buildVersion (the plan's step 6).
+# Needs c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`) and
+# node, which reads its report, and /health's buildVersion (the plan's step 6).
+# Run from a worktree whose ops/ is origin/main's.
 # Expected length: about 2 minutes.
 set -euo pipefail
 
@@ -33,6 +34,8 @@ cleanup_extra() {
 random_hex() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 
 step "the tools and the collection"
+main_synced
+command -v node >/dev/null || die "needs node on PATH, to read Bruno's report"
 [ -d "$BRUNO_DIR" ] || die "no c-storage/bruno: the collection arrives with main (the plan's step 5)"
 have=$(bru --version 2>/dev/null) || have=none
 [ "$have" = "$WANT_BRUNO" ] || die "needs Bruno CLI $WANT_BRUNO, found $have: npm install -g @usebruno/cli@$WANT_BRUNO"
@@ -125,16 +128,14 @@ variables:
     value: sample-record
 YAML
 )
-requests=$(find "$BRUNO_DIR" -name '*.yml' ! -name folder.yml ! -name opencollection.yml ! -path '*/environments/*' | wc -l | tr -d ' ')
 ran=0
 (cd "$BRUNO_DIR" && bru run --env "$ENVNAME" --reporter-json "$WORK/report.json") || ran=$?
 expect "bru run exits" 0 "$ran"
-# A run that reaches no request exits 0 too, so the count is the proof.
-results=0
-if [ -f "$WORK/report.json" ]; then
-  results=$(jq '[.[].results | length] | add // 0' "$WORK/report.json")
-fi
-expect "requests run, of those in the collection" "$requests" "$results"
+# bru exits 0 for a file it cannot parse and for a run that reaches no request: the shared proof
+# (the same e2e.sh asks) wants every request file passed, with a test, and none skipped.
+proof=0
+requests=$(node "$REPO_DIR/c-storage/scripts/bruno-proof.cjs" "$WORK/report.json" "$BRUNO_DIR" check) || proof=$?
+expect "every request ran, passed and asserted ($requests)" 0 "$proof"
 rm -f "$BRUNO_DIR/environments/$ENVNAME.yml"
 
 verdict

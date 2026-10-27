@@ -1,0 +1,18 @@
+{
+  "ChangeSetName": "ops-20261028-000003",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Dynamic",
+        "LogicalResourceId": "Hook",
+        "ResourceType": "AWS::CloudFormation::CustomResource",
+        "Scope": [],
+        "Details": []
+      }
+    }
+  ]
+}
