@@ -1,12 +1,12 @@
 # The architecture: UI → CloudFront → one BFF → c-storage
 
-**Where it stands — 2026-10-27:** revised after review; the BFF moved to Lambda on the human's word.
-The machine's decisions are made; the plan waits on the human's four calls (step 1). Nothing is
-built: the demo runs on the local stack, and the first server waits for a signed client.
+**Where it stands — 2026-10-27:** decided; every step is ticked. The human answered the four calls
+as recommended, so no answer moved a price. Nothing is built before a client signs: the demo runs
+on the local stack, and the templates and the first server wait for a signed client.
 
-> **Drafted** 2026-10-27 by the machine, from the old app's diagrams, ops, plans and BFF cost memo,
-> and AWS prices read back that day. The machine's decisions: **Decided** 2026-10-27.
-> review 2026-10-27 (Fable 5.1): 11 findings, all taken.
+> **Decided** 2026-10-27: the machine's decisions, and the human's four answers. Drafted by the
+> machine from the old app's diagrams, ops, plans and BFF cost memo, and AWS prices read back that
+> day. review 2026-10-27 (Fable 5.1): 11 findings, all taken.
 
 ## At a glance
 
@@ -47,13 +47,13 @@ the internet: only CloudFront calls the back end, and only the back end reaches 
 | each further client | the same; about $6.40 past the 10th, $9.20 past the 45th, as CloudFront's free allowance runs out |
 | 10 · 25 · 50 clients | about $52 · $149 · $325 |
 
-The human's four questions ([the human's calls](#the-humans-calls)):
+The human's four questions, answered 2026-10-27 ([the human's calls](#the-humans-calls)):
 
-1. **Whose AWS account, and which region?** Recommended: ours, Malaysia.
-2. **How much work may a client lose if its server's disk is lost?** Recommended: up to a day.
-3. **What address do a client's staff open?** Recommended: a name of ours per client, fixed
-   before its first day.
-4. **Does each client get its own server, or share one?** Recommended: its own.
+1. **Whose AWS account, and which region?** Ours, Malaysia.
+2. **How much work may a client lose if its server's disk is lost?** Up to a day.
+3. **What address do a client's staff open?** A name of ours per client, fixed before its first
+   day.
+4. **Does each client get its own server, or share one?** Its own.
 
 ## The need
 
@@ -120,8 +120,9 @@ then adding $2.76. The ceiling is each client's box: every call lands on one SQL
    cold start (the old app's first call took 333 ms, its warm p95 199 ms). With no internet route,
    the BFF reaches c-storage and S3 (via the gateway endpoint) alone; its keys sit in its
    environment, encrypted at rest by Lambda with an AWS-managed key, free. *Trigger to
-   revisit:* a first call outside AWS, or to a service with no free endpoint: a NAT gateway, $36.61 a month in Malaysia ($43.07 in Singapore)
-   plus per GB, or an interface endpoint, $8.54 ($9.49) each plus $0.01/GB. *Rejected:* the BFF on
+   revisit:* a first call outside AWS, or to a service with no free endpoint: a NAT gateway,
+   $36.61 a month in Malaysia ($43.07 in Singapore) plus per GB, or an interface endpoint, $8.54
+   ($9.49) each plus $0.01/GB. *Rejected:* the BFF on
    the box beside c-storage, the previous draft: $0.90 a client less, no cold start, but it scales
    only as far as the nano. *Rejected:* Lambda outside the VPC on the box's public IPv4: ≈ $4.07 a
    client more, c-storage on the internet. *Rejected:* the function in several zones: $0.84 a
@@ -141,8 +142,9 @@ then adding $2.76. The ceiling is each client's box: every call lands on one SQL
    gateway endpoint, one Instance Connect Endpoint, a private subnet per client; each client's
    function, box, bucket and distribution on top. Instance Connect allows one endpoint per VPC,
    five per account and Region, not adjustable; VPCs default to five a Region. *Price:* clients
-   share a network: the wall between them is each box's security group, admitting its own function's group alone on c-storage's port, then c-storage's
-   keys. *Rejected:* a VPC per client, which stops at five; the default VPC, whose internet gateway
+   share a network: the wall between them is each box's security group, admitting its own
+   function's group alone on c-storage's port, then c-storage's keys. *Rejected:* a VPC per
+   client, which stops at five; the default VPC, whose internet gateway
    puts a box given a public address on the internet.
 5. **The box: EC2 `t4g.nano` (Arm), gp3 8 GB with swap, no public address, running c-storage alone
    as a systemd unit with `Restart=always`, as the old services ran.** The old nano ran one Go
@@ -169,31 +171,39 @@ then adding $2.76. The ceiling is each client's box: every call lands on one SQL
    enabled once per account; Singapore, also a new choice, needs no step and ran the old
    showcases' web half. Either way the bill is ours to pass on, the data sits in our account, and
    a later move to the client's account is a restore onto a new box, untested.
+   **Answered** 2026-10-27, 17:16 +07: ours, Malaysia (`ap-southeast-5`).
 2. **Work a client may lose.** *Recommended:* up to a day: the database copied to S3 each night,
    the old app's drilled path, ≈ $0.03 a month, restored from the human's terminal (step 3).
    *Price:* a lost disk means that day's entries typed again. A continuous copy loses minutes, for
    about $0.35 a month of S3 writes and a new tool to run and drill.
+   **Answered** 2026-10-27, 17:16 +07: up to a day, the nightly copy.
 3. **The address.** *Recommended:* a name under our domain per client, fixed before its first day,
    in Cloudflare, the old app's DNS host, whose Free plan includes DNS at $0 a month; its ACM
    certificate free, requested in `us-east-1` as CloudFront requires. *Price:* a later change signs
    every device out and strands what each browser stored. CloudFront's own name is free and
-   unreadable.
+   unreadable. **Answered** 2026-10-27, 17:16 +07: a name under our domain per client, in
+   Cloudflare, fixed before the client's first day.
 4. **One stack per client, or one shared.** *Recommended:* one per client, ≈ $5.19 a month each.
    *The alternative:* one shared box and BFF, ≈ $2.46 a client with ten on a `t4g.small`
    (unmeasured), $2.73 less, but the BFF's tenant check becomes the only wall between clients'
    records, one box down stops them all, and a restore rolls them all back.
+   **Answered** 2026-10-27, 17:16 +07: one stack per client.
 
 ## Steps
 
-- [ ] **1. The human's calls answered.** Who: 👤. Done when: each answer is written under its call,
-  dated.
-- [ ] **2. This plan decided.** Who: 🤖. Done when: "Where it stands" reads decided, costs re-read
-  where an answer moves a price, the checks clean on the commit.
-- [ ] **3. The pieces that build it, logged.** Who: 🤖. Done when: `docs/open-items.md` names who
+- [x] **1. The human's calls answered.** Who: 👤. Done when: each answer is written under its call,
+  dated. *Evidence:* the human, 2026-10-27: "yes, 1A, 2A, 3A, 4A as recommended", each written
+  under its call above.
+- [x] **2. This plan decided.** Who: 🤖. Done when: "Where it stands" reads decided, costs re-read
+  where an answer moves a price, the checks clean on the commit. *Evidence:* every answer was the
+  priced option, so no price moved and none was re-read; the path, name, link and 12-digit greps
+  read clean on this commit's tree.
+- [x] **3. The pieces that build it, logged.** Who: 🤖. Done when: `docs/open-items.md` names who
   does each, all waiting for a signed client: the network's and a client's YAML templates, with
-  the ACM certificate in `us-east-1`; the arm64 builds (c-storage's binary, the BFF's function) and
-  how each release lands; the nightly backup and its restore, run from the human's terminal, since
-  the box can only put; the app frame's BFF, one app run by the local stack and a Lambda entry.
+  the ACM certificate in `us-east-1`; the arm64 builds and how each release lands; the nightly
+  backup's restore from the human's terminal, since the box can only put; the server's watching.
+  *Evidence:* open items 4, 5 and 6, and item 1 rewritten to name who does it. The BFF's shape for the
+  local stack and for Lambda is the `app-frame` branch's plan, not logged here.
 
-**Then stop.** This plan ends at a decided architecture. Nothing in it is built for the demo, which
-runs on the local stack; the templates and the first box wait for a signed client.
+**Then stop.** This plan's work ends here, at a decided architecture. Nothing in it is built for
+the demo, which runs on the local stack; the templates and the first box wait for a signed client.
