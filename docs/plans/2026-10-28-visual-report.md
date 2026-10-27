@@ -1,22 +1,23 @@
 # The visual report: the walks page, rebuilt from the old suite
 
-**Where it stands — 2026-10-28 01:29 +07:** the human's calls are answered
-([the human's calls](#the-humans-calls)). The report is a live page: one HTML file that draws each
-walk screen from the app's own components, built by the machine in its sandbox after each step.
-Pictures are the human's terminal option, partners get a claude.ai page on request, and nothing
-runs in CI. Nothing is built; `app-frame` is merged in at `5ecbbfe`, with its BFF and the mock
-matched to the old app's look. **Next:** the human reads the 👤 rows of [the case
-table](#the-case-table), which changed with the answers; then step 3, the build.
+**Where it stands — 2026-10-28 01:44 +07:** the human's six calls are answered, each under its call
+([the human's calls](#the-humans-calls)), and step 2 is ticked. The report is a live page: one HTML
+file that draws each walk screen from the app's own components, built by the machine in its sandbox
+after each step. Pictures are the human's terminal option, partners get a claude.ai page only on
+request, and nothing runs in CI. Nothing is built; `app-frame` is merged in at `5ecbbfe`.
+**Waiting on the human** (step 2b): call 7, where the pixel bases come from, which the answers
+leave open under QA rule 7; and the 👤 rows of [the case table](#the-case-table), six of them new
+or changed. **Next:** step 3, the app frame's amendments; step 4, the build, after step 2b.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask: "plz add new worktree and refactor
 > visual report, like old code", with the old app's visual suite as the reference and, as the
 > model, a run of its walks page the human pointed to. It serves the third of the human's four
 > stages for every piece: an MVP end to end at low cost; verified locally; a generated visual
 > report for feature review; deployed to ridge "so other partners can check without source code".
-> **Amended** 2026-10-28 01:29 +07 with the human's answers: to "can you generate visual report
-> from this repo?", yes, a live page drawn from the app's components that needs no browser to
-> build; "let me run it … local only"; "don't push to artifacts automatically, but only push when
-> requested".
+> **Amended** 2026-10-28 01:44 +07 by the human: at 01:23, "let me run it … local only, don't push
+> to artifacts automatically, but only push when requested"; at 01:26, "yes" to a live page drawn
+> from the app's own components that needs no browser to build, offered on the human's "can you
+> generate visual report from this repo?".
 
 ## At a glance
 
@@ -29,7 +30,7 @@ flowchart LR
   page --> folder["the credo root's walks/<br/>one list for every worktree"]
   page -. "on the human's request" .-> claude["a claude.ai page<br/>private until shared"]
   claude -.-> partners["partners<br/>no source code"]
-  page -. "when the human wants pictures" .-> visual["pnpm visual<br/>👤 terminal: pictures,<br/>pixel differences"]
+  page -. "when the human runs it" .-> visual["pnpm visual<br/>👤 terminal: pictures and<br/>pixel bases (call 7)"]
 ```
 
 Drawn from this plan; no code holds it yet.
@@ -39,14 +40,16 @@ Drawn from this plan; no code holds it yet.
 | The walks page: the map of the day first, then each walk's screens, one question each, and the answers | **kept**, as the run the human pointed to; each screen **drawn live** from the app's components, in Vietnamese and English |
 | A yes that holds until the screen's words change | **kept**; the words read without a browser |
 | Each run a folder of its own beside the worktrees | **kept**, in the credo root's `walks/` |
-| Screenshots and their pixel differences | **changed**: the human's terminal option, `pnpm visual`, local only |
+| Screenshots and their pixel differences | **changed**: the human's terminal option, `pnpm visual`, local only; when its bases are made is call 7 |
 | The partners' page on claude.ai | **kept**, published only when the human asks |
 | Answers clicked on a page `pnpm walks` served | **left**: the human answers in the chat; the machine writes `visual/answers.json` |
 | The gallery, the script that rewrites bases, the seeding, the nightly run, demo mode | **left** |
 
 **Built by** the machine, in its sandbox, after each step: no browser, no wait on the human
-([where it runs](#where-it-runs)). **Pictures** come from the human's terminal alone. **Partners**
-get a claude.ai page when the human asks ([partners](#partners)). No GitHub Actions job.
+([where it runs](#where-it-runs)). **Pictures** come from the human's terminal alone, and so do the
+base images QA rule 7 compares; whether that is enough is the one open call
+([call 7](#the-humans-calls)). **Partners** get a claude.ai page when the human asks
+([partners](#partners)). No GitHub Actions job.
 
 ## Read — 10-28
 
@@ -86,7 +89,7 @@ get a claude.ai page when the human asks ([partners](#partners)). No GitHub Acti
 | The old part | Here | Why | Price |
 | --- | --- | --- | --- |
 | **The capture helper**: `shot` compared and attached a screen, `capture` attached a case's screen uncompared, `shows` ran a test once a language, fixtures wrote rows and froze the clock | **Left** for the page: nothing is captured, each screen is drawn. **Changed** for `pnpm visual`: one spec takes each walk screen's picture | the page needs no browser, so the machine builds it unaided | pictures only when the human runs them |
-| **The visual specs and their bases**: a base for each screen of every spec | **Changed**: a base for each walk screen alone, 14 in piece 1, made and compared by `pnpm visual` on the human's Mac, its platform in its path | [QA](../conventions/qa.md#the-rules) rule 7 keeps a base per walk screen, not per case; local only (call 4) | no pixel is compared until the human runs it |
+| **The visual specs and their bases**: a base for each screen of every spec | **Changed**: a base for each walk screen alone, 14 in piece 1, made and compared by `pnpm visual` on the human's Mac, its platform in its path; when, call 7 | [QA](../conventions/qa.md#the-rules) rule 7 keeps a base per walk screen, not per case; local only (call 4) | no pixel is compared until the human runs it |
 | **The gallery**: every screen, with matches, differences and missing bases | **Left** (call 1): the mock stays apart, at `pnpm mock` | the walks page asks; the mock only shows | — |
 | **The walks page**: the map, each walk's screens with one question, the answers | **Kept** as the run the human pointed to; **changed**: each screen drawn live from the app's components, one HTML file built with Vite as the mock is, its states computed by the build | it needs no browser to build, and opens from disk or as a claude.ai page | the viewer's browser draws the screens, so the page carries script, as the old one did |
 | **The fingerprint**: a screen's accessibility snapshot in a browser, less the navigation unless marked, minted values kept to their shape | **Kept** as the screen's words; **changed**: read from the screen drawn on jsdom; minted values left until a walk screen shows one | rule 7 keys a yes to words, and the machine reads them where it runs; the navigation is left out from the first yes, since leaving it out later would ask every screen again | jsdom lays nothing out, so a word that CSS hides still counts |
@@ -117,16 +120,23 @@ get a claude.ai page when the human asks ([partners](#partners)). No GitHub Acti
 
 ## Where it conflicts, and the amendments
 
-**[QA](../conventions/qa.md) rule 7 needs none** (call 1). The report carries no gallery, so its
-line "*Rejected:* a gallery of every screen that asks nothing" ([qa.md#L100](../conventions/qa.md#L100))
-stands, as does "*Rejected:* a base image per captured case": the bases are the walk's screens
-alone. Amendment A is withdrawn.
+**[QA](../conventions/qa.md) rule 7's gallery line needs no edit** (call 1, moot). The report
+carries no gallery, so "*Rejected:* a gallery of every screen that asks nothing"
+([qa.md#L100](../conventions/qa.md#L100)) stands, as does "*Rejected:* a base image per captured
+case": the bases are the walk's screens alone. Amendment A is withdrawn, and `qa.md` is not edited.
 
-**[The app frame plan](2026-10-27-app-frame.md)** takes six edits (calls 2, 3 and 6), made in the
-build's first commit, after the merge of `app-frame` (step 3). The line numbers are those at
-`5ecbbfe`, the merge of `app-frame`; the build finds each by its text, should a later merge move
-them. B2, B3 and B5 are worded
-to the human's answers on calls 1, 4 and 5: no GitHub runner and no gallery.
+**Rule 7's machine reader is left open** (call 7). "The machine compares its look with its
+committed base image: a moved pixel is a red" ([qa.md#L97](../conventions/qa.md#L97)). With no
+GitHub run (call 4) and no browser in the machine's sandbox ([read](#read--10-28)), a base can be
+made, and a pixel compared, only when the human runs `pnpm visual` in the terminal; the live page
+compares words, never pixels. The answers do not say whether that meets the rule. This plan does
+not decide it, and does not edit `qa.md`.
+
+**[The app frame plan](2026-10-27-app-frame.md)** takes six edits (calls 3 and 6; B1 and B4 follow
+call 2), made at step 3 on this branch, each with its own *Amended* stamp. The line numbers are
+those at `5ecbbfe`, the merge of `app-frame`; each edit is found by its text, should a later merge
+move it. B2, B3 and B5 are worded to the answers on calls 1, 4 and 5: no GitHub runner and no
+gallery. B2 and B3 hold under call 7's recommendation; its other answers re-word them again.
 
 - **B1, the answers' home** ([app-frame#L173](2026-10-27-app-frame.md#L173), lines 173 to 179).
   *Now:* "The answers, dated, written here by the machine from the human's reply:" and a table of
@@ -205,7 +215,7 @@ effects draw, so a screen could read otherwise than it shows.
 
 **From the app frame's step 6**, the app is wired to the BFF, and the page still draws each screen
 from the mock's states: the same components, with invented data. The live app's pictures come from
-the walk spec through `pnpm visual` ([step 5](#steps)). A yes stays keyed to the drawn screen's
+the walk spec through `pnpm visual` ([step 6](#steps)). A yes stays keyed to the drawn screen's
 words, one reader, so demo data alone never asks a screen again.
 
 ### The page
@@ -258,25 +268,28 @@ no browser, only Vite and jsdom, both read back in the sandbox above. After each
 that changes what a walk screen draws, the machine runs it, reads `walks.json` back (what waits,
 what changed, what is open), and names that in the step's evidence. No wait on the human.
 
-**2. The human's terminal: pictures** (from step 4, local only, call 4). When the human wants
-pictures or a pixel difference:
+**2. The human's terminal: pictures and bases** (from step 5, local only, call 4). When the human
+runs it, at the times call 7 sets:
 
 ```sh
 pnpm visual 2>&1 | tee "$ROOT_DIR/logs/visual.log"
 ```
 
 The machine hands the command with `$ROOT_DIR` filled in, as for `act`. It builds the page, then
-Playwright opens it from disk and takes each walk screen's picture at its full width; from step 5
+Playwright opens it from disk and takes each walk screen's picture at its full width; from step 6
 it takes them from the live app on the local stack. Playwright's report lands in the same folder:
-the pictures, and base, now and the difference where one moved. The bases are the Mac's, the
-platform in their path. The machine watches the log, reads it whole, then reads the report's
-pictures. Once, `pnpm --filter @credo/visual exec playwright install chromium` fetches the browser.
+the pictures, and base, now and the difference where one moved. The bases are made here alone,
+the Mac's, the platform in their path. The machine watches the log, reads it whole, then reads the
+report's pictures. Once, `pnpm --filter @credo/visual exec playwright install chromium` fetches
+the browser.
 
 **Not inside the sandbox.** No setting lets Chromium start there. `sandbox.excludedCommands`, in
 the user settings, would run `pnpm visual` outside it, with the human's full rights, the AWS keys
 the sandbox hides among them; the human's answer, local only in the terminal, leaves it out.
 
-**No GitHub Actions job** (call 4).
+**No GitHub Actions job** for the report (call 4): the draft's workflow, `visual.yml`, goes.
+c-storage's own workflow, which uploads its Bruno report, is a separate thing, already approved,
+and stays.
 
 ## Partners
 
@@ -286,7 +299,8 @@ to the same link at the next request. The publish sends the page less the doctyp
 viewport lines the tool's skeleton adds, the old export's rule, and reads the published page back.
 The link is deploy state, so the orchestrator keeps it, never a doc
 ([documentation](../conventions/documentation.md#never-in-a-doc)). Nothing is uploaded anywhere
-unasked.
+unasked. This is how the old app's partners saw its walks page, a claude.ai page shared by link;
+it replaces, for now, the run's GitHub artifact and the path on ridge the draft proposed.
 
 Everything the page holds is already public in the repository: its screens are drawn from its
 code, its questions and answers are its files.
@@ -297,49 +311,53 @@ code, its questions and answers are its files.
 ui/                one export more, ./mock: the mock's screens, their states, the frame
 visual/            @credo/visual: the map, piece 1's walk, the words, the states, the page and
                    its one-file build, the folder's home; answers.json
-visual/pictures/   from step 4: pnpm visual's Playwright config, its spec, the Mac's bases
+visual/pictures/   from step 5: pnpm visual's Playwright config, its spec, the Mac's bases
 ```
 
 - **A package of its own.** *Rejected:* the page inside `ui/`, beside the mock: the report's walks,
   answers and build would join the app's package. *Price:* one export from `ui/`, and React and
   Mantine declared in both.
 - **Scripts:** the root's `pnpm report`, the machine's, builds the page into its folder; from step
-  4, `pnpm visual`, the human's, builds it and adds the pictures. No `visual:update`, no `pnpm
+  5, `pnpm visual`, the human's, builds it and adds the pictures. No `visual:update`, no `pnpm
   walks`.
 - **Tests:** Vitest, on jsdom for the page and the words, in Node for the build and the folder's
   home, tested on a temporary repository; coverage at 100 % of `visual/src/`
   ([QA](../conventions/qa.md#the-rules) rule 8). The Vite config and `pictures/` sit outside
   `src/`.
-- **The catalog** gains `@playwright/test` at step 4 alone, exact, at its rule: the newest release
+- **The catalog** gains `@playwright/test` at step 5 alone, exact, at its rule: the newest release
   two weeks old.
-- **knip:** a `visual` workspace, the page's entry and the build its entries; from step 4,
+- **knip:** a `visual` workspace, the page's entry and the build its entries; from step 5,
   Playwright's config, found by knip's plugin. **Lint:** the root config, with
-  `visual/tsconfig.json`. `.gitignore` gains `/walks/`, and at step 4 Playwright's
+  `visual/tsconfig.json`. `.gitignore` gains `/walks/`, and at step 5 Playwright's
   `test-results/`.
 - **The gate:** `pnpm check` runs `visual/`'s unit tests; `pnpm report` runs after each step,
   outside the check; `pnpm visual` is the human's.
 - **Nothing enters before its caller:** the page's caller is the machine's build after each step;
-  Playwright's is the human's `pnpm visual`, at step 4; the walks hold piece 1's alone.
+  Playwright's is the human's `pnpm visual`, at step 5; the walks hold piece 1's alone.
 
 ## The case table
 
-👤 marks a business row, for the human's read ([QA](../conventions/qa.md) rule 1).
+👤 marks a business row, for the human's read ([QA](../conventions/qa.md) rule 1); the human has
+not read them yet (step 2b). *New* or *changed* marks a row whose meaning moved with the answers
+from the draft at `f0dcd7f`; each other 👤 row says what its draft row said. From the draft, its
+row 6, every state beside the walks, left with call 1; its row 5, a run that lacks a screen writes
+no page, is now row 14, the machine's.
 
 | # | 👤 | The case | Held by |
 | --- | --- | --- | --- |
 | 1 | 👤 | The page opens on the map: the parts of the day across, the people down with their device; a built walk is a card with its title and its count of screens, and an empty cell is hatched, so what is missing shows | unit, `page.test.tsx` |
-| 2 | 👤 | The page draws each walk screen live from the app's own components, in its state, in Vietnamese and in English, at its person's device width | unit, `page.test.tsx`; read back |
+| 2 | 👤 *changed* | The page draws each walk screen live from the app's own components, in its state, in Vietnamese and in English, at its person's device width | unit, `page.test.tsx`; read back |
 | 3 | 👤 | Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question | unit, `page.test.tsx` |
 | 4 | 👤 | Each drawn screen shows its language's answer: not yet asked, a dated yes, or a "no" with its reason | unit, `states.test.ts`, `page.test.tsx` |
 | 5 | 👤 | A yes holds while the screen's words stay the same; a changed word asks again, showing the words before and now; a change of look alone asks nothing | unit, `words.test.tsx`, `states.test.ts` |
-| 6 | 👤 | The machine builds the page in its sandbox, with no browser, after each step, with no wait on the human | read back, at step 3 and each step after |
-| 7 | 👤 | The page is one file that opens from disk or as a claude.ai page, with no network: no font or script from elsewhere | unit, `build.test.ts` |
-| 8 | 👤 | Nothing in the published page names a key, a person or a path on one machine | unit, `build.test.ts` |
-| 9 | 👤 | The page says what it was built from: the branch, the commit and its time | unit, `page.test.tsx` |
+| 6 | 👤 *new* | The machine builds the page in its sandbox, with no browser, after each step, with no wait on the human | read back, at step 4 and each step after |
+| 7 | 👤 *changed* | The page is one file that opens from disk or as a claude.ai page, with no network: no font or script from elsewhere | unit, `build.test.ts` |
+| 8 | 👤 *changed* | Nothing in the published page names a key, a person or a path on one machine | unit, `build.test.ts` |
+| 9 | 👤 *changed* | The page says what it was built from: the branch, the commit and its time | unit, `page.test.tsx` |
 | 10 | 👤 | Every worktree's builds land in one list, the credo root's `walks/`, a folder a build, never committed | unit, `home.test.ts` |
-| 11 | 👤 | `pnpm visual`, in the human's terminal, takes each walk screen's picture in both languages and shows any that moved beside its base and the difference (step 4) | the spec, `pnpm visual` |
+| 11 | 👤 *new* | `pnpm visual`, in the human's terminal, takes each walk screen's picture in both languages and shows any that moved beside its base and the difference (step 5; call 7) | the spec, `pnpm visual` |
 | 12 | | A screen's words are its texts, accessible names, field values, placeholders and image alternatives in reading order, with their roles, read from the screen drawn on jsdom, less the menu's navigation unless the walk marks the screen as about it | unit, `words.test.tsx` |
-| 13 | | Two builds of one commit give each walk screen the same words | read back, step 3 |
+| 13 | | Two builds of one commit give each walk screen the same words | read back, step 4 |
 | 14 | | Each walk screen names a state the mock draws; one it lacks stops the build, naming it | unit, `walks.test.ts` |
 | 15 | | An answer whose screen left the walks is listed on the page, never dropped from the count | unit, `states.test.ts` |
 | 16 | | An answers file that does not parse, or a row of no known form, stops the build; it never reads as nothing answered | unit, `answers.test.ts` |
@@ -347,20 +365,25 @@ visual/pictures/   from step 4: pnpm visual's Playwright config, its spec, the M
 | 18 | | A folder is written aside and renamed, so a stopped build leaves none half written | unit, `build.test.ts` |
 | 19 | | The page's data is inlined with every `<` escaped, so no text of the walks or the answers ends its script | unit, `build.test.ts` |
 | 20 | | The published page is the folder's page less the doctype, charset and viewport lines the tool's skeleton adds | read back, at each publish |
-| 21 | | Pictures are compared on the human's Mac alone, each base with its platform in its path (step 4) | the config |
+| 21 | | Pictures are compared on the human's Mac alone, each base with its platform in its path (step 5; call 7) | the config |
 | 22 | | No run is retried | the config, `retries: 0` ([QA](../conventions/qa.md#the-rules) rule 6) |
 
 ## Hazards no gate catches
 
 - **jsdom lays nothing out.** A word that CSS hides at a width still counts, and a change made in
-  CSS alone asks nothing. *Guard:* the pictures, `pnpm visual`, are the check of looks.
+  CSS alone asks nothing. *Guard:* the pictures, `pnpm visual`, are the check of looks, but only
+  when the human runs them.
+- **The pixel check runs only in the human's terminal.** Between two runs a moved pixel is no red,
+  and the machine's evidence after a step can name none. *Guard:* call 7 sets when the human runs
+  it; the machine names, in each step that changes what a walk screen draws, that no pixel was
+  compared.
 - **The page draws from the mock's states, with invented data.** A screen wired wrong to the BFF
   still draws right on it. *Guard:* the walk on the live app (the app frame's step 8) and `pnpm
-  visual` on the local stack (step 5) are the checks of the wiring.
+  visual` on the local stack (step 6) are the checks of the wiring.
 - **The pictures are the Mac's.** The app now ships its font, Noto Sans, inlined in the one file,
   so the page reads alike everywhere; but each platform draws the same font a little differently,
   so the bases hold on the Mac alone. *Trigger to revisit:* a second machine that runs `pnpm
-  visual`.
+  visual` (call 7).
 - **The answers are public**, and so is the mock's invented password, which the page carries as
   the mock does. *Guard:* the machine writes a reason as the human gave it, never a name
   ([documentation](../conventions/documentation.md#nothing-machine-local-or-personal-in-a-committed-file));
@@ -370,72 +393,152 @@ visual/pictures/   from step 4: pnpm visual's Playwright config, its spec, the M
 
 ## The human's calls
 
-Each answered 2026-10-28 01:29 +07 by the human.
+The draft's six calls, each answered under it; then call 7, which the answers leave open.
 
-0. **The report is a live page.** To the machine's "can you generate visual report from this
-   repo?": yes. Each screen drawn from the app's own components in its state, one self-contained
-   HTML file, built by the machine in its sandbox after each step; a yes held by the screen's
-   words. Screenshots become the human's terminal option.
-1. **The gallery (amendment A).** Moot: the report carries no gallery, so rule 7 stands and A is
-   withdrawn. The mock stays apart, at `pnpm mock`.
-2. **How the human answers.** As recommended: in the chat; the machine writes
-   `visual/answers.json`; no `pnpm walks` server.
-3. **The app frame's lines B1 to B5.** As recommended, made in the build's first commit; B2, B3
-   and B5 worded to the answers on calls 1, 4 and 5.
-4. **Where it runs.** "let me run it … local only": the pictures in the human's terminal alone; no
-   GitHub Actions job.
-5. **Partners.** "don't push to artifacts automatically, but only push when requested": a claude.ai
-   page, published on request; ridge's address left behind.
-6. **A seventh screen, the failed save (amendment B6).** As recommended.
+**The live page, on the human's ask.** The human asked: "can you generate visual report from this
+repo?". The machine offered a live walks page that draws each screen from the app's own
+components: one self-contained HTML file that needs no browser to build, so the machine builds it
+in its sandbox after each step; the map and the walks kept, a yes held by the screen's words;
+screenshots, `pnpm visual`, the human's terminal option rather than the report's source.
+**Answered** 2026-10-28 01:26 +07 by the human: "yes".
+
+1. **Rule 7's gallery line (amendment A).** *Recommended:* yes, the mock page beside the walks.
+   *For:* every state of every screen one click from the walks, for partners too. *Against:* a
+   page that asks nothing travels with the report, and a reader may take it for the check.
+   *Price:* 0.8 MB a run's folder.
+   **Answered** 2026-10-28 by the human, with the live page's yes: moot. The report carries no
+   gallery, so rule 7's line stands, A is withdrawn and `qa.md` is not edited; the mock stays
+   apart, at `pnpm mock`.
+2. **How the human answers.** *Recommended:* in the chat; the machine writes `visual/answers.json`
+   on the piece's branch, and the next page shows it. *For:* no server, port or writer; answers in
+   git, where every session reads them, so the partners' page shows them too. *Against:* no
+   buttons; an answer shows at the next build, not at once. *The other way,* the old served mode,
+   is priced at [the answers](#the-answers).
+   **Answered** 2026-10-28 by the human: as recommended.
+3. **The app frame's lines B1 to B5.** *Recommended:* yes, as drafted. B1 and B4 follow call 2; B2
+   and B5 follow the human's ask; B3 corrects what the walk needs.
+   **Answered** 2026-10-28 by the human: as recommended, B2, B3 and B5 worded to the answers on
+   calls 1, 4 and 5 ([the amendments](#where-it-conflicts-and-the-amendments)).
+4. **Where it runs.** *Recommended:* the human's terminal and GitHub Actions, not inside the
+   machine's sandbox. *For:* the sandbox stays whole, and GitHub's run is the verdict, as for
+   c-storage. *Against:* the machine cannot run the report itself. *The other way:*
+   `sandbox.excludedCommands` with `pnpm visual`.
+   **Answered** 2026-10-28 01:23 +07 by the human: "let me run it … local only". The pictures run
+   in the human's terminal alone, and the report has no GitHub Actions job: the draft's step 5 and
+   its `visual.yml` go. c-storage's Bruno report upload, in its own workflow, stays. With the live
+   page (01:26), the report itself needs no browser and runs in the machine's sandbox.
+5. **Partners.** *Recommended:* the run's artifact now; ridge's fixed address with its fourth
+   layer; public then, asked again at that layer's plan. *For:* nothing to build for partners
+   before layer four. *Against:* until then partners need a GitHub login and a zip.
+   **Answered** 2026-10-28 01:23 +07 by the human: "don't push to artifacts automatically, but
+   only push when requested". The machine publishes the page as a claude.ai page only when asked,
+   private until the human shares its link ([partners](#partners)); the GitHub artifact and the
+   path on ridge leave, for now.
+6. **A seventh screen, the failed save (amendment B6).** *Recommended:* yes, under what can go
+   wrong. Case row 8 of piece 1, "A failed save says so and keeps what was typed", names the walk
+   as holding it, and none of the six screens shows it; the mock already draws it. *Price:* two
+   more answers, one more step in the walk spec.
+   **Answered** 2026-10-28 by the human: as recommended.
+7. **Rule 7's base images: who reads the pixels, and when.** Open. Rule 7 gives each walk screen
+   two readers: "The machine compares its look with its committed base image: a moved pixel is a
+   red" ([qa.md#L97](../conventions/qa.md#L97)), and the human's yes. Call 4 leaves no GitHub run,
+   and the machine's sandbox cannot start a browser ([read](#read--10-28)), so a base can be made,
+   and a pixel compared, only when the human runs `pnpm visual` in the terminal. The live page,
+   built after each step, compares words, never pixels.
+   - **A. The bases from the human's terminal, on one machine.** `pnpm visual` makes and compares
+     the 14 bases on the human's Mac, the platform in their path. The human runs it once a piece,
+     at its walk, before the merge into `main`, and whenever they want pictures; the machine reads
+     the log and the report. Rule 7 stands as written. *For:* no edit to a rule decided on 10-27,
+     nothing pushed, nothing to pay; a moved pixel is still a red before a piece merges. *Against:*
+     between two runs a moved pixel is no red, and the machine cannot run the check itself; the
+     bases hold on that one Mac, so another human's run on another machine may red screens that
+     did not change. *Price:* about five minutes of the human's terminal a piece, beside the walk.
+   - **B. Amend rule 7: the machine reads the live page's words and structure; pixels only in the
+     terminal option.** Each build compares each walk screen's words and roles, as drawn on jsdom,
+     with a committed record; a change not committed on purpose is a red. `pnpm visual` keeps its
+     pictures, with no bases. *For:* the machine reads its own check after every step, in its
+     sandbox, on any machine; no base images to keep. *Against:* jsdom lays nothing out, so a
+     colour, a spacing or an overlap that moves is never a red, the look just matched to the old
+     app among them; the machine's reader and the human's yes would read the same words. *Price:*
+     an edit to `qa.md`, its rule 7 and its human version, on the human's yes; one record a walk
+     screen, rewritten with each change of words; the looks checked by eye alone.
+   - **C. A GitHub run for the bases alone.** A workflow on push runs `pnpm visual` in Playwright's
+     container and compares bases made there; the report stays local, and nothing is published.
+     *For:* rule 7 stands, and the pixels are compared on every push without the human's terminal,
+     on one platform for every human. *Against:* it reopens call 4's "local only"; a red shows only
+     after a push, which is the human's, and the machine reads GitHub's run only through the
+     human; the bases are Linux's, so the human's terminal run compares nothing. *Price:* nothing
+     on a public repository; a few minutes a run; a workflow, with `actionlint` and `act` first.
+
+   *Recommended:* A. It keeps the rule as decided and the human's "local only", and the pixels are
+   compared where it counts, before a piece merges, beside a walk the human makes anyway. *Trigger
+   to revisit:* a second machine that runs `pnpm visual`, or a branch that changes `ui/` merging
+   without the run; then C. B and C re-word the app frame's B2 and B3; B adds an amendment to
+   `qa.md` before step 5.
 
 ## Steps
 
 - [x] **1. This plan.** Who: 🤖, 10-28. Done when: committed on `visual-report`; the path, name
-  and link checks clean. *Evidence:* `f0dcd7f`, amended with the human's answers in the commit
-  after the merge `5ecbbfe`; on each, the path and name grep finds nothing and every relative link resolves.
-- [ ] **2. The human's read.** Who: 👤, 10-28, 20 minutes. Done when: each call answered under it,
-  dated; each 👤 row kept or corrected. *The calls:* answered 10-28 01:29 +07. *The rows:* waiting;
-  they changed with the answers.
-- [ ] **3. The build: `visual/` and the live walks page.** Who: 🤖, after step 2 (the rows), 5
-  hours. First, merge `app-frame` into `visual-report` again if it moved since `5ecbbfe` (merged 10-28
-  01:33, the mock matched to the old app's look), so the build takes its newest UI; then the app frame's B1 to B6, found by their text, in
-  the build's first commit; then `ui/`'s one export and `visual/`. Done when: `pnpm check` green,
-  `visual/` at 100 %, knip silent, no warning; each row held by a unit test seen red once by
-  breaking its rule; `pnpm report`, run by the machine in its sandbox, writes a folder in the credo
-  root's `walks/`; read back from its `walks.json`: the map with one cell filled and fourteen
-  hatched, the walk's seven screens in both languages with their questions, each not yet asked; a
-  second build's words equal the first's (row 13); the page searched for a home path, the git
-  author's name and email and a key's shape, none found (row 8). **Not seen:** the page drawn in a
-  browser, the human's eyes.
-- [ ] **4. `pnpm visual`, the human's pictures.** Who: 🤖 writes, after step 3 (it opens the built
-  page), at the first free slot, 1.5 hours; 👤 runs it in the terminal. Done when: `pnpm check`
-  green with `@playwright/test` in the catalog; the human's run's log read whole; its Playwright
-  report in the folder holds the 14 pictures, each opened by the machine; the bases, written by the
-  human's update of the named screens, read in git's diff and committed; a second run green; one
-  screen's colour changed by the machine turns the human's run red, then put back.
-- [ ] **5. The live screens.** Who: 🤖, inside the app frame's step 6 (it takes that step's walk
+  and link checks clean. *Evidence:* `f0dcd7f`; rewritten to the live page at `da9a632`, after the
+  merge `5ecbbfe`, and to the human's answers in the commit after it; on each, the path and name
+  grep finds nothing and every relative link resolves.
+- [x] **2. The human's calls.** Who: 👤, 10-28, 20 minutes. Done when: each of the six calls
+  answered under it, dated; the rows, and call 7 which the answers raised, moved to step 2b on
+  10-28. *Evidence:* [the human's calls](#the-humans-calls): calls 4 and 5 at 01:23 +07; the live
+  page at 01:26 +07, which made call 1 moot; calls 2, 3 and 6 as recommended.
+- [ ] **2b. The human's second read.** Who: 👤, 10-28, 10 minutes. Done when: call 7 answered under
+  it, dated; each 👤 row kept or corrected, the six marked *new* or *changed* first.
+- [ ] **3. The amendments.** Who: 🤖, after step 2 (calls 2, 3 and 6), 30 minutes. Done when: the
+  app frame plan carries B1 to B6, each with its stamp, and its header stamp, each found by its
+  text, committed on this branch; `qa.md` untouched (call 1); the path, name and link checks
+  clean; `git merge-tree` against `app-frame` read and reported.
+- [ ] **4. The build: `ui/`'s one export, `visual/` and the live walks page.** Who: 🤖, after
+  steps 2b (the rows it holds) and 3 (the walk's seven screens), 5 hours. If `app-frame` moved
+  since `5ecbbfe`, merge it in first, so the page draws its newest UI. Everything is built and read
+  in the machine's sandbox; call 7 changes step 5, not this one, unless its answer is B. Done when:
+  `pnpm check` green, `visual/` at 100 %, knip silent, no warning; each row held by a unit test
+  seen red once by breaking its rule; `pnpm report`, run by the machine, writes one folder in the
+  credo root's `walks/`, its output read whole; read back from that folder's `walks.json` and
+  page: the map with one cell filled and fourteen hatched, the walk's seven screens in both
+  languages, each with its question and its words, each not yet asked; the page one file, naming
+  no other host; a second build's words equal the first's (row 13); the page searched for a home
+  path, the git author's name and email and a key's shape, none found (row 8). **Not seen by the
+  machine:** the page drawn in a browser. It hands the human the folder's path; the human opens
+  the page from disk, and the look is the human's to judge.
+- [ ] **5. `pnpm visual`, the human's pictures and the bases.** Who: 🤖 writes, after step 4 (it
+  opens the built page) and call 7 (where the bases come from), 1.5 hours; 👤 runs it in the
+  terminal. Done when, under call 7's recommendation: `pnpm check` green with `@playwright/test`
+  in the catalog; the human's run's log read whole; its Playwright report in the folder holds the
+  14 pictures, each opened by the machine; the bases, written by the human's update of the named
+  screens, read in git's diff and committed; a second run green; one screen's colour changed by
+  the machine turns the human's run red, then put back. Under B: the pictures alone, no bases,
+  after `qa.md` is amended. Under C: a workflow beside it, `act` first.
+- [ ] **6. The live screens.** Who: 🤖, inside the app frame's step 6 (it takes that step's walk
   spec and `pnpm stack`), 1.5 hours; 👤 runs it in the terminal. Done when: `pnpm visual` takes the
   14 pictures from the live app on the local stack in place of the built page's; the bases
   rewritten from that run, read in git's diff and committed, as the app frame's step 6 commits its
   bases; a second run green; the walks page unchanged, each yes still keyed to the drawn screen's
   words.
 
-If step 3 is not done by 10-29 evening, the 10-30 walk goes ahead as the app frame plans it.
+If step 4 is not done by 10-29 evening, the 10-30 walk goes ahead as the app frame plans it.
 
-**Then stop.** After step 3, this plan's first stop. Step 4 takes the first free slot after it;
-step 5 runs inside the app frame's step 6. A claude.ai page is published whenever the human asks.
+**Then stop.** After step 4, this plan's first stop. Step 5 takes the first free slot after it
+and call 7's answer; step 6 runs inside the app frame's step 6. A claude.ai page is published
+whenever the human asks.
 
 ## Left behind
 
 Each until something calls it.
 
-- **A GitHub Actions job for the report** (call 4): local only. It would cost nothing on this
-  public repository and a few minutes a run, and its artifact needs a GitHub login.
+- **A GitHub Actions job for the report**, the draft's `visual.yml` (call 4): local only. It would
+  cost nothing on this public repository and a few minutes a run, and its artifact needs a GitHub
+  login. Call 7's C would bring one back for the bases alone.
 - **An address on ridge for partners** (call 5): a path beside the UI's files on ridge's CloudFront,
   with its fourth layer, when called.
 - **The served answers,** `pnpm walks` and its buttons (call 2): answers by reply.
 - **The gallery** (call 1): the mock stays at `pnpm mock`.
-- **Pictures by default:** `pnpm visual` is the human's, when wanted.
+- **Pictures at every step:** `pnpm visual` is the human's, at the times call 7 sets and when
+  wanted.
 - **Demo mode, the questions hidden:** partners read the same page; until a demo needs the walks
   without questions.
 - **The "before" picture beside a changed screen:** the words before and now show what changed.
