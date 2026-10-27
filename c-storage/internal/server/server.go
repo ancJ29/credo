@@ -76,16 +76,22 @@ func (s *Server) withAccessKey(h http.HandlerFunc) http.Handler {
 	})
 }
 
+// BuildVersion is the commit this binary was built from, stamped by `make box`
+// (-X). A build with no stamp, the tests' and CI's `go build`, is "dev".
+var BuildVersion = "dev"
+
 type healthBody struct {
-	Status string `json:"status"`
+	Status       string `json:"status"`
+	BuildVersion string `json:"buildVersion"`
 }
 
-// health answers GET /health before the key gate, with one field and no more:
-// an unauthenticated body is where an environment leaks.
+// health answers GET /health before the key gate, with two fields and no more:
+// an unauthenticated body is where an environment leaks. buildVersion names
+// code, never an environment or a key. TestHealthNamesTheBuild.
 func (s *Server) health(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/health" {
-			httpx.JSON(w, http.StatusOK, healthBody{Status: "OK"})
+			httpx.JSON(w, http.StatusOK, healthBody{Status: "OK", BuildVersion: BuildVersion})
 			return
 		}
 		next.ServeHTTP(w, r)

@@ -191,13 +191,26 @@ func TestUnknownPathsRevealNothingWithoutTheInternalKey(t *testing.T) {
 	}
 }
 
-// /health is the one answer without a key, and it carries one field: an
-// unauthenticated body is where an environment leaks.
-func TestHealthAnswersOnlyStatus(t *testing.T) {
+// /health is the one answer without a key, and it carries two fields: status
+// and the build it runs, a commit's sha when `make box` stamped it, "dev" when
+// not. An unauthenticated body is where an environment leaks, so no third.
+func TestHealthNamesTheBuild(t *testing.T) {
 	s, _ := build(t)
-	res := serve(s, request("GET", "/health", "", keys{}))
-	if res.Code != http.StatusOK || strings.TrimSpace(res.Body.String()) != `{"status":"OK"}` {
-		t.Fatalf("GET /health = %d %s", res.Code, res.Body)
+	get := func() string {
+		res := serve(s, request("GET", "/health", "", keys{}))
+		if res.Code != http.StatusOK {
+			t.Fatalf("GET /health = %d %s", res.Code, res.Body)
+		}
+		return strings.TrimSpace(res.Body.String())
+	}
+	if got, want := get(), `{"status":"OK","buildVersion":"dev"}`; got != want {
+		t.Errorf("unstamped: GET /health = %s, want %s", got, want)
+	}
+	stamped := BuildVersion
+	t.Cleanup(func() { BuildVersion = stamped })
+	BuildVersion = "0123456789abcdef0123456789abcdef01234567"
+	if got, want := get(), `{"status":"OK","buildVersion":"0123456789abcdef0123456789abcdef01234567"}`; got != want {
+		t.Errorf("stamped: GET /health = %s, want %s", got, want)
 	}
 }
 
