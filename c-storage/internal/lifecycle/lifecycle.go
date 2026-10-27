@@ -50,7 +50,9 @@ func Run(ctx context.Context, cfg *config.Config) error {
 // serve runs the listener until ctx ends or it stops on its own, which ends
 // the process too: a port that no longer answers is a restart.
 func serve(ctx context.Context, h http.Handler, ln net.Listener, grace time.Duration) error {
-	hs := &http.Server{Handler: h, ReadHeaderTimeout: readHeaderTimeout}
+	// DisableGeneralOptionsHandler: net/http would answer `OPTIONS *` itself, 200
+	// and without the key, before the gate. TestOptionsStarWithoutTheInternalKeyIs401.
+	hs := &http.Server{Handler: h, ReadHeaderTimeout: readHeaderTimeout, DisableGeneralOptionsHandler: true}
 	stopped := make(chan error, 1)
 	go func() { stopped <- fmt.Errorf("the listener stopped: %w", hs.Serve(ln)) }()
 

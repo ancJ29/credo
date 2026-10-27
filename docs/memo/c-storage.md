@@ -37,7 +37,7 @@ Drawn from [`server.go`](../../c-storage/internal/server/server.go),
 | --- | --- | --- |
 | Every path but the health check needs the shared key | a stranger learning which paths exist | [the gate](#the-internal-key-gates-every-path) |
 | No record is public | the shared key alone reading a record | [public](#no-record-is-public) |
-| Keys match exactly and are stored only as a hash | a nearly right key; a copied file giving a key away | [keys](#keys-are-compared-exactly-and-stored-hashed) |
+| Keys match exactly; a service's key is stored only as a hash | a nearly right key; a copied file giving a key away | [keys](#keys-are-compared-exactly-and-stored-hashed) |
 | A save over a record changed since it was read is refused, 412 | one person's save erasing another's | [412](#a-write-on-a-moved-record-is-refused) |
 | One save at a time | two saves at once losing one | [one writer](#one-writer-at-a-time) |
 | The file's version is checked at start | running on a file it cannot read | [the schema](#the-schema-version-is-checked-at-open) |
@@ -83,7 +83,7 @@ a wrong one and an unknown service answer alike, 403, so the gate never says whi
 
 Every key is compared whole, in constant time (`TestRequireAcceptsOnlyTheExactKey`). A service's
 access key is stored as its SHA-256 (`TestAccessKeysAreStoredHashed`), so a copy of the file, a
-backup included, holds no key.
+backup included, holds no service key. The internal and super-admin keys are not in the file at all: they sit in the process's environment.
 
 - *Rejected:* comparing a short digest of the key. A digest one byte wide lets one random key in
   256 through, and the internal key is the only gate before every route. The exact compare costs

@@ -33,16 +33,17 @@ const preconditionRule = "a write names at most one of If-Match, a record's tag,
 
 // precondition is If-Match, the tag the caller read, or If-None-Match: *, that
 // none exists. One it cannot read is refused, never ignored, or a conditional
-// write would run unconditional.
+// write would run unconditional. Presence is read from the header map, never
+// Header.Get: an empty value, or a second line, would read as no precondition.
 func precondition(r *http.Request) (p *store.Precondition, ok bool) {
-	match, noneMatch := r.Header.Get("If-Match"), r.Header.Get("If-None-Match")
+	match, noneMatch := r.Header["If-Match"], r.Header["If-None-Match"]
 	switch {
-	case match != "" && noneMatch != "":
+	case len(match) > 1 || len(noneMatch) > 1 || (len(match) > 0 && len(noneMatch) > 0):
 		return nil, false
-	case noneMatch != "":
-		return &store.Precondition{Absent: true}, noneMatch == "*"
-	case match != "":
-		return &store.Precondition{Tag: match}, tagShape.MatchString(match)
+	case len(noneMatch) == 1:
+		return &store.Precondition{Absent: true}, noneMatch[0] == "*"
+	case len(match) == 1:
+		return &store.Precondition{Tag: match[0]}, tagShape.MatchString(match[0])
 	}
 	return nil, true
 }
@@ -50,7 +51,7 @@ func precondition(r *http.Request) (p *store.Precondition, ok bool) {
 // unconditional refuses a precondition on a write that cannot honour one.
 func unconditional(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("If-Match") != "" || r.Header.Get("If-None-Match") != "" {
+		if len(r.Header["If-Match"]) > 0 || len(r.Header["If-None-Match"]) > 0 {
 			httpx.BadRequest(w, "this write takes no If-Match or If-None-Match")
 			return
 		}

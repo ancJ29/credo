@@ -9,9 +9,10 @@ cd "$(dirname "$0")/.."
 module="$(go list -m)"
 
 # elsewhere: the one file left out is the entry point, which no in-process test
-# can start. It keeps only the wiring and two exits (a bad config, a stop that
-# failed); the e2e job (scripts/e2e.sh, .github/workflows/c-storage.yml) starts
-# the binary and waits on /health, which reads back the happy path alone.
+# can start. It keeps only the wiring and three outcomes: a bad configuration
+# exits 1, a port already taken exits 1 (Run's error), and SIGTERM exits 0 with
+# "stopped" logged. The CI e2e job (scripts/e2e.sh, .github/workflows/c-storage.yml)
+# starts the binary and holds all three, and the happy path through /health.
 measured="$(go list ./... | grep -vx "$module/cmd/server")"
 
 # A package without a test file of its own is measured through -coverpkg; asked
@@ -26,7 +27,7 @@ trap 'rm -f "$profile"' EXIT
 # keyed on what its package imports, while its profile carries every measured
 # package: an edit elsewhere replays stale line numbers as uncovered.
 # shellcheck disable=SC2086 # package lists split on whitespace, as go list wrote them
-go test -race -count=1 -coverpkg="$(echo $measured | tr ' ' ,)" -coverprofile="$profile" $tested |
+go test -race -count=1 -timeout 3m -coverpkg="$(echo $measured | tr ' ' ,)" -coverprofile="$profile" $tested |
   sed -E 's/[[:space:]]+coverage: .*//'
 
 # The file list comes from go list, never from the profile: a file no test

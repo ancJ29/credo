@@ -3,7 +3,6 @@ package lifecycle
 import (
 	"bufio"
 	"context"
-	"database/sql"
 	"net"
 	"net/http"
 	"os"
@@ -71,14 +70,15 @@ func TestRunRefusesToStartWithoutItsDatabaseOrItsPort(t *testing.T) {
 }
 
 // started runs serve on a fresh loopback listener, over a file holding one
-// service, until the test ends.
-func started(t *testing.T, grace time.Duration) (db *sql.DB, ln net.Listener, stop context.CancelFunc, done <-chan error) {
+// service, until the test ends. Like Run, it closes the database only after
+// serve returns; done carries serve's answer once that is so.
+func started(t *testing.T, grace time.Duration) (dbPath string, ln net.Listener, stop context.CancelFunc, done <-chan error) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), store.Schema)
+	dbPath = filepath.Join(t.TempDir(), "c-storage.db")
+	db, err := sqlitedb.Open(dbPath, store.Schema)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
-	t.Cleanup(func() { db.Close() })
 	st := store.New(db)
 	if err := st.Register(context.Background(), "svc", accessKey); err != nil {
 		t.Fatalf("register: %v", err)
@@ -88,9 +88,13 @@ func started(t *testing.T, grace time.Duration) (db *sql.DB, ln net.Listener, st
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	served := make(chan error, 1)
-	go func() { served <- serve(ctx, server.Build(internalKey, "admin-key", st).Handler(), ln, grace) }()
+	go func() {
+		err := serve(ctx, server.Build(internalKey, "admin-key", st).Handler(), ln, grace)
+		db.Close()
+		served <- err
+	}()
 	t.Cleanup(stop)
-	return db, ln, stop, served
+	return dbPath, ln, stop, served
 }
 
 // inFlight opens a push whose handler is running and waiting for its body.
@@ -121,7 +125,7 @@ func inFlight(t *testing.T, ln net.Listener, body string) (net.Conn, *bufio.Read
 // the listener stops first and the database closes last. In the reverse order
 // this request would answer 500, for a write the caller retries.
 func TestAWriteInFlightAtShutdownCommits(t *testing.T) {
-	db, ln, stop, done := started(t, shutdownGrace)
+	dbPath, ln, stop, done := started(t, shutdownGrace)
 	body := `{"key":"in-flight","data":{}}`
 	conn, answers := inFlight(t, ln, body)
 
@@ -154,6 +158,12 @@ func TestAWriteInFlightAtShutdownCommits(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatalf("serve = %v, want a clean stop", err)
 	}
+	// The file is read back after the stop, as the next start would find it.
+	db, err := sqlitedb.Open(dbPath, store.Schema)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer db.Close()
 	var n int
 	if err := db.QueryRow(`SELECT count(*) FROM records`).Scan(&n); err != nil || n != 1 {
 		t.Fatalf("rows = %d, %v; want the one that answered 201", n, err)
@@ -178,5 +188,27 @@ func TestAListenerThatStopsOnItsOwnEndsTheProcess(t *testing.T) {
 	ln.Close()
 	if err := <-done; err == nil || !strings.Contains(err.Error(), "the listener stopped") {
 		t.Fatalf("serve = %v, want the listener named", err)
+	}
+}
+
+// net/http answers `OPTIONS *` itself, before any handler, unless told not to:
+// a 200 to a caller with no key. It is 401 like every other path.
+func TestOptionsStarWithoutTheInternalKeyIs401(t *testing.T) {
+	_, ln, _, _ := started(t, shutdownGrace)
+	conn, err := net.Dial("tcp", ln.Addr().String())
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	t.Cleanup(func() { conn.Close() })
+	if _, err := conn.Write([]byte("OPTIONS * HTTP/1.1\r\nHost: c-storage\r\n\r\n")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	res, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("read the answer: %v", err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("OPTIONS * without the key = %d, want 401", res.StatusCode)
 	}
 }
