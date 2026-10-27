@@ -65,6 +65,18 @@ flowchart LR
 
 - **A piece works inside its plan step and stops where the step says.** The "then stop" lives in
   the plan, not in the prompt. Scope grows only at a review, and only on the human's yes.
+- **One piece per session.** The machine ends the piece when its step reaches "then stop", or
+  when a new piece arrives: another plan, or a new deliverable even on the same theme. It does
+  this unasked, and does not start the new work:
+  1. It says so in one line.
+  2. It parks the new piece in `open-items.md`.
+  3. It offers the next session's opening line: the worktree, what to read first, the first action.
+
+  A short follow-up on the session's own output stays: a decision its step just raised, or a
+  correction to its recap. If the human insists on going on, the human's call wins; the machine
+  says once what that costs. *Why:* a session's context can be thrown away only because the plan
+  and the recap are kept. A second piece makes the session long, mixes two pieces' state, and
+  leaves the next session to re-derive both from scrollback.
 - **Nothing enters unless something calls it now**, whether a route, a package, a page or a memo.
   *Rejected:* building for a caller still to come. Code nothing calls is still read, carried and
   kept compiling, all for nothing.
