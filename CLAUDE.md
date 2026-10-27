@@ -11,4 +11,5 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
   is the trunk and only receives merges; each piece works on its own branch in its own worktree.
   The worktrees share one stash stack, so never run a bare `git stash`. The `orchestrator` branch
-  holds the orchestrator's board and never merges with `main`.
+  holds the orchestrator's board. It never takes `main` in, and reaches `main` only as one squash
+  merge, when the human says.
