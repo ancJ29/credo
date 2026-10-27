@@ -17,10 +17,12 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: c-storage/go.mod
@@ -28,3 +30,41 @@ jobs:
       - name: make check
         working-directory: c-storage
         run: make check
+
+  # The assembled server on a real socket: scripts/e2e.sh starts the binary on a
+  # fresh database and runs the Bruno collection against it.
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: c-storage/go.mod
+          cache-dependency-path: c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Install Bruno CLI
+        run: npm install -g @usebruno/cli@4.2.0
+      - name: End-to-end
+        working-directory: c-storage
+        env:
+          E2E_REPORT: ${{ runner.temp }}/c-storage-e2e-report.html
+        run: bash scripts/e2e.sh
+      # A failed run keeps its report too, which is when it is most needed. The
+      # report carries no key (scripts/e2e.sh searches it before it passes).
+      # Under act (which sets ACT) the step is skipped, as its artifact store is
+      # unreachable from the job's container.
+      - name: Keep the report
+        if: always() && !env.ACT
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: c-storage-e2e-report
+          path: ${{ runner.temp }}/c-storage-e2e-report.html
+          retention-days: 14
+          if-no-files-found: warn

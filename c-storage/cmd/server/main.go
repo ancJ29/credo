@@ -24,6 +24,9 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	// The first signal starts the shutdown; a second, in its grace period, gets the
+	// default action and ends the process.
+	go func() { <-ctx.Done(); stop() }()
 	if err := lifecycle.Run(ctx, cfg); err != nil {
 		slog.Error("stopped", "error", err)
 		os.Exit(1)

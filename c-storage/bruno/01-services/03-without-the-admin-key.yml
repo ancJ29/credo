@@ -1,0 +1,38 @@
+info:
+  name: Without the super-admin key
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/register"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}-other",
+        "accessKey": "{{accessKey}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401", function() {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Register with no `X-Super-Admin-Key`. **Expected: 401**, as for a wrong one.

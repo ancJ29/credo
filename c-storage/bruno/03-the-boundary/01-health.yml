@@ -1,0 +1,30 @@
+info:
+  name: Health
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/health"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 without a key", function() {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("one field, and no more", function() {
+          expect(res.getBody()).to.deep.equal({ status: "OK" });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The one route without a key. **Returns** 200 `{ status: "OK" }`.
