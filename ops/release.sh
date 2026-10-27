@@ -98,7 +98,7 @@ box 'sudo systemctl daemon-reload && sudo systemctl enable c-storage 2>/dev/null
 box 'systemctl is-active c-storage'
 
 step "/health names the commit"
-if ! wait_build "$sha" 30 box curl -fsS "http://127.0.0.1:$BOX_PORT/health"; then
+if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; then
   box 'sudo journalctl -u c-storage -n 20 --no-pager' || true
   die "release of $sha failed: the box is as it is"
 fi

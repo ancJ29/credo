@@ -72,6 +72,8 @@ echo "unit=$(systemctl is-active c-storage 2>&1 || true)"
 echo "listen=$(ss -Hltn sport = :"$port" | awk '{print $4}' | sort -u | tr '\n' ' ')"
 echo "keys=$(stat -c '%a %U' /etc/c-storage/keys.env 2>&1 || true)"
 echo "oom=$(journalctl -k -b --no-pager 2>/dev/null | grep -ciE 'out of memory|oom-kill' || true)"
+echo "dbdir=$(stat -L -c '%a' /var/lib/c-storage 2>&1 || true)"
+echo "dbfiles=$(stat -L -c '%a' /var/lib/c-storage/c-storage.db* 2>&1 | sort -u | tr '\n' ' ')"
 echo "arch=$(uname -m)"
 echo "memory=$(free -m | awk '/^Mem:/{print $7" MiB available of "$2" MiB"}')"
 echo "swap=$(free -m | awk '/^Swap:/{print $3" of "$2" MiB used"}')"
@@ -82,11 +84,13 @@ fact() { sed -n "s/^$1=//p" <<<"$facts"; }
 expect "c-storage's unit" active "$(fact unit)"
 expect "c-storage listens on" "127.0.0.1:$BOX_PORT " "$(fact listen)"
 expect "the keys file's mode and owner" "600 root" "$(fact keys)"
+expect "the database directory's mode" 700 "$(fact dbdir)"
+expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfiles)"
 expect "OOM kills since boot" 0 "$(fact oom)"
 echo "box: $(fact arch); memory $(fact memory); swap $(fact swap); disk $(fact disk)"
 
 step "/health names a commit of main"
-body=$(curl -fsS "http://127.0.0.1:$LOCAL_PORT/health" || true)
+body=$(curl -fsS -m 5 "http://127.0.0.1:$LOCAL_PORT/health" || true)
 build=$(build_of "$body")
 if [ -z "$build" ] || [ "$build" = dev ]; then
   red "/health names no commit (answered: ${body:-nothing})"

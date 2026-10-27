@@ -10,6 +10,10 @@ StartLimitIntervalSec=0
 [Service]
 DynamicUser=yes
 StateDirectory=c-storage
+# The database is the service's alone: SQLite makes its files at the process umask, and systemd's
+# state directory defaults to 0755.
+StateDirectoryMode=0700
+UMask=0077
 Environment=PORT=3181
 Environment=DB_PATH=/var/lib/c-storage/c-storage.db
 EnvironmentFile=/etc/c-storage/keys.env

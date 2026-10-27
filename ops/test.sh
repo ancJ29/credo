@@ -57,7 +57,7 @@ serve() { # <stamp>: a server stamped with it, on a free port
   PID=$!
   URL="http://127.0.0.1:$port/health"
   for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
-    curl -fsS "$URL" >/dev/null 2>&1 && return 0
+    curl -fsS -m 2 "$URL" >/dev/null 2>&1 && return 0
     sleep 0.25
   done
   echo "the stand-in server never answered" >&2
@@ -74,20 +74,20 @@ other=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 
 serve "$other"
 rc=0
-wait_build "$want" 2 curl -fsS "$URL" >"$WORK/out" || rc=$?
+wait_build "$want" 2 curl -fsS -m 2 "$URL" >"$WORK/out" || rc=$?
 check "a server stamped with another commit fails the check" 1 "$rc"
 check "  and the answer names what it read" 1 "$(grep -c "$other" "$WORK/out")"
 stop
 
 serve dev
 rc=0
-wait_build "$want" 2 curl -fsS "$URL" >/dev/null || rc=$?
+wait_build "$want" 2 curl -fsS -m 2 "$URL" >/dev/null || rc=$?
 check "an unstamped server (dev) fails the check" 1 "$rc"
 stop
 
 serve "$want"
 rc=0
-wait_build "$want" 2 curl -fsS "$URL" >/dev/null || rc=$?
+wait_build "$want" 2 curl -fsS -m 2 "$URL" >/dev/null || rc=$?
 check "a server stamped with the commit passes" 0 "$rc"
 stop
 
