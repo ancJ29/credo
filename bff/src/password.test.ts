@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { scryptSync, timingSafeEqual } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
 
@@ -38,6 +38,14 @@ describe('A password is scrypt with its own salt, compared in constant time', ()
   it('refuses a stored value it cannot read, and one whose hash is the wrong length', async () => {
     expect(await verifyPassword('x', 'plain-text-password')).toBe(false);
     expect(await verifyPassword('x', 'scrypt$16384$8$1$c2FsdA$c2hvcnQ')).toBe(false);
+  });
+
+  it('refuses a stored hash cut short, though it is the right password’s own key as far as it goes', async () => {
+    const salt = Buffer.from('0123456789abcdef');
+    const cut = scryptSync('right', salt, 32, { N: 16384, r: 8, p: 1 });
+    const stored = `scrypt$16384$8$1$${salt.toString('base64url')}$${cut.toString('base64url')}`;
+
+    expect(await verifyPassword('right', stored)).toBe(false);
   });
 
   it('spends a check on nobody and always answers no one', async () => {
