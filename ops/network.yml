@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  The one network under every environment and every client's stack: a VPC with no internet
+  gateway and the Instance Connect Endpoint, the only way in. Made by ops/stack.sh network, as
+  the stack credo-network; docs/plans/2026-10-28-ridge.md#the-templates says why.
+
+Parameters:
+  Zone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: The zone every subnet and box sits in, the first that offers the box's type.
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    AllowedPattern: '^10\.[0-9]{1,3}\.0\.0/16$'
+    Description: The /16 that holds the endpoint's /28 and each environment's /24.
+  EndpointCidr:
+    Type: String
+    Default: 10.0.0.0/28
+    Description: The /28 the endpoint sits in, inside VpcCidr and outside every environment's /24.
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  # The local route alone: no internet gateway, no NAT, so nothing here can leave the VPC.
+  Routes:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+  EndpointSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref EndpointCidr
+      AvailabilityZone: !Ref Zone
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-endpoint
+
+  EndpointSubnetRoutes:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref EndpointSubnet
+      RouteTableId: !Ref Routes
+
+  # ssh out to the VPC and nothing else. With an egress rule given, the default allow-all goes.
+  EndpointGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName} Instance Connect Endpoint - ssh out to the VPC alone
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref VpcCidr
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-endpoint
+
+  # The client's address is not preserved, so a box's group admits this endpoint by its group.
+  Endpoint:
+    Type: AWS::EC2::InstanceConnectEndpoint
+    Properties:
+      SubnetId: !Ref EndpointSubnet
+      SecurityGroupIds:
+        - !Ref EndpointGroup
+      PreserveClientIp: false
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcId
+  VpcCidr:
+    Value: !Ref VpcCidr
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcCidr
+  RoutesId:
+    Value: !Ref Routes
+    Export:
+      Name: !Sub ${AWS::StackName}-RoutesId
+  Zone:
+    Value: !Ref Zone
+    Export:
+      Name: !Sub ${AWS::StackName}-Zone
+  EndpointId:
+    Value: !Ref Endpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-EndpointId
+  EndpointGroupId:
+    Value: !Ref EndpointGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-EndpointGroupId
