@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/app.ts"
+    ".": "./src/app.ts",
+    "./password": "./src/password.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
