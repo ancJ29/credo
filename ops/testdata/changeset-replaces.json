@@ -1,0 +1,49 @@
+{
+  "ChangeSetName": "ops-20261028-000001",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "Box",
+        "PhysicalResourceId": "i-0123456789abcdef0",
+        "ResourceType": "AWS::EC2::Instance",
+        "Replacement": "True",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "ImageId", "RequiresRecreation": "Always"},
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Remove",
+        "LogicalResourceId": "OldGroup",
+        "PhysicalResourceId": "sg-0123456789abcdef1",
+        "ResourceType": "AWS::EC2::SecurityGroup",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "BoxGroup",
+        "PhysicalResourceId": "sg-0123456789abcdef0",
+        "ResourceType": "AWS::EC2::SecurityGroup",
+        "Replacement": "False",
+        "Scope": ["Properties"],
+        "Details": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "ChangeSetName": "ops-20261028-000000",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
+        "LogicalResourceId": "Subnet",
+        "ResourceType": "AWS::EC2::Subnet",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
+        "LogicalResourceId": "Box",
+        "ResourceType": "AWS::EC2::Instance",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "BoxGroup",
+        "PhysicalResourceId": "sg-0123456789abcdef0",
+        "ResourceType": "AWS::EC2::SecurityGroup",
+        "Replacement": "False",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "SecurityGroupIngress", "RequiresRecreation": "Never"},
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    }
+  ]
+}
