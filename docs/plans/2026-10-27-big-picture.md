@@ -38,7 +38,8 @@ and login, the employee list, products and inventory, goods receipts, sales orde
 ([the first feature](#the-first-feature)).
 
 The new app **replaces the old one** ([the old app](#the-old-app)). **Not yet:** anything past
-the six pieces, đối soát, a client's server, the import before 11-04 ([not yet](#not-yet)).
+the six pieces, đối soát, a client's server, the import right after the demo is sales-ready
+([not yet](#not-yet)).
 
 ## The goal
 
@@ -132,7 +133,8 @@ Each comes back at a review (the human, 10-27).
 - **No more work on the old app.**
 - **No client's server before a client signs.** The demo runs on the local stack for the
   screenshots and video.
-- **The import after 11-04**, before the first client's setup. Criterion 1 is read then.
+- **The import right after the demo is sales-ready**, before the first client's setup. Criterion
+  1 is read then.
 
 ## Never
 
