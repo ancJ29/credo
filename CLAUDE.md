@@ -29,8 +29,9 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   standalone package per service.** The one shared package is `shared/`
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).
 - **`pnpm stack -- <command>` is one invocation: up, the command, down.** The sandbox cannot signal a
-  process an earlier command started. The command gets `CREDO_URL`, `CREDO_ROOT_NAME` and
-  `CREDO_ROOT_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
+  process an earlier command started. The command gets `CREDO_URL`, `CREDO_CLIENT_CODE` (the demo
+  client's), `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME` and
+  `CREDO_OPERATOR_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
 - **The walk spec (`walk/`) needs a browser, so it runs in the human's terminal, never in the
