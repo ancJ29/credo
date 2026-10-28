@@ -56,3 +56,6 @@ export async function verifyAgainstNobody(password: string) {
   await verifyPassword(password, await nobody);
   return null;
 }
+
+/** A first password: random, 96 bits, shown once and stored only as its hash. */
+export const newPassword = () => randomBytes(12).toString('base64url');

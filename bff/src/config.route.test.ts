@@ -2,7 +2,6 @@ import {
   configDocSchema,
   conflictReplySchema,
   MAX_LOGO_BYTES,
-  recordKeys,
   type TenantConfig,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
@@ -65,7 +64,7 @@ describe('The root sets the company’s name, logo and brand colour; every scree
       payload: { config: company, version: null },
     });
     expect(anonymous.statusCode).toBe(401);
-    expect(await t.client.getRecord(recordKeys.config)).toBeNull();
+    expect(await t.client.getRecord(t.keys.config)).toBeNull();
   });
 
   it('keeps the name trimmed', async () => {
@@ -79,23 +78,23 @@ describe('A config that does not parse is refused on save and stops the boot', (
   it('refuses a save that does not parse, 400, and keeps what was stored', async () => {
     const t = await rootSession();
     await t.save(company, null);
-    const stored = await t.client.getRecord(recordKeys.config);
+    const stored = await t.client.getRecord(t.keys.config);
     const bad = await t.save({ ...company, colour: 'green' }, stored?.tag ?? null);
     expect(bad.statusCode).toBe(400);
     expect(bad.json<{ details: string }>().details).toContain('colour');
-    expect(await t.client.getRecord(recordKeys.config)).toEqual(stored);
+    expect(await t.client.getRecord(t.keys.config)).toEqual(stored);
   });
 
   it('refuses a save whose version is not a tag c-storage could have sent, 400, before c-storage', async () => {
     const t = await rootSession();
     await t.save(company, null);
-    const stored = await t.client.getRecord(recordKeys.config);
+    const stored = await t.client.getRecord(t.keys.config);
     for (const version of ['v1', '', 'not a tag']) {
       const refused = await t.save({ ...company, name: 'Changed' }, version);
       expect(refused.statusCode, version).toBe(400);
       expect(refused.json<{ details: string }>().details).toContain('version');
     }
-    expect(await t.client.getRecord(recordKeys.config)).toEqual(stored);
+    expect(await t.client.getRecord(t.keys.config)).toEqual(stored);
   });
 
   it('refuses a body that is not a config and a bad language set', async () => {
@@ -110,12 +109,12 @@ describe('A config that does not parse is refused on save and stops the boot', (
     expect(notObject.json<{ details: string }>().details).toMatch(/^body: /);
     const noDefault = await t.save({ ...company, languages: ['en'], defaultLanguage: 'vi' }, null);
     expect(noDefault.statusCode).toBe(400);
-    expect(await t.client.getRecord(recordKeys.config)).toBeNull();
+    expect(await t.client.getRecord(t.keys.config)).toBeNull();
   });
 
   it('answers 500 for a stored config that does not parse, never another tenant’s settings', async () => {
     const t = await rootSession();
-    await t.client.putRecord(recordKeys.config, { name: 'half a config' });
+    await t.client.putRecord(t.keys.config, { name: 'half a config' });
     const read = await t.read();
     expect(read.statusCode).toBe(500);
     expect(read.json()).toEqual({ error: 'Internal error' });
@@ -136,7 +135,7 @@ describe('A logo is an image of at most 200 KB; anything else is refused', () =>
       const refused = await t.save({ ...company, logo }, null);
       expect(refused.statusCode).toBe(400);
     }
-    expect(await t.client.getRecord(recordKeys.config)).toBeNull();
+    expect(await t.client.getRecord(t.keys.config)).toBeNull();
   });
 });
 
@@ -165,7 +164,7 @@ describe('A save over a newer one is refused, 409, and the page offers the newer
     expect(again.statusCode).toBe(409);
     expect(conflictReplySchema.parse(again.json()).current).toEqual(first);
 
-    await t.client.removeRecord(recordKeys.config);
+    await t.client.removeRecord(t.keys.config);
     const gone = await t.save(company, first.version);
     expect(gone.statusCode).toBe(409);
     expect(conflictReplySchema.parse(gone.json()).current).toBeNull();

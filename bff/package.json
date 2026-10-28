@@ -5,6 +5,7 @@
   "exports": {
     ".": "./src/app.ts",
     "./password": "./src/password.ts",
+    "./clients": "./src/clients.ts",
     "./env": "./src/env.ts",
     "./tests/build": "./tests/build.ts"
   },

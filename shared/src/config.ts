@@ -29,6 +29,9 @@ export function languagesAreValid({
   );
 }
 
+/** Credo's own colour, a new client's until its root changes it. */
+export const CREDO_COLOUR = '#3e618c';
+
 export const MAX_LOGO_BYTES = 200 * 1024;
 
 const IMAGE_DATA_URL = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*)(={0,2})$/;

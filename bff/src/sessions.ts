@@ -3,7 +3,6 @@ import {
   CStorageError,
   type CStorageClient,
   deviceIdSchema,
-  recordKeys,
   sha256Hex,
   type StoredSession,
   storedSessionSchema,
@@ -28,10 +27,21 @@ function parseHandle(authId: string) {
 
 const sameHash = (a: string, b: string) => constantTimeEqual(Buffer.from(a), Buffer.from(b));
 
-export function createSessions({ storage, now }: { storage: CStorageClient; now: () => number }) {
+/** The sessions of one realm, under the keys `keyOf` builds from a device: a tenant's, or the
+ * operator's. A handle minted in one realm names no record in another, so it resolves to nothing
+ * there. */
+export function createSessions({
+  storage,
+  now,
+  keyOf,
+}: {
+  storage: CStorageClient;
+  now: () => number;
+  keyOf: (device: string) => string;
+}) {
   /** A record that does not parse is no session: the next sign-in on that device replaces it. */
   async function read(device: string) {
-    const found = await storage.getRecord(recordKeys.session(device));
+    const found = await storage.getRecord(keyOf(device));
     const parsed = found ? storedSessionSchema.safeParse(found.data) : null;
     return found && parsed?.success ? { session: parsed.data, tag: found.tag } : null;
   }
@@ -46,7 +56,7 @@ export function createSessions({ storage, now }: { storage: CStorageClient; now:
         user,
         expiresAt: now() + SESSION_MS,
       };
-      await storage.putRecord(recordKeys.session(device), session);
+      await storage.putRecord(keyOf(device), session);
       return { authId: `${device}.${secret}`, expiresAt: session.expiresAt };
     },
 
@@ -65,11 +75,7 @@ export function createSessions({ storage, now }: { storage: CStorageClient; now:
         latest = found.session;
         if (found.session.expiresAt - now() > RENEW_WINDOW_MS) return latest;
         const renewed = { ...found.session, expiresAt: now() + SESSION_MS };
-        const saved = await storage.putRecord(
-          recordKeys.session(handle.device),
-          renewed,
-          found.tag,
-        );
+        const saved = await storage.putRecord(keyOf(handle.device), renewed, found.tag);
         if (saved === 'saved') return renewed;
       }
       return latest;
@@ -84,7 +90,7 @@ export function createSessions({ storage, now }: { storage: CStorageClient; now:
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
         const found = await read(handle.device);
         if (!found || !sameHash(found.session.secretHash, secretHash)) return;
-        const removed = await storage.removeRecord(recordKeys.session(handle.device), found.tag);
+        const removed = await storage.removeRecord(keyOf(handle.device), found.tag);
         if (removed === 'removed') return;
       }
       throw new CStorageError(412, 'the session moved on every attempt to end it');

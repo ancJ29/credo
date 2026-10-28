@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freePort, freshTenant, startCStorage, type RunningCStorage } from '../tests/c-storage';
-import { ROOT, seedUser } from '../tests/tenant';
+import { CODE, ROOT, seedTenant } from '../tests/tenant';
 import { readEnv } from './env';
 import { startBff } from './server';
 
@@ -21,17 +21,24 @@ const environment = (port: number, tenant: Awaited<ReturnType<typeof freshTenant
 describe('the BFF as a process runs it', () => {
   it('listens on the port the environment names and serves its tenant', async () => {
     const tenant = await freshTenant(cs);
-    await seedUser(tenant.client, { ...ROOT, root: true });
+    await seedTenant(tenant.client, CODE);
     const port = await freePort();
     const app = await startBff(environment(port, tenant), { logger: false });
     try {
       const signedIn = await fetch(`http://127.0.0.1:${port}/api/auth/sign-in`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001' },
+        headers: {
+          'content-type': 'application/json',
+          'x-device-id': 'device-aaaa-0001',
+          'x-client-code': CODE,
+        },
         body: JSON.stringify(ROOT),
       });
       expect(signedIn.status).toBe(200);
-      expect((await fetch(`http://127.0.0.1:${port}/api/config`)).status).toBe(404);
+      expect(
+        (await fetch(`http://127.0.0.1:${port}/api/config`, { headers: { 'x-client-code': CODE } }))
+          .status,
+      ).toBe(404);
     } finally {
       await app.close();
     }

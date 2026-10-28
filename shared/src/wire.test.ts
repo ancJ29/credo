@@ -2,8 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   conflictReplySchema,
   configDocSchema,
+  createClientReplySchema,
+  createClientRequestSchema,
   errorReplySchema,
   meReplySchema,
+  operatorMeReplySchema,
+  operatorSessionReplySchema,
   ROUTES,
   saveConfigRequestSchema,
   sessionReplySchema,
@@ -22,7 +26,7 @@ const user = { name: 'root', root: true };
 const TAG = 'a'.repeat(64);
 
 describe('the wire contract', () => {
-  it('names the four routes under /api', () => {
+  it('names every route under /api', () => {
     expect(Object.values(ROUTES).every((path) => path.startsWith('/api/'))).toBe(true);
     expect(ROUTES.config).toBe('/api/config');
   });
@@ -55,5 +59,26 @@ describe('the wire contract', () => {
     expect(signIn('x', 'p'.repeat(1025))).toBe(false);
     expect(signIn('\ud800', 'x')).toBe(false);
     expect(signIn('x', 'a\udc00b')).toBe(false);
+  });
+
+  it('parses the operator’s and the client-making shapes, and refuses extras and bad codes', () => {
+    const operator = { name: 'operator' };
+    expect(
+      operatorSessionReplySchema.safeParse({ authId: 'd.s', expiresAt: 1, operator }).success,
+    ).toBe(true);
+    expect(operatorMeReplySchema.safeParse({ operator, user }).success).toBe(false);
+    expect(createClientRequestSchema.safeParse({ code: 'acme', name: ' Acme ' }).data).toEqual({
+      code: 'acme',
+      name: 'Acme',
+    });
+    expect(createClientRequestSchema.safeParse({ code: 'Acme', name: 'Acme' }).success).toBe(false);
+    expect(createClientRequestSchema.safeParse({ code: 'acme', name: '  ' }).success).toBe(false);
+    expect(
+      createClientReplySchema.safeParse({
+        link: '/login?client-code=acme',
+        rootName: 'root',
+        password: 'p',
+      }).success,
+    ).toBe(true);
   });
 });

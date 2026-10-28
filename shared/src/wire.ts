@@ -1,12 +1,21 @@
 import { z } from 'zod';
 import { tenantConfigSchema } from './config';
+import { clientCodeSchema } from './records';
 
 export const ROUTES = {
   config: '/api/config',
   signIn: '/api/auth/sign-in',
   signOut: '/api/auth/sign-out',
   me: '/api/auth/me',
+  operatorSignIn: '/api/operator/sign-in',
+  operatorSignOut: '/api/operator/sign-out',
+  operatorMe: '/api/operator/me',
+  operatorClients: '/api/operator/clients',
 } as const;
+
+/** The client's code, on every call of a client's: it scopes the call to a tenant and proves
+ * nothing, as the handle does. The operator's routes never read it. */
+export const CLIENT_HEADER = 'x-client-code';
 
 /** The session handle, on every call after sign-in. */
 export const AUTH_HEADER = 'x-auth-id';
@@ -73,3 +82,30 @@ export const conflictReplySchema = z.strictObject({
   current: configDocSchema.nullable(),
 });
 export type ConflictReply = z.infer<typeof conflictReplySchema>;
+
+export const operatorViewSchema = z.strictObject({ name: z.string() });
+
+export const operatorSessionReplySchema = z.strictObject({
+  authId: z.string(),
+  expiresAt: z.number(),
+  operator: operatorViewSchema,
+});
+export type OperatorSessionReply = z.infer<typeof operatorSessionReplySchema>;
+
+export const operatorMeReplySchema = z.strictObject({ operator: operatorViewSchema });
+export type OperatorMeReply = z.infer<typeof operatorMeReplySchema>;
+
+export const createClientRequestSchema = z.strictObject({
+  code: clientCodeSchema,
+  /** The company's name as made, which is also its first settings' name. */
+  name: z.string().trim().min(1).max(200),
+});
+export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;
+
+/** What the operator is shown once: the link's path, the root's name and its first password. */
+export const createClientReplySchema = z.strictObject({
+  link: z.string(),
+  rootName: z.string(),
+  password: z.string(),
+});
+export type CreateClientReply = z.infer<typeof createClientReplySchema>;
