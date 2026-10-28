@@ -1,9 +1,8 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 01:15 +07:** drafted, then amended to the human's answers of 00:4x;
-nothing is built. Both calls are answered: permissions configurable by the root, by department,
-position and employee; and piece 2 goes "all" the way. It waits for the human's read of the 31 👤
-rows ([step 2](#steps)). **Next:** that read; then step 3, the fake `Api` and its `?fake` switch.
+**Where it stands — 2026-10-29 01:44 +07:** the human has read the 31 👤 rows and kept all of them
+as written ([step 2](#steps), ticked). Nothing is built yet. **Next:** step 3, the fake `Api` and its
+`?fake` switch.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -527,8 +526,13 @@ itself:
   before each, the path grep of [documentation](../conventions/documentation.md#nothing-machine-local-or-personal-in-a-committed-file)
   and ridge-app's address grep found nothing in it, every link and anchor in it resolved, and its
   diff named no person. Amended to the human's answers in the second.
-- [ ] **2. The human's read.** Who: 👤, about 45 minutes. Done when: each 👤 row kept or corrected,
-  dated. **Then stop:** no code before it.
+- [x] **2. The human's read.** Who: 👤, about 45 minutes. Done when: each 👤 row kept or corrected,
+  dated. **Then stop:** no code before it. *Evidence:* the human, 2026-10-29 01:4x +07, after
+  reading the 31 👤 rows: "thank you, plz go ahead with 31 business rows in the plan", a yes to
+  rows 1 to 31 as written, none corrected. The four calls the machine flagged stand uncorrected:
+  sign-in by email sends no mail; the photo is kept in c-storage, 256 px, at most 50 KB; the
+  permission layers apply as department, then position, then person, the later winning; the email
+  is a second sign-in name beside the code.
 
 **Group A, the core.**
 
