@@ -16,7 +16,7 @@ A push to `main` releases and checks ridge by itself ([the deploy job](#the-depl
 | a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | to check an environment | `ops/check.sh <env>` | about 2 minutes |
-| to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh <env>` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
+| to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
 ## Before any step
@@ -135,7 +135,8 @@ tunnel. It changes no stack: a template change stays your change set.
 ## The tunnel
 
 Holds `http://127.0.0.1:3192` open to ridge's c-storage, in your own AWS session, until Ctrl-C or the
-endpoint's hour. Only test data goes to ridge through it, never a client's. The why is
+endpoint's hour. Only test data goes to ridge through it, never a client's, and the command accepts no environment but
+`ridge`, until the guard that refuses a client's stack exists. The why is
 [the plan](../docs/plans/2026-10-28-ridge-tunnel.md).
 
 1. `ops/tunnel.sh ridge`, from a worktree at `main`. Wait for the `ready:` lines; the run says ready
@@ -153,8 +154,10 @@ endpoint's hour. Only test data goes to ridge through it, never a client's. The 
    - **something already answers on 127.0.0.1:3192:** another run is open, or a killed one left its
      ssh: `lsof -nP -iTCP:3192 -sTCP:LISTEN`, then stop that ssh (its endpoint ends it within the
      hour anyway).
-   - **a keys file left by a killed run:** the next run replaces it and says so; delete
-     `ridge-tunnel.yml` by hand if there is no next run.
+   - **a keys file left by a killed run (`kill -9`):** the next run replaces it and says so; delete
+     `ridge-tunnel.yml` by hand if there is no next run. The same kill leaves the run's scratch folder
+     `credo-ops.*` in your temp folder, holding the Instance Connect private key it pushed (valid 60
+     seconds after the push, so already useless); delete the folder.
    - **/health names no commit, or a commit main does not hold:** nothing was written; release
      `main` (the deploy job) and run again.
    - **the tunnel dropped:** the endpoint's hour ended, or the box rebooted (the drill does); run it

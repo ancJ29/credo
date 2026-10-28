@@ -1,7 +1,7 @@
 # ridge's tunnel: c-storage from this Mac, held open
 
-**Where it stands — 2026-10-28:** call 1 answered; the command and its guards are written and
-committed on `ridge-tunnel`. **Next:** another model's review (step 3), then CI (step 4).
+**Where it stands — 2026-10-28:** call 1 answered; the command and its guards are written, run
+whole in `ops/test.sh`, reviewed by another model, and its findings handled. **Next:** CI (step 4).
 
 > **Drafted** 2026-10-28 by the machine, from [ridge's plan](2026-10-28-ridge.md), `ops/lib.sh`,
 > `ops/check.sh` and [the c-storage memo](../memo/c-storage.md). The need, from the human on 10-28:
@@ -49,12 +49,12 @@ It costs $0 and adds nothing to AWS, the internet or the local network.
 | --- | --- | --- | --- |
 | 1 | 👤 | One command on this Mac, in the human's own AWS session, holds `http://127.0.0.1:3192` to ridge's c-storage until Ctrl-C or the endpoint's hour, at $0, opening nothing on the internet or the local network | step 5's run |
 | 2 | 👤 | Through it the human registers a service, saves records and reads them back, in Bruno's environment `ridge-tunnel` or with curl | step 5's run |
-| 3 | 👤 | Only test data goes to ridge through it, never a client's, real or copied (ridge's [row 15](2026-10-28-ridge.md#the-checks)) | the human |
-| 4 | 👤 | When the tunnel ends (Ctrl-C, the terminal closed, a drop), the keys file is gone, and no key is ever printed or logged | `ops/test.sh`'s signal test, extended; `on_exit`'s search of the log |
-| 5 | | A port already taken is refused before anything is opened or written, and a refused run removes no file it did not write | `ops/test.sh`: the real c-storage on the port, a keys file planted first |
+| 3 | 👤 | Only test data goes to ridge through it, never a client's, real or copied (ridge's [row 15](2026-10-28-ridge.md#the-checks)). The command refuses any environment but `ridge` until the guard that refuses a client's stack exists (ridge's plan, [Left behind](2026-10-28-ridge.md#left-behind)): a client's stack reachable from the same AWS session would put its admin keys on disk and point the collection, which writes test records, at real data | the human; `ops/test.sh`: `tunnel.sh other` refused before any AWS call |
+| 4 | 👤 | When the tunnel ends (Ctrl-C, the terminal closed, a drop), the keys file is gone, and no key is ever printed or logged | `ops/test.sh`: `tunnel.sh` run whole, ended by INT, TERM and HUP, and by a drop; `on_exit`'s search of the log |
+| 5 | | A port already taken is refused before anything is opened or written, and a refused run removes no file it did not write | `ops/test.sh`: `tunnel.sh` run whole beside a held run and beside a listener that speaks no HTTP, a keys file planted first |
 | 6 | | A forward that cannot bind fails the open, for `check.sh` too | `ops/test.sh`: a stand-in `ssh` reading its arguments |
-| 7 | | Ready only when `/health` through the port names a commit of `main`; `dev` or a sha `main` lacks stops the run | `ops/test.sh`: the real binary stamped each way, on its scratch repository |
-| 8 | | A tunnel that drops is named, and the command exits | `ops/test.sh`: a stand-in `ssh` whose `-O check` fails |
+| 7 | | Ready only when `/health` through the port names a commit of `main`; `dev` or a sha `main` lacks stops the run | `ops/test.sh`: `tunnel.sh` run whole on the real binary stamped each way, on its scratch repository |
+| 8 | | A tunnel that drops is named, and the command exits | `ops/test.sh`: `tunnel.sh` run whole, its stand-in `ssh` master killed |
 | 9 | | The keys file is 0600 and git-ignored, written by the one writer `check.sh` uses too | `ops/test.sh`: the mode read; a path git does not ignore refused |
 
 Each machine row is seen red once, by breaking its line ([QA](../conventions/qa.md) rule 2). Rows 1
@@ -151,7 +151,9 @@ recommended option: a fresh service each run, nothing kept after it.
   `-f`, then keeps the port until the endpoint's hour, and the next run is refused at the port. The
   runbook's branch: `lsof -nP -iTCP:3192 -sTCP:LISTEN`, then stop that ssh.
 - **Keys left on disk.** The same kill leaves the file: 0600, git-ignored, and useless without a
-  tunnel. The next run replaces it and says so. *No gate catches* a file left by a run never
+  tunnel. It also leaves the run's scratch folder in the temp folder, with the Instance Connect
+  private key the run pushed (valid 60 seconds after the push, so already useless). The next run
+  replaces the file and says so. *No gate catches* a file left by a run never
   repeated; the runbook names the file.
 - **A second run on the same port** is refused before it opens or writes anything, and leaves the
   first's file alone (row 5).
@@ -163,16 +165,57 @@ recommended option: a fresh service each run, nothing kept after it.
   run again. The deploy's own check runs on GitHub's runner and touches neither the port nor the
   file.
 
+## Review
+
+Another model's review of `73beb20..e369cd1` (QA rule 5), read-only. It found no `check.sh`
+regression and no key leaked on any exit but `kill -9`. Each finding, handled in the fix pass:
+
+1. **Medium: `tunnel.sh` held by no behavioural test.** `[FIXED]`. `ops/test.sh` now runs the real
+   `tunnel.sh` from a scratch clone with a local origin, stand-in `aws` and `ssh`, and the real
+   c-storage behind the forward; rows 4, 5, 7 and 8 are held there, and the stand-ins and order
+   greps they replaced are retired. Only the clone's port and check interval differ from the real
+   file. Seen red: the reviewer's two mutations, `tunnel_hold` deleted and `BRUNO_ENV_FILE` set
+   before `log_start`.
+2. **Low: `check.sh`'s port refusal unheld.** `[FIXED]`. Held by running `check.sh` on a port with
+   c-storage on it and on one with a silent listener; red with the refusal deleted.
+3. **Low: a second Ctrl-C cuts `on_exit` short.** `[FIXED]`. `on_exit` ignores INT, TERM and HUP
+   from its start; the case signals the group twice while a stray writer holds the log's pipe; red
+   with the line removed.
+4. **Low: a bind failure named only the endpoint.** `[FIXED]`. Both messages name both causes;
+   held by a port taken after the check; red with the old message.
+5. **Low: five more hard-coded `127.0.0.1` on the box.** `[FIXED]`. `check.sh`, `release.sh` and
+   `drill.sh` read `BOX_LISTEN_ADDR`; the messages are unchanged. No test: the value is the same,
+   so no behaviour differs today.
+6. **Low: the writer's refusal test passed with two lines swapped.** `[FIXED]`. Run in a child
+   with `log_start`, asserting the refused path survives the exit; red with the lines swapped.
+7. **Low: the hold test's name claimed a closed tunnel.** `[FIXED]`. The `-O exit` call is counted
+   in the drop, signal and hold cases; red with `box_close` sending nothing.
+8. **Info: `check.sh`'s `cleanup_extra` against `lib.sh`'s wording.** `[FIXED]` by the wording, not
+   by removing it: `check.sh` runs in every deploy and its behaviour stays as it was; it clears its
+   own file whatever wrote it, since each check rewrites it, and the comment now says so.
+9. **Info: the access key's mask and the early ignore check deletable.** `[FIXED]`. The early
+   ignore check is held by a run with no ignore rule (red when deleted); the "note: replacing"
+   line and the clock time by the held run (red when removed). The mask is held by a grep of
+   `tunnel.sh`, since nothing prints the access key to show a leak: a structural hold, red when
+   deleted.
+10. **Info: `kill -9` leaves the scratch folder and its private key.** `[FIXED]`. Named in the
+    hazard above and in the runbook.
+11. **Info: the hold test's `sleep 1` could race.** `[FIXED]`. It waits for the first `-O check`.
+12. **Info: ~145-character comment lines.** `[FIXED]`. Wrapped.
+
+Also from the orchestrator, the machine's call: `ops/tunnel.sh` refuses any environment but
+`ridge` ([row 3](#the-case-table)); seen red with the refusal deleted.
+
 ## Steps
 
 - [x] **1. This plan.** Who: 🤖. Done when: committed on `ridge-tunnel` with the path, name and id
   checks clean, and ridge's plan points here in one line. *Evidence:* this commit.
 - [x] **2. Rows 1 to 4, and call 1.** Who: 👤, 5 minutes. Done when: the human has read the 👤 rows
   and answered call 1. *Evidence:* the call's *Answered* line above.
-- [ ] **3. The command and its guards.** Who: 🤖, about 2 hours. Consumes: step 2's answer. Done
+- [x] **3. The command and its guards.** Who: 🤖, about 2 hours. Consumes: step 2's answer. Done
   when: `ops/tunnel.sh`, the moves into `lib.sh` and `check.sh` calling them, rows 4 to 9 in
   `ops/test.sh` each seen red once then green, `shellcheck -x ops/*.sh` clean, the runbook's row
-  and section, and another model's review (QA rule 5) with its findings fixed. *Written and committed; left unticked until the review.*
+  and section, and another model's review (QA rule 5) with its findings fixed. *Evidence:* [the review](#review), its findings handled.
 - [ ] **4. CI.** Who: 👤 runs act in the terminal, then pushes the orchestrator's merge into
   `main`; 🤖 reads both logs whole. Done when: act's `ops` job is green, then GitHub's `check`,
   `e2e`, `ops` and `deploy`, the deploy's `check.sh`, now calling `lib.sh`, ending `== green`.
