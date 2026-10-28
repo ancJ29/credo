@@ -3,8 +3,8 @@
 > **Decided** 2026-10-27, after reading the old app's QA process. **Amended** 2026-10-27 by the
 > human: rules 7 and 8. **Amended** 2026-10-27 by the
 > human: rules picked from the old repo's standing preferences. **Amended** 2026-10-27 by the
-> human: the gate's scope and cadence, in rule 6. Binds every feature's plan, every test and every
-> merge into `main`.
+> human: the gate's scope and cadence, in rule 6. **Amended** 2026-10-28 by the human: a review's
+> findings tagged, in rule 5. Binds every feature's plan, every test and every merge into `main`.
 
 ## At a glance
 
@@ -30,7 +30,8 @@ The eight rules, numbered as [below](#the-rules):
    route only a test calls is dead.
 3. Each case is tested as close to its code as it can be.
 4. Each test is named after its case; there is no second list.
-5. A different AI model reviews the code before it merges.
+5. A different AI model reviews the code before it merges; each finding is fixed, rejected or
+   deferred, with its reason.
 6. A test that fails only sometimes is a bug, never rerun until it passes; and only the gate that
    can change a conclusion is run.
 7. The screens are the final check: each person's day, on their device, yes or no.
@@ -80,7 +81,11 @@ The map of walks. A dash is a part of the day not built yet.
 5. **A model other than the author's reviews the code before it merges into `main`**, with its
    tests and the case table, asking of each test whether breaking its case would turn it red.
    The author's model is the one in the commits' `Co-Authored-By` line. *Rejected:* the
-   author's model reviewing its own code. It shares the blind spots that wrote it.
+   author's model reviewing its own code. It shares the blind spots that wrote it. Each finding is
+   listed in the recap and tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`, with its reason; a
+   deferred one names where it went. A finding made without context that a memo or the plan
+   already holds is rejected, naming that home. *Why:* treating every finding as a bug erodes
+   trust in the memos, and treating none as one misses real defects.
 6. **A flaky red is a defect: never retried until green.** A rerun may reproduce it, but its
    green is no verdict. A rerun gone green teaches a session to rerun past a real red, and with
    several worktrees running at once, load is the normal case. *Rejected:* a retry setting,
