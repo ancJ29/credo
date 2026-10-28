@@ -1,11 +1,9 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 03:08 +07:** the human's read (step 2), the fake `Api` (step 3), group A's
-pages on the fake (step 4) and A's walk on the fake (step 5) are ticked. The walks page now draws A's
-16 screens as scenes of the app on the fake, in three walks, each with its steps done in its frame;
-`pnpm report` read them back, 32 answers waiting, none from the mock. The walk spec
-`walk/specs/piece-2.spec.ts` and the fake run's script wait for the human's terminal. **Next:** step
-6, the human's preview of the fake walk.
+**Where it stands — 2026-10-29 06:53 +07:** steps 2 to 5 are ticked. The human answered group A's fake walk at
+06:53: 32 of 32 yes, no reasons, taken into `visual/answers.json` (`8a347ca`); the walks page shows none
+of A's screens waiting and no open "no". Step 6 is not ticked yet: the fake run's script waits for
+the human's terminal. **Next:** the human runs it on `8a347ca` or a later commit that changes no screen.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -614,6 +612,11 @@ itself:
   answers are all yes, the human runs the fake run's script: its pictures are the full run's
   reference. Done when: the page shows none of A's screens waiting and no open "no"; the fake run's
   log read whole, green, its 96 pictures named. **Then stop:** A's UI is fixed here.
+  *Evidence so far:* the human, 2026-10-29 06:53 +07, "32 of 32 yes" on the page built at `920132e`,
+  no reasons; `pnpm answers` wrote 32 and refused 0; `pnpm report` read back 0 waiting, 0 asked
+  again, 0 no, 58 yes in all (the 26 earlier yeses kept). *Stopped at:* the fake run's script
+  (`one-off/20261029-0305-fake-run-employee-list.sh`), the human's, not yet run.
+
 - [ ] **7. c-storage's list.** Who: 🤖, the first free slot after step 2, since it takes nothing from
   the UI (while the human previews, for one), about three hours. Done when: row 39 seen red once (the
   prefix ignored, the bound removed, "more" dropped, a key gate skipped); `make check` green at 100 %,
