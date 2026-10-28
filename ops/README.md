@@ -3,7 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases and checks ridge by itself ([the deploy job](#the-deploy-job)).
+A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -15,7 +15,9 @@ A push to `main` releases and checks ridge by itself ([the deploy job](#the-depl
 | to see a change before it happens | add `--plan` to any of the above | about a minute |
 | a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
-| to check an environment | `ops/check.sh <env>` | about 2 minutes |
+| the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
+| the operator's account on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
+| to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
@@ -109,14 +111,21 @@ old loopback listener does not answer: the log then finds no running commit, and
 
 ## The deploy job
 
-The human's push to `main` that touches `c-storage/`, `ops/` or the workflow starts it, once
-`check`, `e2e` and `ops` are green. It builds the binary, takes the deploy role (environment
-`ridge`, secret `AWS_ROLE_ARN`), then runs `ops/release.sh ridge` and `ops/check.sh ridge` over the
-tunnel. It changes no stack: a template change stays your change set.
+The human's push to `main` that touches `c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
+`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, once `check`, `e2e`,
+`ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
+role, since those run third-party code), takes the deploy role (environment `ridge`, secret
+`AWS_ROLE_ARN`), then runs `ops/release.sh ridge`, `ops/app.sh ridge` and `ops/check.sh ridge` over the
+tunnel. It changes no stack: a template change stays your change set. After a change set on ridge,
+re-run the latest deploy: the template's `Bff` is a stub with no environment, and a change to it may
+put that back (the BFF then answers 503 until the next deploy).
 
 1. Read the run's log in GitHub; the scripts' lines end `released <sha>` and `== green`.
    - **superseded: ridge runs <sha>, then == green:** a newer commit of `main` is already on ridge
-     (its gates finished first); nothing was sent. ridge never moves backwards.
+     (its gates finished first); nothing was sent, and the app's ship and the check are skipped: that
+     commit's own deploy shipped them. ridge never moves backwards.
+   - **skipped: ridge's stack holds no layer four yet:** `app.sh` and the check's new reads wait for
+     the human's change set (`ops/stack.sh env ridge`, plan step 15); the job is green without them.
    - **shown cancelled:** a newer push to `main` took its place in the queue; that push's own
      deploy carries it.
    - **red:** a defect, never a run to repeat. Fix forward and push, or revert the bad commit on
@@ -130,9 +139,45 @@ tunnel. It changes no stack: a template change stays your change set.
    skipped there (`ops/test.sh` holds this).
 3. While Actions is down, do the same by hand: [a release by hand](#a-release-by-hand).
 
+## The app
+
+`ops/app.sh ridge` ships the BFF's bundle to the one function and the UI's files to the one bucket,
+code only: the deploy role holds no stack, IAM or CloudFront right. The job passes it what it built
+(`APP_BUNDLE`, `APP_UI_DIR`); by hand it builds the commit in a throwaway worktree (needs pnpm).
+
+1. Read the log's last line: `shipped <sha>`. Before it: `service registered` (the first time) or
+   `service present`, the function's checksum, and the bucket.
+   - **skipped:** the stack holds no layer four yet.
+   - **nothing sent: <sha> is behind what ridge runs:** the function already runs a newer commit.
+   - **the function runs code of checksum ...:** what the function runs is not what was sent; run it again.
+   - **the box holds a bff.env:** the BFF's service code and key, made once by the first run, 0600, root's.
+     The function holds a copy, set again at each run: after a key changes on the box, run
+     `ops/app.sh ridge`, or the BFF answers 503. The BFF's service key cannot be replaced (c-storage has
+     no route for it): a leaked one means a new `bff.env` and a new service code, and ridge's clients
+     made again.
+   - **a key is in this log:** as in [the check](#the-check).
+
+## The operator
+
+`ops/operator.sh ridge` makes the operator's account (the name `operator`, or the one given) and shows
+its first password on your terminal once. It is never written in the log: the script writes it past the
+log, then searches the log for it. It refuses in GitHub's job and without a terminal.
+
+1. Run it from a worktree at `main` with `pnpm install` done, after the first app deploy (which makes
+   the BFF's service). Read the account from the terminal, not the log.
+   - **the operator ... exists:** it will not make one over another; add `--replace` for a new password,
+     the way back from a lost one.
+2. Open `<the app's address>/operator` and sign in. The address is in the local log of
+   `ops/stack.sh env ridge` (never in a committed file or a public log).
+
 ## The check
 
-1. `ops/check.sh ridge`; it ends `== green`, or names each red.
+1. `ops/check.sh ridge`; it ends `== green`, or names each red. Once the stack holds layer four it also
+   reads the BFF's group, the function (its subnet, group and the names of its variables, never the
+   values), the UI's bucket and the one commit in `/health`, the function and `index.html`, then makes a
+   fresh client `check-<time>` through the tunnel and signs it in through the app's address, as a
+   partner would, with no cache in front of `/api/*`. Each run leaves that client, three records.
+   - **needs pnpm install done:** the client is made by `scripts/`, run under Node.
    - **no c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
@@ -184,7 +229,9 @@ state, so release first.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among
-them), and the `/health` check against the real c-storage, built there, so Go must be installed.
+them), `app.sh` and `operator.sh` whole on stand-ins for aws and ssh, and the `/health` check against
+the real c-storage, built there, so Go must be installed. The guards also need Ruby (reads `env.yml`
+as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
 
 1. `shellcheck -x ops/*.sh`

@@ -589,8 +589,8 @@ check "a key in the log: the run fails" 1 "$rc"
 check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
 check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
-echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked)"
-WORKFLOW=$REPO_DIR/.github/workflows/c-storage.yml
+echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
+WORKFLOW=$REPO_DIR/.github/workflows/ci.yml
 deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
   awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
 }
@@ -603,7 +603,7 @@ deploy_guards() {
   [ -n "$block" ] || die "no deploy job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
   need "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
-  need "    needs: [check, e2e, ops]"
+  need "    needs: [check, e2e, ops, app]"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
   need "      group: ridge"
@@ -617,7 +617,24 @@ deploy_guards() {
   steps=$(grep -c '^      - ' <<<"$block" || true)
   # shellcheck disable=SC2016 # a literal workflow expression
   guarded=$(grep -cxF -- '        if: ${{ !env.ACT }}' <<<"$block" || true)
-  [ "$steps" -gt 0 ] && [ "$steps" = "$guarded" ] || missing="${missing}[if: \${{ !env.ACT }} on each of the $steps steps, found $guarded] "
+  # shellcheck disable=SC2016 # a literal workflow expression
+  after=$(grep -cxF -- "        if: \${{ !env.ACT && steps.release.outputs.superseded != 'true' }}" <<<"$block" || true)
+  [ "$steps" -gt 0 ] && [ "$steps" = "$((guarded + after))" ] || missing="${missing}[if: \${{ !env.ACT }} on each of the $steps steps, found $guarded and $after after the release] "
+  # Row 28: the release comes first and says when it was superseded; the app's ship and the check
+  # follow it, in that order, and only they skip when it was; nothing is shipped before the release.
+  table=$(awk '/^      - /{ if (n != "") print n "|" c; n=$0; sub(/^      - (name: )?/, "", n); c="plain" } /^        if: .*steps\.release\.outputs\.superseded != .true./ {c="after"} END { print n "|" c }' <<<"$block" | tail -n 3)
+  [ "$table" = "Release|plain
+Ship the BFF and the UI|after
+Check|after" ] || missing="${missing}[the steps end Release, then the ship and the check, which skip after a superseded release; found: $(tr '\n' ',' <<<"$table")] "
+  grep -qxF -- '        id: release' <<<"$block" || missing="${missing}[id: release on the release step] "
+  rel=$(grep -nF 'run: bash ops/release.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  app=$(grep -nF 'run: bash ops/app.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  chk=$(grep -nF 'run: bash ops/check.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  [ -n "$rel" ] && [ -n "$app" ] && [ -n "$chk" ] && [ "$rel" -lt "$app" ] && [ "$app" -lt "$chk" ] || missing="${missing}[release.sh, then app.sh, then check.sh] "
+  # The builds (third-party code) run before the role is taken.
+  role=$(grep -nF 'uses: aws-actions/configure-aws-credentials' <<<"$block" | head -n 1 | cut -d: -f1)
+  bld=$(grep -nF 'pnpm --filter @credo/bff bundle' <<<"$block" | head -n 1 | cut -d: -f1)
+  [ -n "$role" ] && [ -n "$bld" ] && [ "$bld" -lt "$role" ] || missing="${missing}[the app's build before the role is taken] "
   # No other cancel-in-progress than false, in any group of the file, and no step that may fail and go on.
   if grep 'cancel-in-progress:' "$1" | grep -qv 'cancel-in-progress: false$'; then
     missing="${missing}[cancel-in-progress: false everywhere in the file] "
@@ -646,14 +663,56 @@ awk '/^    environment: ridge$/ {print; print "    continue-on-error: true"; nex
 refuses "a deploy job that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-job.yml"
 awk '/^        run: make box$/ {print "        continue-on-error: true"} 1' "$WORKFLOW" >"$WORK/wf-continue-step.yml"
 refuses "a deploy step that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-step.yml"
-sed 's/needs: \[check, e2e, ops\]/needs: [check, e2e]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
-refuses "a deploy that does not wait for the three gates is refused" "needs: [check, e2e, ops]" deploy_guards "$WORK/wf-needs.yml"
+sed 's/needs: \[check, e2e, ops, app\]/needs: [check, e2e, ops]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
+refuses "a deploy that does not wait for the four gates, the app's among them, is refused (row 34)" "needs: [check, e2e, ops, app]" deploy_guards "$WORK/wf-needs.yml"
 sed 's/^      group: ridge$/      group: ridge-per-run/' "$WORKFLOW" >"$WORK/wf-group.yml"
 refuses "a deploy whose concurrency group is not the one ridge group is refused" "group: ridge" deploy_guards "$WORK/wf-group.yml"
 sed '/^    environment: ridge$/d' "$WORKFLOW" >"$WORK/wf-env.yml"
 refuses "a deploy outside environment ridge is refused" "environment: ridge" deploy_guards "$WORK/wf-env.yml"
 sed 's/aws-region: ap-southeast-5/aws-region: eu-west-1/' "$WORKFLOW" >"$WORK/wf-region.yml"
 refuses "a deploy in another Region than lib.sh's is refused" "aws-region is lib.sh's" deploy_guards "$WORK/wf-region.yml"
+
+# shellcheck disable=SC2016 # literal workflow expressions
+sed "s/^        if: \${{ !env.ACT && steps.release.outputs.superseded != 'true' }}\$/        if: \${{ !env.ACT }}/" "$WORKFLOW" >"$WORK/wf-after.yml"
+refuses "  a ship and a check that go on after a superseded release are refused (row 28)" "skip after a superseded release" deploy_guards "$WORK/wf-after.yml"
+# the ship's step moved before the release: swap the two run lines
+sed -e 's#run: bash ops/release.sh ridge#run: bash ops/TMP.sh ridge#' -e 's#run: bash ops/app.sh ridge#run: bash ops/release.sh ridge#' -e 's#run: bash ops/TMP.sh ridge#run: bash ops/app.sh ridge#' "$WORKFLOW" >"$WORK/wf-order.yml"
+refuses "  an app.sh that runs before the release is refused (row 28)" "release.sh, then app.sh, then check.sh" deploy_guards "$WORK/wf-order.yml"
+sed 's#^        id: release$#        id: released#' "$WORKFLOW" >"$WORK/wf-id.yml"
+refuses "  a release step the later steps cannot read is refused" "id: release" deploy_guards "$WORK/wf-id.yml"
+awk '/Build the BFF.s bundle and the UI/ {skip = 1} skip && /^      # The arm64 binary/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nobuild.yml"
+refuses "  an app that is not built before the role is taken is refused" "the app's build before the role" deploy_guards "$WORK/wf-nobuild.yml"
+
+# app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24
+app_block() { awk '/^  app:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
+app_guards() {
+  local block missing=''
+  block=$(app_block "$1")
+  [ -n "$block" ] || die "no app job"
+  need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
+  need "        run: pnpm check"
+  need "          node-version: 24"
+  need "          node-version: 26"
+  need "    runs-on: ubuntu-24.04"
+  need "        run: pnpm install --frozen-lockfile"
+  # shellcheck disable=SC2016 # the workflow's literal text
+  grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
+  # Node 24 is named before Node 26 is set up, so pnpm check runs under 26 and the bundle under 24.
+  n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
+  n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
+  chk=$(grep -n 'run: pnpm check' <<<"$block" | head -n 1 | cut -d: -f1)
+  [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then pnpm check] "
+  grep -q 'continue-on-error' <<<"$block" && missing="${missing}[no continue-on-error in the app job] "
+  [ -z "$missing" ] || die "the app job lacks: $missing"
+}
+passes "the app job runs pnpm check, with the bundle under Node 24 (rows 34 and 24)" app_guards "$WORKFLOW"
+sed 's#^        run: pnpm check$#        run: pnpm lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
+refuses "  an app job that does not run pnpm check is refused" "run: pnpm check" app_guards "$WORK/wf-nocheck.yml"
+sed 's#^          node-version: 24$#          node-version: 26#' "$WORKFLOW" >"$WORK/wf-no24.yml"
+refuses "  an app job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
+# shellcheck disable=SC2016 # the workflow's literal text
+sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
+refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
 
 echo "== the checks of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }
@@ -963,18 +1022,53 @@ git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gp
 git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
 e2e_sha=$(git -C "$E2E/repo" rev-parse HEAD)
 build "$WORK/server-e2e" "$e2e_sha"
+# The stand-in aws answers the stack (with layer four's outputs when FAKE_LAYER4 is set) and the
+# function and bucket calls app.sh makes, keeping what it was given in the run's state folder.
 cat >"$E2E/fakebin/aws" <<'STANDIN'
 #!/bin/bash
-echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+S=${FAKE_STATE:?}
+echo "aws $*" >>"$S/aws.calls"
+args=("$@")
+arg_after() { local prev='' a; for a in "${args[@]}"; do if [ "$prev" = "$1" ]; then echo "$a"; return; fi; prev=$a; done; }
 case "$*" in
-  *"cloudformation describe-stacks"*) echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}' ;;
+  *"cloudformation describe-stacks"*)
+    layer4=''
+    if [ -n "${FAKE_LAYER4:-}" ]; then
+      layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
+    fi
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
   *"send-ssh-public-key"*) echo True ;;
+  *"lambda update-function-code"*)
+    cp "$(arg_after --zip-file | sed 's#^fileb://##')" "$S/code.zip"
+    openssl dgst -sha256 -binary "$S/code.zip" | base64 >"$S/code.sha"
+    echo 1 >"$S/inprogress"
+    echo Successful ;;
+  *"lambda update-function-configuration"*)
+    envfile=$(arg_after --environment | sed 's#^file://##')
+    echo "$envfile" >"$S/envfile.path"
+    python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
+    cp "$envfile" "$S/envfile.seen"
+    arg_after --description >"$S/description"
+    arg_after --vpc-config >"$S/vpc"
+    echo Successful ;;
+  *"lambda get-function-configuration"*)
+    case $(arg_after --query) in
+      LastUpdateStatus) if [ -f "$S/inprogress" ]; then rm -f "$S/inprogress"; echo InProgress; else echo Successful; fi ;;
+      CodeSha256) if [ -n "${FAKE_BAD_SHA:-}" ]; then echo wrongchecksum; else cat "$S/code.sha"; fi ;;
+      Description) if [ -n "${FAKE_RUNNING:-}" ]; then echo "$FAKE_RUNNING"; elif [ -f "$S/description" ]; then cat "$S/description"; else echo None; fi ;;
+      *) echo "stand-in aws: unknown query: $*" >&2; exit 1 ;;
+    esac ;;
+  *"s3 cp"*) : ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
 STANDIN
 # shellcheck disable=SC2016 # the stand-in's literal text
 printf '#!/bin/sh\nif [ "${1:-}" = --version ]; then echo 4.2.0; fi\n' >"$E2E/fakebin/bru"
-printf '#!/bin/sh\nexit 0\n' >"$E2E/fakebin/node"
+# The stand-in node answers the proof of a Bruno run with nothing, and runs the scripts' own commands
+# (node --import tsx ...) with the real one.
+REAL_NODE=$(command -v node)
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\nif [ "${1:-}" = --import ]; then exec "%s" "$@"; fi\nexit 0\n' "$REAL_NODE" >"$E2E/fakebin/node"
 # The stand-in ssh is the master: opening it starts the real c-storage on the forwarded port (or
 # fails as ssh does with ExitOnForwardFailure when the port is taken); -O check asks whether it is
 # alive, -O exit stops it; a command on the box prints the keys. FAKE_STEAL=1 takes the port first.
@@ -996,6 +1090,11 @@ case $op in
   check) alive && exit 0; echo "Control socket connect: No such file or directory" >&2; exit 255 ;;
   exit) if alive; then kill "$(cat "$S/master.pid")"; rm -f "$S/master.pid"; exit 0; fi; exit 255 ;;
 esac
+if [ -z "$fwd" ] && printf '%s\n' "${args[@]}" | grep -qx -- '-N'; then
+  detach sleep 120 </dev/null >/dev/null 2>&1 &
+  echo $! >"$S/master.pid"
+  exit 0
+fi
 if [ -n "$fwd" ]; then
   lport=$(cut -d: -f2 <<<"$fwd")
   if [ -n "${FAKE_STEAL:-}" ]; then
@@ -1021,11 +1120,16 @@ seen=0
 for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in ec2-user@*) seen=1 ;; esac; done
 case $cmd in
   *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
+  *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
+  *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
+  *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
+  *"curl -fsS -m 5 http://"*"/health"*) if [ -n "${FAKE_RUNNING:-}" ]; then printf '{"status":"OK","buildVersion":"%s"}' "$FAKE_RUNNING"; else exit 7; fi ;;
   *) echo "stand-in ssh: unknown command:$cmd" >&2; exit 1 ;;
 esac
 STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
-export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9
+export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c
+export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
 # ::add-mask::<key> to the terminal, which is not a leak (the mask case below runs with it set).
@@ -1208,6 +1312,275 @@ hold_port "$cport"
 CHECK_LOCAL_PORT=$cport e2e_run check.sh ridge
 stop_server
 check "  and a listener that speaks no HTTP too" "1 gone" "$RC $(file_state "$S/aws.calls")"
+
+echo "== layer four's reads of AWS, on hand-written answers (rows 21, 22, 26, 27)"
+tcp() { # <port> <ranges json> <group ids...>: one IpPermission, as describe-security-groups shows it
+  local port=$1 ranges=$2 pairs
+  shift 2
+  pairs=$(printf '%s\n' "$@" | jq -R '{GroupId: .}' | jq -sc .)
+  jq -nc --argjson p "$port" --argjson r "$ranges" --argjson g "$pairs" \
+    '{IpProtocol: "tcp", FromPort: $p, ToPort: $p, IpRanges: $r, Ipv6Ranges: [], PrefixListIds: [], UserIdGroupPairs: $g}'
+}
+none='[]'
+anywhere='[{"CidrIp":"0.0.0.0/0"}]'
+eg='["sg-ep"]'
+ssh_rule=$(tcp 22 "$none" sg-ep)
+app_rule=$(tcp "$BOX_PORT" "$none" sg-bff)
+rules() { jq -sc . <<<"$*"; }
+check "before layer four the box admits ssh from the endpoint's group alone" yes "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" '' "$BOX_PORT")"
+check "with layer four it admits ssh from the endpoint's group and c-storage's port from the BFF's group" yes \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "c-storage's port open before layer four is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" '' "$BOX_PORT")"
+check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "c-storage's port from an address range is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+check "c-storage's port from another group is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+check "c-storage's port from two groups is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-bff sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+check "a third rule (another port) is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+check "ssh from another group than the endpoint's is refused" no \
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$none" sg-other)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "ssh from anywhere is refused" no \
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+
+egress_rule=$(tcp "$BOX_PORT" "$none" sg-box)
+check "the BFF's group sends to c-storage's port on the box's group, and admits nothing" yes "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT")"
+check "  a second egress rule (all traffic) is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" '{"IpProtocol":"-1","IpRanges":[{"CidrIp":"0.0.0.0/0"}],"Ipv6Ranges":[],"PrefixListIds":[],"UserIdGroupPairs":[]}')" '[]' sg-box "$BOX_PORT")"
+check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT")"
+check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
+check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
+
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a"}}}'
+check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
+check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
+check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
+check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
+check "the function holds the four variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+  "$(function_env_names "$(jq -c '.Environment.Variables.X_SUPER_ADMIN_KEY = "z"' <<<"$fn")")"
+check "  a function with no environment is seen" "" "$(function_env_names '{}')"
+
+pab='{"PublicAccessBlockConfiguration":{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}}'
+statement='{"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::b/*","Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::123:distribution/E1ABC"}}}'
+policy_of() { jq -nc --arg p "$(jq -nc --argjson st "$1" '{Version: "2012-10-17", Statement: $st}')" '{Policy: $p}'; }
+check "the bucket blocks every public path and admits the distribution alone" yes "$(bucket_verdict "$pab" "$(policy_of "[$statement]")")"
+check "  a block switched off is refused" no "$(bucket_verdict "$(jq -c '.PublicAccessBlockConfiguration.BlockPublicPolicy = false' <<<"$pab")" "$(policy_of "[$statement]")")"
+check "  a second statement is refused" no "$(bucket_verdict "$pab" "$(policy_of "[$statement, $(jq -c '.Principal = "*"' <<<"$statement")]")")"
+check "  a policy for everyone is refused" no "$(bucket_verdict "$pab" "$(policy_of "[$(jq -c '.Principal = "*"' <<<"$statement")]")")"
+check "  a policy with no source condition is refused" no "$(bucket_verdict "$pab" "$(policy_of "[$(jq -c 'del(.Condition)' <<<"$statement")]")")"
+check "  no policy at all is refused" no "$(bucket_verdict "$pab" '{}')"
+
+sha1=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+check "/health, the function's description and index.html's metadata name one commit" yes "$(commits_agree "$sha1" "$sha1" "$sha1")"
+check "  a function a deploy behind is refused" no "$(commits_agree "$sha1" "$other" "$sha1")"
+check "  an index.html a deploy behind is refused" no "$(commits_agree "$sha1" "$sha1" "$other")"
+check "  a stub function (no description) is refused" no "$(commits_agree "$sha1" '' "$sha1")"
+check "  and no commit at all is refused" no "$(commits_agree '' '' '')"
+check "index.html's commit is read from CloudFront's headers" "$sha1" "$(meta_commit "$(printf 'http/2 200\nx-amz-meta-commit: %s\netag: "x"' "$sha1")")"
+
+echo "== through the app's address, on a stand-in edge (rows 10, 23, 25: the check's reads, each red when its behaviour breaks)"
+cat >"$WORK/edge.py" <<'PY'
+import json, os, sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+MODE, PASS, NAME, CODE = os.environ.get('FAKE_EDGE_MODE', ''), os.environ['FAKE_EDGE_PASS'], os.environ['FAKE_EDGE_NAME'], os.environ['FAKE_EDGE_CODE']
+HANDLE = 'handle-' + 'x' * 12
+signed_out = [False]
+PAGE = b'<!doctype html><html><body><div id="root"></div></body></html>'
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def reply(self, status, body=b'', ctype='application/json', cached=False):
+        self.send_response(status)
+        self.send_header('content-type', ctype)
+        self.send_header('content-length', str(len(body)))
+        self.send_header('x-cache', 'Hit from cloudfront' if cached else 'Miss from cloudfront')
+        self.end_headers()
+        self.wfile.write(body)
+    def body(self):
+        n = int(self.headers.get('content-length') or 0)
+        return json.loads(self.rfile.read(n) or b'{}')
+    def known(self):
+        return self.headers.get('x-client-code') == CODE
+    def do_GET(self):
+        path = self.path.split('?')[0]
+        if path == '/login': return self.reply(200, PAGE, 'text/html')
+        if path == '/health':
+            if MODE == 'health-leak': return self.reply(200, b'{"status":"OK","buildVersion":"abc"}')
+            return self.reply(200, PAGE, 'text/html')
+        if path == '/api/health':
+            return self.reply(404, b'{"status":"OK","buildVersion":"abc"}' if MODE == 'api-health-leak' else b'{"error":"Not found"}')
+        if path == '/api/operator/me':
+            return self.reply(200, b'{"operator":{"name":"x"}}') if MODE == 'operator-open' else self.reply(401, b'{}')
+        if path == '/api/config':
+            code = self.headers.get('x-client-code')
+            if code is None: return self.reply(400, b'{}')
+            if not self.known():
+                return self.reply(200, PAGE, 'text/html') if MODE == 'unknown-is-page' else self.reply(404, b'{}')
+            return self.reply(200, json.dumps({'config': {'name': NAME}, 'version': 'v'}).encode(), cached=(MODE == 'cached'))
+        if path == '/api/auth/me':
+            ok = self.known() and self.headers.get('x-auth-id') == HANDLE and (not signed_out[0] or MODE == 'no-sign-out')
+            return self.reply(200, b'{"user":{"name":"root","root":true}}') if ok else self.reply(401, b'{}')
+        self.reply(404, b'{}')
+    def do_POST(self):
+        path = self.path.split('?')[0]
+        if path == '/api/auth/sign-in':
+            b = self.body()
+            if self.known() and b.get('name') == 'root' and b.get('password') == PASS:
+                return self.reply(200, json.dumps({'authId': HANDLE, 'expiresAt': 1, 'user': {'name': 'root', 'root': True}}).encode())
+            return self.reply(401, b'{}')
+        if path == '/api/auth/sign-out':
+            signed_out[0] = True
+            return self.reply(204)
+        self.reply(404, b'{}')
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+export FAKE_EDGE_PASS=pa55word-test FAKE_EDGE_NAME="Check check-t" FAKE_EDGE_CODE=check-t
+edge_case() { # <mode> → the reds edge_reads finds, one line each, with the stand-in edge in that mode
+  local eport out
+  eport=$(free_port)
+  FAKE_EDGE_MODE=$1 python3 -I "$WORK/edge.py" "$eport" >/dev/null 2>&1 &
+  PID=$!
+  for _ in $(seq 1 50); do if port_taken "$eport"; then break; fi; sleep 0.1; done
+  out=$( (REDS=''; edge_reads "http://127.0.0.1:$eport" check-t "$FAKE_EDGE_PASS" "$FAKE_EDGE_NAME" >/dev/null; printf '%s' "$REDS") 2>&1 )
+  kill "$PID" 2>/dev/null || true
+  PID=''
+  echo "$out"
+}
+check "a client as a partner reaches it: no red" "" "$(edge_case '')"
+refuses_edge() { # <name> <mode> <text the red names>
+  local got
+  got=$(edge_case "$2")
+  if grep -qF -- "$3" <<<"$got"; then echo "  ok   $1"; else echo "  FAIL $1: wanted a red naming '$3', got '$got'"; fail=1; fi
+}
+refuses_edge "  a code we do not know answered with the app's page (error pages) is red" unknown-is-page "a code we do not know is the BFF's 404"
+refuses_edge "  /health answering c-storage's body is red" health-leak "/health is the app's page"
+refuses_edge "  /api/health carrying the build is red" api-health-leak "/api/health is the BFF's 404"
+refuses_edge "  an /api/* answer from a cache is red" cached "with no cache in front of /api/*"
+refuses_edge "  a handle that outlives sign-out is red" no-sign-out "the handle is refused after"
+refuses_edge "  the operator's door open without a session is red" operator-open "the operator's door without a session"
+cport_edge=$(free_port)
+check "  an address that answers nothing is red, and the address is not in what is printed" "no" \
+  "$( (REDS=''; edge_reads "http://127.0.0.1:$cport_edge" check-t x y 2>&1 | grep -c "127.0.0.1:$cport_edge" | sed 's/^0$/no/'))"
+
+echo "== ops/app.sh run whole, on stand-ins for aws and ssh (rows 27, 28, 30, 31)"
+FAKE_APP_PORT=$(free_port)
+export FAKE_APP=http://127.0.0.1:$FAKE_APP_PORT FAKE_API=http://api-test-host.invalid:9
+APP_LOCAL=$(free_port)
+export APP_LOCAL_PORT=$APP_LOCAL
+mkdir -p "$E2E/ui/assets"
+echo 'exports.handler = async () => ({});' >"$E2E/index.js"
+echo '<div id="root"></div>' >"$E2E/ui/index.html"
+echo 'body{}' >"$E2E/ui/assets/index-abc123.css"
+export APP_BUNDLE=$E2E/index.js APP_UI_DIR=$E2E/ui
+app_sha=$e2e_sha
+git_e2e() { git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
+line_of() { grep -n -- "$1" "$S/aws.calls" | head -n 1 | cut -d: -f1; }
+
+# before layer four: nothing is sent
+e2e_fresh app-skip
+e2e_run app.sh ridge
+check "app.sh before layer four ends green, saying so, and sends nothing" "0 1 gone gone" \
+  "$RC $(grep -c '^skipped: ridge.s stack holds no layer four yet' "$S/out" || true) $(file_state "$S/code.zip") $(file_state "$S/ssh.calls")"
+
+# the whole deploy, in the job (GITHUB_ACTIONS and a mask on every secret)
+export FAKE_LAYER4=1
+e2e_fresh app-job
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "app.sh ships the BFF and the UI: exit 0, and the commit shipped" "0 1" "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true)"
+check "  the service is made sure of through the tunnel with the product's own function" 1 "$(grep -c '^service registered$' "$S/out" || true)"
+check "  the code goes first, then the settings, then the UI's files with index.html last" yes \
+  "$([ "$(line_of 'lambda update-function-code')" -lt "$(line_of 'lambda update-function-configuration')" ] &&
+    [ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
+    [ "$(line_of 's3 cp .*--exclude index.html')" -lt "$(line_of 's3 cp .*index.html --cache-control no-cache')" ] && echo yes || echo no)"
+check "  the zip holds the bundle as index.js, and its checksum was compared" "$(cksum <"$E2E/index.js")" "$(unzip -p "$S/code.zip" index.js | cksum)"
+check "  the settings carry the commit as the description, and ridge's subnet and the BFF's group" "$app_sha subnet-test sg-0bff" \
+  "$(cat "$S/description") $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
+check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
+check "  it names the four variables, and the super-admin key is not among them" "C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+  "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
+check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
+check "  the UI's files other than index.html are kept a year, index.html is read again with the commit in its metadata" "1 1 1" \
+  "$(grep -c "immutable" "$S/aws.calls" || true) $(grep -c "index.html --cache-control no-cache.*--metadata commit=$app_sha" "$S/aws.calls" || true) $(grep -c 's3://ui-test-bucket/ --recursive' "$S/aws.calls" || true)"
+check "  no key is in the log or on the terminal, apart from GitHub's mask lines" "0 0" "$(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(grep -vE '^::add-mask::' "$S/out" | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true)" 
+check "  each key was masked first" 3 "$(grep -cE "^::add-mask::($FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY)\$" "$S/out" || true)"
+check "  the app's address and the API's are masked, and print nowhere" "1 1 0" \
+  "$(grep -cF "::add-mask::$FAKE_APP" "$S/out" || true) $(grep -cF "::add-mask::api-test-host.invalid:9" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "127.0.0.1:$FAKE_APP_PORT|api-test-host" || true)"
+check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+# a second run: the service is present; the first run's bff.env is left as it is
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
+  "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# the function runs other code than was sent
+e2e_fresh app-sha
+FAKE_BAD_SHA=1 e2e_run app.sh ridge
+check "a function whose CodeSha256 is not the upload's stops the deploy before its settings" "1 1 gone" \
+  "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true) $(file_state "$S/description")"
+check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
+
+# ridge never moves backwards: the function already runs a descendant
+e2e_fresh app-superseded
+desc_newer=$(git_e2e commit-tree "HEAD^{tree}" -p HEAD -m newer)
+FAKE_RUNNING=$desc_newer e2e_run app.sh ridge
+check "a function that runs a newer commit is left as it is: exit 0, nothing sent" "0 1 gone" \
+  "$RC $(grep -c "^nothing sent: $app_sha is behind what ridge runs" "$S/out" || true) $(file_state "$S/code.zip")"
+
+echo "== ops/release.sh ends the deploy job's later steps when superseded"
+e2e_fresh release-superseded
+printf 'binary' >"$E2E/binary"
+: >"$S/gh_output"
+GITHUB_ACTIONS=true GITHUB_OUTPUT=$S/gh_output RELEASE_BINARY=$E2E/binary FAKE_RUNNING=$desc_newer e2e_run release.sh ridge
+check "a superseded release exits 0, sends nothing and writes superseded=true for the job" "0 superseded=true 0" \
+  "$RC $(cat "$S/gh_output") $(grep -c 'tee /opt/c-storage' "$S/ssh.calls" || true)"
+e2e_fresh release-superseded-by-hand
+GITHUB_ACTIONS='' RELEASE_BINARY=$E2E/binary FAKE_RUNNING=$desc_newer e2e_run release.sh ridge
+check "  by hand it exits 0 as before" 0 "$RC"
+
+echo "== ops/operator.sh (row 19: the operator's first password is shown on the terminal and in no log)"
+# A pseudo-terminal where the machine can open one (GitHub's runner can); where it cannot, fd 3 is a
+# plain file and the script is told so for this test (OPS_TEST_NO_TTY).
+if python3 -I -c 'import pty; pty.openpty()' >/dev/null 2>&1; then have_pty=1; else have_pty=0; echo "note: no pseudo-terminal here; operator.sh is run with OPS_TEST_NO_TTY=1"; fi
+pty_run() { # <script> <args...>: under a pseudo-terminal, its transcript in the run's out file
+  if [ "$have_pty" = 0 ]; then
+    OPS_TEST_NO_TTY=1 e2e_run "$@"
+    return 0
+  fi
+  (cd "$E2E/repo" && exec python3 -I -c 'import os,pty,sys; os.setsid(); sys.exit(pty.spawn(sys.argv[1:]) >> 8)' bash "ops/$1" "${@:2}") >"$S/out" 2>&1 </dev/null &
+  LPID=$!
+  e2e_reap 60
+}
+e2e_fresh operator
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the box, for the operator's account to be written with it" 0 "$RC"
+export OPS_LOG_DIR=$E2E/logs-operator-pty
+pty_run operator.sh ridge
+pw=$(sed -n 's/^.*the operator is operator, first password \([A-Za-z0-9_-]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
+check "the operator is made, and its first password shown on the terminal once" "0 16 1" \
+  "$RC ${#pw} $(grep -c "first password $pw" "$S/out" || true)"
+check "  the log holds the account made and no password" "1 0" \
+  "$(grep -c '^operator operator made' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log | grep -c "$pw" || true)"
+check "  and the log's search for it ran" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+export OPS_LOG_DIR=$E2E/logs-operator-pty2
+pty_run operator.sh ridge
+check "a second run refuses to make it over, and shows no password" "1 0" \
+  "$RC $(grep -c 'first password' "$S/out" || true)"
+export OPS_LOG_DIR=$E2E/logs-operator-pty3
+pty_run operator.sh ridge --replace
+pw2=$(sed -n 's/^.*first password \([A-Za-z0-9_-]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
+check "--replace gives a new password" "0 yes" "$RC $([ -n "$pw2" ] && [ "$pw2" != "$pw" ] && echo yes || echo no)"
+export OPS_LOG_DIR=$E2E/logs-operator-pipe
+e2e_run operator.sh ridge
+check "without a terminal it refuses, and writes no account" "1 1 0" \
+  "$RC $(grep -c 'needs a terminal to show the password on' "$OPS_LOG_DIR"/*.log || true) $(grep -c 'first password' "$S/out" || true)"
+rc=0
+out=$(GITHUB_ACTIONS=true bash "$E2E/repo/ops/operator.sh" ridge 2>&1) || rc=$?
+check "in GitHub's job it refuses before anything else" "1 1" "$rc $(grep -c "never in a job's log" <<<"$out" || true)"
+unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

@@ -537,9 +537,23 @@ superseded() {
 # npm dependencies). The OIDC variables are present in every step of a job that may mint a token.
 BRU_UNSET=(-u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_RUNTIME_TOKEN)
 
+# clean <command...>: the command without the job's credentials. Bruno CLI, pnpm's installs and
+# builds and the scripts under scripts/ run third-party code (their npm dependencies) beside the role.
+clean() {
+  env "${BRU_UNSET[@]}" "$@"
+}
+
 # bru_clean <bru arguments...>: bru, without the job's credentials
 bru_clean() {
-  env "${BRU_UNSET[@]}" bru "$@"
+  clean bru "$@"
+}
+
+# ridge_cli <arguments...>: scripts/src/ridge-main.ts, the product's own functions (register the BFF's
+# service, make the operator, make a client) run against the c-storage the open tunnel reaches. The
+# connection comes in the environment the caller sets for this command alone. RIDGE_SCRIPTS_DIR is
+# the test's, which has no workspace of its own.
+ridge_cli() {
+  (cd "${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}" && clean node --import tsx src/ridge-main.ts "$@")
 }
 
 # build_of <body> → /health's buildVersion, empty if the body names none
@@ -565,4 +579,195 @@ wait_build() {
   done
   echo "/health answered ${body:-nothing}, wanted buildVersion $want"
   return 1
+}
+
+# --- layer four: the BFF, the UI's bucket and the distribution (docs/plans/2026-10-28-ridge-app.md) ---
+
+BFF_NAME=''
+BFF_GROUP=''
+SUBNET_ID=''
+UI_BUCKET=''
+APP_ADDRESS=''
+API_ADDRESS=''
+
+# app_load: the layer-four outputs of STACK_JSON, masked before anything can print them. Fails when
+# the stack does not hold layer four yet (the change set of the plan's step 15 is the human's), which
+# makes app.sh and the check's new reads skip.
+app_load() {
+  BFF_NAME=$(out BffName)
+  BFF_GROUP=$(out BffGroupId)
+  SUBNET_ID=$(out SubnetId)
+  UI_BUCKET=$(out UiBucketName)
+  APP_ADDRESS=$(out AppAddress)
+  API_ADDRESS=$(out ApiAddress)
+  [ -n "$BFF_NAME" ] || return 1
+  # Both addresses are public in nothing but the human's local log, and in no committed file: the
+  # whole address and its host are masked, as well as the bare host the tools print.
+  mask "$APP_ADDRESS"
+  mask "$(sed -E 's#^https?://##; s#/.*$##' <<<"$APP_ADDRESS")"
+  mask "$API_ADDRESS"
+  mask "$(sed -E 's#^https?://##; s#/.*$##' <<<"$API_ADDRESS")"
+  [ -n "$APP_ADDRESS" ] && [ -n "$UI_BUCKET" ] && [ -n "$SUBNET_ID" ] && [ -n "$BFF_GROUP" ] ||
+    die "the stack names the BFF but not the rest of layer four (AppAddress, UiBucketName, SubnetId, BffGroupId)"
+}
+
+# bff_env_read: SERVICE_CODE and SERVICE_ACCESS_KEY from the box's bff.env, masked before anything
+# is printed
+SERVICE_CODE=''
+SERVICE_ACCESS_KEY=''
+bff_env_read() {
+  local kv
+  kv=$(box sudo cat /etc/c-storage/bff.env)
+  SERVICE_CODE=$(sed -n 's/^SERVICE_CODE=//p' <<<"$kv")
+  SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
+  [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
+  mask "$SERVICE_ACCESS_KEY"
+}
+
+# box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
+# empty before layer four> <c-storage's port> → yes, or no. Ssh from a group of the endpoint, and with
+# layer four c-storage's port from BffGroup alone, each a single tcp port from one group: no address
+# range, list or other group, and no third rule.
+box_rules_verdict() {
+  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" '
+    if all(.[]; .IpProtocol == "tcp" and .FromPort == .ToPort and (.IpRanges | length) == 0
+        and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0 and (.UserIdGroupPairs | length) == 1)
+    then
+      [.[] | {port: .FromPort, group: .UserIdGroupPairs[0].GroupId}] as $r
+      | ($r | map(select(.port == 22))) as $ssh
+      | ($r | map(select(.port != 22))) as $app
+      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null)
+           and $app == (if $bff == "" then [] else [{port: $port, group: $bff}] end)
+        then "yes" else "no" end
+    else "no" end' <<<"$1"
+}
+
+# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> →
+# yes, or no: it sends to c-storage's port on the box's group, one rule and nowhere else, and admits nothing
+bff_rules_verdict() {
+  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" '
+    if $ingress == [] and length == 1 and .[0].IpProtocol == "tcp" and .[0].FromPort == $port and .[0].ToPort == $port
+       and (.[0].IpRanges | length) == 0 and (.[0].Ipv6Ranges | length) == 0 and (.[0].PrefixListIds | length) == 0
+       and (.[0].UserIdGroupPairs | length) == 1 and .[0].UserIdGroupPairs[0].GroupId == $box
+    then "yes" else "no" end' <<<"$1"
+}
+
+# function_network_verdict <get-function-configuration> <subnet> <group> → yes, or no: in ridge's
+# subnet, under the BFF's group alone
+function_network_verdict() {
+  jq -r --arg s "$2" --arg g "$3" \
+    'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
+}
+
+# BFF_ENV_NAMES: the four variables the function holds, sorted, and no other (never the super-admin key)
+# shellcheck disable=SC2034 # check.sh reads it
+BFF_ENV_NAMES=C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+# function_env_names <get-function-configuration> → the names of its variables, sorted and comma-joined;
+# values are never read here
+function_env_names() {
+  jq -r '(.Environment.Variables // {}) | keys | join(",")' <<<"$1"
+}
+
+# bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
+# blocks on, and one statement, an allow of s3:GetObject to CloudFront's service under a condition on
+# the distribution's source ARN (the id is not readable by the deploy role, which holds no CloudFront right)
+bucket_verdict() {
+  local policy
+  policy=$(jq -r '.Policy // empty' <<<"$2" 2>/dev/null) || policy=''
+  [ -n "$policy" ] || { echo no; return 0; }
+  jq -rn --argjson b "$1" --argjson p "$policy" '
+    if ($b.PublicAccessBlockConfiguration == {BlockPublicAcls: true, IgnorePublicAcls: true, BlockPublicPolicy: true, RestrictPublicBuckets: true})
+       and ($p.Statement | length) == 1
+       and ($p.Statement[0] | .Effect == "Allow" and .Principal == {Service: "cloudfront.amazonaws.com"} and .Action == "s3:GetObject"
+            and ((.Condition // {}) | keys == ["StringEquals"]) and (.Condition.StringEquals | keys == ["AWS:SourceArn"])
+            and (.Condition.StringEquals["AWS:SourceArn"] | test("^arn:aws[a-z-]*:cloudfront::[0-9]+:distribution/[A-Z0-9]+$")))
+    then "yes" else "no" end'
+}
+
+# commits_agree <health's commit> <the function's description> <index.html's commit> → yes, or no: one
+# commit, in all three places
+commits_agree() {
+  if [ -n "$1" ] && [ "$1" = "$2" ] && [ "$1" = "$3" ]; then echo yes; else echo no; fi
+}
+
+# meta_commit <response headers, lower-cased> → the commit index.html's metadata names: CloudFront passes
+# S3's x-amz-meta-* headers on, and app.sh puts the commit in `commit`
+meta_commit() {
+  sed -n 's/^x-amz-meta-commit: //p' <<<"$1"
+}
+
+# lambda_wait <function> <seconds>: until the last update of the function is Successful. Polls
+# GetFunctionConfiguration, which the deploy role holds; `aws lambda wait` reads GetFunction, which it does not.
+lambda_wait() {
+  local t=0 status reason
+  while :; do
+    status=$(aws lambda get-function-configuration --function-name "$1" --query LastUpdateStatus --output text)
+    case "$status" in
+      Successful) return 0 ;;
+      Failed)
+        reason=$(aws lambda get-function-configuration --function-name "$1" --query LastUpdateStatusReason --output text)
+        die "the function's update failed: $reason"
+        ;;
+    esac
+    [ "$t" -lt "$2" ] || die "the function's update is still '$status' after $2 s"
+    sleep 2
+    t=$((t + 2))
+  done
+}
+
+# --- through CloudFront, as a browser reaches it ---
+
+EDGE_BASE=''
+EDGE_STATUS=''
+EDGE_BODY=''
+EDGE_HEADERS=''
+# edge <method> <path> [<curl argument>...]: one call through the app's address. The status, the
+# body and the headers are kept in EDGE_*; curl's own words (which name the address) are never printed.
+edge() {
+  local method=$1 path=$2
+  shift 2
+  mkwork
+  EDGE_STATUS=$(curl -sS -m 30 -X "$method" -D "$WORK/edge.headers" -o "$WORK/edge.body" -w '%{http_code}' \
+    "$@" "$EDGE_BASE$path" 2>/dev/null) || EDGE_STATUS=000
+  EDGE_BODY=$(cat "$WORK/edge.body" 2>/dev/null || true)
+  EDGE_HEADERS=$(tr -d '\r' <"$WORK/edge.headers" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+}
+
+# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
+# partner reaches it, each a red when it fails. The password goes to the BFF on curl's stdin, never
+# on a command line. The unknown code, the missing code and the operator's door without a session are
+# answered by the BFF behind /api/*; a cache would answer them from CloudFront.
+edge_reads() {
+  local base=$1 code=$2 pass=$3 name=$4 device auth timed
+  EDGE_BASE=$base
+  device=check-$(random_hex)
+  edge GET "/login?client-code=$code"
+  expect "the app's page at the client's link" "200 yes" "$EDGE_STATUS $(grep -q '<div id="root">' <<<"$EDGE_BODY" && echo yes || echo no)"
+  edge GET /health
+  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+  edge GET /api/config -H "x-client-code: $code"
+  expect "/api/config reaches the BFF, which reads c-storage for the client's name" "200 $name" "$EDGE_STATUS $(jq -r '.config.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
+  expect "  with no cache in front of /api/*" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
+  edge GET /api/config -H "x-client-code: $code"
+  expect "  a second read, too" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
+  timed=$(date +%s)
+  edge POST /api/auth/sign-in -H "x-client-code: $code" -H "x-device-id: $device" -H 'content-type: application/json' --data-binary @- <<<"$(P=$pass jq -nc '{name: "root", password: env.P}')"
+  expect "the root signs in through the edge" 200 "$EDGE_STATUS"
+  echo "sign-in took $(($(date +%s) - timed)) s"
+  auth=$(jq -r '.authId // empty' <<<"$EDGE_BODY" 2>/dev/null)
+  mask "$auth"
+  edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
+  expect "  and is known by its handle" "200 root" "$EDGE_STATUS $(jq -r '.user.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
+  edge POST /api/auth/sign-out -H "x-client-code: $code" -H "x-auth-id: $auth"
+  expect "  signs out" 204 "$EDGE_STATUS"
+  edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
+  expect "  and the handle is refused after" 401 "$EDGE_STATUS"
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
+  edge GET /api/config
+  expect "a missing code is a 400" 400 "$EDGE_STATUS"
+  edge GET /api/operator/me
+  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
+  edge GET /api/health
+  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
 }

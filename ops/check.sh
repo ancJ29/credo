@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # ops/check.sh <env>
-# Reads <env> from AWS and from the box, then runs c-storage's Bruno collection through the tunnel.
+# Reads <env> from AWS and from the box, runs c-storage's Bruno collection through the tunnel and,
+# once the stack holds layer four, reads the BFF's function and the UI's bucket and walks a fresh
+# client through the app's address as a partner would (docs/plans/2026-10-28-ridge-app.md#layer-four).
 # Green is every read below passing; the log ends on == green, or names each red.
 # Runs after each release in the deploy job, and by hand.
 # Needs c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
-# node, which reads its report, and /health's buildVersion (the plan's step 6).
+# node, which reads its report, and /health's buildVersion (the plan's step 6). With layer four also
+# pnpm install done, for the client it makes through the operator's own create function.
 # Run from a worktree whose ops/ is origin/main's.
 # Expected length: about 2 minutes.
 set -euo pipefail
@@ -17,7 +20,7 @@ set -euo pipefail
   exit 2
 }
 ENVNAME=$1
-STEPS=5
+STEPS=7
 # Never the local stack's port (3181): a c-storage on this machine must not answer for the box.
 LOCAL_PORT=${CHECK_LOCAL_PORT:-3191}
 BRUNO_DIR=$REPO_DIR/c-storage/bruno
@@ -46,6 +49,9 @@ stack_load "$ENVNAME"
 box_id=$(out BoxId)
 group_id=$(out BoxGroupId)
 vpc_id=$(out VpcId)
+# Layer four's names, masked here before anything else can print them; empty before the stack holds it.
+LAYER4=1
+app_load || LAYER4=0
 public=$(aws ec2 describe-instances --instance-ids "$box_id" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 expect "the box's public address" None "$public"
 igw=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc_id" --query 'length(InternetGateways)' --output text)
@@ -53,13 +59,9 @@ expect "internet gateways on the VPC" 0 "$igw"
 endpoint_groups=$(aws ec2 describe-instance-connect-endpoints --filters "Name=vpc-id,Values=$vpc_id" \
   --query 'InstanceConnectEndpoints[].SecurityGroupIds[]' --output json)
 rules=$(aws ec2 describe-security-groups --group-ids "$group_id" --query 'SecurityGroups[0].IpPermissions' --output json)
-# One rule: tcp 22, from a group of the endpoint, and from no address range, list or other group.
-rule_ok=$(jq -r --argjson eg "$endpoint_groups" '
-  if length == 1 and .[0].IpProtocol == "tcp" and .[0].FromPort == 22 and .[0].ToPort == 22
-     and (.[0].IpRanges | length) == 0 and (.[0].Ipv6Ranges | length) == 0 and (.[0].PrefixListIds | length) == 0
-     and (.[0].UserIdGroupPairs | length) == 1 and (.[0].UserIdGroupPairs[0].GroupId as $g | $eg | index($g) != null)
-  then "yes" else "no" end' <<<"$rules")
-expect "the box's group holds one rule, ssh from the endpoint's group" yes "$rule_ok"
+# Ssh from a group of the endpoint and, from layer four, c-storage's port from the BFF's group: those and nothing else.
+expect "the box's group admits ssh from the endpoint's group, and c-storage's port from the BFF's group, nothing else" yes \
+  "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT")"
 
 step "the tunnel, and the box's reads"
 box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
@@ -111,5 +113,45 @@ proof=0
 requests=$(node "$REPO_DIR/c-storage/scripts/bruno-proof.cjs" "$WORK/report.json" "$BRUNO_DIR" check) || proof=$?
 expect "every request ran, passed and asserted ($requests)" 0 "$proof"
 rm -f "$BRUNO_DIR/environments/$ENVNAME.yml"
+
+
+step "layer four's AWS reads: the BFF's group, its function, the UI's bucket"
+if [ "$LAYER4" = 0 ]; then
+  echo "skipped: $ENVNAME's stack holds no layer four yet"
+else
+  [ -d "$REPO_DIR/scripts/node_modules" ] || [ -n "${RIDGE_SCRIPTS_DIR:-}" ] || die "needs pnpm install done, for the client the check makes"
+  bff_sg=$(aws ec2 describe-security-groups --group-ids "$BFF_GROUP" --output json)
+  expect "the BFF's group sends to c-storage's port on the box's group alone, and admits nothing" yes \
+    "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT")"
+  # The function's whole configuration holds its keys: it stays in a variable and is read by jq, never printed.
+  fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --output json)
+  expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
+  expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+  expect "the function reaches c-storage at the box's private address" "http://$BOX_LISTEN_ADDR:$BOX_PORT" \
+    "$(jq -r '.Environment.Variables.C_STORAGE_URL // empty' <<<"$fn")"
+  fn_commit=$(jq -r '.Description // empty' <<<"$fn")
+  pab=$(aws s3api get-public-access-block --bucket "$UI_BUCKET" --output json)
+  policy=$(aws s3api get-bucket-policy --bucket "$UI_BUCKET" --output json)
+  expect "the UI's bucket blocks all public access, and its policy admits the distribution alone" yes "$(bucket_verdict "$pab" "$policy")"
+  EDGE_BASE=$APP_ADDRESS
+  edge GET /index.html
+  index_commit=$(meta_commit "$EDGE_HEADERS")
+  expect "/health, the function's description and index.html's metadata name one commit" yes "$(commits_agree "$HEALTH_BUILD" "$fn_commit" "$index_commit")"
+fi
+
+step "through the app's address, as a partner reaches it"
+if [ "$LAYER4" = 0 ]; then
+  echo "skipped: $ENVNAME's stack holds no layer four yet"
+else
+  bff_env_read
+  # A fresh client each run, made by the operator's own create function through the tunnel (the BFF's
+  # own service and keys); it stays, three records, as each Bruno run leaves a service row.
+  tenant=check-$(date -u +%Y%m%dt%H%M%Sz)
+  tenant_name="Check $tenant"
+  tenant_pass=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
+    ridge_cli tenant "$tenant" "$tenant_name") || die "the check's client could not be made"
+  mask "$tenant_pass"
+  edge_reads "$APP_ADDRESS" "$tenant" "$tenant_pass" "$tenant_name"
+fi
 
 verdict

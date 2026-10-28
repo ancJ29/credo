@@ -8,7 +8,8 @@
 #   In the job: RELEASE_BINARY names the binary `make box` built from the commit the job runs on.
 #   ridge never moves backwards: when <env> already runs a commit that has this one as a strict
 #   ancestor, the log ends "superseded: <env> runs <sha>", the exit is 0, and nothing changed. The
-#   deploy job's gates finish in any order, so an older push can arrive after a newer one.
+#   deploy job's gates finish in any order, so an older push can arrive after a newer one. In the job a
+#   superseded run also writes superseded=true to GITHUB_OUTPUT, and the job's later steps skip.
 # Needs `make box` in c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
 # Expected length: about 4 minutes by hand (the gate and the build), under a minute in the job.
 set -euo pipefail
@@ -65,6 +66,8 @@ echo "box: $BOX_ID"
 # Read before anything is sent: a superseded release changes nothing on the box.
 if superseded "$ENVNAME" "$sha" box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; then
   echo "nothing sent: $sha is behind what $ENVNAME runs"
+  # The deploy job reads this: the newer commit's own deploy shipped its BFF and UI, so the job ends green here.
+  if [ -n "${GITHUB_OUTPUT:-}" ]; then echo superseded=true >>"$GITHUB_OUTPUT"; fi
   exit 0
 fi
 

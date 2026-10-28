@@ -1,21 +1,45 @@
-# c-storage's gate runs on every change to c-storage or its ops, on a branch or in a pull
-# request. A red here is a defect to fix, never a run to repeat. On a push to main, once the gate
-# is green, the `deploy` job releases and checks ridge: it never moves ridge backwards (an older
-# commit arriving late ends green, "superseded"), and a deploy shown cancelled was replaced by a
-# newer push to main.
-name: c-storage
+# The gates run on every change to c-storage, the app (the BFF, the UI, their shared package and
+# scripts) or ops, on a branch or in a pull request. A red here is a defect to fix, never a run to
+# repeat. On a push to main, once the gates are green, the `deploy` job releases c-storage, ships
+# the BFF and the UI, and checks ridge: it never moves ridge backwards (an older commit arriving
+# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main.
+name: ci
 
 on:
   push:
     paths:
       - "c-storage/**"
       - "ops/**"
-      - ".github/workflows/c-storage.yml"
+      - "bff/**"
+      - "ui/**"
+      - "shared/**"
+      - "scripts/**"
+      - "visual/**"
+      - "walk/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "eslint.config.js"
+      - "knip.json"
+      - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "c-storage/**"
       - "ops/**"
-      - ".github/workflows/c-storage.yml"
+      - "bff/**"
+      - "ui/**"
+      - "shared/**"
+      - "scripts/**"
+      - "visual/**"
+      - "walk/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "eslint.config.js"
+      - "knip.json"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
@@ -76,9 +100,45 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+  # The app's own gate: pnpm check (typecheck, lint, format, every package's tests at 100 %, knip).
+  # The BFF's tests build the real c-storage, hence Go. The Lambda bundle's test runs the bundle in
+  # the Node named by BUNDLE_NODE, Node 24, the runtime's: a Node 26 API that Lambda lacks fails
+  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
+  app:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: c-storage/go.mod
+          cache-dependency-path: c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Name the runtime's Node
+        run: |
+          node --version | grep -q '^v24\.'
+          echo "BUNDLE_NODE=$(command -v node)" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: pnpm check
+        run: pnpm check
+
   # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
   # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
-  # code, and the check of /health against the real c-storage (hence Go). Nothing here touches AWS.
+  # code, the template's reads, the app's scripts on stand-ins for aws and ssh, and the check of
+  # /health against the real c-storage (hence Go, and pnpm's install for the scripts the guards run).
+  # Nothing here touches AWS.
   ops:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -92,6 +152,20 @@ jobs:
         with:
           go-version-file: c-storage/go.mod
           cache-dependency-path: c-storage/go.sum
+      # The guards read env.yml as JSON through Ruby (the runner's image holds it) and run the
+      # CloudFront Function and the ridge scripts under Node, so the job names its Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # GitHub's runner image holds Ruby; act's (catthehacker/ubuntu:act-latest) installs none.
+      - name: Ruby, for the guards
+        run: |
+          command -v ruby >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ruby; }
+          ruby --version
       # The image's ShellCheck is whatever version it ships, so the job installs the pinned one,
       # from its release, after checking the archive's SHA-256 (the runner's architecture: x86_64
       # on GitHub, aarch64 under act on an Apple machine). Both sums are the release's own digests.
@@ -120,13 +194,15 @@ jobs:
         timeout-minutes: 5
         run: bash ops/test.sh
 
-  # Ridge's release and its check, after the three jobs above are green. The human's push to main
+  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main
   # is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
   # ops/test.sh fails when a step lacks it. Releases only: a template change stays the human's change set.
+  # A superseded release (ridge runs a newer commit, whose own deploy shipped the app) ends the job green:
+  # the steps after the release carry that condition as well.
   deploy:
-    needs: [check, e2e, ops]
+    needs: [check, e2e, ops, app]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -164,6 +240,22 @@ jobs:
         if: ${{ !env.ACT }}
         timeout-minutes: 3
         run: npm install -g --ignore-scripts @usebruno/cli@4.2.0
+      # The app's builds and installs run third-party code, so they run before the role is taken,
+      # and the scripts that run under the role (ops/lib.sh's clean) drop its credentials.
+      - name: pnpm 12.10.1
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install the workspace
+        if: ${{ !env.ACT }}
+        timeout-minutes: 3
+        run: pnpm install --frozen-lockfile
+      - name: Build the BFF's bundle and the UI
+        if: ${{ !env.ACT }}
+        timeout-minutes: 5
+        run: |
+          pnpm --filter @credo/bff bundle
+          pnpm --filter @credo/ui build
       # The arm64 binary of this commit, stamped with its sha; the runner cross-compiles.
       - name: Build the box's binary
         if: ${{ !env.ACT }}
@@ -187,12 +279,22 @@ jobs:
           role-duration-seconds: 1200
       # The scripts mask the keys themselves, before anything is printed.
       - name: Release
+        id: release
         if: ${{ !env.ACT }}
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/c-storage/dist/c-storage
         run: bash ops/release.sh ridge
+      # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
+      # masked first. It skips, saying so, until the stack holds layer four.
+      - name: Ship the BFF and the UI
+        if: ${{ !env.ACT && steps.release.outputs.superseded != 'true' }}
+        timeout-minutes: 8
+        env:
+          APP_BUNDLE: ${{ github.workspace }}/bff/dist/index.js
+          APP_UI_DIR: ${{ github.workspace }}/ui/dist/app
+        run: bash ops/app.sh ridge
       - name: Check
-        if: ${{ !env.ACT }}
+        if: ${{ !env.ACT && steps.release.outputs.superseded != 'true' }}
         timeout-minutes: 8
         run: bash ops/check.sh ridge
