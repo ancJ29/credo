@@ -2,16 +2,19 @@
 
 **Where it stands — 2026-10-28 10:23 +07:** the human's second look at the walks page (about
 03:30: "uhm, not so user friendly, could you use front end design skill to restructure the
-layout") is built as far as the machine reaches (`81e1c83`). The page is now a desk: the map of the
+layout") is built as far as the machine reaches (`81e1c83`, `ee24c22`). The page is now a desk: the map of the
 day first, then a rail of the walk's screens, each with a mark for each language and the one in
 view marked (at the side on a PC, a strip across the top on a phone), under a switch that draws the
 whole page in one language and at one width or all three; each screen's question and its large Yes
 and No stand in one panel beside its widths, or under them on a phone, the reason box coming with a
 No and the screen's words folded; the bar at the foot counts what is answered of all and copies the
-block, whose text is unchanged. `pnpm check` is green, every package at 100 %; the page was built
-with `pnpm report` and read back by a jsdom run of its script: four answers chosen through its
-controls gave a block byte-identical, but for the commit, to the one the previous page gives for the
-same answers, and `pnpm answers` took all four. **Not seen:** the page in a browser, which is the
+block, whose text is unchanged. Every package is at 100 % and knip is silent; the gate's one red is
+a case in `ui/`, which this branch does not touch: `MockPage.test.tsx` passes its 5-second limit
+under the machine's load, red in three of four runs today, and is the human's to route ([step 4's
+follow-up 2](#steps)). The page was built with `pnpm report` and read back by a jsdom run of its
+script: four answers chosen through its controls gave a block byte-identical, but for the commit,
+to the one the previous page gives for the same answers, and `pnpm answers` took all four. **Not
+seen:** the page in a browser, which is the
 human's, from the newest folder of `walks/`; rows 33 to 36 are new 👤 rows and rows 23 and 27 are
 amended, for the human's read at that look ([the case table](#the-case-table)). **Recorded, not
 built:** an eighth walk screen, the save conflict, answered yes; it enters on `app-frame` with the
@@ -665,28 +668,35 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   **Follow-up 2, from the human's second look** (10-28, about 03:30 +07): "uhm, not so user
   friendly, could you use front end design skill to restructure the layout". The answer sat a row
   of frames below its question, every screen was drawn six times at once, its state was said twice,
-  its words were an open wall, and nothing said what was left. Built at `81e1c83`: rows 33 to 39,
-  rows 23 and 27 amended; the copy block's text, `block.ts` and `take.ts` untouched.
+  its words were an open wall, and nothing said what was left. Built at `81e1c83`, and at `ee24c22`
+  each answer group described by its question: rows 33 to 39, rows 23 and 27 amended; the copy
+  block's text, `block.ts` and `take.ts` untouched.
 
-  *Evidence:* `81e1c83`. `pnpm check` green, every package at 100 % of statements, branches,
-  functions and lines (`visual`: 557, 235, 184, 483 of as many), knip silent, no warning. Its first
-  run went red in `ui/`, which this branch does not touch: `MockPage.test.tsx`'s second case passed
-  its 5-second limit while `bff` ran beside it; alone it takes 3.0 s at a load average near 11, so
-  the second run's green is no verdict on it ([QA](../conventions/qa.md#the-rules) rule 6), and it
-  goes to the orchestrator. Each new or changed rule seen red once by breaking it, the red from its
-  assertion, 51 breaks: the view ignored, in language or width; the screen in view not brought
+  *Evidence:* `81e1c83` and `ee24c22`. `pnpm check` green at `81e1c83`, every package at 100 % of
+  statements, branches, functions and lines (`visual`: 557, 235, 184, 483 of as many), knip silent,
+  no warning. Its other three runs went red in `ui/` alone, which this branch does not touch:
+  `MockPage.test.tsx`'s second case passed its 5-second limit, at 5.14 and 5.17 s, inside `ui`'s
+  own run of 14 files at a load average of 8 to 12, beside `bff` or with the packages run one at a
+  time; alone it takes 3.0 s. No run's green is a verdict on it
+  ([QA](../conventions/qa.md#the-rules) rule 6), and it goes to the human. On the final tree,
+  typecheck, lint and formatting pass, `shared`, `bff`, `scripts` and `visual` are at 100 % and
+  knip is silent. Each new or changed rule seen red once by breaking it, the red from its
+  assertion, 52 breaks: the view ignored, in language or width; the screen in view not brought
   back; the rail's order, marks, current and empty path; the reason box always there, there for a
   Yes, not required or never marked; the panel's line on the record; the words open or in one
   language; Clear doing nothing; a choice replacing the others in the block; a missing reason named
   by key; the progress counting only a yes; the bar's height; a capped page; the rail not sticky;
   no side rail; the panel neither beside nor riding the foot; the widths off one scale; a focus
-  ring removed; a colour with no dark value. The map's phone rule had stayed green when the map
+  ring removed; a colour with no dark value; an answer group not described by its question. The
+  map's phone rule had stayed green when the map
   fell to two columns; its test is tightened and seen red. The mount test now unmounts its root, as
   one full run threw "window is not defined" from a render after jsdom's window had gone.
-  `pnpm report` wrote `walks/2026-10-28-102126-81e1c8367/`; read back by a jsdom run of the page's
-  script: one 1.50 MB file; the map with 14 hatched cells; the rail's 7 screens in the page's order
+  `pnpm report` wrote `walks/2026-10-28-102126-81e1c8367/`, then, at the final commit,
+  `walks/2026-10-28-103047-ee24c221e/`; each read back by a jsdom run of the page's script, alike:
+  one 1.50 MB file; the map with 14 hatched cells; the rail's 7 screens in the page's order
   (1, 3, 4, 5, then 2, 6, 7); the view at Tiếng Việt and all three, 21 frames at 1280, 768 and 390;
-  7 answer panels, no reason box before a No, 7 words folded, the bar at "0 of 14 answered". In
+  7 answer panels, each described by its question, no reason box before a No, 7 words folded,
+  the bar at "0 of 14 answered". In
   English, 21 English frames; PC, tablet and phone alone, 7 each at their width. Four answers chosen
   through the panels, two in each language, two of them a No with its reason, gave their marks,
   "4 of 14 answered", "4 answers to copy" and a block equal to the clipboard's, byte-identical but
