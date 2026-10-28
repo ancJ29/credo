@@ -65,10 +65,18 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
     const { app, client, keys } = await tenantWithRoot(cs);
     const { response, body } = await signIn(app);
     expect(response.statusCode).toBe(200);
-    expect(sessionReplySchema.parse(body).user).toEqual({ name: 'root', root: true });
+    expect(sessionReplySchema.parse(body).user).toEqual({
+      name: 'root',
+      root: true,
+      permissions: {},
+    });
 
     const who = await me(app, body.authId);
-    expect(meReplySchema.parse(who.json()).user).toEqual({ name: 'root', root: true });
+    expect(meReplySchema.parse(who.json()).user).toEqual({
+      name: 'root',
+      root: true,
+      permissions: {},
+    });
 
     const saved = await app.inject({
       method: 'PUT',

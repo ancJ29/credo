@@ -181,7 +181,11 @@ describe('The operator makes a client from a code and the company’s name, and 
       password: reply.password,
     });
     expect(signedIn.response.statusCode).toBe(200);
-    expect(sessionReplySchema.parse(signedIn.body).user).toEqual({ name: 'root', root: true });
+    expect(sessionReplySchema.parse(signedIn.body).user).toEqual({
+      name: 'root',
+      root: true,
+      permissions: {},
+    });
     const index = storedClientSchema.parse((await t.client.getRecord('client.acme'))?.data);
     expect(index.name).toBe('Acme Trading');
   });

@@ -8,14 +8,14 @@ import {
   type CStorageClient,
   deviceIdSchema,
   DEVICE_HEADER,
-  type MeReply,
+  type MeReplyBody,
   normaliseSignInName,
   type OperatorMeReply,
   type OperatorSessionReply,
   recordKeys,
   ROUTES,
   saveConfigRequestSchema,
-  type SessionReply,
+  type SessionReplyBody,
   signInRequestSchema,
   storedClientSchema,
   storedOperatorSchema,
@@ -151,7 +151,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return await readConfig(request.tenantId);
   });
 
-  app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReply> => {
+  app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
     const name = normaliseSignInName(body.name);
@@ -168,7 +168,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return reply.status(204).send();
   });
 
-  app.get(ROUTES.me, forClient, async (request): Promise<MeReply> => ({
+  app.get(ROUTES.me, forClient, async (request): Promise<MeReplyBody> => ({
     user: await signedIn(request),
   }));
 

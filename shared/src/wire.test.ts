@@ -8,6 +8,7 @@ import {
   meReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
+  employeeRoutes,
   ROUTES,
   saveConfigRequestSchema,
   sessionReplySchema,
@@ -29,6 +30,12 @@ describe('the wire contract', () => {
   it('names every route under /api', () => {
     expect(Object.values(ROUTES).every((path) => path.startsWith('/api/'))).toBe(true);
     expect(ROUTES.config).toBe('/api/config');
+  });
+
+  it('names a person’s routes under the employees', () => {
+    expect(employeeRoutes.one('i')).toBe('/api/employees/i');
+    expect(employeeRoutes.archive('i')).toBe('/api/employees/i/archive');
+    expect(employeeRoutes.password('i')).toBe('/api/employees/i/password');
   });
 
   it('parses what the BFF sends and refuses what it never sends', () => {
@@ -80,5 +87,25 @@ describe('the wire contract', () => {
         password: 'p',
       }).success,
     ).toBe(true);
+  });
+});
+
+describe('what a sign-in answers', () => {
+  it('Sign-in and `me` answer the person’s resolved permissions; the UI’s parse defaults them to none', () => {
+    const held = { name: 'lan', root: false, permissions: { 'staff.canView': true } };
+    expect(
+      sessionReplySchema.safeParse({ authId: 'd.s', expiresAt: 1, user: held }).data?.user,
+    ).toEqual(held);
+    expect(meReplySchema.safeParse({ user: held }).data?.user.permissions).toEqual({
+      'staff.canView': true,
+    });
+    // an answer written before the field existed
+    expect(
+      meReplySchema.safeParse({ user: { name: 'lan', root: false } }).data?.user.permissions,
+    ).toEqual({});
+    expect(
+      meReplySchema.safeParse({ user: { ...held, permissions: { 'staff.canFire': true } } })
+        .success,
+    ).toBe(false);
   });
 });

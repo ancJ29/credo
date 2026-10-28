@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { tenantConfigSchema } from './config';
+import { permissionLayerSchema } from './permissions';
 import { clientCodeSchema } from './records';
 
 export const ROUTES = {
@@ -11,7 +12,16 @@ export const ROUTES = {
   operatorSignOut: '/api/operator/sign-out',
   operatorMe: '/api/operator/me',
   operatorClients: '/api/operator/clients',
+  staffSetup: '/api/staff-setup',
+  employees: '/api/employees',
 } as const;
+
+/** A person's own routes, under `ROUTES.employees`. */
+export const employeeRoutes = {
+  one: (id: string) => `${ROUTES.employees}/${id}`,
+  archive: (id: string) => `${ROUTES.employees}/${id}/archive`,
+  password: (id: string) => `${ROUTES.employees}/${id}/password`,
+};
 
 /** The client's code, on every call of a client's: it scopes the call to a tenant and proves
  * nothing, as the handle does. The operator's routes never read it. */
@@ -37,7 +47,12 @@ export const signInRequestSchema = z.strictObject({
 });
 export type SignInRequest = z.infer<typeof signInRequestSchema>;
 
-export const userViewSchema = z.strictObject({ name: z.string(), root: z.boolean() });
+export const userViewSchema = z.strictObject({
+  name: z.string(),
+  root: z.boolean(),
+  /** What the person may do, resolved by the BFF; none when the answer predates the field. */
+  permissions: permissionLayerSchema.default({}),
+});
 export type UserView = z.infer<typeof userViewSchema>;
 
 export const sessionReplySchema = z.strictObject({
@@ -46,9 +61,12 @@ export const sessionReplySchema = z.strictObject({
   user: userViewSchema,
 });
 export type SessionReply = z.infer<typeof sessionReplySchema>;
+/** What the BFF sends: the permissions are the reader's to default. */
+export type SessionReplyBody = z.input<typeof sessionReplySchema>;
 
 export const meReplySchema = z.strictObject({ user: userViewSchema });
 export type MeReply = z.infer<typeof meReplySchema>;
+export type MeReplyBody = z.input<typeof meReplySchema>;
 
 /** The settings with the version they were read at; a save sends it back. */
 export const configDocSchema = z.strictObject({
