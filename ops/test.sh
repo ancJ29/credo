@@ -357,6 +357,10 @@ refuses "  a policy that drops the distribution condition is refused" "distribut
 refuses "  a website bucket is refused" "is a website" \
   bucket_guard "$(mut '.Resources.UiBucket.Properties.WebsiteConfiguration = {"IndexDocument":"index.html"}')"
 
+# A plain Null key reads as YAML's null in cfn-lint ("E0000 Null key 'Null' not supported"), while the
+# reader above takes every scalar as text and cannot see it: the condition operator is quoted.
+check "no key of env.yml is a plain null word (the IAM condition operator Null is quoted)" 0 \
+  "$(grep -cE '^[[:space:]]*(Null|null|NULL|~):' "$OPS_DIR/env.yml" || true)"
 passes "the deploy role holds exactly its actions (row 29)" deploy_role_guard "$WORK/env.json"
 refuses "  one more action (cloudformation:UpdateStack) is refused" "actions are not the wanted ones" \
   deploy_role_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[0].Action = ["cloudformation:DescribeStacks","cloudformation:UpdateStack"]')"

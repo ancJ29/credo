@@ -252,5 +252,11 @@ Run the same three before pushing an `ops/` change:
 Under `act` two things are act's own, not the scripts': the `check` job's "Post actions/setup-go"
 fails (act's copy of the action lacks its cache-save module, and its cache server is unreachable),
 and `ops/test.sh` prints `== skipped: the repository's .git cannot be read here` instead of reading
-the ignore rule, because the copied worktree's `.git` names a folder of the Mac. Any other red there
-is real; GitHub's run reads the rule.
+the ignore rule, because the copied worktree's `.git` names a folder of the Mac. A third, rarer one:
+four jobs clone and copy the same action at once, and one's "Main actions/setup-go" can fail at
+once (about 100 ms) with `lstat .../.cache/act/actions-setup-go@.../package-lock.json: no such file
+or directory`, a copy that raced another's. A reader tells it from a real failure by that line and by
+the step failing before it ran any of the action's own code (no `Setup go version` line); the same
+step was green in the runs before. Any other red there is real, and a test that times out under act's
+parallel jobs is a defect in the test (QA rule 6): it is made to do less, never given more time;
+GitHub's run reads the rule.
