@@ -1,8 +1,8 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 01:44 +07:** the human has read the 31 👤 rows and kept all of them
-as written ([step 2](#steps), ticked). Nothing is built yet. **Next:** step 3, the fake `Api` and its
-`?fake` switch.
+**Where it stands — 2026-10-29 01:54 +07:** the human's read is ticked ([step 2](#steps)) and step 3 is built:
+the fake `Api`, its cues, `?fake` in the fake build, `pnpm fake` and the one data set in
+`@credo/shared/demo`. Group A's pages, on the fake, are not started. **Next:** step 4, A's pages.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -536,7 +536,7 @@ itself:
 
 **Group A, the core.**
 
-- [ ] **3. The fake `Api` and `?fake`.** Who: 🤖, after step 2 (the rows it serves), about half a
+- [x] **3. The fake `Api` and `?fake`.** Who: 🤖, after step 2 (the rows it serves), about half a
   day. It moves the demo company into `@credo/shared/demo`, which the generator then reads; builds
   the fake for piece 1's calls (piece 2's come with the pages that call them, step 4), its cues, the
   switch, the fake build and `pnpm fake`, and adds their line to `CLAUDE.md` and the README. Done when:
@@ -544,7 +544,15 @@ itself:
   with `?fake` on jsdom and reads the data set's company on the sign-in; in the sandbox,
   `pnpm fake -- curl` reads the page and leaves nothing listening. *Model files:* `ui/src/main.tsx`
   (the seam), the fixture `Api` in `ui/src/App.test.tsx`, `scripts/src/stack.ts` and
-  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/front.ts`.
+  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/front.ts`. *Evidence:* rows 49, 50 and 51 each seen red once, from their assertions
+  (`ui/src/fake.test.tsx`, `scripts/src/fake.test.ts`); a jsdom test boots the app on `?fake` and
+  reads the demo company's name on the sign-in, signs the root in and reads a cued 503; `pnpm fake --
+  curl` read the page and a 404 on `/api`, and a process test reads nothing left listening or in the
+  temp folder. The gates of the packages touched, not the whole `pnpm check` (the BFF and c-storage
+  are untouched): shared, ui and scripts each typecheck and test at 100 % with no warning, eslint,
+  prettier and knip clean. The data set holds piece 1's company and two names for now: the staff
+  setup and the people come with step 4's schemas. Open item 16 holds a sign-in defect the cue
+  found.
 - [ ] **4. A's pages, on the fake.** Who: 🤖, after step 3, about two days. In `shared/`: `extra`,
   the person's, staff setup's and permissions' schemas, the catalogue and its resolver. The `Api`'s
   new methods in `createApi` and the fake. The pages: the staff setup (departments, positions, their
