@@ -257,6 +257,6 @@ four jobs clone and copy the same action at once, and one's "Main actions/setup-
 once (about 100 ms) with `lstat .../.cache/act/actions-setup-go@.../package-lock.json: no such file
 or directory`, a copy that raced another's. A reader tells it from a real failure by that line and by
 the step failing before it ran any of the action's own code (no `Setup go version` line); the same
-step was green in the runs before. Any other red there is real, and a test that times out under act's
+step was green in the runs before. Another is the Mac's network: the `e2e` job's `go build` can fail with `Get "https://proxy.golang.org/…": dial tcp …:443: i/o timeout` (a module download), which GitHub's runner does not hit; the line itself is the proof, and the job is green when it is run again with the network. Any other red there is real, and a test that times out under act's
 parallel jobs is a defect in the test (QA rule 6): it is made to do less, never given more time;
 GitHub's run reads the rule.

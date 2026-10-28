@@ -11,21 +11,21 @@ const keysOf = (group: object, at = ''): string[] =>
   );
 
 describe('the walk’s screens', () => {
-  it('Every screen reads fully in each language', () => {
+  // One case a language, each with its own time limit: all of them in one case took 10 s of 5 under
+  // act's parallel jobs.
+  it.each(LANGUAGES)('Every screen reads fully in %s', (language) => {
     const keys = keysOf(DICTIONARIES.en);
-    for (const language of LANGUAGES) {
-      for (const screen of SCREENS) {
-        for (const state of screen.states) {
-          const { container, unmount } = draw(state.screen, language);
-          const shown = container.textContent;
+    for (const screen of SCREENS) {
+      for (const state of screen.states) {
+        const { container, unmount } = draw(state.screen, language);
+        const shown = container.textContent;
 
-          expect(
-            keys.filter((key) => shown.includes(key)),
-            `${screen.number} ${state.id} ${language}`,
-          ).toEqual([]);
-          expect(shown.length, `${screen.number} ${state.id}`).toBeGreaterThan(0);
-          unmount();
-        }
+        expect(
+          keys.filter((key) => shown.includes(key)),
+          `${screen.number} ${state.id} ${language}`,
+        ).toEqual([]);
+        expect(shown.length, `${screen.number} ${state.id}`).toBeGreaterThan(0);
+        unmount();
       }
     }
   });
