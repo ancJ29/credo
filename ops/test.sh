@@ -280,11 +280,11 @@ bucket_guard() {
     '.Resources.UiAccess.Properties.OriginAccessControlConfig | .OriginAccessControlOriginType == "s3" and .SigningBehavior == "always" and .SigningProtocol == "sigv4"'
 }
 # row 29: the deploy role holds exactly its actions, the function's code and settings held to
-# ridge's subnet and group, the bucket's put and list; no stack, IAM or CloudFront right
+# ridge's subnet and group, the bucket's put; no list, stack, IAM or CloudFront right
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
+  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
@@ -1029,6 +1029,11 @@ cat >"$E2E/fakebin/aws" <<'STANDIN'
 S=${FAKE_STATE:?}
 echo "aws $*" >>"$S/aws.calls"
 args=("$@")
+# The environment file must be gone by the next call after the one that read it: any later call that
+# still finds it writes envfile.kept.
+if [[ "$*" != *"lambda update-function-configuration"* ]] && [ -f "$S/envfile.path" ] && [ -f "$(cat "$S/envfile.path")" ]; then
+  echo kept >"$S/envfile.kept"
+fi
 arg_after() { local prev='' a; for a in "${args[@]}"; do if [ "$prev" = "$1" ]; then echo "$a"; return; fi; prev=$a; done; }
 case "$*" in
   *"cloudformation describe-stacks"*)
@@ -1247,7 +1252,7 @@ GITHUB_ACTIONS=true e2e_launch tunnel.sh ridge
 e2e_wait "this run's service" 30 || true
 kill -s INT -- "-$LPID"
 e2e_reap 20
-check "with GITHUB_ACTIONS set, the run masks its three keys: the box's two and the access key" "130 3" "$RC $(grep -c '^::add-mask::' "$S/out" || true)"
+check "with GITHUB_ACTIONS set, the run masks its three keys and the box's private address" "130 4" "$RC $(grep -c '^::add-mask::' "$S/out" || true)"
 
 # /health must name a commit of main before anything is written
 health_case() { # <name> <c-storage binary> <what the refusal says>
@@ -1492,14 +1497,15 @@ e2e_fresh app-job
 GITHUB_ACTIONS=true e2e_run app.sh ridge
 check "app.sh ships the BFF and the UI: exit 0, and the commit shipped" "0 1" "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true)"
 check "  the service is made sure of through the tunnel with the product's own function" 1 "$(grep -c '^service registered$' "$S/out" || true)"
-check "  the code goes first, then the settings, then the UI's files with index.html last" yes \
-  "$([ "$(line_of 'lambda update-function-code')" -lt "$(line_of 'lambda update-function-configuration')" ] &&
-    [ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
+check "  the settings go first, then the code, then the UI's files with index.html last" yes \
+  "$([ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 'lambda update-function-code')" ] &&
+    [ "$(line_of 'lambda update-function-code')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
     [ "$(line_of 's3 cp .*--exclude index.html')" -lt "$(line_of 's3 cp .*index.html --cache-control no-cache')" ] && echo yes || echo no)"
 check "  the zip holds the bundle as index.js, and its checksum was compared" "$(cksum <"$E2E/index.js")" "$(unzip -p "$S/code.zip" index.js | cksum)"
 check "  the settings carry the commit as the description, and ridge's subnet and the BFF's group" "$app_sha subnet-test sg-0bff" \
   "$(cat "$S/description") $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
+check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
 check "  it names the four variables, and the super-admin key is not among them" "C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
@@ -1509,6 +1515,10 @@ check "  no key is in the log or on the terminal, apart from GitHub's mask lines
 check "  each key was masked first" 3 "$(grep -cE "^::add-mask::($FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY)\$" "$S/out" || true)"
 check "  the app's address and the API's are masked, and print nowhere" "1 1 0" \
   "$(grep -cF "::add-mask::$FAKE_APP" "$S/out" || true) $(grep -cF "::add-mask::api-test-host.invalid:9" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "127.0.0.1:$FAKE_APP_PORT|api-test-host" || true)"
+check "  the box's private address is masked, and prints nowhere" "1 0" \
+  "$(grep -cF "::add-mask::10.20.30.40" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.40 || true)"
+check "  and check.sh never lets expect print it as the wanted value" 0 \
+  "$(grep -cE 'expect +"[^"]*" +"(http://)?[$]BOX_LISTEN_ADDR' "$OPS_DIR/check.sh" || true)"
 check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 
 # a second run: the service is present; the first run's bff.env is left as it is
@@ -1519,8 +1529,8 @@ check "a second app.sh finds the service present, and the box's file left as it 
 # the function runs other code than was sent
 e2e_fresh app-sha
 FAKE_BAD_SHA=1 e2e_run app.sh ridge
-check "a function whose CodeSha256 is not the upload's stops the deploy before its settings" "1 1 gone" \
-  "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true) $(file_state "$S/description")"
+check "a function whose CodeSha256 is not the upload's stops the deploy before the UI's files" "1 1" \
+  "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true)"
 check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
 
 # ridge never moves backwards: the function already runs a descendant

@@ -131,6 +131,12 @@ put that back (the BFF then answers 503 until the next deploy).
    - **red:** a defect, never a run to repeat. Fix forward and push, or revert the bad commit on
      `main` and push: the deploy that follows ships the reverted tree. Re-running an older run
      does not go back; it ends superseded.
+   - **never re-run a deploy that started before the private-address change reached `main`, and push
+     nothing to `main` while one is queued:** it runs the old scripts, reads `/health` on loopback,
+     is not seen as superseded, installs the old unit and moves c-storage back to 127.0.0.1, so every
+     BFF call answers 503 though its own check reads green. No script can refuse it, since the old
+     run uses the old scripts. The way back is to re-run the latest deploy
+     ([plan hazard](../docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches)).
    - **the credentials step fails:** the environment `ridge` or its secret is missing; run
      `ops/stack.sh env ridge` (plan step 11).
    - The job checks `ops/` against its own commit, not the newer `main`, so a push that lands
@@ -167,6 +173,9 @@ log, then searches the log for it. It refuses in GitHub's job and without a term
    the BFF's service). Read the account from the terminal, not the log.
    - **the operator ... exists:** it will not make one over another; add `--replace` for a new password,
      the way back from a lost one.
+   - **the run was killed with `kill -9`:** the trap that deletes the scratch folder did not run, and
+     the first password stays in `$TMPDIR` (`credo-ops.*/shown`). Delete that folder, then run again
+     with `--replace`.
 2. Open `<the app's address>/operator` and sign in. The address is in the local log of
    `ops/stack.sh env ridge` (never in a committed file or a public log).
 

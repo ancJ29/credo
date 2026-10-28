@@ -81,7 +81,8 @@ REMOTE
 )
 fact() { sed -n "s/^$1=//p" <<<"$facts"; }
 expect "c-storage's unit" active "$(fact unit)"
-expect "c-storage listens on" "$BOX_LISTEN_ADDR:$BOX_PORT " "$(fact listen)"
+# yes or no, so a red never prints the box's private address either way
+expect "c-storage listens on the box's private address alone" yes "$([ "$(fact listen)" = "$BOX_LISTEN_ADDR:$BOX_PORT " ] && echo yes || echo no)"
 expect "the keys file's mode and owner" "600 root" "$(fact keys)"
 expect "the database directory's mode" 700 "$(fact dbdir)"
 expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfiles)"
@@ -127,8 +128,8 @@ else
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --output json)
   expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
   expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-  expect "the function reaches c-storage at the box's private address" "http://$BOX_LISTEN_ADDR:$BOX_PORT" \
-    "$(jq -r '.Environment.Variables.C_STORAGE_URL // empty' <<<"$fn")"
+  expect "the function reaches c-storage at the box's private address" yes \
+    "$([ "$(jq -r '.Environment.Variables.C_STORAGE_URL // empty' <<<"$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"
   fn_commit=$(jq -r '.Description // empty' <<<"$fn")
   pab=$(aws s3api get-public-access-block --bucket "$UI_BUCKET" --output json)
   policy=$(aws s3api get-bucket-policy --bucket "$UI_BUCKET" --output json)

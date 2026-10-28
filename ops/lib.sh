@@ -353,6 +353,8 @@ box_open() {
   [ -n "$BOX_ID" ] || die "stack $1 names no box"
   BOX_LISTEN_ADDR=$(out BoxAddress)
   [[ "$BOX_LISTEN_ADDR" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "stack $1 names no private address for its box (BoxAddress)"
+  # No log holds the box's private address (the plan's "no key, address or password"), and GitHub masks it.
+  mask "$BOX_LISTEN_ADDR"
   rm -f "$WORK/key" "$WORK/key.pub"
   ssh-keygen -q -t ed25519 -N '' -C credo-ops -f "$WORK/key"
   aws ec2-instance-connect send-ssh-public-key --instance-id "$BOX_ID" --availability-zone "$zone" \
