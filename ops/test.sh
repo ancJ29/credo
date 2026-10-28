@@ -91,16 +91,21 @@ plain='{"use_default":true,"use_immutable_subject":false}'
 plain_prefixed='{"use_default":true,"use_immutable_subject":false,"sub_claim_prefix":"repo:alice/demo"}'
 check "the immutable subject's prefix is taken" "repo:alice@111/demo@222" "$(subject_prefix_of alice/demo "$immutable")"
 check "with no immutable subject and no prefix, the prefix is repo:<Repository>" "repo:alice/demo" "$(subject_prefix_of alice/demo "$plain")"
-check "a prefix given without the immutable subject is taken" "repo:alice/demo" "$(subject_prefix_of other/else "$plain_prefixed")"
+check "a prefix given without the immutable subject is taken" "repo:alice/demo" "$(subject_prefix_of alice/demo "$plain_prefixed")"
+check "the repository's name is compared with the ids dropped and the case aside" "repo:alice@111/demo@222" "$(subject_prefix_of Alice/Demo "$immutable")"
+refuses "a prefix naming another repository is refused" "names another repository" subject_prefix_of other/else "$plain_prefixed"
+refuses "  and so is an immutable one" "names another repository" subject_prefix_of other/else "$immutable"
 refuses "the immutable subject without its prefix is refused" "the immutable one" \
   subject_prefix_of alice/demo '{"use_default":true,"use_immutable_subject":true}'
 refuses "custom claim keys (use_default false) are refused" "custom claim keys" \
   subject_prefix_of alice/demo '{"use_default":false,"include_claim_keys":["repo"]}'
-refuses "an answer that is not JSON is refused" "cannot be read" subject_prefix_of alice/demo 'Not Found'
+refuses "an answer that is not JSON is refused" "is not JSON" subject_prefix_of alice/demo 'Not Found'
 refuses "an empty answer is refused" "cannot be read" subject_prefix_of alice/demo ''
 refuses "an answer with no use_default is refused" "no use_default" subject_prefix_of alice/demo '{"message":"Not Found"}'
 refuses "a prefix of another shape is refused" "not of the shape" \
   subject_prefix_of alice/demo '{"use_default":true,"sub_claim_prefix":"repo:alice/demo:ref:x"}'
+refuses "a prefix of two lines, the first of the right shape, is refused" "not of the shape" \
+  subject_prefix_of alice/demo "$(jq -nc '{use_default: true, sub_claim_prefix: "repo:alice/demo\nrepo:alice/demo"}')"
 check "lib.sh's pattern is the template's AllowedPattern for SubjectPrefix" \
   "$SUBJECT_PREFIX_RE" "$(awk '/^  SubjectPrefix:$/ {f = 1} f && /AllowedPattern:/ {gsub(/^[^'"'"']*'"'"'|'"'"'$/, ""); print; exit}' "$OPS_DIR/env.yml")"
 
@@ -118,6 +123,20 @@ refuses "the plain prefix against a stack holding the immutable one is refused" 
 STACK_JSON=$(described_sub)
 check "ridge today (no SubjectPrefix yet) reads empty" "" "$(stack_param SubjectPrefix)"
 check "  and takes GitHub's prefix, set once" set "$(subject_param_plan repo:alice@111/demo@222)"
+# add_subject_param is stack.sh's choice, on its PARAMS: the stack's value kept, or GitHub's set once
+STACK_JSON=$(described_sub repo:alice@111/demo@222)
+PARAMS='[]'
+add_subject_param repo:alice@111/demo@222
+check "an update on a stack that holds a SubjectPrefix keeps it (previous value)" \
+  '[{"ParameterKey":"SubjectPrefix","UsePreviousValue":true}]' "$PARAMS"
+STACK_JSON=$(described_sub)
+PARAMS='[]'
+add_subject_param repo:alice@111/demo@222
+check "an update on a stack that holds none sets GitHub's prefix" \
+  '[{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:alice@111/demo@222"}]' "$PARAMS"
+STACK_JSON=$(described_sub repo:alice@111/demo@222)
+refuses "an update on a stack holding another prefix is refused, and appends nothing" "stack's SubjectPrefix" \
+  add_subject_param repo:bob@333/demo@444
 STACK_JSON=''
 
 # trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
@@ -125,6 +144,7 @@ STACK_JSON=''
 trust_guard() {
   grep -qxF -- '                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:${Env}' "$1" ||
     die "the trust's sub is not \${SubjectPrefix}:environment:\${Env}"
+  ! grep -qF 'StringLike' "$1" || die "the trust uses StringLike, which takes wildcards"
   ! grep -qF 'repo:${Repository}' "$1" || die "the trust still builds the subject from Repository"
   grep -qxF -- '                token.actions.githubusercontent.com:aud: sts.amazonaws.com' "$1" || die "the trust lost its audience condition"
 }
@@ -139,6 +159,12 @@ passes "the template's trust uses the prefix, and keeps its audience" trust_guar
 # shellcheck disable=SC2016 # the template's literal text
 sed 's/!Sub ${SubjectPrefix}:environment/!Sub repo:${Repository}:environment/' "$OPS_DIR/env.yml" >"$WORK/env-old-trust.yml"
 refuses "a trust built from Repository again is refused" "sub is not" trust_guard "$WORK/env-old-trust.yml"
+awk '!done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' "$OPS_DIR/env.yml" >"$WORK/env-like.yml"
+refuses "a trust that matches with StringLike is refused" "StringLike" trust_guard "$WORK/env-like.yml"
+# shellcheck disable=SC2016 # the template's literal text
+sed 's/^\( *\)\(token.actions.githubusercontent.com:sub: !Sub \${SubjectPrefix}:environment:\${Env}\)$/\1\2\
+\1token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:environment:${Env}/' "$OPS_DIR/env.yml" >"$WORK/env-both.yml"
+refuses "a trust that keeps the prefix and adds the repository's name is refused" "still builds the subject from Repository" trust_guard "$WORK/env-both.yml"
 sed 's/aud: sts.amazonaws.com/aud: other/' "$OPS_DIR/env.yml" >"$WORK/env-aud.yml"
 refuses "a trust that lost its audience is refused" "audience" trust_guard "$WORK/env-aud.yml"
 passes "ridge's update, hand-written as CloudFormation shows it, is a Modify of DeployRole in place and the guard passes" \

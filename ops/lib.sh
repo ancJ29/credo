@@ -241,11 +241,11 @@ SUBJECT_PREFIX_RE='^repo:[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?$'
 # repository's tokens, read from repos/<owner/name>/actions/oidc/customization/sub. GitHub may issue
 # the immutable subject (owner@id/name@id), which no name alone predicts. Refused: an answer that
 # cannot be read, custom claim keys (use_default false: the subject's whole shape changes), the
-# immutable subject without its prefix, and a prefix of another shape than the role's trust takes.
+# immutable subject without its prefix, a prefix of another shape than the role's trust takes, and a prefix naming another repository.
 subject_prefix_of() {
   local repo=$1 body=$2 use_default immutable prefix
   use_default=$(jq -r 'if type == "object" then (.use_default | if . == null then empty else tostring end) else empty end' <<<"$body" 2>/dev/null) ||
-    die "GitHub's OIDC subject settings for $repo cannot be read (not JSON)"
+    die "GitHub's OIDC subject settings for $repo cannot be read (the answer is not JSON)"
   [ -n "$use_default" ] || die "GitHub's OIDC subject settings for $repo cannot be read (no use_default in the answer)"
   [ "$use_default" = true ] ||
     die "the OIDC subject of $repo uses custom claim keys (use_default is $use_default): its whole shape changes, and the role's trust is not made for it"
@@ -256,8 +256,14 @@ subject_prefix_of() {
       die "the OIDC subject of $repo is the immutable one, but GitHub gave no sub_claim_prefix: the ids cannot be known"
     prefix=repo:$repo
   fi
-  grep -Eq -- "$SUBJECT_PREFIX_RE" <<<"$prefix" ||
+  [[ $prefix =~ $SUBJECT_PREFIX_RE ]] ||
     die "the OIDC subject prefix GitHub gave for $repo is not of the shape repo:owner[@id]/name[@id]"
+  # it names this repository: the ids dropped, the name equal to repo:<owner/name>, case aside
+  local bare want
+  bare=$(sed -E 's/@[0-9]+//g' <<<"$prefix" | tr '[:upper:]' '[:lower:]')
+  want=$(tr '[:upper:]' '[:lower:]' <<<"repo:$repo")
+  [ "$bare" = "$want" ] ||
+    die "the OIDC subject prefix GitHub gave for $repo ($prefix) names another repository"
   echo "$prefix"
 }
 
@@ -275,7 +281,7 @@ subject_matches_stack() {
   local have
   have=$(stack_param SubjectPrefix)
   if [ -n "$have" ] && [ "$have" != "$1" ]; then
-    die "GitHub's subject prefix for this repository is $1, but the stack's SubjectPrefix is $have: run from a clone of the stack's repository"
+    die "GitHub's subject prefix for this repository is $1, but the stack's SubjectPrefix is $have: either this is a fork's clone (run from a clone of the stack's repository), or the repository's OIDC subject setting changed on GitHub (see the plan, 'Deploys from GitHub Actions', and the runbook's 'The first deploy was refused at the role')"
   fi
 }
 
@@ -285,6 +291,29 @@ subject_matches_stack() {
 subject_param_plan() {
   subject_matches_stack "$1"
   if [ -n "$(stack_param SubjectPrefix)" ]; then echo previous; else echo set; fi
+}
+
+# add_param <key> <value>, or <key> alone to keep its previous value: appends to PARAMS, the
+# template's parameters as a JSON array. A new stack gets the values read now; an updated one
+# keeps those it must not move.
+add_param() { # <key> <value> | <key> (previous)
+  if [ $# -eq 2 ]; then
+    PARAMS=$(jq -c --arg k "$1" --arg v "$2" '. + [{ParameterKey: $k, ParameterValue: $v}]' <<<"$PARAMS")
+  else
+    PARAMS=$(jq -c --arg k "$1" '. + [{ParameterKey: $k, UsePreviousValue: true}]' <<<"$PARAMS")
+  fi
+}
+
+# add_subject_param <prefix>: on an update, appends SubjectPrefix to PARAMS: the stack's own value
+# kept (after subject_matches_stack), or GitHub's prefix once on a stack that holds none
+add_subject_param() {
+  local plan
+  plan=$(subject_param_plan "$1") || exit 1
+  if [ "$plan" = previous ]; then
+    add_param SubjectPrefix
+  else
+    add_param SubjectPrefix "$1"
+  fi
 }
 
 # out <OutputKey> → its value in STACK_JSON, empty if none
