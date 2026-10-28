@@ -551,7 +551,7 @@ itself:
   temp folder. The gates of the packages touched, not the whole `pnpm check` (the BFF and c-storage
   are untouched): shared, ui and scripts each typecheck and test at 100 % with no warning, eslint,
   prettier and knip clean. The data set holds piece 1's company and two names for now: the staff
-  setup and the people come with step 4's schemas. Open item 16 holds a sign-in defect the cue
+  setup and the people come with step 4's schemas. Open item 17 holds a sign-in defect the cue
   found.
 - [ ] **4. A's pages, on the fake.** Who: 🤖, after step 3, about two days. In `shared/`: `extra`,
   the person's, staff setup's and permissions' schemas, the catalogue and its resolver. The `Api`'s

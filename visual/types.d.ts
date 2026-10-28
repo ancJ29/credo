@@ -9,7 +9,14 @@ declare module 'dom-accessibility-api' {
 
 declare module 'jsdom' {
   export class JSDOM {
-    constructor(html?: string, options?: { url?: string; pretendToBeVisual?: boolean });
+    constructor(
+      html?: string,
+      options?: {
+        url?: string;
+        pretendToBeVisual?: boolean;
+        runScripts?: 'outside-only' | 'dangerously';
+      },
+    );
     readonly window: object;
   }
 }

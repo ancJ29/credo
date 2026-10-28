@@ -308,7 +308,9 @@ keeps unsent choices in `localStorage` when the browser allows it, dropping any 
 have since changed; without storage it works the same.
 
 The machine of the piece, relayed by the orchestrator, runs **`pnpm answers <file>`** on the pasted
-block (a file, or stdin when none is named; a relative path is the caller's). It draws every walk
+block (a file, or stdin when none is named; a relative path is the caller's), and **`pnpm answers
+--partners <file>`** on the partners' posts, which the human hands over saying they are partners'
+([the sharing plan](2026-10-28-walks-share.md#how-partners-answer)). It draws every walk
 screen as the build does and holds each line against its words now: a line whose fingerprint is no
 longer the screen's (stale), whose screen or language is unknown, whose no has no reason, or that is
 no answer at all is **refused, by its line number, saying why**; the lines that hold are written
@@ -531,6 +533,9 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
    only push when requested". The machine publishes the page as a claude.ai page only when asked,
    private until the human shares its link ([partners](#partners)); the GitHub artifact and the
    path on ridge leave, for now.
+   *Calls 4 and 5, for the walks page alone, are changed by [the sharing
+   plan](2026-10-28-walks-share.md#the-humans-calls): a GitHub job deploys it to Cloudflare Pages,
+   and partners sign in by Access; the pictures stay local.*
 6. **A seventh screen, the failed save (amendment B6).** *Recommended:* yes, under what can go
    wrong. Case row 8 of piece 1, "A failed save says so and keeps what was typed", names the walk
    as holding it, and none of the six screens shows it; the mock already draws it. *Price:* two

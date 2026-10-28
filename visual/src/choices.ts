@@ -1,6 +1,8 @@
 import { LANGUAGES } from '@credo/shared';
-import { type BlockEntry, blockText } from './block';
+import { LANGUAGE_LABEL } from './marks';
+import { blockText, LABEL } from './block';
 import type { Report } from './report';
+import { normalizeLabel, type ShareItem, shareText } from './share';
 import { answerKey } from './walks';
 
 /** What the human has picked for one screen in one language, not yet sent. */
@@ -64,18 +66,66 @@ export function saveChoices(report: Report, choices: Choices) {
 }
 
 /**
+ * The answered screens in the walks' order, each with what a message names it by; and the keys of
+ * the "no" answers that still lack their reason.
+ */
+function chosenOf(report: Report, choices: Choices) {
+  const prints = fingerprintsOf(report);
+  const items: ShareItem[] = [];
+  const missing: string[] = [];
+  for (const walk of report.walks) {
+    for (const screen of walk.screens) {
+      for (const language of LANGUAGES) {
+        const key = answerKey(walk.id, screen.id, language);
+        const choice = choices[key];
+        if (!choice || choice.answer === '') continue;
+        if (choice.answer === 'no' && choice.reason.trim() === '') missing.push(key);
+        items.push({
+          key,
+          answer: choice.answer,
+          fingerprint: prints.get(key)!,
+          reason: choice.reason,
+          number: screen.number,
+          sentence: screen.sentence.en,
+          language: LANGUAGE_LABEL[language],
+        });
+      }
+    }
+  }
+  return { items, missing };
+}
+
+/**
  * The block to paste into the chat, from the answered screens in the walks' order; or the keys of
  * the "no" answers that still lack their reason, and no block.
  */
 export function blockOf(report: Report, choices: Choices) {
-  const prints = fingerprintsOf(report);
-  const entries: BlockEntry[] = [];
-  const missing: string[] = [];
-  for (const [key, fingerprint] of prints) {
-    const choice = choices[key];
-    if (!choice || choice.answer === '') continue;
-    if (choice.answer === 'no' && choice.reason.trim() === '') missing.push(key);
-    entries.push({ key, answer: choice.answer, fingerprint, reason: choice.reason });
+  const { items, missing } = chosenOf(report, choices);
+  return { text: blockText(report.build, items), answered: items.length, missing };
+}
+
+/** The Slack message a partner posts under their label, from the same choices. */
+export function shareOf(report: Report, choices: Choices, label: string) {
+  const { items, missing } = chosenOf(report, choices);
+  return { text: shareText(report.build, label, items), answered: items.length, missing };
+}
+
+const LABEL_KEY = 'credo-walks-label';
+
+/** The partner's label kept in the browser, or none: the page works without storage. */
+export function loadLabel() {
+  try {
+    const kept = normalizeLabel(localStorage.getItem(LABEL_KEY) ?? '');
+    return LABEL.test(kept) ? kept : '';
+  } catch {
+    return '';
   }
-  return { text: blockText(report.build, entries), answered: entries.length, missing };
+}
+
+export function saveLabel(label: string) {
+  try {
+    localStorage.setItem(LABEL_KEY, normalizeLabel(label));
+  } catch {
+    // The page works without it.
+  }
 }

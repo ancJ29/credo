@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { makeRoot } from '../tests/repo';
-import { answer, report } from './cli';
+import { answer, parseArgs, report } from './cli';
 
 describe('pnpm report', () => {
   it('builds the page from the repository it runs in, with the screens drawn on a DOM of its own, and says where and what waits', async () => {
@@ -39,6 +39,33 @@ describe('pnpm report', () => {
 
     expect(lines).toEqual([]);
     expect('document' in globalThis).toBe(false);
+  });
+});
+
+describe('the command line', () => {
+  it('reads the command and the file, and --partners wherever it stands', () => {
+    expect(parseArgs(['answers', 'paste.txt'])).toEqual({
+      command: 'answers',
+      file: 'paste.txt',
+      partners: false,
+    });
+    expect(parseArgs(['answers', '--partners', 'paste.txt']).partners).toBe(true);
+    expect(parseArgs(['--partners', 'answers', 'paste.txt'])).toEqual({
+      command: 'answers',
+      file: 'paste.txt',
+      partners: true,
+    });
+    expect(parseArgs(['answers', 'paste.txt', '--partners'])).toEqual({
+      command: 'answers',
+      file: 'paste.txt',
+      partners: true,
+    });
+    expect(parseArgs(['answers', '--partners'])).toEqual({
+      command: 'answers',
+      file: undefined,
+      partners: true,
+    });
+    expect(parseArgs([])).toEqual({ command: undefined, file: undefined, partners: false });
   });
 });
 
@@ -115,6 +142,38 @@ describe('pnpm answers', () => {
     expect(refused).toBe(1);
     expect(readFileSync(file, 'utf8')).toBe('{}');
     expect(lines.at(-1)).toBe('0 written to answers.json, 1 refused');
+  });
+
+  it('With partners, takes a partner’s Share post under their label, refuses a human’s block among them, and the plain command refuses the partner’s', async () => {
+    const fingerprint = await pageFingerprints();
+    const print = fingerprint('1-sign-in', 'vi');
+    const key = 'admin-setup:1-sign-in:vi';
+    const paste = [
+      'Credo walks answers',
+      'By: p1',
+      `${key} | yes | ${print}`,
+      'Credo walks answers',
+      `${key} | yes | ${print}`,
+    ].join('\n');
+    const theirs = FILE();
+    writeFileSync(theirs, '{}');
+    const lines: string[] = [];
+
+    const refused = await answer(paste, (line) => lines.push(line), {
+      file: theirs,
+      now: NOW,
+      partners: true,
+    });
+
+    expect(refused).toBe(1);
+    expect(Object.keys(JSON.parse(readFileSync(theirs, 'utf8')) as object)).toEqual([`${key}@p1`]);
+    expect(lines.at(-1)).toBe('1 written to answers.json, 1 refused');
+    const mine = FILE();
+    writeFileSync(mine, '{}');
+    const plain: string[] = [];
+    expect(await answer(paste, (line) => plain.push(line), { file: mine, now: NOW })).toBe(1);
+    expect(readFileSync(mine, 'utf8')).toBe('{}');
+    expect(plain.at(-1)).toBe('0 written to answers.json, 1 refused');
   });
 
   it('stops on an answers file that does not parse, and puts the process back', async () => {

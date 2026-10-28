@@ -1,6 +1,10 @@
 import { readFile } from 'node:fs/promises';
+import { LABEL } from './block';
 
-/** One answer, as `visual/answers.json` keeps it. */
+/**
+ * One answer, as `visual/answers.json` keeps it, under `<walk>:<screen>:<language>` for the
+ * human's and `...@<label>` for a partner's.
+ */
 export type Answer = {
   answer: 'yes' | 'no';
   /** The day, `YYYY-MM-DD`. */
@@ -13,7 +17,7 @@ export type Answer = {
 
 export type Answers = Record<string, Answer>;
 
-const KEY = /^[a-z0-9-]+:[a-z0-9-]+:(vi|en)$/;
+const KEY = new RegExp(`^[a-z0-9-]+:[a-z0-9-]+:(vi|en)(@${LABEL.source.slice(1, -1)})?$`);
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const FIELDS = ['answer', 'on', 'reason', 'words'];
 
@@ -53,7 +57,8 @@ export function parseAnswers(text: string): Answers {
   }
   if (!isObject(data)) throw new Error('answers.json must hold one object, a row a key');
   for (const [key, row] of Object.entries(data)) {
-    if (!KEY.test(key)) throw new Error(`answers.json: "${key}" is not <walk>:<screen>:<vi|en>`);
+    if (!KEY.test(key))
+      throw new Error(`answers.json: "${key}" is not <walk>:<screen>:<vi|en>[@label]`);
     const problem = problemWith(row);
     if (problem) throw new Error(`answers.json: "${key}" ${problem}`);
   }

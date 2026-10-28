@@ -111,4 +111,36 @@ describe('the report', () => {
     expect(asked).toContain('save-failed en false');
     expect(asked).toContain('conflict en false');
   });
+
+  it('Each screen carries the partners’ answers by label; the human’s alone marks the screen and counts', () => {
+    const row = {
+      answer: 'no' as const,
+      on: '2026-10-29',
+      reason: 'too small',
+      words: ['text: vi'],
+    };
+    const report = reportOf({
+      'admin-setup:1-sign-in:vi@p2': row,
+      'admin-setup:1-sign-in:vi@p1': row,
+    });
+
+    const vi = report.walks[0].screens[0].languages.vi;
+
+    expect(vi.partners.map((one) => [one.label, one.shown.kind])).toEqual([
+      ['p1', 'no'],
+      ['p2', 'no'],
+    ]);
+    expect(vi.shown).toEqual({ kind: 'waiting' });
+    expect(report.walks[0].screens[0].languages.en.partners).toEqual([]);
+    expect(report.tally).toEqual({ waiting: 26, yes: 0, no: 0, changed: 0 });
+    expect(report.walks[0].tally.no).toBe(0);
+  });
+
+  it('A partner’s answer whose screen left the walks is listed as an orphan, and counts in no bar', () => {
+    const row = { answer: 'no' as const, on: '2026-10-29', reason: 'too small', words: [] };
+    const report = reportOf({ 'admin-setup:9-gone:vi@p1': row });
+
+    expect(report.orphans.map((one) => one.key)).toEqual(['admin-setup:9-gone:vi@p1']);
+    expect(report.tally.no).toBe(0);
+  });
 });

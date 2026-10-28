@@ -119,11 +119,22 @@ state update lands outside `act`, so a test may read the page before the update.
 step, so none was touched. Find which tests update `Frame` and wrap or await the update, then make a
 warning a red in that package's setup.
 
-## 16. A failed sign-in leaves the button loading after a retry — the machine; *parked* until the sign-in is next touched (the employee list plan, step 3, 2026-10-29)
+## 16. A partner's post that loses its title and `By:` outside a code fence joins the one above — the machine; *parked* until the real copy of Slack's text is read (the sharing plan, step 6, 2026-10-29)
+
+`pnpm answers --partners` ends a block at a title or a code fence's end. When a post's title and
+its `By:` line are both lost and no fence stands between, its answer lines read under the previous
+post's label; only a chat name-and-time line separates them, and no pattern for it is sound before
+the real copy of Slack's text is read. *Trigger:* that copy, from the step 6 round trip.
+
+The case it does not cover, the other way: in `--partners` mode, if Slack's copy loses the fences, a
+chat line that starts `by:` inside a block now spoils a valid partner's block, since any
+`By:`-looking line inside one counts as a `By:` line. The refusal is loud, by line, and nothing is
+misattributed; it waits for the same copy.
+
+## 17. A failed sign-in leaves the button loading after a retry — the machine; *parked* until the sign-in is next touched (the employee list plan, step 3, 2026-10-29)
 
 `ui/src/ClientApp.tsx`'s `submit` sets the sign-in status to `busy`, and on any failure other than a
 401 draws the unavailable page without setting it back to `idle`. After "Try again" the form returns
 with its button still loading, so a second sign-in cannot be sent. Found by the fake's cue
 (`?fake&cue=signIn:503`), which reproduces it; the fake's test stops at the unavailable page, so it
 does not hold the fix. Fix: reset the status on the retry, with a test that signs in after a retry.
-

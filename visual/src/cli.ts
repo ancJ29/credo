@@ -11,6 +11,15 @@ import { WALKS } from './walks';
 import { drawnWords } from './words';
 
 /**
+ * What the command line says: the command, the file (none: stdin), and whether `--partners` is
+ * there, first or last. The flag decides whose answers are written.
+ */
+export function parseArgs(args: readonly string[]) {
+  const [command, file] = args.filter((arg) => arg !== '--partners');
+  return { command, file, partners: args.includes('--partners') };
+}
+
+/**
  * `pnpm report`: builds the walks page from the repository the command runs in, and says where it
  * landed and what waits. The screens are drawn on a DOM made for the run.
  */
@@ -26,7 +35,8 @@ export async function report(cwd: string, log: (line: string) => void) {
     });
     const { tally } = report;
     log(`walks page: ${folder}`);
-    log(`${tally.waiting} waiting, ${tally.changed} asked again, ${tally.no} no, ${tally.yes} yes`);
+    const { waiting, changed, no, yes } = tally;
+    log(`${waiting} waiting, ${changed} asked again, ${no} no, ${yes} yes`);
     return folder;
   } finally {
     restore();
@@ -34,17 +44,18 @@ export async function report(cwd: string, log: (line: string) => void) {
 }
 
 /**
- * `pnpm answers <file>`: reads a block the human pasted into the chat and writes the answers that
- * hold into `visual/answers.json`. Each is held against the words the screen draws now; a line
- * that is stale, or names an unknown screen or language, is refused by its number and says why.
- * Answers the file already holds, for other screens, stay.
+ * `pnpm answers [--partners] <file>`: reads the blocks the human pasted into the chat and writes
+ * the answers that hold into `visual/answers.json`: the human's own block, or with `--partners` the
+ * partners' Share messages, never both in one run. Each is held against the words the screen draws
+ * now; a line that is stale, or names an unknown screen or language, is refused by its number and
+ * says why. Answers the file already holds, for other screens, stay.
  *
  * @returns how many lines were refused, for the command's exit status
  */
 export async function answer(
   block: string,
   log: (line: string) => void,
-  { file = join(PACKAGE, 'answers.json'), now = new Date() } = {},
+  { file = join(PACKAGE, 'answers.json'), now = new Date(), partners = false } = {},
 ) {
   const restore = installDom();
   try {
@@ -57,6 +68,7 @@ export async function answer(
       current,
       existing,
       vietnamTime(now).date,
+      { partners },
     );
     if (taken.length > 0) await writeFile(file, `${JSON.stringify(answers, null, 2)}\n`);
     for (const key of taken) log(`taken: ${key}`);

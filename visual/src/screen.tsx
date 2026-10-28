@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { Choice, Choices } from './choices';
 import { LANGUAGE_LABEL, MARK_TEXT, markOf, screenId } from './marks';
 import type { Report, ReportScreen, ReportWalk } from './report';
-import type { Shown } from './states';
+import type { Held, Shown } from './states';
 import { answerKey } from './walks';
 
 export type Choose = (key: string, choice: Choice) => void;
@@ -184,6 +184,18 @@ function Panel({
   );
 }
 
+/** One partner's answer to the screen, as the human's is read: it marks nothing and counts in no bar. */
+function partnerLine(label: string, shown: Held) {
+  switch (shown.kind) {
+    case 'yes':
+      return `${label}: yes on ${shown.on}.`;
+    case 'no':
+      return `${label}: no on ${shown.on}: ${shown.reason}`;
+    case 'changed':
+      return `${label}: asked again, its words changed since the ${shown.answer} of ${shown.on}.`;
+  }
+}
+
 function Lines({ title, lines }: { title: string; lines: readonly string[] }) {
   return (
     <div>
@@ -289,6 +301,13 @@ export function ScreenCard({
             choice={choices[key] ?? NO_CHOICE}
             onChange={(choice) => choose(key, choice)}
           />
+          {here.partners.length > 0 && (
+            <ul className="w-partners" aria-label="Partners’ answers">
+              {here.partners.map(({ label, shown }) => (
+                <li key={label}>{partnerLine(label, shown)}</li>
+              ))}
+            </ul>
+          )}
           <Words shown={here.shown} words={here.words} />
         </div>
       </div>

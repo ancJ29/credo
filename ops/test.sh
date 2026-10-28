@@ -10,7 +10,8 @@
 # cannot bind, /health naming a commit of main, the keys file's mode), ops/tunnel.sh and check.sh's port refusal run whole on stand-ins for aws and
 # ssh (every way the tunnel ends), and the release's checks of /health against the real c-storage
 # binary, built here with several stamps and without one (it needs Go): the build it waits for, and
-# the newer build it must never overwrite.
+# the newer build it must never overwrite; and the walks page's three guards (walks-refused.sh,
+# walks-digest.sh, walks-served.sh), which the walks workflow runs.
 # Expected length: about 40 seconds with a cold Go cache, about 20 with a warm one.
 set -euo pipefail
 
@@ -1716,6 +1717,110 @@ check "  the app's address is printed, and the log ends on no key" "1 1" \
 check "  GitHub's environment was written (the run went past the outputs)" 1 "$(grep -c '^gh secret set AWS_ROLE_ARN' "$S/gh.calls" || true)"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
+
+echo "== the walks page's deploy: Access's refusal, the folder's digest, the newest deploy (walks.yml reads them)"
+# refuses_quiet <name> <text the refusal names> <command...>: refuses, and what the command says
+# (standard output and error) names no address, no sign-in host and no dashboard link
+refuses_quiet() {
+  local name=$1 text=$2 out rc=0
+  shift 2
+  out=$( ("$@") 2>&1 ) || rc=$?
+  if [ "$rc" = 1 ] && grep -qF -- "$text" <<<"$out" && ! grep -qE -- 'cloudflareaccess\.com|dash\.cloudflare\.com|://|pages\.dev|127\.0\.0\.1' <<<"$out"; then
+    echo "  ok   $name"
+  else
+    echo "  FAIL $name: wanted a refusal naming '$text' and no address, got exit $rc: $out"
+    fail=1
+  fi
+}
+# answer <status> [location]: a server on a free loopback port that answers every fetch so; its
+# address is left in ANSWER_URL
+answer() {
+  python3 -I -c '
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+status, location = int(sys.argv[1]), sys.argv[2]
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(status)
+        if location:
+            self.send_header("Location", location)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+server = HTTPServer(("127.0.0.1", 0), Handler)
+print(server.server_port, flush=True)
+server.serve_forever()
+' "$1" "${2:-}" >"$WORK/answer.port" &
+  PID=$!
+  for _ in $(seq 1 50); do
+    [ -s "$WORK/answer.port" ] && break
+    sleep 0.1
+  done
+  ANSWER_URL="http://127.0.0.1:$(cat "$WORK/answer.port")/"
+}
+stop_answer() {
+  kill "$PID" 2>/dev/null || true
+  wait "$PID" 2>/dev/null || true
+  PID=''
+  rm -f "$WORK/answer.port"
+}
+REFUSED=$OPS_DIR/walks-refused.sh
+answer 200
+refuses_quiet "an address that answers an anonymous fetch with a page is not refused" "answered 200" bash "$REFUSED" "$ANSWER_URL"
+stop_answer
+answer 302 https://team.cloudflareaccess.com/cdn-cgi/access/login/x
+passes "a redirect to a sign-in on cloudflareaccess.com is Access's refusal" bash "$REFUSED" "$ANSWER_URL"
+check "  and it names neither the address nor the team" "refused: a redirect to Access's sign-in" "$(bash "$REFUSED" "$ANSWER_URL" 2>&1)"
+stop_answer
+answer 302 https://evilcloudflareaccess.com/login
+refuses_quiet "a redirect to a look-alike host is not Access's refusal" "not to Access's sign-in" bash "$REFUSED" "$ANSWER_URL"
+stop_answer
+answer 302 https://example.com/login
+refuses_quiet "a redirect elsewhere is not Access's refusal" "not to Access's sign-in" bash "$REFUSED" "$ANSWER_URL"
+stop_answer
+answer 403
+refuses_quiet "a 403 is not Access's refusal" "answered 403" bash "$REFUSED" "$ANSWER_URL"
+stop_answer
+refuses_quiet "an address that gives no answer is not a refusal" "gave no answer" bash "$REFUSED" "http://127.0.0.1:9/"
+
+DIGEST=$OPS_DIR/walks-digest.sh
+mkdir "$WORK/page"
+printf 'one' >"$WORK/page/index.html"
+printf 'two!' >"$WORK/page/walks.json"
+check "a folder's files are listed by name, each with its SHA-256 and bytes" \
+  "7692c3ad3540bb803c020b3aee66cd8887123234ea0c6e7143c0add73ff431ed  3  index.html
+a97b629a5b1da759586c3353a9bc284bf673970d8eca56e11e556b715c329614  4  walks.json" \
+  "$(bash "$DIGEST" "$WORK/page")"
+sum=$(bash "$DIGEST" --sum "$WORK/page")
+check "the same files give the same sum" "$sum" "$(bash "$DIGEST" --sum "$WORK/page")"
+printf 'twO!' >"$WORK/page/walks.json"
+check "a file changed by one byte gives another sum" 1 "$([ "$sum" != "$(bash "$DIGEST" --sum "$WORK/page")" ] && echo 1 || echo 0)"
+printf 'two!' >"$WORK/page/walks.json"
+printf 'x' >"$WORK/page/extra.txt"
+check "a file added gives another sum" 1 "$([ "$sum" != "$(bash "$DIGEST" --sum "$WORK/page")" ] && echo 1 || echo 0)"
+
+SERVED=$OPS_DIR/walks-served.sh
+commit=0123456789abcdef0123456789abcdef01234567
+deploy() { # <environment> <commit's first seven> <address>
+  jq -nc --arg e "$1" --arg s "$2" --arg d "$3" \
+    '{Id: "id", Environment: $e, Branch: "main", Source: $s, Deployment: $d, Status: "ok", Build: "https://dash.cloudflare.com/ACCOUNT/pages/view/p/id"}'
+}
+served() { jq -s . | bash "$SERVED" "$commit" 2>&1; }
+check "the newest production deploy that carries the commit gives its address, and nothing else" \
+  "https://abc.p.pages.dev" "$({ deploy Production 0123456 https://abc.p.pages.dev; deploy Production 7654321 https://old.p.pages.dev; } | served)"
+check "  a newer preview of another commit is passed over" \
+  "https://abc.p.pages.dev" "$({ deploy Preview 7654321 https://pre.p.pages.dev; deploy Production 0123456 https://abc.p.pages.dev; } | served)"
+refuses_quiet "a newest production deploy of another commit is refused, naming both" "carries commit 7654321, not 0123456" \
+  bash -c "{ $(declare -f deploy); deploy Production 7654321 https://x.p.pages.dev; deploy Production 0123456 https://old.p.pages.dev; } | jq -s . | bash '$SERVED' '$commit'"
+refuses_quiet "a project with no production deploy is refused" "no production deploy" \
+  bash -c "{ $(declare -f deploy); deploy Preview 0123456 https://x.p.pages.dev; } | jq -s . | bash '$SERVED' '$commit'"
+refuses_quiet "a deploy's commit too short to match is refused" "too short" \
+  bash -c "{ $(declare -f deploy); deploy Production 0123 https://x.p.pages.dev; } | jq -s . | bash '$SERVED' '$commit'"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

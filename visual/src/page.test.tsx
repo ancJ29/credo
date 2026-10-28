@@ -528,6 +528,74 @@ describe('the walks page: the answers', () => {
     expect(screen.getByRole('banner').textContent).toContain('1 no');
   });
 
+  it('Each screen shows the partners’ answers by label; the human’s alone marks the screen and counts in the bar', () => {
+    const partner = (kind: 'yes' | 'no', words: string[] = ['text: empty vi']) => ({
+      answer: kind,
+      on: '2026-10-30',
+      reason: kind === 'no' ? 'too small' : '',
+      words,
+    });
+    render(
+      <Page
+        report={reportWith({
+          'admin-setup:1-sign-in:vi@p2': partner('no'),
+          'admin-setup:1-sign-in:vi@p1': partner('yes'),
+          'admin-setup:1-sign-in:vi@p3': partner('yes', ['text: old']),
+        })}
+      />,
+    );
+
+    const list = within(card('1-sign-in')).getByRole('list', { name: 'Partners’ answers' });
+
+    expect([...list.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+      'p1: yes on 2026-10-30.',
+      'p2: no on 2026-10-30: too small',
+      'p3: asked again, its words changed since the yes of 2026-10-30.',
+    ]);
+    expect(stateOf('1-sign-in')).toBe('Not answered yet.');
+    expect(screen.getByText('0 of 18 answered')).toBeTruthy();
+    expect(screen.getByRole('banner').textContent).toContain('18 waiting');
+    expect(screen.getByRole('banner').textContent).not.toMatch(/\d+ (no|yes)\b/);
+    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
+  });
+
+  it('A screen every partner answered yes, in both languages, still waits for the human: its card stays open and unmarked', () => {
+    const yes = (language: string): Answers => ({
+      [`admin-setup:1-sign-in:${language}@p1`]: {
+        answer: 'yes',
+        on: '2026-10-30',
+        reason: '',
+        words: [`text: empty ${language}`],
+      },
+    });
+    render(<Page report={reportWith({ ...yes('vi'), ...yes('en') })} />);
+
+    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
+    expect(
+      [...card('1-sign-in').querySelectorAll('.w-mark')].map((mark) =>
+        mark.getAttribute('data-mark'),
+      ),
+    ).toEqual(['open', 'open']);
+    expect(screen.getByText('0 of 18 answered')).toBeTruthy();
+  });
+
+  it('lists a partner’s answer whose screen left the walks, and counts it nowhere', () => {
+    const gone: Answers = {
+      'admin-setup:9-gone:vi@p1': {
+        answer: 'no',
+        on: '2026-10-29',
+        reason: 'too small',
+        words: [],
+      },
+    };
+    render(<Page report={reportWith(gone)} />);
+
+    expect(
+      screen.getByRole('region', { name: 'Answers whose screen left the walks' }).textContent,
+    ).toContain('admin-setup:9-gone:vi@p1: no on 2026-10-29, too small');
+    expect(screen.getByRole('banner').textContent).not.toContain('1 no');
+  });
+
   it('has no list of the gone when none is gone', () => {
     render(<Page report={reportWith()} />);
 
@@ -632,13 +700,14 @@ describe('the walks page: answering', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
-  it('The page says at its top how to answer and that the block goes to the chat', () => {
+  it('The page says at its top how to answer: a partner shares under their label, “Copy my answers” is not for partners', () => {
     render(<Page report={reportWith()} />);
 
     const line = document.querySelector('.w-howto')!.textContent;
 
     expect(line).toContain('Yes or No, in Tiếng Việt and in English, with a reason for any No');
-    expect(line).toContain('paste the block into the chat');
+    expect(line).toContain('A partner types their label and presses “Share”');
+    expect(line).toContain('“Copy my answers” is not for partners');
     expect(line).toContain('sends nothing');
   });
 
@@ -744,9 +813,7 @@ describe('the walks page: answering', () => {
       `admin-setup:3-settings:en | no | ${prints.get('admin-setup:3-settings:en')} | the save button is hard to find`,
     ].join('\n');
     expect(write).toHaveBeenCalledWith(expected);
-    expect(
-      screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat').value,
-    ).toBe(expected);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
     expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into the chat.');
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
     expect(screen.getByText('2 answers to copy')).toBeTruthy();
@@ -760,12 +827,12 @@ describe('the walks page: answering', () => {
     await press();
 
     expect(screen.getByRole('status').textContent).toContain('Select the text below');
-    const area = screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat');
+    const area = screen.getByLabelText<HTMLTextAreaElement>('The text to paste');
     expect(area.value).toContain('admin-setup:1-sign-in:vi | yes | ');
     fireEvent.focus(area);
     expect(area.selectionEnd - area.selectionStart).toBe(area.value.length);
-    fireEvent.click(screen.getByRole('button', { name: 'Hide the block' }));
-    expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the text' }));
+    expect(screen.queryByLabelText('The text to paste')).toBeNull();
   });
 
   it('gives no block, and says so, when nothing is answered', async () => {
@@ -776,7 +843,7 @@ describe('the walks page: answering', () => {
     expect(screen.getByRole('status').textContent).toBe(
       'Nothing chosen yet: answer a screen first.',
     );
-    expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
+    expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
     expect(screen.getByText('0 answers to copy')).toBeTruthy();
   });
@@ -795,9 +862,96 @@ describe('the walks page: answering', () => {
     expect(screen.getByRole('status').textContent).toBe(
       'A No needs its reason: screen 3 in English, screen 7 in Tiếng Việt.',
     );
-    expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
+    expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(write).not.toHaveBeenCalled();
     expect(screen.getByText('3 answers to copy')).toBeTruthy();
+  });
+
+  const shareButton = async () => {
+    await act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      return Promise.resolve();
+    });
+  };
+  const label = (text: string) =>
+    fireEvent.change(screen.getByLabelText('Your label'), { target: { value: text } });
+
+  it('Beside "Copy my answers", Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
+    const write = vi.fn(() => Promise.resolve());
+    clipboard(write);
+    const report = reportWith();
+    render(<Page report={report} />);
+    label('P1');
+    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p1');
+    choose('1-sign-in', 'Yes');
+    pick('Language', 'English');
+    choose('3-settings', 'No', 'English');
+    reason('3-settings', 'the `save` button\nis hard to find', 'English');
+
+    await shareButton();
+
+    const prints = fingerprintsOf(report);
+    const sentence = (index: number) => report.walks[0].screens[index].sentence.en;
+    const expected = [
+      '*Credo walks: answers from p1*',
+      'Build: a-piece, commit abc123def',
+      `*1. ${sentence(0)}* (Tiếng Việt): Yes`,
+      `*3. ${sentence(2)}* (English): No. the 'save' button is hard to find`,
+      '```',
+      'Credo walks answers',
+      'Build: branch a-piece, commit abc123def',
+      'By: p1',
+      `admin-setup:1-sign-in:vi | yes | ${prints.get('admin-setup:1-sign-in:vi')}`,
+      `admin-setup:3-settings:en | no | ${prints.get('admin-setup:3-settings:en')} | the 'save' button is hard to find`,
+      '```',
+    ].join('\n');
+    expect(write).toHaveBeenCalledWith(expected);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
+    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into Slack.');
+  });
+
+  it('Share asks once for the partner’s label, keeps it in the browser, and gives no message without one, saying so', async () => {
+    const write = vi.fn(() => Promise.resolve());
+    clipboard(write);
+    const { unmount } = render(<Page report={reportWith()} />);
+    choose('1-sign-in', 'Yes');
+
+    await shareButton();
+
+    expect(write).not.toHaveBeenCalled();
+    expect(screen.getByRole('status').textContent).toContain('Type your label first');
+    label('Not A Label!');
+    await shareButton();
+    expect(write).not.toHaveBeenCalled();
+    label('p-1');
+    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    unmount();
+
+    render(<Page report={reportWith()} />);
+    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    choose('1-sign-in', 'Yes');
+    await shareButton();
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it('Share says so when nothing is chosen, and when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
+    clipboard(() => Promise.reject(new Error('denied')));
+    render(<Page report={reportWith()} />);
+    label('p1');
+
+    await shareButton();
+    expect(screen.getByRole('status').textContent).toContain('Nothing chosen yet');
+
+    choose('3-settings', 'No');
+    await shareButton();
+    expect(screen.getByRole('status').textContent).toContain('A No needs its reason');
+
+    reason('3-settings', 'too small');
+    await shareButton();
+    expect(screen.getByRole('status').textContent).toContain('paste it into Slack');
+    expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toContain(
+      'By: p1',
+    );
   });
 
   it('The bar counts the answers on record with those chosen here, of all there are, and the ones to copy', () => {

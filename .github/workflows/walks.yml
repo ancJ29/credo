@@ -1,0 +1,150 @@
+# The walks page, built on a runner and published to Cloudflare Pages behind Cloudflare Access.
+# The build job holds no secret; the deploy job holds the Cloudflare token and runs only on main.
+# A red here is a defect to fix, never a run to repeat.
+# Why it is shaped so: docs/plans/2026-10-28-walks-share.md.
+name: walks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "ui/**"
+      - "shared/**"
+      - "visual/**"
+      - "package.json"
+      - "tsconfig.base.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "ops/walks-*.sh"
+      - ".github/workflows/walks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time, in order: a newer run replaces a waiting older one, so an older push never
+# deploys after a newer one.
+concurrency:
+  group: walks
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      digest: ${{ steps.page.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Install pnpm
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install the workspace
+        run: pnpm install --frozen-lockfile
+      # `pnpm report` writes one folder into walks/ of the checkout (git's common directory is the
+      # checkout's own .git here) and names it on a line of its own.
+      - name: Build the page
+        id: page
+        shell: bash
+        run: |
+          pnpm report | tee "$RUNNER_TEMP/report.log"
+          folder=$(sed -n 's/^walks page: //p' "$RUNNER_TEMP/report.log")
+          [ -d "$folder" ] || { echo "the report named no folder" >&2; exit 1; }
+          case "$folder" in
+            *-changes) echo "the tree differed from the commit: $folder" >&2; exit 1 ;;
+          esac
+          echo "folder: $(basename "$folder")"
+          bash ops/walks-digest.sh "$folder"
+          echo "digest=$(bash ops/walks-digest.sh --sum "$folder")" >>"$GITHUB_OUTPUT"
+          echo "folder=$folder" >>"$GITHUB_OUTPUT"
+      # Under act (which sets ACT) the step is skipped, as its artifact store is unreachable from
+      # the job's container; the deploy job, which needs it, is skipped off main by its own `if`.
+      - name: Hand the page to the deploy
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: walks-page
+          path: ${{ steps.page.outputs.folder }}
+          retention-days: 1
+          if-no-files-found: error
+
+  # Only main deploys, whatever the environment's rules say: a run from another branch (a manual
+  # one, or `act` on a branch) builds and skips this job. Each step below also skips itself under
+  # act, so an act run on main deploys nothing either.
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: walks
+    steps:
+      - name: Check out ops/
+        if: ${{ !env.ACT }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: ops
+      - name: Fetch the page
+        if: ${{ !env.ACT }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: walks-page
+          path: ${{ runner.temp }}/page
+      - name: The page is the one the build made
+        if: ${{ !env.ACT }}
+        env:
+          WANT: ${{ needs.build.outputs.digest }}
+        run: |
+          bash ops/walks-digest.sh "$RUNNER_TEMP/page"
+          [ "$(bash ops/walks-digest.sh --sum "$RUNNER_TEMP/page")" = "$WANT" ] || { echo "the page differs from the build's" >&2; exit 1; }
+      # The project's own address is behind Access only by its own application; the project's
+      # switch covers previews. An address that answers stops the deploy before any upload.
+      - name: The project's address refuses a visitor
+        if: ${{ !env.ACT }}
+        env:
+          PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
+        run: bash ops/walks-refused.sh "https://$PROJECT.pages.dev/"
+      - name: Node for wrangler
+        if: ${{ !env.ACT }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      # wrangler's own dependencies are held to what existed when 4.151.0 was published.
+      - name: Install wrangler
+        if: ${{ !env.ACT }}
+        run: npm install --prefix "$RUNNER_TEMP/wrangler" --ignore-scripts --no-audit --no-fund --before=2026-10-14T05:50:43.466Z wrangler@4.151.0
+      - name: Upload the page
+        if: ${{ !env.ACT }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" pages deploy "$RUNNER_TEMP/page" \
+            --project-name "$PROJECT" --branch main --commit-hash "$GITHUB_SHA"
+      # The list's lines carry the account's id; only the address is read out of it.
+      - name: The newest production deploy carries this commit
+        if: ${{ !env.ACT }}
+        id: served
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" pages deployment list \
+            --project-name "$PROJECT" --environment production --json >"$RUNNER_TEMP/deploys.json"
+          address=$(bash ops/walks-served.sh "$GITHUB_SHA" <"$RUNNER_TEMP/deploys.json")
+          echo "address=$address" >>"$GITHUB_OUTPUT"
+          echo "the newest production deploy carries ${GITHUB_SHA:0:7}"
+      - name: The deploy's own address refuses a visitor
+        if: ${{ !env.ACT }}
+        env:
+          ADDRESS: ${{ steps.served.outputs.address }}
+        run: bash ops/walks-refused.sh "$ADDRESS"

@@ -1,6 +1,14 @@
 import { SCREENS } from '@credo/ui/mock';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { blockOf, fingerprintsOf, loadChoices, saveChoices } from './choices';
+import {
+  blockOf,
+  fingerprintsOf,
+  loadChoices,
+  loadLabel,
+  saveChoices,
+  saveLabel,
+  shareOf,
+} from './choices';
 import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
@@ -115,5 +123,76 @@ describe('the block from the choices', () => {
 
   it('is empty-handed with nothing chosen', () => {
     expect(blockOf(report, {}).answered).toBe(0);
+  });
+});
+
+describe('the Share message from the choices', () => {
+  it('holds each answered screen in the walks’ order with its number, its sentence and its language, and the label', () => {
+    const prints = fingerprintsOf(report);
+
+    const { text, answered, missing } = shareOf(
+      report,
+      {
+        [EN]: { answer: 'no', reason: 'too small' },
+        [VI]: { answer: 'yes', reason: 'stray' },
+      },
+      'p1',
+    );
+
+    expect(missing).toEqual([]);
+    expect(answered).toBe(2);
+    expect(text.split('\n')).toEqual([
+      '*Credo walks: answers from p1*',
+      'Build: a-piece, commit abc123def',
+      `*1. ${report.walks[0].screens[0].sentence.en}* (Tiếng Việt): Yes`,
+      `*1. ${report.walks[0].screens[0].sentence.en}* (English): No. too small`,
+      '```',
+      'Credo walks answers',
+      'Build: branch a-piece, commit abc123def',
+      'By: p1',
+      `${VI} | yes | ${prints.get(VI)}`,
+      `${EN} | no | ${prints.get(EN)} | too small`,
+      '```',
+    ]);
+  });
+
+  it('names a no that lacks its reason, as the block does', () => {
+    expect(shareOf(report, { [EN]: { answer: 'no', reason: '' } }, 'p1').missing).toEqual([EN]);
+    expect(shareOf(report, {}, 'p1').answered).toBe(0);
+  });
+
+  it('Copy my answers and its block stay as they are, with no label and no By: line', () => {
+    expect(blockOf(report, { [VI]: { answer: 'yes', reason: '' } }).text).not.toContain('By:');
+  });
+});
+
+describe('the partner’s label', () => {
+  it('is kept in the browser, and asked for once', () => {
+    saveLabel('p1');
+
+    expect(loadLabel()).toBe('p1');
+  });
+
+  it('is lowercased when kept, and a stored text that is no label gives none', () => {
+    saveLabel('P1');
+    expect(loadLabel()).toBe('p1');
+    localStorage.setItem('credo-walks-label', 'not a label!');
+    expect(loadLabel()).toBe('');
+    localStorage.removeItem('credo-walks-label');
+    expect(loadLabel()).toBe('');
+  });
+
+  it('works without the browser’s storage: nothing kept, nothing thrown', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+
+    expect(loadLabel()).toBe('');
+    expect(() => saveLabel('p1')).not.toThrow();
   });
 });

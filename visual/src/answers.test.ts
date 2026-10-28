@@ -19,6 +19,12 @@ describe('the answers file', () => {
     expect(parseAnswers('{}')).toEqual({});
   });
 
+  it('Rows without a label, every row on record today, read as the human’s, unchanged; a row may carry a label after @', () => {
+    const rows = { 'w:1-a:vi': row, 'w:1-a:vi@p1': row, 'w:1-a:en@x-9': row };
+
+    expect(parseAnswers(text(rows))).toEqual(rows);
+  });
+
   it('An answers file that does not parse stops the build; it never reads as nothing answered', () => {
     expect(() => parseAnswers('{ "w:1-a:vi": ')).toThrow(/answers.json does not parse/);
     expect(() => parseAnswers('[]')).toThrow('must hold one object');
@@ -30,6 +36,9 @@ describe('the answers file', () => {
       expect(() => parseAnswers(text(answers))).toThrow(message);
 
     bad({ 'w:1-a:fr': row }, '"w:1-a:fr" is not <walk>:<screen>:<vi|en>');
+    bad({ 'w:1-a:vi@P1': row }, '"w:1-a:vi@P1" is not <walk>:<screen>:<vi|en>');
+    bad({ 'w:1-a:vi@': row }, 'is not <walk>:<screen>:<vi|en>');
+    bad({ [`w:1-a:vi@${'a'.repeat(21)}`]: row }, 'is not <walk>:<screen>:<vi|en>');
     bad({ 'w:1-a:vi': 'yes' }, '"w:1-a:vi" is not an object');
     bad({ 'w:1-a:vi': null }, '"w:1-a:vi" is not an object');
     bad({ 'w:1-a:vi': { ...row, extra: 1 } }, 'must hold exactly answer, on, reason, words');
