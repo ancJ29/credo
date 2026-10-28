@@ -331,6 +331,9 @@ unit_port() {
 
 BOX_ID=''
 BOX_PORT=$(unit_port "$OPS_DIR/c-storage.service")
+# The address on the box that a forward reaches c-storage at: the one home of it, read by box_open for
+# check.sh and tunnel.sh. It moves with open item 7 (c-storage off loopback), not before.
+BOX_LISTEN_ADDR=127.0.0.1
 box_ready=0
 
 # box_open <env> [<local port>]: mints a key for this run, pushes it through Instance Connect (it
@@ -353,7 +356,7 @@ box_open() {
   # A forward that cannot bind (the port taken since it was checked) fails the open: ssh would
   # otherwise stay up without it, and the caller would read whatever else answers on that port.
   local fwd=()
-  if [ -n "${2:-}" ]; then fwd=(-o ExitOnForwardFailure=yes -L "127.0.0.1:$2:127.0.0.1:$BOX_PORT"); fi
+  if [ -n "${2:-}" ]; then fwd=(-o ExitOnForwardFailure=yes -L "127.0.0.1:$2:$BOX_LISTEN_ADDR:$BOX_PORT"); fi
   # No host key is kept: the key is new each run and the tunnel is AWS's, to this instance id.
   ssh -f -N -M -S "$WORK/cm" -i "$WORK/key" -o IdentitiesOnly=yes -o BatchMode=yes \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
@@ -373,6 +376,17 @@ box_close() {
     ssh -S "$WORK/cm" -O exit -o LogLevel=ERROR "$BOX_USER@$BOX_ID" >/dev/null 2>&1 || true
     box_ready=0
   fi
+}
+
+# tunnel_hold <seconds>: asks the open connection every <seconds> whether it is still up, and dies
+# naming the drop when it is not. The sleep runs apart from the log's pipe and is waited on, so a
+# signal ends the wait at once and on_exit runs.
+tunnel_hold() {
+  while ssh -S "$WORK/cm" -O check -o LogLevel=ERROR "$BOX_USER@$BOX_ID" >/dev/null 2>&1; do
+    sleep "$1" >/dev/null 2>&1 &
+    wait $!
+  done
+  die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network): run it again"
 }
 
 # box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), logged

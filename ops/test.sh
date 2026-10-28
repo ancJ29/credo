@@ -3,7 +3,8 @@
 # choice between creating and updating a stack, an update's refusal to move the repository, the
 # the deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a
 # Bruno run, the credentials bru never holds, the log's exit code after a signal, the workflow's
-# deploy job, and the release's checks of /health against the real c-storage binary, built here with
+# deploy job, the tunnel's guards (the taken port, the forward that cannot bind, /health naming a
+# commit of main, the keys file's mode and removal, a drop), and the release's checks of /health against the real c-storage binary, built here with
 # several stamps and without one (it needs Go): the build it waits for, and the newer build it must
 # never overwrite.
 # Expected length: about 40 seconds with a cold Go cache, about 20 with a warm one.
@@ -293,6 +294,17 @@ refuses "a summary that passed fewer than the request files is refused" "1 passe
 rm "$WORK/report.json"
 refuses "no report at all is refused" "no readable report" proof
 
+# a scratch checkout for what writes into the Bruno collection's folder: the real ignore rule, copied
+KR=$WORK/kr
+mkdir -p "$KR/c-storage/bruno/environments"
+git -C "$KR" init -q
+cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$KR/c-storage/bruno/environments/.gitignore"
+ENVS=$KR/c-storage/bruno/environments
+KENV=$ENVS/ridge-tunnel.yml
+kr() { REPO_DIR=$KR "$@"; }
+free_port() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+not_taken() { ! port_taken "$1"; }
+
 echo "== the log ends on the signal's exit code, and the exit still closes the tunnel and cleans up"
 cat >"$WORK/child.sh" <<'CHILD'
 set -euo pipefail
@@ -301,21 +313,38 @@ log_start sigtest x
 ssh() { echo "ssh $*" >>"$MARK"; }
 box_ready=1
 BOX_ID=i-test
+REPO_DIR=$KR
+INTERNAL_KEY=internalkey0
+ADMIN_KEY=adminkey0
+mask "$INTERNAL_KEY"
+mask "$ADMIN_KEY"
+bruno_env_write "$KENV" 3192 tunnel-x accesskey0
+if [ -n "${LEAK:-}" ]; then echo "oops $ADMIN_KEY"; fi
 kill -s "$1" $$
 sleep 5
 echo "not reached"
 CHILD
 for sig in TERM:143 INT:130 HUP:129; do
   name=${sig%%:*} code=${sig##*:}
-  rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
+  rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls" "$KENV"
   mkdir -p "$WORK/tmp"
   rc=0
-  OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/child.sh" "$name" >/dev/null 2>&1 || rc=$?
+  OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls KR=$KR KENV=$KENV bash "$WORK/child.sh" "$name" >/dev/null 2>&1 || rc=$?
   check "$name: the script exits $code" "$code" "$rc"
   check "$name: the log ends on its exit code" "== exit $code" "$(tail -n 1 "$WORK"/logs/*.log)"
   check "$name: the tunnel is closed" 1 "$(grep -c -e '-O exit' "$WORK/ssh.calls" || true)"
   check "$name: the scratch folder is removed" 0 "$(find "$WORK/tmp" -mindepth 1 | wc -l | tr -d ' ')"
+  check "$name: the keys file is removed" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
+  check "$name: the log was searched for the keys and held none" "ok   no key in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1)"
 done
+# A key that reaches the log is named, the run fails, and the file still goes.
+rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls" "$KENV"
+mkdir -p "$WORK/tmp"
+rc=0
+LEAK=1 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls KR=$KR KENV=$KENV bash "$WORK/child.sh" INT >/dev/null 2>&1 || rc=$?
+check "a key in the log: the run fails" 1 "$rc"
+check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
+check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
 echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked)"
 WORKFLOW=$REPO_DIR/.github/workflows/c-storage.yml
@@ -475,16 +504,6 @@ check "a ridge running a commit this clone lacks is released over" 1 "$(supersed
 stop_server
 check "a ridge that does not answer is released over (its first release)" 1 "$(supersedes "$old_sha")"
 
-# a scratch checkout for what writes into the Bruno collection's folder: the real ignore rule, copied
-KR=$WORK/kr
-mkdir -p "$KR/c-storage/bruno/environments"
-git -C "$KR" init -q
-cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$KR/c-storage/bruno/environments/.gitignore"
-ENVS=$KR/c-storage/bruno/environments
-kr() { REPO_DIR=$KR "$@"; }
-free_port() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
-not_taken() { ! port_taken "$1"; }
-
 echo "== the port (check.sh and tunnel.sh refuse a taken one before opening anything)"
 start_server "$WORK/server-new"
 port=${URL#http://127.0.0.1:}
@@ -560,7 +579,7 @@ check "no answer is refused, saying so" "/health names no commit (answered: noth
 echo "== the Bruno environment (the one writer: 0600, git-ignored, removed only by the run that wrote it)"
 INTERNAL_KEY=internalkey0
 ADMIN_KEY=adminkey0
-kenv=$ENVS/ridge-tunnel.yml
+kenv=$KENV
 printf 'an old file\n' >"$kenv"
 chmod 644 "$kenv"
 passes "a path git ignores is written" kr bruno_env_write "$kenv" 3192 tunnel-x accesskey0
@@ -580,6 +599,86 @@ check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml
   "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
 check "check.sh writes its environment through that writer alone" "1 0" \
   "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
+
+echo "== ops/tunnel.sh: a taken port is refused before anything is opened or written, and a refused run removes no file it did not write"
+cat >"$WORK/taken.sh" <<'CHILD'
+set -euo pipefail
+. "$OPS_DIR/lib.sh"
+REPO_DIR=$KR
+log_start tunneltest x
+ssh() { echo "ssh $*" >>"$MARK"; }
+aws() { echo "aws $*" >>"$MARK"; }
+refuse_taken_port "$PORT" "free it"
+box_open ridge "$PORT"
+INTERNAL_KEY=k
+ADMIN_KEY=a
+bruno_env_write "$KENV" "$PORT" c d
+CHILD
+start_server "$WORK/server-new"
+port=${URL#http://127.0.0.1:}
+port=${port%/health}
+rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
+mkdir -p "$WORK/tmp"
+printf 'the first run keys\n' >"$KENV"
+rc=0
+OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls KR=$KR KENV=$KENV PORT=$port bash "$WORK/taken.sh" >/dev/null 2>&1 || rc=$?
+stop_server
+check "the run on a taken port fails" 1 "$rc"
+check "  naming the port" 1 "$(grep -c "something already answers on 127.0.0.1:$port" "$WORK"/logs/*.log || true)"
+check "  opening nothing: no aws, no ssh" 0 "$(cat "$WORK/ssh.calls" 2>/dev/null | wc -l | tr -d ' ')"
+check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$WORK"/logs/*.log)"
+check "  leaving the first run's keys file as it was" "the first run keys" "$(cat "$KENV")"
+rm -f "$KENV"
+line_of() { grep -n -m1 -F -- "$1" "$OPS_DIR/tunnel.sh" | cut -d: -f1; }
+# shellcheck disable=SC2016 # tunnel.sh's literal text
+check "tunnel.sh refuses the port, then opens, reads /health, reads the keys, then writes" "ordered" \
+  "$(if [ "$(line_of 'refuse_taken_port "$TUNNEL_PORT"')" -lt "$(line_of 'box_open "$ENVNAME"')" ] &&
+    [ "$(line_of 'box_open "$ENVNAME"')" -lt "$(line_of 'health_main_read')" ] &&
+    [ "$(line_of 'health_main_read')" -lt "$(line_of 'read_keys')" ] &&
+    [ "$(line_of 'read_keys')" -lt "$(line_of 'bruno_env_write')" ]; then echo ordered; else echo disordered; fi)"
+# shellcheck disable=SC2016 # tunnel.sh's literal text
+check "  and stops on a /health that names no commit of main" 1 "$(grep -c 'die "$HEALTH_PROBLEM"' "$OPS_DIR/tunnel.sh" || true)"
+check "the port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
+check "tunnel.sh removes its keys file only through on_exit (no cleanup of its own, no rm)" 0 "$(grep -cE 'cleanup_extra|rm ' "$OPS_DIR/tunnel.sh" || true)"
+rc=0
+out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
+check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env>" "$rc $out"
+
+echo "== ops/tunnel.sh: a tunnel that drops is named, and the command exits"
+# the stand-in ssh answers -O check twice, then fails as a dropped connection does
+cat >"$WORK/hold.sh" <<'CHILD'
+set -euo pipefail
+. "$OPS_DIR/lib.sh"
+log_start holdtest x
+ssh() {
+  echo "$*" >>"$MARK"
+  if [ -n "${DROP:-}" ] && [ "$(wc -l <"$MARK" | tr -d ' ')" -gt 2 ]; then return 255; fi
+  return 0
+}
+box_ready=1
+BOX_ID=i-test
+tunnel_hold "${HOLD:-0.05}"
+CHILD
+rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
+mkdir -p "$WORK/tmp"
+rc=0
+DROP=1 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/hold.sh" >/dev/null 2>&1 || rc=$?
+check "a dropped connection ends the command with exit 1" 1 "$rc"
+check "  the log names the drop" 1 "$(grep -c 'the tunnel dropped' "$WORK"/logs/*.log || true)"
+check "  after asking three times with -O check" 3 "$(grep -c -e '-O check' "$WORK/ssh.calls" || true)"
+check "  and ends on its exit code, the tunnel closed" "== exit 1" "$(tail -n 1 "$WORK"/logs/*.log)"
+rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
+mkdir -p "$WORK/tmp"
+HOLD=30 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/hold.sh" >/dev/null 2>&1 &
+PID=$!
+sleep 1
+SECONDS=0
+kill -s TERM "$PID"
+rc=0
+wait "$PID" || rc=$?
+PID=''
+check "a connection that holds is left by a signal at once, not after the 30 s between checks (143)" "143 fast" "$rc $(if [ "$SECONDS" -lt 5 ]; then echo fast; else echo slow; fi)"
+check "  the log ends on it" "== exit 143" "$(tail -n 1 "$WORK"/logs/*.log)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"
