@@ -96,7 +96,7 @@ func TestListenAddrIsLoopbackWhenUnsetAndTheAddressWhenSet(t *testing.T) {
 
 // One IP address: not every interface, not a name that resolves to who knows what.
 func TestListenAddrRefusesWhatIsNotOneAddress(t *testing.T) {
-	for _, bad := range []string{"0.0.0.0", "::", "[::]", "localhost", "ridge.internal", "10.0.0.1:3181", "10.0.0.0/24", "fe80::1%eth0", "10.0.0.1,10.0.0.2", "999.1.1.1"} {
+	for _, bad := range []string{"0.0.0.0", "::", "[::]", "::ffff:0.0.0.0", "localhost", "ridge.internal", "10.0.0.1:3181", "10.0.0.0/24", "fe80::1%eth0", "10.0.0.1,10.0.0.2", "999.1.1.1"} {
 		t.Run(bad, func(t *testing.T) {
 			setEnv(t, nil)
 			t.Setenv("LISTEN_ADDR", bad)

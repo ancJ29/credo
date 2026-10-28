@@ -419,12 +419,15 @@ func TestBuildPanicsRatherThanRunningWithoutAKey(t *testing.T) {
 // A listener on every interface would make a firewall the only thing between the network and the
 // port: Listen binds the one address it is given, whichever family.
 func TestListenBindsTheAddressItIsGiven(t *testing.T) {
-	probe, err := net.Listen("tcp", "[::1]:0")
-	if err != nil {
-		t.Skipf("no IPv6 loopback on this host: %v", err)
+	addrs := []string{"127.0.0.1"}
+	// Only the ::1 case needs IPv6; a host without it still tests 127.0.0.1.
+	if probe, err := net.Listen("tcp", "[::1]:0"); err == nil {
+		probe.Close()
+		addrs = append(addrs, "::1")
+	} else {
+		t.Logf("no IPv6 loopback on this host, ::1 not tested: %v", err)
 	}
-	probe.Close()
-	for _, addr := range []string{"127.0.0.1", "::1"} {
+	for _, addr := range addrs {
 		ln, err := Listen(addr, "0")
 		if err != nil {
 			t.Fatalf("Listen(%s): %v", addr, err)

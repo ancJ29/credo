@@ -11,7 +11,7 @@ module="$(go list -m)"
 # elsewhere: the one file left out is the entry point, which no in-process test
 # can start. It keeps only the wiring and three outcomes: a bad configuration
 # exits 1, a port already taken exits 1 (Run's error), and SIGTERM exits 0 with
-# "stopped" logged. The CI e2e job (scripts/e2e.sh, .github/workflows/c-storage.yml)
+# "stopped" logged. The CI e2e job (scripts/e2e.sh, .github/workflows/ci.yml)
 # starts the binary and holds all three, and the happy path through /health.
 measured="$(go list ./... | grep -vx "$module/cmd/server")"
 

@@ -90,6 +90,10 @@ func listenAddrOf(name string) (string, error) {
 		return DefaultListenAddr, nil
 	}
 	addr, err := netip.ParseAddr(raw)
+	if err == nil {
+		// ::ffff:0.0.0.0 is 0.0.0.0 in a v6 coat, and binds every interface unless unmapped first.
+		addr = addr.Unmap()
+	}
 	if err != nil || addr.IsUnspecified() || addr.Zone() != "" {
 		return "", fmt.Errorf("%s must be one specific IP address (not an unspecified one, a name or a port), or unset for loopback", name)
 	}
