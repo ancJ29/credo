@@ -26,7 +26,7 @@ A push to `main` releases and checks ridge by itself ([the deploy job](#the-depl
    - The Region is fixed in `ops/lib.sh` (`ap-southeast-5`); the script stops if the account has it
      disabled.
 3. Have `jq`, `ssh`, and `gh` logged in with rights on the repository (`stack.sh env` needs them).
-   - `check.sh` also needs Bruno CLI 4.2.0: `npm install -g @usebruno/cli@4.2.0`.
+   - `check.sh` also needs Bruno CLI 4.2.0: `npm install -g --ignore-scripts @usebruno/cli@4.2.0`.
 
 ## Bootstrap, once, in this order
 
@@ -66,10 +66,12 @@ Only while GitHub Actions is down: its concurrency group cannot see a run made h
 
 1. `ops/release.sh ridge` for `main`'s tip, or `ops/release.sh ridge <sha>`.
    - **is not a commit of main:** the sha is refused; use one `main` holds.
+   - **superseded: ridge runs <sha>:** green, nothing sent. ridge never moves backwards, so a sha
+     behind what runs is not released. To go back, revert the commit on `main` and release that.
    - **below the floor:** the box has too little free disk, memory or swap; free it before releasing.
    - **/health answered ...:** the new binary is installed and c-storage did not name it. Read the
-     journal lines the log prints, then re-run the last green deploy's job (`gh run rerun`) to put
-     the last good commit back.
+     journal lines the log prints, then revert the bad commit on `main` and release `main`'s tip
+     to put the last good tree back.
 2. Read the log's last lines: `released <sha>`.
 3. `ops/check.sh ridge`.
 
@@ -81,12 +83,17 @@ The human's push to `main` that touches `c-storage/`, `ops/` or the workflow sta
 tunnel. It changes no stack: a template change stays your change set.
 
 1. Read the run's log in GitHub; the scripts' lines end `released <sha>` and `== green`.
-   - **red, and ops/ differs from origin/main's:** a newer push to `main` landed during the run;
-     its own deploy follows.
-   - **red, any other:** fix forward and push, or re-run the last green deploy's job
-     (`gh run rerun`) to put its commit back.
+   - **superseded: ridge runs <sha>, then == green:** a newer commit of `main` is already on ridge
+     (its gates finished first); nothing was sent. ridge never moves backwards.
+   - **shown cancelled:** a newer push to `main` took its place in the queue; that push's own
+     deploy carries it.
+   - **red:** a defect, never a run to repeat. Fix forward and push, or revert the bad commit on
+     `main` and push: the deploy that follows ships the reverted tree. Re-running an older run
+     does not go back; it ends superseded.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; run
      `ops/stack.sh env ridge` (plan step 11).
+   - The job checks `ops/` against its own commit, not the newer `main`, so a push that lands
+     during the run turns nothing red.
 2. It never runs on a branch or in a pull request, and never under `act`: each of its steps is
    skipped there (`ops/test.sh` holds this).
 3. While Actions is down, do the same by hand: [a release by hand](#a-release-by-hand).
@@ -118,4 +125,5 @@ Run the same three before pushing an `ops/` change:
 1. `shellcheck -x ops/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
-   `!env.ACT` on each step, the single concurrency, and the account id's mask.
+   `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,
+   no `continue-on-error`, the Region, and the account id's mask.

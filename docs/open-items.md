@@ -65,3 +65,12 @@ ridge's first three layers reach c-storage through ssh's forward to loopback. Th
 waits for the first caller of the private address: the BFF on ridge, in the ridge plan's fourth
 layer, with piece 1. It becomes `LISTEN_ADDR`, one IP address and never an unspecified one,
 loopback when unset, with its tests. The local stack keeps loopback.
+
+## 12. A lockfile for Bruno CLI in CI — the machine; *parked* until the CLI's dependencies are a problem (the ridge plan, step 12, 2026-10-28)
+
+Home: [the ridge plan](plans/2026-10-28-ridge.md#deploys-from-github-actions). `npm install -g
+@usebruno/cli@4.2.0` pins the CLI but not its 500-odd dependencies, and the `deploy` job runs it
+beside the deploy role. The job installs with `--ignore-scripts` and runs `bru` without the job's
+credentials, which holds the install scripts and the secrets. A lockfile (or a vendored install
+checked by hash) would also pin the code that runs. Add it when a dependency's release breaks a
+run, or when the CLI's version moves.
