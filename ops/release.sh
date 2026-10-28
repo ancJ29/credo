@@ -79,6 +79,9 @@ box 'sudo tee /opt/c-storage/c-storage.new >/dev/null' <"$binary"
 got_sum=$(box 'sudo sha256sum /opt/c-storage/c-storage.new' | cut -d' ' -f1)
 [ "$got_sum" = "$want_sum" ] || die "the binary arrived as $got_sum, sent as $want_sum"
 box 'sudo tee /opt/c-storage/c-storage.service.new >/dev/null' <"$unit"
+# The address the unit binds: the stack's, written each release (it is no secret and never moves
+# while the box lives), and installed beside the unit.
+printf 'LISTEN_ADDR=%s\n' "$BOX_LISTEN_ADDR" | box 'sudo tee /opt/c-storage/listen.env.new >/dev/null'
 ok "sent, checksum matches"
 keys_before=$(keys_sum)
 
@@ -109,6 +112,7 @@ step "installed, and c-storage restarted"
 # running what it ran. A rename in one directory is atomic. From here a failure leaves the new
 # binary on disk (the way back is the plan's: a revert pushed to main).
 box 'sudo chmod 0755 /opt/c-storage/c-storage.new &&
+  sudo mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env &&
   sudo mv -f /opt/c-storage/c-storage.service.new /etc/systemd/system/c-storage.service &&
   sudo mv -f /opt/c-storage/c-storage.new /opt/c-storage/c-storage &&
   sudo systemctl daemon-reload && sudo systemctl enable c-storage 2>/dev/null && sudo systemctl restart c-storage'

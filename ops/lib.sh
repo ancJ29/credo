@@ -333,14 +333,15 @@ unit_port() {
 
 BOX_ID=''
 BOX_PORT=$(unit_port "$OPS_DIR/c-storage.service")
-# The address on the box that a forward reaches c-storage at: the one home of it, read by box_open for
-# check.sh and tunnel.sh. It moves with open item 7 (c-storage off loopback), not before.
-BOX_LISTEN_ADDR=127.0.0.1
+# The address on the box that c-storage listens on, and that a forward and every read of /health
+# reach it at: the stack's BoxAddress, set by box_open and read by check.sh, tunnel.sh, release.sh
+# and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
+BOX_LISTEN_ADDR=''
 box_ready=0
 
 # box_open <env> [<local port>]: mints a key for this run, pushes it through Instance Connect (it
 # holds 60 s), and opens one connection through the endpoint that every box call then rides. With
-# a local port, that port forwards to c-storage's loopback port on the box. Returns non-zero when
+# a local port, that port forwards to c-storage's port on the box's private address. Returns non-zero when
 # the box does not answer, so a reboot's wait can try again.
 box_open() {
   local zone
@@ -350,6 +351,8 @@ box_open() {
   BOX_ID=$(out BoxId)
   zone=$(out Zone)
   [ -n "$BOX_ID" ] || die "stack $1 names no box"
+  BOX_LISTEN_ADDR=$(out BoxAddress)
+  [[ "$BOX_LISTEN_ADDR" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "stack $1 names no private address for its box (BoxAddress)"
   rm -f "$WORK/key" "$WORK/key.pub"
   ssh-keygen -q -t ed25519 -N '' -C credo-ops -f "$WORK/key"
   aws ec2-instance-connect send-ssh-public-key --instance-id "$BOX_ID" --availability-zone "$zone" \

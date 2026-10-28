@@ -1,10 +1,12 @@
 # c-storage on the box. ops/release.sh installs it as /etc/systemd/system/c-storage.service.
 # The keys live in /etc/c-storage/keys.env, root's alone: systemd reads that file before it
 # starts c-storage as its own user, so the service never runs as root. The login user owns
-# nothing here.
+# nothing here. /etc/c-storage/listen.env holds LISTEN_ADDR, the box's private address, which each
+# release writes from the stack's BoxAddress; the listener binds it and no other interface.
 [Unit]
 Description=c-storage
-After=network.target
+After=network-online.target
+Wants=network-online.target
 StartLimitIntervalSec=0
 
 [Service]
@@ -16,6 +18,7 @@ StateDirectoryMode=0700
 UMask=0077
 Environment=PORT=3181
 Environment=DB_PATH=/var/lib/c-storage/c-storage.db
+EnvironmentFile=/etc/c-storage/listen.env
 EnvironmentFile=/etc/c-storage/keys.env
 ExecStart=/opt/c-storage/c-storage
 # Always back, with no limit on tries: a manager that gives up after a few restarts leaves a

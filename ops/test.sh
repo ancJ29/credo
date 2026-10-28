@@ -529,7 +529,7 @@ echo "== a forward that cannot bind fails the open (box_open, for check.sh and t
 # fails; without it, ssh stays up and serves nothing there.
 box_open_stub() {
   (
-    aws() { if [[ "$*" == *describe-stacks* ]]; then echo '{"Stacks":[{"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}'; fi; }
+    aws() { if [[ "$*" == *describe-stacks* ]]; then echo '{"Stacks":[{"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}'; fi; }
     ssh() {
       local a prev='' bind='' strict=0
       echo "$*" >>"$WORK/ssh.args"
@@ -556,6 +556,30 @@ rc=0
 box_open_stub "$free" || rc=$?
 check "a forward onto a free port opens" 0 "$rc"
 check "  with ExitOnForwardFailure=yes among the arguments" 2 "$(grep -c 'ExitOnForwardFailure=yes' "$WORK/ssh.args" || true)"
+check "  forwarding to c-storage's port on the stack's BoxAddress, never on loopback" 2 \
+  "$(grep -c -e "-L 127.0.0.1:[0-9]*:10.20.30.40:$BOX_PORT" "$WORK/ssh.args" || true)"
+box_open_without() { # <outputs as JSON>: box_open on a stack with those outputs alone
+  (
+    OUTPUTS=$1
+    aws() { if [[ "$*" == *describe-stacks* ]]; then echo "{\"Stacks\":[{\"Outputs\":$OUTPUTS}]}"; fi; }
+    ssh() { return 0; }
+    box_open ridge "$free"
+  )
+}
+refuses "a stack with no BoxAddress is refused before a key is sent" "names no private address" \
+  box_open_without '[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"Zone","OutputValue":"z"}]'
+refuses "a BoxAddress that is no IPv4 address is refused" "names no private address" \
+  box_open_without '[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"0.0.0.0/0"},{"OutputKey":"Zone","OutputValue":"z"}]'
+
+echo "== c-storage listens on the box's private address (the unit reads it; each release writes it from BoxAddress)"
+unit=$OPS_DIR/c-storage.service
+check "the unit reads LISTEN_ADDR from /etc/c-storage/listen.env" 1 "$(grep -c '^EnvironmentFile=/etc/c-storage/listen.env$' "$unit" || true)"
+check "  and starts once the network is online" "1 1" "$(grep -c '^After=network-online.target$' "$unit" || true) $(grep -c '^Wants=network-online.target$' "$unit" || true)"
+check "  and sets no LISTEN_ADDR of its own, which would shadow the file" 0 "$(grep -c '^Environment=LISTEN_ADDR' "$unit" || true)"
+check "release.sh writes LISTEN_ADDR from BOX_LISTEN_ADDR, beside the unit, and installs it before the restart" "1 1 1" \
+  "$(grep -cF 'LISTEN_ADDR=%s' "$OPS_DIR/release.sh" || true) $(grep -c 'mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env' "$OPS_DIR/release.sh" || true) $(awk '/listen.env.new \/etc/{a=NR} /systemctl restart/{b=NR} END{print (a>0 && a<b)}' "$OPS_DIR/release.sh")"
+check "no script reads /health or forwards at 127.0.0.1 on the box" 0 \
+  "$(cd "$OPS_DIR" && grep -hE '127[.]0[.]0[.]1:[$][{]?BOX_PORT' lib.sh check.sh drill.sh release.sh tunnel.sh | grep -c . || true)"
 
 echo "== /health names a commit of main (the check, and the tunnel before it writes anything)"
 # probe_health <binary>: starts it, reads /health through its port as health_main_read does, stops it
@@ -702,7 +726,7 @@ cat >"$E2E/fakebin/aws" <<'STANDIN'
 #!/bin/bash
 echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
 case "$*" in
-  *"cloudformation describe-stacks"*) echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}' ;;
+  *"cloudformation describe-stacks"*) echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}' ;;
   *"send-ssh-public-key"*) echo True ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -829,6 +853,7 @@ check "  replacing the file an earlier run left, and saying so" 1 "$(grep -c '^n
 check "the keys file is 0600 and holds ridge's two keys" "$KEYS 2" "$(find "$KEYS" -perm 600) $(grep -cE "$FAKE_IKEY|$FAKE_AKEY" "$KEYS" || true)"
 check "the forward is asked to fail if it cannot bind, for this port" "1 1" \
   "$(grep -c 'ExitOnForwardFailure=yes' "$S/ssh.calls" || true) $(grep -c -e "-L 127.0.0.1:$tport:" "$S/ssh.calls" || true)"
+check "  to the stack's BoxAddress, from the box" 1 "$(grep -c -e "-L 127.0.0.1:$tport:10.20.30.40:$BOX_PORT" "$S/ssh.calls" || true)"
 check "the real c-storage answers /health through the port" "$e2e_sha" "$(curl -fsS -m 5 "http://127.0.0.1:$tport/health" | jq -r .buildVersion)"
 sleep 2
 check "the run holds: two seconds on, it has not ended" no "$(if e2e_ended; then echo yes; else echo no; fi)"

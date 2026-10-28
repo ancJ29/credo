@@ -99,6 +99,12 @@ Only while GitHub Actions is down: its concurrency group cannot see a run made h
      journal lines the log prints, then revert the bad commit on `main` and release `main`'s tip
      to put the last good tree back.
 2. Read the log's last lines: `released <sha>`.
+
+c-storage listens on the box's private address, the stack's `BoxAddress`, and on no other interface.
+Each release writes `/etc/c-storage/listen.env` from it and the unit reads that file. The first
+release that carries this change reads `/health` on that address before sending anything, which the
+old loopback listener does not answer: the log then finds no running commit, and the release goes on
+(the same as a first release). The check, the drill and the tunnel read the same address.
 3. `ops/check.sh ridge`.
 
 ## The deploy job
