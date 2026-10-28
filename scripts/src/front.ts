@@ -42,12 +42,14 @@ const sendError = (response: ServerResponse, status: number, error: string) =>
 /**
  * The local front, standing where CloudFront and the HTTP API stand: the UI's files, and `/api`
  * on to the BFF. Each `/api` call goes on as it came, any method and any body, and the BFF's answer
- * comes back with its status; the front asks for nothing and signs nothing.
+ * comes back with its status; the front asks for nothing and signs nothing. With no BFF, as under
+ * `pnpm fake`, every `/api` call is a 404.
  */
-export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: string }) {
+export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: string | null }) {
   const root = resolve(staticDir);
 
   async function api(request: IncomingMessage, response: ServerResponse, url: URL) {
+    if (bffUrl === null) return sendError(response, 404, 'No BFF here');
     const writes = request.method !== 'GET' && request.method !== 'HEAD';
     let body: Buffer;
     try {

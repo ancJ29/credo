@@ -8,15 +8,9 @@ import {
   storedUserSchema,
   tenantConfigSchema,
 } from '@credo/shared';
+import { DEMO_CODE, DEMO_CONFIG, DEMO_ROOT_NAME, OPERATOR_NAME } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
-import {
-  DEMO_CODE,
-  DEMO_CONFIG,
-  newOperatorPassword,
-  OPERATOR_NAME,
-  ROOT_NAME,
-  seedDemo,
-} from './generator';
+import { newOperatorPassword, ROOT_NAME, seedDemo } from './generator';
 
 /** A c-storage service in memory: records and the tags a read returns. */
 function memoryStorage() {
@@ -76,6 +70,10 @@ describe('the demo generator', () => {
     const stored = storedOperatorSchema.parse(records.get(recordKeys.operatorUser(OPERATOR_NAME)));
     expect(stored.passwordHash).toMatch(/^scrypt\$/);
     expect(await verifyPassword(operatorPassword, stored.passwordHash)).toBe(true);
+  });
+
+  it('The data set names the root as the BFF does, so the fake’s sign-in is the real one’s', () => {
+    expect(DEMO_ROOT_NAME).toBe(ROOT_NAME);
   });
 
   it('makes a new password for each stack, long enough to guess no better than at random', () => {

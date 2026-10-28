@@ -11,7 +11,8 @@
     "mock": "pnpm --filter @credo/ui run build:mock",
     "report": "pnpm --filter @credo/visual run report",
     "answers": "pnpm --filter @credo/visual run answers",
-    "stack": "pnpm --filter @credo/scripts run stack"
+    "stack": "pnpm --filter @credo/scripts run stack",
+    "fake": "pnpm --filter @credo/scripts run fake"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

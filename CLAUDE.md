@@ -36,6 +36,13 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   `CREDO_OPERATOR_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
+- **`pnpm fake -- <command>` serves the UI alone over invented data: no BFF, no c-storage.** It builds
+  the UI with `vite build --mode fake`, the one build that holds `?fake`, the fake `Api`
+  (`ui/src/fake.ts`) and the data set (`@credo/shared/demo`, a subpath never in the package's index);
+  the bundle `pnpm stack` and ridge serve holds none of them. The command gets `CREDO_URL` and
+  `CREDO_CLIENT_CODE`; without one, it prints the address to open (`/?fake`, optionally
+  `&cue=<call>:<403|409|503>` to make that call fail once) and waits for Ctrl-C
+  ([the employee list](docs/plans/2026-10-29-employee-list.md#the-fake)).
 - **The walk spec (`walk/`) needs a browser, so it runs in the human's terminal, never in the
   agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not
   run it; its base images are made by the human's run, once a piece, on one Mac

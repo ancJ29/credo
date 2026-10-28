@@ -119,3 +119,11 @@ state update lands outside `act`, so a test may read the page before the update.
 step, so none was touched. Find which tests update `Frame` and wrap or await the update, then make a
 warning a red in that package's setup.
 
+## 16. A failed sign-in leaves the button loading after a retry — the machine; *parked* until the sign-in is next touched (the employee list plan, step 3, 2026-10-29)
+
+`ui/src/ClientApp.tsx`'s `submit` sets the sign-in status to `busy`, and on any failure other than a
+401 draws the unavailable page without setting it back to `idle`. After "Try again" the form returns
+with its button still loading, so a second sign-in cannot be sent. Found by the fake's cue
+(`?fake&cue=signIn:503`), which reproduces it; the fake's test stops at the unavailable page, so it
+does not hold the fix. Fix: reset the status on the retry, with a test that signs in after a retry.
+

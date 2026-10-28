@@ -7,9 +7,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCStorage } from '@credo/bff/tests/build';
 import { createCStorageClient } from '@credo/shared';
+import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './front';
-import { DEMO_CODE, newOperatorPassword, OPERATOR_NAME, ROOT_NAME, seedDemo } from './generator';
+import { newOperatorPassword, ROOT_NAME, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
 

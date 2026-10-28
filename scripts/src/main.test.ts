@@ -88,3 +88,31 @@ describe('pnpm stack as a process', () => {
     }
   });
 });
+
+describe('pnpm fake as a process', () => {
+  it('serves the fake’s page to its command and, when the command ends, leaves nothing listening or behind', async () => {
+    const file = join(temp, 'fake-read');
+    const fakeTemp = await mkdtemp(join(temp, 'tmp-'));
+    const command = `
+      fetch(process.env.CREDO_URL + '/?fake').then((page) => page.text()).then((text) => {
+        require('fs').writeFileSync(process.env.READ_FILE, process.env.CREDO_URL + ' ' + text);
+      });`;
+    const fake = spawn(
+      process.execPath,
+      ['--import', 'tsx', 'src/fake-main.ts', '--', process.execPath, '-e', command],
+      {
+        cwd: SCRIPTS,
+        env: { ...process.env, TMPDIR: fakeTemp, READ_FILE: file },
+        stdio: ['ignore', 'ignore', 'inherit'],
+      },
+    );
+    const status = await new Promise((resolve) => fake.once('exit', resolve));
+
+    expect(status).toBe(0);
+    const read = await readFile(file, 'utf8');
+    const front = read.slice(0, read.indexOf(' '));
+    expect(read).toContain('<div id="root">');
+    await expect(fetch(front)).rejects.toThrow();
+    expect((await readdir(fakeTemp)).filter((name) => name.startsWith('credo-'))).toEqual([]);
+  });
+});

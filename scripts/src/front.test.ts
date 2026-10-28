@@ -187,3 +187,20 @@ describe('the local front', () => {
     expect((await put(body)).status).toBe(413);
   });
 });
+
+describe('the local front with no BFF', () => {
+  it('serves the page and answers every /api call 404, as `pnpm fake` has nothing behind it', async () => {
+    const alone = createFront({ staticDir: dir, bffUrl: null });
+    const aloneUrl = await listen(alone);
+    try {
+      for (const method of ['GET', 'PUT']) {
+        const answer = await fetch(`${aloneUrl}/api/config`, { method });
+        expect(answer.status, method).toBe(404);
+        expect(await answer.json()).toEqual({ error: 'No BFF here' });
+      }
+      expect(await (await fetch(`${aloneUrl}/`)).text()).toBe('<div id="root"></div>');
+    } finally {
+      await close(alone);
+    }
+  });
+});

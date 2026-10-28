@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { type Artifacts, withStack } from './stack';
+import { type FakeArtifacts, type RunningFake, withFake } from './fake';
+import { type Artifacts, type RunningStack, withStack } from './stack';
 
 /** `pnpm stack -- <command>` or `pnpm stack <command>`; pnpm may or may not pass the `--` on. */
 export const commandOf = (argv: string[]) => (argv[0] === '--' ? argv.slice(1) : argv);
@@ -62,47 +63,45 @@ function runCommand(
   });
 }
 
+/** What differs between the programs that bring something up for a command: what is built, what
+ * stands, and what the command and the reader are told of it. */
+type Kit<Built, Running> = {
+  /** What stands, as the first line says it: "the stack". */
+  name: string;
+  building: string;
+  build: (dir: string) => Promise<Built>;
+  up: (built: Built, use: (running: Running) => Promise<number>) => Promise<number>;
+  url: (running: Running) => string;
+  env: (running: Running) => Record<string, string>;
+  /** What is printed when no command was given, before the wait for Ctrl-C. */
+  waiting: (running: Running) => string[];
+};
+
 /**
- * The whole of `pnpm stack`: build, bring the stack up, and either run the command given against
- * it or wait for Ctrl-C, then always take the stack down. The exit status is the command's. The
- * root's and the operator's passwords are printed once, only when no command was given: a command
- * gets them in its environment and needs no printed copy. A signal at any point, the build and the start-up
- * included, is held until the stack is down: it goes on to the command, or ends the wait, and a
+ * The whole of `pnpm stack` and `pnpm fake`: build, bring it up, and either run the command given
+ * against it or wait for Ctrl-C, then always take it down. The exit status is the command's. What
+ * the waiting prints, passwords included, is printed only when no command was given: a command gets
+ * them in its environment and needs no printed copy. A signal at any point, the build and the
+ * start-up included, is held until it is down: it goes on to the command, or ends the wait, and a
  * signal that arrives before the command starts keeps the command from starting.
  */
-export async function runStack(
+async function runUp<Built, Running>(
   argv: string[],
-  build: (dir: string) => Promise<Artifacts>,
+  kit: Kit<Built, Running>,
   out: (line: string) => void,
 ) {
   const command = commandOf(argv);
   const signals = watchSignals();
   const dir = await mkdtemp(join(tmpdir(), 'credo-stack-build-'));
   try {
-    out('building c-storage and the UI');
-    const artifacts = await build(dir);
-    return await withStack(artifacts, async (stack) => {
+    out(kit.building);
+    const built = await kit.build(dir);
+    return await kit.up(built, async (running) => {
       const early = signals.received();
       if (early) return statusOfSignal(early);
-      out(`the stack is up at ${stack.url}`);
-      if (command.length > 0) {
-        return await runCommand(
-          command,
-          {
-            CREDO_URL: stack.url,
-            CREDO_CLIENT_CODE: stack.clientCode,
-            CREDO_ROOT_NAME: stack.rootName,
-            CREDO_ROOT_PASSWORD: stack.rootPassword,
-            CREDO_OPERATOR_NAME: stack.operatorName,
-            CREDO_OPERATOR_PASSWORD: stack.operatorPassword,
-          },
-          signals,
-        );
-      }
-      out(`the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`);
-      out(`sign in as ${stack.rootName} with the password ${stack.rootPassword}`);
-      out(`the operator signs in at ${stack.url}/operator`);
-      out(`the operator is ${stack.operatorName}, first password ${stack.operatorPassword}`);
+      out(`${kit.name} is up at ${kit.url(running)}`);
+      if (command.length > 0) return await runCommand(command, kit.env(running), signals);
+      for (const line of kit.waiting(running)) out(line);
       out('Ctrl-C takes it all down');
       await signals.arrived;
       return 0;
@@ -112,3 +111,55 @@ export async function runStack(
     await rm(dir, { recursive: true, force: true });
   }
 }
+
+/** `pnpm stack`: c-storage, the BFF and the UI, with the demo client. */
+export const runStack = (
+  argv: string[],
+  build: (dir: string) => Promise<Artifacts>,
+  out: (line: string) => void,
+) =>
+  runUp<Artifacts, RunningStack>(
+    argv,
+    {
+      name: 'the stack',
+      building: 'building c-storage and the UI',
+      build,
+      up: withStack,
+      url: (stack) => stack.url,
+      env: (stack) => ({
+        CREDO_URL: stack.url,
+        CREDO_CLIENT_CODE: stack.clientCode,
+        CREDO_ROOT_NAME: stack.rootName,
+        CREDO_ROOT_PASSWORD: stack.rootPassword,
+        CREDO_OPERATOR_NAME: stack.operatorName,
+        CREDO_OPERATOR_PASSWORD: stack.operatorPassword,
+      }),
+      waiting: (stack) => [
+        `the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`,
+        `sign in as ${stack.rootName} with the password ${stack.rootPassword}`,
+        `the operator signs in at ${stack.url}/operator`,
+        `the operator is ${stack.operatorName}, first password ${stack.operatorPassword}`,
+      ],
+    },
+    out,
+  );
+
+/** `pnpm fake`: the UI alone, over invented data, with no BFF and no c-storage. */
+export const runFake = (
+  argv: string[],
+  build: (dir: string) => Promise<FakeArtifacts>,
+  out: (line: string) => void,
+) =>
+  runUp<FakeArtifacts, RunningFake>(
+    argv,
+    {
+      name: 'the fake',
+      building: 'building the fake UI',
+      build,
+      up: withFake,
+      url: (fake) => fake.url,
+      env: (fake) => ({ CREDO_URL: fake.url, CREDO_CLIENT_CODE: fake.clientCode }),
+      waiting: (fake) => [`open ${fake.url}/?fake, any password signs ${fake.rootName} in`],
+    },
+    out,
+  );

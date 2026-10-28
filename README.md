@@ -26,3 +26,15 @@ pnpm stack
 ```
 
 It prints the address and the root's sign-in, once; Ctrl-C takes it all down, the database with it.
+
+## Try the fake
+
+The UI alone over invented data: no BFF, no c-storage, no Go. Needs Node 26 and pnpm 12.
+
+```sh
+pnpm install
+pnpm fake
+```
+
+It prints an address; open it with `?fake` after it, and sign in as `root` with any password.
+Ctrl-C stops it.

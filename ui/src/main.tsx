@@ -6,13 +6,24 @@ import { App } from './App';
 import { createApi } from './api';
 import { createDeviceStore } from './device';
 
-const device = createDeviceStore(localStorage);
-const api = createApi({
-  deviceId: device.deviceId(),
-  clientCode: device.clientCode,
-  authId: device.authId,
-  operatorAuthId: device.operatorAuthId,
-});
+/** `?fake` serves the app over invented data, and only in the fake build (`vite build --mode
+ * fake`): the test is a constant there and false in every other build, which drops the fake and its
+ * data from the bundle, as the scripts' fake.test.ts reads. */
+const { api, device } =
+  import.meta.env.MODE === 'fake' && new URLSearchParams(location.search).has('fake')
+    ? (await import('./fake')).fakeParts(location.search, sessionStorage)
+    : realParts();
+
+function realParts() {
+  const device = createDeviceStore(localStorage);
+  const api = createApi({
+    deviceId: device.deviceId(),
+    clientCode: device.clientCode,
+    authId: device.authId,
+    operatorAuthId: device.operatorAuthId,
+  });
+  return { api, device };
+}
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>

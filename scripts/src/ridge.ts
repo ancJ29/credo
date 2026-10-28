@@ -8,7 +8,7 @@ import {
   recordKeys,
   type StoredOperator,
 } from '@credo/shared';
-import { OPERATOR_NAME } from './generator';
+import { OPERATOR_NAME } from '@credo/shared/demo';
 import { ensureService } from './register';
 
 export type RidgeIo = {

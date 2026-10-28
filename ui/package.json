@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:fake": "vite build --mode fake",
     "build:mock": "vite build --config vite.mock.config.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage"
