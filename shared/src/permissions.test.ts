@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { can, PERMISSIONS, permissionLayerSchema, resolvePermissions } from './permissions';
+import {
+  can,
+  differences,
+  PERMISSIONS,
+  permissionLayerSchema,
+  resolvePermissions,
+} from './permissions';
 
 describe('permissions', () => {
   it('Each department and each position carries what its staff may do, and each person may carry their own; the person’s beats the position’s, which beats the department’s, and what none of them allows is refused', () => {
@@ -59,5 +65,23 @@ describe('permissions', () => {
       false,
     );
     expect(can({ root: false, permissions: {} }, 'staff.canView')).toBe(false);
+  });
+
+  it('A person’s own permissions store only what differs from their position’s and department’s', () => {
+    const below = [{ 'staff.canView': true, 'staff.canEdit': true }, { 'staff.canEdit': false }];
+
+    expect(
+      differences(
+        {
+          'staff.canView': true,
+          'staff.canEdit': false,
+          'staff.canCreate': true,
+          'staff.canDelete': false,
+        },
+        below,
+      ),
+    ).toEqual({ 'staff.canCreate': true });
+    expect(differences({ 'staff.canEdit': true }, below)).toEqual({ 'staff.canEdit': true });
+    expect(differences({}, below)).toEqual({});
   });
 });

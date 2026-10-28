@@ -1,5 +1,21 @@
-import { normaliseSignInName, type TenantConfig } from '@credo/shared';
-import { DEMO_CODE, DEMO_CONFIG, DEMO_ROOT_NAME, OPERATOR_NAME } from '@credo/shared/demo';
+import {
+  type Employee,
+  type EmployeeDoc,
+  normaliseEmployeeCode,
+  normaliseSignInName,
+  resolvePermissions,
+  type StaffSetup,
+  type TenantConfig,
+  type UserView,
+} from '@credo/shared';
+import {
+  DEMO_CODE,
+  DEMO_CONFIG,
+  DEMO_EMPLOYEES,
+  DEMO_ROOT_NAME,
+  DEMO_STAFF_SETUP,
+  OPERATOR_NAME,
+} from '@credo/shared/demo';
 import { type Api, ApiError } from './api';
 import { createDeviceStore } from './device';
 
@@ -18,7 +34,11 @@ export function parseCue(raw: string | null): Cue | null {
 }
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
-const ROOT = { name: DEMO_ROOT_NAME, root: true };
+const ROOT: UserView = { name: DEMO_ROOT_NAME, root: true, permissions: {} };
+/** The password every fake sign-in hands out, since none is ever checked. */
+const MADE_PASSWORD = 'Fake-password-1!';
+/** A staff member's handle is this and their id; the root's is the bare prefix. */
+const STAFF_HANDLE = 'fake.session.';
 
 type Options = {
   /** Where the fake finds out whether this device holds a handle. */
@@ -35,6 +55,16 @@ export function createFakeApi({ device, cue }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
   let pending = cue;
+  let setup: StaffSetup = structuredClone(DEMO_STAFF_SETUP);
+  let setupVersion = 1;
+  const people = new Map<string, Employee>(
+    DEMO_EMPLOYEES.map((person) => [person.id, structuredClone(person)]),
+  );
+  const versions = new Map<string, number>(DEMO_EMPLOYEES.map((person) => [person.id, 1]));
+  /** Who holds a password: the data set's people but one, and each one given a password since. */
+  const ready = new Set(
+    DEMO_EMPLOYEES.filter((person) => person.code !== 'EMP-0007').map((p) => p.id),
+  );
 
   /** Runs `answer`, unless the cue names `call` and has not fired: then its status instead, as
    * the real call's own answer for it, or as the error every other call raises. */
@@ -49,22 +79,78 @@ export function createFakeApi({ device, cue }: Options): Api {
   }
 
   const signedOut = () => new ApiError(401);
+  const notFound = () => new ApiError(404);
+
+  /** What a staff member may do, resolved as the BFF resolves it: department, position, person. */
+  const staffUser = (person: Employee): UserView => {
+    const layer = (units: StaffSetup['departments'], link: Employee['department']) =>
+      units.find((unit) => unit.id === link?.id)?.permissions ?? {};
+    return {
+      name: person.name,
+      root: false,
+      permissions: resolvePermissions([
+        layer(setup.departments, person.department),
+        layer(setup.positions, person.position),
+        person.permissions,
+      ]),
+    };
+  };
+  /** Who the device's handle names, the root when it names none of the data set's people. */
+  const signedInUser = (handle: string): UserView => {
+    const person = people.get(handle.slice(STAFF_HANDLE.length));
+    return handle.startsWith(STAFF_HANDLE) && person ? staffUser(person) : ROOT;
+  };
+  const isRoot = () => !device.authId()?.startsWith(STAFF_HANDLE);
+
+  const person = (id: string) => {
+    const found = people.get(id);
+    if (!found) throw notFound();
+    return found;
+  };
+  const docOf = (found: Employee): EmployeeDoc => ({
+    employee: structuredClone(found),
+    version: `e${versions.get(found.id)}`,
+    signIn: { name: found.code, ready: ready.has(found.id) },
+  });
+  const moved = (found: Employee) => {
+    versions.set(found.id, (versions.get(found.id) as number) + 1);
+    return docOf(found);
+  };
+  const linkOf = (units: StaffSetup['departments'], id: string | null | undefined) => {
+    const unit = units.find((candidate) => candidate.id === id);
+    return unit ? { id: unit.id, name: unit.name } : null;
+  };
 
   return {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
     signIn: (name) =>
       call('signIn', () => {
-        if (normaliseSignInName(name) !== DEMO_ROOT_NAME) throw signedOut();
-        return { authId: 'fake.session', expiresAt: Date.now() + WEEK, user: ROOT };
+        const entered = normaliseSignInName(name);
+        if (entered === DEMO_ROOT_NAME) {
+          return { authId: 'fake.session', expiresAt: Date.now() + WEEK, user: ROOT };
+        }
+        const staff = [...people.values()].find(
+          (candidate) =>
+            normaliseSignInName(candidate.code) === entered &&
+            !candidate.archived &&
+            ready.has(candidate.id),
+        );
+        if (!staff) throw signedOut();
+        return {
+          authId: `${STAFF_HANDLE}${staff.id}`,
+          expiresAt: Date.now() + WEEK,
+          user: staffUser(staff),
+        };
       }),
 
     signOut: () => call('signOut', () => undefined),
 
     me: () =>
       call('me', () => {
-        if (!device.authId()) throw signedOut();
-        return { user: ROOT };
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        return { user: signedInUser(handle) };
       }),
 
     saveConfig: (next, readAt) =>
@@ -97,6 +183,106 @@ export function createFakeApi({ device, cue }: Options): Api {
         return { operator: { name: OPERATOR_NAME } };
       }),
 
+    getStaffSetup: () =>
+      call('getStaffSetup', () => ({
+        setup: structuredClone(setup),
+        version: `s${setupVersion}`,
+      })),
+
+    saveStaffSetup: (next, readAt) =>
+      call(
+        'saveStaffSetup',
+        () => {
+          if (readAt !== `s${setupVersion}`) return { kind: 'conflict' as const };
+          const mint = (units: typeof next.departments) =>
+            units.map((unit) => ({ ...unit, id: unit.id ?? crypto.randomUUID() }));
+          setup = structuredClone({
+            departments: mint(next.departments),
+            positions: mint(next.positions),
+            extra: next.extra,
+          });
+          setupVersion += 1;
+          return {
+            kind: 'saved' as const,
+            doc: { setup: structuredClone(setup), version: `s${setupVersion}` },
+          };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
+    listEmployees: () =>
+      call('listEmployees', () => [...people.values()].map((found) => structuredClone(found))),
+
+    getEmployee: (id) => call('getEmployee', () => docOf(person(id))),
+
+    addEmployee: (request) =>
+      call(
+        'addEmployee',
+        () => {
+          const code = normaliseEmployeeCode(request.code);
+          if ([...people.values()].some((existing) => existing.code === code)) {
+            return { kind: 'taken' as const };
+          }
+          const root = isRoot();
+          const added: Employee = {
+            id: crypto.randomUUID(),
+            code,
+            name: request.name,
+            department: root ? linkOf(setup.departments, request.departmentId) : null,
+            position: root ? linkOf(setup.positions, request.positionId) : null,
+            permissions: {},
+            archived: false,
+            extra: structuredClone(request.extra),
+          };
+          people.set(added.id, added);
+          versions.set(added.id, 1);
+          if (root) ready.add(added.id);
+          return {
+            kind: 'added' as const,
+            reply: { employee: docOf(added), password: root ? MADE_PASSWORD : null },
+          };
+        },
+        () => ({ kind: 'taken' as const }),
+      ),
+
+    saveEmployee: (id, request) =>
+      call(
+        'saveEmployee',
+        () => {
+          const found = person(id);
+          if (request.version !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          found.name = request.name;
+          found.extra = structuredClone(request.extra);
+          if (request.departmentId !== undefined) {
+            found.department = linkOf(setup.departments, request.departmentId);
+          }
+          if (request.positionId !== undefined) {
+            found.position = linkOf(setup.positions, request.positionId);
+          }
+          if (request.permissions) found.permissions = { ...request.permissions };
+          return { kind: 'saved' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
+    setPassword: (id, password) =>
+      call('setPassword', () => {
+        ready.add(person(id).id);
+        return { password: password ?? MADE_PASSWORD };
+      }),
+
+    archiveEmployee: (id, readAt) =>
+      call(
+        'archiveEmployee',
+        () => {
+          const found = person(id);
+          if (readAt !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          found.archived = true;
+          return { kind: 'archived' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
     makeClient: (code) =>
       call(
         'makeClient',
@@ -108,7 +294,7 @@ export function createFakeApi({ device, cue }: Options): Api {
                 client: {
                   link: `/login?client-code=${code}`,
                   rootName: DEMO_ROOT_NAME,
-                  password: 'Fake-password-1',
+                  password: MADE_PASSWORD,
                 },
               },
         () => ({ kind: 'taken' as const }),

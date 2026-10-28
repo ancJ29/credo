@@ -1,4 +1,7 @@
 import {
+  type AddEmployeeReply,
+  addEmployeeReplySchema,
+  type AddEmployeeRequest,
   AUTH_HEADER,
   CLIENT_HEADER,
   type ConfigDoc,
@@ -6,6 +9,11 @@ import {
   type CreateClientReply,
   createClientReplySchema,
   DEVICE_HEADER,
+  type Employee,
+  type EmployeeDoc,
+  employeeDocSchema,
+  employeeListReplySchema,
+  employeeRoutes,
   meReplySchema,
   type MeReply,
   type OperatorMeReply,
@@ -13,8 +21,14 @@ import {
   type OperatorSessionReply,
   operatorSessionReplySchema,
   ROUTES,
+  type SaveEmployeeRequest,
+  type SaveStaffSetupRequest,
   type SessionReply,
   sessionReplySchema,
+  type SetPasswordReply,
+  setPasswordReplySchema,
+  type StaffSetupDoc,
+  staffSetupDocSchema,
   type TenantConfig,
 } from '@credo/shared';
 
@@ -34,6 +48,14 @@ export type SaveResult = { kind: 'saved'; doc: ConfigDoc } | { kind: 'conflict' 
 
 /** A client made, or the code was already taken: the answer 409 is not an error to the form. */
 export type MakeResult = { kind: 'made'; client: CreateClientReply } | { kind: 'taken' };
+
+/** A person added, or the code was already taken: the answer 409 is not an error to the form. */
+export type AddResult = { kind: 'added'; reply: AddEmployeeReply } | { kind: 'taken' };
+
+/** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
+export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
+export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
+export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
 
 type Options = {
   /** The device id this device minted once. */
@@ -139,6 +161,63 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };
+    },
+
+    async getStaffSetup(): Promise<StaffSetupDoc> {
+      const response = await send('GET', ROUTES.staffSetup);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, staffSetupDocSchema);
+    },
+
+    async saveStaffSetup(
+      setup: SaveStaffSetupRequest['setup'],
+      version: string,
+    ): Promise<SaveStaffSetupResult> {
+      const response = await send('PUT', ROUTES.staffSetup, { setup, version });
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', doc: await read(response, staffSetupDocSchema) };
+    },
+
+    async listEmployees(): Promise<Employee[]> {
+      const response = await send('GET', ROUTES.employees);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, employeeListReplySchema)).employees;
+    },
+
+    async getEmployee(id: string): Promise<EmployeeDoc> {
+      const response = await send('GET', employeeRoutes.one(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, employeeDocSchema);
+    },
+
+    /** A code already taken is a result: the form says so and keeps what was typed. */
+    async addEmployee(request: AddEmployeeRequest): Promise<AddResult> {
+      const response = await send('POST', ROUTES.employees, request);
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'added', reply: await read(response, addEmployeeReplySchema) };
+    },
+
+    async saveEmployee(id: string, request: SaveEmployeeRequest): Promise<SaveEmployeeResult> {
+      const response = await send('PUT', employeeRoutes.one(id), request);
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', doc: await read(response, employeeDocSchema) };
+    },
+
+    /** The root's: `null` asks the BFF to make one. The answer is the password, shown once. */
+    async setPassword(id: string, password: string | null): Promise<SetPasswordReply> {
+      const response = await send('PUT', employeeRoutes.password(id), { password });
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, setPasswordReplySchema);
+    },
+
+    async archiveEmployee(id: string, version: string): Promise<ArchiveResult> {
+      const response = await send('POST', employeeRoutes.archive(id), { version });
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'archived', doc: await read(response, employeeDocSchema) };
     },
   };
 }

@@ -36,6 +36,8 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   `CREDO_OPERATOR_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
+- **A client's own data goes in `extra`, never in a new typed field,** unless the BFF or c-storage must
+  trust it; `extraSchema` in `shared/` is the one bound ([extra](docs/memo/extra.md)).
 - **`pnpm fake -- <command>` serves the UI alone over invented data: no BFF, no c-storage.** It builds
   the UI with `vite build --mode fake`, the one build that holds `?fake`, the fake `Api`
   (`ui/src/fake.ts`) and the data set (`@credo/shared/demo`, a subpath never in the package's index);

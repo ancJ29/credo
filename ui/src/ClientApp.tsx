@@ -1,4 +1,5 @@
 import {
+  can,
   clientCodeSchema,
   type ConfigDoc,
   type Language,
@@ -7,13 +8,20 @@ import {
 } from '@credo/shared';
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { AddPersonPage } from './AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import type { DeviceStore } from './device';
+import { type PageProps } from './page';
+import { PersonPage } from './PersonPage';
 import { Providers } from './Providers';
+import { pagesOf } from './nav';
+import { Notice } from './Notice';
 import { SettingsPage } from './SettingsPage';
 import { Shell } from './Shell';
+import { StaffListPage } from './StaffListPage';
+import { StaffSetupPage } from './StaffSetupPage';
 import { SignIn } from './SignIn';
 import { UnknownClient } from './UnknownClient';
 
@@ -137,11 +145,31 @@ export function ClientApp({ api, device, test }: Props) {
     }
   }
 
+  /** A 403 says what this person may do changed: who they are is read again, and the menu and
+   * the page are drawn from it. */
+  async function readAgain() {
+    try {
+      setUser((await api.me()).user);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === SIGNED_OUT) signedOut();
+    }
+  }
+
   async function signOut() {
     // The device is signed out whether or not the service heard: a retry would only hold the user.
     await api.signOut().catch(() => undefined);
     signedOut();
   }
+
+  const pages = user ? pagesOf(user) : [];
+  const first = pages[0];
+  const forbidden = <Notice kind="forbidden" />;
+  const pageFor = (who: UserView): PageProps => ({
+    api,
+    user: who,
+    onSignedOut: signedOut,
+    onForbidden: () => void readAgain(),
+  });
 
   return (
     <Providers colour={config.colour} language={language} test={test}>
@@ -149,6 +177,7 @@ export function ClientApp({ api, device, test }: Props) {
         <Shell
           brand={config}
           user={user.name}
+          pages={pages}
           languages={config.languages}
           onLanguage={(next) => {
             device.setLanguage(next);
@@ -156,13 +185,35 @@ export function ClientApp({ api, device, test }: Props) {
           }}
           onSignOut={() => void signOut()}
         >
-          <Routes>
-            <Route
-              path="/settings"
-              element={<SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />}
-            />
-            <Route path="*" element={<Navigate to="/settings" replace />} />
-          </Routes>
+          {first ? (
+            <Routes>
+              <Route
+                path="/settings"
+                element={
+                  user.root ? (
+                    <SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />
+                  ) : (
+                    <Notice kind="forbidden" />
+                  )
+                }
+              />
+              <Route path="/staff" element={<StaffListPage {...pageFor(user)} />} />
+              <Route
+                path="/staff/new"
+                element={
+                  can(user, 'staff.canCreate') ? <AddPersonPage {...pageFor(user)} /> : forbidden
+                }
+              />
+              <Route path="/staff/:id" element={<PersonPage {...pageFor(user)} />} />
+              <Route
+                path="/staff-setup"
+                element={user.root ? <StaffSetupPage {...pageFor(user)} /> : forbidden}
+              />
+              <Route path="*" element={<Navigate to={first.path} replace />} />
+            </Routes>
+          ) : (
+            <Notice kind="nothing" />
+          )}
         </Shell>
       ) : (
         <SignIn brand={config} status={signIn} onSubmit={(n, p) => void submit(n, p)} />

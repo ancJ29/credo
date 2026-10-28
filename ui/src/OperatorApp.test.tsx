@@ -1,3 +1,4 @@
+import { staffCalls } from '../tests/unused';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -43,6 +44,7 @@ function setup(
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.resolve({ operator: { name: 'operator' } })),
     makeClient: vi.fn(() => Promise.resolve({ kind: 'made' as const, client: made })),
+    ...staffCalls,
     ...overrides,
   } satisfies Api;
   const drawn = drawApp(<App api={api} device={device} test />, path);

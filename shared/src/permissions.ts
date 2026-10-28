@@ -41,3 +41,17 @@ export const can = (
   user: { root: boolean; permissions: PermissionLayer },
   id: PermissionId,
 ): boolean => user.root || user.permissions[id] === true;
+
+/** What `own` changes over `below`, the layers beneath it: a permission that matches what they
+ * already give is dropped, so a layer stores only its differences. */
+export function differences(
+  own: PermissionLayer,
+  below: readonly PermissionLayer[],
+): PermissionLayer {
+  const inherited = resolvePermissions(below);
+  return Object.fromEntries(
+    PERMISSIONS.flatMap((id) =>
+      own[id] === undefined || own[id] === inherited[id] ? [] : [[id, own[id]]],
+    ),
+  );
+}

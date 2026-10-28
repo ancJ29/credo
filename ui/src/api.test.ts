@@ -199,4 +199,132 @@ describe('the API client', () => {
       doc: { config, version: 'v2' },
     });
   });
+
+  it('Sign-in and `me` answer the person’s resolved permissions; the UI’s parse defaults them to none', async () => {
+    const { api } = fake(
+      json({ user: { name: 'lan', root: false } }),
+      json({ user: { name: 'lan', root: false, permissions: { 'staff.canView': true } } }),
+    );
+
+    expect((await api.me()).user.permissions).toEqual({});
+    expect((await api.me()).user.permissions).toEqual({ 'staff.canView': true });
+  });
+
+  describe('the staff calls', () => {
+    const id = '00000000-0000-4000-8000-000000000101';
+    const person = { id, code: 'EMP-0001', name: 'Lan', department: null, position: null };
+    const personDoc = {
+      employee: person,
+      version: 'e1',
+      signIn: { name: 'EMP-0001', ready: true },
+    };
+    const setupDoc = { setup: { departments: [], positions: [], extra: {} }, version: 's1' };
+
+    it('reads and writes the staff setup, a save over a newer one being a conflict', async () => {
+      const { calls, api } = fake(json(setupDoc), json(setupDoc), json({}, 409), json({}, 403));
+
+      expect(await api.getStaffSetup()).toEqual(setupDoc);
+      expect(await api.saveStaffSetup(setupDoc.setup, 's1')).toEqual({
+        kind: 'saved',
+        doc: setupDoc,
+      });
+      expect(await api.saveStaffSetup(setupDoc.setup, 's0')).toEqual({ kind: 'conflict' });
+      await expect(api.saveStaffSetup(setupDoc.setup, 's1')).rejects.toMatchObject({ status: 403 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/staff-setup'],
+        ['PUT', '/api/staff-setup'],
+        ['PUT', '/api/staff-setup'],
+        ['PUT', '/api/staff-setup'],
+      ]);
+      expect(JSON.parse(calls[1]?.init.body as string)).toEqual({
+        setup: setupDoc.setup,
+        version: 's1',
+      });
+    });
+
+    it('a staff setup or a list that cannot be read is an error with the BFF’s status', async () => {
+      const { api } = fake(json({}, 403), json({}, 503));
+
+      await expect(api.getStaffSetup()).rejects.toMatchObject({ status: 403 });
+      await expect(api.listEmployees()).rejects.toMatchObject({ status: 503 });
+    });
+
+    it('lists the people, defaults what an older record lacks, and reads one person with their version', async () => {
+      const { calls, api } = fake(json({ employees: [person] }), json(personDoc), json({}, 404));
+
+      const [listed] = await api.listEmployees();
+      expect(listed).toMatchObject({
+        code: 'EMP-0001',
+        permissions: {},
+        archived: false,
+        extra: {},
+      });
+      expect(await api.getEmployee(id)).toMatchObject({ version: 'e1' });
+      await expect(api.getEmployee(id)).rejects.toMatchObject({ status: 404 });
+      expect(calls.map((call) => call.path)).toEqual([
+        '/api/employees',
+        `/api/employees/${id}`,
+        `/api/employees/${id}`,
+      ]);
+    });
+
+    it('adds a person, a code already taken being a result, and reads the first password the root is given', async () => {
+      const added = { employee: personDoc, password: 'Abcdef1!' };
+      const { calls, api } = fake(json(added, 201), json({}, 409), json({}, 503));
+      const request = { name: 'Lan', code: 'EMP-0001', extra: {} };
+
+      expect(await api.addEmployee(request)).toMatchObject({
+        kind: 'added',
+        reply: { password: 'Abcdef1!' },
+      });
+      expect(await api.addEmployee(request)).toEqual({ kind: 'taken' });
+      await expect(api.addEmployee(request)).rejects.toMatchObject({ status: 503 });
+      expect(JSON.parse(calls[0]?.init.body as string)).toEqual(request);
+    });
+
+    it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
+      const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
+      const request = { version: 'e1', name: 'Lan', extra: {} };
+
+      expect(await api.saveEmployee(id, request)).toMatchObject({
+        kind: 'saved',
+        doc: { version: 'e1' },
+      });
+      expect(await api.saveEmployee(id, request)).toEqual({ kind: 'conflict' });
+      await expect(api.saveEmployee(id, request)).rejects.toMatchObject({ status: 400 });
+      expect(calls[0]?.init.method).toBe('PUT');
+      expect(calls[0]?.path).toBe(`/api/employees/${id}`);
+    });
+
+    it('gives a password typed or asked for, and reads the password shown once', async () => {
+      const { calls, api } = fake(
+        json({ password: 'Abcdef1!' }),
+        json({ password: 'Made-1a!' }),
+        json({}, 403),
+      );
+
+      expect(await api.setPassword(id, 'Abcdef1!')).toEqual({ password: 'Abcdef1!' });
+      expect(await api.setPassword(id, null)).toEqual({ password: 'Made-1a!' });
+      await expect(api.setPassword(id, null)).rejects.toMatchObject({ status: 403 });
+      expect(calls.map((call) => call.init.body)).toEqual([
+        '{"password":"Abcdef1!"}',
+        '{"password":null}',
+        '{"password":null}',
+      ]);
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/password`);
+    });
+
+    it('archives a person over the version read, and a moved record is a conflict', async () => {
+      const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 500));
+
+      expect(await api.archiveEmployee(id, 'e1')).toMatchObject({
+        kind: 'archived',
+        doc: { version: 'e1' },
+      });
+      expect(await api.archiveEmployee(id, 'e0')).toEqual({ kind: 'conflict' });
+      await expect(api.archiveEmployee(id, 'e1')).rejects.toMatchObject({ status: 500 });
+      expect(calls[0]?.init).toMatchObject({ method: 'POST', body: '{"version":"e1"}' });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/archive`);
+    });
+  });
 });

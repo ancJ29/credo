@@ -8,7 +8,7 @@ import { Link, useLocation } from 'react-router';
 import type { Brand } from './brand';
 import { BrandMark } from './BrandMark';
 import { LANGUAGE_NAMES } from './i18n';
-import { PAGES } from './nav';
+import { PAGES, type Page } from './nav';
 
 type Props = {
   brand: Brand;
@@ -19,6 +19,8 @@ type Props = {
   onSignOut: () => void;
   /** Starts with the user's menu open, for a mock of it. */
   userMenuOpen?: boolean;
+  /** The pages this person's menu lists; every page, for a mock of the whole menu. */
+  pages?: readonly Page[];
   children: ReactNode;
 };
 
@@ -30,6 +32,7 @@ export function Shell({
   onLanguage,
   onSignOut,
   userMenuOpen,
+  pages = PAGES,
   children,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -92,14 +95,14 @@ export function Shell({
         </Group>
       </AppShell.Header>
       <AppShell.Navbar p="xs" aria-label={t('nav.menu')}>
-        {PAGES.map(({ id, path, label, icon: Icon }) => (
+        {pages.map(({ id, path, label, icon: Icon }) => (
           <NavLink
             key={id}
             component={Link}
             to={path}
             label={t(label)}
             leftSection={<Icon size={20} stroke={1.6} />}
-            active={pathname === path}
+            active={pathname === path || pathname.startsWith(`${path}/`)}
             onClick={close}
           />
         ))}

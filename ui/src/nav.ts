@@ -1,6 +1,37 @@
-import { IconSettings } from '@tabler/icons-react';
+import { can, type PermissionLayer } from '@credo/shared';
+import { IconSettings, IconSitemap, IconUsers } from '@tabler/icons-react';
 
-/** The menu's pages, one for each piece built: piece 1 has Settings. */
+type Person = { root: boolean; permissions: PermissionLayer };
+
+/** The menu's pages, one for each piece built, in the order the menu lists them. A page is in a
+ * person's menu only when `allowed` says so; the BFF checks the same on every call, so this is a
+ * view of it, never the guard. */
 export const PAGES = [
-  { id: 'settings', path: '/settings', label: 'nav.settings', icon: IconSettings },
+  {
+    id: 'settings',
+    path: '/settings',
+    label: 'nav.settings',
+    icon: IconSettings,
+    allowed: (user: Person) => user.root,
+  },
+  {
+    id: 'staff',
+    path: '/staff',
+    label: 'nav.staff',
+    icon: IconUsers,
+    allowed: (user: Person) => can(user, 'staff.canView'),
+  },
+  {
+    id: 'staff-setup',
+    path: '/staff-setup',
+    label: 'nav.staffSetup',
+    icon: IconSitemap,
+    allowed: (user: Person) => user.root,
+  },
 ] as const;
+
+export type Page = (typeof PAGES)[number];
+
+/** The pages a person's menu lists. */
+export const pagesOf = (user: Person): readonly Page[] =>
+  PAGES.filter((page) => page.allowed(user));

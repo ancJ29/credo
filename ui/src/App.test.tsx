@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { drawApp } from '../tests/render';
+import { staffCalls } from '../tests/unused';
 import { type Api, ApiError } from './api';
 import { App } from './App';
 import { DICTIONARIES } from './i18n';
@@ -16,7 +17,7 @@ const config: TenantConfig = {
   defaultLanguage: 'en',
 };
 const doc: ConfigDoc = { config, version: 'v1' };
-const root = { name: 'root', root: true };
+const root = { name: 'root', root: true, permissions: {} };
 
 const memory = (initial: Record<string, string> = {}) => {
   const kept = new Map(Object.entries(initial));
@@ -56,6 +57,7 @@ function setup(
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.reject(new ApiError(401))),
     makeClient: vi.fn(() => Promise.reject(new ApiError(null))),
+    ...staffCalls,
     ...(typeof overrides === 'function' ? overrides(device) : overrides),
   } satisfies Api;
   const drawn = drawApp(<App api={api} device={device} test />, path);
