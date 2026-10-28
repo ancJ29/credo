@@ -1,19 +1,23 @@
 # The visual report: the walks page, rebuilt from the old suite
 
-**Where it stands — 2026-10-28 03:15 +07:** step 4's follow-up, from the human's look at the walks
-page, is built as far as the machine reaches (`c85b9c2`). The page now has Yes and No and a reason
-box for each screen in each language, a "Copy my answers" button that builds one block naming the
-build and the fingerprint of the words each answer was given on, and a line at its top saying how
-to answer; each screen is drawn at PC 1280, tablet 768 and phone 390, on a page that uses the whole
-window; and `pnpm answers <file>` writes the pasted block into `visual/answers.json`, refusing by
-line what is stale or unknown. `pnpm check` is green, every package at 100 %; the page was built
-with `pnpm report` and read back (42 frames, the controls, the block). **Not seen:** the page in a
-browser, which is the human's, from the newest folder of `walks/`; so the look at three widths and
-at 390 pixels is theirs to judge. **Recorded, not built:** an eighth walk screen, the save
-conflict, answered yes; it enters on `app-frame` with the walk spec, not here
-([step 4's follow-up](#steps)). Pictures and bases wait for step 5, the human's terminal.
-**Next:** the human opens the page and answers by it; the next block they paste goes through `pnpm
-answers`; then step 5.
+**Where it stands — 2026-10-28 10:23 +07:** the human's second look at the walks page (about
+03:30: "uhm, not so user friendly, could you use front end design skill to restructure the
+layout") is built as far as the machine reaches (`81e1c83`). The page is now a desk: the map of the
+day first, then a rail of the walk's screens, each with a mark for each language and the one in
+view marked (at the side on a PC, a strip across the top on a phone), under a switch that draws the
+whole page in one language and at one width or all three; each screen's question and its large Yes
+and No stand in one panel beside its widths, or under them on a phone, the reason box coming with a
+No and the screen's words folded; the bar at the foot counts what is answered of all and copies the
+block, whose text is unchanged. `pnpm check` is green, every package at 100 %; the page was built
+with `pnpm report` and read back by a jsdom run of its script: four answers chosen through its
+controls gave a block byte-identical, but for the commit, to the one the previous page gives for the
+same answers, and `pnpm answers` took all four. **Not seen:** the page in a browser, which is the
+human's, from the newest folder of `walks/`; rows 33 to 36 are new 👤 rows and rows 23 and 27 are
+amended, for the human's read at that look ([the case table](#the-case-table)). **Recorded, not
+built:** an eighth walk screen, the save conflict, answered yes; it enters on `app-frame` with the
+walk spec, not here ([step 4's follow-up](#steps)). Pictures and bases wait for step 5, the human's
+terminal. **Next:** the human opens the page and answers by it; the next block they paste goes
+through `pnpm answers`; then step 5.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask: "plz add new worktree and refactor
 > visual report, like old code", with the old app's visual suite as the reference and, as the
@@ -28,6 +32,10 @@ answers`; then step 5.
 > by the human: at about 03:00, after opening the walks page, three answers: buttons plus a copy
 > block (call 2 revisited), the page at the full width and each screen at three widths, and an
 > eighth walk screen, the save conflict.
+> **Amended** 2026-10-28 10:23 +07 on the human's ask: at about 03:30, after a second look, "uhm,
+> not so user friendly, could you use front end design skill to restructure the layout"; the page
+> laid out anew around its job, rows 23 and 27 amended and rows 33 to 39 added
+> ([step 4's follow-up 2](#steps)).
 
 ## At a glance
 
@@ -238,20 +246,33 @@ As the model run: "A business's day in Credo", "Who does what, on the device the
    person.
 2. **The map:** a built walk is a card with its title, its count of screens and what waits in it;
    an empty cell is hatched, so what is missing shows.
-3. **Each walk:** the main path, then what can go wrong; each screen with its number, its sentence
-   in both languages, its one question, and, for each language in turn, its three drawn widths
-   (PC, tablet, phone), side by side from a window 1000 pixels wide and stacked below that, each
-   column as wide as its device so the three scale alike; then that language's answer (not yet
-   asked, a dated yes, a "no" with its reason, or asked again with the words before and now) beside
-   the Yes, No and reason the human picks. Approved screens fold away.
-4. **At its top, one or two lines** on how to answer, and that the block goes to the chat.
-5. **A bar at the foot**, always in view: how many answers are chosen, "Copy my answers", and, once
-   pressed, the block in a box to select where the clipboard refuses.
+3. **The rail and the view:** each walk's screens, the main path first, each with a mark for each
+   language (outlined while open, filled for a yes, struck through for a no, dashed when asked
+   again), the one in view marked; above them, the language (Tiếng Việt first) and the widths (PC,
+   tablet, phone or all three) the whole page is drawn in. At the side from a window 1000 pixels
+   wide, a strip across the top below. A change of view brings back the screen that was in view.
+4. **Each walk:** the main path, then what can go wrong; each screen with its number and its
+   sentence in both languages, then its drawn widths in the page's language beside one panel: its
+   one question, Yes and No, the reason box a No brings, and one line on its answer (not yet
+   asked, a dated yes, a "no" with its reason, or asked again, with the words before and now
+   opened under the widths) and on what a choice will do to it. Shown together, the widths sit at
+   one scale, the PC's across the top and the tablet's and the phone's under it, each column as
+   wide as its device. The screen's words, the machine's record, are folded under them. Approved
+   screens fold away.
+5. **At its top, one or two lines** on how to answer, and that the block goes to the chat.
+6. **A bar at the foot**, always in view: a ledger of every screen in every language, how many are
+   answered of all, how many wait to be copied, "Copy my answers", and, once pressed, the block in
+   a box to select where the clipboard refuses.
 
 **The whole window.** The page has no maximum width; a window, a tablet or a phone is filled, with
-a 16-pixel gutter and no sideways scroll at 390 pixels (the map falls to one column at 480). jsdom
-lays nothing out, so `page.test.tsx` holds the rules (no maximum width; the columns from 1000
-pixels), and the look is the human's.
+a 16-pixel gutter and no sideways scroll at 390 pixels. A screen's panel stands beside its widths
+where the screen's body is 900 pixels wide, and under them below that, riding at the window's foot
+while they scroll by; the three widths sit together where they have 560 pixels; the map falls to
+one column at 480. jsdom lays nothing out, so `page.test.tsx` holds the rules, and the look is the
+human's. The page's own look is quiet, in the app's face, Noto Sans, already inlined for the
+screens, with the app's teal kept for a yes and the one action, so the drawn screens stand out.
+*Rejected:* the six frames of a screen at once, the old layout: the answer sat a row of frames
+below its question, and the page ran 42 frames long.
 
 One HTML file, script and styles inlined, as the mock is, its data computed by the build and
 inlined with every `<` escaped; `walks.json` beside it holds the same data for the machine's
@@ -386,7 +407,8 @@ visual/pictures/   from step 5: pnpm visual's Playwright config, its spec, the M
 ## The case table
 
 👤 marks a business row, for the human's read ([QA](../conventions/qa.md) rule 1); the human kept
-every one as written ([step 2b](#steps)). From the draft at `f0dcd7f`, its row 6, every state
+every one as written ([step 2b](#steps)). Rows 33 to 36 are new and rows 23 and 27 amended, on the
+human's ask of 10-28 about 03:30 for an easier page, for the human's read at the next look. From the draft at `f0dcd7f`, its row 6, every state
 beside the walks, left with call 1; its row 5, a run that lacks a screen writes no page, is now
 row 14, the machine's.
 
@@ -414,16 +436,23 @@ row 14, the machine's.
 | 20 | | The published page is the folder's page less the doctype, charset and viewport lines the tool's skeleton adds | read back, at each publish |
 | 21 | | Pictures are compared on the human's Mac alone, each base with its platform in its path (step 5) | the config |
 | 22 | | No run is retried | the config, `retries: 0` ([QA](../conventions/qa.md#the-rules) rule 6) |
-| 23 | 👤 | Each screen, in each language, has Yes and No and a reason box; the reason is required for a No; the human answers once per screen per language, not per width (answered 10-28) | unit, `page.test.tsx` |
+| 23 | 👤 | Each screen, in each language, has Yes and No, and a reason box that a No brings; the reason is required for a No; the human answers once per screen per language, not per width (answered 10-28; amended 2026-10-28 10:23 +07 on the human's ask for an easier page, was "has Yes and No and a reason box") | unit, `page.test.tsx` |
 | 24 | 👤 | "Copy my answers" builds one plain-text block naming the build, and for each answered screen and language its screen, language, yes or no, the reason and the fingerprint of the words it was answered on; with a No lacking its reason, or nothing answered, it gives no block and says so (answered 10-28) | unit, `block.test.ts`, `choices.test.ts`, `page.test.tsx`; read back |
 | 25 | 👤 | The page says at its top, in a line or two, how to answer and that the block goes to the chat (answered 10-28) | unit, `page.test.tsx` |
 | 26 | 👤 | The page sends nothing and calls no network; unsent choices are kept across a reload in `localStorage`, dropped when their words changed, and the page works without storage (answered 10-28) | unit, `choices.test.ts`, `page.test.tsx`, `build.test.ts` (row 7) |
-| 27 | 👤 | The page uses the whole width of the window and reads on a PC, a tablet and a phone: a language's three widths side by side on a PC, stacked on a phone, no sideways scroll at 390 pixels (answered 10-28) | unit, `page.test.tsx` (the rules); the look is the human's |
+| 27 | 👤 | The page uses the whole width of the window and reads on a PC, a tablet and a phone: on a PC the rail at the side, and a screen's three widths together at one scale, the PC's across the top, with its question and answer beside them; on a phone the rail a strip across the top, the widths stacked and the answer under them; no sideways scroll at 390 pixels (answered 10-28; amended 2026-10-28 10:23 +07 on the human's ask for an easier page, was "a language's three widths side by side on a PC, stacked on a phone") | unit, `page.test.tsx` (the rules); the look is the human's |
 | 28 | 👤 | `pnpm answers <file>` (or stdin) writes the pasted block's answers into `visual/answers.json`, dated, on the words the screens draw now, keeping the other rows (answered 10-28) | unit, `take.test.ts`, `cli.test.ts` |
 | 29 | 👤 | `pnpm answers` refuses, by line, an answer whose fingerprint no longer matches the screen's words (stale), and says which (answered 10-28) | unit, `take.test.ts`, `cli.test.ts` |
 | 30 | 👤 | `pnpm answers` refuses, by line, an unknown screen and an unknown language, and says which (answered 10-28) | unit, `take.test.ts` |
 | 31 | | A line that is no answer, a no without its reason, or text with no block title is refused by line or stops the command; with every line refused the file is left as it was and the exit status is 1 | unit, `block.test.ts`, `take.test.ts`, `cli.test.ts` |
 | 32 | | A screen's fingerprint is twelve hex digits of its words, computed by the build; the page's and the command's are the same | unit, `fingerprint.test.ts`, `report.test.ts`, `cli.test.ts` |
+| 33 | 👤 | A switch draws the whole page in one language, Tiếng Việt first, and at one width or all three, so every walk screen is one press from each width in each language (new 10-28, on the human's ask) | unit, `page.test.tsx`; read back |
+| 34 | 👤 | A rail lists each walk's screens, the main path first, each with a mark for each language (open, yes, no or asked again) and the one in view marked: at the side on a PC, a strip across the top on a phone (new 10-28, on the human's ask) | unit, `page.test.tsx`, `marks.test.ts` |
+| 35 | 👤 | Each screen's question and its Yes and No stand together, beside its widths on a PC and under them on a phone, riding at the window's foot while they scroll by; one line says what is on record and what a choice will do to it; the screen's words are folded (new 10-28, on the human's ask) | unit, `page.test.tsx` |
+| 36 | 👤 | The bar at the foot says how many answers are given of all, chosen on the page or on record, and how many wait to be copied (new 10-28, on the human's ask) | unit, `page.test.tsx`, `marks.test.ts` |
+| 37 | | A change of language or width brings back the screen that was in view | unit, `page.test.tsx` |
+| 38 | | The bar keeps its height on the page, so an answer at the window's foot rests above it | unit, `page.test.tsx` |
+| 39 | | Every control shows a focus ring, a radio's on the face it lies under, and every colour has a dark value, whether the system or the page asks for dark | unit, `page.test.tsx` |
 
 ## Hazards no gate catches
 
@@ -633,6 +662,39 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   `walks.json` hold no home path, no key shape and no author email (row 8). **Not seen:** the page
   in a browser, at any of the three widths or at 390 pixels, and no pixel; the look is the human's
   to judge.
+  **Follow-up 2, from the human's second look** (10-28, about 03:30 +07): "uhm, not so user
+  friendly, could you use front end design skill to restructure the layout". The answer sat a row
+  of frames below its question, every screen was drawn six times at once, its state was said twice,
+  its words were an open wall, and nothing said what was left. Built at `81e1c83`: rows 33 to 39,
+  rows 23 and 27 amended; the copy block's text, `block.ts` and `take.ts` untouched.
+
+  *Evidence:* `81e1c83`. `pnpm check` green, every package at 100 % of statements, branches,
+  functions and lines (`visual`: 557, 235, 184, 483 of as many), knip silent, no warning. Its first
+  run went red in `ui/`, which this branch does not touch: `MockPage.test.tsx`'s second case passed
+  its 5-second limit while `bff` ran beside it; alone it takes 3.0 s at a load average near 11, so
+  the second run's green is no verdict on it ([QA](../conventions/qa.md#the-rules) rule 6), and it
+  goes to the orchestrator. Each new or changed rule seen red once by breaking it, the red from its
+  assertion, 51 breaks: the view ignored, in language or width; the screen in view not brought
+  back; the rail's order, marks, current and empty path; the reason box always there, there for a
+  Yes, not required or never marked; the panel's line on the record; the words open or in one
+  language; Clear doing nothing; a choice replacing the others in the block; a missing reason named
+  by key; the progress counting only a yes; the bar's height; a capped page; the rail not sticky;
+  no side rail; the panel neither beside nor riding the foot; the widths off one scale; a focus
+  ring removed; a colour with no dark value. The map's phone rule had stayed green when the map
+  fell to two columns; its test is tightened and seen red. The mount test now unmounts its root, as
+  one full run threw "window is not defined" from a render after jsdom's window had gone.
+  `pnpm report` wrote `walks/2026-10-28-102126-81e1c8367/`; read back by a jsdom run of the page's
+  script: one 1.50 MB file; the map with 14 hatched cells; the rail's 7 screens in the page's order
+  (1, 3, 4, 5, then 2, 6, 7); the view at Tiếng Việt and all three, 21 frames at 1280, 768 and 390;
+  7 answer panels, no reason box before a No, 7 words folded, the bar at "0 of 14 answered". In
+  English, 21 English frames; PC, tablet and phone alone, 7 each at their width. Four answers chosen
+  through the panels, two in each language, two of them a No with its reason, gave their marks,
+  "4 of 14 answered", "4 answers to copy" and a block equal to the clipboard's, byte-identical but
+  for the commit to the one the page at `c85b9c2` gives for the same four answers through its own
+  controls; `pnpm answers` took all four, refusing none, and `visual/answers.json` was put back. The
+  page and `walks.json` hold no home path, no key shape and no author email; the author's
+  two-letter name occurs only inside minified identifiers and a library's message (row 8). **Not
+  seen:** the page in a browser, at any width, and no pixel; the look is the human's to judge.
 - [ ] **5. `pnpm visual`, the human's pictures and the bases.** Who: 🤖 writes, after step 4 (it
   opens the built page), 1.5 hours; 👤 runs it in the terminal on the one Mac, then once a piece at
   its walk, before the merge into `main` (call 7). Done when: `pnpm check` green with
