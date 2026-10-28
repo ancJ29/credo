@@ -54,11 +54,27 @@ working copy.
      fresh parameters.
    - An update keeps the stack's `Repository` and stops if your clone's `origin` is another
      repository, such as a fork.
+   - `env` reads the deploy role's subject from GitHub (`gh api repos/<owner>/<name>/actions/oidc/customization/sub`),
+     prints it as `subject prefix:` in the log, and keeps the stack's. It stops if GitHub's differs
+     from the stack's, if the settings use custom claim keys, or if it cannot read them.
 3. Run it again without `--plan`.
    - **REFUSED:** the change set removes or replaces something and nothing changed. If the plan's
      step names that change on purpose, run again with `--take <LogicalId>`; otherwise change the
      template.
    - **no changes:** the stack already matches the template.
+
+## The first deploy was refused at the role
+
+GitHub issues this repository the immutable subject (the owner and the repository each followed by
+`@<id>`), so a trust built from the name alone refuses every deploy ("Not authorized to perform
+sts:AssumeRoleWithWebIdentity"). The template now takes the prefix from GitHub. In this order:
+
+1. This change merges into `main` and is pushed. That push's `deploy` is expected red at "Take the
+   deploy role": the trust in AWS is still the old one.
+2. Run `ops/stack.sh env ridge`. It is an update that changes only the trust; read the change set
+   in the log: `Modify DeployRole`, replacement none, and `subject prefix:` with the ids.
+3. Re-run the failed run: `gh run rerun <id> --failed` (run 40636117633, or the push's own). The
+   job compares `ops/` with its own commit, so the re-run is valid.
 
 ## A release by hand
 

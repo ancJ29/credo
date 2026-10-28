@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The ops job's guards, run with no AWS, each on hand-written input: the change-set filter, the
 # choice between creating and updating a stack, an update's refusal to move the repository, the
-# check that ops/ is main's (by hand, and in the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a
+# the deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a
 # Bruno run, the credentials bru never holds, the log's exit code after a signal, the workflow's
 # deploy job, and the release's checks of /health against the real c-storage binary, built here with
 # several stamps and without one (it needs Go): the build it waits for, and the newer build it must
@@ -83,6 +83,68 @@ refuses "a fork's clone is refused" "stack's Repository is owner/name" repositor
 STACK_JSON=$(described UPDATE_COMPLETE)
 passes "a stack with no Repository yet passes" repository_matches_stack fork/name
 STACK_JSON=''
+
+echo "== the deploy role's trust reads the subject GitHub issues (the immutable one, owner@id/name@id, or the plain one)"
+# subject_for <repo> <gh api's answer> → the prefix, or a refusal
+immutable='{"use_default":true,"use_immutable_subject":true,"sub_claim_prefix":"repo:alice@111/demo@222"}'
+plain='{"use_default":true,"use_immutable_subject":false}'
+plain_prefixed='{"use_default":true,"use_immutable_subject":false,"sub_claim_prefix":"repo:alice/demo"}'
+check "the immutable subject's prefix is taken" "repo:alice@111/demo@222" "$(subject_prefix_of alice/demo "$immutable")"
+check "with no immutable subject and no prefix, the prefix is repo:<Repository>" "repo:alice/demo" "$(subject_prefix_of alice/demo "$plain")"
+check "a prefix given without the immutable subject is taken" "repo:alice/demo" "$(subject_prefix_of other/else "$plain_prefixed")"
+refuses "the immutable subject without its prefix is refused" "the immutable one" \
+  subject_prefix_of alice/demo '{"use_default":true,"use_immutable_subject":true}'
+refuses "custom claim keys (use_default false) are refused" "custom claim keys" \
+  subject_prefix_of alice/demo '{"use_default":false,"include_claim_keys":["repo"]}'
+refuses "an answer that is not JSON is refused" "cannot be read" subject_prefix_of alice/demo 'Not Found'
+refuses "an empty answer is refused" "cannot be read" subject_prefix_of alice/demo ''
+refuses "an answer with no use_default is refused" "no use_default" subject_prefix_of alice/demo '{"message":"Not Found"}'
+refuses "a prefix of another shape is refused" "not of the shape" \
+  subject_prefix_of alice/demo '{"use_default":true,"sub_claim_prefix":"repo:alice/demo:ref:x"}'
+check "lib.sh's pattern is the template's AllowedPattern for SubjectPrefix" \
+  "$SUBJECT_PREFIX_RE" "$(awk '/^  SubjectPrefix:$/ {f = 1} f && /AllowedPattern:/ {gsub(/^[^'"'"']*'"'"'|'"'"'$/, ""); print; exit}' "$OPS_DIR/env.yml")"
+
+echo "== an update never moves the deploy role's subject"
+described_sub() { # <SubjectPrefix>, or none
+  jq -nc --arg p "${1:-}" '{Stacks: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE", Parameters: ([{ParameterKey: "Repository", ParameterValue: "alice/demo"}] + (if $p == "" then [] else [{ParameterKey: "SubjectPrefix", ParameterValue: $p}] end))}]}'
+}
+STACK_JSON=$(described_sub repo:alice@111/demo@222)
+check "the stack's SubjectPrefix is read" "repo:alice@111/demo@222" "$(stack_param SubjectPrefix)"
+passes "the same prefix passes" subject_matches_stack repo:alice@111/demo@222
+check "  and is passed as the previous value" previous "$(subject_param_plan repo:alice@111/demo@222)"
+refuses "a fork's clone (other ids) is refused" "stack's SubjectPrefix is repo:alice@111/demo@222" subject_matches_stack repo:bob@333/demo@444
+refuses "  and the plan refuses it too" "stack's SubjectPrefix" subject_param_plan repo:bob@333/demo@444
+refuses "the plain prefix against a stack holding the immutable one is refused" "stack's SubjectPrefix" subject_matches_stack repo:alice/demo
+STACK_JSON=$(described_sub)
+check "ridge today (no SubjectPrefix yet) reads empty" "" "$(stack_param SubjectPrefix)"
+check "  and takes GitHub's prefix, set once" set "$(subject_param_plan repo:alice@111/demo@222)"
+STACK_JSON=''
+
+# trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
+# shellcheck disable=SC2016 # the template's literal text
+trust_guard() {
+  grep -qxF -- '                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:${Env}' "$1" ||
+    die "the trust's sub is not \${SubjectPrefix}:environment:\${Env}"
+  ! grep -qF 'repo:${Repository}' "$1" || die "the trust still builds the subject from Repository"
+  grep -qxF -- '                token.actions.githubusercontent.com:aud: sts.amazonaws.com' "$1" || die "the trust lost its audience condition"
+}
+# modifies_role_in_place <change set>: dies unless the one change is a Modify of DeployRole with no replacement
+modifies_role_in_place() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | join(",")' "$1")
+  [ "$seen" = "Modify DeployRole False" ] || die "the change set is not a Modify of DeployRole in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the template's trust uses the prefix, and keeps its audience" trust_guard "$OPS_DIR/env.yml"
+# shellcheck disable=SC2016 # the template's literal text
+sed 's/!Sub ${SubjectPrefix}:environment/!Sub repo:${Repository}:environment/' "$OPS_DIR/env.yml" >"$WORK/env-old-trust.yml"
+refuses "a trust built from Repository again is refused" "sub is not" trust_guard "$WORK/env-old-trust.yml"
+sed 's/aud: sts.amazonaws.com/aud: other/' "$OPS_DIR/env.yml" >"$WORK/env-aud.yml"
+refuses "a trust that lost its audience is refused" "audience" trust_guard "$WORK/env-aud.yml"
+passes "ridge's update, hand-written as CloudFormation shows it, is a Modify of DeployRole in place and the guard passes" \
+  modifies_role_in_place "$OPS_DIR/testdata/changeset-trust.json"
+refuses "a replacement of DeployRole is not that update" "not a Modify of DeployRole in place" \
+  modifies_role_in_place "$OPS_DIR/testdata/changeset-replaces.json"
 
 echo "== ops/ is origin/main's (release, check, drill and stack run only reviewed scripts); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }

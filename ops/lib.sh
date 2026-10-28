@@ -234,6 +234,59 @@ repository_matches_stack() {
   fi
 }
 
+# The shape env.yml's SubjectPrefix accepts (its AllowedPattern, which ops/test.sh compares)
+SUBJECT_PREFIX_RE='^repo:[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?$'
+
+# subject_prefix_of <owner/name> <GitHub's answer> → the start of the subject GitHub puts in this
+# repository's tokens, read from repos/<owner/name>/actions/oidc/customization/sub. GitHub may issue
+# the immutable subject (owner@id/name@id), which no name alone predicts. Refused: an answer that
+# cannot be read, custom claim keys (use_default false: the subject's whole shape changes), the
+# immutable subject without its prefix, and a prefix of another shape than the role's trust takes.
+subject_prefix_of() {
+  local repo=$1 body=$2 use_default immutable prefix
+  use_default=$(jq -r 'if type == "object" then (.use_default | if . == null then empty else tostring end) else empty end' <<<"$body" 2>/dev/null) ||
+    die "GitHub's OIDC subject settings for $repo cannot be read (not JSON)"
+  [ -n "$use_default" ] || die "GitHub's OIDC subject settings for $repo cannot be read (no use_default in the answer)"
+  [ "$use_default" = true ] ||
+    die "the OIDC subject of $repo uses custom claim keys (use_default is $use_default): its whole shape changes, and the role's trust is not made for it"
+  immutable=$(jq -r '.use_immutable_subject // false' <<<"$body")
+  prefix=$(jq -r '.sub_claim_prefix // empty' <<<"$body")
+  if [ -z "$prefix" ]; then
+    [ "$immutable" != true ] ||
+      die "the OIDC subject of $repo is the immutable one, but GitHub gave no sub_claim_prefix: the ids cannot be known"
+    prefix=repo:$repo
+  fi
+  grep -Eq -- "$SUBJECT_PREFIX_RE" <<<"$prefix" ||
+    die "the OIDC subject prefix GitHub gave for $repo is not of the shape repo:owner[@id]/name[@id]"
+  echo "$prefix"
+}
+
+# github_subject_prefix <owner/name> → subject_prefix_of, asked of GitHub with the human's gh
+github_subject_prefix() {
+  local body
+  body=$(gh api "repos/$1/actions/oidc/customization/sub" 2>/dev/null) ||
+    die "gh api repos/$1/actions/oidc/customization/sub failed: is gh logged in with rights on $1?"
+  subject_prefix_of "$1" "$body"
+}
+
+# subject_matches_stack <prefix>: an update never moves the deploy role's trust to another subject,
+# such as a fork's clone, whose ids differ; a stack with no SubjectPrefix yet passes
+subject_matches_stack() {
+  local have
+  have=$(stack_param SubjectPrefix)
+  if [ -n "$have" ] && [ "$have" != "$1" ]; then
+    die "GitHub's subject prefix for this repository is $1, but the stack's SubjectPrefix is $have: run from a clone of the stack's repository"
+  fi
+}
+
+# subject_param_plan <prefix> → "previous" when the stack already holds a SubjectPrefix (kept, after
+# subject_matches_stack), "set" when it holds none (ridge before this parameter existed: the
+# trust alone changes, to GitHub's prefix)
+subject_param_plan() {
+  subject_matches_stack "$1"
+  if [ -n "$(stack_param SubjectPrefix)" ]; then echo previous; else echo set; fi
+}
+
 # out <OutputKey> → its value in STACK_JSON, empty if none
 out() {
   jq -r --arg k "$1" '.Stacks[0].Outputs // [] | map(select(.OutputKey == $k))[0].OutputValue // empty' <<<"$STACK_JSON"

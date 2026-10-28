@@ -1,0 +1,35 @@
+{
+  "ChangeSetName": "ops-20261028-000000",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Parameters": [
+    {"ParameterKey": "SubjectPrefix", "ParameterValue": "repo:alice@111/demo@222"}
+  ],
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "DeployRole",
+        "PhysicalResourceId": "example-DeployRole-ABCDEF",
+        "ResourceType": "AWS::IAM::Role",
+        "Replacement": "False",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "AssumeRolePolicyDocument", "RequiresRecreation": "Never"},
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          },
+          {
+            "Target": {"Attribute": "Properties", "Name": "AssumeRolePolicyDocument", "RequiresRecreation": "Never"},
+            "Evaluation": "Static",
+            "ChangeSource": "ParameterReference",
+            "CausingEntity": "SubjectPrefix"
+          }
+        ]
+      }
+    }
+  ]
+}
