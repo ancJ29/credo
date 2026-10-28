@@ -30,6 +30,26 @@ describe('the walk’s screens', () => {
     }
   });
 
+  it('Draws a refused save and a refused logo, each with its own words, in both languages', () => {
+    const stateOf = (id: string) => SCREENS[2].states.find((state) => state.id === id)!.screen;
+    const drawn = (id: string, language: 'en' | 'vi') => {
+      const { container, unmount } = draw(stateOf(id), language);
+      const shown = container.textContent;
+      unmount();
+      return shown;
+    };
+
+    for (const language of LANGUAGES) {
+      const words = DICTIONARIES[language].settings;
+      expect(drawn('refused', language)).toContain(words.saveRefused);
+      expect(drawn('logo-too-large', language)).toContain(
+        words.logoTooLarge.replace('{{max}}', '200'),
+      );
+      expect(drawn('logo-not-image', language)).toContain(words.logoNotImage);
+    }
+    expect(drawn('logo-too-large', 'en')).not.toContain(DICTIONARIES.en.settings.saveRefused);
+  });
+
   it('numbers the six screens of the walk, in order', () => {
     expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6]);
   });

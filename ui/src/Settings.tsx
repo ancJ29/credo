@@ -40,7 +40,11 @@ type Props = {
   onRetry: () => void;
   /** Shows the newer settings after a conflict. */
   onReload: () => void;
+  /** Why a logo was refused at the chooser, where the mock draws it before any file is chosen. */
+  logoRefusal?: LogoRefusal;
 };
+
+type LogoRefusal = 'logoNotImage' | 'logoTooLarge';
 
 const readAsDataUrl = (file: File) =>
   new Promise<string>((resolve) => {
@@ -49,12 +53,12 @@ const readAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-function SettingsForm({ config, outcome, saving, onSave, onReload }: Props) {
+function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(config);
   const change = (next: Partial<TenantConfig>) => setDraft((was) => ({ ...was, ...next }));
   /** Why the file just chosen was not taken as the logo; the draft's logo is as it was. */
-  const [logoRefused, setLogoRefused] = useState<'logoNotImage' | 'logoTooLarge' | null>(null);
+  const [logoRefused, setLogoRefused] = useState<LogoRefusal | null>(logoRefusal ?? null);
 
   const chooseLogo = (file: File | null) => {
     if (!file) return;

@@ -107,6 +107,24 @@ export const SCREENS: MockScreen[] = [
         screen: settings(TYPED, { outcome: 'failed' }),
       },
       {
+        id: 'refused',
+        label: 'failed: the save refused, what was typed kept',
+        colour: FILLED.colour,
+        screen: settings(TYPED, { outcome: 'refused' }),
+      },
+      {
+        id: 'logo-too-large',
+        label: 'failed: the logo is too large, the logo kept',
+        colour: FILLED.colour,
+        screen: settings(FILLED, { logoRefusal: 'logoTooLarge' }),
+      },
+      {
+        id: 'logo-not-image',
+        label: 'failed: the logo is not an image, the logo kept',
+        colour: FILLED.colour,
+        screen: settings(FILLED, { logoRefusal: 'logoNotImage' }),
+      },
+      {
         id: 'conflict',
         label: 'failed: a newer save exists',
         colour: FILLED.colour,
