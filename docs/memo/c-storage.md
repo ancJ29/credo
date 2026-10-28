@@ -42,6 +42,7 @@ Drawn from [`server.go`](../../c-storage/internal/server/server.go),
 | One save at a time | two saves at once losing one | [one writer](#one-writer-at-a-time) |
 | The file's version is checked at start | running on a file it cannot read | [the schema](#the-schema-version-is-checked-at-open) |
 | It listens on its own machine only, for now | other machines reaching it; the first server needs this changed | [loopback](#loopback-only-for-now) |
+| ridge answers no public URL, for now | a stranger or a flood reaching it; it is reached through a tunnel from one Mac | [no public URL](#no-public-url-for-now) |
 
 **No test catches** a save that does not name what it read, which still overwrites, or a backup
 copied mid-write ([412](#a-write-on-a-moved-record-is-refused),
@@ -183,6 +184,31 @@ whatever a firewall or a security group says.
   *Trigger:* layer four of ridge, when the BFF first calls the private address
   ([the ridge plan](../plans/2026-10-28-ridge.md#the-listener-open-item-7)); [open item 7](../open-items.md)
   holds the change: the private address, never every interface.
+
+## No public URL, for now
+
+*Decided* 2026-10-28 by the human: "we'll go back later, when really necessary". ridge's c-storage
+is reached through the Instance Connect tunnel from the human's own Mac only. Nothing else, a
+partner or a CI outside AWS included, reaches it. The plan stays as the record:
+[ridge's public URL](../plans/2026-10-28-ridge-url.md), parked ([open item 13](../open-items.md)).
+
+- *Chosen, if a URL is needed:* shape H, an HTTP API whose one route invokes a small relay function
+  in ridge's subnet, which calls the box's private address. *Price:* about $0.02 a month at ridge's
+  traffic; throttled to 10 requests a second with bursts of 50, so a flood costs under $40 a month.
+- *Rejected:* a CloudFront origin access control to a function URL (A). Function URLs may not be
+  offered in Malaysia ([open item 14](../open-items.md)), and every write would need the body's
+  SHA-256 in a header.
+- *Rejected:* an HTTP API with a VPC link to the box (B): VPC links are not offered in
+  `ap-southeast-5`.
+- *Rejected:* a CloudFront VPC origin on the box (C): it needs an internet gateway on the one network
+  under every client's stack, against [decision 4](../plans/2026-10-27-architecture.md#decisions--the-machines).
+- *Rejected:* a Lambda Web Function behind CloudFront (D): its connector needs two zones and ridge
+  has one.
+- *Rejected:* a public function URL with no CloudFront (E): whoever finds it runs the function, on
+  our bill; not offered here either.
+- *Trigger to revisit:* someone other than the human, or a machine other than the human's Mac,
+  needs to reach ridge's c-storage: partners sending requests themselves, or a CI or tool outside
+  AWS.
 
 ## The file is the only copy
 
