@@ -3,7 +3,7 @@
   "workspaces": {
     ".": { "ignore": ["c-storage/**"] },
     "bff": { "entry": ["src/main.ts", "src/lambda-main.ts"] },
-    "scripts": {},
+    "scripts": { "entry": ["src/ridge-main.ts"] },
     "shared": {},
     "ui": {},
     "visual": { "entry": ["src/cli.ts"] },

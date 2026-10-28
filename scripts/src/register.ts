@@ -10,14 +10,15 @@ type Connection = {
 /**
  * Registers the BFF's service with c-storage's super-admin key, which only this script holds. A
  * 409 says the code is taken, not that the key stored is this one: the key is checked by reading a
- * record with it, and a refusal there stops the stack, whatever the 409 said.
+ * record with it, and a refusal there stops the stack, whatever the 409 said. Says which it was,
+ * for the deploy's log.
  */
 export async function ensureService(
   connection: Connection,
   service: { code: string; accessKey: string },
-) {
+): Promise<'registered' | 'present'> {
   const result = await registerCStorageService(connection, service);
-  if (result === 'registered') return;
+  if (result === 'registered') return 'registered';
   const client = createCStorageClient({
     baseUrl: connection.baseUrl,
     internalAccessKey: connection.internalAccessKey,
@@ -32,4 +33,5 @@ export async function ensureService(
       cause: error,
     });
   }
+  return 'present';
 }

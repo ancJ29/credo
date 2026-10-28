@@ -25,7 +25,7 @@ describe('registering the BFF’s service', () => {
   it('registers a new service and asks nothing more', async () => {
     const { seen, call } = fake(201);
 
-    await ensureService(connection(call), service);
+    expect(await ensureService(connection(call), service)).toBe('registered');
 
     expect(seen).toEqual(['POST /api/services/register']);
   });
@@ -33,7 +33,7 @@ describe('registering the BFF’s service', () => {
   it('Reads a 409 by its status, and checks the key before calling the service registered', async () => {
     const { seen, call } = fake(409, 404);
 
-    await ensureService(connection(call), service);
+    expect(await ensureService(connection(call), service)).toBe('present');
 
     expect(seen).toEqual(['POST /api/services/register', 'GET /api/records/demo/client.demo']);
   });
