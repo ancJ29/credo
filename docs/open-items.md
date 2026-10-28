@@ -109,3 +109,13 @@ then ridge's c-storage is reached through the tunnel from the human's Mac
 ([the memo](memo/c-storage.md#no-public-url-for-now)). Trigger: someone other than the human, or a
 machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
 or tool outside AWS.
+
+## 14. The visual package's tests print 463 React act warnings — the machine; *parked* until the visual package is next touched (the ridge-app plan, step 12, 2026-10-28)
+
+`pnpm check`'s `visual` tests print 463 "An update to Frame … inside a test was not wrapped in
+act(...)" warnings, under act and on GitHub alike (GitHub's first is at
+`logs/ridge-app-gh-1.log#L1512`). The tests pass and the package is fully covered; the warning says a
+state update lands outside `act`, so a test may read the page before the update. Not this piece's
+step, so none was touched. Find which tests update `Frame` and wrap or await the update, then make a
+warning a red in that package's setup.
+
