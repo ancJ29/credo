@@ -6,6 +6,7 @@
     "scripts": {},
     "shared": {},
     "ui": {},
+    "visual": { "entry": ["src/cli.ts"] },
     "walk": {}
   }
 }

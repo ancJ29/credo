@@ -5,16 +5,29 @@ import { MemoryRouter } from 'react-router';
 import { Providers } from '../Providers';
 
 export type Scheme = 'light' | 'dark';
-export type Width = 390 | 1280;
+export type Width = 390 | 768 | 1280;
 
-type Props = {
-  title: string;
+type StageProps = {
   colour: string;
   language: Language;
   scheme: Scheme;
-  width: Width;
+  /** The element that carries the colour scheme, where it is not the page's own. */
+  root?: () => HTMLElement;
+  /** Switches Mantine's transitions off, as the tests draw. */
+  test?: boolean;
   children: ReactNode;
 };
+
+type Props = Omit<StageProps, 'root' | 'test'> & { title: string; width: Width };
+
+/** What a mock screen is drawn inside: the app's look and words, and a router at Settings. */
+export function Stage({ colour, language, scheme, root, test, children }: StageProps) {
+  return (
+    <Providers colour={colour} language={language} scheme={scheme} root={root} test={test}>
+      <MemoryRouter initialEntries={['/settings']}>{children}</MemoryRouter>
+    </Providers>
+  );
+}
 
 /** The least a frame stands, and where it starts before its screen has told its height. */
 const FLOOR = 320;
@@ -54,14 +67,14 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
       />
       {body &&
         createPortal(
-          <Providers
+          <Stage
             colour={colour}
             language={language}
             scheme={scheme}
             root={() => body.ownerDocument.documentElement}
           >
-            <MemoryRouter initialEntries={['/settings']}>{children}</MemoryRouter>
-          </Providers>,
+            {children}
+          </Stage>,
           body,
         )}
     </>

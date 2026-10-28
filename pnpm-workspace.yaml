@@ -3,6 +3,7 @@ packages:
   - scripts
   - shared
   - ui
+  - visual
   - walk
 
 # pnpm checks `engines` against the Node pnpm itself runs on.
@@ -30,6 +31,8 @@ catalog:
   '@types/react-dom': ^19.3.0
   '@vitejs/plugin-react': 6.1.1
   '@vitest/coverage-v8': 5.0.2
+  # The accessible name and implicit role of an element, as testing-library reads them.
+  dom-accessibility-api: 0.5.16
   eslint: ^10.0.0
   fastify: 5.12.7
   eslint-plugin-react-hooks: ^7.1.1

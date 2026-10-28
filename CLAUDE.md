@@ -37,3 +37,9 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not
   run it; its base images are made by the human's run, once a piece, on one Mac
   ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)).
+- **`pnpm report` builds the walks page in the sandbox, no browser,** into the credo root's `walks/`
+  (one folder a build, never committed). The screens are drawn on jsdom through a Vite server's
+  module loader, since the app's CSS modules and TSX do not import in plain Node; the page itself is
+  bundled as a production build whatever `NODE_ENV` the process has, or it ships the development
+  JSX transform with every source path in it
+  ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)).

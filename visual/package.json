@@ -1,0 +1,31 @@
+{
+  "name": "@credo/visual",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --coverage",
+    "report": "node run.mjs report",
+    "answers": "node run.mjs answers"
+  },
+  "dependencies": {
+    "@credo/shared": "workspace:*",
+    "@credo/ui": "workspace:*",
+    "@fontsource-variable/noto-sans": "catalog:",
+    "@mantine/core": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "dom-accessibility-api": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
+  }
+}
