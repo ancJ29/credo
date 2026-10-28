@@ -30,9 +30,6 @@ cleanup_extra() {
   rm -f "$BRUNO_DIR/environments/$ENVNAME.yml"
 }
 
-# random_hex → 32 random hex characters
-random_hex() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
-
 step "the tools and the collection"
 main_synced
 command -v node >/dev/null || die "needs node on PATH, to read Bruno's report"
@@ -40,11 +37,8 @@ command -v node >/dev/null || die "needs node on PATH, to read Bruno's report"
 have=$(bru_clean --version 2>/dev/null) || have=none
 [ "$have" = "$WANT_BRUNO" ] || die "needs Bruno CLI $WANT_BRUNO, found $have: npm install -g --ignore-scripts @usebruno/cli@$WANT_BRUNO"
 # The keys go into this file, so git must ignore it.
-git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$ENVNAME.yml" ||
-  die "git does not ignore c-storage/bruno/environments/$ENVNAME.yml: it would hold the keys"
-if curl -s -o /dev/null -m 2 "http://127.0.0.1:$LOCAL_PORT/health"; then
-  die "something already answers on 127.0.0.1:$LOCAL_PORT: free it, or set CHECK_LOCAL_PORT"
-fi
+require_ignored "c-storage/bruno/environments/$ENVNAME.yml"
+refuse_taken_port "$LOCAL_PORT" "free it, or set CHECK_LOCAL_PORT"
 
 step "the AWS reads"
 stack_load "$ENVNAME"
@@ -68,7 +62,7 @@ rule_ok=$(jq -r --argjson eg "$endpoint_groups" '
 expect "the box's group holds one rule, ssh from the endpoint's group" yes "$rule_ok"
 
 step "the tunnel, and the box's reads"
-box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
 facts=$(box sudo bash -s -- "$BOX_PORT" <<'REMOTE'
 port=$1
 echo "unit=$(systemctl is-active c-storage 2>&1 || true)"
@@ -85,24 +79,19 @@ REMOTE
 )
 fact() { sed -n "s/^$1=//p" <<<"$facts"; }
 expect "c-storage's unit" active "$(fact unit)"
-expect "c-storage listens on" "127.0.0.1:$BOX_PORT " "$(fact listen)"
+expect "c-storage listens on" "$BOX_LISTEN_ADDR:$BOX_PORT " "$(fact listen)"
 expect "the keys file's mode and owner" "600 root" "$(fact keys)"
 expect "the database directory's mode" 700 "$(fact dbdir)"
 expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfiles)"
 expect "OOM kills since boot" 0 "$(fact oom)"
 echo "box: $(fact arch); memory $(fact memory); swap $(fact swap); disk $(fact disk)"
 
-# What runs, not what this run shipped: after a superseded release it is the newer commit, still one
-# of main.
 step "/health names a commit of main"
-body=$(curl -fsS -m 5 "http://127.0.0.1:$LOCAL_PORT/health" || true)
-build=$(build_of "$body")
-if [ -z "$build" ] || [ "$build" = dev ]; then
-  red "/health names no commit (answered: ${body:-nothing})"
-elif git -C "$REPO_DIR" merge-base --is-ancestor "$build" origin/main 2>/dev/null; then
-  ok "/health names $build, a commit of main"
+health_main_read "$LOCAL_PORT"
+if [ -n "$HEALTH_PROBLEM" ]; then
+  red "$HEALTH_PROBLEM"
 else
-  red "/health names $build, which origin/main does not hold"
+  ok "/health names $HEALTH_BUILD, a commit of main"
 fi
 
 step "Bruno's collection, through the tunnel"
@@ -112,24 +101,7 @@ access_key=$(random_hex)
 mask "$access_key"
 # A fresh code and access key each run: the collection registers a service, and a second run under
 # the same code would answer 409. The file is 0600, git-ignored, and deleted at the end.
-(
-  umask 077
-  cat >"$BRUNO_DIR/environments/$ENVNAME.yml" <<YAML
-variables:
-  - name: baseUrl
-    value: http://127.0.0.1:$LOCAL_PORT
-  - name: internalAccessKey
-    value: $INTERNAL_KEY
-  - name: superAdminKey
-    value: $ADMIN_KEY
-  - name: serviceCode
-    value: $service_code
-  - name: accessKey
-    value: $access_key
-  - name: recordKey
-    value: sample-record
-YAML
-)
+bruno_env_write "$BRUNO_DIR/environments/$ENVNAME.yml" "$LOCAL_PORT" "$service_code" "$access_key"
 ran=0
 (cd "$BRUNO_DIR" && bru_clean run --env "$ENVNAME" --reporter-json "$WORK/report.json") || ran=$?
 expect "bru run exits" 0 "$ran"
