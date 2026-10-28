@@ -42,6 +42,8 @@ working copy.
    - The log says "found already there" when the account has the provider: no stack is made, and
      that is the answer.
 3. `ops/stack.sh env ridge`, on the day the first deploy is merged.
+   - A run ends on `ok   no key in this log` or on a `RED` line. `RED  the box's private address is in
+     this log` is not a key: redact it in this log, nothing is replaced ([the check](#the-check)).
    - The log reads the box over the tunnel (arm64, swap on, the SSM agent stopped), then GitHub's
      environment admitting `main` alone, and its secret `AWS_ROLE_ARN`.
    - A stack that stays in `ROLLBACK_COMPLETE` is deleted by hand in the console before the script
@@ -192,7 +194,7 @@ log, then searches the log for it. It refuses in GitHub's job and without a term
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
      `ops/release.sh ridge`, which makes new keys and restarts c-storage.
    - **the box's private address is in this log:** the line names what matched, and it is not a key:
-     redact that line in the log (nothing is replaced), and find which step printed the address.
+     redact it in this log (nothing is replaced), and find which step printed the address.
 
 ## The tunnel
 

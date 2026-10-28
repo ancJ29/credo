@@ -880,53 +880,68 @@ refuses "a stack with no BoxAddress is refused before a key is sent" "names no p
 refuses "a BoxAddress that is no IPv4 address is refused" "names no private address" \
   box_open_without '[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"0.0.0.0/0"},{"OutputKey":"Zone","OutputValue":"z"}]'
 
-echo "== the outputs print without a secret's value (outputs_print; the box's private address is masked, never printed)"
-# printed_outputs <describe-stacks body>: stack.sh's read-back, as it does it: the three masked, then printed
+echo "== the outputs print without a secret's value (outputs_show: the three masked, then outputs_print)"
+# printed_outputs <describe-stacks body>: the read-back's call, as stack.sh makes it, in GitHub's job
+# (where mask writes to fd 3, open here as log_start opens it)
 printed_outputs() {
   (
     STACK_JSON=$1
-    mask "$(out DeployRoleArn)"
-    mask "$(out ApiAddress)"
-    mask "$(out BoxAddress)" "the box's private address"
-    outputs_print
+    GITHUB_ACTIONS=true outputs_show
   ) 3>>"$WORK/fd3"
 }
-outs_body='{"Stacks":[{"Outputs":[{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"},{"OutputKey":"ApiAddress","OutputValue":"https://api.example.test"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/x"}]}]}'
-printed=$(printed_outputs "$outs_body")
+outs_body='{"Stacks":[{"Outputs":[{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"},{"OutputKey":"ApiAddress","OutputValue":"https://api.example.test"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/x"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"NewThing","OutputValue":"some-value"}]}]}'
+: >"$WORK/fd3"
+printed=$(printed_outputs "$outs_body" 2>&1 || true)
 check "the box's private address is never printed" 0 "$(grep -cF '10.9.8.7' <<<"$printed" || true)"
-check "  the app's address still is" 1 "$(grep -cF '  AppAddress = https://app.example.test' <<<"$printed" || true)"
-check "  and the deploy role's ARN and the API's address are not" 0 "$(grep -cF -e 000000000000 -e api.example.test <<<"$printed" || true)"
+check "  the app's address still is, and a zone" "1 1" "$(grep -cF '  AppAddress = https://app.example.test' <<<"$printed" || true) $(grep -cF '  Zone = z' <<<"$printed" || true)"
+check "  the deploy role's ARN and the API's address are not, each saying why" "1 1 0" \
+  "$(grep -cF '  DeployRoleArn = (not printed: the account id)' <<<"$printed" || true) $(grep -cF '  ApiAddress = (not printed: the API is reached through the app)' <<<"$printed" || true) $(grep -cF -e 000000000000 -e api.example.test <<<"$printed" || true)"
+check "  an output no one named as printable is not printed" "1 0" "$(grep -cF '  NewThing = (not printed)' <<<"$printed" || true) $(grep -cF some-value <<<"$printed" || true)"
+check "  and each of the three is given to GitHub's mask, once, on fd 3" 3 "$(grep -c '^::add-mask::' "$WORK/fd3" || true)"
+multi='{"Stacks":[{"Outputs":[{"OutputKey":"AppAddress","OutputValue":"line-one\nline-two"},{"OutputKey":"Zone","OutputValue":"z"}]}]}'
+multi_printed=$(STACK_JSON=$multi SECRETS=$'line-two\n' outputs_print)
+check "  a value holding any masked line is not printed" "1 0" "$(grep -cF '  AppAddress = (not printed)' <<<"$multi_printed" || true) $(grep -cF line-one <<<"$multi_printed" || true)"
+check "outputs_print gives jq the secrets in its environment, never on its command line" 0 "$(grep -c -e '--arg secrets' -e 'argjson secrets' "$OPS_DIR/lib.sh" || true)"
+mask_closed() { GITHUB_ACTIONS=true mask thekey 3>&-; }
+refuses "mask with fd 3 closed in GitHub's job dies, saying so (never a quiet miss)" "fd 3 is closed" mask_closed
+mask_lines() { (GITHUB_ACTIONS=true mask $'first\nsecond' lbl 3>"$WORK/fd3"; printf '%s|%s' "$(grep -c '^::add-mask::' "$WORK/fd3")" "$(printf '%s' "$SECRETS" | wc -l | tr -d ' ')$(printf '%s' "$SECRET_LABELS" | wc -l | tr -d ' ')"); }
+check "a masked value of two lines is two masks and two secrets, each with its label" "2|22" "$(mask_lines)"
 
-# outputs_guard <stack.sh>: dies unless the box's address is masked before outputs_print, and no other printer of the outputs is there
+# outputs_guard <stack.sh>: dies unless stack.sh shows the outputs through outputs_show and prints none of its own
 # shellcheck disable=SC2016 # the script's text, in single quotes
 outputs_guard() {
-  local mask_line print_line
-  mask_line=$(grep -n '^mask "\$(out BoxAddress)"' "$1" | head -n 1 | cut -d: -f1)
-  print_line=$(grep -n '^outputs_print$' "$1" | head -n 1 | cut -d: -f1)
-  [ -n "$mask_line" ] && [ -n "$print_line" ] && [ "$mask_line" -lt "$print_line" ] || die "stack.sh does not mask BoxAddress before outputs_print"
-  ! grep -qF '\(.OutputKey)' "$1" || die "stack.sh prints the outputs another way than outputs_print"
+  [ "$(grep -c '^outputs_show$' "$1" || true)" = 1 ] || die "stack.sh does not call outputs_show once"
+  ! grep -qF '\(.OutputKey)' "$1" || die "stack.sh prints the outputs another way than outputs_show"
 }
-passes "stack.sh masks BoxAddress before it prints the outputs, and prints them no other way" outputs_guard "$OPS_DIR/stack.sh"
-# shellcheck disable=SC2016 # a pattern, in single quotes
-grep -v '^mask "\$(out BoxAddress)"' "$OPS_DIR/stack.sh" >"$WORK/stack-nomask.sh"
-refuses "  a stack.sh that does not mask BoxAddress is refused" "does not mask BoxAddress" outputs_guard "$WORK/stack-nomask.sh"
+passes "stack.sh shows the outputs through outputs_show (the whole run below holds that no value printed)" outputs_guard "$OPS_DIR/stack.sh"
+grep -v '^outputs_show$' "$OPS_DIR/stack.sh" >"$WORK/stack-noshow.sh"
+refuses "  a stack.sh that does not call it is refused" "does not call outputs_show" outputs_guard "$WORK/stack-noshow.sh"
 { cat "$OPS_DIR/stack.sh"; echo "jq -r '.Stacks[0].Outputs[]? | \\(.OutputKey)' <<<\"\$STACK_JSON\""; } >"$WORK/stack-jq.sh"
 refuses "  a second printer of the outputs is refused" "another way" outputs_guard "$WORK/stack-jq.sh"
 
 # The RED line names what matched: an address is redacted, a key is replaced.
-red_line() { # <label or nothing>: a log holding the masked value, ended by on_exit; its RED line
+# red_lines <leaked text> <value> <label> [<value> <label>]: a log in which the values are masked and
+# the text is written; its RED lines, and the ok line, on one line
+red_lines() {
   local dir=$WORK/logs-red tmp=$WORK
   rm -rf "$dir"
-  OPS_LOG_DIR=$dir TMPDIR=$tmp WORK='' OPS_DIR=$OPS_DIR LABEL=$1 bash -c '
+  OPS_LOG_DIR=$dir TMPDIR=$tmp WORK='' OPS_DIR=$OPS_DIR LEAK=$1 M1=$2 L1=$3 M2=${4:-} L2=${5:-} bash -c '
     . "$OPS_DIR/lib.sh"
     log_start red x
-    mask "10.9.8.7" "$LABEL"
-    echo "oops 10.9.8.7"
+    mask "$M1" "$L1"
+    mask "$M2" "$L2"
+    echo "oops $LEAK"
   ' >/dev/null 2>&1 || true
-  grep -h '^RED' "$dir"/*.log | head -n 1
+  grep -h -e '^RED' -e '^ok   no key' "$dir"/*.log | sed 's/ (docs[^)]*)//' | tr '\n' '|'
 }
-check "a masked address found in the log is named an address, to redact" "RED  the box's private address is in this log: redact this line; nothing to replace" "$(red_line "the box's private address")"
-check "  a masked key found in the log is still a key, to replace" "RED  a key is in this log: delete it and replace the key" "$(red_line '' | cut -c1-56)"
+ADDR_RED="RED  the box's private address is in this log: redact it in this log; nothing to replace"
+KEY_RED="RED  a key is in this log: delete it and replace the key"
+check "a masked address found in the log is named an address, to redact" "$ADDR_RED|" "$(red_lines 10.9.8.7 10.9.8.7 "the box's private address")"
+check "  a masked key found in the log is still a key, to replace" "$KEY_RED|" "$(red_lines thekey0 thekey0 '')"
+check "  a key and the address together: both are named, the key's first, and no ok line" "$KEY_RED|$ADDR_RED|" \
+  "$(red_lines 'thekey0 10.9.8.7' thekey0 '' 10.9.8.7 "the box's private address")"
+check "  a key of two lines, its second line leaked, is a key still (the labels stay in step)" "$KEY_RED|" \
+  "$(red_lines secondline $'firstline\nsecondline' '' 10.9.8.7 "the box's private address")"
 
 echo "== c-storage listens on the box's private address (the unit reads it; each release writes it from BoxAddress)"
 unit=$OPS_DIR/c-storage.service
@@ -1647,6 +1662,59 @@ check "without a terminal it refuses, and writes no account" "1 1 0" \
 rc=0
 out=$(GITHUB_ACTIONS=true bash "$E2E/repo/ops/operator.sh" ridge 2>&1) || rc=$?
 check "in GitHub's job it refuses before anything else" "1 1" "$rc $(grep -c "never in a job's log" <<<"$out" || true)"
+
+echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
+# A clone whose origin is named as GitHub's are, so the script reads the repository from it; the stack
+# is described with the box's address and the deploy role's ARN, and its change set holds no change.
+mkdir -p "$E2E/github.com/test-owner" "$E2E/stackbin"
+git clone -q --bare "$E2E/origin.git" "$E2E/github.com/test-owner/test-repo.git"
+git clone -q -b main "$E2E/github.com/test-owner/test-repo.git" "$E2E/stackrepo"
+cat >"$E2E/stackbin/aws" <<'STANDIN'
+#!/bin/bash
+echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+case "$*" in
+  *get-region-opt-status*) echo ENABLED ;;
+  *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
+  *"describe-stacks"*)
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
+  *"wait change-set-create-complete"*) exit 255 ;;
+  *describe-change-set*) echo "The submitted information didn't contain changes. Submit different information to create a change set." ;;
+  *create-change-set* | *delete-change-set*) : ;;
+  *send-ssh-public-key*) echo True ;;
+  *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$E2E/stackbin/gh" <<'STANDIN'
+#!/bin/bash
+echo "gh $*" >>"${FAKE_STATE:?}/gh.calls"
+cat >/dev/null
+case "$*" in
+  *oidc/customization/sub*) echo '{"use_default":true}' ;;
+  *"secret list"*) echo AWS_ROLE_ARN ;;
+  *deployment-branch-policies*--jq*) echo main ;;
+  *) : ;;
+esac
+STANDIN
+printf '#!/bin/sh\ncat >/dev/null\nexit 0\n' >"$E2E/stackbin/ssh"
+chmod +x "$E2E/stackbin/aws" "$E2E/stackbin/gh" "$E2E/stackbin/ssh"
+stack_run() { # <state name> <args...>: stack.sh env ridge in the clone, its terminal output in the state's out file
+  e2e_fresh "$1"
+  shift
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/stackbin:$PATH" bash ops/stack.sh env ridge "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+stack_run stack-plan --plan
+check "--plan on an unchanged stack ends there: exit 0 and 'nothing changed'" "0 1" "$RC $(grep -c '^--plan: nothing changed' "$S/out" || true)"
+check "  and writes nothing to GitHub (its one gh call reads the OIDC subject), opens no box, prints no outputs" "0 0 0" \
+  "$(grep -vc 'oidc/customization/sub' "$S/gh.calls" || true) $(grep -c 'send-ssh-public-key' "$S/aws.calls" || true) $(grep -c '^\[.*the outputs' "$S/out" || true)"
+stack_run stack-whole
+check "the whole run on an unchanged stack: exit 0, green" "0 1" "$RC $(grep -c '^== green' "$S/out" || true)"
+check "  the box's private address and the role's ARN are in neither the log nor the terminal" 0 \
+  "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF -e 10.9.8.7 -e 000000000000 || true)"
+check "  the app's address is printed, and the log ends on no key" "1 1" \
+  "$(grep -c '^  AppAddress = https://app.example.test' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+check "  GitHub's environment was written (the run went past the outputs)" 1 "$(grep -c '^gh secret set AWS_ROLE_ARN' "$S/gh.calls" || true)"
+
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }

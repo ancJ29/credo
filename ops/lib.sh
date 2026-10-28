@@ -124,12 +124,12 @@ on_exit() {
       fi
       i=$((i + 1))
     done <<<"$SECRETS"
-    if [ -n "$leaked_what" ]; then
-      final "RED  $leaked_what is in this log: redact this line; nothing to replace"
-      rc=1
-    fi
     if [ "$leaked_key" = 1 ]; then
       final "RED  a key is in this log: delete it and replace the key (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions)"
+      rc=1
+    fi
+    if [ -n "$leaked_what" ]; then
+      final "RED  $leaked_what is in this log: redact it in this log; nothing to replace"
       rc=1
     fi
     if [ -z "$leaked_what" ] && [ "$leaked_key" = 0 ]; then
@@ -149,12 +149,19 @@ mkwork() {
 # Remembers the value for the end-of-run search. fd 3 is the terminal and tee writes the same pipe
 # from another process, so the command opens with a newline: it can then never land mid-line, where
 # GitHub would not read it and the value would print. The label, when given (not a key), is what the
-# end-of-run search names if the value is found in the log.
+# end-of-run search names if the value is found in the log. GitHub masks and the search matches one
+# line at a time, so a value of several lines is taken as one secret per line, each with the label.
 mask() {
+  local line
   if [ -z "$1" ]; then return 0; fi
-  if [ "${GITHUB_ACTIONS:-}" = true ]; then printf '\n::add-mask::%s\n' "$1" >&3; fi
-  SECRETS="${SECRETS}$1"$'\n'
-  SECRET_LABELS="${SECRET_LABELS}${2:-}"$'\n'
+  while IFS= read -r line; do
+    if [ -z "$line" ]; then continue; fi
+    if [ "${GITHUB_ACTIONS:-}" = true ]; then
+      { printf '\n::add-mask::%s\n' "$line" >&3; } 2>/dev/null || die "mask: fd 3 is closed; log_start opens it"
+    fi
+    SECRETS="${SECRETS}${line}"$'\n'
+    SECRET_LABELS="${SECRET_LABELS}${2:-}"$'\n'
+  done <<<"$1"
 }
 
 # repository → owner/name, from the origin remote; never written in a committed file
@@ -215,10 +222,35 @@ stack_load() {
   die "describe-stacks $1 failed"
 }
 
-# outputs_print: the stack's outputs from STACK_JSON, one line each; an output whose value was
-# masked (it is in SECRETS) prints "(not printed)", so the caller names no output here.
+# OUTPUTS_PRINTED: the outputs that carry no secret and are read in the human's log. Any other
+# output (a new one included) prints "(not printed)" until it is named here.
+OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress"]'
+
+# outputs_print: the stack's outputs from STACK_JSON, one line each. An output prints its value only
+# when it is named in OUTPUTS_PRINTED and holds no masked line (SECRETS); the secrets go to jq in its
+# environment, never on its command line.
 outputs_print() {
-  jq -r --arg secrets "$SECRETS" '($secrets | split("\n") | map(select(. != ""))) as $s | .Stacks[0].Outputs[]? | .OutputValue as $v | "  \(.OutputKey) = " + (if any($s[]; . == $v) then "(not printed)" else .OutputValue end)' <<<"$STACK_JSON"
+  OPS_SECRETS="$SECRETS" jq -r --argjson printed "$OUTPUTS_PRINTED" '
+    ((env.OPS_SECRETS // "") | split("\n") | map(select(. != ""))) as $s
+    | .Stacks[0].Outputs[]?
+    | .OutputValue as $v
+    | "  \(.OutputKey) = " + (
+        if (.OutputKey | IN($printed[])) and (any($s[]; . as $x | $v | contains($x)) | not) then $v
+        elif .OutputKey == "DeployRoleArn" then "(not printed: the account id)"
+        elif .OutputKey == "ApiAddress" then "(not printed: the API is reached through the app)"
+        elif .OutputKey == "BoxAddress" then "(not printed: an address)"
+        else "(not printed)" end)' <<<"$STACK_JSON"
+}
+
+# outputs_show: the read-back's one way to show a stack's outputs (stack.sh). The deploy role's ARN
+# holds the account's id, the API's own address answers anyone and is reached through CloudFront, and
+# the box's private address is no log's: all three are searched for in the log, never printed. The
+# app's address is printed, in the human's local log, and in no committed file or public log.
+outputs_show() {
+  mask "$(out DeployRoleArn)"
+  mask "$(out ApiAddress)"
+  mask "$(out BoxAddress)" "the box's private address"
+  outputs_print
 }
 
 # stack_param <ParameterKey> → the stack's value of it in STACK_JSON, empty if none

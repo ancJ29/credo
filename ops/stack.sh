@@ -214,6 +214,10 @@ if ! aws cloudformation wait change-set-create-complete --stack-name "$STACK" --
 fi
 if [ "$no_changes" = 1 ]; then
   echo "no changes: the stack is as the template says"
+  if [ "$PLAN_ONLY" = 1 ]; then
+    echo "--plan: nothing changed"
+    exit 0
+  fi
 else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
   jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")"' "$WORK/changes.json"
@@ -248,14 +252,7 @@ fi
 # --- read back ---
 step "the outputs"
 stack_load "$STACK"
-# The deploy role's ARN holds the account's id, the API's own address answers anyone and is
-# reached through CloudFront, and the box's private address is no log's: all three are searched for
-# in this log, never printed. The app's address is printed here, in the human's local log, and in
-# no committed file or public log.
-mask "$(out DeployRoleArn)"
-mask "$(out ApiAddress)"
-mask "$(out BoxAddress)" "the box's private address"
-outputs_print
+outputs_show
 
 if [ "$KIND" = network ]; then
   vpc=$(out VpcId)
