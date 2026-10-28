@@ -13,7 +13,7 @@ import { Frame, type Scheme, type Width } from './Frame';
 import { SCREENS } from './screens';
 
 const SCHEMES: Scheme[] = ['light', 'dark'];
-const WIDTHS: Width[] = [390, 1280];
+const WIDTHS: Width[] = [390, 768, 1280];
 
 /** One filter: every value, or one. */
 function Filter<T extends string | number>({
@@ -44,8 +44,8 @@ function Filter<T extends string | number>({
 }
 
 /**
- * Piece 1's walk as one static page: every screen in every state, light and dark, at 390 and
- * 1280 pixels, in Vietnamese and English. Its screens are the app's own components.
+ * The walks as one static page: piece 1's screens and the operator's, each in every state, light
+ * and dark, at 390, 768 and 1280 pixels, in Vietnamese and English. Its screens are the app's own components.
  */
 export function MockPage() {
   const [language, setLanguage] = useState<Language | 'all'>('all');
@@ -58,9 +58,9 @@ export function MockPage() {
       <Container size="100%" py="md">
         <Stack gap="xl">
           <div>
-            <Title order={1}>Piece 1: the mock</Title>
+            <Title order={1}>The mock: piece 1 and the operator</Title>
             <Text c="dimmed">
-              Each screen of the walk, from fixtures, in each of its states. No network.
+              Each screen of the walks, from fixtures, in each of its states. No network.
             </Text>
           </div>
           <Group gap="lg">

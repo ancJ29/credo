@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react';
+import { BEFORE_CONFIG } from '../brand';
 import { Boot } from '../Boot';
+import { ClientMade } from '../ClientMade';
+import { NewClient } from '../NewClient';
+import { OperatorPage } from '../OperatorPage';
+import { OperatorSignIn } from '../OperatorSignIn';
 import { Settings } from '../Settings';
 import { Shell } from '../Shell';
 import { SignIn } from '../SignIn';
-import { FILLED, FRESH, ROOT, TYPED } from './fixtures';
+import { UnknownClient } from '../UnknownClient';
+import { FILLED, FRESH, MADE, NEW_CLIENT, OPERATOR, ROOT, TYPED } from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
 /** The mock's handlers do nothing: no screen here calls a service. */
@@ -43,6 +49,20 @@ const signIn = (
   initial?: { username: string; password: string },
 ) => <SignIn brand={FILLED} status={status} initial={initial} onSubmit={inert} />;
 
+const operatorSignIn = (
+  status: 'idle' | 'busy' | 'refused',
+  initial?: { username: string; password: string },
+) => <OperatorSignIn status={status} initial={initial} onSubmit={inert} />;
+
+const newClient = (
+  status: 'idle' | 'busy' | 'failed' | 'taken',
+  initial?: { code: string; name: string },
+) => (
+  <OperatorPage onSignOut={inert}>
+    <NewClient status={status} initial={initial} onSubmit={inert} />
+  </OperatorPage>
+);
+
 type MockState = {
   id: string;
   label: string;
@@ -58,7 +78,13 @@ export type MockScreen = {
   states: MockState[];
 };
 
-/** The six screens of piece 1's walk, each in its states, drawn from fixtures. */
+/** Credo's own colour, which the operator's pages and screen 9 are drawn in. */
+const CREDO = BEFORE_CONFIG.colour;
+
+/**
+ * The screens of piece 1's walk (1 to 6, and 9) and of the operator's (11 to 13, which the walk
+ * numbers 1 to 4), each in its states, drawn from fixtures.
+ */
 export const SCREENS: MockScreen[] = [
   {
     number: 1,
@@ -171,6 +197,65 @@ export const SCREENS: MockScreen[] = [
         label: 'failed',
         colour: FRESH.colour,
         screen: <Boot status="unavailable" onRetry={inert} />,
+      },
+    ],
+  },
+  {
+    number: 9,
+    label: 'A link that names no company we know',
+    states: [
+      {
+        id: 'unknown',
+        label: 'failed: no, malformed or unknown code',
+        colour: CREDO,
+        screen: <UnknownClient />,
+      },
+    ],
+  },
+  {
+    number: 11,
+    label: 'The operator’s walk, 1: sign in at the operator’s page',
+    states: [
+      { id: 'empty', label: 'empty', colour: CREDO, screen: operatorSignIn('idle') },
+      { id: 'filled', label: 'filled', colour: CREDO, screen: operatorSignIn('idle', OPERATOR) },
+      { id: 'loading', label: 'loading', colour: CREDO, screen: operatorSignIn('busy', OPERATOR) },
+      { id: 'failed', label: 'failed', colour: CREDO, screen: operatorSignIn('refused', OPERATOR) },
+    ],
+  },
+  {
+    number: 12,
+    label: 'The operator’s walk, 2 and 4: a new client, its code and the company’s name',
+    states: [
+      { id: 'empty', label: 'empty', colour: CREDO, screen: newClient('idle') },
+      { id: 'typed', label: 'filled: typed', colour: CREDO, screen: newClient('idle', NEW_CLIENT) },
+      { id: 'loading', label: 'loading', colour: CREDO, screen: newClient('busy', NEW_CLIENT) },
+      {
+        id: 'failed',
+        label: 'failed: not made, what was typed kept',
+        colour: CREDO,
+        screen: newClient('failed', NEW_CLIENT),
+      },
+      {
+        id: 'taken',
+        label: 'failed: the code is taken',
+        colour: CREDO,
+        screen: newClient('taken', NEW_CLIENT),
+      },
+    ],
+  },
+  {
+    number: 13,
+    label: 'The operator’s walk, 3: made, the link, the root’s name and its first password',
+    states: [
+      {
+        id: 'made',
+        label: 'filled: shown once',
+        colour: CREDO,
+        screen: (
+          <OperatorPage onSignOut={inert}>
+            <ClientMade {...MADE} onAnother={inert} />
+          </OperatorPage>
+        ),
       },
     ],
   },

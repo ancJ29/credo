@@ -21,6 +21,8 @@ type Props = {
   brand: Brand;
   /** Idle, waiting on the service, or the last attempt refused. */
   status: 'idle' | 'busy' | 'refused';
+  /** The heading over the form, where it is not "Sign in to your account": the operator's door. */
+  title?: string;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
   onSubmit: (username: string, password: string) => void;
@@ -31,7 +33,7 @@ type Props = {
  * grey ground, the brand's bar across its top, the logo and name in its tinted head, a title
  * over underlined fields, and a gradient button.
  */
-export function SignIn({ brand, status, initial, onSubmit }: Props) {
+export function SignIn({ brand, status, title, initial, onSubmit }: Props) {
   const { t } = useTranslation();
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
@@ -78,7 +80,7 @@ export function SignIn({ brand, status, initial, onSubmit }: Props) {
           </Box>
           <Box p={40} pt={28}>
             <Title order={2} fw={700} ta="center" mb="md">
-              {t('auth.title')}
+              {title ?? t('auth.title')}
             </Title>
             {status === 'refused' && (
               <Alert color="red" role="alert" mb="md">

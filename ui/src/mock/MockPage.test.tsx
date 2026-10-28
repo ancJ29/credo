@@ -6,12 +6,12 @@ import { SCREENS } from './screens';
 const states = SCREENS.flatMap((screen) => screen.states).length;
 
 describe('MockPage', () => {
-  it('draws every state of every screen in both themes, both widths and both languages', () => {
+  it('draws every state of every screen in both themes, all three widths and both languages', () => {
     const { container } = render(<MockPage />);
     const titles = [...container.querySelectorAll('iframe')].map((frame) => frame.title);
 
-    expect(titles).toHaveLength(states * 8);
-    expect(new Set(titles).size).toBe(states * 8);
+    expect(titles).toHaveLength(states * 12);
+    expect(new Set(titles).size).toBe(states * 12);
   });
 
   it('narrows to one language, one theme or one width, and back to all', () => {
@@ -20,11 +20,11 @@ describe('MockPage', () => {
     const titles = () => [...container.querySelectorAll('iframe')].map((frame) => frame.title);
 
     fireEvent.click(screen.getByRole('radio', { name: 'vi' }));
-    expect(titles()).toHaveLength(states * 4);
+    expect(titles()).toHaveLength(states * 6);
     expect(titles().every((title) => / · vi · /.test(title))).toBe(true);
 
     fireEvent.click(screen.getByRole('radio', { name: 'dark' }));
-    expect(titles()).toHaveLength(states * 2);
+    expect(titles()).toHaveLength(states * 3);
 
     fireEvent.click(screen.getByRole('radio', { name: '390' }));
     expect(titles()).toHaveLength(states);

@@ -32,3 +32,16 @@ export const TYPED: TenantConfig = {
 
 /** The root's sign-in name, and the password typed in the half-filled form. */
 export const ROOT = { username: 'root', password: 'correct horse' };
+
+/** The operator's sign-in name, and the password typed in the half-filled form. */
+export const OPERATOR = { username: 'operator', password: 'correct horse' };
+
+/** A client's code and name as the operator typed them into the form. */
+export const NEW_CLIENT = { code: 'minh-phat', name: 'Minh Phát' };
+
+/** What the operator is shown once a client is made: invented, like the company. */
+export const MADE = {
+  link: 'https://credo.example/login?client-code=minh-phat',
+  rootName: 'root',
+  password: 'q7Hn4VdM2xKp9sRw',
+};

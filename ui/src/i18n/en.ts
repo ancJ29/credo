@@ -40,6 +40,33 @@ export const en = {
     conflict: 'Someone saved newer settings first. Your changes were not saved.',
     conflictReload: 'Show the newer settings',
   },
+  operator: {
+    badge: 'Operator',
+    signIn: 'Operator sign-in',
+    newTitle: 'Make a client',
+    newIntro:
+      'Give the company a code and its name. You get its link and its first password, once.',
+    code: 'Client code',
+    codePlaceholder: 'for example minh-phat',
+    codeHint:
+      '3 to 32 characters: lowercase letters, digits and hyphens, starting with a letter. It cannot be changed later.',
+    companyName: 'Company name',
+    make: 'Make the client',
+    failed: 'The client was not made. What you typed is still here: try again.',
+    taken:
+      'That code already belongs to another client, and nothing was changed. Choose a different code.',
+    madeTitle: 'Client made',
+    madeIntro:
+      'Send the company its link and its root’s first password. The password is shown now and never again.',
+    link: 'Link',
+    rootName: 'Root name',
+    firstPassword: 'First password',
+    another: 'Make another client',
+  },
+  unknownClient: {
+    title: 'We do not know this address',
+    text: 'This address names no company we know. Open the link your company sent you.',
+  },
 };
 
 type Words<T> = { [K in keyof T]: T[K] extends string ? string : Words<T[K]> };

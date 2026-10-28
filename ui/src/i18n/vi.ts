@@ -41,4 +41,30 @@ export const vi: Dictionary = {
     conflict: 'Có người đã lưu cài đặt mới hơn. Thay đổi của bạn chưa được lưu.',
     conflictReload: 'Xem cài đặt mới hơn',
   },
+  operator: {
+    badge: 'Người vận hành',
+    signIn: 'Đăng nhập người vận hành',
+    newTitle: 'Tạo khách hàng',
+    newIntro:
+      'Đặt mã và tên cho công ty. Bạn nhận được đường dẫn và mật khẩu đầu tiên, chỉ một lần.',
+    code: 'Mã khách hàng',
+    codePlaceholder: 'ví dụ minh-phat',
+    codeHint:
+      'Từ 3 đến 32 ký tự: chữ thường, chữ số và dấu gạch ngang, bắt đầu bằng một chữ cái. Không đổi được về sau.',
+    companyName: 'Tên công ty',
+    make: 'Tạo khách hàng',
+    failed: 'Chưa tạo được khách hàng. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
+    taken: 'Mã này đã thuộc về một khách hàng khác và chưa có gì thay đổi. Hãy chọn mã khác.',
+    madeTitle: 'Đã tạo khách hàng',
+    madeIntro:
+      'Hãy gửi cho công ty đường dẫn và mật khẩu đầu tiên của tài khoản root. Mật khẩu chỉ hiện lúc này và sẽ không hiện lại.',
+    link: 'Đường dẫn',
+    rootName: 'Tên tài khoản root',
+    firstPassword: 'Mật khẩu đầu tiên',
+    another: 'Tạo khách hàng khác',
+  },
+  unknownClient: {
+    title: 'Chúng tôi không biết địa chỉ này',
+    text: 'Địa chỉ này không thuộc công ty nào chúng tôi biết. Hãy mở đường dẫn mà công ty đã gửi cho bạn.',
+  },
 };

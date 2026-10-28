@@ -24,6 +24,12 @@ describe('SignIn', () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret');
   });
 
+  it('names its heading as it is told, in place of the account title', () => {
+    draw(<SignIn brand={brand} status="idle" title="Operator sign-in" onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Operator sign-in');
+  });
+
   it('starts from what is already typed', () => {
     draw(
       <SignIn

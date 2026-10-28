@@ -50,7 +50,21 @@ describe('the walk’s screens', () => {
     expect(drawn('logo-too-large', 'en')).not.toContain(DICTIONARIES.en.settings.saveRefused);
   });
 
-  it('numbers the six screens of the walk, in order', () => {
-    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6]);
+  it('numbers piece 1’s screens as its walk does, screen 9 after them, and the operator’s walk from 11', () => {
+    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 9, 11, 12, 13]);
+  });
+
+  it('draws screen 9 in credo’s colour and the operator’s pages in credo’s name, never a company’s', () => {
+    const credo = '#3e618c';
+    for (const number of [9, 11, 12, 13]) {
+      const found = SCREENS.find((screen) => screen.number === number)!;
+      expect(
+        found.states.map((state) => state.colour),
+        `${number}`,
+      ).toEqual(found.states.map(() => credo));
+    }
+    const unknown = draw(SCREENS.find((screen) => screen.number === 9)!.states[0].screen);
+
+    expect(unknown.container.textContent).not.toContain('Minh Phát');
   });
 });

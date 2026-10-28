@@ -9,3 +9,6 @@ export const BEFORE_CONFIG: { colour: string; language: Language } = {
   colour: '#3e618c',
   language: 'vi',
 };
+
+/** The operator belongs to no company, so its pages wear credo's own name and no logo. */
+export const CREDO_BRAND: Brand = { name: 'Credo', logo: null };
