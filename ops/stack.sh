@@ -99,17 +99,6 @@ stack_events() {
     jq -r '.StackEvents[] | select(.ResourceStatus | test("FAILED")) | "  \(.LogicalResourceId): \(.ResourceStatusReason)"' | head -10
 }
 
-# add_param <key> <value>, or <key> alone to keep its previous value: appends to PARAMS, the
-# template's parameters as a JSON array. A new stack gets the values read now; an updated one
-# keeps those it must not move.
-add_param() { # <key> <value> | <key> (previous)
-  if [ $# -eq 2 ]; then
-    PARAMS=$(jq -c --arg k "$1" --arg v "$2" '. + [{ParameterKey: $k, ParameterValue: $v}]' <<<"$PARAMS")
-  else
-    PARAMS=$(jq -c --arg k "$1" '. + [{ParameterKey: $k, UsePreviousValue: true}]' <<<"$PARAMS")
-  fi
-}
-
 # free_cidr <vpc cidr> <vpc id> → the lowest unused 10.x.N.0/24 for N >= 1
 free_cidr() {
   local prefix used n
@@ -197,12 +186,7 @@ case "$KIND" in
       # clone has other ids. A stack made before the parameter existed takes GitHub's prefix once.
       prefix=$(github_subject_prefix "$repo")
       echo "subject prefix: $prefix"
-      plan=$(subject_param_plan "$prefix")
-      if [ "$plan" = previous ]; then
-        add_param SubjectPrefix
-      else
-        add_param SubjectPrefix "$prefix"
-      fi
+      add_subject_param "$prefix"
       add_param SubnetCidr
       add_param ImageId
     fi
