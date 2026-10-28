@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # The ops job's guards, run with no AWS, each on hand-written input: the change-set filter, the
 # choice between creating and updating a stack, an update's refusal to move the repository, the
-# the deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a
-# Bruno run, the credentials bru never holds, the log's exit code after a signal, the workflow's
-# deploy job, the tunnel's guards (the taken port, the forward that cannot bind, /health naming a
-# commit of main, the keys file's mode and removal, a drop), and the release's checks of /health against the real c-storage binary, built here with
-# several stamps and without one (it needs Go): the build it waits for, and the newer build it must
-# never overwrite.
+# deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in
+# the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a Bruno run,
+# the credentials bru never holds, the log's exit code after a signal, the workflow's deploy job,
+# the shared helpers (the port, the forward that cannot bind, /health naming a commit of main, the
+# keys file's mode), ops/tunnel.sh and check.sh's port refusal run whole on stand-ins for aws and
+# ssh (every way the tunnel ends), and the release's checks of /health against the real c-storage
+# binary, built here with several stamps and without one (it needs Go): the build it waits for, and
+# the newer build it must never overwrite.
 # Expected length: about 40 seconds with a cold Go cache, about 20 with a warm one.
 set -euo pipefail
 
@@ -600,78 +602,65 @@ check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml
 check "check.sh writes its environment through that writer alone" "1 0" \
   "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
 
-echo "== ops/tunnel.sh: a taken port is refused before anything is opened or written, and a refused run removes no file it did not write"
-cat >"$WORK/taken.sh" <<'CHILD'
+echo "== a refused write removes nothing, even through on_exit; a second signal does not cut on_exit short"
+cat >"$WORK/refused.sh" <<'CHILD'
 set -euo pipefail
 . "$OPS_DIR/lib.sh"
 REPO_DIR=$KR
-log_start tunneltest x
-ssh() { echo "ssh $*" >>"$MARK"; }
-aws() { echo "aws $*" >>"$MARK"; }
-refuse_taken_port "$PORT" "free it"
-box_open ridge "$PORT"
+log_start refusedtest x
 INTERNAL_KEY=k
 ADMIN_KEY=a
-bruno_env_write "$KENV" "$PORT" c d
+bruno_env_write "$KENV" 3192 c d
 CHILD
-start_server "$WORK/server-new"
-port=${URL#http://127.0.0.1:}
-port=${port%/health}
-rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
-mkdir -p "$WORK/tmp"
-printf 'the first run keys\n' >"$KENV"
+fresh_dirs() { rm -rf "${WORK:?}/logs" "${WORK:?}/tmp" "${WORK:?}/ssh.calls"; mkdir -p "$WORK/tmp"; }
+fresh_dirs
+printf 'the committed one\n' >"$ENVS/local.yml"
 rc=0
-OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls KR=$KR KENV=$KENV PORT=$port bash "$WORK/taken.sh" >/dev/null 2>&1 || rc=$?
-stop_server
-check "the run on a taken port fails" 1 "$rc"
-check "  naming the port" 1 "$(grep -c "something already answers on 127.0.0.1:$port" "$WORK"/logs/*.log || true)"
-check "  opening nothing: no aws, no ssh" 0 "$(cat "$WORK/ssh.calls" 2>/dev/null | wc -l | tr -d ' ')"
-check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$WORK"/logs/*.log)"
-check "  leaving the first run's keys file as it was" "the first run keys" "$(cat "$KENV")"
-rm -f "$KENV"
-line_of() { grep -n -m1 -F -- "$1" "$OPS_DIR/tunnel.sh" | cut -d: -f1; }
-# shellcheck disable=SC2016 # tunnel.sh's literal text
-check "tunnel.sh refuses the port, then opens, reads /health, reads the keys, then writes" "ordered" \
-  "$(if [ "$(line_of 'refuse_taken_port "$TUNNEL_PORT"')" -lt "$(line_of 'box_open "$ENVNAME"')" ] &&
-    [ "$(line_of 'box_open "$ENVNAME"')" -lt "$(line_of 'health_main_read')" ] &&
-    [ "$(line_of 'health_main_read')" -lt "$(line_of 'read_keys')" ] &&
-    [ "$(line_of 'read_keys')" -lt "$(line_of 'bruno_env_write')" ]; then echo ordered; else echo disordered; fi)"
-# shellcheck disable=SC2016 # tunnel.sh's literal text
-check "  and stops on a /health that names no commit of main" 1 "$(grep -c 'die "$HEALTH_PROBLEM"' "$OPS_DIR/tunnel.sh" || true)"
-check "the port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
-check "tunnel.sh removes its keys file only through on_exit (no cleanup of its own, no rm)" 0 "$(grep -cE 'cleanup_extra|rm ' "$OPS_DIR/tunnel.sh" || true)"
+OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp KR=$KR KENV=$ENVS/local.yml bash "$WORK/refused.sh" >/dev/null 2>&1 || rc=$?
+check "a path git does not ignore: the run fails, naming it" "1 1" "$rc $(grep -c 'git does not ignore c-storage/bruno/environments/local.yml' "$WORK"/logs/*.log || true)"
+check "  and the file survives the run's exit" "the committed one" "$(cat "$ENVS/local.yml")"
+rm -f "$ENVS/local.yml"
+cat >"$WORK/twice.sh" <<'CHILD'
+set -euo pipefail
+. "$OPS_DIR/lib.sh"
+log_start twicetest x
+mask thekey0
+# a writer in a session of its own keeps the log's pipe open, so on_exit waits for it as it would for
+# a stray ssh, and survives the signals sent to this script's group
+python3 -I -c 'import os, time; os.setsid(); time.sleep(4)' &
+touch "$READY"
+sleep 10
+CHILD
+fresh_dirs
 rc=0
-out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
-check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env>" "$rc $out"
+OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp READY=$WORK/twice.ready \
+  python3 -I -c 'import os,signal,sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash "$WORK/twice.sh" >/dev/null 2>&1 &
+PID=$!
+for _ in $(seq 1 100); do if [ -e "$WORK/twice.ready" ]; then break; fi; sleep 0.1; done
+kill -s INT -- "-$PID"
+sleep 0.4
+kill -s INT -- "-$PID" 2>/dev/null || true
+wait "$PID" || rc=$?
+PID=''
+rm -f "$WORK/twice.ready"
+check "a second Ctrl-C while on_exit waits: the script still exits 130" 130 "$rc"
+check "  the log still searched itself for the keys, then ends on its exit" "ok   no key in this log == exit 130" "$(tail -n 2 "$WORK"/logs/*.log | tr '\n' ' ' | sed 's/ $//')"
+check "  and the scratch folder is removed" 0 "$(find "$WORK/tmp" -mindepth 1 | wc -l | tr -d ' ')"
 
-echo "== ops/tunnel.sh: a tunnel that drops is named, and the command exits"
-# the stand-in ssh answers -O check twice, then fails as a dropped connection does
+echo "== tunnel_hold leaves at once on a signal, and closes the tunnel"
 cat >"$WORK/hold.sh" <<'CHILD'
 set -euo pipefail
 . "$OPS_DIR/lib.sh"
 log_start holdtest x
-ssh() {
-  echo "$*" >>"$MARK"
-  if [ -n "${DROP:-}" ] && [ "$(wc -l <"$MARK" | tr -d ' ')" -gt 2 ]; then return 255; fi
-  return 0
-}
+ssh() { echo "$*" >>"$MARK"; }
 box_ready=1
 BOX_ID=i-test
-tunnel_hold "${HOLD:-0.05}"
+tunnel_hold 30
 CHILD
-rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
-mkdir -p "$WORK/tmp"
-rc=0
-DROP=1 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/hold.sh" >/dev/null 2>&1 || rc=$?
-check "a dropped connection ends the command with exit 1" 1 "$rc"
-check "  the log names the drop" 1 "$(grep -c 'the tunnel dropped' "$WORK"/logs/*.log || true)"
-check "  after asking three times with -O check" 3 "$(grep -c -e '-O check' "$WORK/ssh.calls" || true)"
-check "  and ends on its exit code, the tunnel closed" "== exit 1" "$(tail -n 1 "$WORK"/logs/*.log)"
-rm -rf "$WORK/logs" "$WORK/tmp" "$WORK/ssh.calls"
-mkdir -p "$WORK/tmp"
-HOLD=30 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/hold.sh" >/dev/null 2>&1 &
+fresh_dirs
+OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp MARK=$WORK/ssh.calls bash "$WORK/hold.sh" >/dev/null 2>&1 &
 PID=$!
-sleep 1
+for _ in $(seq 1 100); do if [ -s "$WORK/ssh.calls" ]; then break; fi; sleep 0.1; done
 SECONDS=0
 kill -s TERM "$PID"
 rc=0
@@ -679,6 +668,260 @@ wait "$PID" || rc=$?
 PID=''
 check "a connection that holds is left by a signal at once, not after the 30 s between checks (143)" "143 fast" "$rc $(if [ "$SECONDS" -lt 5 ]; then echo fast; else echo slow; fi)"
 check "  the log ends on it" "== exit 143" "$(tail -n 1 "$WORK"/logs/*.log)"
+check "  and the tunnel is closed (one -O exit)" 1 "$(grep -c -e '-O exit' "$WORK/ssh.calls" || true)"
+
+echo "== ops/tunnel.sh and check.sh run whole, on stand-ins for aws and ssh, with the real c-storage behind the forward"
+# A scratch clone with a local origin holds ops/ as it is here, so main_synced passes. Only two value
+# lines of the clone's tunnel.sh differ from the real one: its port, so this run neither meets a
+# tunnel the human holds open nor another worktree's test, and the seconds between its checks.
+E2E=$WORK/e2e
+mkdir -p "$E2E/fakebin" "$E2E/repo/c-storage/bruno/environments"
+tport=$(free_port)
+cport=$(free_port)
+cp -R "$OPS_DIR" "$E2E/repo/ops"
+cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
+echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+sed -i.bak -e "s/^TUNNEL_PORT=3192\$/TUNNEL_PORT=$tport/" -e 's/^CHECK_EVERY=5$/CHECK_EVERY=1/' "$E2E/repo/ops/tunnel.sh"
+rm -f "$E2E/repo/ops/tunnel.sh.bak"
+check "the clone's tunnel.sh differs from the real one in two lines" 4 "$(diff "$OPS_DIR/tunnel.sh" "$E2E/repo/ops/tunnel.sh" | grep -c '^[<>]')"
+git init -q --bare "$E2E/origin.git"
+git -C "$E2E/repo" init -q
+git -C "$E2E/repo" remote add origin "$E2E/origin.git"
+git -C "$E2E/repo" add -A
+git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
+e2e_sha=$(git -C "$E2E/repo" rev-parse HEAD)
+build "$WORK/server-e2e" "$e2e_sha"
+cat >"$E2E/fakebin/aws" <<'STANDIN'
+#!/bin/bash
+echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+case "$*" in
+  *"cloudformation describe-stacks"*) echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}' ;;
+  *"send-ssh-public-key"*) echo True ;;
+  *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\nif [ "${1:-}" = --version ]; then echo 4.2.0; fi\n' >"$E2E/fakebin/bru"
+printf '#!/bin/sh\nexit 0\n' >"$E2E/fakebin/node"
+# The stand-in ssh is the master: opening it starts the real c-storage on the forwarded port (or
+# fails as ssh does with ExitOnForwardFailure when the port is taken); -O check asks whether it is
+# alive, -O exit stops it; a command on the box prints the keys. FAKE_STEAL=1 takes the port first.
+cat >"$E2E/fakebin/ssh" <<'STANDIN'
+#!/bin/bash
+S=${FAKE_STATE:?}
+echo "$*" >>"$S/ssh.calls"
+args=("$@")
+op='' fwd='' strict=0 prev=''
+for a in "${args[@]}"; do
+  if [ "$prev" = -O ]; then op=$a; fi
+  if [ "$prev" = -L ]; then fwd=$a; fi
+  if [ "$a" = ExitOnForwardFailure=yes ]; then strict=1; fi
+  prev=$a
+done
+detach() { python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$@"; }
+alive() { [ -f "$S/master.pid" ] && kill -0 "$(cat "$S/master.pid")" 2>/dev/null; }
+case $op in
+  check) alive && exit 0; echo "Control socket connect: No such file or directory" >&2; exit 255 ;;
+  exit) if alive; then kill "$(cat "$S/master.pid")"; rm -f "$S/master.pid"; exit 0; fi; exit 255 ;;
+esac
+if [ -n "$fwd" ]; then
+  lport=$(cut -d: -f2 <<<"$fwd")
+  if [ -n "${FAKE_STEAL:-}" ]; then
+    python3 -I -c "import os,socket,time; os.setsid(); s=socket.socket(); s.bind(('127.0.0.1',$lport)); s.listen(5); time.sleep(60)" </dev/null >/dev/null 2>&1 &
+    echo $! >"$S/thief.pid"
+    sleep 0.5
+  fi
+  if (exec 9<>"/dev/tcp/127.0.0.1/$lport") 2>/dev/null; then
+    echo "bind [127.0.0.1]:$lport: Address already in use" >&2
+    if [ "$strict" = 1 ]; then echo "Could not request local forwarding." >&2; exit 255; fi
+    exit 0
+  fi
+  mkdir -p "$S/db"
+  env -i PATH="$PATH" PORT="$lport" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$FAKE_CS" </dev/null >>"$S/server.log" 2>&1 &
+  echo $! >"$S/master.pid"
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$lport/health" >/dev/null 2>&1 && exit 0; sleep 0.1; done
+  echo "stand-in ssh: the server did not start" >&2
+  exit 255
+fi
+cmd=''
+seen=0
+for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in ec2-user@*) seen=1 ;; esac; done
+case $cmd in
+  *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
+  *) echo "stand-in ssh: unknown command:$cmd" >&2; exit 1 ;;
+esac
+STANDIN
+chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
+export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9
+export PATH="$E2E/fakebin:$PATH"
+KEYS=$E2E/repo/c-storage/bruno/environments/ridge-tunnel.yml
+S=''
+RC=0
+LPID=''
+e2e_fresh() { # <name> [<c-storage binary>]: a state folder for the stand-ins and a log folder, for one run
+  S=$E2E/state-$1
+  rm -rf "${S:?}" "${E2E:?}/logs-$1"
+  mkdir -p "$S"
+  export FAKE_STATE=$S OPS_LOG_DIR=$E2E/logs-$1 FAKE_CS=${2:-$WORK/server-e2e}
+}
+e2e_launch() { # <script> <args...>: in its own session with SIGINT at its default, as a terminal's foreground job
+  (cd "$E2E/repo" && exec python3 -I -c 'import os,signal,sys; signal.signal(signal.SIGINT, signal.SIG_DFL); os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' bash "ops/$1" "${@:2}") >"$S/out" 2>&1 &
+  LPID=$!
+}
+e2e_run() { # <script> <args...>: runs it whole in the clone and waits for its end (a run that holds is killed after 40 s: RC 999)
+  e2e_launch "$@"
+  e2e_reap 40
+}
+e2e_wait() { # <text> <seconds>: until the run's terminal output holds it
+  for _ in $(seq 1 $(($2 * 10))); do if grep -qF -- "$1" "$S/out" 2>/dev/null; then return 0; fi; sleep 0.1; done
+  return 1
+}
+e2e_ended() { grep -q '^== exit' "$OPS_LOG_DIR"/*.log 2>/dev/null; }
+e2e_reap() { # <seconds>: waits for LPID to end, sets RC (999, and its group and master killed, after the seconds)
+  for _ in $(seq 1 $(($1 * 10))); do if e2e_ended; then break; fi; sleep 0.1; done
+  if e2e_ended; then
+    RC=0
+    wait "$LPID" || RC=$?
+  else
+    kill -9 -- "-$LPID" 2>/dev/null || true
+    if [ -f "$S/master.pid" ]; then kill "$(cat "$S/master.pid")" 2>/dev/null || true; fi
+    RC=999
+  fi
+  LPID=''
+}
+master_state() { if [ -f "$S/master.pid" ] && kill -0 "$(cat "$S/master.pid")" 2>/dev/null; then echo alive; else echo gone; fi; }
+file_state() { if [ -e "$1" ]; then echo there; else echo gone; fi; }
+sum_of() { cksum <"$1" 2>/dev/null || echo none; }
+keys_seen() { cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cE "$FAKE_IKEY|$FAKE_AKEY" || true; }
+last2() { tail -n 2 "$OPS_LOG_DIR"/*.log | tr '\n' ' ' | sed 's/ $//'; }
+# hold_port <port>: a listener that speaks no HTTP, in PID
+hold_port() {
+  python3 -I -c "import socket, time
+s = socket.socket(); s.bind(('127.0.0.1', $1)); s.listen(5); time.sleep(30)" &
+  PID=$!
+  for _ in $(seq 1 25); do if port_taken "$1"; then break; fi; sleep 0.2; done
+}
+
+# A run held open: it replaces a keys file an earlier run left, and holds.
+e2e_fresh held
+printf 'an earlier run left this\n' >"$KEYS"
+chmod 644 "$KEYS"
+e2e_launch tunnel.sh ridge
+held_s=$S
+held_pid=$LPID
+if e2e_wait "this run's service" 30; then ready=ready; else ready='not ready'; fi
+check "the tunnel says ready" ready "$ready"
+check "  after its four steps" 4 "$(grep -c '^\[[1-4]/4\]' "$S/out" || true)"
+check "  with /health naming the commit of main it reached" 1 "$(grep -c "^ok   /health names $e2e_sha, a commit of main" "$S/out" || true)"
+check "  and the endpoint's hour as a clock time" 1 "$(grep -cE "^ready: http://127.0.0.1:$tport is ridge's c-storage, until Ctrl-C or [0-9]{2}:[0-9]{2} \(the endpoint's hour\)" "$S/out" || true)"
+check "  replacing the file an earlier run left, and saying so" 1 "$(grep -c '^note: replacing a keys file an earlier run left' "$S/out" || true)"
+check "the keys file is 0600 and holds ridge's two keys" "$KEYS 2" "$(find "$KEYS" -perm 600) $(grep -cE "$FAKE_IKEY|$FAKE_AKEY" "$KEYS" || true)"
+check "the forward is asked to fail if it cannot bind, for this port" "1 1" \
+  "$(grep -c 'ExitOnForwardFailure=yes' "$S/ssh.calls" || true) $(grep -c -e "-L 127.0.0.1:$tport:" "$S/ssh.calls" || true)"
+check "the real c-storage answers /health through the port" "$e2e_sha" "$(curl -fsS -m 5 "http://127.0.0.1:$tport/health" | jq -r .buildVersion)"
+sleep 2
+check "the run holds: two seconds on, it has not ended" no "$(if e2e_ended; then echo yes; else echo no; fi)"
+sum_first=$(sum_of "$KEYS")
+# a second run while the first holds the port
+e2e_fresh second
+e2e_run tunnel.sh ridge
+check "a second run is refused at the port, naming it" "1 1" "$RC $(grep -c "something already answers on 127.0.0.1:$tport" "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws call or ssh" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+check "  leaving the first run's keys file as it was" "$sum_first" "$(sum_of "$KEYS")"
+# the drop: the first run's master dies
+S=$held_s
+export FAKE_STATE=$S OPS_LOG_DIR=$E2E/logs-held
+kill "$(cat "$S/master.pid")"
+LPID=$held_pid
+e2e_reap 20
+check "a tunnel that drops ends the command with exit 1" 1 "$RC"
+check "  the log names the drop" 1 "$(grep -c '^error: the tunnel dropped' "$OPS_LOG_DIR"/*.log || true)"
+check "  the keys file is removed" gone "$(file_state "$KEYS")"
+check "  the tunnel is closed (one -O exit), and the log ends on its exit" "1 == exit 1" "$(grep -c -e '-O exit' "$S/ssh.calls" || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  with no key in the log or the terminal" 0 "$(keys_seen)"
+
+# every way a held run is ended from outside
+for sig in INT:130 TERM:143 HUP:129; do
+  name=${sig%%:*} code=${sig##*:}
+  e2e_fresh "sig-$name"
+  rm -f "$KEYS"
+  e2e_launch tunnel.sh ridge
+  e2e_wait "this run's service" 30 || true
+  kill -s "$name" -- "-$LPID"
+  e2e_reap 20
+  check "$name: the command exits $code" "$code" "$RC"
+  check "$name: the keys file is removed, and the tunnel's master stopped" "gone gone" "$(file_state "$KEYS") $(master_state)"
+  check "$name: the log searched itself for the keys, found none, and ends on the code" "ok   no key in this log == exit $code" "$(last2)"
+  check "$name: no key reached the log or the terminal" 0 "$(keys_seen)"
+done
+
+# /health must name a commit of main before anything is written
+health_case() { # <name> <c-storage binary> <what the refusal says>
+  e2e_fresh "health-$1" "$2"
+  rm -f "$KEYS"
+  e2e_run tunnel.sh ridge
+  check "a c-storage that is $1 stops the run, naming why" "1 1" "$RC $(grep -c "^error: /health.*$3" "$OPS_LOG_DIR"/*.log || true)"
+  check "  with no keys file written, and the tunnel closed" "gone gone 1" "$(file_state "$KEYS") $(master_state) $(grep -c -e '-O exit' "$S/ssh.calls" || true)"
+}
+health_case dev "$WORK/server-dev" "names no commit"
+health_case other "$WORK/server-other" "which origin/main does not hold"
+
+# a listener that speaks no HTTP holds the port: refused before anything opens, and a file there is left
+e2e_fresh silent
+hold_port "$tport"
+printf 'the first run keys\n' >"$KEYS"
+e2e_run tunnel.sh ridge
+stop_server
+check "a listener that speaks no HTTP holds the port: the run is refused, naming it" "1 1" "$RC $(grep -c "something already answers on 127.0.0.1:$tport" "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws call or ssh" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+check "  and the file already there is as it was" "the first run keys" "$(cat "$KEYS")"
+rm -f "$KEYS"
+
+# the port taken between the check and the bind
+e2e_fresh stolen
+FAKE_STEAL=1 e2e_run tunnel.sh ridge
+if [ -f "$S/thief.pid" ]; then kill "$(cat "$S/thief.pid")" 2>/dev/null || true; fi
+check "a port taken after the check fails the open, naming both causes" "1 1" "$RC $(grep -c "^error: the box does not answer through the endpoint, or 127.0.0.1:$tport could not be bound" "$OPS_LOG_DIR"/*.log || true)"
+check "  and no keys file is written" gone "$(file_state "$KEYS")"
+
+# ridge alone, before any aws call
+e2e_fresh other-env
+e2e_run tunnel.sh other
+check "an environment other than ridge is refused, naming why" "1 1" "$RC $(grep -c '^error: tunnel.sh holds ridge alone for now' "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws call or ssh" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+
+# a keys file git would not ignore is refused before any aws call
+e2e_fresh not-ignored
+mv "$E2E/repo/c-storage/bruno/environments/.gitignore" "$E2E/not-ignored.off"
+e2e_run tunnel.sh ridge
+mv "$E2E/not-ignored.off" "$E2E/repo/c-storage/bruno/environments/.gitignore"
+check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws call" gone "$(file_state "$S/aws.calls")"
+
+# shellcheck disable=SC2016 # tunnel.sh's literal text
+check "tunnel.sh masks the access key it makes" 1 "$(grep -c 'mask "$access_key"' "$OPS_DIR/tunnel.sh" || true)"
+check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
+rc=0
+out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
+check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env>" "$rc $out"
+
+# check.sh refuses a taken port, whatever answers on it, before any aws call
+start_server "$WORK/server-new"
+port=${URL#http://127.0.0.1:}
+port=${port%/health}
+e2e_fresh check-http
+CHECK_LOCAL_PORT=$port e2e_run check.sh ridge
+stop_server
+check "check.sh refuses a port with c-storage on it, with its message" "1 1" \
+  "$RC $(grep -c "^error: something already answers on 127.0.0.1:$port: free it, or set CHECK_LOCAL_PORT" "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws call" gone "$(file_state "$S/aws.calls")"
+e2e_fresh check-silent
+hold_port "$cport"
+CHECK_LOCAL_PORT=$cport e2e_run check.sh ridge
+stop_server
+check "  and a listener that speaks no HTTP too" "1 gone" "$RC $(file_state "$S/aws.calls")"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"
