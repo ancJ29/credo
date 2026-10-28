@@ -1,62 +1,70 @@
+/* The walks page as a light table: the drawn screens lie on it as sheets, the chrome stays quiet
+   in the app's own face, and the one strong colour is the app's teal, kept for a yes and for the
+   one action. A no is the app's red; asked again is amber. */
 :root {
-  --ground: #f3f5f7;
-  --surface: #fff;
-  --ink: #17202b;
-  --muted: #5a6776;
-  --line: #d6dde5;
-  --accent: #0f6b5c;
-  --wait: #9a6410;
-  --wait-soft: #fbf0dc;
-  --ok: #2b7a4b;
-  --ok-soft: #e3f3e9;
-  --no: #b8322f;
-  --no-soft: #fbe8e7;
-  --changed: #6347ad;
-  --changed-soft: #eee9fa;
-  --hatch: #e6eaef;
-  --shadow: 0 1px 2px rgb(23 32 43 / 0.08);
-  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --table: #e8ecef;
+  --sheet: #ffffff;
+  --ink: #1a2328;
+  --muted: #56636c;
+  --rule: #cdd5db;
+  --rule-strong: #94a1aa;
+  --teal: #2f7d6d;
+  --teal-soft: #dcefe9;
+  --on-teal: #ffffff;
+  --red: #b91c1c;
+  --red-soft: #fbe7e5;
+  --on-red: #ffffff;
+  --amber: #965a06;
+  --amber-soft: #f7ebd5;
+  --focus: #1a64d6;
+  --hatch: #d5dce1;
+  --lift: 0 1px 2px rgb(26 35 40 / 0.14), 0 14px 30px -20px rgb(26 35 40 / 0.5);
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* The copy bar's height, kept by the page as it changes. */
+  --bar: 64px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --ground: #11161c;
-    --surface: #19212a;
-    --ink: #e5eaef;
-    --muted: #9aa6b3;
-    --line: #2c3742;
-    --accent: #5cc0ac;
-    --wait: #e2ad55;
-    --wait-soft: #3a2c14;
-    --ok: #6cc690;
-    --ok-soft: #173426;
-    --no: #f08a86;
-    --no-soft: #3d1c1c;
-    --changed: #b5a1ef;
-    --changed-soft: #2a2245;
-    --hatch: #222b35;
-    --shadow: none;
+    --table: #121719;
+    --sheet: #1b2226;
+    --ink: #e3e9ec;
+    --muted: #9ba8b0;
+    --rule: #2d373d;
+    --rule-strong: #56646c;
+    --teal: #5bbba5;
+    --teal-soft: #173a33;
+    --on-teal: #08201a;
+    --red: #f08a82;
+    --red-soft: #3d1d1b;
+    --on-red: #2a0b09;
+    --amber: #e3a54b;
+    --amber-soft: #3a2a12;
+    --focus: #8ab4ff;
+    --hatch: #242d32;
+    --lift: 0 0 0 1px rgb(0 0 0 / 0.5), 0 14px 30px -18px rgb(0 0 0 / 0.9);
   }
   html.walks:not([data-theme='light']) {
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --ground: #11161c;
-  --surface: #19212a;
-  --ink: #e5eaef;
-  --muted: #9aa6b3;
-  --line: #2c3742;
-  --accent: #5cc0ac;
-  --wait: #e2ad55;
-  --wait-soft: #3a2c14;
-  --ok: #6cc690;
-  --ok-soft: #173426;
-  --no: #f08a86;
-  --no-soft: #3d1c1c;
-  --changed: #b5a1ef;
-  --changed-soft: #2a2245;
-  --hatch: #222b35;
-  --shadow: none;
+  --table: #121719;
+  --sheet: #1b2226;
+  --ink: #e3e9ec;
+  --muted: #9ba8b0;
+  --rule: #2d373d;
+  --rule-strong: #56646c;
+  --teal: #5bbba5;
+  --teal-soft: #173a33;
+  --on-teal: #08201a;
+  --red: #f08a82;
+  --red-soft: #3d1d1b;
+  --on-red: #2a0b09;
+  --amber: #e3a54b;
+  --amber-soft: #3a2a12;
+  --focus: #8ab4ff;
+  --hatch: #242d32;
+  --lift: 0 0 0 1px rgb(0 0 0 / 0.5), 0 14px 30px -18px rgb(0 0 0 / 0.9);
 }
 html.walks[data-theme='dark'] {
   color-scheme: dark;
@@ -69,139 +77,195 @@ html.walks {
    that copy this page's styles, and must not meet a rule meant for the page. */
 html.walks body {
   margin: 0;
-  background: var(--ground);
+  background: var(--table);
   color: var(--ink);
   font:
-    15px/1.55 system-ui,
-    -apple-system,
-    'Segoe UI',
+    400 15px/1.55 'Noto Sans Variable',
+    system-ui,
     sans-serif;
 }
-.w-wrap {
-  /* The whole window: the three widths of a screen sit side by side on a PC. */
-  padding: 24px 16px 32px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
+html.walks :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
-.w-wrap h1,
-.w-wrap h2,
-.w-wrap h3 {
-  margin: 0;
-  line-height: 1.2;
-  text-wrap: balance;
-}
-.w-wrap h1 {
-  font-size: clamp(24px, 4vw, 34px);
-}
-.w-wrap h2 {
-  font-size: 20px;
-}
-.w-wrap h3 {
-  font-size: 16px;
-  margin-top: 16px;
+.w-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .w-sub {
-  color: var(--muted);
   margin: 4px 0 0;
+  color: var(--muted);
+}
+
+/* The head: what the page is, how to answer, and what it was built from. */
+.w-head {
+  display: grid;
+  gap: 16px 48px;
+  padding: 28px 16px 4px;
+}
+.w-intro {
+  max-width: 72ch;
+}
+.w-head h1 {
+  margin: 0;
+  font-size: clamp(26px, 2.2vw + 14px, 38px);
+  line-height: 1.12;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.w-head .w-sub {
+  font-size: 17px;
+  margin-top: 6px;
+}
+.w-howto {
+  margin: 14px 0 0;
+  max-width: 68ch;
+}
+.w-meta {
+  display: grid;
+  gap: 10px;
+  align-content: end;
+  justify-items: start;
 }
 .w-build {
+  margin: 0;
   font-size: 13px;
   color: var(--muted);
-  border-left: 3px solid var(--line);
-  padding-left: 10px;
-  max-width: 70ch;
+  max-width: 60ch;
 }
-.w-wrap code {
-  font: 13px var(--mono);
+.w-build code,
+.w-orphans code {
+  font: 12.5px var(--mono);
+  color: var(--ink);
 }
-.w-label {
-  font: 500 11px/1.3 var(--mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
+@media (min-width: 1000px) {
+  .w-head {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 44ch);
+    align-items: end;
+    padding: 40px 32px 8px;
+  }
+  .w-meta {
+    justify-items: end;
+    text-align: right;
+  }
+}
+
+/* The whole window: no maximum width, a 16-pixel gutter on a phone. */
+.w-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 36px;
+  padding: 20px 16px 40px;
+}
+@media (min-width: 1000px) {
+  .w-main {
+    padding: 24px 32px 56px;
+  }
+}
+.w-main h2 {
   margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
 }
+
+/* What is on record, as counts. */
 .w-pills {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
+  gap: 4px 6px;
 }
 .w-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: start;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  padding: 2px 9px;
+  line-height: 1.6;
+  padding: 0 9px;
   border-radius: 999px;
   white-space: nowrap;
-}
-.w-pill::before {
-  content: '';
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+  font-variant-numeric: tabular-nums;
 }
 .w-waiting {
-  color: var(--wait);
-  background: var(--wait-soft);
-}
-.w-yes {
-  color: var(--ok);
-  background: var(--ok-soft);
-}
-.w-no {
-  color: var(--no);
-  background: var(--no-soft);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--rule-strong);
 }
 .w-changed {
-  color: var(--changed);
-  background: var(--changed-soft);
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.w-no {
+  color: var(--red);
+  background: var(--red-soft);
+}
+.w-yes {
+  color: var(--teal);
+  background: var(--teal-soft);
 }
 
+/* The map of the day: the parts across, the people down. */
+.w-map-section {
+  display: grid;
+  gap: 12px;
+}
 .w-map {
   display: grid;
-  grid-template-columns: 150px repeat(var(--parts), minmax(0, 1fr));
+  grid-template-columns: 160px repeat(var(--parts), minmax(0, 1fr));
   gap: 8px;
-  margin-top: 12px;
 }
 .w-row,
 .w-cell-group {
   display: contents;
 }
 .w-colhead {
-  padding: 0 4px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0 2px;
 }
 .w-person {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: 10px 4px;
+  display: grid;
+  align-content: center;
+  padding: 8px 2px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.w-person span {
+  color: var(--muted);
+  font-size: 13px;
 }
 .w-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 104px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 4px;
+  min-height: 92px;
   min-width: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border-left: 3px solid var(--teal);
+  background: var(--sheet);
+  box-shadow: var(--lift);
   color: inherit;
   text-decoration: none;
 }
-a.w-cell:hover {
-  border-color: var(--accent);
+.w-cell b {
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+a.w-cell:hover b {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .w-cell.w-empty {
-  background: repeating-linear-gradient(135deg, transparent 0 8px, var(--hatch) 8px 10px);
-  border-style: dashed;
+  border: 1px dashed var(--rule-strong);
+  background: repeating-linear-gradient(135deg, transparent 0 7px, var(--hatch) 7px 8px);
   box-shadow: none;
 }
 @media (max-width: 860px) {
@@ -213,7 +277,7 @@ a.w-cell:hover {
   }
   .w-person {
     grid-column: 1 / -1;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--rule);
   }
 }
 @media (max-width: 480px) {
@@ -222,191 +286,724 @@ a.w-cell:hover {
   }
 }
 
-.w-walk {
+/* The desk: the rail and the walks. Below 1000 pixels the rail is a strip across the top, and a
+   screen's section lands below it. */
+.w-desk {
+  --strip: 104px;
   display: grid;
-  gap: 12px;
-  align-content: start;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
 }
-.w-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-  padding: 12px 16px;
+@media (min-width: 1000px) {
+  .w-desk {
+    --strip: 0px;
+    grid-template-columns: 252px minmax(0, 1fr);
+    gap: 36px;
+  }
 }
-.w-card > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
+
+/* One of a few, as a row of buttons; the radio itself lies over its face, unseen. */
+.w-hide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
   cursor: pointer;
 }
+.w-hide:focus-visible + .w-face {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.w-seg {
+  flex: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.w-seg legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.w-seg-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.w-seg label {
+  position: relative;
+  display: block;
+}
+.w-seg .w-face {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.w-seg label:hover .w-face {
+  color: var(--ink);
+}
+.w-seg input:checked + .w-face {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+/* The rail: the view, then each walk's screens with their marks. A strip by default. */
+.w-rail {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, var(--table) 90%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+}
+.w-view {
+  display: flex;
+  gap: 8px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.w-view .w-seg legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.w-rail-nav,
+.w-rail-walk,
+.w-rail-group,
+.w-rail-nav ul {
+  display: flex;
+  gap: 6px;
+}
+.w-rail-nav {
+  overflow-x: auto;
+  padding: 2px;
+}
+.w-rail-walk,
+.w-rail-group {
+  flex: none;
+}
+.w-rail-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.w-rail-title,
+.w-rail-path {
+  display: none;
+}
+.w-rail-sentence {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.w-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 9px;
+  border-radius: 8px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: inherit;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.w-rail-item[aria-current] {
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
+.w-rail-number {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1000px) {
+  .w-rail {
+    top: 16px;
+    gap: 24px;
+    align-content: start;
+    max-height: calc(100dvh - var(--bar) - 32px);
+    overflow-y: auto;
+    margin: 0;
+    padding: 0 4px 16px 0;
+    background: none;
+    backdrop-filter: none;
+    border: 0;
+  }
+  .w-view {
+    display: grid;
+    gap: 14px;
+    overflow: visible;
+  }
+  .w-view .w-seg legend {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    margin-bottom: 6px;
+  }
+  .w-rail-nav,
+  .w-rail-walk,
+  .w-rail-group,
+  .w-rail-nav ul {
+    display: grid;
+    gap: 2px;
+  }
+  .w-rail-nav {
+    overflow: visible;
+    padding: 0;
+  }
+  .w-rail-title {
+    display: block;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.35;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .w-rail-path {
+    display: block;
+    margin: 12px 0 2px;
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+  .w-rail-sentence {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+  .w-rail-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 6px 8px;
+    background: none;
+    box-shadow: none;
+    font-size: 13.5px;
+  }
+  .w-rail-item:hover {
+    background: color-mix(in srgb, var(--sheet) 60%, transparent);
+  }
+  .w-rail-item[aria-current] {
+    background: var(--sheet);
+    box-shadow:
+      inset 3px 0 0 var(--teal),
+      var(--lift);
+  }
+}
+
+/* A screen's two marks, one a language: outlined while open, filled for a yes, filled and struck
+   through for a no, dashed when asked again. */
+.w-marks {
+  display: inline-flex;
+  gap: 4px;
+}
+.w-mark {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 26px;
+  height: 20px;
+  padding: 0 3px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: var(--muted);
+}
+.w-mark[data-mark='yes'] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--on-teal);
+}
+.w-mark[data-mark='no'] {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--on-red);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+.w-mark[data-mark='again'] {
+  border-style: dashed;
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* The walks, each screen a ruled band on the table. */
+.w-walks {
+  display: grid;
+  gap: 48px;
+  min-width: 0;
+}
+.w-walk {
+  scroll-margin-top: calc(var(--strip) + 12px);
+}
+.w-walk-head {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  padding-bottom: 4px;
+}
+.w-walk-head .w-sub {
+  max-width: 72ch;
+}
+.w-main .w-path {
+  margin: 28px 0 8px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.w-screen {
+  border-top: 1px solid var(--rule);
+  scroll-margin-top: calc(var(--strip) + 8px);
+}
+.w-screen > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 2px 16px;
+  align-items: center;
+  padding: 14px 0;
+  list-style: none;
+  cursor: pointer;
+}
+.w-screen > summary::-webkit-details-marker {
+  display: none;
+}
+.w-screen > summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin: 0 6px 4px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+}
+.w-screen[open] > summary::after {
+  margin-bottom: 0;
+  transform: rotate(-135deg);
+}
 .w-number {
-  font: 700 15px var(--mono);
-  color: var(--accent);
+  min-width: 1.1ch;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+  text-align: right;
+  color: var(--teal);
+  font-variant-numeric: tabular-nums;
 }
 .w-sentence {
   display: grid;
-  margin-right: auto;
+  gap: 2px;
   min-width: 0;
+}
+.w-sentence b {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 .w-sentence span {
+  font-size: 14px;
   color: var(--muted);
-  font-size: 13px;
 }
-.w-question {
-  font-weight: 600;
-  margin: 12px 0;
+
+/* The screen's body: the drawn widths, and the panel that asks. On a narrow body the panel sits
+   under the widths and rides at the foot of the window while they scroll by; on a wide one it
+   stands beside them and rides at the top. */
+.w-screen-body {
+  container: screen / inline-size;
+  padding-bottom: 36px;
 }
-.w-languages {
+.w-screen-grid {
   display: grid;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
 }
-.w-language {
-  display: grid;
-  gap: 8px;
-  align-content: start;
+.w-stage {
+  container: stage / inline-size;
   min-width: 0;
 }
-/* A language's three widths, stacked on a phone or a tablet, and side by side from 1000 pixels, each
-   column as wide as its device so the three are scaled alike and compare. */
+.w-panel {
+  position: sticky;
+  bottom: calc(var(--bar) + 8px);
+  z-index: 2;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  max-height: calc(70dvh - var(--bar));
+  overflow-y: auto;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  background: var(--sheet);
+  box-shadow:
+    0 0 0 1px var(--rule),
+    0 18px 40px -24px rgb(26 35 40 / 0.55);
+}
+@container screen (min-width: 900px) {
+  .w-screen-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 28px;
+    align-items: start;
+  }
+  .w-stage,
+  .w-words {
+    grid-column: 1;
+  }
+  .w-panel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    top: 16px;
+    bottom: auto;
+    max-height: calc(100dvh - var(--bar) - 32px);
+  }
+}
+
+/* A screen's widths: stacked in a narrow stage; in a wide one, all three at one scale, the PC's
+   across the top and the tablet's and the phone's under it, each column as wide as its device. */
 .w-frames {
   display: grid;
-  gap: 12px;
-  min-width: 0;
+  gap: 20px 16px;
+  align-items: start;
 }
-@media (min-width: 1000px) {
-  .w-frames {
-    grid-template-columns: var(--cols);
-    align-items: start;
+@container stage (min-width: 560px) {
+  .w-frames[data-show='all'] {
+    grid-template-columns: minmax(0, 768fr) minmax(0, 390fr) minmax(0, 122fr);
+  }
+  .w-frames[data-show='all'] .w-frame[data-device='pc'] {
+    grid-column: 1 / -1;
   }
 }
 .w-frame {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
   margin: 0;
-  display: grid;
-  gap: 4px;
-  min-width: 0;
 }
-.w-answer {
-  display: grid;
-  gap: 12px;
-  align-items: start;
+.w-frame figcaption {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
-@media (min-width: 700px) {
-  .w-answer {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
+.w-frame figcaption b {
+  font-weight: 600;
+  color: var(--ink);
 }
-.w-shown {
-  display: grid;
-  gap: 8px;
-  align-content: start;
-  min-width: 0;
+.w-scaled {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: var(--lift);
+}
+
+/* The panel: the question, then Yes or No, the reason a No needs, and one line on the record. */
+.w-question {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 .w-choose {
-  display: grid;
-  gap: 8px;
   min-width: 0;
   margin: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  padding: 0;
+  border: 0;
 }
 .w-choose legend {
-  font: 500 11px/1.3 var(--mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 0;
+  font-size: 13px;
   color: var(--muted);
-  padding: 0 4px;
 }
-.w-radios {
+.w-yesno {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.w-big {
+  position: relative;
+  display: block;
+}
+.w-big .w-face {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 8px 20px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border-radius: 10px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+  transition:
+    background-color 120ms,
+    color 120ms,
+    box-shadow 120ms;
 }
-.w-radios label {
-  display: inline-flex;
-  align-items: center;
+.w-big:hover .w-face {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.w-big[data-value='yes'] svg {
+  color: var(--teal);
+}
+.w-big[data-value='no'] svg {
+  color: var(--red);
+}
+.w-big[data-value='yes'] input:checked + .w-face {
+  background: var(--teal);
+  box-shadow: none;
+  color: var(--on-teal);
+}
+.w-big[data-value='no'] input:checked + .w-face {
+  background: var(--red);
+  box-shadow: none;
+  color: var(--on-red);
+}
+.w-big input:checked + .w-face svg {
+  color: inherit;
+}
+@media (prefers-reduced-motion: reduce) {
+  .w-big .w-face {
+    transition: none;
+  }
+}
+.w-reason {
+  display: grid;
   gap: 6px;
-  min-height: 32px;
+  margin-top: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
-.w-choose textarea,
+.w-reason textarea,
 .w-block {
   box-sizing: border-box;
   width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
   font: inherit;
   font-size: 14px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 6px 8px;
+  font-weight: 400;
   resize: vertical;
 }
-.w-choose textarea[aria-invalid='true'] {
-  border-color: var(--no);
+.w-reason textarea[aria-invalid='true'] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
 }
-.w-choose button,
-.w-copy {
-  font: inherit;
+.w-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.w-clear,
+.w-quiet {
+  padding: 2px 0;
+  border: 0;
+  background: none;
   color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 4px 12px;
-  min-height: 32px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
-.w-copy {
+
+/* The words the answer is keyed to: the machine's record, folded. */
+.w-words {
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.w-words > summary {
+  width: fit-content;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.w-words[open] > summary {
+  margin-bottom: 8px;
+}
+.w-compare {
+  display: grid;
+  gap: 12px;
+}
+@container screen (min-width: 640px) {
+  .w-compare {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.w-lines-title {
+  margin: 0 0 4px;
   font-weight: 600;
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
+  color: var(--ink);
 }
-.w-howto {
-  margin: 8px 0 0;
-  max-width: 80ch;
+.w-lines {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--sheet);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  color: var(--ink);
+  font: 12px/1.55 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
+
+.w-orphans {
+  display: grid;
+  gap: 8px;
+}
+
+/* The bar at the foot, always in view: the ledger, the count, the copy. */
 .w-send {
   position: sticky;
   bottom: 0;
+  z-index: 4;
   display: grid;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  box-shadow: 0 -2px 6px rgb(0 0 0 / 0.08);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--sheet);
+  box-shadow:
+    0 -1px 0 var(--rule),
+    0 -10px 24px -18px rgb(26 35 40 / 0.45);
+}
+@media (min-width: 1000px) {
+  .w-send {
+    padding-inline: 32px;
+  }
 }
 .w-send-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 8px 18px;
+}
+.w-ledger {
+  display: flex;
+  gap: 3px;
+}
+.w-tick {
+  box-sizing: border-box;
+  width: 9px;
+  height: 16px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 2px;
+}
+/* A screen's two languages sit as a pair. */
+.w-tick:nth-child(2n) {
+  margin-right: 4px;
+}
+.w-tick[data-mark='yes'] {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.w-tick[data-mark='no'] {
+  background: var(--red);
+  border-color: var(--red);
+}
+.w-tick[data-mark='again'] {
+  border-style: dashed;
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}
+.w-count {
+  display: grid;
+  line-height: 1.3;
+}
+.w-progress {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.w-tocopy {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.w-note {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: right;
+}
+.w-copy {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--teal);
+  color: var(--on-teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.w-copy:hover {
+  background: color-mix(in srgb, var(--teal) 86%, var(--ink));
+}
+.w-block-row {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
 }
 .w-block {
+  max-height: 30vh;
   font: 12px/1.5 var(--mono);
-  max-height: 40vh;
 }
-.w-scaled {
-  width: 100%;
-  overflow: hidden;
-}
-.w-reason {
-  margin: 0;
-}
-.w-compare {
-  display: grid;
-  gap: 8px;
-}
-.w-words {
-  margin: 0;
-  font: 12px/1.5 var(--mono);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  background: var(--ground);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 8px;
+@media (max-width: 599.98px) {
+  .w-ledger {
+    display: none;
+  }
+  .w-note {
+    order: 3;
+    flex-basis: 100%;
+    text-align: left;
+  }
+  .w-copy {
+    margin-left: auto;
+  }
 }

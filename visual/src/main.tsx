@@ -5,4 +5,6 @@ import { Page } from './page';
 import './page.css';
 import { readReport } from './page-data';
 
-createRoot(document.getElementById('root')!).render(<Page report={readReport(document)} />);
+/** The page's root, exported so the test that mounts it can unmount it before its window goes. */
+export const root = createRoot(document.getElementById('root')!);
+root.render(<Page report={readReport(document)} />);
