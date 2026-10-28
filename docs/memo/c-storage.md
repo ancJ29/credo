@@ -196,7 +196,7 @@ partner or a CI outside AWS included, reaches it. The plan stays as the record:
   in ridge's subnet, which calls the box's private address. *Price:* about $0.02 a month at ridge's
   traffic; throttled to 10 requests a second with bursts of 50, so a flood costs under $40 a month.
 - *Rejected:* a CloudFront origin access control to a function URL (A). Function URLs may not be
-  offered in Malaysia ([open item 14](../open-items.md)), and every write would need the body's
+  offered in Malaysia ([ridge-app's call 2](../plans/2026-10-28-ridge-app.md#the-humans-calls)), and every write would need the body's
   SHA-256 in a header.
 - *Rejected:* an HTTP API with a VPC link to the box (B): VPC links are not offered in
   `ap-southeast-5`.

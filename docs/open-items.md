@@ -39,7 +39,7 @@ Home: [the ridge plan](plans/2026-10-28-ridge.md#deploys-from-github-actions). c
 for arm64, built from `main` alone, sent to its box over the Instance Connect tunnel and run under
 systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each push to `main`, or
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
-plan's fourth layer, which decides how CD ships it.
+plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
 ## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
 
@@ -64,7 +64,8 @@ The architecture puts the BFF in a Lambda that calls the box's private address
 ridge's first three layers reach c-storage through ssh's forward to loopback. The change therefore
 waits for the first caller of the private address: the BFF on ridge, in the ridge plan's fourth
 layer, with piece 1. It becomes `LISTEN_ADDR`, one IP address and never an unspecified one,
-loopback when unset, with its tests. The local stack keeps loopback.
+loopback when unset, with its tests. The local stack keeps loopback. Planned in
+[ridge-app](plans/2026-10-28-ridge-app.md#layer-four), step 4.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
@@ -120,21 +121,3 @@ then ridge's c-storage is reached through the tunnel from the human's Mac
 ([the memo](memo/c-storage.md#no-public-url-for-now)). Trigger: someone other than the human, or a
 machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
 or tool outside AWS.
-
-## 14. Lambda function URLs may not be offered in `ap-southeast-5` — the human runs a probe, or layer four plans it (the ridge URL plan, 2026-10-28)
-
-Home: [the plan's finding](plans/2026-10-28-ridge-url.md#found-function-urls-in-malaysia). AWS's
-current pages give no answer in text; the earlier text of the page, as search indexes hold it, listed
-Malaysia among the Regions without them, and an open-source project's test of 2026-10-10 got
-"Unable to determine service/operation name to be authorized" creating one there. **Not read from a
-current AWS page.** If so, the architecture's
-[decision 2](plans/2026-10-27-architecture.md#decisions--the-machines) (CloudFront to the BFF's function
-URL with origin access control) cannot be built in Malaysia as drawn. Trigger: layer four's plan
-(piece 1's BFF on ridge), or the human's read-only probe:
-
-```bash
-aws lambda get-function-url-config --function-name credo-url-probe --region ap-southeast-5
-```
-
-`ResourceNotFoundException` means offered; `AccessDeniedException … Unable to determine
-service/operation name` means not offered.

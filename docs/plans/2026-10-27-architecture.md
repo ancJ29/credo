@@ -134,7 +134,7 @@ then adding $2.76. The ceiling is each client's box: every call lands on one SQL
    every test harness; the old app rejected the control for this. *Rejected:* a public URL behind
    the old `x-origin-key`: whoever finds it runs the function, on our bill. With no VPC origin, its
    gateway need, quota and security-group ordering fall away (findings 1, 2).
-   *Open:* function URLs may not be offered in Malaysia ([open item 14](../open-items.md#14-lambda-function-urls-may-not-be-offered-in-ap-southeast-5--the-human-runs-a-probe-or-layer-four-plans-it-the-ridge-url-plan-2026-10-28)).
+   *Amended* 2026-10-28 by the human: function URLs are not offered in Malaysia, so CloudFront reaches an HTTP API in front of the BFF, and the body hash goes ([ridge-app's call 2](2026-10-28-ridge-app.md#the-humans-calls), [the edge](2026-10-28-ridge-app.md#the-edge)).
 3. **The UI's files from a private S3 bucket, on the BFF's distribution.** One origin, so no CORS;
    with the back end down, the UI still loads and shows its own failure, never a "nothing there"
    that gets a record entered twice. *Price:* ≈ $0.01 a month. *Rejected:* files served by the

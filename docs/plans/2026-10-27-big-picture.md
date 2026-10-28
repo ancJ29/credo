@@ -62,6 +62,7 @@ a read-only reference to pick pieces from.
 shows all six pieces, real enough for the launch week's screenshots and video. A first paying
 client goes live later, on a date fixed when one signs: outreach starts only after 11-11.
 *Price:* the launch week a week later.
+*The human, 2026-10-28:* no fixed date; the release is "when it is ready" ([ridge-app's call 3](2026-10-28-ridge-app.md#the-humans-calls)).
 
 **The human's time:** the product's share goes to the new app alone, never split between two
 apps. The sales preparation stays the human's, in parallel, outside this repo.
