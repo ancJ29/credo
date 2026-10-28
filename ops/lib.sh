@@ -95,12 +95,13 @@ log_start() {
 # final <text>: a line after the pipe is closed, to the terminal and the log
 final() { echo "$*" | tee -a "$LOG"; }
 
-# on_exit: closes the tunnel, lets the log catch up, searches it for the keys, removes the scratch
+# on_exit: removes the Bruno environment this run wrote, closes the tunnel, lets the log catch up, searches it for the keys, removes the scratch
 # folder, then ends the log
 on_exit() {
   local rc=$?
   trap - EXIT
   if declare -F cleanup_extra >/dev/null; then cleanup_extra || true; fi
+  bruno_env_remove
   box_close
   if [ -n "$TEE_PID" ]; then
     exec >&3 2>&3
@@ -349,8 +350,10 @@ box_open() {
   aws ec2-instance-connect send-ssh-public-key --instance-id "$BOX_ID" --availability-zone "$zone" \
     --instance-os-user "$BOX_USER" --ssh-public-key "file://$WORK/key.pub" --query Success --output text >/dev/null ||
     return 1
+  # A forward that cannot bind (the port taken since it was checked) fails the open: ssh would
+  # otherwise stay up without it, and the caller would read whatever else answers on that port.
   local fwd=()
-  if [ -n "${2:-}" ]; then fwd=(-L "127.0.0.1:$2:127.0.0.1:$BOX_PORT"); fi
+  if [ -n "${2:-}" ]; then fwd=(-o ExitOnForwardFailure=yes -L "127.0.0.1:$2:127.0.0.1:$BOX_PORT"); fi
   # No host key is kept: the key is new each run and the tunnel is AWS's, to this instance id.
   ssh -f -N -M -S "$WORK/cm" -i "$WORK/key" -o IdentitiesOnly=yes -o BatchMode=yes \
     -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
@@ -424,6 +427,77 @@ read_keys() {
   [ -n "$INTERNAL_KEY" ] && [ -n "$ADMIN_KEY" ] || die "the box's keys file holds no keys"
   mask "$INTERNAL_KEY"
   mask "$ADMIN_KEY"
+}
+
+# random_hex → 32 random hex characters
+random_hex() { head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
+# port_taken <port>: succeeds when anything listens on 127.0.0.1:<port>. A TCP connect, so a
+# listener that speaks no HTTP counts too.
+port_taken() {
+  (exec 9<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+}
+
+# refuse_taken_port <port> <what to do>: dies when the port is taken, before anything is opened
+refuse_taken_port() {
+  if port_taken "$1"; then die "something already answers on 127.0.0.1:$1: $2"; fi
+}
+
+# require_ignored <path>: dies unless git ignores the path, since it will hold keys
+require_ignored() {
+  git -C "$REPO_DIR" check-ignore -q "$1" || die "git does not ignore ${1#"$REPO_DIR"/}: it would hold the keys"
+}
+
+# bruno_env_write <file> <local port> <service code> <access key>: the Bruno environment that points
+# at the tunnel, with INTERNAL_KEY and ADMIN_KEY from read_keys. Refused unless git ignores the file.
+# Written 0600 as a new file, and remembered in BRUNO_ENV_FILE so on_exit removes it, and removes
+# nothing a refused run did not write.
+BRUNO_ENV_FILE=''
+bruno_env_write() {
+  require_ignored "$1"
+  BRUNO_ENV_FILE=$1
+  rm -f "$1"
+  (
+    umask 077
+    cat >"$1" <<YAML
+variables:
+  - name: baseUrl
+    value: http://127.0.0.1:$2
+  - name: internalAccessKey
+    value: $INTERNAL_KEY
+  - name: superAdminKey
+    value: $ADMIN_KEY
+  - name: serviceCode
+    value: $3
+  - name: accessKey
+    value: $4
+  - name: recordKey
+    value: sample-record
+YAML
+  )
+}
+
+bruno_env_remove() {
+  if [ -n "$BRUNO_ENV_FILE" ]; then rm -f "$BRUNO_ENV_FILE"; fi
+  BRUNO_ENV_FILE=''
+}
+
+# health_main_read <local port>: reads /health through the port. HEALTH_BUILD is the commit it names;
+# HEALTH_PROBLEM is empty only when that is a commit of origin/main. What runs, not what this run
+# shipped: after a superseded release it is the newer commit, still one of main.
+HEALTH_BUILD=''
+HEALTH_PROBLEM=''
+# shellcheck disable=SC2034 # check.sh and tunnel.sh read HEALTH_PROBLEM
+health_main_read() {
+  local body
+  body=$(curl -fsS -m 5 "http://127.0.0.1:$1/health" || true)
+  HEALTH_BUILD=$(build_of "$body")
+  HEALTH_PROBLEM=''
+  if [ -z "$HEALTH_BUILD" ] || [ "$HEALTH_BUILD" = dev ]; then
+    HEALTH_PROBLEM="/health names no commit (answered: ${body:-nothing})"
+  elif ! git -C "$REPO_DIR" merge-base --is-ancestor "$HEALTH_BUILD" origin/main 2>/dev/null; then
+    HEALTH_PROBLEM="/health names $HEALTH_BUILD, which origin/main does not hold"
+  fi
 }
 
 # superseded <env> <sha> <command that prints /health's body...>: succeeds, saying so, when the build

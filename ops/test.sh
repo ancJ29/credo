@@ -475,5 +475,111 @@ check "a ridge running a commit this clone lacks is released over" 1 "$(supersed
 stop_server
 check "a ridge that does not answer is released over (its first release)" 1 "$(supersedes "$old_sha")"
 
+# a scratch checkout for what writes into the Bruno collection's folder: the real ignore rule, copied
+KR=$WORK/kr
+mkdir -p "$KR/c-storage/bruno/environments"
+git -C "$KR" init -q
+cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$KR/c-storage/bruno/environments/.gitignore"
+ENVS=$KR/c-storage/bruno/environments
+kr() { REPO_DIR=$KR "$@"; }
+free_port() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+not_taken() { ! port_taken "$1"; }
+
+echo "== the port (check.sh and tunnel.sh refuse a taken one before opening anything)"
+start_server "$WORK/server-new"
+port=${URL#http://127.0.0.1:}
+port=${port%/health}
+passes "a port with the real c-storage on it is taken" port_taken "$port"
+refuses "  and is refused, naming the port and what to do" "something already answers on 127.0.0.1:$port: free it" refuse_taken_port "$port" "free it"
+stop_server
+free=$(free_port)
+passes "a port nothing listens on is not taken" not_taken "$free"
+python3 -I -c 'import socket, time
+s = socket.socket(); s.bind(("127.0.0.1", 0)); s.listen(1)
+print(s.getsockname()[1], flush=True); time.sleep(30)' >"$WORK/silent.port" &
+PID=$!
+for _ in $(seq 1 25); do if [ -s "$WORK/silent.port" ]; then break; fi; sleep 0.2; done
+passes "a listener that speaks no HTTP is taken too" port_taken "$(cat "$WORK/silent.port")"
+stop_server
+
+echo "== a forward that cannot bind fails the open (box_open, for check.sh and tunnel.sh)"
+# box_open_stub <local port>: box_open with aws and ssh stood in for. The stand-in ssh reads its
+# arguments as the real one acts on them: with ExitOnForwardFailure=yes, a forward onto a taken port
+# fails; without it, ssh stays up and serves nothing there.
+box_open_stub() {
+  (
+    aws() { if [[ "$*" == *describe-stacks* ]]; then echo '{"Stacks":[{"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}]}]}'; fi; }
+    ssh() {
+      local a prev='' bind='' strict=0
+      echo "$*" >>"$WORK/ssh.args"
+      for a in "$@"; do
+        if [ "$a" = ExitOnForwardFailure=yes ]; then strict=1; fi
+        if [ "$prev" = -L ]; then bind=${a#127.0.0.1:}; bind=${bind%%:*}; fi
+        prev=$a
+      done
+      if [ -n "$bind" ] && [ "$strict" = 1 ] && port_taken "$bind"; then return 255; fi
+      return 0
+    }
+    box_open ridge "$1"
+  )
+}
+rm -f "$WORK/ssh.args"
+start_server "$WORK/server-new"
+port=${URL#http://127.0.0.1:}
+port=${port%/health}
+rc=0
+box_open_stub "$port" || rc=$?
+check "a forward onto a taken port fails the open" 1 "$rc"
+stop_server
+rc=0
+box_open_stub "$free" || rc=$?
+check "a forward onto a free port opens" 0 "$rc"
+check "  with ExitOnForwardFailure=yes among the arguments" 2 "$(grep -c 'ExitOnForwardFailure=yes' "$WORK/ssh.args" || true)"
+
+echo "== /health names a commit of main (the check, and the tunnel before it writes anything)"
+# probe_health <binary>: starts it, reads /health through its port as health_main_read does, stops it
+probe_health() {
+  start_server "$1"
+  port=${URL#http://127.0.0.1:}
+  port=${port%/health}
+  REPO_DIR=$WORK/repo health_main_read "$port"
+  stop_server
+}
+probe_health "$WORK/server-new"
+check "a c-storage stamped with a commit of main passes" "" "$HEALTH_PROBLEM"
+check "  and the commit it names is read" "$new_sha" "$HEALTH_BUILD"
+probe_health "$WORK/server-old"
+check "a commit behind main's tip, still on main, passes" "" "$HEALTH_PROBLEM"
+probe_health "$WORK/server-dev"
+check "an unstamped c-storage (dev) is refused" "/health names no commit (answered:" "$(cut -c1-34 <<<"$HEALTH_PROBLEM")"
+probe_health "$WORK/server-other"
+check "a commit main does not hold is refused" "/health names $other, which origin/main does not hold" "$HEALTH_PROBLEM"
+REPO_DIR=$WORK/repo health_main_read "$free" 2>/dev/null
+check "no answer is refused, saying so" "/health names no commit (answered: nothing)" "$HEALTH_PROBLEM"
+
+echo "== the Bruno environment (the one writer: 0600, git-ignored, removed only by the run that wrote it)"
+INTERNAL_KEY=internalkey0
+ADMIN_KEY=adminkey0
+kenv=$ENVS/ridge-tunnel.yml
+printf 'an old file\n' >"$kenv"
+chmod 644 "$kenv"
+passes "a path git ignores is written" kr bruno_env_write "$kenv" 3192 tunnel-x accesskey0
+check "the file is 0600, though an older one was 0644" "$kenv" "$(find "$kenv" -perm 600)"
+check "  and it holds the variables the collection's local.yml names, in order" \
+  "$(sed -n 's/^  - name: //p' "$REPO_DIR/c-storage/bruno/environments/local.yml")" "$(sed -n 's/^  - name: //p' "$kenv")"
+check "  with this run's port, keys, service code and access key" \
+  "http://127.0.0.1:3192 internalkey0 adminkey0 tunnel-x accesskey0" \
+  "$(awk '$1 == "value:" {printf "%s%s", sep, $2; sep = " "} END {print ""}' "$kenv" | sed 's/ sample-record$//')"
+rm -f "$kenv"
+printf 'the committed one\n' >"$ENVS/local.yml"
+refuses "a path git does not ignore (the committed local.yml) is refused" "git does not ignore c-storage/bruno/environments/local.yml" \
+  kr bruno_env_write "$ENVS/local.yml" 3192 tunnel-x accesskey0
+check "  and the file it would have replaced is untouched" "the committed one" "$(cat "$ENVS/local.yml")"
+rm -f "$ENVS/local.yml"
+check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml" "ignored ignored kept" \
+  "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
+check "check.sh writes its environment through that writer alone" "1 0" \
+  "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
+
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"
