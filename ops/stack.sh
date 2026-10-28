@@ -162,6 +162,8 @@ case "$KIND" in
     net=$(aws cloudformation describe-stacks --stack-name "$NETWORK_STACK" --output json 2>/dev/null) ||
       die "$NETWORK_STACK does not exist: ops/stack.sh network first"
     add_param Env "$ENVNAME"
+    # c-storage's port, from the unit that sets it: the template has no default, so a run without it fails
+    add_param BoxPort "$BOX_PORT"
     if [ "$CS_TYPE" = CREATE ]; then
       repo=$(repository)
       add_param Repository "$repo"
@@ -246,9 +248,12 @@ fi
 # --- read back ---
 step "the outputs"
 stack_load "$STACK"
-# The deploy role's ARN holds the account's id: it is searched for in this log, never printed.
+# The deploy role's ARN holds the account's id, and the API's own address answers anyone and is
+# reached through CloudFront: both are searched for in this log, never printed. The app's address
+# is printed here, in the human's local log, and in no committed file or public log.
 mask "$(out DeployRoleArn)"
-jq -r '.Stacks[0].Outputs[]? | "  \(.OutputKey) = " + (if .OutputKey == "DeployRoleArn" then "(not printed: it holds the account id)" else .OutputValue end)' <<<"$STACK_JSON"
+mask "$(out ApiAddress)"
+jq -r '.Stacks[0].Outputs[]? | "  \(.OutputKey) = " + (if .OutputKey == "DeployRoleArn" then "(not printed: it holds the account id)" elif .OutputKey == "ApiAddress" then "(not printed: the API is reached through the app)" else .OutputValue end)' <<<"$STACK_JSON"
 
 if [ "$KIND" = network ]; then
   vpc=$(out VpcId)
