@@ -62,7 +62,7 @@ rule_ok=$(jq -r --argjson eg "$endpoint_groups" '
 expect "the box's group holds one rule, ssh from the endpoint's group" yes "$rule_ok"
 
 step "the tunnel, and the box's reads"
-box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
 facts=$(box sudo bash -s -- "$BOX_PORT" <<'REMOTE'
 port=$1
 echo "unit=$(systemctl is-active c-storage 2>&1 || true)"
@@ -79,7 +79,7 @@ REMOTE
 )
 fact() { sed -n "s/^$1=//p" <<<"$facts"; }
 expect "c-storage's unit" active "$(fact unit)"
-expect "c-storage listens on" "127.0.0.1:$BOX_PORT " "$(fact listen)"
+expect "c-storage listens on" "$BOX_LISTEN_ADDR:$BOX_PORT " "$(fact listen)"
 expect "the keys file's mode and owner" "600 root" "$(fact keys)"
 expect "the database directory's mode" 700 "$(fact dbdir)"
 expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfiles)"

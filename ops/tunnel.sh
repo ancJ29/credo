@@ -28,13 +28,19 @@ clock() { date -d "@$1" +%H:%M 2>/dev/null || date -r "$1" +%H:%M; }
 
 log_start tunnel "$ENVNAME"
 
+# Ridge alone until the guard that refuses a client's stack exists (ridge's plan, "Left behind"): a
+# client's stack reachable from the same AWS session would put its admin keys on this disk and point
+# the collection, which writes test records, at real data.
 step "main and the port"
+[ "$ENVNAME" = ridge ] ||
+  die "tunnel.sh holds ridge alone for now: another stack's admin keys would land on this disk, and the collection would write test records into it"
 refuse_taken_port "$TUNNEL_PORT" "an earlier tunnel is still open: ops/README.md, 'The tunnel', names how to end it"
 require_ignored "$KEYS_FILE"
 main_synced
 
 step "the tunnel to $ENVNAME's box"
-box_open "$ENVNAME" "$TUNNEL_PORT" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "$TUNNEL_PORT" ||
+  die "the box does not answer through the endpoint, or 127.0.0.1:$TUNNEL_PORT could not be bound (taken since it was checked)"
 opened=$(date +%s)
 
 step "/health names a commit of main"

@@ -23,18 +23,18 @@ log_start drill "$ENVNAME"
 mkwork
 main_synced
 
-health() { box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; }
+health() { box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; }
 
 # register <code> → the HTTP status of registering it. The keys never leave the box: they go from
 # its file into curl's config on stdin, not onto a command line.
 register() {
-  box sudo bash -s -- "$BOX_PORT" "$1" <<'REMOTE'
+  box sudo bash -s -- "$BOX_PORT" "$1" "$BOX_LISTEN_ADDR" <<'REMOTE'
 set -euo pipefail
 . /etc/c-storage/keys.env
 printf 'header = "X-Internal-Access-Key: %s"\nheader = "X-Super-Admin-Key: %s"\n' \
   "$INTERNAL_ACCESS_KEY" "$X_SUPER_ADMIN_KEY" |
   curl -sS -m 5 -o /dev/null -w '%{http_code}' -K - -H 'Content-Type: application/json' \
-    -d "{\"code\":\"$2\",\"accessKey\":\"drill-access-key\"}" "http://127.0.0.1:$1/api/services/register"
+    -d "{\"code\":\"$2\",\"accessKey\":\"drill-access-key\"}" "http://$3:$1/api/services/register"
 REMOTE
 }
 

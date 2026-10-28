@@ -63,7 +63,7 @@ step "the tunnel to $ENVNAME's box"
 box_open "$ENVNAME" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
 # Read before anything is sent: a superseded release changes nothing on the box.
-if superseded "$ENVNAME" "$sha" box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; then
+if superseded "$ENVNAME" "$sha" box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; then
   echo "nothing sent: $sha is behind what $ENVNAME runs"
   exit 0
 fi
@@ -115,7 +115,7 @@ box 'sudo chmod 0755 /opt/c-storage/c-storage.new &&
 box 'systemctl is-active c-storage'
 
 step "/health names the commit"
-if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; then
+if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; then
   box 'sudo journalctl -u c-storage -n 20 --no-pager' || true
   die "release of $sha failed: the new binary is installed, c-storage did not name it"
 fi

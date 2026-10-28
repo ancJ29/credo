@@ -95,11 +95,13 @@ log_start() {
 # final <text>: a line after the pipe is closed, to the terminal and the log
 final() { echo "$*" | tee -a "$LOG"; }
 
-# on_exit: removes the Bruno environment this run wrote, closes the tunnel, lets the log catch up, searches it for the keys, removes the scratch
-# folder, then ends the log
+# on_exit: removes the Bruno environment this run wrote, closes the tunnel, lets the log catch up,
+# searches it for the keys, removes the scratch folder, then ends the log. A second Ctrl-C, or
+# another signal, while it waits does not cut it short: the signals are ignored from here on.
 on_exit() {
   local rc=$?
   trap - EXIT
+  trap '' INT TERM HUP
   if declare -F cleanup_extra >/dev/null; then cleanup_extra || true; fi
   bruno_env_remove
   box_close
@@ -464,8 +466,9 @@ require_ignored() {
 
 # bruno_env_write <file> <local port> <service code> <access key>: the Bruno environment that points
 # at the tunnel, with INTERNAL_KEY and ADMIN_KEY from read_keys. Refused unless git ignores the file.
-# Written 0600 as a new file, and remembered in BRUNO_ENV_FILE so on_exit removes it, and removes
-# nothing a refused run did not write.
+# Written 0600 as a new file, and remembered in BRUNO_ENV_FILE once the ignore check has
+# passed, so on_exit removes what this run wrote and a refused write removes nothing. (check.sh also clears its own
+# file at the end, whatever wrote it, since each check rewrites it.)
 BRUNO_ENV_FILE=''
 bruno_env_write() {
   require_ignored "$1"
