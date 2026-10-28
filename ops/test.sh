@@ -847,7 +847,8 @@ box_open_stub() {
       if [ -n "$bind" ] && [ "$strict" = 1 ] && port_taken "$bind"; then return 255; fi
       return 0
     }
-    box_open ridge "$1"
+    # fd 3 is the terminal in a real run (log_start keeps it); the mask line goes there in GitHub's job
+    box_open ridge "$1" 3>>"$WORK/fd3"
   )
 }
 rm -f "$WORK/ssh.args"
@@ -864,6 +865,8 @@ check "a forward onto a free port opens" 0 "$rc"
 check "  with ExitOnForwardFailure=yes among the arguments" 2 "$(grep -c 'ExitOnForwardFailure=yes' "$WORK/ssh.args" || true)"
 check "  forwarding to c-storage's port on the stack's BoxAddress, never on loopback" 2 \
   "$(grep -c -e "-L 127.0.0.1:[0-9]*:10.20.30.40:$BOX_PORT" "$WORK/ssh.args" || true)"
+check "  and, in GitHub's job (the mask line goes to the terminal, fd 3), nothing is written to stderr" "" \
+  "$(GITHUB_ACTIONS=true box_open_stub "$free" 2>&1 >/dev/null)"
 box_open_without() { # <outputs as JSON>: box_open on a stack with those outputs alone
   (
     OUTPUTS=$1
@@ -886,7 +889,7 @@ printed_outputs() {
     mask "$(out ApiAddress)"
     mask "$(out BoxAddress)" "the box's private address"
     outputs_print
-  )
+  ) 3>>"$WORK/fd3"
 }
 outs_body='{"Stacks":[{"Outputs":[{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"},{"OutputKey":"ApiAddress","OutputValue":"https://api.example.test"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/x"}]}]}'
 printed=$(printed_outputs "$outs_body")
