@@ -1,8 +1,10 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 01:54 +07:** the human's read is ticked ([step 2](#steps)) and step 3 is built:
-the fake `Api`, its cues, `?fake` in the fake build, `pnpm fake` and the one data set in
-`@credo/shared/demo`. Group A's pages, on the fake, are not started. **Next:** step 4, A's pages.
+**Where it stands — 2026-10-29 02:25 +07:** the human's read (step 2), the fake `Api` (step 3) and group A's pages on
+the fake (step 4) are ticked. The pages are the staff setup, the list, a person's page and form, the
+password, the archive's check, the menu by permission, the 403 page and the page for someone allowed
+nothing; their words are in both languages. The walks page does not draw them yet. **Next:** step 5,
+A's walk on the fake.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -553,7 +555,7 @@ itself:
   prettier and knip clean. The data set holds piece 1's company and two names for now: the staff
   setup and the people come with step 4's schemas. Open item 17 holds a sign-in defect the cue
   found.
-- [ ] **4. A's pages, on the fake.** Who: 🤖, after step 3, about two days. In `shared/`: `extra`,
+- [x] **4. A's pages, on the fake.** Who: 🤖, after step 3, about two days. In `shared/`: `extra`,
   the person's, staff setup's and permissions' schemas, the catalogue and its resolver. The `Api`'s
   new methods in `createApi` and the fake. The pages: the staff setup (departments, positions, their
   permissions), the list, a person's page and form, their own permissions, the password, the
@@ -564,7 +566,16 @@ itself:
   100 %, knip silent. *Model files:* `ui/src/Settings.tsx` and `SettingsPage.tsx` (a page, its
   wiring, its outcomes), `ui/src/NewClient.tsx` and `ClientMade.tsx` (a form and an answer shown
   once), `ui/src/Shell.tsx` and `nav.ts` (the menu); the old app's employee pages and its
-  permissions panel, read, none copied.
+  permissions panel, read, none copied. *Evidence:* the UI and shared halves of rows 1 to 15, 17, 32, 33, 35 and 42 each seen red once, from
+  their assertions, by changing the rule's line and putting it back (row 16's sign-in by a code is
+  the fake's and the BFF's, read in `ui/src/fake.test.tsx`). Every package touched typechecks and
+  tests at 100 % with no warning: shared (54 tests), ui (175), scripts (61), visual (188), bff (86);
+  eslint, prettier and knip clean. The whole `pnpm check` was not run as one command. Choices the
+  plan left open: the first page of the menu stays Settings for the root, so piece 1's walks still
+  land where they did and only the menu gains two lines; a code is kept in capitals and unique in
+  any case; the email stays out of the person until group C; an `Api` method added here comes with
+  its fake answer, parsed under its schema in `ui/src/fake.test.tsx`; `docs/memo/extra.md` holds
+  `extra`'s rules and the ladder. Open item 17 stands.
 - [ ] **5. A's walk on the fake.** Who: 🤖, after step 4, about half a day. The walks page's fake
   scenes, the four walks in `visual/src/walks.ts` with A's screens, a one-line pointer in the visual
   report's "how a screen is drawn", the walk spec `walk/specs/piece-2.spec.ts` with a `fake` and a
