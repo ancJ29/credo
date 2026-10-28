@@ -129,7 +129,9 @@ describe('the cue', () => {
     for (const code of [403, 503]) {
       const api = fake(`getConfig:${code}`);
       expect(await status(api.getConfig()), String(code)).toBe(code);
-      expect((await api.getConfig()).config.name, String(code)).toBe(DEMO_CONFIG.name);
+      await expect(api.getConfig(), String(code)).resolves.toMatchObject({
+        config: { name: DEMO_CONFIG.name },
+      });
     }
 
     const api = fake('saveConfig:409');
@@ -142,13 +144,15 @@ describe('the cue', () => {
 
     const other = fake('signIn:409');
     expect(await status(other.signIn(DEMO_ROOT_NAME, 'pw'))).toBe(409);
-    expect((await other.signIn(DEMO_ROOT_NAME, 'pw')).user.root).toBe(true);
+    await expect(other.signIn(DEMO_ROOT_NAME, 'pw')).resolves.toMatchObject({
+      user: { root: true },
+    });
   });
 
   it('A cue names one call: the others answer from the data set as if none were there', async () => {
     const api = fake('saveConfig:503');
 
-    expect((await api.getConfig()).config.name).toBe(DEMO_CONFIG.name);
+    await expect(api.getConfig()).resolves.toMatchObject({ config: { name: DEMO_CONFIG.name } });
     expect(await status(api.saveConfig(DEMO_CONFIG, 'v1'))).toBe(503);
   });
 
