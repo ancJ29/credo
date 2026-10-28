@@ -31,6 +31,32 @@ describe('what the device keeps', () => {
     expect(createDeviceStore(storage).authId()).toBeNull();
   });
 
+  it('keeps the client it was linked to, apart from every handle', () => {
+    const storage = memory();
+    const device = createDeviceStore(storage);
+    expect(device.clientCode()).toBeNull();
+
+    device.setClientCode('minh-phat');
+    expect(createDeviceStore(storage).clientCode()).toBe('minh-phat');
+    expect(device.authId()).toBeNull();
+    expect(device.operatorAuthId()).toBeNull();
+  });
+
+  it('keeps the operator’s handle apart from a client’s, so each is cleared alone', () => {
+    const storage = memory();
+    const device = createDeviceStore(storage);
+    device.setAuthId('client.secret');
+    device.setOperatorAuthId('operator.secret');
+
+    device.clearOperatorAuthId();
+    expect(device.operatorAuthId()).toBeNull();
+    expect(device.authId()).toBe('client.secret');
+
+    device.setOperatorAuthId('operator.again');
+    device.clearAuthId();
+    expect(createDeviceStore(storage).operatorAuthId()).toBe('operator.again');
+  });
+
   it('keeps the language chosen, and reads no language it does not offer', () => {
     const storage = memory();
     const device = createDeviceStore(storage);

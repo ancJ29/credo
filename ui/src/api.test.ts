@@ -1,4 +1,4 @@
-import { HASH_HEADER, sha256Hex, type TenantConfig } from '@credo/shared';
+import { type TenantConfig } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { ApiError, createApi } from './api';
 
@@ -23,7 +23,9 @@ function fake(...answers: (Response | Error)[]) {
   };
   const api = createApi({
     deviceId: 'device-0001',
+    clientCode: () => 'minh-phat',
     authId: () => 'device-0001.secret',
+    operatorAuthId: () => 'device-0001.operator',
     fetch: call,
   });
   return { calls, api };
@@ -33,28 +35,105 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const headersOf = (call: Call | undefined) => new Headers(call?.init.headers);
 
 describe('the API client', () => {
-  it('Every write carries its body’s SHA-256, and a read carries none', async () => {
+  it('A write carries its body as sent and no hash of it: the edge asks for none', async () => {
+    const { calls, api } = fake(
+      json({ authId: 'a.b', expiresAt: 1, user: { name: 'root', root: true } }),
+      new Response(null, { status: 204 }),
+      json(doc),
+    );
+
+    await api.signIn('root', 'pw');
+    await api.signOut();
+    await api.saveConfig(config, 'v1');
+
+    expect(calls[0]?.init.body).toBe('{"name":"root","password":"pw"}');
+    expect(calls[1]?.init.body).toBeNull();
+    for (const call of calls) expect(headersOf(call).has('x-amz-content-sha256')).toBe(false);
+  });
+
+  it('Every call of a client’s carries its code, and a code is sent exactly as the device keeps it', async () => {
     const { calls, api } = fake(
       json(doc),
       json({ authId: 'a.b', expiresAt: 1, user: { name: 'root', root: true } }),
       new Response(null, { status: 204 }),
+      json({ user: { name: 'root', root: true } }),
       json(doc),
     );
 
     await api.getConfig();
     await api.signIn('root', 'pw');
     await api.signOut();
+    await api.me();
     await api.saveConfig(config, 'v1');
 
-    expect(headersOf(calls[0]).get(HASH_HEADER)).toBeNull();
-    expect(headersOf(calls[1]).get(HASH_HEADER)).toBe(
-      await sha256Hex(JSON.stringify({ name: 'root', password: 'pw' })),
+    expect(calls.map((call) => headersOf(call).get('x-client-code'))).toEqual(
+      Array(5).fill('minh-phat'),
     );
-    expect(calls[1]?.init.body).toBe('{"name":"root","password":"pw"}');
-    expect(headersOf(calls[2]).get(HASH_HEADER)).toBe(await sha256Hex(''));
-    expect(headersOf(calls[3]).get(HASH_HEADER)).toBe(
-      await sha256Hex(JSON.stringify({ config, version: 'v1' })),
+  });
+
+  it('sends no client code before the device has one', async () => {
+    const call: typeof fetch = (_path, init) => {
+      expect(new Headers(init?.headers).has('x-client-code')).toBe(false);
+      return Promise.resolve(json(doc));
+    };
+    await createApi({
+      deviceId: 'device-0001',
+      clientCode: () => null,
+      authId: () => null,
+      operatorAuthId: () => null,
+      fetch: call,
+    }).getConfig();
+  });
+
+  it('The operator’s calls carry the operator’s handle and no client code, and a client’s carry its own handle', async () => {
+    const { calls, api } = fake(
+      json({ authId: 'a.b', expiresAt: 1, operator: { name: 'operator' } }),
+      json({ operator: { name: 'operator' } }),
+      json({ link: '/login?client-code=minh-phat', rootName: 'root', password: 'x' }, 201),
+      new Response(null, { status: 204 }),
+      json({ user: { name: 'root', root: true } }),
     );
+
+    await api.operatorSignIn('operator', 'pw');
+    await api.operatorMe();
+    await api.makeClient('minh-phat', 'Minh Phát');
+    await api.operatorSignOut();
+    await api.me();
+
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/operator/sign-in',
+      '/api/operator/me',
+      '/api/operator/clients',
+      '/api/operator/sign-out',
+      '/api/auth/me',
+    ]);
+    for (const call of calls.slice(0, 4)) {
+      expect(headersOf(call).has('x-client-code')).toBe(false);
+    }
+    expect(headersOf(calls[1]).get('x-auth-id')).toBe('device-0001.operator');
+    expect(headersOf(calls[4]).get('x-auth-id')).toBe('device-0001.secret');
+    expect(calls[2]?.init.body).toBe('{"code":"minh-phat","name":"Minh Phát"}');
+  });
+
+  it('A client made is returned whole, a code taken is a result and any other refusal an error', async () => {
+    const made = { link: '/login?client-code=minh-phat', rootName: 'root', password: 'x' };
+    const { api } = fake(
+      json(made, 201),
+      json({ error: 'That code is taken' }, 409),
+      json({}, 400),
+      json({ link: 1 }, 201),
+      json({}, 401),
+      json({}, 503),
+      json({}, 401),
+    );
+
+    expect(await api.makeClient('minh-phat', 'A')).toEqual({ kind: 'made', client: made });
+    expect(await api.makeClient('minh-phat', 'A')).toEqual({ kind: 'taken' });
+    await expect(api.makeClient('x', 'A')).rejects.toMatchObject({ status: 400 });
+    await expect(api.makeClient('minh-phat', 'A')).rejects.toMatchObject({ status: null });
+    await expect(api.operatorMe()).rejects.toMatchObject({ status: 401 });
+    await expect(api.operatorSignOut()).rejects.toMatchObject({ status: 503 });
+    await expect(api.operatorSignIn('a', 'b')).rejects.toMatchObject({ status: 401 });
   });
 
   it('sends the device id and the session handle on every call', async () => {
@@ -72,7 +151,13 @@ describe('the API client', () => {
       expect(new Headers(init?.headers).get('x-auth-id')).toBeNull();
       return Promise.resolve(json(doc));
     };
-    await createApi({ deviceId: 'device-0001', authId: () => null, fetch: call }).getConfig();
+    await createApi({
+      deviceId: 'device-0001',
+      clientCode: () => 'minh-phat',
+      authId: () => null,
+      operatorAuthId: () => null,
+      fetch: call,
+    }).getConfig();
   });
 
   it('A config that does not parse stops the boot', async () => {

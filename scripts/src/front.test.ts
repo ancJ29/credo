@@ -4,7 +4,6 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { HASH_HEADER, sha256Hex } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFront } from './front';
 
@@ -62,10 +61,10 @@ afterAll(async () => {
 
 const dirname = (path: string) => join(path, '..');
 
-const put = async (body: string, hash?: string) =>
+const put = async (body: string) =>
   await fetch(`${url}/api/config?x=1`, {
     method: 'PUT',
-    headers: { 'content-type': 'application/json', ...(hash ? { [HASH_HEADER]: hash } : {}) },
+    headers: { 'content-type': 'application/json' },
     body,
   });
 
@@ -104,33 +103,37 @@ describe('the local front', () => {
     expect(seen[0]?.headers['x-auth-id']).toBe('device.secret');
   });
 
-  it('Every write carries its body’s SHA-256; the front refuses one without it', async () => {
-    seen = [];
+  it('The local front passes each /api call on as CloudFront and the API do: any method, any body, no hash asked', async () => {
     const body = JSON.stringify({ config: 'x', version: null });
-
-    expect((await put(body)).status).toBe(403);
-    expect((await put(body, await sha256Hex('another body'))).status).toBe(403);
-    expect(seen).toHaveLength(0);
-
     bffAnswer = { status: 409, type: 'application/json', body: '{"error":"Conflict"}' };
-    const accepted = await put(body, await sha256Hex(body));
-    expect(accepted.status).toBe(409);
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).toMatchObject({ method: 'PUT', url: '/api/config?x=1', body });
+
+    for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+      seen = [];
+      const answer = await fetch(`${url}/api/config?x=1`, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        body,
+      });
+
+      expect(answer.status, method).toBe(409);
+      expect(seen, method).toHaveLength(1);
+      expect(seen[0], method).toMatchObject({ method, url: '/api/config?x=1', body });
+    }
   });
 
-  it('hashes the bytes sent, whatever they are', async () => {
-    const body = '{"name":"Minh Phát"}';
-    const bytes = new TextEncoder().encode(body);
+  it('passes the bytes of a body on as they came, and a call with no body as none', async () => {
+    const text = '{"name":"Minh Phát"}';
+    seen = [];
     bffAnswer = { status: 204, type: '', body: '' };
 
-    const answer = await fetch(`${url}/api/auth/sign-out`, {
+    const sent = await fetch(`${url}/api/auth/sign-out`, {
       method: 'POST',
-      headers: { [HASH_HEADER]: await sha256Hex(bytes) },
-      body: bytes,
+      body: new TextEncoder().encode(text),
     });
+    const bare = await fetch(`${url}/api/auth/sign-out`, { method: 'POST' });
 
-    expect(answer.status).toBe(204);
+    expect([sent.status, bare.status]).toEqual([204, 204]);
+    expect(seen.map((call) => call.body)).toEqual([text, '']);
   });
 
   it('answers 502 when the BFF cannot be reached', async () => {
@@ -181,6 +184,6 @@ describe('the local front', () => {
   it('refuses a body of more than a megabyte', async () => {
     const body = 'x'.repeat(1024 * 1024 + 1);
 
-    expect((await put(body, await sha256Hex(body))).status).toBe(413);
+    expect((await put(body)).status).toBe(413);
   });
 });

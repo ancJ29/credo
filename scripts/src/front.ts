@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
-import { HASH_HEADER, sha256Hex } from '@credo/shared';
 
 /** A logo is at most 200 KB; with the rest of a settings body nothing real nears a megabyte. */
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -41,10 +40,9 @@ const sendError = (response: ServerResponse, status: number, error: string) =>
   send(response, status, JSON.stringify({ error }), 'application/json');
 
 /**
- * The local front, standing where CloudFront and the Lambda URL stand: the UI's files, and `/api`
- * on to the BFF. A write without the right `x-amz-content-sha256` is refused 403 before the BFF
- * sees it, as the Lambda URL would refuse it, so a client that forgets the hash fails here, in the
- * walk, and not in production.
+ * The local front, standing where CloudFront and the HTTP API stand: the UI's files, and `/api`
+ * on to the BFF. Each `/api` call goes on as it came, any method and any body, and the BFF's answer
+ * comes back with its status; the front asks for nothing and signs nothing.
  */
 export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: string }) {
   const root = resolve(staticDir);
@@ -56,9 +54,6 @@ export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: 
       body = await readBody(request);
     } catch {
       return sendError(response, 413, 'Payload too large');
-    }
-    if (writes && request.headers[HASH_HEADER] !== (await sha256Hex(new Uint8Array(body)))) {
-      return sendError(response, 403, 'Forbidden');
     }
     const headers = Object.entries(request.headers).flatMap(([name, value]) =>
       HOP.has(name) || typeof value !== 'string' ? [] : [[name, value] as [string, string]],

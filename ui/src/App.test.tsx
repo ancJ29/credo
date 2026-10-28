@@ -6,7 +6,7 @@ import { drawApp } from '../tests/render';
 import { type Api, ApiError } from './api';
 import { App } from './App';
 import { DICTIONARIES } from './i18n';
-import { createDeviceStore } from './device';
+import { createDeviceStore, type DeviceStore } from './device';
 
 const config: TenantConfig = {
   name: 'Minh Phát',
@@ -27,9 +27,22 @@ const memory = (initial: Record<string, string> = {}) => {
   };
 };
 
-/** An API whose every call answers well unless the test says otherwise. */
-function setup(overrides: Partial<Api> = {}, kept: Record<string, string> = {}) {
-  const storage = memory(kept);
+/** A device already linked to a client, as one is after its link was opened once. */
+const linked = { 'credo.client': 'minh-phat' };
+/** A device that never opened a link. */
+const unlinked = { 'credo.client': null };
+
+/** An API whose every call answers well unless the test says otherwise, on a device already
+ * linked to a client unless `kept` says `unlinked`. */
+function setup(
+  overrides: Partial<Api> | ((device: DeviceStore) => Partial<Api>) = {},
+  kept: Record<string, string | null> = {},
+  path = '/',
+) {
+  const initial = Object.entries({ ...linked, ...kept }).flatMap(([key, value]) =>
+    value === null ? [] : [[key, value] as const],
+  );
+  const storage = memory(Object.fromEntries(initial));
   const device = createDeviceStore(storage);
   const api = {
     getConfig: vi.fn(() => Promise.resolve(doc)),
@@ -39,9 +52,13 @@ function setup(overrides: Partial<Api> = {}, kept: Record<string, string> = {}) 
     saveConfig: vi.fn(() =>
       Promise.resolve({ kind: 'saved' as const, doc: { config, version: 'v2' } }),
     ),
-    ...overrides,
+    operatorSignIn: vi.fn(() => Promise.reject(new ApiError(null))),
+    operatorSignOut: vi.fn(() => Promise.resolve()),
+    operatorMe: vi.fn(() => Promise.reject(new ApiError(401))),
+    makeClient: vi.fn(() => Promise.reject(new ApiError(null))),
+    ...(typeof overrides === 'function' ? overrides(device) : overrides),
   } satisfies Api;
-  const drawn = drawApp(<App api={api} device={device} test />);
+  const drawn = drawApp(<App api={api} device={device} test />, path);
   return { api, device, storage, ...drawn };
 }
 
@@ -325,11 +342,91 @@ describe('the app', () => {
   });
 
   it('sends any other path to the first page', async () => {
-    const storage = memory(signedIn);
+    const storage = memory({ ...linked, ...signedIn });
     const device = createDeviceStore(storage);
     const api = setup().api;
     drawApp(<App api={api} device={device} test />, '/nowhere');
 
     expect(await screen.findAllByRole('heading', { name: 'Settings' })).not.toHaveLength(0);
+  });
+
+  it('A client’s link opens its sign-in in its name and colours, and the device keeps the code the link names, lowered and trimmed', async () => {
+    const seen: (string | null)[] = [];
+    const { device } = setup(
+      (device) => ({
+        getConfig: () => {
+          seen.push(device.clientCode());
+          return Promise.resolve(doc);
+        },
+      }),
+      {},
+      '/login?client-code=%20MINH-Phat%20',
+    );
+
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Minh Phát');
+    expect(screen.getByLabelText(/Username/)).toBeTruthy();
+    expect(brandColour()).toBe('#2f7d6d');
+    expect(seen).toEqual(['minh-phat']);
+    expect(device.clientCode()).toBe('minh-phat');
+  });
+
+  it('A reload at another address keeps the client the device was linked to', async () => {
+    const seen: (string | null)[] = [];
+    setup(
+      (device) => ({
+        getConfig: () => {
+          seen.push(device.clientCode());
+          return Promise.resolve(doc);
+        },
+      }),
+      { 'credo.client': 'other-co' },
+      '/settings',
+    );
+
+    await screen.findByLabelText(/Username/);
+    expect(seen).toEqual(['other-co']);
+  });
+
+  it('A link to another client replaces the first, and the first’s handle is refused there and dropped', async () => {
+    const { device } = setup(
+      { me: () => Promise.reject(new ApiError(401)) },
+      { 'credo.client': 'first-co', 'credo.session': 'd.s' },
+      '/login?client-code=second-co',
+    );
+
+    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(device.clientCode()).toBe('second-co');
+    expect(device.authId()).toBeNull();
+  });
+
+  it('A link with no code, a malformed one, or one we do not know shows one screen, and no company’s name or colour', async () => {
+    const cases: [string, Record<string, string | null>, Partial<Api>][] = [
+      ['/', unlinked, {}],
+      ['/login', unlinked, {}],
+      ['/login?client-code=', linked, {}],
+      ['/login?client-code=Not_A_Code', linked, {}],
+      ['/login?client-code=ab', unlinked, {}],
+      [
+        '/login?client-code=nobody',
+        unlinked,
+        { getConfig: () => Promise.reject(new ApiError(404)) },
+      ],
+    ];
+    for (const [path, kept, overrides] of cases) {
+      const getConfig = vi.fn<Api['getConfig']>(
+        overrides.getConfig ?? (() => Promise.resolve(doc)),
+      );
+      const view = setup({ ...overrides, getConfig }, kept, path);
+
+      expect((await screen.findByRole('heading', { level: 1 })).textContent, path).toBe(
+        DICTIONARIES.vi.unknownClient.title,
+      );
+      expect(document.body.textContent, path).not.toContain('Minh Phát');
+      expect(brandColour(), path).toBe('#3e618c');
+      expect(screen.queryByLabelText(/Username/), path).toBeNull();
+      // A link that cannot name a client asks the service nothing.
+      expect(getConfig).toHaveBeenCalledTimes(path.endsWith('nobody') ? 1 : 0);
+      view.unmount();
+    }
   });
 });

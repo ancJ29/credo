@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CLIENT_HEADER, HASH_HEADER, sha256Hex } from '@credo/shared';
+import { CLIENT_HEADER } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commandOf, runStack } from './cli';
 import { BFF_ENV_KEYS } from '@credo/bff/env';
@@ -24,7 +24,6 @@ const signIn = async (url: string, name: string, password: string) => {
       'content-type': 'application/json',
       'x-device-id': 'device-aaaa-0001',
       [CLIENT_HEADER]: 'demo',
-      [HASH_HEADER]: await sha256Hex(body),
     },
     body,
   });
@@ -58,7 +57,6 @@ describe('pnpm stack', () => {
           headers: {
             'content-type': 'application/json',
             'x-device-id': 'device-aaaa-0001',
-            [HASH_HEADER]: await sha256Hex(body),
           },
           body,
         });
@@ -73,6 +71,13 @@ describe('pnpm stack', () => {
     await withStack(artifacts, async (stack) => {
       const signedIn = await signIn(stack.url, stack.rootName, stack.rootPassword);
       expect(signedIn.status).toBe(200);
+      // Both sign-ins ran, so a password that reached a log would be in it.
+      const operatorIn = await fetch(`${stack.url}/api/operator/sign-in`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001' },
+        body: json({ name: stack.operatorName, password: stack.operatorPassword }),
+      });
+      expect(operatorIn.status).toBe(200);
 
       let hashes = 0;
       for (const file of await readdir(stack.dataDir)) {
@@ -83,22 +88,6 @@ describe('pnpm stack', () => {
       }
       // The scan looked at the bytes that hold the root: its hash is there, its password is not.
       expect(hashes).toBeGreaterThan(0);
-    });
-  });
-
-  it('The front refuses a write without its hash, before the BFF sees it', async () => {
-    await withStack(artifacts, async (stack) => {
-      const body = json({ name: stack.rootName, password: stack.rootPassword });
-      const headers = { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001' };
-
-      const bare = await fetch(`${stack.url}/api/auth/sign-in`, { method: 'POST', headers, body });
-      expect(bare.status).toBe(403);
-      const wrong = await fetch(`${stack.url}/api/auth/sign-in`, {
-        method: 'POST',
-        headers: { ...headers, [HASH_HEADER]: await sha256Hex('another body') },
-        body,
-      });
-      expect(wrong.status).toBe(403);
     });
   });
 
@@ -115,15 +104,19 @@ describe('pnpm stack', () => {
     await expect(readdir(seen.dataDir)).rejects.toThrow('ENOENT');
   });
 
-  it('makes a fresh tenant each time: another root, another database', async () => {
+  it('makes a fresh tenant each time: another root, another operator password, another database', async () => {
     const roots: string[] = [];
+    const operators: string[] = [];
     for (let run = 0; run < 2; run++) {
       await withStack(artifacts, (stack) => {
         roots.push(stack.rootPassword);
+        operators.push(stack.operatorPassword);
         return Promise.resolve();
       });
     }
     expect(roots[0]).not.toBe(roots[1]);
+    expect(operators[0]).not.toBe(operators[1]);
+    expect(operators[0]).toHaveLength(16);
   });
 });
 
@@ -161,13 +154,44 @@ describe('pnpm stack -- <command>', () => {
     expect(commandOf(['echo', 'a'])).toEqual(['echo', 'a']);
   });
 
-  it('runs the command against the stack with the root in its environment, and passes its status on', async () => {
+  it('runs the command against the stack with the demo client, its root and the operator in its environment, and passes its status on', async () => {
+    // The command is the walk's own path: the operator signs in and makes a client, that client's
+    // root signs in by its code with the first password it was shown, and an unknown code is a 404.
     const script = `
-      const url = process.env.CREDO_URL;
-      const body = JSON.stringify({ name: process.env.CREDO_ROOT_NAME, password: process.env.CREDO_ROOT_PASSWORD });
-      const hash = require('crypto').createHash('sha256').update(body).digest('hex');
-      fetch(url + '/api/auth/sign-in', { method: 'POST', body, headers: { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001', 'x-client-code': 'demo', '${HASH_HEADER}': hash } })
-        .then((r) => process.exit(r.status === 200 ? 7 : 1));`;
+      const env = process.env;
+      const call = async (path, { code, auth, body } = {}) => {
+        const response = await fetch(env.CREDO_URL + path, {
+          method: body ? 'POST' : 'GET',
+          body: body && JSON.stringify(body),
+          headers: {
+            'content-type': 'application/json',
+            'x-device-id': 'device-aaaa-0001',
+            ...(code ? { 'x-client-code': code } : {}),
+            ...(auth ? { 'x-auth-id': auth } : {}),
+          },
+        });
+        return { status: response.status, json: await response.json().catch(() => null) };
+      };
+      (async () => {
+        const operator = await call('/api/operator/sign-in', {
+          body: { name: env.CREDO_OPERATOR_NAME, password: env.CREDO_OPERATOR_PASSWORD },
+        });
+        const made = await call('/api/operator/clients', {
+          auth: operator.json.authId,
+          body: { code: 'made-by-command', name: 'Made By Command' },
+        });
+        const root = await call('/api/auth/sign-in', {
+          code: 'made-by-command',
+          body: { name: made.json.rootName, password: made.json.password },
+        });
+        const demo = await call('/api/auth/sign-in', {
+          code: env.CREDO_CLIENT_CODE,
+          body: { name: env.CREDO_ROOT_NAME, password: env.CREDO_ROOT_PASSWORD },
+        });
+        const nobody = await call('/api/config', { code: 'nobody-here' });
+        const steps = [operator.status, made.status, root.status, demo.status, nobody.status];
+        process.exit(steps.join() === '200,201,200,200,404' ? 7 : 1);
+      })();`;
     printed.length = 0;
 
     const status = await runStack(['--', process.execPath, '-e', script], build, out);
@@ -175,6 +199,28 @@ describe('pnpm stack -- <command>', () => {
     expect(status).toBe(7);
     expect(printed.join('\n')).toMatch(/the stack is up at http:\/\/127\.0\.0\.1:\d+/);
     expect(printed.join('\n')).not.toContain('password');
+  });
+
+  it('gives the command the address, the demo client’s code and the two sign-ins, each under the name CLAUDE.md documents', async () => {
+    const file = join(dir, 'names');
+    const script = `
+      const names = Object.keys(process.env).filter((name) => name.startsWith('CREDO_')).sort();
+      require('fs').writeFileSync(${JSON.stringify(file)}, names.join(','));`;
+
+    const status = await runStack(['--', process.execPath, '-e', script], build, out);
+
+    expect(status).toBe(0);
+    expect(await readFile(file, 'utf8')).toBe(
+      [
+        'CREDO_CLIENT_CODE',
+        'CREDO_OPERATOR_NAME',
+        'CREDO_OPERATOR_PASSWORD',
+        'CREDO_ROOT_NAME',
+        'CREDO_ROOT_PASSWORD',
+        'CREDO_URL',
+      ].join(','),
+    );
+    await rm(file);
   });
 
   it('reads a command ended by a signal as 128 plus its number', async () => {
@@ -245,6 +291,8 @@ describe('pnpm stack -- <command>', () => {
     expect(await running).toBe(0);
     expect(printed.filter((line) => line.includes('the password'))).toHaveLength(1);
     expect(printed.filter((line) => line.includes('the operator is operator'))).toHaveLength(1);
+    expect(printed.filter((line) => /\/login\?client-code=demo$/.test(line))).toHaveLength(1);
+    expect(printed.filter((line) => /\/operator$/.test(line))).toHaveLength(1);
   });
 
   it('with no command waits as well for a termination or a hang-up, the first of several ending it', async () => {

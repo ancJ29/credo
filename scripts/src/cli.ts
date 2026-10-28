@@ -42,7 +42,8 @@ function watchSignals() {
   };
 }
 
-/** Runs `command` with the stack's address and root sign-in in its environment; a signal this
+/** Runs `command` with the stack's address, the demo client's code, its root's sign-in and the
+ * operator's in its environment; a signal this
  * process catches is passed on to it. Resolves with its exit status, or 128 + the signal's number
  * when a signal ended it. */
 function runCommand(
@@ -64,8 +65,8 @@ function runCommand(
 /**
  * The whole of `pnpm stack`: build, bring the stack up, and either run the command given against
  * it or wait for Ctrl-C, then always take the stack down. The exit status is the command's. The
- * root's password is printed once, only when no command was given: a command gets it in its
- * environment and needs no printed copy. A signal at any point, the build and the start-up
+ * root's and the operator's passwords are printed once, only when no command was given: a command
+ * gets them in its environment and needs no printed copy. A signal at any point, the build and the start-up
  * included, is held until the stack is down: it goes on to the command, or ends the wait, and a
  * signal that arrives before the command starts keeps the command from starting.
  */
@@ -89,13 +90,18 @@ export async function runStack(
           command,
           {
             CREDO_URL: stack.url,
+            CREDO_CLIENT_CODE: stack.clientCode,
             CREDO_ROOT_NAME: stack.rootName,
             CREDO_ROOT_PASSWORD: stack.rootPassword,
+            CREDO_OPERATOR_NAME: stack.operatorName,
+            CREDO_OPERATOR_PASSWORD: stack.operatorPassword,
           },
           signals,
         );
       }
+      out(`the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`);
       out(`sign in as ${stack.rootName} with the password ${stack.rootPassword}`);
+      out(`the operator signs in at ${stack.url}/operator`);
       out(`the operator is ${stack.operatorName}, first password ${stack.operatorPassword}`);
       out('Ctrl-C takes it all down');
       await signals.arrived;

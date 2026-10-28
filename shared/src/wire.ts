@@ -19,9 +19,6 @@ export const CLIENT_HEADER = 'x-client-code';
 
 /** The session handle, on every call after sign-in. */
 export const AUTH_HEADER = 'x-auth-id';
-/** The SHA-256 of the body, hex, on every write: CloudFront's origin access control requires it
- * for the Lambda URL, and the local front refuses a write without the right one. */
-export const HASH_HEADER = 'x-amz-content-sha256';
 /** The device id the UI minted, on sign-in. */
 export const DEVICE_HEADER = 'x-device-id';
 

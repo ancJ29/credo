@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from './hash';
 
-describe("Every write carries its body's SHA-256; the front refuses one without it", () => {
+describe('sha256Hex, which keeps a session handle’s secret as a hash', () => {
   it('hashes the exact bytes of a body into lowercase hex', async () => {
     expect(await sha256Hex('')).toBe(
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',

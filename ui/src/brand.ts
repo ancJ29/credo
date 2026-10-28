@@ -1,4 +1,4 @@
-import type { Language, TenantConfig } from '@credo/shared';
+import { CREDO_COLOUR, type Language, type TenantConfig } from '@credo/shared';
 
 /** What every screen shows of the company, sign-in included. */
 export type Brand = Pick<TenantConfig, 'name' | 'logo'>;
@@ -6,7 +6,7 @@ export type Brand = Pick<TenantConfig, 'name' | 'logo'>;
 /** What the app draws in before it knows the company: credo's own colour and, on a device that
  * has never booted and chose nothing, the market's language. */
 export const BEFORE_CONFIG: { colour: string; language: Language } = {
-  colour: '#3e618c',
+  colour: CREDO_COLOUR,
   language: 'vi',
 };
 
