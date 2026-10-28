@@ -74,3 +74,30 @@ beside the deploy role. The job installs with `--ignore-scripts` and runs `bru` 
 credentials, which holds the install scripts and the secrets. A lockfile (or a vendored install
 checked by hash) would also pin the code that runs. Add it when a dependency's release breaks a
 run, or when the CLI's version moves.
+
+## 13. The public URL in front of ridge's c-storage, parked — the human; *parked* until someone or a machine beyond the human's Mac needs it (the ridge URL plan, 2026-10-28)
+
+Home: [the parked plan](plans/2026-10-28-ridge-url.md), with its three calls, its shape (an HTTP API
+and a relay function in ridge's subnet) and its steps. The human decided not to build it now. Until
+then ridge's c-storage is reached through the tunnel from the human's Mac
+([the memo](memo/c-storage.md#no-public-url-for-now)). Trigger: someone other than the human, or a
+machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
+or tool outside AWS.
+
+## 14. Lambda function URLs may not be offered in `ap-southeast-5` — the human runs a probe, or layer four plans it (the ridge URL plan, 2026-10-28)
+
+Home: [the plan's finding](plans/2026-10-28-ridge-url.md#found-function-urls-in-malaysia). AWS's
+current pages give no answer in text; the earlier text of the page, as search indexes hold it, listed
+Malaysia among the Regions without them, and an open-source project's test of 2026-10-10 got
+"Unable to determine service/operation name to be authorized" creating one there. **Not read from a
+current AWS page.** If so, the architecture's
+[decision 2](plans/2026-10-27-architecture.md#decisions--the-machines) (CloudFront to the BFF's function
+URL with origin access control) cannot be built in Malaysia as drawn. Trigger: layer four's plan
+(piece 1's BFF on ridge), or the human's read-only probe:
+
+```bash
+aws lambda get-function-url-config --function-name credo-url-probe --region ap-southeast-5
+```
+
+`ResourceNotFoundException` means offered; `AccessDeniedException … Unable to determine
+service/operation name` means not offered.
