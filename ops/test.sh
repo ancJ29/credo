@@ -597,8 +597,14 @@ refuses "a path git does not ignore (the committed local.yml) is refused" "git d
   kr bruno_env_write "$ENVS/local.yml" 3192 tunnel-x accesskey0
 check "  and the file it would have replaced is untouched" "the committed one" "$(cat "$ENVS/local.yml")"
 rm -f "$ENVS/local.yml"
-check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml" "ignored ignored kept" \
-  "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
+# Under act the worktree is copied into a container, and its .git file names a folder of the machine
+# it came from: git reads nothing there, and every path would read as kept.
+if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+  check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml" "ignored ignored kept" \
+    "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
+else
+  echo "  == skipped: the repository's .git cannot be read here (a worktree copied from another machine), so its ignore rule is not read; GitHub's run reads it"
+fi
 check "check.sh writes its environment through that writer alone" "1 0" \
   "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
 
@@ -836,7 +842,11 @@ check "  leaving the first run's keys file as it was" "$sum_first" "$(sum_of "$K
 # the drop: the first run's master dies
 S=$held_s
 export FAKE_STATE=$S OPS_LOG_DIR=$E2E/logs-held
+# a dropped connection leaves no master: the process is killed and its pid file goes, as -O exit
+# does. (Killed alone, a child nobody reaps stays a zombie that kill -0 still finds, as in a
+# container whose first process reaps nothing.)
 kill "$(cat "$S/master.pid")"
+rm -f "$S/master.pid"
 LPID=$held_pid
 e2e_reap 20
 check "a tunnel that drops ends the command with exit 1" 1 "$RC"

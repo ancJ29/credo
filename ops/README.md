@@ -186,3 +186,9 @@ Run the same three before pushing an `ops/` change:
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,
    no `continue-on-error`, the Region, and the account id's mask.
+
+Under `act` two things are act's own, not the scripts': the `check` job's "Post actions/setup-go"
+fails (act's copy of the action lacks its cache-save module, and its cache server is unreachable),
+and `ops/test.sh` prints `== skipped: the repository's .git cannot be read here` instead of reading
+the ignore rule, because the copied worktree's `.git` names a folder of the Mac. Any other red there
+is real; GitHub's run reads the rule.
