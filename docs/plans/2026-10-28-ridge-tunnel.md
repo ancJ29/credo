@@ -195,9 +195,11 @@ regression and no key leaked on any exit but `kill -9`. Each finding, handled in
    own file whatever wrote it, since each check rewrites it, and the comment now says so.
 9. **Info: the access key's mask and the early ignore check deletable.** `[FIXED]`. The early
    ignore check is held by a run with no ignore rule (red when deleted); the "note: replacing"
-   line and the clock time by the held run (red when removed). The mask is held by a grep of
-   `tunnel.sh`, since nothing prints the access key to show a leak: a structural hold, red when
-   deleted.
+   line and the clock time by the held run (red when removed). The mask is held by a run with
+   `GITHUB_ACTIONS` set, which must write three `::add-mask::` lines (the box's two keys and the
+   access key); red when the mask is deleted. (GitHub's first run of the suite failed four cases
+   because the whole-script runs inherited `GITHUB_ACTIONS` and counted those lines as leaked
+   keys; the runs now unset it.)
 10. **Info: `kill -9` leaves the scratch folder and its private key.** `[FIXED]`. Named in the
     hazard above and in the runbook.
 11. **Info: the hold test's `sleep 1` could race.** `[FIXED]`. It waits for the first `-O check`.

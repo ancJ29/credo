@@ -756,6 +756,9 @@ STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
 export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9
 export PATH="$E2E/fakebin:$PATH"
+# By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
+# ::add-mask::<key> to the terminal, which is not a leak (the mask case below runs with it set).
+unset GITHUB_ACTIONS
 KEYS=$E2E/repo/c-storage/bruno/environments/ridge-tunnel.yml
 S=''
 RC=0
@@ -857,6 +860,15 @@ for sig in INT:130 TERM:143 HUP:129; do
   check "$name: no key reached the log or the terminal" 0 "$(keys_seen)"
 done
 
+# in GitHub's job, each key is masked as it is read: the two of the box's, and the access key made here
+e2e_fresh masks
+rm -f "$KEYS"
+GITHUB_ACTIONS=true e2e_launch tunnel.sh ridge
+e2e_wait "this run's service" 30 || true
+kill -s INT -- "-$LPID"
+e2e_reap 20
+check "with GITHUB_ACTIONS set, the run masks its three keys: the box's two and the access key" "130 3" "$RC $(grep -c '^::add-mask::' "$S/out" || true)"
+
 # /health must name a commit of main before anything is written
 health_case() { # <name> <c-storage binary> <what the refusal says>
   e2e_fresh "health-$1" "$2"
@@ -900,8 +912,6 @@ mv "$E2E/not-ignored.off" "$E2E/repo/c-storage/bruno/environments/.gitignore"
 check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
 check "  before any aws call" gone "$(file_state "$S/aws.calls")"
 
-# shellcheck disable=SC2016 # tunnel.sh's literal text
-check "tunnel.sh masks the access key it makes" 1 "$(grep -c 'mask "$access_key"' "$OPS_DIR/tunnel.sh" || true)"
 check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
 rc=0
 out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
