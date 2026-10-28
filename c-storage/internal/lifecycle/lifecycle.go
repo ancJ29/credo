@@ -38,7 +38,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	// is one file.
 	defer db.Close()
 
-	ln, err := server.Listen(cfg.Port)
+	ln, err := server.Listen(cfg.ListenAddr, cfg.Port)
 	if err != nil {
 		return fmt.Errorf("bind the listener: %w", err)
 	}

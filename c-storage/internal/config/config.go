@@ -6,14 +6,22 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
 )
 
+// DefaultListenAddr is where the listener binds when LISTEN_ADDR is unset: the local stack and
+// every test stay on loopback.
+const DefaultListenAddr = "127.0.0.1"
+
 // Config is the process's environment.
 type Config struct {
 	Port string
+
+	// ListenAddr is the one IP address the listener binds. Unset, it is loopback.
+	ListenAddr string
 
 	// DBPath is the records database; its directory is created on open. A
 	// relative path is relative to the working directory, which the process never
@@ -34,6 +42,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	addr, err := listenAddrOf("LISTEN_ADDR")
+	if err != nil {
+		return nil, err
+	}
 	path, err := required("DB_PATH")
 	if err != nil {
 		return nil, err
@@ -46,7 +58,7 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Config{Port: port, DBPath: path, InternalKey: internal, SuperAdminKey: admin}, nil
+	return &Config{Port: port, ListenAddr: addr, DBPath: path, InternalKey: internal, SuperAdminKey: admin}, nil
 }
 
 func required(name string) (string, error) {
@@ -67,4 +79,19 @@ func portOf(name string) (string, error) {
 		return "", fmt.Errorf("%s must be a port number, 1 to 65535", name)
 	}
 	return strconv.Itoa(n), nil
+}
+
+// listenAddrOf reads the optional address: unset is loopback, and a set one is a single IP
+// address. Never an unspecified one (0.0.0.0, ::), which would leave a firewall as the only wall
+// between the network and the port; never a name, a port, a range or a zone.
+func listenAddrOf(name string) (string, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return DefaultListenAddr, nil
+	}
+	addr, err := netip.ParseAddr(raw)
+	if err != nil || addr.IsUnspecified() || addr.Zone() != "" {
+		return "", fmt.Errorf("%s must be one specific IP address (not an unspecified one, a name or a port), or unset for loopback", name)
+	}
+	return addr.String(), nil
 }

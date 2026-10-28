@@ -41,7 +41,7 @@ Drawn from [`server.go`](../../c-storage/internal/server/server.go),
 | A save over a record changed since it was read is refused, 412 | one person's save erasing another's | [412](#a-write-on-a-moved-record-is-refused) |
 | One save at a time | two saves at once losing one | [one writer](#one-writer-at-a-time) |
 | The file's version is checked at start | running on a file it cannot read | [the schema](#the-schema-version-is-checked-at-open) |
-| It listens on its own machine only, for now | other machines reaching it; the first server needs this changed | [loopback](#loopback-only-for-now) |
+| It listens on one address: loopback, or the box's private address when told | every interface answering, so a firewall is the only wall | [the listener](#the-listener-binds-one-address) |
 | ridge answers no public URL, for now | a stranger or a flood reaching it; it is reached through a tunnel from one Mac | [no public URL](#no-public-url-for-now) |
 
 **No test catches** a save that does not name what it read, which still overwrites, or a backup
@@ -172,18 +172,26 @@ anything answers, never on a caller's request.
   then every database is new: the local stack starts each run on a fresh one
   ([the app frame](../plans/2026-10-27-app-frame.md#the-frame)), and no box exists yet.
 
-## Loopback only, for now
+## The listener binds one address
 
-The listener binds `127.0.0.1` (`TestListenBindsLoopbackOnly`), so no other host reaches the port,
-whatever a firewall or a security group says.
+*Decided* 2026-10-28, in [the ridge-app plan](../plans/2026-10-28-ridge-app.md#layer-four), step 4.
+`LISTEN_ADDR` names the one IP address the listener binds. Unset, it is `127.0.0.1`, so the local
+stack and every test stay on loopback. On ridge each release writes it from the stack's
+`BoxAddress` into `/etc/c-storage/listen.env`, which the unit reads, so the BFF in Lambda reaches
+the port on the private address.
 
-- *Rejected:* every interface. The security group would then be the one thing between the network
-  and the port.
-- *Hazard no gate catches:* the architecture's BFF runs in Lambda and calls the box's private
-  address, which a loopback listener never answers, while every test runs on one host and passes.
-  *Trigger:* layer four of ridge, when the BFF first calls the private address
-  ([the ridge plan](../plans/2026-10-28-ridge.md#the-listener-open-item-7)); [open item 7](../open-items.md)
-  holds the change: the private address, never every interface.
+- *Held by:* `TestListenAddrIsLoopbackWhenUnsetAndTheAddressWhenSet`,
+  `TestListenAddrRefusesWhatIsNotOneAddress` (an unspecified address, a name, a port, a range, a
+  zone or a list stops the start, naming the variable and never its value) and
+  `TestListenBindsTheAddressItIsGiven`.
+- *Rejected:* every interface (`0.0.0.0`, `::`). The security group would then be the one thing
+  between the network and the port. *Rejected:* a name, which resolves to whatever the box's
+  resolver says at start.
+- *Price:* loopback stops being a second wall. The box's group, which admits c-storage's port from
+  the BFF's group alone once layer four exists, and c-storage's keys remain.
+- *Hazard no gate catches:* a box whose `listen.env` was never written fails to start, since the
+  unit names the file. `ops/release.sh` writes it before the restart; a box set up any other way
+  needs it by hand.
 
 ## No public URL, for now
 

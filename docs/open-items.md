@@ -55,18 +55,6 @@ ridge, the first box, holds no real data, so the backup still waits for a signed
 ([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint and the box's
 put-only role come with it.
 
-## 7. c-storage's listener on the box's private address, not loopback — the machine; with the BFF on ridge (the app frame plan, 2026-10-27)
-
-Home: [the ridge plan](plans/2026-10-28-ridge.md#the-listener-open-item-7). c-storage binds
-`127.0.0.1` only (`Listen` in `c-storage/internal/server/server.go`, `TestListenBindsLoopbackOnly`).
-The architecture puts the BFF in a Lambda that calls the box's private address
-([the architecture](plans/2026-10-27-architecture.md)), which a loopback listener never answers.
-ridge's first three layers reach c-storage through ssh's forward to loopback. The change therefore
-waits for the first caller of the private address: the BFF on ridge, in the ridge plan's fourth
-layer, with piece 1. It becomes `LISTEN_ADDR`, one IP address and never an unspecified one,
-loopback when unset, with its tests. The local stack keeps loopback. Planned in
-[ridge-app](plans/2026-10-28-ridge-app.md#layer-four), step 4.
-
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
 `bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`

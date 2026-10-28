@@ -27,7 +27,7 @@ const (
 // taken binds a loopback port and keeps it, so a Run asked for it must fail.
 func taken(t *testing.T) string {
 	t.Helper()
-	ln, err := server.Listen("0")
+	ln, err := server.Listen("127.0.0.1", "0")
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
@@ -37,7 +37,7 @@ func taken(t *testing.T) string {
 
 func cfg(t *testing.T, port string) *config.Config {
 	return &config.Config{
-		Port: port, InternalKey: internalKey, SuperAdminKey: "admin-key",
+		Port: port, ListenAddr: config.DefaultListenAddr, InternalKey: internalKey, SuperAdminKey: "admin-key",
 		DBPath: filepath.Join(t.TempDir(), "data", "c-storage.db"),
 	}
 }
@@ -59,13 +59,21 @@ func TestRunRefusesToStartWithoutItsDatabaseOrItsPort(t *testing.T) {
 	}
 	underAFile.DBPath = filepath.Join(file, "c-storage.db")
 
+	// An address this host does not own (TEST-NET-1): Run binds the address it is configured with.
+	notOurs := cfg(t, "0")
+	notOurs.ListenAddr = "192.0.2.1"
+
 	for name, c := range map[string]*config.Config{
-		"no database":   underAFile,
-		"the port held": cfg(t, taken(t)),
+		"no database":                underAFile,
+		"the port held":              cfg(t, taken(t)),
+		"an address this host lacks": notOurs,
 	} {
-		if err := Run(context.Background(), c); err == nil {
+		// A bounded run, so a Run that starts anyway ends the test with its failure, not a hang.
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		if err := Run(ctx, c); err == nil {
 			t.Errorf("%s: Run started", name)
 		}
+		cancel()
 	}
 }
 
@@ -83,7 +91,7 @@ func started(t *testing.T, grace time.Duration) (dbPath string, ln net.Listener,
 	if err := st.Register(context.Background(), "svc", accessKey); err != nil {
 		t.Fatalf("register: %v", err)
 	}
-	if ln, err = server.Listen("0"); err != nil {
+	if ln, err = server.Listen("127.0.0.1", "0"); err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
 	ctx, stop := context.WithCancel(context.Background())

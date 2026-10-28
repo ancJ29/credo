@@ -416,15 +416,23 @@ func TestBuildPanicsRatherThanRunningWithoutAKey(t *testing.T) {
 	}
 }
 
-// A listener on every interface would make a firewall the only thing between
-// the network and the port.
-func TestListenBindsLoopbackOnly(t *testing.T) {
-	ln, err := Listen("0")
+// A listener on every interface would make a firewall the only thing between the network and the
+// port: Listen binds the one address it is given, whichever family.
+func TestListenBindsTheAddressItIsGiven(t *testing.T) {
+	probe, err := net.Listen("tcp", "[::1]:0")
 	if err != nil {
-		t.Fatalf("Listen: %v", err)
+		t.Skipf("no IPv6 loopback on this host: %v", err)
 	}
-	defer ln.Close()
-	if ip := ln.Addr().(*net.TCPAddr).IP; !ip.IsLoopback() {
-		t.Fatalf("bound %s, want a loopback address", ip)
+	probe.Close()
+	for _, addr := range []string{"127.0.0.1", "::1"} {
+		ln, err := Listen(addr, "0")
+		if err != nil {
+			t.Fatalf("Listen(%s): %v", addr, err)
+		}
+		got := ln.Addr().(*net.TCPAddr).IP.String()
+		ln.Close()
+		if got != addr {
+			t.Fatalf("Listen(%s) bound %s", addr, got)
+		}
 	}
 }

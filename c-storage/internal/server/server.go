@@ -98,8 +98,9 @@ func (s *Server) health(next http.Handler) http.Handler {
 	})
 }
 
-// Listen binds the loopback interface only, so no host but this one reaches the
-// port, whatever a firewall says. TestListenBindsLoopbackOnly.
-func Listen(port string) (net.Listener, error) {
-	return net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+// Listen binds one address, which config has already made a single IP address and never an
+// unspecified one: loopback by default, or the box's private address, so no other interface
+// answers whatever a firewall says. TestListenBindsTheAddressItIsGiven.
+func Listen(addr, port string) (net.Listener, error) {
+	return net.Listen("tcp", net.JoinHostPort(addr, port))
 }

@@ -1,7 +1,7 @@
 # c-storage
 
 c-storage keeps small JSON records for the BFF, each under its own service. It is one Go binary
-with one SQLite file and one listener, on the loopback interface, with five routes. Why it is built
+with one SQLite file and one listener, on one address (loopback unless `LISTEN_ADDR` says otherwise), with five routes. Why it is built
 so is in [the memo](../docs/memo/c-storage.md).
 
 ## Try it in 10 minutes
