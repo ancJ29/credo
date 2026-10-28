@@ -16,6 +16,7 @@ A push to `main` releases and checks ridge by itself ([the deploy job](#the-depl
 | a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | to check an environment | `ops/check.sh <env>` | about 2 minutes |
+| to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh <env>` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
 ## Before any step
@@ -130,6 +131,36 @@ tunnel. It changes no stack: a template change stays your change set.
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
      `ops/release.sh ridge`, which makes new keys and restarts c-storage.
+
+## The tunnel
+
+Holds `http://127.0.0.1:3192` open to ridge's c-storage, in your own AWS session, until Ctrl-C or the
+endpoint's hour. Only test data goes to ridge through it, never a client's. The why is
+[the plan](../docs/plans/2026-10-28-ridge-tunnel.md).
+
+1. `ops/tunnel.sh ridge`, from a worktree at `main`. Wait for the `ready:` lines; the run says ready
+   only once `/health` names a commit of `main`, and writes
+   `c-storage/bruno/environments/ridge-tunnel.yml` (0600, git-ignored) with ridge's keys and a fresh
+   service's.
+2. In Bruno, open the collection `c-storage/bruno`, pick the environment `ridge-tunnel`: Health, then
+   the collection once. Or `curl http://127.0.0.1:3192/health`. Use `127.0.0.1`, not `localhost`.
+   - A second collection run in the same session answers 409 at its register; run the tunnel again
+     for a fresh service.
+   - Records saved stay on ridge, and no one can read them after the run: the service's key leaves
+     with the file.
+3. Ctrl-C. The log ends on `ok   no key in this log` and `== exit 130`, and `environments/` holds no
+   `ridge-tunnel.yml`.
+   - **something already answers on 127.0.0.1:3192:** another run is open, or a killed one left its
+     ssh: `lsof -nP -iTCP:3192 -sTCP:LISTEN`, then stop that ssh (its endpoint ends it within the
+     hour anyway).
+   - **a keys file left by a killed run:** the next run replaces it and says so; delete
+     `ridge-tunnel.yml` by hand if there is no next run.
+   - **/health names no commit, or a commit main does not hold:** nothing was written; release
+     `main` (the deploy job) and run again.
+   - **the tunnel dropped:** the endpoint's hour ended, or the box rebooted (the drill does); run it
+     again. The keys are already gone.
+   - **a key is in this log:** as in [the check](#the-check).
+   - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
 ## The drill
 

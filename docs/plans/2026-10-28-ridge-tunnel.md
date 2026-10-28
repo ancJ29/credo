@@ -1,7 +1,7 @@
 # ridge's tunnel: c-storage from this Mac, held open
 
-**Where it stands — 2026-10-28 13:39 +07:** planned; nothing built. **Next:** the human reads rows 1
-to 4 and answers [the one call](#the-humans-call) (step 2); then step 3, the code.
+**Where it stands — 2026-10-28:** call 1 answered; the command and its guards are written and
+committed on `ridge-tunnel`. **Next:** another model's review (step 3), then CI (step 4).
 
 > **Drafted** 2026-10-28 by the machine, from [ridge's plan](2026-10-28-ridge.md), `ops/lib.sh`,
 > `ops/check.sh` and [the c-storage memo](../memo/c-storage.md). The need, from the human on 10-28:
@@ -28,8 +28,7 @@ flowchart LR
   keys -. "read over the same ssh,<br/>removed when it ends" .-> env
 ```
 
-Drawn from `box_open` and `read_keys` in `ops/lib.sh`, which the new command reuses; the command
-itself is not built yet.
+Drawn from `box_open` and `read_keys` in `ops/lib.sh`, and from `ops/tunnel.sh`.
 
 `ops/tunnel.sh ridge` opens the tunnel `ops/check.sh` already opens, and holds it until Ctrl-C or
 the endpoint's hour ([the command](#the-command)). It says ready only once `/health` through it
@@ -143,6 +142,9 @@ since its key leaves with the file.
    - *Trigger to revisit:* the human wanting tomorrow what was saved today, or piece 1 writing to
      ridge, when the service to read is the BFF's own.
 
+*Answered* 2026-10-28 by the human, having read rows 1 to 4: "yes, plz go ahead". That is the
+recommended option: a fresh service each run, nothing kept after it.
+
 ## Hazards
 
 - **A tunnel left open.** Only `kill -9` or a crash skips `on_exit`. ssh's master, daemonized by
@@ -165,12 +167,12 @@ since its key leaves with the file.
 
 - [x] **1. This plan.** Who: 🤖. Done when: committed on `ridge-tunnel` with the path, name and id
   checks clean, and ridge's plan points here in one line. *Evidence:* this commit.
-- [ ] **2. Rows 1 to 4, and call 1.** Who: 👤, 5 minutes. Done when: the human has read the 👤 rows
-  and answered call 1.
+- [x] **2. Rows 1 to 4, and call 1.** Who: 👤, 5 minutes. Done when: the human has read the 👤 rows
+  and answered call 1. *Evidence:* the call's *Answered* line above.
 - [ ] **3. The command and its guards.** Who: 🤖, about 2 hours. Consumes: step 2's answer. Done
   when: `ops/tunnel.sh`, the moves into `lib.sh` and `check.sh` calling them, rows 4 to 9 in
   `ops/test.sh` each seen red once then green, `shellcheck -x ops/*.sh` clean, the runbook's row
-  and section, and another model's review (QA rule 5) with its findings fixed.
+  and section, and another model's review (QA rule 5) with its findings fixed. *Written and committed; left unticked until the review.*
 - [ ] **4. CI.** Who: 👤 runs act in the terminal, then pushes the orchestrator's merge into
   `main`; 🤖 reads both logs whole. Done when: act's `ops` job is green, then GitHub's `check`,
   `e2e`, `ops` and `deploy`, the deploy's `check.sh`, now calling `lib.sh`, ending `== green`.
