@@ -5,7 +5,7 @@
 > machine-local or personal in a committed file. **Amended** 2026-10-27 by the human: every doc
 > opens with its human version. Read this before writing any doc, `CLAUDE.md` or code comment,
 > or committing any path. **Amended** 2026-10-27 by the human: rules picked from the old repo's
-> standing preferences.
+> standing preferences. **Amended** 2026-10-28 by the human: the runbook, in what earns a line.
 
 ## At a glance
 
@@ -21,7 +21,8 @@ without it, would get the next change wrong.
 - Each doc a human reads opens with a short version for the human; a README gets a newcomer
   started in 30 minutes ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
-  matters ([what earns a line](#what-earns-a-line)).
+  matters; a runbook holds the steps alone and links their why
+  ([what earns a line](#what-earns-a-line)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
 - Progress lives in three files: the plan, the to-do log and the recap
@@ -61,6 +62,11 @@ The table [at a glance](#at-a-glance) says who reads what.
 - a **recipe whose order is not obvious**, and why each step sits where it does
 
 Docs describe *absent* code: a plan, or a rejected option. Present code describes itself.
+
+**An operator's runbook is numbered steps and commands, with one-line branches**, as
+[`ops/README.md`](../../ops/README.md) is. Its steps are the recipe above; the why of each stays in
+the plan or memo the runbook links once. *Why:* the operator reads the runbook while running it,
+and prose between the commands hides the next one.
 
 ## One fact, one home
 
