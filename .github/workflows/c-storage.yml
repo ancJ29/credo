@@ -1,5 +1,8 @@
 # c-storage's gate runs on every change to c-storage or its ops, on a branch or in a pull
-# request. A red here is a defect to fix, never a run to repeat.
+# request. A red here is a defect to fix, never a run to repeat. On a push to main, once the gate
+# is green, the `deploy` job releases and checks ridge: it never moves ridge backwards (an older
+# commit arriving late ends green, "superseded"), and a deploy shown cancelled was replaced by a
+# newer push to main.
 name: c-storage
 
 on:
@@ -51,8 +54,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
+      # --ignore-scripts: the CLI's hundreds of unpinned npm dependencies run no install script, in
+      # this job or in `deploy` (which holds the role), and e2e proves bru works without them.
       - name: Install Bruno CLI
-        run: npm install -g @usebruno/cli@4.2.0
+        run: npm install -g --ignore-scripts @usebruno/cli@4.2.0
       - name: End-to-end
         working-directory: c-storage
         env:
@@ -126,7 +131,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: ridge
-    # One deploy at a time, never cancelled: a run waiting behind it is replaced by a newer one.
+    # One deploy at a time, never cancelled; a run waiting behind it is replaced by a newer one (shown
+    # cancelled). The group sits behind `needs`, so deploys queue in the order their gates finish, not
+    # the order of the pushes: release.sh therefore ends green, "superseded", when ridge runs a newer
+    # commit.
     concurrency:
       group: ridge
       cancel-in-progress: false
@@ -155,7 +163,7 @@ jobs:
       - name: Install Bruno CLI
         if: ${{ !env.ACT }}
         timeout-minutes: 3
-        run: npm install -g @usebruno/cli@4.2.0
+        run: npm install -g --ignore-scripts @usebruno/cli@4.2.0
       # The arm64 binary of this commit, stamped with its sha; the runner cross-compiles.
       - name: Build the box's binary
         if: ${{ !env.ACT }}
@@ -175,7 +183,8 @@ jobs:
           aws-region: ap-southeast-5
           mask-aws-account-id: true
           role-skip-session-tagging: true
-          role-duration-seconds: 3600
+          # The session lives as long as the job's timeout, no longer.
+          role-duration-seconds: 1200
       # The scripts mask the keys themselves, before anything is printed.
       - name: Release
         if: ${{ !env.ACT }}

@@ -3,7 +3,7 @@
 # Reads <env> from AWS and from the box, then runs c-storage's Bruno collection through the tunnel.
 # Green is every read below passing; the log ends on == green, or names each red.
 # Runs after each release in the deploy job, and by hand.
-# Needs c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g @usebruno/cli@4.2.0`) and
+# Needs c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
 # node, which reads its report, and /health's buildVersion (the plan's step 6).
 # Run from a worktree whose ops/ is origin/main's.
 # Expected length: about 2 minutes.
@@ -37,8 +37,8 @@ step "the tools and the collection"
 main_synced
 command -v node >/dev/null || die "needs node on PATH, to read Bruno's report"
 [ -d "$BRUNO_DIR" ] || die "no c-storage/bruno: the collection arrives with main (the plan's step 5)"
-have=$(bru --version 2>/dev/null) || have=none
-[ "$have" = "$WANT_BRUNO" ] || die "needs Bruno CLI $WANT_BRUNO, found $have: npm install -g @usebruno/cli@$WANT_BRUNO"
+have=$(bru_clean --version 2>/dev/null) || have=none
+[ "$have" = "$WANT_BRUNO" ] || die "needs Bruno CLI $WANT_BRUNO, found $have: npm install -g --ignore-scripts @usebruno/cli@$WANT_BRUNO"
 # The keys go into this file, so git must ignore it.
 git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$ENVNAME.yml" ||
   die "git does not ignore c-storage/bruno/environments/$ENVNAME.yml: it would hold the keys"
@@ -92,6 +92,8 @@ expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfil
 expect "OOM kills since boot" 0 "$(fact oom)"
 echo "box: $(fact arch); memory $(fact memory); swap $(fact swap); disk $(fact disk)"
 
+# What runs, not what this run shipped: after a superseded release it is the newer commit, still one
+# of main.
 step "/health names a commit of main"
 body=$(curl -fsS -m 5 "http://127.0.0.1:$LOCAL_PORT/health" || true)
 build=$(build_of "$body")
@@ -129,7 +131,7 @@ variables:
 YAML
 )
 ran=0
-(cd "$BRUNO_DIR" && bru run --env "$ENVNAME" --reporter-json "$WORK/report.json") || ran=$?
+(cd "$BRUNO_DIR" && bru_clean run --env "$ENVNAME" --reporter-json "$WORK/report.json") || ran=$?
 expect "bru run exits" 0 "$ran"
 # bru exits 0 for a file it cannot parse and for a run that reaches no request: the shared proof
 # (the same e2e.sh asks) wants every request file passed, with a test, and none skipped.

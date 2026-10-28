@@ -132,10 +132,12 @@ mkwork() {
 }
 
 # mask <value>: GitHub's log mask, written past the log file so the log never holds the value.
-# Remembers the value for the end-of-run search.
+# Remembers the value for the end-of-run search. fd 3 is the terminal and tee writes the same pipe
+# from another process, so the command opens with a newline: it can then never land mid-line, where
+# GitHub would not read it and the value would print.
 mask() {
   if [ -z "$1" ]; then return 0; fi
-  if [ "${GITHUB_ACTIONS:-}" = true ]; then echo "::add-mask::$1" >&3; fi
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then printf '\n::add-mask::%s\n' "$1" >&3; fi
   SECRETS="${SECRETS}$1"$'\n'
 }
 
@@ -144,21 +146,31 @@ repository() {
   git -C "$REPO_DIR" remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##'
 }
 
-# main_synced: fetches origin/main, then refuses unless ops/ here is exactly origin/main's, so a
-# script that acts under the human's AWS session is always a reviewed one.
+# main_synced: fetches origin/main, then refuses unless ops/ here is as reviewed (ops_match_main), so
+# a script that acts under the human's AWS session is always a reviewed one.
 main_synced() {
   git -C "$REPO_DIR" fetch --quiet origin main || die "cannot fetch origin main: the scripts here cannot be compared with main's"
   ops_match_main
 }
 
-# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) equals origin/main's
+# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) is as reviewed.
+#   By hand: equal to origin/main's.
+#   In the deploy job (GITHUB_ACTIONS=true): equal to the commit checked out, which must be a commit
+#   of origin/main. A push that lands during the run moves origin/main on, and the job still runs
+#   what it checked out; comparing with the moved ref would turn a sound deploy red.
 ops_match_main() {
+  local base=origin/main whose="origin/main's"
   git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
-  if ! git -C "$REPO_DIR" diff --quiet origin/main -- ops ||
-    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
-    die "ops/ here differs from origin/main's: run the scripts from a worktree at main, never unreviewed ones"
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then
+    git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main || die "the commit checked out is not a commit of main: only main is released"
+    base=HEAD
+    whose="this commit's"
   fi
-  ok "ops/ is origin/main's"
+  if ! git -C "$REPO_DIR" diff --quiet "$base" -- ops ||
+    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
+    die "ops/ here differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
+  fi
+  ok "ops/ is $whose"
 }
 
 region_enabled() {
@@ -330,6 +342,28 @@ read_keys() {
   [ -n "$INTERNAL_KEY" ] && [ -n "$ADMIN_KEY" ] || die "the box's keys file holds no keys"
   mask "$INTERNAL_KEY"
   mask "$ADMIN_KEY"
+}
+
+# superseded <env> <sha> <command that prints /health's body...>: succeeds, saying so, when the build
+# <env> runs has <sha> as a strict ancestor: a release never moves an environment backwards. No
+# answer, an unstamped build, the same commit, a commit this clone lacks and a commit that does not
+# descend from <sha> all fail, and the release goes on.
+superseded() {
+  local env=$1 sha=$2 running
+  shift 2
+  running=$(build_of "$("$@" 2>/dev/null || true)")
+  [ -n "$running" ] && [ "$running" != "$sha" ] || return 1
+  git -C "$REPO_DIR" merge-base --is-ancestor "$sha" "$running" 2>/dev/null || return 1
+  echo "superseded: $env runs $running"
+}
+
+# BRU_UNSET: the job's credentials, which bru must never hold: Bruno CLI runs third-party code (its
+# npm dependencies). The OIDC variables are present in every step of a job that may mint a token.
+BRU_UNSET=(-u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_RUNTIME_TOKEN)
+
+# bru_clean <bru arguments...>: bru, without the job's credentials
+bru_clean() {
+  env "${BRU_UNSET[@]}" bru "$@"
 }
 
 # build_of <body> → /health's buildVersion, empty if the body names none
