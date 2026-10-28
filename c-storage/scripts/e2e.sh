@@ -80,7 +80,6 @@ if [[ "$up" != 1 ]]; then
 fi
 
 echo "== the collection, whole, against a fresh database"
-requests="$(find bruno -name '*.yml' ! -name folder.yml ! -name opencollection.yml ! -path '*/environments/*' | wc -l | tr -d ' ')"
 ran=0
 # The repository and its artifacts are public: the report carries no key. The
 # three headers are skipped, and the bodies, since a register request's body
@@ -90,26 +89,10 @@ ran=0
   --reporter-skip-headers x-internal-access-key x-access-key x-super-admin-key) || ran=$?
 check "bru run exits 0" 0 "$ran"
 # bru exits 0 for a file it cannot parse (a skipped result) and for a run that
-# reaches no request, so every request must be in the report, passed, with a
-# test result; the summary's passed requests must equal the request files.
+# reaches no request: scripts/bruno-proof.cjs is the proof, shared with ops/check.sh,
+# that every request file passed, with a test, and none was skipped.
 proved=0
-node -e '
-const [file, want] = [process.argv[1], Number(process.argv[2])];
-const runs = JSON.parse(require("fs").readFileSync(file, "utf8"));
-let results = [], passed = 0;
-for (const run of runs) { results = results.concat(run.results); passed += run.summary.passedRequests; }
-let bad = 0;
-for (const r of results) {
-  const tests = (r.testResults || []).length + (r.assertionResults || []).length;
-  if (r.status !== "pass" || tests === 0) {
-    bad++;
-    console.error("e2e: " + r.path + ": status " + r.status + ", " + tests + " tests" + (r.error ? ", " + r.error : ""));
-  }
-}
-if (results.length !== want || passed !== want || bad > 0) {
-  console.error("e2e: " + want + " request files, " + results.length + " results, " + passed + " passed, " + bad + " not passing");
-  process.exit(1);
-}' "$DIR/report.json" "$requests" || proved=1
+requests="$(node scripts/bruno-proof.cjs "$DIR/report.json" bruno e2e)" || proved=1
 check "every request ran, passed and asserted ($requests)" 0 "$proved"
 
 # The report embeds its data as base64 JSON, so the search decodes it first; one

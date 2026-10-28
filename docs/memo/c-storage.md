@@ -180,8 +180,9 @@ whatever a firewall or a security group says.
   and the port.
 - *Hazard no gate catches:* the architecture's BFF runs in Lambda and calls the box's private
   address, which a loopback listener never answers, while every test runs on one host and passes.
-  *Trigger:* the first box, before it serves; [open item 7](../open-items.md) holds the change: the
-  private address, never every interface.
+  *Trigger:* layer four of ridge, when the BFF first calls the private address
+  ([the ridge plan](../plans/2026-10-28-ridge.md#the-listener-open-item-7)); [open item 7](../open-items.md)
+  holds the change: the private address, never every interface.
 
 ## The file is the only copy
 

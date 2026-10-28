@@ -1,0 +1,26 @@
+{
+  "ChangeSetName": "ops-20261028-000002",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "Box",
+        "PhysicalResourceId": "i-0123456789abcdef0",
+        "ResourceType": "AWS::EC2::Instance",
+        "Replacement": "Conditional",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "InstanceType", "RequiresRecreation": "Conditionally"},
+            "Evaluation": "Dynamic",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    }
+  ]
+}

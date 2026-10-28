@@ -15,8 +15,11 @@ runtime:
           expect(res.getStatus()).to.equal(200);
         });
 
-        test("one field, and no more", function() {
-          expect(res.getBody()).to.deep.equal({ status: "OK" });
+        test("two fields, and no more", function() {
+          const body = res.getBody();
+          expect(Object.keys(body)).to.have.members(["status", "buildVersion"]);
+          expect(body.status).to.equal("OK");
+          expect(body.buildVersion).to.be.a("string").and.not.be.empty;
         });
 
 settings:
@@ -27,4 +30,5 @@ settings:
   forwardAuthorizationHeader: true
 
 docs: |-
-  The one route without a key. **Returns** 200 `{ status: "OK" }`.
+  The one route without a key. **Returns** 200 `{ status, buildVersion }`: `OK`, and the commit
+  `make box` stamped, `dev` for any other build.

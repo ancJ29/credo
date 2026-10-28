@@ -1,0 +1,2 @@
+# Where the scripts source lib.sh from, so ShellCheck follows it (run: shellcheck -x ops/*.sh).
+source-path=SCRIPTDIR

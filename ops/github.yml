@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  The account's OIDC provider for GitHub's tokens, one per account. Made by ops/stack.sh github,
+  as the stack credo-github, and only where the account has no provider for this address.
+  Each environment's deploy role (env.yml) trusts it by its address, so it exports nothing.
+
+Resources:
+  GitHub:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+
+Outputs:
+  ProviderArn:
+    Value: !GetAtt GitHub.Arn
