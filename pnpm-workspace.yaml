@@ -18,6 +18,7 @@ allowBuilds:
 # types and tooling that only check.
 catalog:
   '@eslint/js': ^10.0.0
+  '@fastify/aws-lambda': 6.4.2
   '@fontsource-variable/noto-sans': 5.3.0
   '@mantine/core': 9.6.3
   '@mantine/hooks': 9.6.3
@@ -33,6 +34,8 @@ catalog:
   '@vitest/coverage-v8': 5.0.2
   # The accessible name and implicit role of an element, as testing-library reads them.
   dom-accessibility-api: 0.5.16
+  # The BFF's Lambda bundle; tsx and vite already resolve the same release.
+  esbuild: 0.28.2
   eslint: ^10.0.0
   fastify: 5.12.7
   eslint-plugin-react-hooks: ^7.1.1

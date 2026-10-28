@@ -11,15 +11,19 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "bundle": "node --import tsx src/bundle-main.ts"
   },
   "dependencies": {
     "@credo/shared": "workspace:*",
+    "@fastify/aws-lambda": "catalog:",
     "fastify": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
+    "esbuild": "catalog:",
+    "tsx": "catalog:",
     "vitest": "catalog:"
   }
 }
