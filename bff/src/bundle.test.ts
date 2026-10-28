@@ -2,7 +2,6 @@ import { execFile } from 'node:child_process';
 import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freshTenant, startCStorage, type RunningCStorage } from '../tests/c-storage';
 import { CODE, seedTenant } from '../tests/tenant';
@@ -38,6 +37,22 @@ const callHandler = `
  * lacks fails there alone). Everywhere else the bundle runs under the Node running the tests. */
 const bundleNode = process.env['BUNDLE_NODE'];
 
+interface Ran {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+}
+
+/** Runs a command and returns how it ended, a non-zero exit included: a crash is read by the
+ * assertions, not thrown. */
+const ran = (file: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) =>
+  new Promise<Ran>((resolve) => {
+    execFile(file, args, options, (error, stdout, stderr) => {
+      const code = error ? (typeof error.code === 'number' ? error.code : null) : 0;
+      resolve({ code, stdout, stderr });
+    });
+  });
+
 describe('the Lambda bundle', () => {
   it('is one file, and answers an HTTP API event when run alone', async () => {
     const tenant = await freshTenant(cs);
@@ -46,8 +61,7 @@ describe('the Lambda bundle', () => {
     expect(await readdir(dir)).toEqual(['index.js']);
     expect((await stat(join(dir, 'index.js'))).size).toBeGreaterThan(0);
 
-    const run = promisify(execFile);
-    const answer = (await run(
+    const answer = await ran(
       bundleNode ?? process.execPath,
       [
         '-e',
@@ -68,7 +82,10 @@ describe('the Lambda bundle', () => {
           SERVICE_ACCESS_KEY: tenant.accessKey,
         },
       },
-    )) as { stdout: string };
+    );
+    // A crash and an unexpected warning are asserted before the answer is read.
+    expect(answer.code).toBe(0);
+    expect(answer.stderr).toBe('');
     // The app logs to stdout too, before or after the answer's line.
     const line = answer.stdout.split('\n').find((text) => text.startsWith('ANSWER '));
     if (bundleNode) expect(answer.stdout).toMatch(/^NODE v24\./m);
