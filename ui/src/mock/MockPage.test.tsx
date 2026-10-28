@@ -1,7 +1,21 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MockPage } from './MockPage';
 import { SCREENS } from './screens';
+
+// The page's rule is how many frames it draws and which: two screens of two states each hold it as
+// well as all of them, at a fraction of the cost. Every real screen and state is held by
+// screens.test.tsx. Drawing them all here timed out under load (act's run, 5.8 s of a 5 s limit).
+vi.mock('./screens', async (importActual) => {
+  const actual = await importActual<typeof import('./screens')>();
+  return {
+    ...actual,
+    SCREENS: actual.SCREENS.slice(0, 2).map((screen) => ({
+      ...screen,
+      states: screen.states.slice(0, 2),
+    })),
+  };
+});
 
 const states = SCREENS.flatMap((screen) => screen.states).length;
 
