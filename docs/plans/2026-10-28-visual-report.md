@@ -671,6 +671,8 @@ screenshots, `pnpm visual`, the human's terminal option rather than the report's
   its words were an open wall, and nothing said what was left. Built at `81e1c83`, and at `ee24c22`
   each answer group described by its question: rows 33 to 39, rows 23 and 27 amended; the copy
   block's text, `block.ts` and `take.ts` untouched.
+  **The human's look at that page** (10-28, 10:34 +07, on `walks/2026-10-28-103047-ee24c221e/index.html`):
+  "thank you very much, it's perfect". Rows 33 to 36, which describe it, are kept as written.
 
   *Evidence:* `81e1c83` and `ee24c22`. `pnpm check` green at `81e1c83`, every package at 100 % of
   statements, branches, functions and lines (`visual`: 557, 235, 184, 483 of as many), knip silent,
