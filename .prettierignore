@@ -8,3 +8,5 @@ dist/
 coverage/
 # The workflows are c-storage's CI, written by hand in its own style.
 .github/
+# ridge's infrastructure: shell, CloudFormation and test data, with its own gate (ops/check.sh).
+ops/
