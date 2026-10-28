@@ -284,16 +284,18 @@ bucket_guard() {
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
+  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
   must "$1" "an s3 action reaches a bucket other than UiBucket" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | .Resource | tostring] | all(contains("UiBucket"))'
   must "$1" "UpdateFunctionConfiguration is not held to ridge's subnet and the BFF's group" \
-    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and .[0].Condition == {"ForAllValues:StringEquals":{"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}}'
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and (.[0].Condition | has("ForAllValues:StringEquals")) and .[0].Condition["ForAllValues:StringEquals"] == {"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
+  must "$1" "UpdateFunctionConfiguration passes a request whose subnet and group lists are absent or empty (no Null condition requiring both keys)" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionConfiguration")] | .[0].Condition.Null == {"lambda:SubnetIds":"false","lambda:SecurityGroupIds":"false"}'
   must "$1" "a statement of the deploy role allows every resource for a write" \
-    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Resource == "*") | .Action | if type == "array" then .[] else . end] | all(startswith("ec2:Describe"))'
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Resource == "*") | .Action | if type == "array" then .[] else . end] | all(startswith("ec2:Describe") or . == "ec2:GetSecurityGroupsForVpc")'
 }
 # row 30: the function's keys arrive from the box at each deploy; the template holds none, and
 # gives the function no Environment (an update of it would clear what the deploy set)
@@ -362,6 +364,10 @@ refuses "  a delete on the bucket is refused" "actions are not the wanted ones" 
   deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "s3:PutObject") | .Action) = ["s3:PutObject","s3:DeleteObject"]')"
 refuses "  a function setting free of the subnet and group is refused" "held to ridge's subnet" \
   deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionConfiguration")) |= del(.Condition)')"
+refuses "  a function setting that needs no subnet or group key (an empty list passes ForAllValues) is refused" "absent or empty" \
+  deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionConfiguration") | .Condition) |= del(.Null)')"
+refuses "  and one that requires only the subnet key" "absent or empty" \
+  deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionConfiguration") | .Condition.Null) |= del(.["lambda:SecurityGroupIds"])')"
 refuses "  a code right on every function is refused" "other than Bff" \
   deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionCode") | .Resource) = "*"')"
 
