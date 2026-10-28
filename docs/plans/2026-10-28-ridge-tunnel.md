@@ -1,7 +1,8 @@
 # ridge's tunnel: c-storage from this Mac, held open
 
-**Where it stands — 2026-10-28:** call 1 answered; the command and its guards are written, run
-whole in `ops/test.sh`, reviewed by another model, and its findings handled. **Next:** CI (step 4).
+**Where it stands — 2026-10-28:** done. The command is on `main` and deployed, GitHub's run read
+green whole, and the human's first run held ridge's c-storage open for Bruno and ended clean by
+Ctrl-C. Nothing is left to run; the recap is [here](../recaps/2026-10-28-ridge-tunnel.md).
 
 > **Drafted** 2026-10-28 by the machine, from [ridge's plan](2026-10-28-ridge.md), `ops/lib.sh`,
 > `ops/check.sh` and [the c-storage memo](../memo/c-storage.md). The need, from the human on 10-28:
@@ -218,16 +219,32 @@ Also from the orchestrator, the machine's call: `ops/tunnel.sh` refuses any envi
   when: `ops/tunnel.sh`, the moves into `lib.sh` and `check.sh` calling them, rows 4 to 9 in
   `ops/test.sh` each seen red once then green, `shellcheck -x ops/*.sh` clean, the runbook's row
   and section, and another model's review (QA rule 5) with its findings fixed. *Evidence:* [the review](#review), its findings handled.
-- [ ] **4. CI.** Who: 👤 runs act in the terminal, then pushes the orchestrator's merge into
+- [x] **4. CI.** Who: 👤 runs act in the terminal, then pushes the orchestrator's merge into
   `main`; 🤖 reads both logs whole. Done when: act's `ops` job is green, then GitHub's `check`,
   `e2e`, `ops` and `deploy`, the deploy's `check.sh`, now calling `lib.sh`, ending `== green`.
-- [ ] **5. The first real run.** Who: 👤, 10 minutes. Consumes: step 4, since only `main`'s `ops/`
+  *Evidence:* act run 2 (`ridge-tunnel-act-2.log`, 709 lines): `check`, `e2e` and `ops` each end
+  `Job succeeded`; its one `== skipped:` line is the ignore rule, which a copied `.git` cannot
+  answer, as planned. GitHub's run on `ridge-tunnel` at `58d13b7` (`ridge-tunnel-gh-1.log`, 1,205
+  lines), green: `ok   the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml`
+  and every tunnel case `ok`. Merged into `main` at `a9a2d4e` and pushed: GitHub's run 40662821363,
+  all four jobs green (`ridge-deploy-3.log`, 1,688 lines). Its `deploy` ran the moved `check.sh`
+  against the real box: `ok   /health names a9a2d4e6a4603e0457fc9479b6a18bb620681516, a commit of
+  main`, every row `ok` as before, Bruno `Tests 33/33` and `every request ran, passed and asserted
+  (25)`, `== green`. Two reds on the way, both fixed: [the recap](../recaps/2026-10-28-ridge-tunnel.md#the-two-reds).
+- [x] **5. The first real run.** Who: 👤, 10 minutes. Consumes: step 4, since only `main`'s `ops/`
   runs. `ops/tunnel.sh ridge` from a worktree at `main`; in Bruno, environment `ridge-tunnel`:
   Health, then the collection once; then Ctrl-C. Done when: its log, read whole, shows the four
   steps, `/health` naming a commit of `main`, the ready lines, `ok   no key in this log` and
-  `== exit 130`, and `c-storage/bruno/environments/` holds no `ridge-tunnel.yml`.
-- [ ] **6. The recap.** Who: 🤖. Done when: `docs/recaps/2026-10-28-ridge-tunnel.md` says what
-  shipped and what stays the human's, and "Where it stands" is rewritten.
+  `== exit 130`, and `c-storage/bruno/environments/` holds no `ridge-tunnel.yml`. *Evidence:* the
+  log `2026-10-28-162038-tunnel-ridge.log`, 13 lines, read whole: the four steps `[1/4]` to
+  `[4/4]`, `ok   ops/ is origin/main's`, `ok   /health names a9a2d4e6a4603e0457fc9479b6a18bb620681516,
+  a commit of main`, `ready: http://127.0.0.1:3192 is ridge's c-storage, until Ctrl-C or 17:20 (the
+  endpoint's hour)`, then `ok   no key in this log` and `== exit 130`. The human said "I can
+  verified from bruno": Bruno on `ridge-tunnel` answered. After the Ctrl-C `environments/` holds
+  `local.yml` alone, checked from the orchestrator.
+- [x] **6. The recap.** Who: 🤖. Done when: `docs/recaps/2026-10-28-ridge-tunnel.md` says what
+  shipped and what stays the human's, and "Where it stands" is rewritten. *Evidence:* the recap,
+  [here](../recaps/2026-10-28-ridge-tunnel.md).
 
 **Then stop.** The human holds ridge's c-storage open from this Mac, and nothing else changed on
 ridge.
