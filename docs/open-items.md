@@ -119,3 +119,14 @@ state update lands outside `act`, so a test may read the page before the update.
 step, so none was touched. Find which tests update `Frame` and wrap or await the update, then make a
 warning a red in that package's setup.
 
+## 16. A partner's post that loses its title and `By:` outside a code fence joins the one above — the machine; *parked* until the real copy of Slack's text is read (the sharing plan, step 6, 2026-10-29)
+
+`pnpm answers --partners` ends a block at a title or a code fence's end. When a post's title and
+its `By:` line are both lost and no fence stands between, its answer lines read under the previous
+post's label; only a chat name-and-time line separates them, and no pattern for it is sound before
+the real copy of Slack's text is read. *Trigger:* that copy, from the step 6 round trip.
+
+The case it does not cover, the other way: in `--partners` mode, if Slack's copy loses the fences, a
+chat line that starts `by:` inside a block now spoils a valid partner's block, since any
+`By:`-looking line inside one counts as a `By:` line. The refusal is loud, by line, and nothing is
+misattributed; it waits for the same copy.

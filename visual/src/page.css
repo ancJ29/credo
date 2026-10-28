@@ -982,6 +982,36 @@ a.w-cell:hover b {
   white-space: nowrap;
   cursor: pointer;
 }
+.w-label {
+  box-sizing: border-box;
+  width: 9.5em;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 10px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+.w-share {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1.5px solid var(--teal);
+  border-radius: 10px;
+  background: var(--sheet);
+  color: var(--teal);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.w-partners {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
 .w-copy:hover {
   background: color-mix(in srgb, var(--teal) 86%, var(--ink));
 }
@@ -1003,7 +1033,7 @@ a.w-cell:hover b {
     flex-basis: 100%;
     text-align: left;
   }
-  .w-copy {
+  .w-share {
     margin-left: auto;
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Answer } from './answers';
-import { orphansOf, shownFor, tallyOf } from './states';
+import { orphansOf, partnersFor, shownFor, tallyOf } from './states';
 import { WALKS } from './walks';
 
 const yes: Answer = { answer: 'yes', on: '2026-10-29', reason: '', words: ['heading: Hello'] };
@@ -72,5 +72,44 @@ describe('the count', () => {
         { kind: 'changed', answer: 'yes', on: 'd', before: [], now: [] },
       ]),
     ).toEqual({ waiting: 2, yes: 1, no: 1, changed: 1 });
+  });
+});
+
+describe('the partners’ answers', () => {
+  const words = ['heading: Hello'];
+
+  it('Each screen lists the partners’ answers by label, in label order, as the human’s are read', () => {
+    const answers = {
+      'admin-setup:1-sign-in:vi': yes,
+      'admin-setup:1-sign-in:vi@p2': no,
+      'admin-setup:1-sign-in:vi@p1': yes,
+      'admin-setup:1-sign-in:en@p1': yes,
+    };
+
+    expect(partnersFor(answers, 'admin-setup:1-sign-in:vi', words)).toEqual([
+      { label: 'p1', shown: { kind: 'yes', on: '2026-10-29' } },
+      {
+        label: 'p2',
+        shown: { kind: 'no', on: '2026-10-29', reason: 'the message is too small' },
+      },
+    ]);
+    expect(
+      partnersFor({ 'admin-setup:1-sign-in:vi': yes }, 'admin-setup:1-sign-in:vi', words),
+    ).toEqual([]);
+  });
+
+  it('A partner’s answer whose words changed shows as asked again', () => {
+    const [one] = partnersFor({ 'w:1-a:vi@p1': yes }, 'w:1-a:vi', ['heading: Hi']);
+
+    expect(one.shown.kind).toBe('changed');
+  });
+
+  it('A partner’s answer whose screen left the walks is an orphan, as the human’s are, but counts in no tally', () => {
+    const gone = { 'admin-setup:9-gone:en@p1': no, 'admin-setup:1-sign-in:vi@p1': yes };
+
+    const orphans = orphansOf(gone, WALKS);
+
+    expect(orphans).toEqual([{ key: 'admin-setup:9-gone:en@p1', ...no }]);
+    expect(tallyOf([], orphans).no).toBe(0);
   });
 });

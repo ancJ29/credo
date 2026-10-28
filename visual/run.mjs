@@ -1,4 +1,4 @@
-// `pnpm report` and `pnpm answers <file>`. The screens are the app's own components, with CSS
+// `pnpm report` and `pnpm answers [--partners] <file>`. The screens are the app's own components, with CSS
 // modules and TSX, which Node cannot import alone: a Vite server loads them as the mock's build
 // and the tests do.
 import console from 'node:console';
@@ -8,10 +8,9 @@ import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { createServer } from 'vite';
 
-const [command, file] = process.argv.slice(2);
 const root = fileURLToPath(new URL('.', import.meta.url));
 
-async function pasted() {
+async function pasted(file) {
   if (file === undefined) {
     process.stdin.setEncoding('utf8');
     let text = '';
@@ -32,8 +31,9 @@ const server = await createServer({
 });
 try {
   const cli = await server.ssrLoadModule('/src/cli.ts');
+  const { command, file, partners } = cli.parseArgs(process.argv.slice(2));
   if (command === 'answers') {
-    if ((await cli.answer(await pasted(), console.log)) > 0) process.exitCode = 1;
+    if ((await cli.answer(await pasted(file), console.log, { partners })) > 0) process.exitCode = 1;
   } else {
     await cli.report(process.cwd(), console.log);
   }

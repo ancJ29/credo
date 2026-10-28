@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { blockOf, type Choices } from './choices';
+import { LABEL } from './block';
+import { blockOf, type Choices, loadLabel, saveLabel, shareOf } from './choices';
 import { labelsOf, plural, progressOf } from './marks';
 import type { Report } from './report';
+import { normalizeLabel } from './share';
 
 /**
  * The bar at the foot, always in view: every screen in every language as a ledger, how many are
- * answered, and the button that turns the choices into the block for the chat. Its height is
- * kept on the page as `--bar`, so an answer docked at the foot rests above it.
+ * answered, and the two buttons that turn the choices into text: "Copy my answers", the human's
+ * block for the chat, and Share, a Slack message under the partner's label, which is asked for
+ * once and kept in the browser. Its height is kept on the page as `--bar`, so an answer docked at
+ * the foot rests above it.
  */
 export function Send({ report, choices }: { report: Report; choices: Choices }) {
   const bar = useRef<HTMLElement>(null);
   const [block, setBlock] = useState('');
   const [note, setNote] = useState('');
+  const [label, setLabel] = useState(loadLabel);
   const { answered: chosen } = blockOf(report, choices);
   const progress = progressOf(report, choices);
 
@@ -24,9 +29,13 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
     return () => watcher.disconnect();
   }, []);
 
-  const copy = async () => {
-    const made = blockOf(report, choices);
+  const copy = async (share: boolean) => {
     setBlock('');
+    if (share && !LABEL.test(normalizeLabel(label))) {
+      setNote('Type your label first: 1 to 20 lowercase letters, digits or hyphens.');
+      return;
+    }
+    const made = share ? shareOf(report, choices, normalizeLabel(label)) : blockOf(report, choices);
     if (made.answered === 0) {
       setNote('Nothing chosen yet: answer a screen first.');
     } else if (made.missing.length > 0) {
@@ -36,9 +45,11 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
       setBlock(made.text);
       try {
         await navigator.clipboard.writeText(made.text);
-        setNote('Copied. Paste it into the chat.');
+        setNote(share ? 'Copied. Paste it into Slack.' : 'Copied. Paste it into the chat.');
       } catch {
-        setNote('Select the text below, copy it and paste it into the chat.');
+        setNote(
+          `Select the text below, copy it and paste it into ${share ? 'Slack' : 'the chat'}.`,
+        );
       }
     }
   };
@@ -58,7 +69,24 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
         <span role="status" className="w-note">
           {note}
         </span>
-        <button type="button" className="w-copy" onClick={() => void copy()}>
+        <input
+          className="w-label"
+          aria-label="Your label"
+          placeholder="Your label"
+          maxLength={20}
+          autoCapitalize="none"
+          spellCheck={false}
+          value={label}
+          onChange={(event) => {
+            const typed = event.target.value.toLowerCase();
+            setLabel(typed);
+            saveLabel(typed);
+          }}
+        />
+        <button type="button" className="w-share" onClick={() => void copy(true)}>
+          Share
+        </button>
+        <button type="button" className="w-copy" onClick={() => void copy(false)}>
           Copy my answers
         </button>
       </div>
@@ -67,13 +95,13 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
           <textarea
             readOnly
             className="w-block"
-            aria-label="The block to paste into the chat"
+            aria-label="The text to paste"
             rows={Math.min(8, block.split('\n').length)}
             value={block}
             onFocus={(event) => event.currentTarget.select()}
           />
           <button type="button" className="w-quiet" onClick={() => setBlock('')}>
-            Hide the block
+            Hide the text
           </button>
         </div>
       )}

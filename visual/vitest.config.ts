@@ -11,6 +11,9 @@ export default defineConfig({
     testTimeout: 60_000,
     coverage: {
       provider: 'v8',
+      // untested: `run.mjs` is outside `include`, a bare entry; what stays in it is reading stdin
+      // or the file, resolving a relative path against `INIT_CWD`, dispatching to `cli.ts` (which
+      // parses the arguments and holds the rest) and setting the exit status.
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/setup.ts'],
       reporter: [['text', { skipFull: true }]],

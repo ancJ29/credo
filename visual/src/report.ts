@@ -3,7 +3,16 @@ import type { MockScreen } from '@credo/ui/mock';
 import type { Answers } from './answers';
 import { fingerprintOf } from './fingerprint';
 import { type Source, vietnamTime } from './home';
-import { type Orphan, orphansOf, type Shown, shownFor, type Tally, tallyOf } from './states';
+import {
+  type Orphan,
+  orphansOf,
+  partnersFor,
+  type Held,
+  type Shown,
+  shownFor,
+  type Tally,
+  tallyOf,
+} from './states';
 import {
   answerKey,
   type Bilingual,
@@ -17,8 +26,16 @@ import {
   type Walk,
 } from './walks';
 
-/** One screen in one language: its words now, the fingerprint of them, and what to show beside it. */
-type ScreenInLanguage = { words: string[]; fingerprint: string; shown: Shown };
+/**
+ * One screen in one language: its words now, the fingerprint of them, and what to show beside it:
+ * the human's answer, which alone marks the screen, and the partners' by label.
+ */
+type ScreenInLanguage = {
+  words: string[];
+  fingerprint: string;
+  shown: Shown;
+  partners: { label: string; shown: Held }[];
+};
 
 export type ReportScreen = {
   id: string;
@@ -107,7 +124,12 @@ export function makeReport(input: {
           const now = words.get(key)!;
           return [
             language,
-            { words: now, fingerprint: fingerprintOf(now), shown: shownFor(answers[key], now) },
+            {
+              words: now,
+              fingerprint: fingerprintOf(now),
+              shown: shownFor(answers[key], now),
+              partners: partnersFor(answers, key, now),
+            },
           ];
         }),
       ) as Record<Language, ScreenInLanguage>;

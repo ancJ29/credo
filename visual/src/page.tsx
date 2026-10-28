@@ -153,8 +153,8 @@ export function Page({ report }: { report: Report }) {
           <p className="w-sub">Who does what, on the device they use.</p>
           <p className="w-howto">
             Answer each screen’s question Yes or No, in Tiếng Việt and in English, with a reason for
-            any No. Then press “Copy my answers” and paste the block into the chat; this page sends
-            nothing.
+            any No. A partner types their label and presses “Share”, then posts the message in
+            Slack; “Copy my answers” is not for partners. This page sends nothing.
           </p>
         </div>
         <div className="w-meta">
