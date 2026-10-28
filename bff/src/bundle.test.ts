@@ -31,8 +31,12 @@ const callHandler = `
       sourceIp: '127.0.0.1', userAgent: 'test' }, stage: '$default' },
     isBase64Encoded: false,
   }, { callbackWaitsForEmptyEventLoop: false })
-    .then((answer) => console.log('ANSWER ' + JSON.stringify(answer)));
+    .then((answer) => console.log('ANSWER ' + JSON.stringify(answer) + '\\nNODE ' + process.version));
 `;
+
+/** The runtime's Node, which the app job names in BUNDLE_NODE (Node 24: a Node 26 API that Lambda
+ * lacks fails there alone). Everywhere else the bundle runs under the Node running the tests. */
+const bundleNode = process.env['BUNDLE_NODE'];
 
 describe('the Lambda bundle', () => {
   it('is one file, and answers an HTTP API event when run alone', async () => {
@@ -44,7 +48,7 @@ describe('the Lambda bundle', () => {
 
     const run = promisify(execFile);
     const answer = (await run(
-      process.execPath,
+      bundleNode ?? process.execPath,
       [
         '-e',
         callHandler,
@@ -67,6 +71,7 @@ describe('the Lambda bundle', () => {
     )) as { stdout: string };
     // The app logs to stdout too, before or after the answer's line.
     const line = answer.stdout.split('\n').find((text) => text.startsWith('ANSWER '));
+    if (bundleNode) expect(answer.stdout).toMatch(/^NODE v24\./m);
     expect(JSON.parse(line?.slice('ANSWER '.length) ?? 'null')).toMatchObject({
       statusCode: 404,
       body: expect.stringContaining('Unknown client') as string,
