@@ -44,6 +44,12 @@ on:
 permissions:
   contents: read
 
+# Vitest starts a worker per core for each test file, ~2 s of startup each under load. With the
+# jobs running at once (act runs all four on one Mac), a test that takes 2 s alone passes its 5 s
+# limit. Two workers a package: GitHub's runner has four cores and runs one package at a time.
+env:
+  VITEST_MAX_WORKERS: 2
+
 jobs:
   check:
     runs-on: ubuntu-24.04

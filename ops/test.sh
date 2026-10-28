@@ -312,8 +312,8 @@ throttle_guard() {
     '.Resources.ApiStage.Properties | .StageName == "$default" and .DefaultRouteSettings.ThrottlingRateLimit == 10 and .DefaultRouteSettings.ThrottlingBurstLimit == 50 and .ApiId == {"Ref":"Api"}'
   must "$1" "the route is not \$default to the BFF's integration" \
     '.Resources.ApiRoute.Properties | .RouteKey == "$default" and (.Target["Fn::Sub"] == "integrations/${ApiIntegration}")'
-  must "$1" "the API's invoke permission is not for this API alone" \
-    '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | startswith("${Api.ExecuteApiArn}/"))'
+  must "$1" "the API's invoke permission is not for this API alone (an execute-api ARN of its own: the API has no ExecuteApiArn attribute)" \
+    '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | test("^arn:[$][{]AWS::Partition[}]:execute-api:[$][{]AWS::Region[}]:[$][{]AWS::AccountId[}]:[$][{]Api[}]/"))'
 }
 
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
@@ -652,6 +652,8 @@ Check|after" ] || missing="${missing}[the steps end Release, then the ship and t
   [ -n "$want_region" ] && [ "$want_region" = "$have_region" ] || missing="${missing}[aws-region is lib.sh's $want_region, found '$have_region'] "
   [ -z "$missing" ] || die "the deploy job lacks: $missing"
 }
+check "the workflow caps vitest's workers, so parallel jobs (act's four on one Mac) do not starve each test" 1 \
+  "$(grep -cE '^  VITEST_MAX_WORKERS: 2$' "$WORKFLOW" || true)"
 passes "the deploy job holds every condition" deploy_guards "$WORKFLOW"
 sed "s/ && github.ref == 'refs\/heads\/main'//" "$WORKFLOW" >"$WORK/wf-branch.yml"
 refuses "a deploy job that also runs on a branch is refused" "github.ref == 'refs/heads/main'" deploy_guards "$WORK/wf-branch.yml"
@@ -1577,7 +1579,7 @@ pw=$(sed -n 's/^.*the operator is operator, first password \([A-Za-z0-9_-]*\).*$
 check "the operator is made, and its first password shown on the terminal once" "0 16 1" \
   "$RC ${#pw} $(grep -c "first password $pw" "$S/out" || true)"
 check "  the log holds the account made and no password" "1 0" \
-  "$(grep -c '^operator operator made' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log | grep -c "$pw" || true)"
+  "$(grep -c '^operator operator made' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF -e "$pw" || true)"
 check "  and the log's search for it ran" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 export OPS_LOG_DIR=$E2E/logs-operator-pty2
 pty_run operator.sh ridge
