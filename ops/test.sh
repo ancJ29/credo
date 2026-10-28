@@ -4,8 +4,10 @@
 # deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in
 # the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a Bruno run,
 # the credentials bru never holds, the log's exit code after a signal, the workflow's deploy job,
-# the shared helpers (the port, the forward that cannot bind, /health naming a commit of main, the
-# keys file's mode), ops/tunnel.sh and check.sh's port refusal run whole on stand-ins for aws and
+# layer four's template (env.yml read as JSON through Ruby: rows 22, 25, 26, 29, 30 and 32 of
+# docs/plans/2026-10-28-ridge-app.md, each with the template broken one way, and the CloudFront
+# Function run under Node) and its change set, the shared helpers (the port, the forward that
+# cannot bind, /health naming a commit of main, the keys file's mode), ops/tunnel.sh and check.sh's port refusal run whole on stand-ins for aws and
 # ssh (every way the tunnel ends), and the release's checks of /health against the real c-storage
 # binary, built here with several stamps and without one (it needs Go): the build it waits for, and
 # the newer build it must never overwrite.
@@ -174,6 +176,239 @@ passes "ridge's update, hand-written as CloudFormation shows it, is a Modify of 
   modifies_role_in_place "$OPS_DIR/testdata/changeset-trust.json"
 refuses "a replacement of DeployRole is not that update" "not a Modify of DeployRole in place" \
   modifies_role_in_place "$OPS_DIR/testdata/changeset-replaces.json"
+
+echo "== layer four's template (env.yml read as JSON: rows 22, 25, 26, 29, 30, 32 of docs/plans/2026-10-28-ridge-app.md)"
+# tojson <template> → CloudFormation's long form as JSON ("!Ref x" is {"Ref": "x"}), read with Ruby
+# (on the runner and the Mac): jq has no YAML, and a plain loader drops the tags.
+tojson() {
+  ruby -ryaml -rjson -e '
+    def plain(node)
+      return node.value if node.quoted || node.style != Psych::Nodes::Scalar::PLAIN
+      begin
+        value = YAML.safe_load(node.value)
+        value.is_a?(String) || value.is_a?(Numeric) || value == true || value == false || value.nil? ? value : node.value
+      rescue StandardError
+        node.value
+      end
+    end
+    def conv(node)
+      value =
+        case node
+        when Psych::Nodes::Scalar then node.tag ? node.value : plain(node)
+        when Psych::Nodes::Sequence then node.children.map { |c| conv(c) }
+        when Psych::Nodes::Mapping then node.children.each_slice(2).map { |k, v| [k.value, conv(v)] }.to_h
+        end
+      return value unless node.tag
+      name = node.tag.sub(/\A!/, "")
+      return { "Ref" => value } if name == "Ref"
+      return { "Fn::GetAtt" => value.split(".", 2) } if name == "GetAtt" && value.is_a?(String)
+      { "Fn::#{name}" => value }
+    end
+    puts JSON.generate(conv(YAML.parse(File.read(ARGV[0])).root))
+  ' "$1"
+}
+tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
+check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
+  "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
+# mut <jq program> → the path of a copy of the template's JSON with the program applied: a template broken one way
+mut() {
+  jq -c "$1" "$WORK/env.json" >"$WORK/env-mut.json"
+  echo "$WORK/env-mut.json"
+}
+
+# must <json> <what the template must hold> <jq test>: dies naming what is wrong
+must() { jq -e "$3" "$1" >/dev/null || die "$2"; }
+
+# row 22: the BFF's group sends to c-storage's port on the box's group alone; the function sits in
+# ridge's subnet under that group alone; the box admits the BFF's group on that port and nothing
+# but ssh from the endpoint's group besides.
+bff_network_guard() {
+  must "$1" "BffGroup does not send to c-storage's port on the box's group alone" \
+    '.Resources.BffGroup.Properties.SecurityGroupEgress == [{"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]'
+  must "$1" "BffGroup admits traffic in" '.Resources.BffGroup.Properties.SecurityGroupIngress == null'
+  must "$1" "the function is not in ridge's subnet under BffGroup alone" \
+    '.Resources.Bff.Properties.VpcConfig == {"SubnetIds":[{"Ref":"Subnet"}],"SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
+  must "$1" "the box's second rule is not c-storage's port from BffGroup alone" \
+    '.Resources.BoxFromBff.Properties | . == {"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"SourceSecurityGroupId":{"Fn::GetAtt":["BffGroup","GroupId"]}, "Description": .Description}'
+  must "$1" "a rule other than BoxFromBff opens the box" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::SecurityGroupIngress" or .value.Type == "AWS::EC2::SecurityGroupEgress") | .key] == ["BoxFromBff"]'
+  must "$1" "the box's own rules are not ssh from the endpoint's group alone" \
+    '.Resources.BoxGroup.Properties.SecurityGroupIngress | length == 1 and .[0].FromPort == 22 and .[0].ToPort == 22 and (.[0] | keys == ["FromPort","IpProtocol","SourceSecurityGroupId","ToPort"])'
+  must "$1" "BoxPort has a default, so a stack.sh that forgets it would not be refused" \
+    '.Parameters.BoxPort.Type == "Number" and (.Parameters.BoxPort | has("Default") | not)'
+}
+# row 25: the rewrite, the behaviours, no error pages
+rewrite_guard() {
+  must "$1" "the rewrite is not a cloudfront-js-2.0 function" '.Resources.UiRewrite.Properties.FunctionConfig.Runtime == "cloudfront-js-2.0" and .Resources.UiRewrite.Properties.AutoPublish == true'
+  must "$1" "the default behaviour does not carry the rewrite on viewer-request alone" \
+    '.Resources.Distribution.Properties.DistributionConfig.DefaultCacheBehavior.FunctionAssociations == [{"EventType":"viewer-request","FunctionARN":{"Fn::GetAtt":["UiRewrite","FunctionMetadata.FunctionARN"]}}]'
+  must "$1" "/api/* is not the one extra behaviour, uncached, to the API, every method" \
+    '.Resources.Distribution.Properties.DistributionConfig.CacheBehaviors | length == 1 and .[0].PathPattern == "/api/*" and .[0].TargetOriginId == "api" and .[0].CachePolicyId == "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" and .[0].OriginRequestPolicyId == "b689b0a8-53d0-40ab-baf2-68738e2966ac" and (.[0].AllowedMethods | sort) == ["DELETE","GET","HEAD","OPTIONS","PATCH","POST","PUT"] and (.[0] | has("FunctionAssociations") | not)'
+  must "$1" "the distribution turns an error answer into the app's page (CustomErrorResponses)" \
+    '.Resources.Distribution.Properties.DistributionConfig | has("CustomErrorResponses") | not'
+  must "$1" "a behaviour admits plain HTTP" \
+    '.Resources.Distribution.Properties.DistributionConfig | [.DefaultCacheBehavior, .CacheBehaviors[]] | all(.ViewerProtocolPolicy == "redirect-to-https" or .ViewerProtocolPolicy == "https-only")'
+}
+# rewrite_run <json>: the CloudFront Function's own code, run under Node on paths; prints "<path> <uri>"
+rewrite_run() {
+  jq -r '.Resources.UiRewrite.Properties.FunctionCode' "$1" >"$WORK/rewrite.js"
+  node -e '
+    const vm = require("vm"), fs = require("fs");
+    const ctx = {};
+    vm.runInNewContext(fs.readFileSync(process.argv[1], "utf8"), ctx);
+    for (const uri of ["/", "/login", "/operator", "/settings/brand", "/assets/app-3fa9.js", "/favicon.svg", "/index.html", "/a.b/login"]) {
+      const query = { "client-code": { value: "acme" } };
+      const out = ctx.handler({ request: { uri, querystring: query, headers: {} } });
+      console.log(uri + " " + out.uri + (JSON.stringify(out.querystring) === JSON.stringify(query) ? "" : " QUERY-LOST"));
+    }
+  ' "$WORK/rewrite.js" 2>&1 | tr '\n' ';'
+}
+rewrite_wanted='/ /index.html;/login /index.html;/operator /index.html;/settings/brand /index.html;/assets/app-3fa9.js /assets/app-3fa9.js;/favicon.svg /favicon.svg;/index.html /index.html;/a.b/login /index.html;'
+# row 26: the UI's bucket is private and read by the distribution alone
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+bucket_guard() {
+  must "$1" "the UI's bucket does not block all public access" \
+    '.Resources.UiBucket.Properties.PublicAccessBlockConfiguration == {"BlockPublicAcls":true,"BlockPublicPolicy":true,"IgnorePublicAcls":true,"RestrictPublicBuckets":true}'
+  must "$1" "the UI's bucket is a website, or not owned by the bucket owner alone" \
+    '.Resources.UiBucket.Properties | has("WebsiteConfiguration") == false and has("AccessControl") == false and .OwnershipControls.Rules[0].ObjectOwnership == "BucketOwnerEnforced"'
+  must "$1" "the UI's bucket is not encrypted" '.Resources.UiBucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration | length == 1'
+  must "$1" "the bucket policy is not one statement reading objects for the distribution alone" \
+    '.Resources.UiBucketPolicy.Properties | .Bucket == {"Ref":"UiBucket"} and (.PolicyDocument.Statement | length == 1) and (.PolicyDocument.Statement[0] | .Effect == "Allow" and .Principal == {"Service":"cloudfront.amazonaws.com"} and .Action == "s3:GetObject" and .Resource == {"Fn::Sub":"${UiBucket.Arn}/*"} and (.Condition | keys == ["StringEquals"]) and (.Condition.StringEquals | keys == ["AWS:SourceArn"]) and (.Condition.StringEquals["AWS:SourceArn"]["Fn::Sub"] | contains("distribution/${Distribution}")))'
+  must "$1" "the distribution reaches the bucket other than through origin access control" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "ui")) | length == 1 and .[0].OriginAccessControlId == {"Fn::GetAtt":["UiAccess","Id"]} and .[0].S3OriginConfig == {"OriginAccessIdentity":""} and (.[0] | has("CustomOriginConfig") | not)'
+  must "$1" "origin access control does not always sign" \
+    '.Resources.UiAccess.Properties.OriginAccessControlConfig | .OriginAccessControlOriginType == "s3" and .SigningBehavior == "always" and .SigningProtocol == "sigv4"'
+}
+# row 29: the deploy role holds exactly its actions, the function's code and settings held to
+# ridge's subnet and group, the bucket's put and list; no stack, IAM or CloudFront right
+deploy_role_guard() {
+  local got want
+  got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
+  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
+  [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
+  must "$1" "a lambda action reaches a function other than Bff" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
+  must "$1" "an s3 action reaches a bucket other than UiBucket" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | .Resource | tostring] | all(contains("UiBucket"))'
+  must "$1" "UpdateFunctionConfiguration is not held to ridge's subnet and the BFF's group" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and .[0].Condition == {"ForAllValues:StringEquals":{"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}}'
+  must "$1" "a statement of the deploy role allows every resource for a write" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Resource == "*") | .Action | if type == "array" then .[] else . end] | all(startswith("ec2:Describe"))'
+}
+# row 30: the function's keys arrive from the box at each deploy; the template holds none, and
+# gives the function no Environment (an update of it would clear what the deploy set)
+bff_keys_guard() {
+  must "$1" "Bff holds an Environment" '.Resources.Bff.Properties | has("Environment") | not'
+  must "$1" "Bff is not the stub that answers 503 until the first deploy" \
+    '.Resources.Bff.Properties.Code | keys == ["ZipFile"] and (.ZipFile | contains("503"))'
+  ! grep -qE 'SERVICE_ACCESS_KEY|INTERNAL_ACCESS_KEY|SERVICE_CODE' "$2" || die "the template names one of the BFF's keys"
+}
+# row 32: the API refuses calls past 10 a second, bursts of 50, on the $default stage
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+throttle_guard() {
+  must "$1" "the stage is not \$default, throttled to 10 a second with bursts of 50" \
+    '.Resources.ApiStage.Properties | .StageName == "$default" and .DefaultRouteSettings.ThrottlingRateLimit == 10 and .DefaultRouteSettings.ThrottlingBurstLimit == 50 and .ApiId == {"Ref":"Api"}'
+  must "$1" "the route is not \$default to the BFF's integration" \
+    '.Resources.ApiRoute.Properties | .RouteKey == "$default" and (.Target["Fn::Sub"] == "integrations/${ApiIntegration}")'
+  must "$1" "the API's invoke permission is not for this API alone" \
+    '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | startswith("${Api.ExecuteApiArn}/"))'
+}
+
+passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
+refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
+refuses "  a box rule for the whole VPC is refused" "box's second rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBff.Properties |= (del(.SourceSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
+refuses "  a third rule on the box is refused" "other than BoxFromBff opens the box" \
+  bff_network_guard "$(mut '.Resources.BoxFromAny = {"Type":"AWS::EC2::SecurityGroupIngress","Properties":{"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":3181,"ToPort":3181,"CidrIp":"0.0.0.0/0"}}')"
+refuses "  a function in another group is refused" "ridge's subnet under BffGroup alone" \
+  bff_network_guard "$(mut '.Resources.Bff.Properties.VpcConfig.SecurityGroupIds = [{"Fn::GetAtt":["BoxGroup","GroupId"]}]')"
+refuses "  a function out of the subnet is refused" "ridge's subnet under BffGroup alone" \
+  bff_network_guard "$(mut 'del(.Resources.Bff.Properties.VpcConfig)')"
+refuses "  a port with a default is refused" "BoxPort has a default" \
+  bff_network_guard "$(mut '.Parameters.BoxPort.Default = 3181')"
+
+passes "the page rewrite, the behaviours and no error pages (row 25)" rewrite_guard "$WORK/env.json"
+check "  a path with no extension is the app's page, a file is itself, the query is kept" "$rewrite_wanted" "$(rewrite_run "$WORK/env.json")"
+refuses "  an error page turned into the app's page is refused" "CustomErrorResponses" \
+  rewrite_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.CustomErrorResponses = [{"ErrorCode":404,"ResponseCode":200,"ResponsePagePath":"/index.html"}]')"
+refuses "  the rewrite on the /api/* behaviour is refused" "/api/* is not the one extra behaviour" \
+  rewrite_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.CacheBehaviors[0].FunctionAssociations = [{"EventType":"viewer-request","FunctionARN":"x"}]')"
+refuses "  a cached /api/* is refused" "/api/* is not the one extra behaviour" \
+  rewrite_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.CacheBehaviors[0].CachePolicyId = "658327ea-f89d-4fab-a63d-7e88639e58f6"')"
+refuses "  plain HTTP is refused" "admits plain HTTP" \
+  rewrite_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.DefaultCacheBehavior.ViewerProtocolPolicy = "allow-all"')"
+# a rewrite that sends every path to the page (files too) is not the wanted one
+jq -c '.Resources.UiRewrite.Properties.FunctionCode = "function handler(event) { event.request.uri = \"/index.html\"; return event.request; }"' "$WORK/env.json" >"$WORK/env-rewrite-all.json"
+check "  a rewrite that also takes the files is told apart" no "$([ "$(rewrite_run "$WORK/env-rewrite-all.json")" = "$rewrite_wanted" ] && echo yes || echo no)"
+jq -c '.Resources.UiRewrite.Properties.FunctionCode |= sub("return request;"; "request.querystring = {}; return request;")' "$WORK/env.json" >"$WORK/env-rewrite-query.json"
+check "  and one that drops the query (the client's code)" no "$([ "$(rewrite_run "$WORK/env-rewrite-query.json")" = "$rewrite_wanted" ] && echo yes || echo no)"
+
+passes "the UI's bucket is private and read by the distribution alone (row 26)" bucket_guard "$WORK/env.json"
+refuses "  a bucket that allows public policy is refused" "block all public access" \
+  bucket_guard "$(mut '.Resources.UiBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy = false')"
+# shellcheck disable=SC2016 # jq's program, in single quotes
+refuses "  a policy that also admits everyone is refused" "distribution alone" \
+  bucket_guard "$(mut '.Resources.UiBucketPolicy.Properties.PolicyDocument.Statement += [{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":{"Fn::Sub":"${UiBucket.Arn}/*"}}]')"
+refuses "  a policy that drops the distribution condition is refused" "distribution alone" \
+  bucket_guard "$(mut 'del(.Resources.UiBucketPolicy.Properties.PolicyDocument.Statement[0].Condition)')"
+refuses "  a website bucket is refused" "is a website" \
+  bucket_guard "$(mut '.Resources.UiBucket.Properties.WebsiteConfiguration = {"IndexDocument":"index.html"}')"
+
+passes "the deploy role holds exactly its actions (row 29)" deploy_role_guard "$WORK/env.json"
+refuses "  one more action (cloudformation:UpdateStack) is refused" "actions are not the wanted ones" \
+  deploy_role_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[0].Action = ["cloudformation:DescribeStacks","cloudformation:UpdateStack"]')"
+refuses "  a delete on the bucket is refused" "actions are not the wanted ones" \
+  deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "s3:PutObject") | .Action) = ["s3:PutObject","s3:DeleteObject"]')"
+refuses "  a function setting free of the subnet and group is refused" "held to ridge's subnet" \
+  deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionConfiguration")) |= del(.Condition)')"
+refuses "  a code right on every function is refused" "other than Bff" \
+  deploy_role_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "lambda:UpdateFunctionCode") | .Resource) = "*"')"
+
+passes "the function holds no key and no Environment, and is the 503 stub (row 30)" bff_keys_guard "$WORK/env.json" "$OPS_DIR/env.yml"
+refuses "  an Environment on the function is refused" "holds an Environment" \
+  bff_keys_guard "$(mut '.Resources.Bff.Properties.Environment = {"Variables":{"X":"y"}}')" "$OPS_DIR/env.yml"
+refuses "  code that is not the stub is refused" "503 until the first deploy" \
+  bff_keys_guard "$(mut '.Resources.Bff.Properties.Code = {"S3Bucket":"b","S3Key":"k"}')" "$OPS_DIR/env.yml"
+echo 'SERVICE_ACCESS_KEY: x' >"$WORK/env-keyed.yml"
+refuses "  a key's name in the template is refused" "names one of the BFF's keys" bff_keys_guard "$WORK/env.json" "$WORK/env-keyed.yml"
+
+passes "the API is throttled to 10 a second, bursts of 50 (row 32)" throttle_guard "$WORK/env.json"
+refuses "  a looser throttle is refused" "throttled to 10 a second" \
+  throttle_guard "$(mut '.Resources.ApiStage.Properties.DefaultRouteSettings.ThrottlingRateLimit = 100')"
+refuses "  no throttle is refused" "throttled to 10 a second" \
+  throttle_guard "$(mut 'del(.Resources.ApiStage.Properties.DefaultRouteSettings)')"
+refuses "  an invoke permission for every API is refused" "this API alone" \
+  throttle_guard "$(mut '.Resources.ApiInvoke.Properties.SourceArn = "*"')"
+
+# box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+box_port_guard() {
+  [ "$(grep -c '^ *add_param BoxPort "\$BOX_PORT"$' "$1" || true)" = 1 ] || die "stack.sh does not pass BoxPort from the unit's port"
+  grep -B2 '^ *add_param BoxPort' "$1" | grep -q '^ *add_param Env ' || die "BoxPort is not passed beside Env, on both paths"
+}
+passes "stack.sh passes BoxPort from the unit's port, on a creation and on an update" box_port_guard "$OPS_DIR/stack.sh"
+grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
+refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
+
+echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
+# adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
+# Add, the one Modify is DeployRole, in place, and the guard names nothing
+adds_and_one_modify() {
+  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes'
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
+  [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | join(",")' "$1")
+  [ "$seen" = "Modify DeployRole False" ] || die "the change set's other changes are not a Modify of DeployRole in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "layer four's change set is adds and a Modify of DeployRole in place, and the guard passes" \
+  adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$WORK/env.json"
+refuses "  a template resource the change set lacks is refused" "the template gained" \
+  adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut '.Resources.Extra = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
+  adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
 
 echo "== ops/ is origin/main's (release, check, drill and stack run only reviewed scripts); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
