@@ -135,8 +135,10 @@ function Panel({
   const lacksReason = choice.answer === 'no' && choice.reason.trim() === '';
   return (
     <div className="w-panel">
-      <p className="w-question">{screen.question}</p>
-      <fieldset className="w-choose">
+      <p className="w-question" id={`${name}:question`}>
+        {screen.question}
+      </p>
+      <fieldset className="w-choose" aria-describedby={`${name}:question`}>
         <legend>Your answer in {LANGUAGE_LABEL[language]}</legend>
         <div className="w-yesno">
           {(['yes', 'no'] as const).map((value) => (

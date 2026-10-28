@@ -535,7 +535,12 @@ describe('the walks page: its layout', () => {
       'w-words',
     ]);
     expect(ask.getByText('Is this what an admin sets up first?')).toBeTruthy();
-    expect(ask.getByRole('group', { name: 'Your answer in Tiếng Việt' })).toBeTruthy();
+    expect(
+      ask.getByRole('group', {
+        name: 'Your answer in Tiếng Việt',
+        description: 'Is this what an admin sets up first?',
+      }),
+    ).toBeTruthy();
     expect(css).toMatch(
       /@container screen \(min-width: 900px\) \{\s*\.w-screen-grid \{[^}]*grid-template-columns: minmax\(0, 1fr\) 300px/,
     );
