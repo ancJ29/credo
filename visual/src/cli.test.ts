@@ -14,7 +14,11 @@ describe('pnpm report', () => {
     const folder = await report(worktree, (line) => lines.push(line));
 
     expect(readdirSync(join(root, 'walks'))).toHaveLength(1);
-    expect(lines).toEqual([`walks page: ${folder}`, '26 waiting, 0 asked again, 0 no, 0 yes']);
+    // The rows come from the committed `answers.json`, which the walks fill, so only the sum is fixed.
+    expect(lines[0]).toBe(`walks page: ${folder}`);
+    expect(lines).toHaveLength(2);
+    const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(26);
     const walks = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as {
       walks: { screens: { id: string; languages: Record<string, { words: string[] }> }[] }[];
     };
