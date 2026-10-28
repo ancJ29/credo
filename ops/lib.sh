@@ -132,10 +132,12 @@ mkwork() {
 }
 
 # mask <value>: GitHub's log mask, written past the log file so the log never holds the value.
-# Remembers the value for the end-of-run search.
+# Remembers the value for the end-of-run search. fd 3 is the terminal and tee writes the same pipe
+# from another process, so the command opens with a newline: it can then never land mid-line, where
+# GitHub would not read it and the value would print.
 mask() {
   if [ -z "$1" ]; then return 0; fi
-  if [ "${GITHUB_ACTIONS:-}" = true ]; then echo "::add-mask::$1" >&3; fi
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then printf '\n::add-mask::%s\n' "$1" >&3; fi
   SECRETS="${SECRETS}$1"$'\n'
 }
 
@@ -144,21 +146,31 @@ repository() {
   git -C "$REPO_DIR" remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##'
 }
 
-# main_synced: fetches origin/main, then refuses unless ops/ here is exactly origin/main's, so a
-# script that acts under the human's AWS session is always a reviewed one.
+# main_synced: fetches origin/main, then refuses unless ops/ here is as reviewed (ops_match_main), so
+# a script that acts under the human's AWS session is always a reviewed one.
 main_synced() {
   git -C "$REPO_DIR" fetch --quiet origin main || die "cannot fetch origin main: the scripts here cannot be compared with main's"
   ops_match_main
 }
 
-# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) equals origin/main's
+# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) is as reviewed.
+#   By hand: equal to origin/main's.
+#   In the deploy job (GITHUB_ACTIONS=true): equal to the commit checked out, which must be a commit
+#   of origin/main. A push that lands during the run moves origin/main on, and the job still runs
+#   what it checked out; comparing with the moved ref would turn a sound deploy red.
 ops_match_main() {
+  local base=origin/main whose="origin/main's"
   git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
-  if ! git -C "$REPO_DIR" diff --quiet origin/main -- ops ||
-    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
-    die "ops/ here differs from origin/main's: run the scripts from a worktree at main, never unreviewed ones"
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then
+    git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main || die "the commit checked out is not a commit of main: only main is released"
+    base=HEAD
+    whose="this commit's"
   fi
-  ok "ops/ is origin/main's"
+  if ! git -C "$REPO_DIR" diff --quiet "$base" -- ops ||
+    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
+    die "ops/ here differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
+  fi
+  ok "ops/ is $whose"
 }
 
 region_enabled() {
@@ -219,6 +231,88 @@ repository_matches_stack() {
   have=$(stack_param Repository)
   if [ -n "$have" ] && [ "$have" != "$1" ]; then
     die "this clone's origin is $1, but the stack's Repository is $have: run from a clone of $have"
+  fi
+}
+
+# The shape env.yml's SubjectPrefix accepts (its AllowedPattern, which ops/test.sh compares)
+SUBJECT_PREFIX_RE='^repo:[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?$'
+
+# subject_prefix_of <owner/name> <GitHub's answer> → the start of the subject GitHub puts in this
+# repository's tokens, read from repos/<owner/name>/actions/oidc/customization/sub. GitHub may issue
+# the immutable subject (owner@id/name@id), which no name alone predicts. Refused: an answer that
+# cannot be read, custom claim keys (use_default false: the subject's whole shape changes), the
+# immutable subject without its prefix, a prefix of another shape than the role's trust takes, and a prefix naming another repository.
+subject_prefix_of() {
+  local repo=$1 body=$2 use_default immutable prefix
+  use_default=$(jq -r 'if type == "object" then (.use_default | if . == null then empty else tostring end) else empty end' <<<"$body" 2>/dev/null) ||
+    die "GitHub's OIDC subject settings for $repo cannot be read (the answer is not JSON)"
+  [ -n "$use_default" ] || die "GitHub's OIDC subject settings for $repo cannot be read (no use_default in the answer)"
+  [ "$use_default" = true ] ||
+    die "the OIDC subject of $repo uses custom claim keys (use_default is $use_default): its whole shape changes, and the role's trust is not made for it"
+  immutable=$(jq -r '.use_immutable_subject // false' <<<"$body")
+  prefix=$(jq -r '.sub_claim_prefix // empty' <<<"$body")
+  if [ -z "$prefix" ]; then
+    [ "$immutable" != true ] ||
+      die "the OIDC subject of $repo is the immutable one, but GitHub gave no sub_claim_prefix: the ids cannot be known"
+    prefix=repo:$repo
+  fi
+  [[ $prefix =~ $SUBJECT_PREFIX_RE ]] ||
+    die "the OIDC subject prefix GitHub gave for $repo is not of the shape repo:owner[@id]/name[@id]"
+  # it names this repository: the ids dropped, the name equal to repo:<owner/name>, case aside
+  local bare want
+  bare=$(sed -E 's/@[0-9]+//g' <<<"$prefix" | tr '[:upper:]' '[:lower:]')
+  want=$(tr '[:upper:]' '[:lower:]' <<<"repo:$repo")
+  [ "$bare" = "$want" ] ||
+    die "the OIDC subject prefix GitHub gave for $repo ($prefix) names another repository"
+  echo "$prefix"
+}
+
+# github_subject_prefix <owner/name> → subject_prefix_of, asked of GitHub with the human's gh
+github_subject_prefix() {
+  local body
+  body=$(gh api "repos/$1/actions/oidc/customization/sub" 2>/dev/null) ||
+    die "gh api repos/$1/actions/oidc/customization/sub failed: is gh logged in with rights on $1?"
+  subject_prefix_of "$1" "$body"
+}
+
+# subject_matches_stack <prefix>: an update never moves the deploy role's trust to another subject,
+# such as a fork's clone, whose ids differ; a stack with no SubjectPrefix yet passes
+subject_matches_stack() {
+  local have
+  have=$(stack_param SubjectPrefix)
+  if [ -n "$have" ] && [ "$have" != "$1" ]; then
+    die "GitHub's subject prefix for this repository is $1, but the stack's SubjectPrefix is $have: either this is a fork's clone (run from a clone of the stack's repository), or the repository's OIDC subject setting changed on GitHub (see the plan, 'Deploys from GitHub Actions', and the runbook's 'The first deploy was refused at the role')"
+  fi
+}
+
+# subject_param_plan <prefix> → "previous" when the stack already holds a SubjectPrefix (kept, after
+# subject_matches_stack), "set" when it holds none (ridge before this parameter existed: the
+# trust alone changes, to GitHub's prefix)
+subject_param_plan() {
+  subject_matches_stack "$1"
+  if [ -n "$(stack_param SubjectPrefix)" ]; then echo previous; else echo set; fi
+}
+
+# add_param <key> <value>, or <key> alone to keep its previous value: appends to PARAMS, the
+# template's parameters as a JSON array. A new stack gets the values read now; an updated one
+# keeps those it must not move.
+add_param() { # <key> <value> | <key> (previous)
+  if [ $# -eq 2 ]; then
+    PARAMS=$(jq -c --arg k "$1" --arg v "$2" '. + [{ParameterKey: $k, ParameterValue: $v}]' <<<"$PARAMS")
+  else
+    PARAMS=$(jq -c --arg k "$1" '. + [{ParameterKey: $k, UsePreviousValue: true}]' <<<"$PARAMS")
+  fi
+}
+
+# add_subject_param <prefix>: on an update, appends SubjectPrefix to PARAMS: the stack's own value
+# kept (after subject_matches_stack), or GitHub's prefix once on a stack that holds none
+add_subject_param() {
+  local plan
+  plan=$(subject_param_plan "$1") || exit 1
+  if [ "$plan" = previous ]; then
+    add_param SubjectPrefix
+  else
+    add_param SubjectPrefix "$1"
   fi
 }
 
@@ -330,6 +424,28 @@ read_keys() {
   [ -n "$INTERNAL_KEY" ] && [ -n "$ADMIN_KEY" ] || die "the box's keys file holds no keys"
   mask "$INTERNAL_KEY"
   mask "$ADMIN_KEY"
+}
+
+# superseded <env> <sha> <command that prints /health's body...>: succeeds, saying so, when the build
+# <env> runs has <sha> as a strict ancestor: a release never moves an environment backwards. No
+# answer, an unstamped build, the same commit, a commit this clone lacks and a commit that does not
+# descend from <sha> all fail, and the release goes on.
+superseded() {
+  local env=$1 sha=$2 running
+  shift 2
+  running=$(build_of "$("$@" 2>/dev/null || true)")
+  [ -n "$running" ] && [ "$running" != "$sha" ] || return 1
+  git -C "$REPO_DIR" merge-base --is-ancestor "$sha" "$running" 2>/dev/null || return 1
+  echo "superseded: $env runs $running"
+}
+
+# BRU_UNSET: the job's credentials, which bru must never hold: Bruno CLI runs third-party code (its
+# npm dependencies). The OIDC variables are present in every step of a job that may mint a token.
+BRU_UNSET=(-u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_TOKEN -u ACTIONS_ID_TOKEN_REQUEST_URL -u ACTIONS_RUNTIME_TOKEN)
+
+# bru_clean <bru arguments...>: bru, without the job's credentials
+bru_clean() {
+  env "${BRU_UNSET[@]}" bru "$@"
 }
 
 # build_of <body> → /health's buildVersion, empty if the body names none

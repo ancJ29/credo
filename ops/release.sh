@@ -6,6 +6,9 @@
 #   By hand: builds <sha> (main's tip when none) in a throwaway worktree, after c-storage's whole
 #   gate; a sha main lacks is refused. Run from a worktree whose ops/ is origin/main's.
 #   In the job: RELEASE_BINARY names the binary `make box` built from the commit the job runs on.
+#   ridge never moves backwards: when <env> already runs a commit that has this one as a strict
+#   ancestor, the log ends "superseded: <env> runs <sha>", the exit is 0, and nothing changed. The
+#   deploy job's gates finish in any order, so an older push can arrive after a newer one.
 # Needs `make box` in c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
 # Expected length: about 4 minutes by hand (the gate and the build), under a minute in the job.
 set -euo pipefail
@@ -59,6 +62,11 @@ echo "binary: $(wc -c <"$binary" | tr -d ' ') bytes, sha256 $want_sum"
 step "the tunnel to $ENVNAME's box"
 box_open "$ENVNAME" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
+# Read before anything is sent: a superseded release changes nothing on the box.
+if superseded "$ENVNAME" "$sha" box curl -fsS -m 5 "http://127.0.0.1:$BOX_PORT/health"; then
+  echo "nothing sent: $sha is behind what $ENVNAME runs"
+  exit 0
+fi
 
 step "the box's disk, memory and swap, read first"
 box_floor
@@ -99,7 +107,7 @@ read_keys
 step "installed, and c-storage restarted"
 # The renames come last, one after another, in one command: a failure before it leaves the box
 # running what it ran. A rename in one directory is atomic. From here a failure leaves the new
-# binary on disk (the way back is the plan's: a re-run of the last green deploy).
+# binary on disk (the way back is the plan's: a revert pushed to main).
 box 'sudo chmod 0755 /opt/c-storage/c-storage.new &&
   sudo mv -f /opt/c-storage/c-storage.service.new /etc/systemd/system/c-storage.service &&
   sudo mv -f /opt/c-storage/c-storage.new /opt/c-storage/c-storage &&

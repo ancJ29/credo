@@ -99,17 +99,6 @@ stack_events() {
     jq -r '.StackEvents[] | select(.ResourceStatus | test("FAILED")) | "  \(.LogicalResourceId): \(.ResourceStatusReason)"' | head -10
 }
 
-# add_param <key> <value>, or <key> alone to keep its previous value: appends to PARAMS, the
-# template's parameters as a JSON array. A new stack gets the values read now; an updated one
-# keeps those it must not move.
-add_param() { # <key> <value> | <key> (previous)
-  if [ $# -eq 2 ]; then
-    PARAMS=$(jq -c --arg k "$1" --arg v "$2" '. + [{ParameterKey: $k, ParameterValue: $v}]' <<<"$PARAMS")
-  else
-    PARAMS=$(jq -c --arg k "$1" '. + [{ParameterKey: $k, UsePreviousValue: true}]' <<<"$PARAMS")
-  fi
-}
-
 # free_cidr <vpc cidr> <vpc id> → the lowest unused 10.x.N.0/24 for N >= 1
 free_cidr() {
   local prefix used n
@@ -174,7 +163,11 @@ case "$KIND" in
       die "$NETWORK_STACK does not exist: ops/stack.sh network first"
     add_param Env "$ENVNAME"
     if [ "$CS_TYPE" = CREATE ]; then
-      add_param Repository "$(repository)"
+      repo=$(repository)
+      add_param Repository "$repo"
+      prefix=$(github_subject_prefix "$repo")
+      echo "subject prefix: $prefix"
+      add_param SubjectPrefix "$prefix"
       vpc=$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "VpcId").OutputValue' <<<"$net")
       vpc_cidr=$(jq -r '.Stacks[0].Outputs[] | select(.OutputKey == "VpcCidr").OutputValue' <<<"$net")
       cidr=$(free_cidr "$vpc_cidr" "$vpc")
@@ -186,8 +179,14 @@ case "$KIND" in
       add_param ImageId "$image"
     else
       # The deploy role trusts this repository: a fork's clone must not move it.
-      repository_matches_stack "$(repository)"
+      repo=$(repository)
+      repository_matches_stack "$repo"
       add_param Repository
+      # The trust's subject, too: GitHub may issue the immutable one (owner@id/name@id), and a fork's
+      # clone has other ids. A stack made before the parameter existed takes GitHub's prefix once.
+      prefix=$(github_subject_prefix "$repo")
+      echo "subject prefix: $prefix"
+      add_subject_param "$prefix"
       add_param SubnetCidr
       add_param ImageId
     fi
