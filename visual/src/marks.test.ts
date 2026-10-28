@@ -57,7 +57,7 @@ describe('the progress', () => {
       'admin-setup:3-settings:vi': { answer: '', reason: '' },
     });
 
-    expect(progress).toMatchObject({ answered: 2, total: 16 });
+    expect(progress).toMatchObject({ answered: 2, total: 26 });
     // The page's order: the main path, then what can go wrong; a screen's languages side by side.
     expect(progress.marks.slice(0, 2)).toEqual([
       { key: 'admin-setup:1-sign-in:vi', mark: 'open' },
@@ -81,6 +81,7 @@ describe('the progress', () => {
       'admin-setup-6-service-down',
       'admin-setup-7-save-failed',
       'admin-setup-8-save-conflict',
+      'admin-setup-9-unknown-company',
     ]);
   });
 
@@ -89,6 +90,6 @@ describe('the progress', () => {
 
     expect(labels.get('admin-setup:3-settings:en')).toBe('screen 3 in English');
     expect(labels.get('admin-setup:7-save-failed:vi')).toBe('screen 7 in Tiếng Việt');
-    expect(labels.size).toBe(16);
+    expect(labels.size).toBe(26);
   });
 });

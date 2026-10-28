@@ -41,6 +41,7 @@ export type Walk = {
 
 /** The map's people, down, each on their device. */
 export const PEOPLE: Person[] = [
+  { id: 'operator', name: { en: 'The operator', vi: 'Người vận hành' }, device: 'pc' },
   { id: 'admin', name: { en: 'The client’s admin', vi: 'Quản trị của khách hàng' }, device: 'pc' },
   { id: 'office', name: { en: 'Office staff', vi: 'Nhân viên văn phòng' }, device: 'pc' },
   { id: 'driver', name: { en: 'The driver', vi: 'Tài xế' }, device: 'phone' },
@@ -55,7 +56,10 @@ export const PARTS: Part[] = [
   { id: 'delivery', name: { en: 'Delivery', vi: 'Giao hàng' } },
 ];
 
-/** Piece 1's walk, the client's admin on a PC; the screens keep the app frame plan's numbers. */
+/**
+ * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
+ * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4.
+ */
 export const WALKS: Walk[] = [
   {
     id: 'admin-setup',
@@ -147,6 +151,70 @@ export const WALKS: Walk[] = [
           vi: 'Người khác đã lưu trước, nội dung đã nhập vẫn còn',
         },
         question: 'Would the admin know someone else saved first, and how to see what they saved?',
+      },
+      {
+        id: '9-unknown-company',
+        number: 9,
+        path: 'wrong',
+        mock: { screen: 9, state: 'unknown' },
+        sentence: {
+          en: 'A link that names no company',
+          vi: 'Đường dẫn không thuộc công ty nào',
+        },
+        question: 'Would the person know to ask whoever sent the link?',
+      },
+    ],
+  },
+  {
+    id: 'operator-setup',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'Make a client and send it its link',
+      vi: 'Tạo khách hàng và gửi đường dẫn cho họ',
+    },
+    screens: [
+      {
+        id: 'op-1-sign-in',
+        number: 1,
+        path: 'main',
+        mock: { screen: 11, state: 'empty' },
+        sentence: {
+          en: 'Sign in at the operator’s page',
+          vi: 'Đăng nhập tại trang người vận hành',
+        },
+        question: 'Would you know this is our own door, not a client’s?',
+      },
+      {
+        id: 'op-2-new-client',
+        number: 2,
+        path: 'main',
+        mock: { screen: 12, state: 'typed' },
+        sentence: {
+          en: 'A new client: its code and the company’s name',
+          vi: 'Khách hàng mới: mã và tên công ty',
+        },
+        question: 'Is this all you need to start a client?',
+      },
+      {
+        id: 'op-3-made',
+        number: 3,
+        path: 'main',
+        mock: { screen: 13, state: 'made' },
+        sentence: {
+          en: 'Made: the link, the root’s name and its first password, once',
+          vi: 'Đã tạo: đường dẫn, tên tài khoản root và mật khẩu đầu tiên, chỉ một lần',
+        },
+        question:
+          'Would you know what to send the client, and that the password is not shown again?',
+      },
+      {
+        id: 'op-4-code-taken',
+        number: 4,
+        path: 'wrong',
+        mock: { screen: 12, state: 'taken' },
+        sentence: { en: 'The code already taken', vi: 'Mã đã được dùng' },
+        question: 'Does this say what to do?',
       },
     ],
   },

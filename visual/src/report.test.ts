@@ -33,12 +33,13 @@ describe('the report', () => {
     const report = reportOf({});
     const screens = report.walks[0].screens;
 
-    expect(screens).toHaveLength(8);
+    expect(screens).toHaveLength(9);
     expect(screens[7].id).toBe('8-save-conflict');
     expect(screens[7].languages.vi.words).toEqual(['text: vi']);
     expect(screens[7].languages.en.shown).toEqual({ kind: 'waiting' });
-    expect(report.tally).toEqual({ waiting: 16, yes: 0, no: 0, changed: 0 });
-    expect(report.walks[0].tally).toEqual(report.tally);
+    expect(report.tally).toEqual({ waiting: 26, yes: 0, no: 0, changed: 0 });
+    expect(report.walks[0].tally).toEqual({ waiting: 18, yes: 0, no: 0, changed: 0 });
+    expect(report.walks[1].tally).toEqual({ waiting: 8, yes: 0, no: 0, changed: 0 });
   });
 
   it('draws every screen at three widths, widest first, and keeps each person’s device width for the map', () => {
@@ -49,7 +50,7 @@ describe('the report', () => {
       { id: 'tablet', label: 'tablet', width: 768 },
       { id: 'phone', label: 'phone', width: 390 },
     ]);
-    expect(report.people.map((person) => person.width)).toEqual([1280, 1280, 390]);
+    expect(report.people.map((person) => person.width)).toEqual([1280, 1280, 1280, 390]);
   });
 
   it('gives each screen in a language the fingerprint of its words now, the same for the same words', () => {
@@ -96,7 +97,7 @@ describe('the report', () => {
     expect(first.languages.en.shown.kind).toBe('changed');
     expect(second.languages.vi.shown.kind).toBe('no');
     expect(report.orphans.map((orphan) => orphan.key)).toEqual(['admin-setup:9-gone:vi']);
-    expect(report.tally).toEqual({ waiting: 13, yes: 1, no: 2, changed: 1 });
+    expect(report.tally).toEqual({ waiting: 23, yes: 1, no: 2, changed: 1 });
   });
 
   it('hands the words reader the screen’s state, the language and whether it is about the menu', () => {
@@ -106,7 +107,7 @@ describe('the report', () => {
       return [];
     }) as never);
 
-    expect(asked).toHaveLength(16);
+    expect(asked).toHaveLength(26);
     expect(asked).toContain('save-failed en false');
     expect(asked).toContain('conflict en false');
   });
