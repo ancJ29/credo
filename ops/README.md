@@ -191,6 +191,8 @@ log, then searches the log for it. It refuses in GitHub's job and without a term
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
      `ops/release.sh ridge`, which makes new keys and restarts c-storage.
+   - **the box's private address is in this log:** the line names what matched, and it is not a key:
+     redact that line in the log (nothing is replaced), and find which step printed the address.
 
 ## The tunnel
 

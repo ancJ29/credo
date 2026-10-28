@@ -248,12 +248,14 @@ fi
 # --- read back ---
 step "the outputs"
 stack_load "$STACK"
-# The deploy role's ARN holds the account's id, and the API's own address answers anyone and is
-# reached through CloudFront: both are searched for in this log, never printed. The app's address
-# is printed here, in the human's local log, and in no committed file or public log.
+# The deploy role's ARN holds the account's id, the API's own address answers anyone and is
+# reached through CloudFront, and the box's private address is no log's: all three are searched for
+# in this log, never printed. The app's address is printed here, in the human's local log, and in
+# no committed file or public log.
 mask "$(out DeployRoleArn)"
 mask "$(out ApiAddress)"
-jq -r '.Stacks[0].Outputs[]? | "  \(.OutputKey) = " + (if .OutputKey == "DeployRoleArn" then "(not printed: it holds the account id)" elif .OutputKey == "ApiAddress" then "(not printed: the API is reached through the app)" else .OutputValue end)' <<<"$STACK_JSON"
+mask "$(out BoxAddress)" "the box's private address"
+outputs_print
 
 if [ "$KIND" = network ]; then
   vpc=$(out VpcId)

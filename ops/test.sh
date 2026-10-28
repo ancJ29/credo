@@ -877,6 +877,54 @@ refuses "a stack with no BoxAddress is refused before a key is sent" "names no p
 refuses "a BoxAddress that is no IPv4 address is refused" "names no private address" \
   box_open_without '[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"0.0.0.0/0"},{"OutputKey":"Zone","OutputValue":"z"}]'
 
+echo "== the outputs print without a secret's value (outputs_print; the box's private address is masked, never printed)"
+# printed_outputs <describe-stacks body>: stack.sh's read-back, as it does it: the three masked, then printed
+printed_outputs() {
+  (
+    STACK_JSON=$1
+    mask "$(out DeployRoleArn)"
+    mask "$(out ApiAddress)"
+    mask "$(out BoxAddress)" "the box's private address"
+    outputs_print
+  )
+}
+outs_body='{"Stacks":[{"Outputs":[{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"},{"OutputKey":"ApiAddress","OutputValue":"https://api.example.test"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/x"}]}]}'
+printed=$(printed_outputs "$outs_body")
+check "the box's private address is never printed" 0 "$(grep -cF '10.9.8.7' <<<"$printed" || true)"
+check "  the app's address still is" 1 "$(grep -cF '  AppAddress = https://app.example.test' <<<"$printed" || true)"
+check "  and the deploy role's ARN and the API's address are not" 0 "$(grep -cF -e 000000000000 -e api.example.test <<<"$printed" || true)"
+
+# outputs_guard <stack.sh>: dies unless the box's address is masked before outputs_print, and no other printer of the outputs is there
+# shellcheck disable=SC2016 # the script's text, in single quotes
+outputs_guard() {
+  local mask_line print_line
+  mask_line=$(grep -n '^mask "\$(out BoxAddress)"' "$1" | head -n 1 | cut -d: -f1)
+  print_line=$(grep -n '^outputs_print$' "$1" | head -n 1 | cut -d: -f1)
+  [ -n "$mask_line" ] && [ -n "$print_line" ] && [ "$mask_line" -lt "$print_line" ] || die "stack.sh does not mask BoxAddress before outputs_print"
+  ! grep -qF '\(.OutputKey)' "$1" || die "stack.sh prints the outputs another way than outputs_print"
+}
+passes "stack.sh masks BoxAddress before it prints the outputs, and prints them no other way" outputs_guard "$OPS_DIR/stack.sh"
+# shellcheck disable=SC2016 # a pattern, in single quotes
+grep -v '^mask "\$(out BoxAddress)"' "$OPS_DIR/stack.sh" >"$WORK/stack-nomask.sh"
+refuses "  a stack.sh that does not mask BoxAddress is refused" "does not mask BoxAddress" outputs_guard "$WORK/stack-nomask.sh"
+{ cat "$OPS_DIR/stack.sh"; echo "jq -r '.Stacks[0].Outputs[]? | \\(.OutputKey)' <<<\"\$STACK_JSON\""; } >"$WORK/stack-jq.sh"
+refuses "  a second printer of the outputs is refused" "another way" outputs_guard "$WORK/stack-jq.sh"
+
+# The RED line names what matched: an address is redacted, a key is replaced.
+red_line() { # <label or nothing>: a log holding the masked value, ended by on_exit; its RED line
+  local dir=$WORK/logs-red tmp=$WORK
+  rm -rf "$dir"
+  OPS_LOG_DIR=$dir TMPDIR=$tmp WORK='' OPS_DIR=$OPS_DIR LABEL=$1 bash -c '
+    . "$OPS_DIR/lib.sh"
+    log_start red x
+    mask "10.9.8.7" "$LABEL"
+    echo "oops 10.9.8.7"
+  ' >/dev/null 2>&1 || true
+  grep -h '^RED' "$dir"/*.log | head -n 1
+}
+check "a masked address found in the log is named an address, to redact" "RED  the box's private address is in this log: redact this line; nothing to replace" "$(red_line "the box's private address")"
+check "  a masked key found in the log is still a key, to replace" "RED  a key is in this log: delete it and replace the key" "$(red_line '' | cut -c1-56)"
+
 echo "== c-storage listens on the box's private address (the unit reads it; each release writes it from BoxAddress)"
 unit=$OPS_DIR/c-storage.service
 check "the unit reads LISTEN_ADDR from /etc/c-storage/listen.env" 1 "$(grep -c '^EnvironmentFile=/etc/c-storage/listen.env$' "$unit" || true)"

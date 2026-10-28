@@ -24,6 +24,7 @@ STEP=0
 STEPS=0
 REDS=''
 SECRETS=''
+SECRET_LABELS=''
 
 die() {
   echo "error: $*" >&2
@@ -114,14 +115,24 @@ on_exit() {
     done
   fi
   if [ -n "$SECRETS" ] && [ -n "$LOG" ]; then
-    local s leaked=0
+    local s leaked_key=0 leaked_what=''
+    local i=1 label
     while IFS= read -r s; do
-      if [ -n "$s" ] && grep -qF -- "$s" "$LOG"; then leaked=1; fi
+      if [ -n "$s" ] && grep -qF -- "$s" "$LOG"; then
+        label=$(sed -n "${i}p" <<<"$SECRET_LABELS")
+        if [ -n "$label" ]; then leaked_what=$label; else leaked_key=1; fi
+      fi
+      i=$((i + 1))
     done <<<"$SECRETS"
-    if [ "$leaked" = 1 ]; then
+    if [ -n "$leaked_what" ]; then
+      final "RED  $leaked_what is in this log: redact this line; nothing to replace"
+      rc=1
+    fi
+    if [ "$leaked_key" = 1 ]; then
       final "RED  a key is in this log: delete it and replace the key (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions)"
       rc=1
-    else
+    fi
+    if [ -z "$leaked_what" ] && [ "$leaked_key" = 0 ]; then
       final "ok   no key in this log"
     fi
   fi
@@ -134,14 +145,16 @@ mkwork() {
   if [ -z "$WORK" ]; then WORK=$(mktemp -d "${TMPDIR:-/tmp}/credo-ops.XXXXXX"); fi
 }
 
-# mask <value>: GitHub's log mask, written past the log file so the log never holds the value.
+# mask <value> [<what it is>]: GitHub's log mask, written past the log file so the log never holds the value.
 # Remembers the value for the end-of-run search. fd 3 is the terminal and tee writes the same pipe
 # from another process, so the command opens with a newline: it can then never land mid-line, where
-# GitHub would not read it and the value would print.
+# GitHub would not read it and the value would print. The label, when given (not a key), is what the
+# end-of-run search names if the value is found in the log.
 mask() {
   if [ -z "$1" ]; then return 0; fi
   if [ "${GITHUB_ACTIONS:-}" = true ]; then printf '\n::add-mask::%s\n' "$1" >&3; fi
   SECRETS="${SECRETS}$1"$'\n'
+  SECRET_LABELS="${SECRET_LABELS}${2:-}"$'\n'
 }
 
 # repository → owner/name, from the origin remote; never written in a committed file
@@ -200,6 +213,12 @@ stack_load() {
   fi
   cat "$err" >&2
   die "describe-stacks $1 failed"
+}
+
+# outputs_print: the stack's outputs from STACK_JSON, one line each; an output whose value was
+# masked (it is in SECRETS) prints "(not printed)", so the caller names no output here.
+outputs_print() {
+  jq -r --arg secrets "$SECRETS" '($secrets | split("\n") | map(select(. != ""))) as $s | .Stacks[0].Outputs[]? | .OutputValue as $v | "  \(.OutputKey) = " + (if any($s[]; . == $v) then "(not printed)" else .OutputValue end)' <<<"$STACK_JSON"
 }
 
 # stack_param <ParameterKey> → the stack's value of it in STACK_JSON, empty if none
@@ -354,7 +373,7 @@ box_open() {
   BOX_LISTEN_ADDR=$(out BoxAddress)
   [[ "$BOX_LISTEN_ADDR" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "stack $1 names no private address for its box (BoxAddress)"
   # No log holds the box's private address (the plan's "no key, address or password"), and GitHub masks it.
-  mask "$BOX_LISTEN_ADDR"
+  mask "$BOX_LISTEN_ADDR" "the box's private address"
   rm -f "$WORK/key" "$WORK/key.pub"
   ssh-keygen -q -t ed25519 -N '' -C credo-ops -f "$WORK/key"
   aws ec2-instance-connect send-ssh-public-key --instance-id "$BOX_ID" --availability-zone "$zone" \
