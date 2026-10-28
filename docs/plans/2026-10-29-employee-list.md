@@ -1,10 +1,11 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 02:25 +07:** the human's read (step 2), the fake `Api` (step 3) and group A's pages on
-the fake (step 4) are ticked. The pages are the staff setup, the list, a person's page and form, the
-password, the archive's check, the menu by permission, the 403 page and the page for someone allowed
-nothing; their words are in both languages. The walks page does not draw them yet. **Next:** step 5,
-A's walk on the fake.
+**Where it stands — 2026-10-29 03:08 +07:** the human's read (step 2), the fake `Api` (step 3), group A's
+pages on the fake (step 4) and A's walk on the fake (step 5) are ticked. The walks page now draws A's
+16 screens as scenes of the app on the fake, in three walks, each with its steps done in its frame;
+`pnpm report` read them back, 32 answers waiting, none from the mock. The walk spec
+`walk/specs/piece-2.spec.ts` and the fake run's script wait for the human's terminal. **Next:** step
+6, the human's preview of the fake walk.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -576,13 +577,36 @@ itself:
   any case; the email stays out of the person until group C; an `Api` method added here comes with
   its fake answer, parsed under its schema in `ui/src/fake.test.tsx`; `docs/memo/extra.md` holds
   `extra`'s rules and the ladder. Open item 17 stands.
-- [ ] **5. A's walk on the fake.** Who: 🤖, after step 4, about half a day. The walks page's fake
+- [x] **5. A's walk on the fake.** Who: 🤖, after step 4, about half a day. The walks page's fake
   scenes, the four walks in `visual/src/walks.ts` with A's screens, a one-line pointer in the visual
   report's "how a screen is drawn", the walk spec `walk/specs/piece-2.spec.ts` with a `fake` and a
   `full` project, and the fake run's one script in the credo root's `one-off/`. Done when: rows 53
   and 54 each seen red once; `pnpm report` builds the page and `walks.json` reads back A's 16
   screens, 32 answers waiting, none drawn from the mock; `pnpm check` green. *Model files:*
   `visual/src/walks.ts` and `words.tsx`, `walk/specs/piece-1.spec.ts` and `walk/support.ts`.
+  *Evidence:* rows 53 and 54 each seen red once, from their assertions, by changing the rule's line
+  and putting it back: row 53 (`visual/src/words.test.tsx`) with the typed value never sent to the
+  page, with a step that finds nothing skipped, and with the walk and the screen left out of its
+  error; row 54 (`visual/src/walks.test.ts`) with a screen renamed in the spec, in the page's list,
+  and with the `full` project removed. `pnpm report` on `920132e` built the page and `walks.json`
+  read back 16 screens in `admin-staff-setup` (1), `admin-staff` (11) and `office-staff` (4), none
+  with a `mock`, each with its `scene`, 32 answers waiting. Gates of the packages touched: ui (183
+  tests), visual (217) and scripts (61, which builds the fake bundle) each at 100 % with no
+  warning; shared, ui, visual and walk typecheck; eslint, prettier and knip clean. Not the whole
+  `pnpm check`: the BFF and c-storage are untouched. *Choices:* three walks, not four: the phone's
+  holds only C's screens and comes with step 17; a scene's steps are named by dictionary keys, so a
+  renamed label stops the build where it was renamed; `walk/specs/piece-2.spec.ts` skips its `full`
+  project, saying why, until steps 8 and 9 give it the BFF's sign-ins and failures; the fake run's
+  pictures are taken with `page.screenshot` into `CREDO_FAKE_DIR`, outside git, and compared with
+  nothing; `ui/src/scene.ts` (`sceneParts`) gives the walks page and `ui/tests/open.tsx` one way to
+  put the app on the fake, and `App` takes a `look` (scheme and root element) for a frame. *Found:*
+  React's DOM renderer decides at its first load whether it hears a text field's `input` event, so
+  the report's words reader loads after `installDom` and the visual tests' setup no longer loads
+  React DOM in a Node-environment test (`visual/src/cli.ts`, `visual/src/setup.ts`; red when a
+  static import is put back); Node's own `FormData` refuses a jsdom form, so `installDom` gives the
+  window's. *Not run here:* the walk spec itself and the script `one-off/20261029-0305-fake-run-employee-list.sh`,
+  which need a browser.
+
 - [ ] **6. A's fake walk, the human's preview.** Who: 👤, after step 5, about 45 minutes, and a round
   for each "no". The human opens the newest walks page (and, if wanted, `pnpm fake` in a browser),
   answers each screen in each language, and pastes the block; the machine runs `pnpm answers`. A "no"
