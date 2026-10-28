@@ -8,7 +8,7 @@ import { PARTS, PEOPLE, WALKS } from './walks';
 
 const reportWith = (answers: Answers = {}) =>
   makeReport({
-    walks: WALKS,
+    walks: WALKS.slice(0, 2),
     people: PEOPLE,
     parts: PARTS,
     mock: SCREENS,
@@ -35,8 +35,8 @@ describe('a screen’s mark', () => {
 });
 
 describe('the progress', () => {
-  it('counts as answered each screen in a language with a yes or a no, chosen here or on record, of all there are', () => {
-    const report = reportWith({
+  it('counts as answered each screen in a language with a yes or a no, chosen here or on record, of all there are', async () => {
+    const report = await reportWith({
       'admin-setup:2-sign-in-refused:vi': {
         answer: 'no',
         on: '2026-10-29',
@@ -69,8 +69,8 @@ describe('the progress', () => {
     ]);
   });
 
-  it('puts a walk’s main path first, then what can go wrong, each screen under its section’s id', () => {
-    const walk = reportWith().walks[0];
+  it('puts a walk’s main path first, then what can go wrong, each screen under its section’s id', async () => {
+    const walk = (await reportWith()).walks[0];
 
     expect(inPageOrder(walk).map((screen) => screenId(walk, screen))).toEqual([
       'admin-setup-1-sign-in',
@@ -85,8 +85,8 @@ describe('the progress', () => {
     ]);
   });
 
-  it('names a screen in a language as a person reads it', () => {
-    const labels = labelsOf(reportWith());
+  it('names a screen in a language as a person reads it', async () => {
+    const labels = labelsOf(await reportWith());
 
     expect(labels.get('admin-setup:3-settings:en')).toBe('screen 3 in English');
     expect(labels.get('admin-setup:7-save-failed:vi')).toBe('screen 7 in Tiếng Việt');

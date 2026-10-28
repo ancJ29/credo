@@ -15,7 +15,7 @@ import { BEFORE_CONFIG } from './brand';
 import type { DeviceStore } from './device';
 import { type PageProps } from './page';
 import { PersonPage } from './PersonPage';
-import { Providers } from './Providers';
+import { type Look, Providers } from './Providers';
 import { pagesOf } from './nav';
 import { Notice } from './Notice';
 import { SettingsPage } from './SettingsPage';
@@ -30,6 +30,8 @@ type Props = {
   device: DeviceStore;
   /** Tests switch Mantine's transitions off. */
   test?: boolean;
+  /** Where the app is drawn inside another page's window: its colour scheme and root element. */
+  look?: Look;
 };
 
 const SIGNED_OUT = 401;
@@ -79,7 +81,7 @@ async function boot(api: Api, device: DeviceStore, linked: string | null) {
  * anyone out; any other failure says the service is unavailable and offers a retry. An address
  * that names no company we know shows one screen in credo's colour and nothing of any client's.
  */
-export function ClientApp({ api, device, test }: Props) {
+export function ClientApp({ api, device, test, look }: Props) {
   const [phase, setPhase] = useState<'loading' | 'unavailable' | 'unknown'>('loading');
   const [doc, setDoc] = useState<ConfigDoc | null>(null);
   const [user, setUser] = useState<UserView | null>(null);
@@ -115,6 +117,7 @@ export function ClientApp({ api, device, test }: Props) {
         colour={BEFORE_CONFIG.colour}
         language={chosen ?? shown ?? BEFORE_CONFIG.language}
         test={test}
+        {...look}
       >
         {phase === 'unknown' ? <UnknownClient /> : <Boot status={phase} onRetry={retry} />}
       </Providers>
@@ -172,7 +175,7 @@ export function ClientApp({ api, device, test }: Props) {
   });
 
   return (
-    <Providers colour={config.colour} language={language} test={test}>
+    <Providers colour={config.colour} language={language} test={test} {...look}>
       {user ? (
         <Shell
           brand={config}

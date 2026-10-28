@@ -1,9 +1,11 @@
 import { LANGUAGES, type Language } from '@credo/shared';
+import { DEMO_CONFIG } from '@credo/shared/demo';
 import { Frame, SCREENS } from '@credo/ui/mock';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { Choice, Choices } from './choices';
 import { LANGUAGE_LABEL, MARK_TEXT, markOf, screenId } from './marks';
 import type { Report, ReportScreen, ReportWalk } from './report';
+import { SceneView } from './scene';
 import type { Held, Shown } from './states';
 import { answerKey } from './walks';
 
@@ -16,10 +18,21 @@ const NO_CHOICE: Choice = { answer: '', reason: '' };
 
 export const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-const stateOf = (screen: ReportScreen) =>
-  SCREENS.find((candidate) => candidate.number === screen.mock.screen)!.states.find(
-    (state) => state.id === screen.mock.state,
+/** What a screen draws in a frame: the mock's state, or its scene, the app itself on the fake. */
+function drawing(screen: ReportScreen, language: Language) {
+  const { scene, mock } = screen;
+  if (scene) {
+    return {
+      colour: DEMO_CONFIG.colour,
+      path: scene.path,
+      node: <SceneView scene={scene} language={language} />,
+    };
+  }
+  const state = SCREENS.find((candidate) => candidate.number === mock!.screen)!.states.find(
+    (found) => found.id === mock!.state,
   )!;
+  return { colour: state.colour, path: undefined, node: state.screen };
+}
 
 /**
  * A screen's two marks, one a language: outlined while open, filled for a yes, filled and struck
@@ -248,8 +261,8 @@ export function ScreenCard({
   choices: Choices;
   choose: Choose;
 }) {
-  const state = stateOf(screen);
   const { language, show } = view;
+  const drawn = drawing(screen, language);
   const settled = LANGUAGES.every((one) => screen.languages[one].shown.kind === 'yes');
   const key = answerKey(walk.id, screen.id, language);
   const here = screen.languages[language];
@@ -282,12 +295,13 @@ export function ScreenCard({
                     <Frame
                       key={language}
                       title={`Screen ${screen.number} in ${LANGUAGE_LABEL[language]}, ${capital(device.label)} ${device.width}`}
-                      colour={state.colour}
+                      colour={drawn.colour}
                       language={language}
                       scheme="light"
                       width={device.width}
+                      path={drawn.path}
                     >
-                      {state.screen}
+                      {drawn.node}
                     </Frame>
                   </Scaled>
                 </figure>

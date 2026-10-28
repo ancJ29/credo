@@ -12,8 +12,8 @@ import {
 import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
-const report = makeReport({
-  walks: WALKS,
+const report = await makeReport({
+  walks: WALKS.slice(0, 2),
   people: PEOPLE,
   parts: PARTS,
   mock: SCREENS,

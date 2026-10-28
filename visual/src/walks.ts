@@ -1,4 +1,5 @@
 import { LANGUAGES, type Language } from '@credo/shared';
+import { DEMO_EMPLOYEES } from '@credo/shared/demo';
 import type { MockScreen } from '@credo/ui/mock';
 
 /** A text in each language the report draws. */
@@ -13,6 +14,27 @@ export type Device = keyof typeof DEVICE_WIDTH;
 export const DEVICE_LABEL: Record<Device, string> = { pc: 'PC', tablet: 'tablet', phone: 'phone' };
 export type DeviceWidth = (typeof DEVICE_WIDTH)[Device];
 
+/**
+ * One thing a person does on a scene, named by the app's own words: a key of its dictionaries
+ * (`person.archive`), read in the language the scene is drawn in, so a renamed label stops the
+ * build where it was renamed. A step that finds nothing stops the build, naming it.
+ */
+export type Step =
+  /** Presses the button, link, switch or choice with these words; `within` names the group of
+   * choices it sits in by the words of its label, `with` fills a word's `{{name}}`. */
+  | { press: string; within?: string; with?: Record<string, string> }
+  /** Replaces what is typed in the field with these words by `text`. */
+  | { fill: string; text: string }
+  /** Chooses, in the list with these words, the option that reads `option`. */
+  | { choose: string; option: string };
+
+/**
+ * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
+ * as the data-set person with this code (the root when none), with one call's failure cued, then
+ * the steps.
+ */
+export type Scene = { path: string; as?: string; cue?: string; steps?: Step[] };
+
 export type Person = { id: string; name: Bilingual; device: Device };
 export type Part = { id: string; name: Bilingual };
 
@@ -21,15 +43,20 @@ type WalkScreen = {
   id: string;
   number: number;
   path: 'main' | 'wrong';
-  /** The mock's screen and state it shows. */
-  mock: { screen: number; state: string };
   /** What the screen is, in each language. */
   sentence: Bilingual;
   /** The one question the human answers, in English. */
   question: string;
   /** Set when the screen is about the menu of pages, so its words keep the menu. */
   navigation?: true;
-};
+} & (
+  | {
+      /** The mock's screen and state it shows: piece 1's screens. */
+      mock: { screen: number; state: string };
+      scene?: never;
+    }
+  | { scene: Scene; mock?: never }
+);
 
 export type Walk = {
   id: string;
@@ -56,9 +83,30 @@ export const PARTS: Part[] = [
   { id: 'delivery', name: { en: 'Delivery', vi: 'Giao hàng' } },
 ];
 
+/** A data-set person's page, by their code. */
+const personAt = (code: string) => `/staff/${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}`;
+
+/** The add form, filled as the root fills it: the same steps for the form and for what follows. */
+const FILLED_ADD: Step[] = [
+  { fill: 'addPerson.name', text: 'Mai Linh' },
+  { fill: 'addPerson.code', text: 'EMP-0100' },
+  { fill: 'addPerson.phone', text: '0909 123 456' },
+  { fill: 'addPerson.note', text: 'Mới vào làm.' },
+  { choose: 'addPerson.department', option: 'Kho' },
+  { choose: 'addPerson.position', option: 'Nhân viên' },
+];
+
+/** The same for someone allowed to add people, who has no department, position or sign-in to give. */
+const FILLED_ADD_BY_OFFICE: Step[] = FILLED_ADD.filter((step) => !('choose' in step));
+
+/** A person's name replaced, for the screens that save it. */
+const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
+
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
- * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4.
+ * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
+ * then piece 2's group A (the staff setup, the staff, the office's), each screen a scene of the
+ * app on the fake. Group C adds the phone's walk, whose screens are all C's.
  */
 export const WALKS: Walk[] = [
   {
@@ -218,6 +266,229 @@ export const WALKS: Walk[] = [
       },
     ],
   },
+
+  {
+    id: 'admin-staff-setup',
+    person: 'admin',
+    part: 'setup',
+    title: {
+      en: 'The staff setup: departments and positions',
+      vi: 'Thiết lập nhân viên: phòng ban và chức vụ',
+    },
+    screens: [
+      {
+        id: 'setup-1-departments-positions',
+        number: 1,
+        path: 'main',
+        scene: { path: '/staff-setup' },
+        sentence: {
+          en: 'Departments and positions, each with what its staff may do',
+          vi: 'Phòng ban và chức vụ, mỗi nơi kèm những việc nhân viên được làm',
+        },
+        question: 'Is this how the admin would say who does what?',
+      },
+    ],
+  },
+  {
+    id: 'admin-staff',
+    person: 'admin',
+    part: 'staff',
+    title: {
+      en: 'Take on staff: their records, sign-ins and import',
+      vi: 'Tiếp nhận nhân viên: hồ sơ, đăng nhập và nhập từ Excel',
+    },
+    screens: [
+      {
+        id: 'staff-1-list',
+        number: 1,
+        path: 'main',
+        scene: { path: '/staff' },
+        sentence: {
+          en: 'The staff list: name, code, department, position, phone',
+          vi: 'Danh sách nhân viên: tên, mã, phòng ban, chức vụ, điện thoại',
+        },
+        question: 'Is this what the admin needs to see about the staff at a glance?',
+      },
+      {
+        id: 'staff-2-add',
+        number: 2,
+        path: 'main',
+        scene: { path: '/staff/new', steps: FILLED_ADD },
+        sentence: {
+          en: 'Adding a person: name, code, phone, department, position, note',
+          vi: 'Thêm một người: tên, mã, điện thoại, phòng ban, chức vụ, ghi chú',
+        },
+        question: 'Are these the details a business takes when it hires?',
+      },
+      {
+        id: 'staff-3-added',
+        number: 3,
+        path: 'main',
+        scene: { path: '/staff/new', steps: [...FILLED_ADD, { press: 'addPerson.submit' }] },
+        sentence: {
+          en: 'Added: the sign-in name and a first password, shown once',
+          vi: 'Đã thêm: tên đăng nhập và mật khẩu đầu tiên, chỉ hiện một lần',
+        },
+        question:
+          'Would the admin know what to hand over, and that the password is not shown again?',
+      },
+      {
+        id: 'staff-4-person',
+        number: 4,
+        path: 'main',
+        scene: { path: personAt('EMP-0002') },
+        sentence: {
+          en: 'A person’s page: details, note, how they sign in',
+          vi: 'Trang của một người: thông tin, ghi chú, cách đăng nhập',
+        },
+        question: 'Is anything missing from a person’s page?',
+      },
+      {
+        id: 'staff-5-permissions',
+        number: 5,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0004'),
+          steps: [{ press: 'permissions.allow', within: 'permissions.staff_canDelete' }],
+        },
+        sentence: {
+          en: 'A person’s own permissions, over their department’s and position’s',
+          vi: 'Quyền riêng của một người, đè lên quyền của phòng ban và chức vụ',
+        },
+        question: 'Would the admin see what this person may do, and what is theirs alone?',
+      },
+      {
+        id: 'staff-6-password',
+        number: 6,
+        path: 'main',
+        scene: { path: personAt('EMP-0007'), steps: [{ press: 'person.passwordMake' }] },
+        sentence: {
+          en: 'A password typed or made, shown once',
+          vi: 'Mật khẩu tự nhập hoặc do ứng dụng tạo, chỉ hiện một lần',
+        },
+        question: 'Is a password from the person’s page how a business would do it?',
+      },
+      {
+        id: 'staff-7-archive',
+        number: 7,
+        path: 'main',
+        scene: { path: personAt('EMP-0006'), steps: [{ press: 'person.archive' }] },
+        sentence: {
+          en: 'Archive, after a check: their sign-in stops at once, their record is kept',
+          vi: 'Lưu trữ, sau khi hỏi lại: đăng nhập dừng ngay, hồ sơ vẫn được giữ',
+        },
+        question: 'Is “archive” the word for someone who left, and is the check clear?',
+      },
+      {
+        id: 'staff-8-left',
+        number: 8,
+        path: 'main',
+        scene: { path: '/staff', steps: [{ press: 'staff.showLeft' }] },
+        sentence: {
+          en: 'People who left, shown by the filter',
+          vi: 'Người đã nghỉ việc, hiện bằng bộ lọc',
+        },
+        question: 'Should the admin find people who left this way?',
+      },
+      {
+        id: 'staff-9-code-taken',
+        number: 9,
+        path: 'wrong',
+        scene: {
+          path: '/staff/new',
+          steps: [
+            { fill: 'addPerson.name', text: 'Mai Linh' },
+            { fill: 'addPerson.code', text: 'EMP-0008' },
+            { press: 'addPerson.submit' },
+          ],
+        },
+        sentence: { en: 'The code already taken', vi: 'Mã đã được dùng' },
+        question: 'Does this say what to fix?',
+      },
+      {
+        id: 'staff-10-save-conflict',
+        number: 10,
+        path: 'wrong',
+        scene: { path: personAt('EMP-0002'), cue: 'saveEmployee:409', steps: RENAMED },
+        sentence: {
+          en: 'Someone else saved first, what was typed kept',
+          vi: 'Người khác đã lưu trước, nội dung đã nhập vẫn còn',
+        },
+        question: 'Would the admin know someone else saved first, and how to see what they saved?',
+      },
+      {
+        id: 'staff-11-save-failed',
+        number: 11,
+        path: 'wrong',
+        scene: { path: personAt('EMP-0002'), cue: 'saveEmployee:503', steps: RENAMED },
+        sentence: {
+          en: 'A save that failed, what was typed kept',
+          vi: 'Lưu không thành công, nội dung đã nhập vẫn còn',
+        },
+        question: 'Would the admin know the save did not happen, and that nothing typed is lost?',
+      },
+    ],
+  },
+  {
+    id: 'office-staff',
+    person: 'office',
+    part: 'staff',
+    title: {
+      en: 'Look up and add staff, as allowed',
+      vi: 'Tra cứu và thêm nhân viên, theo quyền được cấp',
+    },
+    screens: [
+      {
+        id: 'office-1-menu',
+        number: 1,
+        path: 'main',
+        scene: { path: '/staff', as: 'EMP-0001' },
+        navigation: true,
+        sentence: {
+          en: 'Signed in with a code: the menu and the buttons their permissions allow',
+          vi: 'Đăng nhập bằng mã: menu và các nút theo quyền của họ',
+        },
+        question: 'Should office staff see and do this, and nothing more?',
+      },
+      {
+        id: 'office-2-add',
+        number: 2,
+        path: 'main',
+        scene: {
+          path: '/staff/new',
+          as: 'EMP-0001',
+          steps: [...FILLED_ADD_BY_OFFICE, { press: 'addPerson.submit' }],
+        },
+        sentence: {
+          en: 'Adding a person without a sign-in, which the root gives',
+          vi: 'Thêm một người chưa có đăng nhập, do root cấp',
+        },
+        question: 'Is it clear who gives the sign-in?',
+      },
+      {
+        id: 'office-3-forbidden',
+        number: 3,
+        path: 'wrong',
+        scene: { path: '/staff-setup', as: 'EMP-0001' },
+        sentence: {
+          en: 'A page this person may not open',
+          vi: 'Một trang người này không được mở',
+        },
+        question: 'Does this say why, and whom to ask?',
+      },
+      {
+        id: 'office-4-nothing',
+        number: 4,
+        path: 'wrong',
+        scene: { path: '/staff', as: 'EMP-0005' },
+        sentence: {
+          en: 'Someone allowed nothing: nothing to work on yet',
+          vi: 'Người chưa được phép làm gì: chưa có việc nào',
+        },
+        question: 'Would the person know to ask their admin?',
+      },
+    ],
+  },
 ];
 
 /** The key an answer is kept under. */
@@ -232,16 +503,27 @@ export const allKeys = (walks: readonly Walk[]) =>
     ),
   );
 
-export type DrawnState = MockScreen['states'][number];
+type DrawnState = MockScreen['states'][number];
+
+/** A scene as the build draws it: the screen it is, in the walk it is in. */
+export type DrawnScene = { id: string; walk: string; scene: Scene };
+
+/** What a walk screen draws: a state of the mock, or a scene of the app. */
+export type Drawn = DrawnState | DrawnScene;
 
 /**
- * The mock's state each walk screen names. A screen naming a state the mock lacks stops the
- * build, naming the walk, the screen and the state.
+ * What each walk screen draws, under `walk:screen`: the mock's state a screen names, or its scene.
+ * A screen naming a state the mock lacks stops the build, naming the walk, the screen and the
+ * state.
  */
-export function resolveStates(walks: readonly Walk[], mock: readonly MockScreen[]) {
-  const states = new Map<string, DrawnState>();
+export function resolveDrawn(walks: readonly Walk[], mock: readonly MockScreen[]) {
+  const drawn = new Map<string, Drawn>();
   for (const walk of walks) {
     for (const screen of walk.screens) {
+      if (screen.scene) {
+        drawn.set(`${walk.id}:${screen.id}`, { id: screen.id, walk: walk.id, scene: screen.scene });
+        continue;
+      }
       const found = mock
         .find((candidate) => candidate.number === screen.mock.screen)
         ?.states.find((state) => state.id === screen.mock.state);
@@ -250,8 +532,8 @@ export function resolveStates(walks: readonly Walk[], mock: readonly MockScreen[
           `walk ${walk.id}, screen ${screen.id}: the mock draws no state "${screen.mock.screen} ${screen.mock.state}"`,
         );
       }
-      states.set(`${walk.id}:${screen.id}`, found);
+      drawn.set(`${walk.id}:${screen.id}`, found);
     }
   }
-  return states;
+  return drawn;
 }

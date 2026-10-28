@@ -88,7 +88,7 @@ export type BuildOptions = {
 export async function build({ cwd, answersFile, builtAt = new Date(), readWords }: BuildOptions) {
   const source = await sourceOf(cwd);
   const answers = await readAnswers(answersFile);
-  const report = makeReport({
+  const report = await makeReport({
     walks: WALKS,
     people: PEOPLE,
     parts: PARTS,

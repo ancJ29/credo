@@ -33,6 +33,8 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
   Object.defineProperty(window.navigator, 'clipboard', {
     value: { writeText: (text: string) => (written.push(text), Promise.resolve()) },
   });
+  // The scenes run the app on the fake, which clones its data set as a browser's window can.
+  window.structuredClone = structuredClone;
   window.ResizeObserver = class {
     observe() {}
     disconnect() {}

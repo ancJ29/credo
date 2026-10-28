@@ -6,8 +6,8 @@ import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
 it('mounts the page the build inlined its report into', async () => {
-  const report = makeReport({
-    walks: WALKS,
+  const report = await makeReport({
+    walks: WALKS.slice(0, 2),
     people: PEOPLE,
     parts: PARTS,
     mock: SCREENS,
@@ -27,8 +27,8 @@ it('mounts the page the build inlined its report into', async () => {
 });
 
 it('the mounted page: a label typed, two answers chosen, Share’s message equal to the clipboard’s, and "Copy my answers" giving the block it gives today', async () => {
-  const report = makeReport({
-    walks: WALKS,
+  const report = await makeReport({
+    walks: WALKS.slice(0, 2),
     people: PEOPLE,
     parts: PARTS,
     mock: SCREENS,

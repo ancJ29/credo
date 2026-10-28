@@ -35,6 +35,7 @@
   },
   "exports": {
     "./mock": "./src/mock/index.ts",
+    "./scene": "./src/scene.ts",
     "./words": "./src/i18n/index.ts"
   }
 }

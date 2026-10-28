@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { useLocation } from 'react-router';
 import { Frame } from './Frame';
 
 const frame = (language: 'vi' | 'en' = 'en') =>
@@ -65,5 +66,31 @@ describe('Frame', () => {
     expect(height(612)).toBe('612');
     expect(height(100)).toBe('320');
     vi.unstubAllGlobals();
+  });
+
+  it('starts its router at Settings, or at the address a scene is drawn at', () => {
+    const At = () => <p>{useLocation().pathname}</p>;
+    const open = (path?: string) => {
+      render(
+        <Frame
+          title={`at ${path}`}
+          colour="#2f7d6d"
+          language="en"
+          scheme="light"
+          width={390}
+          path={path}
+        >
+          <At />
+        </Frame>,
+      );
+      const iframe = screen.getByTitle<HTMLIFrameElement>(`at ${path}`);
+      act(() => {
+        fireEvent.load(iframe);
+      });
+      return iframe.contentDocument!.body.querySelector('p')!.textContent;
+    };
+
+    expect(open()).toBe('/settings');
+    expect(open('/staff')).toBe('/staff');
   });
 });

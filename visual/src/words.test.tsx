@@ -1,7 +1,9 @@
 import { LANGUAGES } from '@credo/shared';
 import { SCREENS } from '@credo/ui/mock';
-import { describe, expect, it } from 'vitest';
-import { drawnWords, wordsOf } from './words';
+import { DICTIONARIES } from '@credo/ui/words';
+import { describe, expect, it, vi } from 'vitest';
+import { resolveDrawn, WALKS } from './walks';
+import { drawnSceneWords, drawnWords, readWords, wordsOf } from './words';
 
 /** A tree of elements built from markup, as the words reader meets one. */
 const dom = (markup: string) => {
@@ -132,5 +134,97 @@ describe('the app’s own screens, drawn', () => {
     drawnWords(stateOf(1, 'empty').screen, '#2f7d6d', 'en');
 
     expect(document.body.childElementCount).toBe(before);
+  });
+});
+
+/** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
+const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
+  'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
+  'admin-staff:staff-1-list': (w) => `heading: ${w.staff.title}`,
+  'admin-staff:staff-2-add': (w) => `textbox "${w.addPerson.name}" = "Mai Linh"`,
+  'admin-staff:staff-3-added': (w) => `textbox "${w.addPerson.firstPassword}" = "Fake-password-1!"`,
+  'admin-staff:staff-4-person': (w) => `textbox "${w.person.phone}" = "0903 111 002"`,
+  'admin-staff:staff-5-permissions': (w) => `radio "${w.permissions.allow}" checked`,
+  'admin-staff:staff-6-password': (w) => `textbox "${w.person.passwordShown}" = "Fake-password-1!"`,
+  'admin-staff:staff-7-archive': (w) =>
+    `button: ${w.person.archiveConfirm.replace('{{name}}', 'Đặng Hoài Nam')}`,
+  'admin-staff:staff-8-left': () => 'link: Hoàng Gia Huy',
+  'admin-staff:staff-9-code-taken': (w) => `alert: ${w.addPerson.taken}`,
+  'admin-staff:staff-10-save-conflict': (w) => `alert: ${w.person.conflict}`,
+  'admin-staff:staff-11-save-failed': (w) => `alert: ${w.person.saveFailed}`,
+  'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
+  'office-staff:office-2-add': (w) => `main: ${w.person.signInNotYet}`,
+  'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,
+  'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
+};
+
+describe('the app’s own scenes, drawn', () => {
+  it('Each piece-2 walk screen is drawn on the walks page as a fake scene; a step that finds nothing stops the build, naming the walk, the screen and the step', async () => {
+    const drawn = resolveDrawn(WALKS.slice(2), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const navigation = key === 'office-staff:office-1-menu';
+        const words = await readWords(what, language, navigation);
+        expect(words, `${key} ${language}`).toContain(PROOF[key](DICTIONARIES[language]));
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+
+    const lacking = {
+      id: 'x-1-nothing',
+      walk: 'a-walk',
+      scene: { path: '/staff', steps: [{ press: 'staff.empty' }] },
+    };
+    await expect(
+      drawnSceneWords(lacking, 'en', { limits: { findFor: 100, stillFor: 10, stillAtMost: 50 } }),
+    ).rejects.toThrow(
+      'walk a-walk, screen x-1-nothing: step 1 ({"press":"staff.empty"}): found no button, link or choice named “No one is on the list yet.”',
+    );
+  });
+
+  it('gives the same words each time a scene is drawn, and leaves nothing drawn behind', async () => {
+    const before = document.body.childElementCount;
+    const drawn = { id: 's', walk: 'w', scene: { path: '/staff', as: 'EMP-0001' } };
+
+    const first = await drawnSceneWords(drawn, 'en');
+    const second = await drawnSceneWords(drawn, 'en');
+
+    expect(first).toEqual(second);
+    expect(document.body.childElementCount).toBe(before);
+  });
+
+  it('keeps the menu of pages out of a scene’s words unless the screen is about it', async () => {
+    const drawn = { id: 's', walk: 'w', scene: { path: '/staff', as: 'EMP-0001' } };
+
+    expect(await drawnSceneWords(drawn, 'en')).not.toContain('link: Staff');
+    expect(await drawnSceneWords(drawn, 'en', { navigation: true })).toContain('link: Staff');
+  });
+
+  it('stops a build whose scene never ends, naming it, and not one that crashes the app', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // React reports the app's crash to the window, which would stop the test run
+    const swallow = (event: ErrorEvent) => event.preventDefault();
+    window.addEventListener('error', swallow);
+    // `EMP-9999` is no one of the data set: the scene's parts cannot be made, and nothing draws
+    const crashing = { id: 'x-2-crash', walk: 'a-walk', scene: { path: '/staff', as: 'EMP-9999' } };
+
+    await expect(drawnSceneWords(crashing, 'en', { endsIn: 200 })).rejects.toThrow(
+      'walk a-walk, screen x-2-crash: the scene did not end in 200 ms',
+    );
+    window.removeEventListener('error', swallow);
+    error.mockRestore();
+  });
+
+  it('reads a mock’s state as before, through the one reader the page and the answers use', async () => {
+    const state = stateOf(3, 'save-failed');
+
+    expect(await readWords(state, 'en', false)).toEqual(
+      drawnWords(state.screen, state.colour, 'en'),
+    );
   });
 });

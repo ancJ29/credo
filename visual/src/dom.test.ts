@@ -30,6 +30,25 @@ describe('a DOM for a Node process', () => {
     expect('Element' in globalThis).toBe(false);
   });
 
+  it('reads a form of its own with the window’s FormData, since Node’s refuses one, and gives Node’s back', () => {
+    const node = globalThis.FormData;
+    const restore = installDom();
+
+    const form = document.createElement('form');
+    form.innerHTML = '<input name="a" value="1">';
+    const read = (() => {
+      try {
+        return new FormData(form).get('a');
+      } catch {
+        return 'refused';
+      }
+    })();
+    restore();
+
+    expect(read).toBe('1');
+    expect(globalThis.FormData).toBe(node);
+  });
+
   it('puts back a global Node had, if it set one over', () => {
     const before = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
 

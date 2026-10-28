@@ -241,6 +241,10 @@ from the mock's states: the same components, with invented data. The live app's 
 the walk spec through `pnpm visual` ([step 6](#steps)). A yes stays keyed to the drawn screen's
 words, one reader, so demo data alone never asks a screen again.
 
+**From piece 2**, a screen may instead be a scene: the whole app on the fake, opened at an address,
+signed in as a data-set person, with its steps done and drawn live in the same frame
+([the fake](2026-10-29-employee-list.md#the-fake)); its words are read on jsdom as the mock's are.
+
 ### The page
 
 As the model run: "A business's day in Credo", "Who does what, on the device they use." Then:

@@ -18,6 +18,10 @@ type Props = {
   children: ReactNode;
 };
 
+/** What a page that is drawn inside another's window fixes: the colour scheme, and the element
+ * that carries it. */
+export type Look = Pick<Props, 'scheme' | 'root'>;
+
 /** The look and the words: what every screen is drawn inside. */
 export function Providers({ colour, language, scheme, root, test, children }: Props) {
   const i18n = useMemo(() => createI18n(language), [language]);

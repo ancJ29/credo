@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Answers } from './answers';
 import { fingerprintsOf } from './choices';
@@ -18,7 +18,11 @@ const source = {
 };
 
 /** The page as piece 1's walk draws it; the whole set of walks is held by its own test. */
-const reportWith = (answers: Answers = {}, changed = false, walks = WALKS.slice(0, 1)): Report =>
+const reportWith = (
+  answers: Answers = {},
+  changed = false,
+  walks = WALKS.slice(0, 1),
+): Promise<Report> =>
   makeReport({
     walks,
     people: PEOPLE,
@@ -92,8 +96,8 @@ afterEach(() => {
 });
 
 describe('the walks page: the map', () => {
-  it('The page opens on the map: the parts of the day across, the people down with their device; a built walk is a card with its title and its count of screens, and an empty cell is hatched', () => {
-    render(<Page report={reportWith()} />);
+  it('The page opens on the map: the parts of the day across, the people down with their device; a built walk is a card with its title and its count of screens, and an empty cell is hatched', async () => {
+    render(<Page report={await reportWith()} />);
 
     const headings = screen.getAllByRole('heading').map((heading) => heading.textContent);
     expect(headings.slice(0, 3)).toEqual([
@@ -116,8 +120,8 @@ describe('the walks page: the map', () => {
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(19);
   });
 
-  it('puts the operator’s walk on its own row, above the client’s admin, with its four screens and its questions', () => {
-    render(<Page report={reportWith({}, false, WALKS)} />);
+  it('puts the operator’s walk on its own row, above the client’s admin, with its four screens and its questions', async () => {
+    render(<Page report={await reportWith({}, false, WALKS.slice(0, 2))} />);
 
     const map = screen.getByRole('region', { name: 'The map of the day' });
     const [operator, admin] = within(map).getAllByRole('link');
@@ -142,8 +146,8 @@ describe('the walks page: the map', () => {
     );
   });
 
-  it('counts one screen in the singular', () => {
-    const report = reportWith();
+  it('counts one screen in the singular', async () => {
+    const report = await reportWith();
     report.walks[0].screens = report.walks[0].screens.slice(0, 1);
 
     render(<Page report={report} />);
@@ -157,8 +161,8 @@ describe('the walks page: the map', () => {
 });
 
 describe('the walks page: a walk', () => {
-  it('Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question', () => {
-    render(<Page report={reportWith()} />);
+  it('Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question', async () => {
+    render(<Page report={await reportWith()} />);
 
     const walk = screen.getByRole('region', {
       name: 'Set up the company: its name, colour and languages',
@@ -178,8 +182,8 @@ describe('the walks page: a walk', () => {
     );
   });
 
-  it('leaves out a heading whose path holds no screen, in the walk and in the rail', () => {
-    const report = reportWith();
+  it('leaves out a heading whose path holds no screen, in the walk and in the rail', async () => {
+    const report = await reportWith();
     report.walks[0].screens = report.walks[0].screens.filter((s) => s.path === 'main');
 
     render(<Page report={report} />);
@@ -188,8 +192,8 @@ describe('the walks page: a walk', () => {
     expect(screen.getAllByText('The main path')).toHaveLength(2);
   });
 
-  it('says the person and the width the walk is drawn at', () => {
-    render(<Page report={reportWith()} />);
+  it('says the person and the width the walk is drawn at', async () => {
+    render(<Page report={await reportWith()} />);
 
     expect(
       screen.getByText(
@@ -200,6 +204,30 @@ describe('the walks page: a walk', () => {
 });
 
 describe('the walks page: the drawn screens', () => {
+  it('Each piece-2 screen is drawn as a scene: the whole app on the fake at its address, inside its frame, with its steps done there', async () => {
+    render(<Page report={await reportWith({}, false, WALKS.slice(3, 4))} />);
+
+    const frame = screen.getByTitle<HTMLIFrameElement>('Screen 2 in Tiếng Việt, PC 1280');
+    act(() => {
+      fireEvent.load(frame);
+    });
+    const inner = frame.contentDocument!;
+
+    // the app opens at `/staff/new`, signed in as the root, and its steps are done: the scene says
+    // so when they end, which takes as long as the machine is loaded
+    await waitFor(
+      () => expect(inner.querySelector('[data-scene]')!.getAttribute('data-scene')).toBe('done'),
+      { timeout: 20_000 },
+    );
+    expect(inner.body.textContent).toContain('Thêm nhân viên');
+    expect(inner.documentElement.lang).toBe('vi');
+    // its steps typed into the form inside the frame, as a person does
+    expect(inner.querySelector<HTMLInputElement>('input[type=tel]')!.value).toBe('0909 123 456');
+    expect(inner.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Mới vào làm.');
+    // and nothing of it is drawn on the page itself
+    expect(document.body.textContent).not.toContain('Thêm nhân viên');
+  });
+
   const inFrame = (title: string) => {
     const frame = screen.getByTitle<HTMLIFrameElement>(title);
     act(() => {
@@ -208,8 +236,8 @@ describe('the walks page: the drawn screens', () => {
     return frame.contentDocument!;
   };
 
-  it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', () => {
-    render(<Page report={reportWith()} />);
+  it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', async () => {
+    render(<Page report={await reportWith()} />);
 
     expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(27);
     for (const [device, width] of [
@@ -242,8 +270,8 @@ describe('the walks page: the drawn screens', () => {
     expect(inFrame('Screen 1 in English, Phone 390').body.textContent).toContain('Minh Phát');
   });
 
-  it('A switch shows every screen in one language, Tiếng Việt first, at one width or all three, so each width in each language is one press away', () => {
-    render(<Page report={reportWith()} />);
+  it('A switch shows every screen in one language, Tiếng Việt first, at one width or all three, so each width in each language is one press away', async () => {
+    render(<Page report={await reportWith()} />);
     const language = within(screen.getByRole('group', { name: 'Language' }));
     const show = within(screen.getByRole('group', { name: 'Show' }));
     const frames = () => [...document.querySelectorAll('iframe')];
@@ -279,8 +307,8 @@ describe('the walks page: the drawn screens', () => {
     expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
   });
 
-  it('Shown together, a screen’s three widths sit widest first, each captioned with its device and width and no wider than it', () => {
-    render(<Page report={reportWith()} />);
+  it('Shown together, a screen’s three widths sit widest first, each captioned with its device and width and no wider than it', async () => {
+    render(<Page report={await reportWith()} />);
 
     const figures = [...card('3-settings').querySelectorAll<HTMLElement>('figure')];
 
@@ -293,10 +321,10 @@ describe('the walks page: the drawn screens', () => {
     expect(figures.map((figure) => figure.style.maxWidth)).toEqual(['1280px', '768px', '390px']);
   });
 
-  it('A change of language or width brings back the screen that was in view', () => {
+  it('A change of language or width brings back the screen that was in view', async () => {
     const band = watchBand();
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView');
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
 
     // Nothing reported in view yet: a change scrolls nowhere.
     pick('Show', 'PC');
@@ -313,7 +341,7 @@ describe('the walks page: the drawn screens', () => {
     expect(scroll.mock.contexts[1]).toBe(card('5-language-menu'));
   });
 
-  it('scales a screen down to the room it has, and its box to the same', () => {
+  it('scales a screen down to the room it has, and its box to the same', async () => {
     const watching: (() => void)[] = [];
     vi.stubGlobal(
       'ResizeObserver',
@@ -327,7 +355,7 @@ describe('the walks page: the drawn screens', () => {
     );
     const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get');
     const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get');
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     const box = () => document.querySelector<HTMLElement>('.w-scaled')!;
 
     expect(box().style.height).toBe('');
@@ -346,7 +374,7 @@ describe('the walks page: the drawn screens', () => {
     expect(box().firstElementChild!.getAttribute('style')).toContain('scale(1)');
   });
 
-  it('stops watching a size, and the band, when it leaves', () => {
+  it('stops watching a size, and the band, when it leaves', async () => {
     const disconnect = vi.fn();
     vi.stubGlobal(
       'ResizeObserver',
@@ -356,7 +384,7 @@ describe('the walks page: the drawn screens', () => {
       },
     );
     const band = watchBand();
-    const { unmount } = render(<Page report={reportWith()} />);
+    const { unmount } = render(<Page report={await reportWith()} />);
 
     unmount();
 
@@ -366,11 +394,11 @@ describe('the walks page: the drawn screens', () => {
 });
 
 describe('the walks page: the rail', () => {
-  it('A rail lists each walk’s screens, the main path first, each with a mark for each language, and marks the screen in view', () => {
+  it('A rail lists each walk’s screens, the main path first, each with a mark for each language, and marks the screen in view', async () => {
     const band = watchBand();
     render(
       <Page
-        report={reportWith(
+        report={await reportWith(
           Object.fromEntries([
             answer('yes', 'vi', '1-sign-in', ['text: empty vi']),
             answer('no', 'en', '2-sign-in-refused', ['text: failed en']),
@@ -441,11 +469,11 @@ describe('the walks page: the rail', () => {
 });
 
 describe('the walks page: the answers', () => {
-  it('Each drawn screen shows its language’s answer: not yet asked, a dated yes, or a "no" with its reason', () => {
+  it('Each drawn screen shows its language’s answer: not yet asked, a dated yes, or a "no" with its reason', async () => {
     const words = (language: string) => [`text: empty ${language}`];
     render(
       <Page
-        report={reportWith(
+        report={await reportWith(
           Object.fromEntries([
             answer('yes', 'vi', '1-sign-in', words('vi')),
             answer('no', 'en', '1-sign-in', words('en')),
@@ -460,10 +488,12 @@ describe('the walks page: the answers', () => {
     expect(stateOf('1-sign-in')).toBe('Answered no on 2026-10-29: the message is too small');
   });
 
-  it('A changed word asks again, showing the words before and now', () => {
+  it('A changed word asks again, showing the words before and now', async () => {
     render(
       <Page
-        report={reportWith(Object.fromEntries([answer('yes', 'en', '1-sign-in', ['text: old'])]))}
+        report={await reportWith(
+          Object.fromEntries([answer('yes', 'en', '1-sign-in', ['text: old'])]),
+        )}
       />,
     );
     pick('Language', 'English');
@@ -482,8 +512,8 @@ describe('the walks page: the answers', () => {
     );
   });
 
-  it('The words each screen was read as are folded, in the page’s language', () => {
-    render(<Page report={reportWith()} />);
+  it('The words each screen was read as are folded, in the page’s language', async () => {
+    render(<Page report={await reportWith()} />);
     const words = () => card('7-save-failed').querySelector<HTMLDetailsElement>('details.w-words')!;
 
     expect(words().open).toBe(false);
@@ -495,10 +525,10 @@ describe('the walks page: the answers', () => {
     expect(words().querySelector('pre')!.textContent).toBe('text: save-failed en');
   });
 
-  it('Approved screens fold away', () => {
+  it('Approved screens fold away', async () => {
     render(
       <Page
-        report={reportWith(
+        report={await reportWith(
           Object.fromEntries([
             answer('yes', 'vi', '1-sign-in', ['text: empty vi']),
             answer('yes', 'en', '1-sign-in', ['text: empty en']),
@@ -513,12 +543,12 @@ describe('the walks page: the answers', () => {
     expect((card('2-sign-in-refused') as HTMLDetailsElement).open).toBe(true);
   });
 
-  it('lists an answer whose screen left the walks, and counts its no', () => {
+  it('lists an answer whose screen left the walks, and counts its no', async () => {
     const gone: Answers = {
       'admin-setup:9-gone:vi': { answer: 'no', on: '2026-10-29', reason: 'too small', words: [] },
       'admin-setup:8-gone:en': { answer: 'yes', on: '2026-10-29', reason: '', words: [] },
     };
-    render(<Page report={reportWith(gone)} />);
+    render(<Page report={await reportWith(gone)} />);
 
     const section = screen.getByRole('region', { name: 'Answers whose screen left the walks' });
 
@@ -528,7 +558,7 @@ describe('the walks page: the answers', () => {
     expect(screen.getByRole('banner').textContent).toContain('1 no');
   });
 
-  it('Each screen shows the partners’ answers by label; the human’s alone marks the screen and counts in the bar', () => {
+  it('Each screen shows the partners’ answers by label; the human’s alone marks the screen and counts in the bar', async () => {
     const partner = (kind: 'yes' | 'no', words: string[] = ['text: empty vi']) => ({
       answer: kind,
       on: '2026-10-30',
@@ -537,7 +567,7 @@ describe('the walks page: the answers', () => {
     });
     render(
       <Page
-        report={reportWith({
+        report={await reportWith({
           'admin-setup:1-sign-in:vi@p2': partner('no'),
           'admin-setup:1-sign-in:vi@p1': partner('yes'),
           'admin-setup:1-sign-in:vi@p3': partner('yes', ['text: old']),
@@ -559,7 +589,7 @@ describe('the walks page: the answers', () => {
     expect(card('1-sign-in').hasAttribute('open')).toBe(true);
   });
 
-  it('A screen every partner answered yes, in both languages, still waits for the human: its card stays open and unmarked', () => {
+  it('A screen every partner answered yes, in both languages, still waits for the human: its card stays open and unmarked', async () => {
     const yes = (language: string): Answers => ({
       [`admin-setup:1-sign-in:${language}@p1`]: {
         answer: 'yes',
@@ -568,7 +598,7 @@ describe('the walks page: the answers', () => {
         words: [`text: empty ${language}`],
       },
     });
-    render(<Page report={reportWith({ ...yes('vi'), ...yes('en') })} />);
+    render(<Page report={await reportWith({ ...yes('vi'), ...yes('en') })} />);
 
     expect(card('1-sign-in').hasAttribute('open')).toBe(true);
     expect(
@@ -579,7 +609,7 @@ describe('the walks page: the answers', () => {
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
   });
 
-  it('lists a partner’s answer whose screen left the walks, and counts it nowhere', () => {
+  it('lists a partner’s answer whose screen left the walks, and counts it nowhere', async () => {
     const gone: Answers = {
       'admin-setup:9-gone:vi@p1': {
         answer: 'no',
@@ -588,7 +618,7 @@ describe('the walks page: the answers', () => {
         words: [],
       },
     };
-    render(<Page report={reportWith(gone)} />);
+    render(<Page report={await reportWith(gone)} />);
 
     expect(
       screen.getByRole('region', { name: 'Answers whose screen left the walks' }).textContent,
@@ -596,8 +626,8 @@ describe('the walks page: the answers', () => {
     expect(screen.getByRole('banner').textContent).not.toContain('1 no');
   });
 
-  it('has no list of the gone when none is gone', () => {
-    render(<Page report={reportWith()} />);
+  it('has no list of the gone when none is gone', async () => {
+    render(<Page report={await reportWith()} />);
 
     expect(screen.queryByText('Answers whose screen left the walks')).toBeNull();
   });
@@ -625,8 +655,8 @@ describe('the walks page: its layout', () => {
     );
   });
 
-  it('Beside its widths in a wide body, under them in a narrow one, each screen asks its question with Yes and No in the page’s language; the narrow one rides at the foot of the window', () => {
-    render(<Page report={reportWith()} />);
+  it('Beside its widths in a wide body, under them in a narrow one, each screen asks its question with Yes and No in the page’s language; the narrow one rides at the foot of the window', async () => {
+    render(<Page report={await reportWith()} />);
     const grid = card('3-settings').querySelector('.w-screen-grid')!;
     const ask = within(grid.querySelector<HTMLElement>('.w-panel')!);
 
@@ -700,8 +730,8 @@ describe('the walks page: answering', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
-  it('The page says at its top how to answer: a partner shares under their label, “Copy my answers” is not for partners', () => {
-    render(<Page report={reportWith()} />);
+  it('The page says at its top how to answer: a partner shares under their label, “Copy my answers” is not for partners', async () => {
+    render(<Page report={await reportWith()} />);
 
     const line = document.querySelector('.w-howto')!.textContent;
 
@@ -711,8 +741,8 @@ describe('the walks page: answering', () => {
     expect(line).toContain('sends nothing');
   });
 
-  it('Each screen, in each language, has Yes and No, and a reason box that a No brings', () => {
-    render(<Page report={reportWith()} />);
+  it('Each screen, in each language, has Yes and No, and a reason box that a No brings', async () => {
+    render(<Page report={await reportWith()} />);
 
     expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(9);
     expect(screen.getAllByLabelText('Yes')).toHaveLength(9);
@@ -726,8 +756,8 @@ describe('the walks page: answering', () => {
     expect(yes.checked).toBe(false);
   });
 
-  it('The reason is required for a No, marked until it is given, and a Yes needs none', () => {
-    render(<Page report={reportWith()} />);
+  it('The reason is required for a No, marked until it is given, and a Yes needs none', async () => {
+    render(<Page report={await reportWith()} />);
     const box = () =>
       panel('3-settings').queryByLabelText<HTMLTextAreaElement>('Reason for the No');
 
@@ -746,8 +776,8 @@ describe('the walks page: answering', () => {
     expect(box()!.value).toBe('too small');
   });
 
-  it('answers one screen in one language at a time, and Clear takes the choice back', () => {
-    render(<Page report={reportWith()} />);
+  it('answers one screen in one language at a time, and Clear takes the choice back', async () => {
+    render(<Page report={await reportWith()} />);
     pick('Language', 'English');
     choose('3-settings', 'No', 'English');
     reason('3-settings', 'too small', 'English');
@@ -768,10 +798,10 @@ describe('the walks page: answering', () => {
     expect(stateOf('3-settings')).toBe('Not answered yet.');
   });
 
-  it('says what a choice will do to the answer on record', () => {
+  it('says what a choice will do to the answer on record', async () => {
     render(
       <Page
-        report={reportWith(
+        report={await reportWith(
           Object.fromEntries([
             answer('yes', 'vi', '1-sign-in', ['text: empty vi']),
             answer('no', 'vi', '2-sign-in-refused', ['text: old']),
@@ -796,7 +826,7 @@ describe('the walks page: answering', () => {
   it('Copy my answers builds one block naming the build, with each answered screen and language, its fingerprint and a no’s reason, and puts it on the clipboard', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    const report = reportWith();
+    const report = await reportWith();
     render(<Page report={report} />);
     choose('1-sign-in', 'Yes');
     pick('Language', 'English');
@@ -821,7 +851,7 @@ describe('the walks page: answering', () => {
 
   it('shows the block to select when the clipboard refuses, until it is hidden', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     choose('1-sign-in', 'Yes');
 
     await press();
@@ -836,7 +866,7 @@ describe('the walks page: answering', () => {
   });
 
   it('gives no block, and says so, when nothing is answered', async () => {
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
 
     await press();
 
@@ -851,7 +881,7 @@ describe('the walks page: answering', () => {
   it('gives no block while a No lacks its reason, naming the screens', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     choose('7-save-failed', 'No');
     pick('Language', 'English');
     choose('1-sign-in', 'Yes', 'English');
@@ -879,7 +909,7 @@ describe('the walks page: answering', () => {
   it('Beside "Copy my answers", Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    const report = reportWith();
+    const report = await reportWith();
     render(<Page report={report} />);
     label('P1');
     expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p1');
@@ -913,7 +943,7 @@ describe('the walks page: answering', () => {
   it('Share asks once for the partner’s label, keeps it in the browser, and gives no message without one, saying so', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    const { unmount } = render(<Page report={reportWith()} />);
+    const { unmount } = render(<Page report={await reportWith()} />);
     choose('1-sign-in', 'Yes');
 
     await shareButton();
@@ -927,7 +957,7 @@ describe('the walks page: answering', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
     unmount();
 
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
     choose('1-sign-in', 'Yes');
     await shareButton();
@@ -936,7 +966,7 @@ describe('the walks page: answering', () => {
 
   it('Share says so when nothing is chosen, and when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     label('p1');
 
     await shareButton();
@@ -954,10 +984,10 @@ describe('the walks page: answering', () => {
     );
   });
 
-  it('The bar counts the answers on record with those chosen here, of all there are, and the ones to copy', () => {
+  it('The bar counts the answers on record with those chosen here, of all there are, and the ones to copy', async () => {
     render(
       <Page
-        report={reportWith(
+        report={await reportWith(
           Object.fromEntries([answer('yes', 'vi', '1-sign-in', ['text: empty vi'])]),
         )}
       />,
@@ -976,7 +1006,7 @@ describe('the walks page: answering', () => {
     expect(ticks().slice(0, 4)).toEqual(['yes', 'open', 'yes', 'open']);
   });
 
-  it('The bar keeps its height on the page, so an answer at the foot of the window rests above it', () => {
+  it('The bar keeps its height on the page, so an answer at the foot of the window rests above it', async () => {
     const watching: (() => void)[] = [];
     const disconnect = vi.fn();
     vi.stubGlobal(
@@ -990,7 +1020,7 @@ describe('the walks page: answering', () => {
       },
     );
     vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(72);
-    const { unmount } = render(<Page report={reportWith()} />);
+    const { unmount } = render(<Page report={await reportWith()} />);
 
     act(() => watching.forEach((fit) => fit()));
 
@@ -999,14 +1029,14 @@ describe('the walks page: answering', () => {
     document.documentElement.style.removeProperty('--bar');
   });
 
-  it('keeps the unsent choices across a reload', () => {
-    const { unmount } = render(<Page report={reportWith()} />);
+  it('keeps the unsent choices across a reload', async () => {
+    const { unmount } = render(<Page report={await reportWith()} />);
     pick('Language', 'English');
     choose('3-settings', 'No', 'English');
     reason('3-settings', 'too small', 'English');
     unmount();
 
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
     pick('Language', 'English');
 
     const en = panel('3-settings', 'English');
@@ -1014,7 +1044,7 @@ describe('the walks page: answering', () => {
     expect(en.getByLabelText<HTMLTextAreaElement>('Reason for the No').value).toBe('too small');
   });
 
-  it('works without the browser’s storage', () => {
+  it('works without the browser’s storage', async () => {
     vi.stubGlobal('localStorage', {
       getItem: () => {
         throw new Error('blocked');
@@ -1024,7 +1054,7 @@ describe('the walks page: answering', () => {
       },
       clear: () => {},
     });
-    render(<Page report={reportWith()} />);
+    render(<Page report={await reportWith()} />);
 
     choose('3-settings', 'Yes');
 
@@ -1033,8 +1063,8 @@ describe('the walks page: answering', () => {
 });
 
 describe('the walks page: what it was built from', () => {
-  it('The page says what it was built from: the branch, the commit and its time', () => {
-    render(<Page report={reportWith()} />);
+  it('The page says what it was built from: the branch, the commit and its time', async () => {
+    render(<Page report={await reportWith()} />);
 
     const line = document.querySelector('.w-build')!.textContent;
 
@@ -1043,16 +1073,16 @@ describe('the walks page: what it was built from', () => {
     );
   });
 
-  it('says so when the tree differed from the commit', () => {
-    render(<Page report={reportWith({}, true)} />);
+  it('says so when the tree differed from the commit', async () => {
+    render(<Page report={await reportWith({}, true)} />);
 
     expect(document.querySelector('.w-build')!.textContent).toContain(
       'commit abc123def with changes,',
     );
   });
 
-  it('opens with what waits, in all', () => {
-    render(<Page report={reportWith()} />);
+  it('opens with what waits, in all', async () => {
+    render(<Page report={await reportWith()} />);
 
     expect(screen.getByRole('banner').textContent).toContain('18 waiting');
   });

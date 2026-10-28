@@ -18,14 +18,38 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(26);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(58);
+    type Language = { words: string[]; shown: { kind: string } };
+    type Screen = {
+      id: string;
+      mock?: unknown;
+      scene?: unknown;
+      languages: Record<string, Language>;
+    };
     const walks = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as {
-      walks: { screens: { id: string; languages: Record<string, { words: string[] }> }[] }[];
+      walks: { id: string; screens: Screen[] }[];
     };
     const failedSave = walks.walks[0].screens.find((screen) => screen.id === '7-save-failed')!;
     expect(failedSave.languages['en'].words).toContain(
       'alert: The settings were not saved. What you typed is still here: try again.',
     );
+    // Group A of piece 2: its sixteen screens drawn as scenes, none from the mock, thirty-two answers
+    // waiting, and the typing and pressing done on the page as a person does them.
+    const piece2 = walks.walks.slice(2);
+    const screens = piece2.flatMap((walk) => walk.screens);
+    expect(piece2.map((walk) => walk.id)).toEqual([
+      'admin-staff-setup',
+      'admin-staff',
+      'office-staff',
+    ]);
+    expect(screens).toHaveLength(16);
+    expect(screens.filter((screen) => 'mock' in screen)).toEqual([]);
+    expect(screens.filter((screen) => !('scene' in screen))).toEqual([]);
+    const waiting = screens.flatMap((screen) => Object.values(screen.languages));
+    expect(waiting.filter((language) => language.shown.kind === 'waiting')).toHaveLength(32);
+    const added = piece2[1].screens.find((screen) => screen.id === 'staff-3-added')!;
+    expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
+    expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');
     // The process has its own globals back.
     expect('document' in globalThis).toBe(false);
   });

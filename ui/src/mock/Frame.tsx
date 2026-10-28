@@ -15,16 +15,27 @@ type StageProps = {
   root?: () => HTMLElement;
   /** Switches Mantine's transitions off, as the tests draw. */
   test?: boolean;
+  /** The address the router starts at: Settings, for a mock screen. */
+  path?: string;
   children: ReactNode;
 };
 
 type Props = Omit<StageProps, 'root' | 'test'> & { title: string; width: Width };
 
-/** What a mock screen is drawn inside: the app's look and words, and a router at Settings. */
-export function Stage({ colour, language, scheme, root, test, children }: StageProps) {
+/** What a mock screen is drawn inside: the app's look and words, and a router at Settings, or at
+ * `path` for the whole app drawn as a scene. */
+export function Stage({
+  colour,
+  language,
+  scheme,
+  root,
+  test,
+  path = '/settings',
+  children,
+}: StageProps) {
   return (
     <Providers colour={colour} language={language} scheme={scheme} root={root} test={test}>
-      <MemoryRouter initialEntries={['/settings']}>{children}</MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
     </Providers>
   );
 }
@@ -39,7 +50,7 @@ const FLOOR = 320;
  * than `FLOOR`: a screen that fills the viewport (the sign-in's centred card) is then centred in
  * a frame that fits it, with no empty block above.
  */
-export function Frame({ title, colour, language, scheme, width, children }: Props) {
+export function Frame({ title, colour, language, scheme, width, path, children }: Props) {
   const [body, setBody] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(FLOOR);
 
@@ -72,6 +83,7 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
             language={language}
             scheme={scheme}
             root={() => body.ownerDocument.documentElement}
+            path={path}
           >
             {children}
           </Stage>,

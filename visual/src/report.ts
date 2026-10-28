@@ -20,9 +20,11 @@ import {
   DEVICE_WIDTH,
   type Device,
   type DeviceWidth,
+  type Drawn,
   type Part,
   type Person,
-  resolveStates,
+  resolveDrawn,
+  type Scene,
   type Walk,
 } from './walks';
 
@@ -41,7 +43,9 @@ export type ReportScreen = {
   id: string;
   number: number;
   path: 'main' | 'wrong';
-  mock: { screen: number; state: string };
+  /** What it draws: a state of the mock, or a scene of the app. */
+  mock?: { screen: number; state: string };
+  scene?: Scene;
   sentence: Bilingual;
   question: string;
   languages: Record<Language, ScreenInLanguage>;
@@ -70,31 +74,32 @@ export type Report = {
   tally: Tally;
 };
 
-/** Reads one screen's words: the build draws it on a DOM; tests hand in their own. */
+/** Reads one screen's words: the build draws it on a DOM; tests hand in their own. A scene's take
+ * as long as its steps, so a reader may answer later. */
 export type ReadWords = (
-  state: MockScreen['states'][number],
+  drawn: Drawn,
   language: Language,
   navigation: boolean,
-) => string[];
+) => string[] | Promise<string[]>;
 
 /**
  * Every walk screen's words now, in each language, under its answer's key: the one reader both the
  * page and the answers command hold an answer's fingerprint against.
  */
-export function currentWords(
+export async function currentWords(
   walks: readonly Walk[],
   mock: readonly MockScreen[],
   readWords: ReadWords,
 ) {
-  const states = resolveStates(walks, mock);
+  const drawn = resolveDrawn(walks, mock);
   const words = new Map<string, string[]>();
   for (const walk of walks) {
     for (const screen of walk.screens) {
-      const state = states.get(`${walk.id}:${screen.id}`)!;
+      const what = drawn.get(`${walk.id}:${screen.id}`)!;
       for (const language of LANGUAGES) {
         words.set(
           answerKey(walk.id, screen.id, language),
-          readWords(state, language, screen.navigation === true),
+          await readWords(what, language, screen.navigation === true),
         );
       }
     }
@@ -102,7 +107,7 @@ export function currentWords(
   return words;
 }
 
-export function makeReport(input: {
+export async function makeReport(input: {
   walks: readonly Walk[];
   people: readonly Person[];
   parts: readonly Part[];
@@ -111,9 +116,9 @@ export function makeReport(input: {
   source: Source;
   builtAt: Date;
   readWords: ReadWords;
-}): Report {
+}): Promise<Report> {
   const { walks, people, parts, mock, answers, source, builtAt, readWords } = input;
-  const words = currentWords(walks, mock, readWords);
+  const words = await currentWords(walks, mock, readWords);
   const widthOf = (device: Device) => DEVICE_WIDTH[device];
 
   const reportWalks = walks.map((walk): ReportWalk => {
@@ -137,7 +142,7 @@ export function makeReport(input: {
         id: screen.id,
         number: screen.number,
         path: screen.path,
-        mock: screen.mock,
+        ...(screen.scene ? { scene: screen.scene } : { mock: screen.mock }),
         sentence: screen.sentence,
         question: screen.question,
         languages,

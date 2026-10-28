@@ -1,8 +1,12 @@
 import type { Language } from '@credo/shared';
+import { DEMO_CONFIG } from '@credo/shared/demo';
 import { Stage } from '@credo/ui/mock';
 import { computeAccessibleName, getRole } from 'dom-accessibility-api';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { SceneView } from './scene';
+import type { Limits } from './steps';
+import type { Drawn, DrawnScene } from './walks';
 
 const ELEMENT = 1;
 const TEXT = 3;
@@ -84,4 +88,58 @@ export function drawnWords(
     act(() => root.unmount());
     container.remove();
   }
+}
+
+/** How often a scene is looked at, and the longest it is waited for by default, steps and all. */
+const LOOK_EVERY = 10;
+const SCENE_FOR = 30_000;
+
+/**
+ * One scene drawn on the page's own DOM, its steps done as a person does them, and its words read
+ * when they have run. A step that finds nothing stops the build, naming the walk, the screen and
+ * the step. React is let schedule as it does in a browser while the scene runs, since the steps
+ * and the fake's answers come between its renders, not inside one `act`.
+ */
+export async function drawnSceneWords(
+  { id, walk, scene }: DrawnScene,
+  language: Language,
+  options: { navigation?: boolean; limits?: Limits; endsIn?: number } = {},
+): Promise<string[]> {
+  const endsIn = options.endsIn ?? SCENE_FOR;
+  const container = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(container);
+  const env = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+  const before = env.IS_REACT_ACT_ENVIRONMENT;
+  env.IS_REACT_ACT_ENVIRONMENT = false;
+  try {
+    root.render(
+      <Stage colour={DEMO_CONFIG.colour} language={language} scheme="light" test path={scene.path}>
+        <SceneView scene={scene} language={language} test limits={options.limits} />
+      </Stage>,
+    );
+    const began = Date.now();
+    for (;;) {
+      const phase = container.querySelector('[data-scene]')?.getAttribute('data-scene');
+      if (phase === 'done') return wordsOf(container, options);
+      if (phase === 'failed') {
+        const why = container.querySelector('[data-scene-failed]')!.textContent;
+        throw new Error(`walk ${walk}, screen ${id}: ${why}`);
+      }
+      if (Date.now() - began > endsIn) {
+        throw new Error(`walk ${walk}, screen ${id}: the scene did not end in ${endsIn} ms`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, LOOK_EVERY));
+    }
+  } finally {
+    env.IS_REACT_ACT_ENVIRONMENT = before;
+    act(() => root.unmount());
+    container.remove();
+  }
+}
+
+/** The words of whatever a walk screen draws, a mock's state or a scene, in `language`. */
+export function readWords(drawn: Drawn, language: Language, navigation: boolean) {
+  return 'scene' in drawn
+    ? drawnSceneWords(drawn, language, { navigation })
+    : drawnWords(drawn.screen, drawn.colour, language, { navigation });
 }

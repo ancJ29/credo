@@ -1,36 +1,50 @@
 // @vitest-environment node
 import { readdirSync, readFileSync } from 'node:fs';
+import { DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
-import { allKeys, answerKey, DEVICE_WIDTH, PARTS, PEOPLE, resolveStates, WALKS } from './walks';
+import { DICTIONARIES } from '@credo/ui/words';
+import {
+  allKeys,
+  answerKey,
+  DEVICE_WIDTH,
+  PARTS,
+  PEOPLE,
+  resolveDrawn,
+  type Step,
+  type Walk,
+  WALKS,
+} from './walks';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
 
 describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
-    const states = resolveStates(WALKS, SCREENS);
+    const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(13);
+    expect(states.size).toBe(29);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
     expect(states.get('admin-setup:9-unknown-company')!.id).toBe('unknown');
     expect(states.get('operator-setup:op-4-code-taken')!.id).toBe('taken');
+    expect('scene' in states.get('admin-staff:staff-4-person')!).toBe(true);
+    expect('scene' in states.get('admin-setup:1-sign-in')!).toBe(false);
   });
 
   it('One it lacks stops the build, naming it', () => {
-    const lacking = (screen: number, state: string) => [
+    const lacking = (screen: number, state: string): Walk[] => [
       {
         ...WALKS[0],
-        screens: [{ ...WALKS[0].screens[0], id: 'x', mock: { screen, state } }],
+        screens: [{ ...WALKS[0].screens[0], id: 'x', mock: { screen, state }, scene: undefined }],
       },
     ];
 
-    expect(() => resolveStates(lacking(3, 'no-such-state'), SCREENS)).toThrow(
+    expect(() => resolveDrawn(lacking(3, 'no-such-state'), SCREENS)).toThrow(
       'walk admin-setup, screen x: the mock draws no state "3 no-such-state"',
     );
-    expect(() => resolveStates(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
+    expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
   it('holds piece 1’s eight screens in the app frame’s numbers, and screen 9 after them', () => {
@@ -66,9 +80,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, twenty-six for the thirteen screens', () => {
+  it('keys an answer by walk, screen and language, fifty-eight for the twenty-nine screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(26);
+    expect(allKeys(WALKS)).toHaveLength(58);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -110,5 +124,88 @@ describe('the walks', () => {
       support.indexOf('await expect(page).toHaveScreenshot'),
     );
     expect(read('playwright.config.ts')).toContain('maxDiffPixels: 0, threshold: 0');
+  });
+
+  it('puts piece 2’s group A in three walks, sixteen screens in all, each a scene and none from the mock', () => {
+    const piece2 = WALKS.slice(2);
+
+    expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
+      ['admin-staff-setup', 'admin', 'setup', 1],
+      ['admin-staff', 'admin', 'staff', 11],
+      ['office-staff', 'office', 'staff', 4],
+    ]);
+    const screens = piece2.flatMap((walk) => walk.screens);
+    expect(screens).toHaveLength(16);
+    expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
+    expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(16);
+    expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
+      [1],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      [1, 2, 3, 4],
+    ]);
+    expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
+      9, 10, 11,
+    ]);
+    expect(piece2[2].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
+      3, 4,
+    ]);
+    expect(piece2[2].screens.filter((s) => s.navigation).map((s) => s.number)).toEqual([1]);
+    for (const walk of piece2) {
+      expect(PEOPLE.map((person) => person.id)).toContain(walk.person);
+      expect(PARTS.map((part) => part.id)).toContain(walk.part);
+    }
+  });
+
+  it('names each step of a scene by words both languages’ dictionaries hold', () => {
+    const words = (language: 'en' | 'vi', key: string) =>
+      key
+        .split('.')
+        .reduce<unknown>(
+          (at, part) => (at as Record<string, unknown>)?.[part],
+          DICTIONARIES[language],
+        );
+    const keys = (step: Step) =>
+      'press' in step
+        ? [step.press, ...(step.within ? [step.within] : [])]
+        : ['fill' in step ? step.fill : step.choose];
+    const used = WALKS.flatMap((walk) => walk.screens)
+      .flatMap((screen) => screen.scene?.steps ?? [])
+      .flatMap(keys);
+
+    expect(used.length).toBeGreaterThan(15);
+    for (const key of used) {
+      expect(typeof words('en', key), key).toBe('string');
+      expect(typeof words('vi', key), key).toBe('string');
+    }
+  });
+
+  it('opens each scene as a person of the data set, by the code they hold, or as the root', () => {
+    const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
+    const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
+
+    expect(scenes).toHaveLength(16);
+    for (const scene of scenes) {
+      if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
+      expect(scene.path.startsWith('/'), scene.path).toBe(true);
+    }
+    expect(scenes.filter((scene) => scene.as !== undefined).map((scene) => scene.as)).toEqual([
+      'EMP-0001',
+      'EMP-0001',
+      'EMP-0001',
+      'EMP-0005',
+    ]);
+  });
+
+  it('The walk spec’s screens equal the walks page’s list, piece 2’s as piece 1’s', () => {
+    const shot = (name: string) =>
+      [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]);
+    const piece2 = WALKS.slice(2).flatMap((walk) => walk.screens.map((screen) => screen.id));
+
+    expect(shot('piece-2.spec.ts')).toEqual(piece2);
+    const config = read('playwright.config.ts');
+    expect(config).toContain("name: 'fake'");
+    expect(config).toContain("name: 'full'");
+    expect(config).toContain("name: 'chromium', testIgnore: 'piece-2.spec.ts'");
   });
 });

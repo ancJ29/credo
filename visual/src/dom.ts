@@ -47,6 +47,8 @@ export function installDom() {
   for (const key of Object.getOwnPropertyNames(win)) {
     if (!(key in global)) set(key, (win as unknown as Record<string, unknown>)[key]);
   }
+  // Node has a `FormData` of its own, which refuses a jsdom form: React reads one on a submit.
+  set('FormData', win.FormData);
   set('window', win);
   set('document', win.document);
   set('navigator', win.navigator);
