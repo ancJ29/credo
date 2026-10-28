@@ -137,6 +137,17 @@ export const WALKS: Walk[] = [
         },
         question: 'Would the admin know the save did not happen, and that nothing typed is lost?',
       },
+      {
+        id: '8-save-conflict',
+        number: 8,
+        path: 'wrong',
+        mock: { screen: 3, state: 'conflict' },
+        sentence: {
+          en: 'Someone else saved first, what was typed kept',
+          vi: 'Người khác đã lưu trước, nội dung đã nhập vẫn còn',
+        },
+        question: 'Would the admin know someone else saved first, and how to see what they saved?',
+      },
     ],
   },
 ];

@@ -14,7 +14,7 @@ describe('pnpm report', () => {
     const folder = await report(worktree, (line) => lines.push(line));
 
     expect(readdirSync(join(root, 'walks'))).toHaveLength(1);
-    expect(lines).toEqual([`walks page: ${folder}`, '14 waiting, 0 asked again, 0 no, 0 yes']);
+    expect(lines).toEqual([`walks page: ${folder}`, '16 waiting, 0 asked again, 0 no, 0 yes']);
     const walks = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as {
       walks: { screens: { id: string; languages: Record<string, { words: string[] }> }[] }[];
     };

@@ -109,8 +109,8 @@ describe('the walks page: the map', () => {
     const cell = within(map).getByRole('link');
     expect(cell.getAttribute('href')).toBe('#admin-setup');
     expect(cell.textContent).toContain('Set up the company: its name, colour and languages');
-    expect(cell.textContent).toContain('7 screens');
-    expect(cell.textContent).toContain('14 waiting');
+    expect(cell.textContent).toContain('8 screens');
+    expect(cell.textContent).toContain('16 waiting');
     // One cell of fifteen is filled; fourteen are hatched.
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(14);
   });
@@ -142,7 +142,7 @@ describe('the walks page: a walk', () => {
       'What can go wrong',
     ]);
     const numbers = [...walk.querySelectorAll('.w-number')].map((n) => n.textContent);
-    expect(numbers).toEqual(['1', '3', '4', '5', '2', '6', '7']);
+    expect(numbers).toEqual(['1', '3', '4', '5', '2', '6', '7', '8']);
     const last = walk.querySelector('#admin-setup-7-save-failed')!;
     expect(last.textContent).toContain('A save that failed, what was typed kept');
     expect(last.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
@@ -184,14 +184,14 @@ describe('the walks page: the drawn screens', () => {
   it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(21);
+    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(24);
     for (const [device, width] of [
       ['PC', '1280'],
       ['Tablet', '768'],
       ['Phone', '390'],
     ]) {
       const frames = screen.getAllByTitle(new RegExp(`, ${device} ${width}$`));
-      expect(frames).toHaveLength(7);
+      expect(frames).toHaveLength(8);
       expect(frames.every((frame) => frame.getAttribute('width') === width)).toBe(true);
     }
     // Screen 7 is the mock's failed save: the settings with the error and what was typed.
@@ -202,11 +202,15 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(screen.queryAllByTitle(/ in Tiếng Việt, /)).toHaveLength(0);
-    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(21);
+    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(24);
     const en = inFrame('Screen 7 in English, Tablet 768');
     expect(en.body.textContent).toContain('The settings were not saved.');
     expect((en.querySelector('input') as HTMLInputElement).value).toBe('Minh Phát Sài Gòn');
     expect(en.documentElement.lang).toBe('en');
+    // Screen 8 is the mock's conflict: someone else saved first.
+    expect(inFrame('Screen 8 in English, Phone 390').body.textContent).toContain(
+      'Someone saved newer settings first.',
+    );
     // Screen 1 is the sign-in in the company's name.
     expect(inFrame('Screen 1 in English, Phone 390').body.textContent).toContain('Minh Phát');
   });
@@ -231,7 +235,7 @@ describe('the walks page: the drawn screens', () => {
       ['Phone', '390'],
     ]) {
       pick('Show', device);
-      expect(frames()).toHaveLength(7);
+      expect(frames()).toHaveLength(8);
       expect(frames().every((frame) => frame.getAttribute('width') === width)).toBe(true);
       expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe(
         device.toLowerCase(),
@@ -241,10 +245,10 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(language.getByLabelText<HTMLInputElement>('English').checked).toBe(true);
-    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(7);
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(7);
+    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(8);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(8);
     pick('Show', 'All three');
-    expect(frames()).toHaveLength(21);
+    expect(frames()).toHaveLength(24);
     expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
   });
 
@@ -367,6 +371,7 @@ describe('the walks page: the rail', () => {
       '#admin-setup-2-sign-in-refused',
       '#admin-setup-6-service-down',
       '#admin-setup-7-save-failed',
+      '#admin-setup-8-save-conflict',
     ]);
     expect(items[0].textContent).toContain('Sign in, in the company’s name and colours');
     expect(marks(0)).toEqual([
@@ -386,7 +391,7 @@ describe('the walks page: the rail', () => {
     );
 
     // The screen in view, as the browser reports it.
-    expect(band.watched).toHaveLength(7);
+    expect(band.watched).toHaveLength(8);
     expect(nav.querySelector('[aria-current]')).toBeNull();
     band.report([['4-saved', true]]);
     expect(items[2].getAttribute('aria-current')).toBe('location');
@@ -612,12 +617,12 @@ describe('the walks page: answering', () => {
   it('Each screen, in each language, has Yes and No, and a reason box that a No brings', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(7);
-    expect(screen.getAllByLabelText('Yes')).toHaveLength(7);
-    expect(screen.getAllByLabelText('No')).toHaveLength(7);
+    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(8);
+    expect(screen.getAllByLabelText('Yes')).toHaveLength(8);
+    expect(screen.getAllByLabelText('No')).toHaveLength(8);
     expect(screen.queryAllByLabelText('Reason for the No')).toHaveLength(0);
     pick('Language', 'English');
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(7);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(8);
     const yes = panel('3-settings', 'English').getByLabelText<HTMLInputElement>('Yes');
     expect(yes.type).toBe('radio');
     expect(yes.name).toBe('admin-setup:3-settings:en');
@@ -715,7 +720,7 @@ describe('the walks page: answering', () => {
       screen.getByLabelText<HTMLTextAreaElement>('The block to paste into the chat').value,
     ).toBe(expected);
     expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into the chat.');
-    expect(screen.getByText('2 of 14 answered')).toBeTruthy();
+    expect(screen.getByText('2 of 16 answered')).toBeTruthy();
     expect(screen.getByText('2 answers to copy')).toBeTruthy();
   });
 
@@ -744,7 +749,7 @@ describe('the walks page: answering', () => {
       'Nothing chosen yet: answer a screen first.',
     );
     expect(screen.queryByLabelText('The block to paste into the chat')).toBeNull();
-    expect(screen.getByText('0 of 14 answered')).toBeTruthy();
+    expect(screen.getByText('0 of 16 answered')).toBeTruthy();
     expect(screen.getByText('0 answers to copy')).toBeTruthy();
   });
 
@@ -780,12 +785,12 @@ describe('the walks page: answering', () => {
         tick.getAttribute('data-mark'),
       );
 
-    expect(screen.getByText('1 of 14 answered')).toBeTruthy();
+    expect(screen.getByText('1 of 16 answered')).toBeTruthy();
     expect(screen.getByText('0 answers to copy')).toBeTruthy();
     choose('3-settings', 'Yes');
-    expect(screen.getByText('2 of 14 answered')).toBeTruthy();
+    expect(screen.getByText('2 of 16 answered')).toBeTruthy();
     expect(screen.getByText('1 answer to copy')).toBeTruthy();
-    expect(ticks()).toHaveLength(14);
+    expect(ticks()).toHaveLength(16);
     expect(ticks().slice(0, 4)).toEqual(['yes', 'open', 'yes', 'open']);
   });
 
@@ -867,6 +872,6 @@ describe('the walks page: what it was built from', () => {
   it('opens with what waits, in all', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getByRole('banner').textContent).toContain('14 waiting');
+    expect(screen.getByRole('banner').textContent).toContain('16 waiting');
   });
 });

@@ -33,11 +33,11 @@ describe('the report', () => {
     const report = reportOf({});
     const screens = report.walks[0].screens;
 
-    expect(screens).toHaveLength(7);
-    expect(screens[6].id).toBe('7-save-failed');
-    expect(screens[6].languages.vi.words).toEqual(['text: vi']);
-    expect(screens[6].languages.en.shown).toEqual({ kind: 'waiting' });
-    expect(report.tally).toEqual({ waiting: 14, yes: 0, no: 0, changed: 0 });
+    expect(screens).toHaveLength(8);
+    expect(screens[7].id).toBe('8-save-conflict');
+    expect(screens[7].languages.vi.words).toEqual(['text: vi']);
+    expect(screens[7].languages.en.shown).toEqual({ kind: 'waiting' });
+    expect(report.tally).toEqual({ waiting: 16, yes: 0, no: 0, changed: 0 });
     expect(report.walks[0].tally).toEqual(report.tally);
   });
 
@@ -96,7 +96,7 @@ describe('the report', () => {
     expect(first.languages.en.shown.kind).toBe('changed');
     expect(second.languages.vi.shown.kind).toBe('no');
     expect(report.orphans.map((orphan) => orphan.key)).toEqual(['admin-setup:9-gone:vi']);
-    expect(report.tally).toEqual({ waiting: 11, yes: 1, no: 2, changed: 1 });
+    expect(report.tally).toEqual({ waiting: 13, yes: 1, no: 2, changed: 1 });
   });
 
   it('hands the words reader the screen’s state, the language and whether it is about the menu', () => {
@@ -106,7 +106,8 @@ describe('the report', () => {
       return [];
     }) as never);
 
-    expect(asked).toHaveLength(14);
+    expect(asked).toHaveLength(16);
     expect(asked).toContain('save-failed en false');
+    expect(asked).toContain('conflict en false');
   });
 });

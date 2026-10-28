@@ -29,10 +29,10 @@ afterEach(() => {
 });
 
 describe('the unsent choices', () => {
-  it('holds a fingerprint for each of the fourteen screens in a language', () => {
+  it('holds a fingerprint for each of the sixteen screens in a language', () => {
     const prints = fingerprintsOf(report);
 
-    expect(prints.size).toBe(14);
+    expect(prints.size).toBe(16);
     expect(prints.get(VI)).toMatch(/^[0-9a-f]{12}$/);
     expect(prints.get(VI)).not.toBe(prints.get(EN));
   });
