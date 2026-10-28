@@ -66,14 +66,20 @@ const LISTENING = /listening/i;
  * why it never did: the child's exit and the end of its log, or the time spent. The log line is
  * what proves the answer is the child's own: a stranger already on the port answers too, and the
  * child, unable to bind, never logs it. */
-export async function waitUntilUp(url: string, started: Started, what: string, timeoutMs = 20_000) {
+export async function waitUntilUp(
+  url: string,
+  started: Started,
+  what: string,
+  timeoutMs = 20_000,
+  headers: Record<string, string> = {},
+) {
   for (let waited = 0; waited < timeoutMs; waited += 25) {
     if (started.child.exitCode !== null) {
       const log = await readFile(started.logFile, 'utf8');
       throw new Error(`${what} exited ${started.child.exitCode}: ${log.trim().slice(-600)}`);
     }
     if (LISTENING.test(await readFile(started.logFile, 'utf8'))) {
-      const reply = await fetch(url).catch(() => null);
+      const reply = await fetch(url, { headers }).catch(() => null);
       if (reply?.ok) return;
     }
     await sleep(25);

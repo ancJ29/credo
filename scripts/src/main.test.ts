@@ -67,7 +67,9 @@ describe('pnpm stack as a process', () => {
         await portIn(join(stackTemp, running, 'c-storage.log')),
       ];
       const front = /http:\/\/127\.0\.0\.1:\d+/.exec(output)![0];
-      expect((await fetch(`${front}/api/config`)).status).toBe(200);
+      expect(
+        (await fetch(`${front}/api/config`, { headers: { 'x-client-code': 'demo' } })).status,
+      ).toBe(200);
 
       stack.kill('SIGTERM');
 

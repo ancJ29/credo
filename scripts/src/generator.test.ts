@@ -3,11 +3,20 @@ import { buildApp } from '@credo/bff';
 import {
   type CStorageClient,
   recordKeys,
+  storedClientSchema,
+  storedOperatorSchema,
   storedUserSchema,
   tenantConfigSchema,
 } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
-import { DEMO_CONFIG, newRootPassword, ROOT_NAME, seedDemoTenant } from './generator';
+import {
+  DEMO_CODE,
+  DEMO_CONFIG,
+  newOperatorPassword,
+  OPERATOR_NAME,
+  ROOT_NAME,
+  seedDemo,
+} from './generator';
 
 /** A c-storage service in memory: records and the tags a read returns. */
 function memoryStorage() {
@@ -29,50 +38,67 @@ function memoryStorage() {
 }
 
 describe('the demo generator', () => {
-  it('The root is the tenant’s first user, made with the tenant, and signs in through the BFF', async () => {
+  it('The demo client is made by the operator’s create, its root signs in through the BFF, and so does the operator', async () => {
     const { records, storage } = memoryStorage();
-    const rootPassword = newRootPassword();
+    const operatorPassword = newOperatorPassword();
 
-    await seedDemoTenant(storage, { rootPassword });
+    const { rootPassword } = await seedDemo(storage, { operatorPassword });
 
-    expect(storedUserSchema.parse(records.get(recordKeys.user(ROOT_NAME))).root).toBe(true);
-    expect(tenantConfigSchema.parse(records.get(recordKeys.config))).toEqual(DEMO_CONFIG);
+    const index = storedClientSchema.parse(records.get(recordKeys.client(DEMO_CODE)));
+    const keys = recordKeys.tenant(index.id);
+    expect(storedUserSchema.parse(records.get(keys.user(ROOT_NAME))).root).toBe(true);
+    expect(tenantConfigSchema.parse(records.get(keys.config))).toEqual(DEMO_CONFIG);
     const app = buildApp({ storage, now: () => Date.now(), logger: false });
-    const signIn = (password: string) =>
+    const signIn = (url: string, headers: Record<string, string>, name: string, password: string) =>
       app.inject({
         method: 'POST',
-        url: '/api/auth/sign-in',
-        headers: { 'x-device-id': 'device-aaaa-0001' },
-        payload: { name: ROOT_NAME, password },
+        url,
+        headers: { 'x-device-id': 'device-aaaa-0001', ...headers },
+        payload: { name, password },
       });
-    expect((await signIn(rootPassword)).json()).toMatchObject({ user: { root: true } });
-    expect((await signIn('not the password')).statusCode).toBe(401);
+    const root = (password: string) =>
+      signIn('/api/auth/sign-in', { 'x-client-code': DEMO_CODE }, ROOT_NAME, password);
+    expect((await root(rootPassword)).json()).toMatchObject({ user: { root: true } });
+    expect((await root('not the password')).statusCode).toBe(401);
+    const operator = await signIn('/api/operator/sign-in', {}, OPERATOR_NAME, operatorPassword);
+    expect(operator.json()).toMatchObject({ operator: { name: OPERATOR_NAME } });
   });
 
-  it('The password is stored nowhere readable: only its scrypt hash is', async () => {
+  it('The passwords are stored nowhere readable: only their scrypt hashes are', async () => {
     const { records, storage } = memoryStorage();
-    const rootPassword = newRootPassword();
+    const operatorPassword = newOperatorPassword();
 
-    await seedDemoTenant(storage, { rootPassword });
+    const { rootPassword } = await seedDemo(storage, { operatorPassword });
 
-    expect(JSON.stringify([...records])).not.toContain(rootPassword);
-    const { passwordHash } = storedUserSchema.parse(records.get(recordKeys.user(ROOT_NAME)));
-    expect(passwordHash).toMatch(/^scrypt\$/);
-    expect(await verifyPassword(rootPassword, passwordHash)).toBe(true);
+    const all = JSON.stringify([...records]);
+    expect(all).not.toContain(rootPassword);
+    expect(all).not.toContain(operatorPassword);
+    const stored = storedOperatorSchema.parse(records.get(recordKeys.operatorUser(OPERATOR_NAME)));
+    expect(stored.passwordHash).toMatch(/^scrypt\$/);
+    expect(await verifyPassword(operatorPassword, stored.passwordHash)).toBe(true);
   });
 
   it('makes a new password for each stack, long enough to guess no better than at random', () => {
-    const [one, two] = [newRootPassword(), newRootPassword()];
+    const [one, two] = [newOperatorPassword(), newOperatorPassword()];
 
     expect(one).not.toBe(two);
     expect(one.length).toBeGreaterThanOrEqual(16);
   });
 
-  it('never seeds over a tenant that holds data', async () => {
-    const { storage } = memoryStorage();
-    await seedDemoTenant(storage, { rootPassword: 'first' });
+  it('never seeds over a service that holds data, the operator’s or the demo client’s', async () => {
+    const { records, storage } = memoryStorage();
+    await seedDemo(storage, { operatorPassword: 'first' });
+    await expect(seedDemo(storage, { operatorPassword: 'second' })).rejects.toThrow(
+      'not seeded over',
+    );
 
-    await expect(seedDemoTenant(storage, { rootPassword: 'second' })).rejects.toThrow(
+    records.delete(recordKeys.client(DEMO_CODE));
+    await expect(seedDemo(storage, { operatorPassword: 'third' })).rejects.toThrow(
+      'not seeded over',
+    );
+    records.delete(recordKeys.operatorUser(OPERATOR_NAME));
+    records.set(recordKeys.client(DEMO_CODE), {});
+    await expect(seedDemo(storage, { operatorPassword: 'fourth' })).rejects.toThrow(
       'not seeded over',
     );
   });

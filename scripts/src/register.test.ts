@@ -35,7 +35,7 @@ describe('registering the BFF’s service', () => {
 
     await ensureService(connection(call), service);
 
-    expect(seen).toEqual(['POST /api/services/register', 'GET /api/records/demo/config']);
+    expect(seen).toEqual(['POST /api/services/register', 'GET /api/records/demo/client.demo']);
   });
 
   it('stops when the code is taken under a key that is not ours', async () => {

@@ -1,6 +1,11 @@
-import { randomBytes } from 'node:crypto';
-import { hashPassword } from '@credo/bff/password';
-import { type CStorageClient, recordKeys, type StoredUser, type TenantConfig } from '@credo/shared';
+import { createClient, ROOT_NAME } from '@credo/bff/clients';
+import { hashPassword, newPassword } from '@credo/bff/password';
+import {
+  type CStorageClient,
+  recordKeys,
+  type StoredOperator,
+  type TenantConfig,
+} from '@credo/shared';
 
 const logo = `data:image/svg+xml;base64,${Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#2f7d6d"/><path d="M13 33V15l11 12 11-12v18" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>',
@@ -15,24 +20,32 @@ export const DEMO_CONFIG: TenantConfig = {
   defaultLanguage: 'vi',
 };
 
-export const ROOT_NAME = 'root';
+export { ROOT_NAME };
+export const DEMO_CODE = 'demo';
+export const OPERATOR_NAME = 'operator';
 
 /** Random for each stack, so no password is written anywhere in the repository. */
-export const newRootPassword = () => randomBytes(12).toString('base64url');
+export const newOperatorPassword = newPassword;
 
 /**
- * Piece 1's demo data: the tenant's settings, and its root, the first user, made with the tenant
- * through the BFF's own hash and the shared record keys. Only the hash is stored. Writes only
- * where nothing exists, so a second run over a tenant stops rather than replaces it.
+ * The stack's data: the operator's account, and the demo client made by the operator's own
+ * create function, with piece 1's demo settings. Only hashes are stored. Every write is
+ * where nothing exists, so a second run over a service stops rather than replaces it. Returns the
+ * root's first password, which the create made.
  */
-export async function seedDemoTenant(
+export async function seedDemo(
   storage: CStorageClient,
-  { rootPassword }: { rootPassword: string },
+  { operatorPassword }: { operatorPassword: string },
 ) {
-  const root: StoredUser = { passwordHash: await hashPassword(rootPassword), root: true };
-  const written = [
-    await storage.putRecord(recordKeys.user(ROOT_NAME), root, null),
-    await storage.putRecord(recordKeys.config, DEMO_CONFIG, null),
-  ];
-  if (written.includes('moved')) throw new Error('the tenant already holds data: not seeded over');
+  const operator: StoredOperator = { passwordHash: await hashPassword(operatorPassword) };
+  const saved = await storage.putRecord(recordKeys.operatorUser(OPERATOR_NAME), operator, null);
+  const made = await createClient(storage, {
+    code: DEMO_CODE,
+    name: DEMO_CONFIG.name,
+    settings: DEMO_CONFIG,
+  });
+  if (saved === 'moved' || made === 'taken') {
+    throw new Error('the service already holds data: not seeded over');
+  }
+  return { rootPassword: made.password };
 }

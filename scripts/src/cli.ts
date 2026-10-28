@@ -96,6 +96,7 @@ export async function runStack(
         );
       }
       out(`sign in as ${stack.rootName} with the password ${stack.rootPassword}`);
+      out(`the operator is ${stack.operatorName}, first password ${stack.operatorPassword}`);
       out('Ctrl-C takes it all down');
       await signals.arrived;
       return 0;

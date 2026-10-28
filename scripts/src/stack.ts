@@ -9,7 +9,7 @@ import { buildCStorage } from '@credo/bff/tests/build';
 import { createCStorageClient } from '@credo/shared';
 import { build } from 'vite';
 import { createFront } from './front';
-import { newRootPassword, ROOT_NAME, seedDemoTenant } from './generator';
+import { DEMO_CODE, newOperatorPassword, OPERATOR_NAME, ROOT_NAME, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
 
@@ -35,9 +35,14 @@ export async function buildArtifacts(dir: string): Promise<Artifacts> {
 export type RunningStack = {
   /** The front, where a browser goes. */
   url: string;
+  /** The demo client's code, whose link is `/login?client-code=<code>`. */
+  clientCode: string;
   rootName: string;
   /** Known to this process and to whoever it hands it to; stored nowhere readable. */
   rootPassword: string;
+  operatorName: string;
+  /** Known to this process and to whoever it hands it to; stored nowhere readable. */
+  operatorPassword: string;
   /** The folder the stack keeps its database and logs in, removed when the stack goes down. */
   dataDir: string;
 };
@@ -72,8 +77,8 @@ export function bffEnvironment(settings: {
 
 /**
  * The local stack for the length of `use`: c-storage on a fresh database, the BFF's service
- * registered with the super-admin key (which the BFF never holds), the demo tenant and its root
- * written, the BFF started, and the front standing before them. Everything goes down when `use`
+ * registered with the super-admin key (which the BFF never holds), the operator and the demo client
+ * made, the BFF started, and the front standing before them. Everything goes down when `use`
  * ends, however it ends, and the database with it.
  */
 export async function withStack<T>(
@@ -101,15 +106,15 @@ export async function withStack<T>(
     await waitUntilUp(`${cStorageUrl}/health`, cStorage, 'c-storage');
 
     await ensureService({ baseUrl: cStorageUrl, internalAccessKey, superAdminKey }, service);
-    const rootPassword = newRootPassword();
-    await seedDemoTenant(
+    const operatorPassword = newOperatorPassword();
+    const { rootPassword } = await seedDemo(
       createCStorageClient({
         baseUrl: cStorageUrl,
         internalAccessKey,
         serviceCode: service.code,
         accessKey: service.accessKey,
       }),
-      { rootPassword },
+      { operatorPassword },
     );
 
     const bffPort = await freePort();
@@ -123,7 +128,9 @@ export async function withStack<T>(
       },
     );
     stops.unshift(bff.stop);
-    await waitUntilUp(`${bffUrl}/api/config`, bff, 'the BFF');
+    await waitUntilUp(`${bffUrl}/api/config`, bff, 'the BFF', undefined, {
+      'x-client-code': DEMO_CODE,
+    });
 
     const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
@@ -131,8 +138,11 @@ export async function withStack<T>(
 
     return await use({
       url: `http://127.0.0.1:${port}`,
+      clientCode: DEMO_CODE,
       rootName: ROOT_NAME,
       rootPassword,
+      operatorName: OPERATOR_NAME,
+      operatorPassword,
       dataDir,
     });
   } finally {

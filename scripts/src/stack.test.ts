@@ -1,7 +1,7 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { HASH_HEADER, sha256Hex } from '@credo/shared';
+import { CLIENT_HEADER, HASH_HEADER, sha256Hex } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commandOf, runStack } from './cli';
 import { BFF_ENV_KEYS } from '@credo/bff/env';
@@ -23,6 +23,7 @@ const signIn = async (url: string, name: string, password: string) => {
     headers: {
       'content-type': 'application/json',
       'x-device-id': 'device-aaaa-0001',
+      [CLIENT_HEADER]: 'demo',
       [HASH_HEADER]: await sha256Hex(body),
     },
     body,
@@ -34,7 +35,9 @@ describe('pnpm stack', () => {
     await withStack(artifacts, async (stack) => {
       expect(await (await fetch(`${stack.url}/settings`)).text()).toContain('<div id="root">');
 
-      const config = (await (await fetch(`${stack.url}/api/config`)).json()) as {
+      const config = (await (
+        await fetch(`${stack.url}/api/config`, { headers: { [CLIENT_HEADER]: stack.clientCode } })
+      ).json()) as {
         config: { name: string };
       };
       expect(config.config.name).toBe('Minh Phát');
@@ -43,6 +46,26 @@ describe('pnpm stack', () => {
       expect(signedIn.status).toBe(200);
       expect(await signedIn.json()).toMatchObject({ user: { name: 'root', root: true } });
       expect((await signIn(stack.url, stack.rootName, 'not the password')).status).toBe(401);
+    });
+  });
+
+  it('The operator signs in through the front with the first password the stack made, and a wrong one is refused', async () => {
+    await withStack(artifacts, async (stack) => {
+      const operatorSignIn = async (password: string) => {
+        const body = json({ name: stack.operatorName, password });
+        return await fetch(`${stack.url}/api/operator/sign-in`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-device-id': 'device-aaaa-0001',
+            [HASH_HEADER]: await sha256Hex(body),
+          },
+          body,
+        });
+      };
+      expect((await operatorSignIn(stack.operatorPassword)).status).toBe(200);
+      expect((await operatorSignIn('not the password')).status).toBe(401);
+      expect(stack.operatorPassword).not.toBe(stack.rootPassword);
     });
   });
 
@@ -55,6 +78,7 @@ describe('pnpm stack', () => {
       for (const file of await readdir(stack.dataDir)) {
         const bytes = await readFile(join(stack.dataDir, file)).catch(() => Buffer.alloc(0));
         expect(bytes.includes(stack.rootPassword), file).toBe(false);
+        expect(bytes.includes(stack.operatorPassword), file).toBe(false);
         if (bytes.includes('scrypt$')) hashes++;
       }
       // The scan looked at the bytes that hold the root: its hash is there, its password is not.
@@ -142,7 +166,7 @@ describe('pnpm stack -- <command>', () => {
       const url = process.env.CREDO_URL;
       const body = JSON.stringify({ name: process.env.CREDO_ROOT_NAME, password: process.env.CREDO_ROOT_PASSWORD });
       const hash = require('crypto').createHash('sha256').update(body).digest('hex');
-      fetch(url + '/api/auth/sign-in', { method: 'POST', body, headers: { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001', '${HASH_HEADER}': hash } })
+      fetch(url + '/api/auth/sign-in', { method: 'POST', body, headers: { 'content-type': 'application/json', 'x-device-id': 'device-aaaa-0001', 'x-client-code': 'demo', '${HASH_HEADER}': hash } })
         .then((r) => process.exit(r.status === 200 ? 7 : 1));`;
     printed.length = 0;
 
@@ -220,6 +244,7 @@ describe('pnpm stack -- <command>', () => {
 
     expect(await running).toBe(0);
     expect(printed.filter((line) => line.includes('the password'))).toHaveLength(1);
+    expect(printed.filter((line) => line.includes('the operator is operator'))).toHaveLength(1);
   });
 
   it('with no command waits as well for a termination or a hang-up, the first of several ending it', async () => {

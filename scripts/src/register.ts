@@ -26,7 +26,7 @@ export async function ensureService(
     fetch: connection.fetch,
   });
   try {
-    await client.getRecord(recordKeys.config);
+    await client.getRecord(recordKeys.client(service.code));
   } catch (error) {
     throw new Error(`service ${service.code} exists, and c-storage refuses the key held for it`, {
       cause: error,
