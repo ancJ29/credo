@@ -1,33 +1,31 @@
 import {
   AUTH_HEADER,
+  CLIENT_HEADER,
   type ConfigDoc,
   DEVICE_HEADER,
-  HASH_HEADER,
   type Language,
   ROUTES,
-  sha256Hex,
   type TenantConfig,
 } from '@credo/shared';
 import { DICTIONARIES, LANGUAGE_NAMES } from '@credo/ui/words';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: eight screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: nine screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (8 × 2 × 3 = 48). The stack
- * (`pnpm stack -- …`) gives the address and the root's sign-in in the environment. Words come from
- * the app's own dictionaries, so a renamed label turns this red where it was renamed.
+ * screenshot check against its committed base image (9 × 2 × 3 = 54). The stack
+ * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
+ * environment, and the walk opens the client's link, as its root would. Words come from the app's
+ * own dictionaries, so a renamed label turns this red where it was renamed.
  */
 
-/** The widths the visual report draws a screen at; the walk shoots the same three. */
-const WIDTHS = { pc: 1280, tablet: 768, phone: 390 } as const;
-
-const required = (name: string) => {
-  const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set: run this through \`pnpm stack -- …\``);
-  return value;
-};
+const CODE = required('CREDO_CLIENT_CODE');
+const LINK = `/login?client-code=${CODE}`;
+/** A code no client holds, for screen 9. */
+const NO_SUCH_COMPANY = 'no-such-company';
 const ROOT = { name: required('CREDO_ROOT_NAME'), password: required('CREDO_ROOT_PASSWORD') };
+const SCOPE = { [CLIENT_HEADER]: CODE };
 
 const NEW_NAME = 'Minh Phát Sài Gòn';
 const NEW_COLOUR = '#b4532a';
@@ -38,16 +36,15 @@ const THEIR_NAME = 'Minh Phát Bình Dương';
 let original: TenantConfig;
 
 async function write(request: APIRequestContext, route: string, body: unknown, authId?: string) {
-  const text = JSON.stringify(body);
   return await request.fetch(route, {
     method: route === ROUTES.config ? 'PUT' : 'POST',
     headers: {
       'content-type': 'application/json',
       [DEVICE_HEADER]: 'device-walk-restore',
-      [HASH_HEADER]: await sha256Hex(text),
+      ...SCOPE,
       ...(authId ? { [AUTH_HEADER]: authId } : {}),
     },
-    data: text,
+    data: JSON.stringify(body),
   });
 }
 
@@ -59,13 +56,16 @@ async function signedInAsRoot(request: APIRequestContext) {
 
 test.beforeAll(async ({ playwright }) => {
   const request = await playwright.request.newContext({ baseURL: required('CREDO_URL') });
-  original = ((await (await request.get(ROUTES.config)).json()) as ConfigDoc).config;
+  original = ((await (await request.get(ROUTES.config, { headers: SCOPE })).json()) as ConfigDoc)
+    .config;
   await request.dispose();
 });
 
 test.afterEach(async ({ request }) => {
   const authId = await signedInAsRoot(request);
-  const current = (await (await request.get(ROUTES.config)).json()) as ConfigDoc;
+  const current = (await (
+    await request.get(ROUTES.config, { headers: SCOPE })
+  ).json()) as ConfigDoc;
   const restored = await write(
     request,
     ROUTES.config,
@@ -75,20 +75,13 @@ test.afterEach(async ({ request }) => {
   expect(restored.ok()).toBe(true);
 });
 
-/** The pointer is parked in the corner first: a button under it is drawn hovered, and which one
- * depends on where the last click left it. */
-async function shot(page: Page, screen: string, language: Language, width: number) {
-  await page.mouse.move(0, 0);
-  await expect(page).toHaveScreenshot(`${screen}-${language}-${width}.png`, { fullPage: true });
-}
-
 async function walk(page: Page, language: Language, width: number) {
   const at = (screen: string) => shot(page, screen, language, width);
   const words = DICTIONARIES[language];
   await page.addInitScript((chosen) => localStorage.setItem('credo.language', chosen), language);
 
-  // 1. Sign in, in the company's name and colours.
-  await page.goto('/');
+  // 1. Sign in, in the company's name and colours, from the client's own link.
+  await page.goto(LINK);
   await expect(page.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeVisible();
   await at('1-sign-in');
 
@@ -124,7 +117,9 @@ async function walk(page: Page, language: Language, width: number) {
   // this page still holds the one it read, so the page's own save meets the BFF's 409. No stub:
   // the refusal is the product's own, and so is the conflict's wording.
   const authId = await signedInAsRoot(page.request);
-  const stored = (await (await page.request.get(ROUTES.config)).json()) as ConfigDoc;
+  const stored = (await (
+    await page.request.get(ROUTES.config, { headers: SCOPE })
+  ).json()) as ConfigDoc;
   const theirs = await write(
     page.request,
     ROUTES.config,
@@ -164,17 +159,25 @@ async function walk(page: Page, language: Language, width: number) {
   await page.goto('/');
   await expect(page.getByRole('alert')).toHaveText(words.common.unavailable);
   await at('6-service-down');
+  await page.unroute(ROUTES.config);
+
+  // 9. A link that names no company: the BFF's own 404, and credo's colour, never the client's.
+  await page.goto(`/login?client-code=${NO_SUCH_COMPANY}`);
+  await expect(
+    page.getByRole('heading', { level: 1, name: words.unknownClient.title }),
+  ).toBeVisible();
+  await at('9-unknown-company');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all eight screens in Vietnamese', async ({ page }) => {
+    test('walks all nine screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all eight screens in English', async ({ page }) => {
+    test('walks all nine screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

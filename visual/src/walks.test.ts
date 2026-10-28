@@ -1,8 +1,11 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import { allKeys, answerKey, DEVICE_WIDTH, PARTS, PEOPLE, resolveStates, WALKS } from './walks';
+
+const SPECS = new URL('../../walk/specs/', import.meta.url);
+const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
 
 describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
@@ -69,43 +72,43 @@ describe('the walks', () => {
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
-  it('names piece 1’s eight screens as the walk spec does, which makes their base images; the new screens wait for the spec of the ridge-app plan’s step 7', () => {
-    const spec = readFileSync(new URL('../../walk/specs/piece-1.spec.ts', import.meta.url), 'utf8');
-    const inSpec = [...spec.matchAll(/await at\('([^']+)'\)/g)].map((m) => m[1]);
+  it('names every screen of every walk as the walk specs do, which makes their base images', () => {
+    const inSpecs = readdirSync(SPECS)
+      .filter((name) => name.endsWith('.spec.ts'))
+      .flatMap((name) =>
+        [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
+      );
 
-    expect(inSpec.sort()).toEqual(
-      WALKS[0].screens
-        .filter((screen) => screen.number <= 8)
-        .map((screen) => screen.id)
-        .sort(),
+    expect(inSpecs.sort()).toEqual(
+      WALKS.flatMap((walk) => walk.screens.map((screen) => screen.id)).sort(),
     );
   });
 
-  it('shoots the walk at the widths the report draws, the width in each image’s name', () => {
-    const spec = readFileSync(new URL('../../walk/specs/piece-1.spec.ts', import.meta.url), 'utf8');
-    const widths = /const WIDTHS = \{ pc: (\d+), tablet: (\d+), phone: (\d+) \} as const/.exec(
-      spec,
-    )!;
+  it('shoots every walk at the widths the report draws, the width in each image’s name', () => {
+    const widths =
+      /export const WIDTHS = \{ pc: (\d+), tablet: (\d+), phone: (\d+) \} as const/.exec(
+        read('support.ts'),
+      )!;
 
     expect(widths.slice(1).map(Number)).toEqual([
       DEVICE_WIDTH.pc,
       DEVICE_WIDTH.tablet,
       DEVICE_WIDTH.phone,
     ]);
-    expect(spec).toContain('`${screen}-${language}-${width}.png`');
+    expect(read('support.ts')).toContain('`${screen}-${language}-${width}.png`');
+    for (const name of readdirSync(SPECS).filter((file) => file.endsWith('.spec.ts'))) {
+      expect(read(`specs/${name}`), name).toContain("from '../support'");
+      expect(read(`specs/${name}`), name).toContain('Object.entries(WIDTHS)');
+    }
   });
 
   it('parks the pointer before each shot and compares with no tolerance in pixels or in colour', () => {
-    const spec = readFileSync(new URL('../../walk/specs/piece-1.spec.ts', import.meta.url), 'utf8');
-    const config = readFileSync(
-      new URL('../../walk/playwright.config.ts', import.meta.url),
-      'utf8',
-    );
+    const support = read('support.ts');
 
-    expect(spec.indexOf('await page.mouse.move(0, 0);')).toBeGreaterThan(-1);
-    expect(spec.indexOf('await page.mouse.move(0, 0);')).toBeLessThan(
-      spec.indexOf('await expect(page).toHaveScreenshot'),
+    expect(support.indexOf('await page.mouse.move(0, 0);')).toBeGreaterThan(-1);
+    expect(support.indexOf('await page.mouse.move(0, 0);')).toBeLessThan(
+      support.indexOf('await expect(page).toHaveScreenshot'),
     );
-    expect(config).toContain('maxDiffPixels: 0, threshold: 0');
+    expect(read('playwright.config.ts')).toContain('maxDiffPixels: 0, threshold: 0');
   });
 });

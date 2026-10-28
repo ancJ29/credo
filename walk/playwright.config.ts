@@ -1,10 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Piece 1's walk: the client's admin in light, at the widths the spec names. It runs against the
- * local stack and needs a browser, so it runs in the human's terminal: `pnpm stack -- …` brings
- * the stack up, runs this, and takes it down. The base images beside the spec carry the platform
- * in their names, so they are the machine they were made on; `retries` stays 0 (QA rule 6).
+ * The walks: piece 1's, the client's admin, and the operator's, each in light at the widths the
+ * specs name. They run against the local stack and need a browser, so they run in the human's
+ * terminal: `pnpm stack -- …` brings the stack up, runs this, and takes it down. The base images
+ * beside the specs carry the platform in their names, so they are the machine they were made on; `retries` stays 0 (QA rule 6).
  * `threshold: 0` beside `maxDiffPixels: 0`: the default tolerates a colour shift a pixel at a time,
  * so a small shift in a brand colour would pass; here it is a red.
  */
