@@ -2,8 +2,9 @@
 # The ops job's guards, run with no AWS, each on hand-written input: the change-set filter, the
 # choice between creating and updating a stack, an update's refusal to move the repository, the
 # check that ops/ is main's, the box's floor, the keys' checksum, wait_build's retry, the proof of a
-# Bruno run, the log's exit code after a signal, and the release's check of /health against the real
-# c-storage binary, built here with two stamps and without one (it needs Go).
+# Bruno run, the log's exit code after a signal, the workflow's deploy job, and the release's check
+# of /health against the real c-storage binary, built here with two stamps and without one (it
+# needs Go).
 # Expected length: about 40 seconds with a cold Go cache, about 20 with a warm one.
 set -euo pipefail
 
@@ -189,6 +190,53 @@ for sig in TERM:143 INT:130 HUP:129; do
   check "$name: the tunnel is closed" 1 "$(grep -c -e '-O exit' "$WORK/ssh.calls" || true)"
   check "$name: the scratch folder is removed" 0 "$(find "$WORK/tmp" -mindepth 1 | wc -l | tr -d ' ')"
 done
+
+echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked)"
+WORKFLOW=$REPO_DIR/.github/workflows/c-storage.yml
+deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
+  awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
+}
+# deploy_guards <workflow>: dies naming each condition of the plan's "Deploys from GitHub Actions"
+# that the deploy job lacks. The job's own `if` cannot read env, so under act (which sets ACT,
+# and has no AWS) every step carries `if: ${{ !env.ACT }}`.
+deploy_guards() {
+  local block missing='' steps guarded want_region have_region
+  block=$(deploy_block "$1")
+  [ -n "$block" ] || die "no deploy job"
+  need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
+  need "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
+  need "    needs: [check, e2e, ops]"
+  need "    runs-on: ubuntu-24.04"
+  need "    environment: ridge"
+  need "      group: ridge"
+  need "      cancel-in-progress: false"
+  need "      id-token: write"
+  need "      contents: read"
+  need "          mask-aws-account-id: true"
+  grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
+  grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
+    missing="${missing}[credentials step pinned by sha] "
+  steps=$(grep -c '^      - ' <<<"$block" || true)
+  # shellcheck disable=SC2016 # a literal workflow expression
+  guarded=$(grep -cxF -- '        if: ${{ !env.ACT }}' <<<"$block" || true)
+  [ "$steps" -gt 0 ] && [ "$steps" = "$guarded" ] || missing="${missing}[if: \${{ !env.ACT }} on each of the $steps steps, found $guarded] "
+  [ "$(grep -c 'id-token:' "$1" || true)" = 1 ] || missing="${missing}[id-token in the deploy job alone] "
+  [ "$(grep -c 'secrets\.' "$1" || true)" = 1 ] || missing="${missing}[one secret read, in the deploy job] "
+  # shellcheck disable=SC2016 # lib.sh's text, not an expansion
+  want_region=$(sed -n 's/^CREDO_REGION=\${CREDO_REGION:-\(.*\)}$/\1/p' "$OPS_DIR/lib.sh")
+  have_region=$(sed -n 's/^ *aws-region: //p' <<<"$block")
+  [ -n "$want_region" ] && [ "$want_region" = "$have_region" ] || missing="${missing}[aws-region is lib.sh's $want_region, found '$have_region'] "
+  [ -z "$missing" ] || die "the deploy job lacks: $missing"
+}
+passes "the deploy job holds every condition" deploy_guards "$WORKFLOW"
+sed "s/ && github.ref == 'refs\/heads\/main'//" "$WORKFLOW" >"$WORK/wf-branch.yml"
+refuses "a deploy job that also runs on a branch is refused" "github.ref == 'refs/heads/main'" deploy_guards "$WORK/wf-branch.yml"
+awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$WORKFLOW" >"$WORK/wf-act.yml"
+refuses "a deploy step that would run under act is refused" "!env.ACT" deploy_guards "$WORK/wf-act.yml"
+sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$WORKFLOW" >"$WORK/wf-mask.yml"
+refuses "a deploy that leaves the account id unmasked is refused" "mask-aws-account-id" deploy_guards "$WORK/wf-mask.yml"
+sed 's/cancel-in-progress: false/cancel-in-progress: true/' "$WORKFLOW" >"$WORK/wf-cancel.yml"
+refuses "a deploy that may cancel a running deploy is refused" "cancel-in-progress" deploy_guards "$WORK/wf-cancel.yml"
 
 echo "== the check of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }

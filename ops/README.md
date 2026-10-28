@@ -3,6 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
+A push to `main` releases and checks ridge by itself ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -12,6 +13,7 @@ that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so 
 | GitHub's provider, once | `ops/stack.sh github` | about a minute |
 | an environment's box and deploy role | `ops/stack.sh env <name>` | about 5 minutes |
 | to see a change before it happens | add `--plan` to any of the above | about a minute |
+| a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | to check an environment | `ops/check.sh <env>` | about 2 minutes |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -71,6 +73,24 @@ Only while GitHub Actions is down: its concurrency group cannot see a run made h
 2. Read the log's last lines: `released <sha>`.
 3. `ops/check.sh ridge`.
 
+## The deploy job
+
+The human's push to `main` that touches `c-storage/`, `ops/` or the workflow starts it, once
+`check`, `e2e` and `ops` are green. It builds the binary, takes the deploy role (environment
+`ridge`, secret `AWS_ROLE_ARN`), then runs `ops/release.sh ridge` and `ops/check.sh ridge` over the
+tunnel. It changes no stack: a template change stays your change set.
+
+1. Read the run's log in GitHub; the scripts' lines end `released <sha>` and `== green`.
+   - **red, and ops/ differs from origin/main's:** a newer push to `main` landed during the run;
+     its own deploy follows.
+   - **red, any other:** fix forward and push, or re-run the last green deploy's job
+     (`gh run rerun`) to put its commit back.
+   - **the credentials step fails:** the environment `ridge` or its secret is missing; run
+     `ops/stack.sh env ridge` (plan step 11).
+2. It never runs on a branch or in a pull request, and never under `act`: each of its steps is
+   skipped there (`ops/test.sh` holds this).
+3. While Actions is down, do the same by hand: [a release by hand](#a-release-by-hand).
+
 ## The check
 
 1. `ops/check.sh ridge`; it ends `== green`, or names each red.
@@ -97,4 +117,5 @@ Run the same three before pushing an `ops/` change:
 
 1. `shellcheck -x ops/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
-3. `bash ops/test.sh`
+3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
+   `!env.ACT` on each step, the single concurrency, and the account id's mask.
