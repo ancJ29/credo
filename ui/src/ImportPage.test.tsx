@@ -249,8 +249,10 @@ describe('the walk spec’s steps for the import, replayed on the real router', 
 
       // 19. the template handed over, the file chosen
       const first = openApp('/staff/import', { language });
-      await screen.findByRole('heading', { level: 2, name: words.import.title });
-      await userEvent.click(screen.getByRole('button', { name: whole(words.import.template) }));
+      // the title stands while the data is read: the button comes with it
+      await userEvent.click(
+        await screen.findByRole('button', { name: whole(words.import.template) }),
+      );
       expect(saved.at(-1)?.name).toBe(`staff-${language}.xlsx`);
       const picked = await demoImportFile(language, 'import');
       await userEvent.upload(screen.getByLabelText(whole(words.import.file)), picked);
