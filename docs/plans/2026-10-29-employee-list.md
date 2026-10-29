@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 07:47 +07:** steps 2 to 8 are ticked: group A's UI is fixed and walked on the fake, c-storage lists records under a prefix, and the BFF serves group A's staff setup, people, passwords, archive and sessions with every permission checked on the server. **Next:** step 9, the generator, the stack and the full run's script.
+**Where it stands — 2026-10-29 08:08 +07:** steps 2 to 9 are ticked: group A's UI is fixed and walked on the fake, c-storage lists records under a prefix, the BFF serves group A's staff routes with every permission checked on the server, and the stack's generator makes a client from the same data set as the fake, with the full run's script written and not run. **Next:** step 10, group A's review by a model other than the author's; the human's full run (step 11) follows it, on the commit step 10 ends on.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -691,12 +691,41 @@ itself:
   resolver's, all true, where piece 1's was `{}`; a field turned in a wire contract: none (the request
   schemas' `version` is now a tag, `''` for a first setup), so no default at a wire boundary was owed.
   The UI's code-change, email and QR routes, the generator and the full walk are later steps.
-- [ ] **9. The generator, the stack and the full run's script.** Who: 🤖, after step 8, about three
+- [x] **9. The generator, the stack and the full run's script.** Who: 🤖, after step 8, about three
   hours. The generator writes the data set through the BFF's functions, and a client for each full
   run; the full run's one script in `one-off/` runs piece 1's spec, the operator's and piece 2's:
   piece 2's first against the fake run's pictures, then twice against its own bases, writing them,
   then comparing. Done when: row 52 seen red once; `pnpm check` green; `pnpm stack -- <command>` signs
   in as the data set's office person.
+  *Evidence:* row 52 seen red once, from its assertions, by changing the rule's line and putting it
+  back (`scripts/src/generator.test.ts`): a position never sent, the archive skipped, a person's own
+  permissions skipped, the person with no sign-in added by the root (so given one), a client of a
+  taken code no longer refused, a failed call not stopping the run, and a setup sent with the data
+  set's ids (the BFF's 400 stops the run). Its unit rows beside it: the stack's seed door answers
+  only a POST to `/seed` and leaks no reason (`seeding.test.ts`, two reds), a second POST makes a
+  client of another code and the stack hands each person's password (`stack.test.ts`, two reds).
+  *Live,* `pnpm stack -- node <script>`: the office person `EMP-0001` signed in on the demo client with
+  the password in `CREDO_PEOPLE` (200), read 8 people and held all four permissions; `EMP-0005` signed
+  in and was refused the list (403); `EMP-0007` has no sign-in (401); the seed door made a client in
+  about 0.5 s whose root and people sign in; a save over a stale version after another save, the full
+  run's screen 10, was a 409. The whole `pnpm check` green once at 100 % (shared 57, ui 183, bff 140,
+  scripts 70, visual 217), no warning. *Not run here:* the walk spec's `full` project and the script
+  `one-off/20261029-0759-full-run-employee-list.sh`, which need a browser; `playwright test --list`
+  reads its 6 tests. *Choices:* the generator writes through the BFF's own routes (the root's session)
+  and not into c-storage, so a data set the BFF would refuse stops it, and ids are minted, not the
+  data set's; the person with no sign-in is added by the office person; each screen of the full run
+  opens on a client of its own through a loopback seed door the stack serves (`CREDO_SEED_URL`), since
+  an add or an archive cannot be undone (open item 18: it asks for no key); one stack runs piece 2's
+  three passes, and piece 1's and the operator's spec each get a stack (the operator's walk makes its
+  clients by fixed codes); the first pass is compared with the fake run's pictures through a
+  `CREDO_REFERENCE_DIR` the config points the base images at, each differing screen a soft failure so
+  one walk names every one, and a difference is not red, it is what step 11 reads; the `full` project's
+  timeout is 120 s, since a walk opens 17 clients. *Model files:* `scripts/src/generator.ts` and
+  `generator.test.ts` as they were, `scripts/src/front.ts` (a small loopback server) for
+  `seeding.ts`, `walk/specs/piece-1.spec.ts` (a second save through the real API, a stubbed 503) for
+  the full path of `piece-2.spec.ts`, and `one-off/20261029-0305-fake-run-employee-list.sh` for the
+  script.
+
 - [ ] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or deferred
   with its reason, tagged in the recap; `pnpm check` and `make check` green.
