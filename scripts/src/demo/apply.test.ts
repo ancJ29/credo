@@ -16,13 +16,14 @@ import {
   normaliseSignInName,
   recordKeys,
   ROUTES,
+  type StaffSetupDoc,
   storedClientSchema,
   tenantConfigSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyAll, applyCopy, HISTORY_DAYS, MAX_CATCH_UP, startDemo } from './apply';
-import { staffSetupOf } from './company';
-import { addDays } from './days';
+import { companyConfig, staffSetupOf } from './company';
+import { addDays, atMinute } from './days';
 import { parseLedger, readLedger, writeLedger } from './ledger';
 import { allCopies, type MappedCopy } from './mapping';
 import { ANCHOR, dayEvents, staffAsOf } from './staff';
@@ -165,6 +166,20 @@ describe('a copy brought up to yesterday', () => {
     expect((await readLedger(storage, id))!.ledger.lastDay).toBe(yesterday);
   });
 
+  it('row 16: the first fill is written with the BFF’s clock at the morning of its first day', async () => {
+    const storage = await fresh();
+    await make(storage, B1);
+
+    await applyCopy(storage, B1, TODAY);
+
+    const id = await tenantOf(storage, B1.code);
+    const [one] = staffAsOf('B', 'S2', addDays(TODAY, -7));
+    const user = await storage.getRecord(recordKeys.tenant(id).user(normaliseSignInName(one.code)));
+    expect((user!.data as { passwordAt: number }).passwordAt).toBe(
+      atMinute(addDays(TODAY, -7), 6 * 60),
+    );
+  });
+
   it('row 17: a second run adds nothing, and a run after k missed days adds those k, in order', async () => {
     const storage = await fresh();
     await make(storage, B1);
@@ -195,6 +210,26 @@ describe('a copy brought up to yesterday', () => {
     const edge = await applyCopy(storage, A1, addDays(TODAY, MAX_CATCH_UP));
     expect(edge.status).toBe('ok');
     expect(edge.days).toHaveLength(MAX_CATCH_UP);
+  });
+
+  it('row 17: a run cut on the second of three missed days leaves the ledger on the first, and the next run applies the other two', async () => {
+    const storage = await fresh();
+    await make(storage, B1);
+    await applyCopy(storage, B1, TODAY);
+    const id = await tenantOf(storage, B1.code);
+    let opens = 0;
+    const cutting = hooked(storage, {
+      beforePut: (key) =>
+        key.startsWith(`tenant.${id}.session.`) && ++opens === 2
+          ? Promise.reject(down())
+          : Promise.resolve(),
+    });
+    await expect(applyCopy(cutting, B1, addDays(TODAY, 3))).rejects.toThrow();
+    expect((await readLedger(storage, id))!.ledger.lastDay).toBe(TODAY);
+
+    const report = await applyCopy(storage, B1, addDays(TODAY, 3));
+
+    expect(report.days).toEqual([addDays(TODAY, 1), addDays(TODAY, 2)]);
   });
 
   it('row 1: two partners’ copies of one client are two clients, so what one does never shows in the other', async () => {
@@ -284,6 +319,27 @@ describe('what its users changed', () => {
     ]);
   });
 
+  it('row 6: a leaver gone between the read and the archive, a 404, is a skip too', async () => {
+    const { day, event } = firstEvent(A1, 'leave');
+    if (event.kind !== 'leave') throw new Error('a leave');
+    const storage = await fresh();
+    await make(storage, A1);
+    await applyCopy(storage, A1, day);
+    const person = (await staffOf(storage, A1.code)).find((p) => p.code === event.code)!;
+    const key = recordKeys.tenant(await tenantOf(storage, A1.code)).employee(person.id);
+    let reads = 0;
+    const vanishing: CStorageClient = {
+      ...storage,
+      getRecord: (wanted) =>
+        wanted === key && ++reads > 1 ? Promise.resolve(null) : storage.getRecord(wanted),
+    };
+
+    const report = await applyCopy(vanishing, A1, addDays(day, 1));
+
+    expect(report.status).toBe('ok');
+    expect(report.skipped).toEqual([`${event.code} was changed by its users`]);
+  });
+
   it('row 6: a hire whose code its users used first is left as they made it', async () => {
     const { day, event } = firstEvent(B1, 'hire');
     if (event.kind !== 'hire') throw new Error('a hire');
@@ -341,6 +397,99 @@ describe('what its users changed', () => {
   });
 });
 
+describe('what its users changed, after a cut or a rename', () => {
+  it('row 6: a fill cut between a former person’s add and archive is finished by the next run, that person archived', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    let cut = false;
+    const dying = hooked(storage, {
+      beforePut: (key, data) => {
+        if (!cut && key.includes('.employee.') && (data as { archived?: boolean }).archived) {
+          cut = true;
+          return Promise.reject(down());
+        }
+        return Promise.resolve();
+      },
+    });
+    await expect(applyCopy(dying, A1, TODAY)).rejects.toThrow(/archive answered 5\d\d/);
+
+    const report = await applyCopy(storage, A1, TODAY);
+
+    expect(report.status).toBe('ok');
+    expect(read(await staffOf(storage, A1.code))).toEqual(standing(A1, TODAY));
+  });
+
+  it('row 6: a hire into a department or position its users renamed is skipped and named, never added with none in silence', async () => {
+    const { day, event } = firstEvent(B1, 'hire');
+    if (event.kind !== 'hire') throw new Error('a hire');
+    for (const unit of ['departments', 'positions'] as const) {
+      const storage = await fresh();
+      const made = await make(storage, B1);
+      await applyCopy(storage, B1, day);
+      const root = await asRoot(storage, B1.code, made.password);
+      const doc = (await root('GET', ROUTES.staffSetup)).json<StaffSetupDoc>();
+      const taken = unit === 'departments' ? event.person.department : event.person.position;
+      const setup = {
+        ...doc.setup,
+        [unit]: doc.setup[unit].map((u) =>
+          u.name === taken ? { ...u, name: `${u.name} mới` } : u,
+        ),
+      };
+      expect(
+        (await root('PUT', ROUTES.staffSetup, { setup, version: doc.version })).statusCode,
+      ).toBe(200);
+      const lines: string[] = [];
+
+      const report = await applyCopy(storage, B1, addDays(day, 1), (line) => lines.push(line));
+
+      expect(report.status).toBe('ok');
+      expect(report.skipped).toEqual([
+        `${event.person.code}: its department or position is no longer there`,
+      ]);
+      expect(lines.some((line) => line.includes(event.person.code) && line.includes('left'))).toBe(
+        true,
+      );
+      expect((await staffOf(storage, B1.code)).some((p) => p.code === event.person.code)).toBe(
+        false,
+      );
+    }
+  });
+
+  it('row 6: a staff setup its users changed before a cut fill is finished is kept, never saved over', async () => {
+    const storage = await fresh();
+    const made = await make(storage, A1);
+    const root = await asRoot(storage, A1.code, made.password);
+    const id = await tenantOf(storage, A1.code);
+    const firstDay = addDays(TODAY, -7);
+    await writeLedger(
+      storage,
+      id,
+      {
+        client: 'A',
+        scenario: 'S1',
+        firstDay,
+        lastDay: addDays(firstDay, -1),
+        filled: false,
+      },
+      null,
+    );
+    const doc = (await root('GET', ROUTES.staffSetup)).json<{ version: string }>();
+    const own = staffSetupOf('S1');
+    const mine = {
+      ...own,
+      departments: [...own.departments, { name: 'Phòng mới', permissions: {}, extra: {} }],
+    };
+    expect(
+      (await root('PUT', ROUTES.staffSetup, { setup: mine, version: doc.version })).statusCode,
+    ).toBe(200);
+
+    expect((await applyCopy(storage, A1, TODAY)).status).toBe('ok');
+
+    const after = (await root('GET', ROUTES.staffSetup)).json<StaffSetupDoc>();
+    expect(after.setup.departments.map((u) => u.name)).toContain('Phòng mới');
+  });
+});
+
 describe('only a 409 or a 404 is a skip', () => {
   const armed = async (kind: 'hire' | 'leave') => {
     const { day } = firstEvent(kind === 'hire' ? B1 : A1, kind);
@@ -394,6 +543,23 @@ describe('only a 409 or a 404 is a skip', () => {
   });
 });
 
+describe('the error a run ends with', () => {
+  it('row 18: the copy that stops a run red is named in the error, whichever copy of the mapping it is', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    await make(storage, B1);
+    const idB = await tenantOf(storage, B1.code);
+    const breaking = hooked(storage, {
+      beforePut: (key) =>
+        key.startsWith(`tenant.${idB}.employee.`) ? Promise.reject(down()) : Promise.resolve(),
+    });
+
+    await expect(applyAll(breaking, TODAY, () => undefined)).rejects.toThrow(
+      new RegExp(`^${B1.code}: .*answered 5\\d\\d`),
+    );
+  });
+});
+
 describe('which clients are touched', () => {
   it('row 8: a client with a code outside the mapping, one someone used first, and one not made are left', async () => {
     const storage = await fresh();
@@ -419,6 +585,67 @@ describe('which clients are touched', () => {
     expect(lines.join('\n')).not.toContain('check-1700000000');
   });
 
+  it('row 8: a copy whose root only signed in before the first fill is still filled, and a week on, its session long expired, is still kept up', async () => {
+    const storage = await fresh();
+    const made = await make(storage, A1);
+    await asRoot(storage, A1.code, made.password);
+    const id = await tenantOf(storage, A1.code);
+    const left = (await everything(storage, A1.code))
+      .map((record) => record.key)
+      .filter(
+        (key) =>
+          key !== recordKeys.tenant(id).config && key !== recordKeys.tenant(id).user(ROOT_NAME),
+      );
+    expect(left).toHaveLength(1);
+    expect(left[0].startsWith(recordKeys.tenant(id).session(''))).toBe(true);
+
+    expect((await applyCopy(storage, A1, TODAY)).status).toBe('ok');
+    expect((await applyCopy(storage, A1, addDays(TODAY, 9))).status).toBe('ok');
+  });
+
+  it('row 8: a copy whose name, logo or colour its users changed before the first fill is refused, never overwritten', async () => {
+    const changes = {
+      name: 'Tên khách tự đặt',
+      logo: companyConfig('B', B1.company).logo,
+      colour: '#112233',
+    };
+    for (const [field, value] of Object.entries(changes)) {
+      const storage = await fresh();
+      const made = await make(storage, B1);
+      const root = await asRoot(storage, B1.code, made.password);
+      const doc = (await root('GET', ROUTES.config)).json<{ config: object; version: string }>();
+      const changed = { ...doc.config, [field]: value };
+      expect(
+        (await root('PUT', ROUTES.config, { config: changed, version: doc.version })).statusCode,
+      ).toBe(200);
+      expect((await root('POST', ROUTES.signOut)).statusCode).toBe(204);
+      const id = await tenantOf(storage, B1.code);
+
+      const report = await applyCopy(storage, B1, TODAY);
+
+      expect(report.status).toBe('refused');
+      const config = tenantConfigSchema.parse(
+        (await storage.getRecord(recordKeys.tenant(id).config))!.data,
+      );
+      expect(config[field as 'name' | 'logo' | 'colour']).toBe(value);
+    }
+  });
+
+  it('row 8: a list that has more past what was read is not a new client', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    const prefix = recordKeys.tenant(await tenantOf(storage, A1.code)).all;
+    const long: CStorageClient = {
+      ...storage,
+      listRecords: async (wanted) => {
+        const listed = await storage.listRecords(wanted);
+        return wanted === prefix ? { ...listed, more: true } : listed;
+      },
+    };
+
+    expect((await applyCopy(long, A1, TODAY)).status).toBe('refused');
+  });
+
   it('row 21: a ledger naming another scenario than the mapping is refused, never switched', async () => {
     const storage = await fresh();
     await make(storage, A1);
@@ -437,6 +664,26 @@ describe('which clients are touched', () => {
 
     expect(report.status).toBe('refused');
     expect(report.note).toContain('the ledger names S2, the mapping S1');
+    expect(JSON.stringify(await everything(storage, A1.code))).toBe(before);
+  });
+
+  it('row 21: a ledger naming another client than the mapping is refused, never switched', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    await applyCopy(storage, A1, '2026-10-28');
+    const id = await tenantOf(storage, A1.code);
+    const found = (await storage.getRecord(recordKeys.tenant(id).seed))!;
+    await storage.putRecord(
+      recordKeys.tenant(id).seed,
+      { ...(found.data as object), client: 'C' },
+      found.tag,
+    );
+    const before = JSON.stringify(await everything(storage, A1.code));
+
+    const report = await applyCopy(storage, A1, TODAY);
+
+    expect(report.status).toBe('refused');
+    expect(report.note).toContain('the ledger names client C, the mapping A');
     expect(JSON.stringify(await everything(storage, A1.code))).toBe(before);
   });
 
@@ -551,6 +798,24 @@ describe('the ledger and the run’s session', () => {
         firstDay: 'x',
         lastDay: '2026-10-01',
         filled: true,
+      }),
+    ).toThrow('does not parse');
+    expect(() =>
+      parseLedger({
+        client: 7,
+        scenario: 'S1',
+        firstDay: '2026-10-01',
+        lastDay: '2026-10-01',
+        filled: true,
+      }),
+    ).toThrow('does not parse');
+    expect(() =>
+      parseLedger({
+        client: 'A',
+        scenario: 'S1',
+        firstDay: '2026-10-01',
+        lastDay: '2026-10-01',
+        filled: 'yes',
       }),
     ).toThrow('does not parse');
     const good = {

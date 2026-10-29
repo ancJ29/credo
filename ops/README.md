@@ -200,8 +200,12 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      stays as it is; make a new copy under a new code.
    - **<code>: <n> days behind, more than 30, left:** the schedule stopped for a month; the run ends red.
      Run it again after reading why.
-   - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's. Nothing was
-     written. After a deploy, run it again once the deploy is green; the next morning catches the day up.
+   - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's, and not an earlier
+     one that differs from it in no path `ci.yml` deploys on (a push touching none deploys nothing, so
+     the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green; the
+     next morning catches the day up.
+   - **the BFF's function names <sha>, /health <sha>:** a deploy shipped c-storage and stopped before
+     the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
    - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
 3. A red scheduled run is a defect, never a run to repeat. GitHub disables a public repository's

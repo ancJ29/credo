@@ -6,6 +6,7 @@ import {
   AUTH_HEADER,
   CLIENT_HEADER,
   type ConfigDoc,
+  CREDO_COLOUR,
   type CStorageClient,
   DEVICE_HEADER,
   type EmployeeDoc,
@@ -16,6 +17,7 @@ import {
   type StaffSetupDoc,
   storedClientSchema,
   storedUserSchema,
+  tenantConfigSchema,
 } from '@credo/shared';
 import { companyConfig, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween } from './days';
@@ -90,13 +92,29 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
 }
 type Driver = ReturnType<typeof driverFor>;
 
-/** Whether a client holds what the operator's create leaves and nothing else. */
-async function isFresh(storage: CStorageClient, tenantId: string) {
+/** Whether a client holds what the operator's create leaves and nothing else: its root, its
+ * settings as `createClient` writes them (the index's name, no logo, the product's colour), and
+ * sessions, which a root signing in leaves and nothing sweeps. */
+async function isFresh(storage: CStorageClient, tenantId: string, name: string) {
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
+  const asMade = (data: unknown) => {
+    const config = tenantConfigSchema.safeParse(data);
+    return (
+      config.success &&
+      config.data.name === name &&
+      config.data.logo === null &&
+      config.data.colour === CREDO_COLOUR
+    );
+  };
   return (
     !listed.more &&
-    listed.records.every(({ key }) => key === keys.config || key === keys.user(ROOT_NAME))
+    listed.records.every(
+      ({ key, data }) =>
+        key === keys.user(ROOT_NAME) ||
+        key.startsWith(keys.session('')) ||
+        (key === keys.config && asMade(data)),
+    )
   );
 }
 
@@ -111,16 +129,25 @@ async function addPerson(
   log: Log,
   code: string,
 ) {
+  const departmentId = units.departments.get(person.department);
+  const positionId = units.positions.get(person.position);
+  if (!departmentId || !positionId) {
+    skipped.push(`${person.code}: its department or position is no longer there`);
+    log(`${code}: ${person.code}: its department or position is no longer there, left`);
+    return;
+  }
   const reply = await driver.send('POST', ROUTES.employees, {
     name: person.name,
     code: person.code,
     extra: person.extra,
-    departmentId: units.departments.get(person.department),
-    positionId: units.positions.get(person.position),
+    departmentId,
+    positionId,
   });
   if (reply.status === 409) {
     skipped.push(`${person.code} is already there`);
     log(`${code}: ${person.code} is already there, left as it is`);
+    // A fill cut after this person's add and before their archive: they are archived now.
+    if (person.archived) await archivePerson(driver, person.code);
     return;
   }
   if (reply.status >= 300)
@@ -169,6 +196,22 @@ async function fill(
   log(`${copy.code}: filled as of ${firstDay}, ${people.length} people`);
 }
 
+/** Archives the person with this code if they are there and active. Says why not otherwise; only a
+ * 409 or a 404 on the archive is a change by their users, any other answer stops the run. */
+async function archivePerson(driver: Driver, code: string) {
+  const { employees } = await driver.must<EmployeeListReply>('GET', ROUTES.employees);
+  const found = employees.find((employee) => employee.code === code);
+  if (!found) return 'is not in the list';
+  if (found.archived) return 'has already left';
+  const url = employeeRoutes.one(found.id);
+  const { version } = await driver.must<EmployeeDoc>('GET', url);
+  const reply = await driver.send('POST', employeeRoutes.archive(found.id), { version });
+  if ([409, 404].includes(reply.status)) return 'was changed by its users';
+  if (reply.status >= 300)
+    throw new Error(`the seed's POST ${url}/archive answered ${reply.status}`);
+  return null;
+}
+
 async function leave(
   driver: Driver,
   event: Extract<StaffEvent, { kind: 'leave' }>,
@@ -176,20 +219,10 @@ async function leave(
   log: Log,
   code: string,
 ) {
-  const { employees } = await driver.must<EmployeeListReply>('GET', ROUTES.employees);
-  const found = employees.find((employee) => employee.code === event.code);
-  const left = (why: string) => {
-    skipped.push(`${event.code} ${why}`);
-    log(`${code}: ${event.code} ${why}, left as it is`);
-  };
-  if (!found) return left('is not in the list');
-  if (found.archived) return left('has already left');
-  const url = employeeRoutes.one(found.id);
-  const { version } = await driver.must<EmployeeDoc>('GET', url);
-  const reply = await driver.send('POST', employeeRoutes.archive(found.id), { version });
-  if ([409, 404].includes(reply.status)) return left('was changed by its users');
-  if (reply.status >= 300)
-    throw new Error(`the seed's POST ${url}/archive answered ${reply.status}`);
+  const why = await archivePerson(driver, event.code);
+  if (why === null) return;
+  skipped.push(`${event.code} ${why}`);
+  log(`${code}: ${event.code} ${why}, left as it is`);
 }
 
 /**
@@ -217,11 +250,11 @@ export async function applyCopy(
 
   const index = await storage.getRecord(recordKeys.client(copy.code));
   if (!index) return done('missing', 'not on this service, left');
-  const tenantId = storedClientSchema.parse(index.data).id;
+  const { id: tenantId, name } = storedClientSchema.parse(index.data);
 
   let current = await readLedger(storage, tenantId);
   if (!current) {
-    if (!(await isFresh(storage, tenantId))) {
+    if (!(await isFresh(storage, tenantId, name))) {
       return done('refused', 'holds more than a new client does, left');
     }
     const firstDay = addDays(through, -(HISTORY_DAYS - 1));
@@ -237,6 +270,9 @@ export async function applyCopy(
     current = { ledger: first, tag };
   }
   let { ledger, tag } = current;
+  if (ledger.client !== copy.client) {
+    return done('refused', `the ledger names client ${ledger.client}, the mapping ${copy.client}`);
+  }
   try {
     assertLedgerScenario(copy.code, ledger.scenario);
   } catch (error) {
@@ -288,12 +324,16 @@ export async function applyCopy(
 }
 
 /** Every copy of the mapping, or one partner's, each brought up to yesterday. A code that is not
- * in the mapping is never read. */
+ * in the mapping is never read. An error that stops a copy names it. */
 export async function applyAll(storage: CStorageClient, today: string, log: Log, partner?: string) {
   return await Promise.all(
     allCopies()
       .filter((copy) => partner === undefined || copy.partner === partner)
-      .map((copy) => applyCopy(storage, copy, today, log)),
+      .map((copy) =>
+        applyCopy(storage, copy, today, log).catch((error: unknown) => {
+          throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
+        }),
+      ),
   );
 }
 

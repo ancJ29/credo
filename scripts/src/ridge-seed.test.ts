@@ -130,4 +130,16 @@ describe('ridge_cli seed', () => {
       'seed: 6 copies mapped, 1 up to date, 4 not on this service, 7 days applied',
     );
   });
+
+  it('row 7: a copy too many days behind ends the run red, naming its code, as a refused one does', async () => {
+    const { storage, run } = await ridge(['seed']);
+    await make(storage, 0);
+    expect((await run()).status).toBe(0);
+
+    const result = await run(['seed'], MORNING + 40 * 24 * 3_600_000);
+
+    expect(result.status).toBe(1);
+    expect(result.err).toEqual([`error: left as they were, see above: ${copies[0].code}`]);
+    expect(result.out).toContain(`${copies[0].code}: 40 days behind, more than 30, left`);
+  });
 });

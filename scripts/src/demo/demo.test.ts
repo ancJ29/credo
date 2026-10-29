@@ -131,6 +131,48 @@ describe('the scenarios', () => {
     expect(leavers).toBeGreaterThan(5);
   });
 
+  it('row 3: leavers go on past the first year, hires among them, and headcount stays near its size', () => {
+    const second = daysBetween(addDays(ANCHOR, 365), addDays(ANCHOR, 730));
+    for (const [client, scenario] of [
+      ['A', 'S1'],
+      ['B', 'S2'],
+    ] as const) {
+      const events = second.flatMap((d) => dayEvents(client, scenario, d));
+      const leavers = events.filter((e) => e.kind === 'leave');
+      expect(leavers.length).toBeGreaterThan(5);
+      const standing = (day: string) => staffAsOf(client, scenario, day).filter((p) => !p.archived);
+      const size = SCENARIOS[scenario].staff.headcount;
+      expect(standing(addDays(ANCHOR, 730)).length).toBeGreaterThan(size * 0.7);
+      expect(standing(addDays(ANCHOR, 730)).length).toBeLessThan(size * 1.3);
+      const year1 = daysBetween(ANCHOR, addDays(ANCHOR, 365)).flatMap((d) =>
+        dayEvents(client, scenario, d).flatMap((e) => (e.kind === 'hire' ? [e.person.code] : [])),
+      );
+      expect(leavers.some((e) => e.kind === 'leave' && year1.includes(e.code))).toBe(true);
+    }
+  });
+
+  it('row 3: a hire leaves at most once, on a working day, after its tenure, and is archived in a fill made after', () => {
+    const days = daysBetween(ANCHOR, addDays(ANCHOR, 900));
+    const hires = new Map<string, string>();
+    const leaves = new Map<string, string>();
+    for (const day of days)
+      for (const e of dayEvents('B', 'S2', day)) {
+        if (e.kind === 'hire') hires.set(e.person.code, day);
+        else if (hires.has(e.code)) {
+          expect(leaves.has(e.code)).toBe(false);
+          leaves.set(e.code, day);
+        }
+      }
+    expect(leaves.size).toBeGreaterThan(0);
+    for (const [code, day] of leaves) {
+      expect(isSunday(day)).toBe(false);
+      expect(day > addDays(hires.get(code)!, 89)).toBe(true);
+      const before = staffAsOf('B', 'S2', day).find((p) => p.code === code)!;
+      const after = staffAsOf('B', 'S2', addDays(day, 1)).find((p) => p.code === code)!;
+      expect([before.archived, after.archived]).toEqual([false, true]);
+    }
+  });
+
   it('a name already in the company is drawn again', () => {
     const first = uniqueName(streamOf('q'), new Set());
     const taken = new Set([first]);

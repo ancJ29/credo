@@ -8,6 +8,10 @@ import { type Stream, streamOf } from './stream';
 export const ANCHOR = '2026-10-01';
 /** Leavers of the base staff fall in this many days after the anchor. */
 const LEAVE_WINDOW = 365;
+/** A hire stays at least this many days, and up to `TENURE_SPREAD` more, so leavers go on after
+ * the base staff's year: each hire has a leave day of its own, drawn apart from the hire's draws. */
+const MIN_TENURE = 90;
+const TENURE_SPREAD = LEAVE_WINDOW;
 /** A working day's hours, in minutes after midnight: 07:30 to 17:30. */
 const FIRST_MINUTE = 7 * 60 + 30;
 const WORKING_MINUTES = 10 * 60;
@@ -198,6 +202,9 @@ function code(scenario: ScenarioId, number: number) {
   return `${prefix}${String(number).padStart(width, '0')}`;
 }
 
+const hireCode = (scenario: ScenarioId, date: string) =>
+  `${SCENARIOS[scenario].staff.numbering.prefix}H${date.slice(2).replaceAll('-', '')}`;
+
 /** The hire of a day, if any: never on a Sunday; the code names the day, so it is unique. */
 function hireOf(
   client: string,
@@ -209,7 +216,7 @@ function hireOf(
   if (isSunday(date) || !s.chance(1 / staff.hireEvery)) return null;
   const department = s.weighted(staff.departments.map((value) => ({ weight: value.share, value })));
   const person = makePerson(scenario, s, new Set(), {
-    code: `${staff.numbering.prefix}H${date.slice(2).replaceAll('-', '')}`,
+    code: hireCode(scenario, date),
     department,
     manager: false,
     startedOn: date,
@@ -218,27 +225,47 @@ function hireOf(
   return { at: atMinute(date, FIRST_MINUTE + s.int(WORKING_MINUTES)), person };
 }
 
-/** What happens on a day: a hire, and the base staff who leave that day, in time order. A pure
- * function of the client, the scenario and the day. */
+/** The day the hire of `date` leaves, never a Sunday, or null if that day has no hire. */
+function hireLeaves(client: string, scenario: ScenarioId, date: string) {
+  if (
+    isSunday(date) ||
+    !streamOf(client, scenario, 'hire', date).chance(1 / SCENARIOS[scenario].staff.hireEvery)
+  )
+    return null;
+  const leaves = addDays(
+    date,
+    MIN_TENURE + streamOf(client, scenario, 'tenure', date).int(TENURE_SPREAD),
+  );
+  return isSunday(leaves) ? addDays(leaves, 1) : leaves;
+}
+
+/** What happens on a day: a hire, and the base staff and earlier hires who leave that day, in time
+ * order. A pure function of the client, the scenario and the day. */
 export function dayEvents(client: string, scenario: ScenarioId, date: string): StaffEvent[] {
   fromAnchor(date);
   const events: StaffEvent[] = [];
   const hire = hireOf(client, scenario, date);
   if (hire) events.push({ ...hire, kind: 'hire' });
-  for (const { person, leaves } of baseStaff(client, scenario)) {
-    if (leaves !== date) continue;
-    const s = streamOf(client, scenario, 'leave', person.code);
-    events.push({
-      at: atMinute(date, FIRST_MINUTE + s.int(WORKING_MINUTES)),
-      kind: 'leave',
-      code: person.code,
-    });
+  const leavers = baseStaff(client, scenario).flatMap(({ person, leaves }) =>
+    leaves === date ? [person.code] : [],
+  );
+  // A hire leaves at least MIN_TENURE days on, at most one more for a Sunday.
+  const earliest = addDays(date, -(MIN_TENURE + TENURE_SPREAD));
+  for (const hired of daysBetween(
+    earliest < ANCHOR ? ANCHOR : earliest,
+    addDays(date, -MIN_TENURE + 1),
+  )) {
+    if (hireLeaves(client, scenario, hired) === date) leavers.push(hireCode(scenario, hired));
+  }
+  for (const code of leavers) {
+    const s = streamOf(client, scenario, 'leave', code);
+    events.push({ at: atMinute(date, FIRST_MINUTE + s.int(WORKING_MINUTES)), kind: 'leave', code });
   }
   return events.sort((a, b) => a.at - b.at);
 }
 
 /** The people as they stood on the morning of `from`: the base staff, those who left before it
- * archived, and everyone hired from the anchor up to it. */
+ * archived, and everyone hired from the anchor up to it, those whose tenure ended before it archived. */
 export function staffAsOf(client: string, scenario: ScenarioId, from: string): Person[] {
   fromAnchor(from);
   const people = baseStaff(client, scenario).map(({ person, leaves }) => ({
@@ -247,7 +274,9 @@ export function staffAsOf(client: string, scenario: ScenarioId, from: string): P
   }));
   for (const date of daysBetween(ANCHOR, from)) {
     const hire = hireOf(client, scenario, date);
-    if (hire) people.push(hire.person);
+    if (!hire) continue;
+    const leaves = hireLeaves(client, scenario, date);
+    people.push({ ...hire.person, archived: leaves !== null && leaves < from });
   }
   return people;
 }

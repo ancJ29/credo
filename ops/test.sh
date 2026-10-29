@@ -1161,6 +1161,9 @@ cport=$(free_port)
 cp -R "$OPS_DIR" "$E2E/repo/ops"
 cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
 echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+# seed.sh reads the paths a push deploys on from ci.yml, so the clone holds the real one.
+mkdir -p "$E2E/repo/.github/workflows"
+cp "$REPO_DIR/.github/workflows/ci.yml" "$E2E/repo/.github/workflows/ci.yml"
 sed -i.bak -e "s/^TUNNEL_PORT=3192\$/TUNNEL_PORT=$tport/" -e 's/^CHECK_EVERY=5$/CHECK_EVERY=1/' "$E2E/repo/ops/tunnel.sh"
 rm -f "$E2E/repo/ops/tunnel.sh.bak"
 check "the clone's tunnel.sh differs from the real one in two lines" 4 "$(diff "$OPS_DIR/tunnel.sh" "$E2E/repo/ops/tunnel.sh" | grep -c '^[<>]')"
@@ -1814,6 +1817,42 @@ check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in
 export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
 check "a second run adds nothing" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied$')"
+
+# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the morning's run goes on.
+export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead
+printf 'a note\n' >"$E2E/repo/NOTES.md"
+git -C "$E2E/repo" add NOTES.md
+git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m 'docs: a note'
+git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
+docs_sha=$(git -C "$E2E/repo" rev-parse HEAD)
+e2e_run seed.sh ridge
+check "a main one commit past ridge's that changes no path ci.yml deploys on still seeds, saying so" "0 0 1 1" \
+  "$RC $(seed_lines '^error: /health names') $(seed_lines "^ridge runs $e2e_sha, an earlier commit of main") $(seed_lines "^seeded $docs_sha\$")"
+# ...but one that changes a path of ci.yml's deploys, and ridge has not yet got it: refused, nothing written.
+export OPS_LOG_DIR=$E2E/logs-seed-code-ahead
+mkdir -p "$E2E/repo/ui"
+printf 'a note\n' >"$E2E/repo/ui/NOTES.md"
+git -C "$E2E/repo" add ui/NOTES.md
+git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m 'feat: a change to the UI'
+git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
+e2e_run seed.sh ridge
+check "a main one commit past ridge's that changes a path ci.yml deploys on is refused before the seed" "1 1 0" \
+  "$RC $(seed_lines "^error: /health names $e2e_sha, not") $(seed_lines '^seed: ')"
+git -C "$E2E/repo" reset -q --hard "$e2e_sha"
+git -C "$E2E/repo" push -qf origin HEAD:refs/heads/main
+# c-storage is on this commit, the BFF's function a deploy behind (a half-failed deploy): nothing is written.
+export OPS_LOG_DIR=$E2E/logs-seed-bff-behind
+cp "$S/description" "$S/description.kept"
+printf '%s\n' 1111111111111111111111111111111111111111 >"$S/description"
+e2e_run seed.sh ridge
+check "a BFF function a deploy behind /health stops the seed before it writes, naming both" "1 1 0 0" \
+  "$RC $(seed_lines "^error: the BFF's function names 1111111111111111111111111111111111111111, /health $e2e_sha") $(seed_lines '^seed: ') $(seed_lines '^seeded')"
+mv "$S/description.kept" "$S/description"
+# A seed that stops is not a seed done: its last line is never "seeded", and its exit is red.
+export OPS_LOG_DIR=$E2E/logs-seed-stops
+FAKE_SKEY=00000000000000000000000000000000 e2e_run seed.sh ridge
+check "a seed that stops (the BFF's key refused) ends red, naming that it stopped, and never says seeded" "1 1 0" \
+  "$RC $(seed_lines '^error: the seed stopped') $(seed_lines '^seeded')"
 unset SEED_LOCAL_PORT
 
 echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
