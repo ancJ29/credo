@@ -89,6 +89,7 @@ export const en = {
     allow: 'Allow',
     refuse: 'Refuse',
     custom: 'Custom',
+    needsSeeing: 'Needs “See the staff list”.',
   },
   setup: {
     title: 'Departments and positions',
@@ -203,6 +204,8 @@ export const en = {
     save: 'Save',
     saved: 'Saved.',
     saveFailed: 'The details were not saved. What you typed is still here: try again.',
+    saveForbidden:
+      'The details were not saved: you may no longer change this person. What you typed is still shown.',
     conflict: 'Someone saved newer details first. Your changes were not saved.',
     conflictReload: 'Show the newer details',
     signIn: 'How they sign in',

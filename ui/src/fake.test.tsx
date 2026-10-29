@@ -481,15 +481,29 @@ async function signInAs() {
 
 describe('?fake', () => {
   it('The app boots on the data set: the sign-in already wears the demo company’s name', async () => {
-    const { api, device } = fakeParts('?fake', memory());
+    const { api, device } = fakeParts('?fake', memory())!;
     drawApp(<App api={api} device={device} test />);
 
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe(DEMO_CONFIG.name);
     expect(device.clientCode()).toBe(DEMO_CODE);
   });
 
+  it('A reload after signing in keeps the fake: the tab remembers the switch, so the address may lose `?fake`, and the cue is not repeated', async () => {
+    const tab = memory({ 'credo.language': 'en' });
+    expect(fakeParts('', tab)).toBeNull();
+
+    fakeParts('?fake&cue=signIn:503', tab);
+    const reloaded = fakeParts('', tab);
+
+    expect(reloaded).not.toBeNull();
+    drawApp(<App api={reloaded!.api} device={reloaded!.device} test />);
+    await signInAs();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Settings' })).toBeTruthy();
+    expect(fakeParts('', memory())).toBeNull();
+  });
+
   it('The root signs in on the fake and lands on Settings', async () => {
-    const { api, device } = fakeParts('?fake', memory({ 'credo.language': 'en' }));
+    const { api, device } = fakeParts('?fake', memory({ 'credo.language': 'en' }))!;
     drawApp(<App api={api} device={device} test />);
 
     await signInAs();
@@ -499,7 +513,7 @@ describe('?fake', () => {
   });
 
   it('The address’s cue is read: the call it names answers its status, and the page says the service is unavailable', async () => {
-    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }));
+    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }))!;
     drawApp(<App api={api} device={device} test />);
 
     await signInAs();
@@ -511,7 +525,7 @@ describe('?fake', () => {
   });
 
   it('A sign-in that failed on the service can be sent again after "Try again", and signs in', async () => {
-    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }));
+    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }))!;
     drawApp(<App api={api} device={device} test />);
 
     await signInAs();

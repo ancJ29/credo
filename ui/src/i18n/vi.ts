@@ -89,6 +89,7 @@ export const vi: Dictionary = {
     allow: 'Cho phép',
     refuse: 'Không cho',
     custom: 'Riêng',
+    needsSeeing: 'Cần quyền “Xem danh sách nhân viên”.',
   },
   setup: {
     title: 'Phòng ban và chức vụ',
@@ -204,6 +205,8 @@ export const vi: Dictionary = {
     save: 'Lưu',
     saved: 'Đã lưu.',
     saveFailed: 'Chưa lưu được thông tin. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
+    saveForbidden:
+      'Chưa lưu được thông tin: bạn không còn được sửa nhân viên này. Những gì bạn đã nhập vẫn hiện ở đây.',
     conflict: 'Có người đã lưu thông tin mới hơn trước. Thay đổi của bạn chưa được lưu.',
     conflictReload: 'Xem thông tin mới hơn',
     signIn: 'Cách đăng nhập',

@@ -352,6 +352,55 @@ describe('a person’s page', () => {
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Tên mới');
   });
 
+  it('On a person’s page, adding, changing or archiving says it needs seeing the staff list while that is refused to the person, whatever their department and position give', async () => {
+    open('EMP-0004');
+    await screen.findByRole('heading', { level: 2, name: 'Phạm Quốc Bảo' });
+    const group = (label: string) =>
+      screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` });
+    const needs = () => screen.queryAllByText('Needs “See the staff list”.');
+    // the warehouse allows seeing, so an added right has what it needs
+    await userEvent.click(within(group('Add a person')).getByText('Allow'));
+    expect(needs()).toHaveLength(0);
+
+    await userEvent.click(within(group('See the staff list')).getByText('Refuse'));
+    expect(needs()).toHaveLength(1);
+    await userEvent.click(within(group('Add a person')).getByText('As the level above'));
+    expect(needs()).toHaveLength(0);
+    await userEvent.click(within(group('Archive a person')).getByText('Allow'));
+    expect(needs()).toHaveLength(1);
+    await userEvent.click(within(group('See the staff list')).getByText('As the level above'));
+    expect(needs()).toHaveLength(0);
+  });
+
+  it('A save that a 403 refuses says the person may not change this, keeps what was typed to be read, and the Save button is gone when they may no longer', async () => {
+    open('EMP-0002', {
+      as: 'EMP-0001',
+      cue: 'saveEmployee:403',
+      override: (api, original) => {
+        let reads = 0;
+        api.me.mockImplementation(async () => {
+          const answer = await original.me();
+          return ++reads === 1
+            ? answer
+            : { user: { ...answer.user, permissions: { 'staff.canView': true } } };
+        });
+      },
+    });
+    const name = await screen.findByLabelText(/^Name/);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Tên mới');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'The details were not saved: you may no longer change this person. What you typed is still shown.',
+    );
+    const kept = screen.getByLabelText<HTMLInputElement>(/^Name/);
+    expect(kept.value).toBe('Tên mới');
+    expect(kept.readOnly).toBe(true);
+  });
+
   it('Each department and each position carries what its staff may do, and each person may carry their own; the person’s beats the position’s, which beats the department’s, and what none of them allows is refused', async () => {
     const { api } = open('EMP-0004');
     await screen.findByRole('heading', { level: 2, name: 'Phạm Quốc Bảo' });

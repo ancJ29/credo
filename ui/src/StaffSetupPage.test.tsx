@@ -6,6 +6,9 @@ import { vi } from 'vitest';
 import { openApp } from '../tests/open';
 import { ApiError } from './api';
 
+/** The line under a permission that works only with seeing the staff list. */
+const NEEDS = 'Needs “See the staff list”.';
+
 describe('the staff setup page', () => {
   it('The root keeps the company’s departments and positions, adding, renaming and removing them; a person names theirs by its id, so a rename follows them, and a removed one shows on them as it was saved', async () => {
     const { api } = openApp('/staff-setup');
@@ -77,6 +80,41 @@ describe('the staff setup page', () => {
       true,
     );
     expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(5);
+  });
+
+  it('A permission that works only with seeing the staff list says so under itself while seeing is refused, at a department and at a position', async () => {
+    openApp('/staff-setup');
+    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+    const paper = (name: string) =>
+      screen.getByDisplayValue(name).closest('.mantine-Paper-root') as HTMLElement;
+    const needs = (name: string) => within(paper(name)).queryAllByText(NEEDS);
+    expect(needs('Văn phòng')).toHaveLength(0);
+
+    // the office stops seeing: the two it still allows say so, the one it never allowed does not
+    const office = within(paper('Văn phòng')).getAllByRole('checkbox');
+    await userEvent.click(office[0]);
+    expect(needs('Văn phòng')).toHaveLength(2);
+    expect((office[1].closest('.mantine-Checkbox-root') as HTMLElement).textContent).toContain(
+      NEEDS,
+    );
+    expect((office[3].closest('.mantine-Checkbox-root') as HTMLElement).textContent).not.toContain(
+      NEEDS,
+    );
+    await userEvent.click(office[3]);
+    expect(needs('Văn phòng')).toHaveLength(3);
+    await userEvent.click(office[0]);
+    expect(needs('Văn phòng')).toHaveLength(0);
+
+    // a position that refuses seeing and allows adding says so; one that leaves seeing to the
+    // department above does not, since the page cannot know that department
+    const staff = (label: string) =>
+      within(paper('Nhân viên')).getByRole('radiogroup', { name: `Nhân viên: ${label}` });
+    await userEvent.click(within(staff('Add a person')).getByText('Allow'));
+    expect(needs('Nhân viên')).toHaveLength(0);
+    await userEvent.click(within(staff('See the staff list')).getByText('Refuse'));
+    expect(needs('Nhân viên')).toHaveLength(1);
+    await userEvent.click(within(staff('See the staff list')).getByText('As the level above'));
+    expect(needs('Nhân viên')).toHaveLength(0);
   });
 
   it('The root’s save over newer ones is refused and what was typed is kept, and a failed save says so and keeps it too', async () => {

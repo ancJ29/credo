@@ -365,13 +365,22 @@ export function createFakeApi({ device, cue }: Options): Api {
   };
 }
 
+/** The tab's own mark that it runs the fake: a reload, or a page the app navigates to, loses the
+ * address's search, and must not turn into the real app. */
+const FAKE_KEY = 'credo.fake';
+
 /** What the app is given on `?fake`: the fake, and a device kept in the tab's own storage, linked
- * to the demo company, so a fake sign-in never touches what the device keeps for the real app. */
+ * to the demo company, so a fake sign-in never touches what the device keeps for the real app.
+ * The tab remembers the switch once read, so a reload without `?fake` is still the fake; null when
+ * the address names no `?fake` and the tab never did. */
 export function fakeParts(search: string, storage: Parameters<typeof createDeviceStore>[0]) {
+  const params = new URLSearchParams(search);
+  if (!params.has('fake') && storage.getItem(FAKE_KEY) === null) return null;
+  storage.setItem(FAKE_KEY, '1');
   const device = createDeviceStore(storage);
   device.setClientCode(DEMO_CODE);
   return {
-    api: createFakeApi({ device, cue: parseCue(new URLSearchParams(search).get('cue')) }),
+    api: createFakeApi({ device, cue: parseCue(params.get('cue')) }),
     device,
   };
 }

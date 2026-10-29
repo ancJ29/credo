@@ -28,6 +28,7 @@ import {
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
+import { ApiError } from './api';
 import { Loaded } from './Loaded';
 import {
   mergeExtra,
@@ -43,7 +44,7 @@ import { PhotoPanel } from './PhotoPanel';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from './staffNames';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
-type SaveOutcome = 'saved' | 'failed' | 'conflict' | null;
+type SaveOutcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
 
 /** The password the root gives, typed twice or made by the app, and shown once. */
 function PasswordPanel({
@@ -370,9 +371,9 @@ function PersonForm({
           {t('person.saved')}
         </Alert>
       )}
-      {outcome === 'failed' && (
+      {(outcome === 'failed' || outcome === 'forbidden') && (
         <Alert color="red" role="alert">
-          {t('person.saveFailed')}
+          {t(outcome === 'failed' ? 'person.saveFailed' : 'person.saveForbidden')}
         </Alert>
       )}
       {outcome === 'conflict' && (
@@ -533,7 +534,7 @@ export function PersonPage(page: PageProps) {
   async function act<T extends { kind: string }>(
     run: () => Promise<T | { kind: 'conflict' }>,
     onDone: (result: T) => void,
-    onFailed: () => void,
+    onFailed: (error: unknown) => void,
   ) {
     try {
       const result = await run();
@@ -541,7 +542,7 @@ export function PersonPage(page: PageProps) {
       else onDone(result as T);
     } catch (error) {
       refusal(error, page);
-      onFailed();
+      onFailed(error);
     }
   }
 
@@ -554,7 +555,8 @@ export function PersonPage(page: PageProps) {
         setCurrent(result.doc);
         setOutcome('saved');
       },
-      () => setOutcome('failed'),
+      (error) =>
+        setOutcome(error instanceof ApiError && error.status === 403 ? 'forbidden' : 'failed'),
     );
     setSaving(false);
   }
