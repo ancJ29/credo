@@ -134,34 +134,3 @@ door's `Host` header is never checked, so a name that resolves to 127.0.0.1 reac
 shared machine, hand the command a random key in its environment and have the door require it, and
 refuse a `Host` that is not the loopback address and its port, with a test for each that refuses
 a call without it.
-
-## 19. A grant without "see the staff list" gives no page, and the editor does not say so — the machine; *parked* until group B gives a page to someone who is not the root (the employee list plan, step 10, 2026-10-29)
-
-A department, position or person allowed to add, change or archive but not to see the staff list has
-no staff page to use those on: the menu holds nothing for them and the editors show the permissions
-as if they worked. Fix when the editors are next touched: a line under the three that depend on
-"See the staff list" saying they need it, or the editors showing those three as unavailable while
-it is refused.
-
-## 20. After a 403 on save, the person's page says "not saved, try again" while Save is gone — the machine; *parked* until the page is next touched (the employee list plan, step 10, 2026-10-29)
-
-A save that a 403 refuses makes the app read `me` again, and the page then draws without a Save
-button (the person may no longer edit), under the message that the save failed and may be tried
-again. Fix: a 403 on save says the person may no longer change this, and keeps what was typed
-shown for reading.
-
-## 21. A reload in `pnpm fake` drops `?fake` — the machine; *parked* until the fake is next used by hand (the employee list plan, step 10, 2026-10-29)
-
-`?fake` is read only when the page loads (`ui/src/main.tsx`), and the sign-in's
-`<Navigate to={first.path} replace />` (`ui/src/ClientApp.tsx`) drops the address's search. A reload
-after signing in then builds the real `Api`, which shows the unknown-company page. The fake's session
-lives in the tab, so the walk and the tests are unaffected. Fix: keep the switch in the tab's own
-storage once read, and read it from there, or keep the search through the redirect.
-
-## 22. Someone who may add a person but not see the staff list is sent, after the add, to a page the route guard refuses — the machine; *parked* until the editors are next touched (the employee list plan, step 12, 2026-10-29)
-
-An add by someone who is not the root ends on the new person's page, which needs "see the staff list".
-A grant of "add a person" without it gets the 403 page right after a good add (`StaffRecord.test.tsx`
-holds it). Item 19 is the same gap seen from the editors, and its trigger, a page for someone who is
-not the root, has come with Settings. Fix with item 19: say in the editors that adding, changing and
-archiving need seeing, or end the add on a page that asks no more than adding.

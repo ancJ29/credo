@@ -45,7 +45,8 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   (`ui/src/fake.ts`) and the data set (`@credo/shared/demo`, a subpath never in the package's index);
   the bundle `pnpm stack` and ridge serve holds none of them. The command gets `CREDO_URL` and
   `CREDO_CLIENT_CODE`; without one, it prints the address to open (`/?fake`, optionally
-  `&cue=<call>:<403|409|503>` to make that call fail once) and waits for Ctrl-C
+  `&cue=<call>:<403|409|503>` to make that call fail once; the tab keeps the switch, so a reload stays
+  on the fake) and waits for Ctrl-C
   ([the employee list](docs/plans/2026-10-29-employee-list.md#the-fake)).
 - **The walk spec (`walk/`) needs a browser, so it runs in the human's terminal, never in the
   agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not

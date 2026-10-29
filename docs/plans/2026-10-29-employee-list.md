@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 11:49 +07:** group A is done (steps 2 to 11); step 12 is done: group B's pages are on the fake, its 7 screens are on the walks page, and the route guard (C4) is in. The preview waits for the human at step 13: 14 answers for B's screens and 26 asked again, since 13 of A's 16 screens changed with B's features. **Next:** step 13, the human's fake walk, then stop.
+**Where it stands — 2026-10-29 11:59 +07:** group A is done (steps 2 to 11); step 12 is done, with a fix pass for open items 19 to 22: group B's pages are on the fake, its 7 screens are on the walks page, and the route guard (C4) is in. The preview waits for the human at step 13: 14 answers for B's screens and 26 asked again, since 13 of A's 16 screens changed with B's features. **Next:** step 13, the human's fake walk, then stop.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -771,7 +771,7 @@ itself:
     config; the missing-variable message names `CREDO_FAKE_DIR` and who sets it. C12 `[FIXED]` the
     coverage reason names `scripts/src/fake.test.ts`.
   - The reviewer's observations, logged and not fixed: open items 19, 20 and 21 (21's mechanism read
-    and confirmed by the re-review).
+    and confirmed by the re-review); fixed at step 12's fix pass.
   - *Re-review, T1 to T5 and D1, D2.* T1 `[FIXED]` a password is hashed and checked in its composed
     form (NFC) in `hashPassword` and `verifyPassword`, `bff/src/password.ts`, and one with a space at
     either end is refused (`shared/src/staff.ts`); red with each normalisation removed (unit and
@@ -867,6 +867,23 @@ itself:
   `StaffListPage.tsx` as they were; `Settings.tsx` for the photo chooser. *Logged:* open item 22. The
   fake run's script in the credo root's `one-off/` counts 96 pictures and six sets of 16 screens, and
   is to count 138 and six sets of 23 at step 13.
+  *Fix pass, 2026-10-29, for open items 19 to 22 (deleted from the log; `ui` only, no BFF or c-storage
+  change), after step 12 and before the human's fake walk:* 19 and 22 are one gap, a right to add,
+  change or archive without "See the staff list" gives no page, so `PermissionEditor` now says under
+  such a right, while seeing is refused, that it needs seeing (`NEEDS_SEEING` in
+  `permissionLabels.ts`; a position's page, which cannot know its department, says it only for an
+  explicit refusal; the add that lands on the guard's page stays, held by `StaffRecord.test.tsx`).
+  20, a 403 on a save, now reads "you may no longer change this person" and keeps what was typed
+  shown for reading (`PersonPage.tsx`, `person.saveForbidden`). 21, the tab keeps the `?fake` switch
+  in its own storage once read, so a reload or a page the app navigates to is still the fake
+  (`fakeParts` answers null for neither, `main.tsx`). Each new test was seen red from its assertion
+  before the code: the line under a right at a department and a position, and on a person; the 403's
+  words; and the reload. The 23 scenes dumped (words and DOM, Mantine's ids and UUIDs masked) before
+  and after are equal in both languages, bar one transient attribute Mantine sets while its shell
+  resizes: no screen changed, so the walks page still reads 14 waiting, 26 asked again, 0 no, 32 yes.
+  The whole `pnpm check` exit 0, no warning, 100 % in every package (shared 71 tests, ui 236, bff
+  152, scripts 75, visual 219). No walk screen shows a right granted without seeing, so none shows
+  the new line; the walk spec was not run (it needs a browser).
 - [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
