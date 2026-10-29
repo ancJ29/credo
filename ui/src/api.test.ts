@@ -282,6 +282,25 @@ describe('the API client', () => {
       expect(JSON.parse(calls[0]?.init.body as string)).toEqual(request);
     });
 
+    it('sends the rows to the import and reads one result for each; a refused row is a result, a refused call an error', async () => {
+      const results = [
+        { kind: 'added', employee: personDoc.employee },
+        { kind: 'refused', reason: 'taken' },
+      ];
+      const { calls, api } = fake(json({ results }), json({}, 403), json({ results: 1 }));
+      const rows = [
+        { name: 'Lan', extra: {} },
+        { name: 'Hà', code: 'EMP-0002', extra: {} },
+      ];
+
+      expect(await api.importEmployees(rows)).toEqual({ results });
+      await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: 403 });
+      await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: null });
+      expect(calls[0]?.init.method).toBe('POST');
+      expect(calls[0]?.path).toBe('/api/employees/import');
+      expect(JSON.parse(calls[0]?.init.body as string)).toEqual({ rows });
+    });
+
     it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
       const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
       const request = { version: 'e1', name: 'Lan', extra: {} };

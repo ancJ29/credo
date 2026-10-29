@@ -2,6 +2,7 @@ import {
   byCode,
   type Employee,
   type EmployeeDoc,
+  type ImportResult,
   keptSetupParts,
   layersOf,
   nextCode,
@@ -138,7 +139,7 @@ export function createFakeApi({ device, cue }: Options): Api {
     return held ? { photo: held.photo, version: `p${held.version}` } : { photo: null, version: '' };
   };
 
-  return {
+  const fake: Api = {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
     signIn: (name) =>
@@ -271,6 +272,23 @@ export function createFakeApi({ device, cue }: Options): Api {
         () => ({ kind: 'taken' as const }),
       ),
 
+    // Each row is added as one add by hand; the people come without a sign-in, which the root gives.
+    importEmployees: (rows) =>
+      call('importEmployees', async () => {
+        const results: ImportResult[] = [];
+        for (const row of rows) {
+          const added = await fake.addEmployee(row);
+          if (added.kind === 'taken') {
+            results.push({ kind: 'refused', reason: 'taken' });
+            continue;
+          }
+          const { employee } = added.reply.employee;
+          ready.delete(employee.id);
+          results.push({ kind: 'added', employee });
+        }
+        return { results };
+      }),
+
     saveEmployee: (id, request) =>
       call(
         'saveEmployee',
@@ -367,6 +385,7 @@ export function createFakeApi({ device, cue }: Options): Api {
         () => ({ kind: 'taken' as const }),
       ),
   };
+  return fake;
 }
 
 /** The tab's own mark that it runs the fake: a reload, or a page the app navigates to, loses the

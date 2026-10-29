@@ -13,6 +13,7 @@ import { type Api, ApiError } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import type { DeviceStore } from './device';
+import { ImportPage } from './ImportPage';
 import { type PageProps } from './page';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
@@ -220,6 +221,13 @@ export function ClientApp({ api, device, test, look }: Props) {
                   ) : (
                     <Notice kind="forbidden" />
                   )
+                }
+              />
+              <Route
+                path="/staff/import"
+                element={
+                  // Only the root imports staff (case-table row 4): no permission allows it.
+                  user.root ? <ImportPage {...pageFor(user)} /> : <Notice kind="forbidden" />
                 }
               />
               <Route

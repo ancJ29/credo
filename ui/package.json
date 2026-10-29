@@ -19,7 +19,9 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "catalog:",
-    "react-router": "catalog:"
+    "react-router": "catalog:",
+    "read-excel-file": "catalog:",
+    "write-excel-file": "catalog:"
   },
   "devDependencies": {
     "@testing-library/dom": "catalog:",
@@ -34,6 +36,7 @@
     "vitest": "catalog:"
   },
   "exports": {
+    "./import-demo": "./src/importDemo.ts",
     "./mock": "./src/mock/index.ts",
     "./scene": "./src/scene.ts",
     "./words": "./src/i18n/index.ts"

@@ -1,13 +1,14 @@
 import { type Language } from '@credo/shared';
 import { DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { demoImportFile } from '@credo/ui/import-demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 2's groups A and B, three walks in one run: the staff setup and the staff list, the person's
- * pages and the office's, twenty-three screens (A's sixteen and B's seven), each in Vietnamese and
- * in English at the three widths (23 × 2 × 3 = 138). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * Piece 2's groups A, B and D, three walks in one run: the staff setup and the staff list, the person's
+ * pages, the import and the office's, twenty-seven screens (A's sixteen, B's seven and D's four),
+ * each in Vietnamese and in English at the three widths (27 × 2 × 3 = 162). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -111,6 +112,25 @@ const personNamed = async (page: Page, name: string) => {
   await page.getByRole('link', { name }).click();
   await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
 };
+
+/** Chooses the data set's staff file in the import page's file field, as a person does, and waits
+ * for the page to show it chosen: the page hears the choice a moment after it is set. */
+async function chooseFile(
+  page: Page,
+  language: Language,
+  which: 'import' | 'import-no-name',
+) {
+  const words = DICTIONARIES[language];
+  const file = await demoImportFile(language, which);
+  await page
+    .getByLabel(exactly(words.import.file))
+    .setInputFiles({
+      name: file.name,
+      mimeType: file.type,
+      buffer: Buffer.from(await file.arrayBuffer()),
+    });
+  await expect(page.getByText(words.import.chosen.replace('{{name}}', file.name))).toBeVisible();
+}
 
 async function walk(page: Page, language: Language, width: number) {
   const at = (screen: string, mask: Locator[] = []) => shot(page, screen, language, width, mask);
@@ -289,6 +309,38 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByText(words.fields.invalidNumber)).toBeVisible();
   await at('staff-16-field-refused');
 
+  // 19. Import: the template is handed over, and the file chosen.
+  await open(page, language, { path: '/staff/import' });
+  await expect(title(words.import.title)).toBeVisible();
+  const template = page.waitForEvent('download');
+  await press(words.import.template);
+  expect((await template).suggestedFilename()).toBe(`staff-${language}.xlsx`);
+  await chooseFile(page, language, 'import');
+  await at('staff-19-import');
+
+  // 20. Before saving: each row read, with the reasons for the refused.
+  await open(page, language, { path: '/staff/import' });
+  await chooseFile(page, language, 'import');
+  await press(words.import.read);
+  await expect(title(words.import.previewTitle)).toBeVisible();
+  await expect(page.getByText(words.import.willAdd, { exact: true })).toHaveCount(3);
+  await at('staff-20-preview');
+
+  // 21. Imported: the people added, without sign-ins.
+  await press(words.import.add.replace('{{count}}', '3'));
+  await expect(title(words.import.doneTitle)).toBeVisible();
+  await expect(page.getByText(words.import.doneAdded.replace('{{count}}', '3'))).toBeVisible();
+  await at('staff-21-imported');
+
+  // 22. A file without the name column.
+  await open(page, language, { path: '/staff/import' });
+  await chooseFile(page, language, 'import-no-name');
+  await press(words.import.read);
+  await expect(page.getByRole('alert')).toHaveText(
+    words.import.noName.replaceAll('{{name}}', words.addPerson.name),
+  );
+  await at('staff-22-no-name');
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -325,14 +377,14 @@ async function walk(page: Page, language: Language, width: number) {
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
-  test.describe(`piece 2, groups A and B: the staff setup and the staff, on a ${device} (${width})`, () => {
+  test.describe(`piece 2, groups A, B and D: the staff setup and the staff, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
     for (const [language, name] of [
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all twenty-three screens in ${name}`, async ({ page }) => {
+      test(`walks all twenty-seven screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

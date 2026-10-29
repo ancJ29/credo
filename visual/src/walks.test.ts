@@ -23,7 +23,7 @@ describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(36);
+    expect(states.size).toBe(40);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -80,9 +80,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, seventy-two for the thirty-six screens', () => {
+  it('keys an answer by walk, screen and language, eighty for the forty screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(72);
+    expect(allKeys(WALKS)).toHaveLength(80);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -152,26 +152,26 @@ describe('the walks', () => {
     }
   });
 
-  it('puts piece 2’s groups A and B in three walks, twenty-three screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B and D in three walks, twenty-seven screens in all, each a scene and none from the mock', () => {
     const piece2 = WALKS.slice(2);
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
-      ['admin-staff', 'admin', 'staff', 16],
+      ['admin-staff', 'admin', 'staff', 20],
       ['office-staff', 'office', 'staff', 5],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(23);
+    expect(screens).toHaveLength(27);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(23);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(27);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22],
       [1, 2, 3, 4, 5],
     ]);
     expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
-      9, 10, 11, 16,
+      9, 10, 11, 16, 22,
     ]);
     expect(piece2[2].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
       3, 4,
@@ -197,6 +197,21 @@ describe('the walks', () => {
     expect(office?.slice(4)).toEqual(['office-5-settings']);
   });
 
+  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path', () => {
+    const staff = WALKS.find((walk) => walk.id === 'admin-staff')!.screens;
+
+    expect(staff.slice(16).map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['staff-19-import', 19, 'main'],
+      ['staff-20-preview', 20, 'main'],
+      ['staff-21-imported', 21, 'main'],
+      ['staff-22-no-name', 22, 'wrong'],
+    ]);
+    expect(staff[19].scene!.steps).toEqual([
+      { attach: 'import.file', file: 'import-no-name' },
+      { press: 'import.read' },
+    ]);
+  });
+
   it('names each step of a scene by words both languages’ dictionaries hold', () => {
     const words = (language: 'en' | 'vi', key: string) =>
       key
@@ -208,7 +223,7 @@ describe('the walks', () => {
     const keys = (step: Step) =>
       'press' in step
         ? [step.press, ...(step.within ? [step.within] : [])]
-        : ['fill' in step ? step.fill : step.choose];
+        : ['fill' in step ? step.fill : 'attach' in step ? step.attach : step.choose];
     const used = WALKS.flatMap((walk) => walk.screens)
       .flatMap((screen) => screen.scene?.steps ?? [])
       .flatMap(keys);
@@ -224,7 +239,7 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(23);
+    expect(scenes).toHaveLength(27);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);

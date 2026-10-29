@@ -1,5 +1,6 @@
 import {
   addEmployeeReplySchema,
+  importEmployeesReplySchema,
   configDocSchema,
   createClientReplySchema,
   employeeDocSchema,
@@ -18,6 +19,7 @@ import {
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
   DEMO_ROOT_NAME,
+  DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 import { screen } from '@testing-library/react';
@@ -96,6 +98,11 @@ describe('the fake Api', () => {
     parses('getEmployee', employeeDocSchema, await api.getEmployee(id));
     const added = await api.addEmployee({ name: 'Mới', code: 'new-1', extra: {} });
     parses('addEmployee', addEmployeeReplySchema, added.kind === 'added' ? added.reply : null);
+    parses(
+      'importEmployees',
+      importEmployeesReplySchema,
+      await api.importEmployees([{ name: 'Nhập', extra: {} }]),
+    );
     const read = await api.getEmployee(id);
     const saved = await api.saveEmployee(id, {
       version: read.version,
@@ -138,6 +145,7 @@ describe('the fake Api', () => {
         'listEmployees',
         'getEmployee',
         'addEmployee',
+        'importEmployees',
         'saveEmployee',
         'setPassword',
         'changeCode',
@@ -313,6 +321,32 @@ describe('the fake Api’s staff', () => {
     expect(await api.saveStaffSetup({ departments: [], positions: [], extra: {} }, 's0')).toEqual({
       kind: 'conflict',
     });
+  });
+});
+
+describe('the fake Api’s import', () => {
+  it('The rows that hold are added as people without a sign-in, each through the same add as one by hand: a code left empty is numbered past every code given, one taken is refused, and the cue fails the call whole', async () => {
+    const api = fake('', { client: 'fake.session' });
+    const { results } = await api.importEmployees([
+      { name: 'Một', extra: { phone: '0900' } },
+      { name: 'Hai', code: 'nv-7', extra: {}, departmentId: DEMO_STAFF_SETUP.departments[0]?.id },
+      { name: 'Ba', code: 'emp-0002', extra: {} },
+      { name: 'Bốn', extra: {} },
+    ]);
+
+    expect(results.map((result) => result.kind)).toEqual(['added', 'added', 'refused', 'added']);
+    expect(results[2]).toEqual({ kind: 'refused', reason: 'taken' });
+    const added = results.flatMap((result) => (result.kind === 'added' ? [result.employee] : []));
+    expect(added.map((person) => person.code)).toEqual(['EMP-0009', 'NV-7', 'EMP-0010']);
+    expect(added[1]?.department?.name).toBe('Kho');
+    for (const person of added) {
+      expect((await api.getEmployee(person.id)).signIn.ready, person.code).toBe(false);
+    }
+    expect((await api.listEmployees()).map((person) => person.code)).toContain('NV-7');
+
+    const failing = fake('importEmployees:503', { client: 'fake.session' });
+    expect(await status(failing.importEmployees([{ name: 'Một', extra: {} }]))).toBe(503);
+    expect(await failing.listEmployees()).toHaveLength(DEMO_EMPLOYEES.length);
   });
 });
 

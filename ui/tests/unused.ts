@@ -9,6 +9,7 @@ export const staffCalls = {
   listEmployees: down,
   getEmployee: down,
   addEmployee: down,
+  importEmployees: down,
   saveEmployee: down,
   setPassword: down,
   changeCode: down,
