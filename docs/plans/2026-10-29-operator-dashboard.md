@@ -1,9 +1,10 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 13:19 +07:** the human's read is done (step 3), the pages are built on
-the fake (step 5) and the walk is built on it (step 6): the operator's nine screens are fake scenes,
-the operator spec has its `operator-fake` and `operator-full` projects, and the fake run's script is
-written. **Next:** step 7, the human's preview, then the fake run's script ([steps](#steps)).
+**Where it stands — 2026-10-29 13:25 +07:** the human's read (step 3), the pages (step 5) and the walk on
+the fake (step 6) are done, and the human's preview answered all 16 new answers yes (screens 2 to 9,
+both languages), so the walks page reads 0 waiting, 0 asked again, 0 no. Step 7 stays open for one
+act: the human's fake run of the script written in step 6. **Next:** the human runs it
+([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -403,6 +404,11 @@ worktree; B to D will touch more of the same:
   `pnpm answers`. A "no" becomes a row here, fixed on the fake and asked again. Last, the fake run's
   script. Done when: none of the operator's screens waiting and no open "no"; the fake run's log read
   whole, its 54 pictures counted. **Then stop:** the UI is fixed here.
+  *Progress, 13:25 +07:* the human's block of the preview, 16 lines (screens 2 to 9, Vietnamese and
+  English), every one yes, written by `pnpm answers` (16 written, 0 refused) into
+  `visual/answers.json`; `pnpm report` then reads 0 waiting, 0 asked again, 0 no, 68 yes. Not ticked:
+  the fake run's log and its 54 pictures are still to come.
+
 - [ ] **8. The BFF.** Who: 🤖, after step 7, about half a day: `GET /api/operator/clients`, `madeAt`
   written by the create, the link's one function used by the create, the route list, the generator's
   clients with their times. Done when: the BFF's halves of rows 3, 4, 7, 8 and 10, and rows 13 to 17,
