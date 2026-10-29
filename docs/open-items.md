@@ -123,18 +123,36 @@ chat line that starts `by:` inside a block now spoils a valid partner's block, s
 `By:`-looking line inside one counts as a `By:` line. The refusal is loud, by line, and nothing is
 misattributed; it waits for the same copy.
 
-## 17. A failed sign-in leaves the button loading after a retry — the machine; *parked* until the sign-in is next touched (the employee list plan, step 3, 2026-10-29)
-
-`ui/src/ClientApp.tsx`'s `submit` sets the sign-in status to `busy`, and on any failure other than a
-401 draws the unavailable page without setting it back to `idle`. After "Try again" the form returns
-with its button still loading, so a second sign-in cannot be sent. Found by the fake's cue
-(`?fake&cue=signIn:503`), which reproduces it; the fake's test stops at the unavailable page, so it
-does not hold the fix. Fix: reset the status on the retry, with a test that signs in after a retry.
-
 ## 18. The stack's seed door answers any process on the machine — the machine; *parked* until a stack runs on a machine others log into (the employee list plan, step 9, 2026-10-29)
 
 `scripts/src/seeding.ts` serves `POST /seed` on loopback for as long as a stack stands, so the full
 run can open each screen on a client of its own. It asks for no key: any local process that learns
 its port can make clients on that throwaway stack, which holds only invented data and goes down with
-its command. On a shared machine, hand the command a random key in its environment and have the door
-require it, with a test that refuses a call without it.
+its command. The callers are not only processes: a web page open in the machine's own browser can
+send a `POST` to a loopback port (a cross-site request needs no answer to do its work), and the
+door's `Host` header is never checked, so a name that resolves to 127.0.0.1 reaches it too. On a
+shared machine, hand the command a random key in its environment and have the door require it, and
+refuse a `Host` that is not the loopback address and its port, with a test for each that refuses
+a call without it.
+
+## 19. A grant without "see the staff list" gives no page, and the editor does not say so — the machine; *parked* until group B gives a page to someone who is not the root (the employee list plan, step 10, 2026-10-29)
+
+A department, position or person allowed to add, change or archive but not to see the staff list has
+no staff page to use those on: the menu holds nothing for them and the editors show the permissions
+as if they worked. Fix when the editors are next touched: a line under the three that depend on
+"See the staff list" saying they need it, or the editors showing those three as unavailable while
+it is refused.
+
+## 20. After a 403 on save, the person's page says "not saved, try again" while Save is gone — the machine; *parked* until the page is next touched (the employee list plan, step 10, 2026-10-29)
+
+A save that a 403 refuses makes the app read `me` again, and the page then draws without a Save
+button (the person may no longer edit), under the message that the save failed and may be tried
+again. Fix: a 403 on save says the person may no longer change this, and keeps what was typed
+shown for reading.
+
+## 21. A reload in `pnpm fake` drops `?fake` — the machine; *parked* until the fake is next used by hand (the employee list plan, step 10, 2026-10-29)
+
+`/?fake` is read at the first load only; a browser reload after the app has moved to another path
+opens an address without it, which is the real app on no BFF. The fake's session lives in the tab, so
+the walk and the tests are unaffected. Fix: keep the switch in the tab's own storage once read, and
+read it from there.

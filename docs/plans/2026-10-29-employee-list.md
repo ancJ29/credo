@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 08:08 +07:** steps 2 to 9 are ticked: group A's UI is fixed and walked on the fake, c-storage lists records under a prefix, the BFF serves group A's staff routes with every permission checked on the server, and the stack's generator makes a client from the same data set as the fake, with the full run's script written and not run. **Next:** step 10, group A's review by a model other than the author's; the human's full run (step 11) follows it, on the commit step 10 ends on.
+**Where it stands — 2026-10-29 09:58 +07:** steps 2 to 9 are ticked and step 10's fix pass is made, awaiting its re-review: the two reviewers' S1 to S10 and C1 to C12 are each fixed, rejected or deferred with their reds, under step 10 below, and no walk screen changed. **Next:** the re-review of the fixes (step 10 stays unticked until it reads back, and `make check` is not needed, c-storage untouched); then step 11, the human's full run, on the commit step 10 ends on.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -720,7 +720,7 @@ itself:
   clients by fixed codes); the first pass is compared with the fake run's pictures through a
   `CREDO_REFERENCE_DIR` the config points the base images at, each differing screen a soft failure so
   one walk names every one, and a difference is not red, it is what step 11 reads; the `full` project's
-  timeout is 120 s, since a walk opens 17 clients. *Model files:* `scripts/src/generator.ts` and
+  timeout is 120 s, since a walk opens 15 clients. *Model files:* `scripts/src/generator.ts` and
   `generator.test.ts` as they were, `scripts/src/front.ts` (a small loopback server) for
   `seeding.ts`, `walk/specs/piece-1.spec.ts` (a second save through the real API, a stubbed 503) for
   the full path of `piece-2.spec.ts`, and `one-off/20261029-0305-fake-run-employee-list.sh` for the
@@ -728,7 +728,51 @@ itself:
 
 - [ ] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or deferred
-  with its reason, tagged in the recap; `pnpm check` and `make check` green.
+  with its reason, tagged in the recap; `pnpm check` and `make check` green. *Fix pass, 2026-10-29,
+  pending the re-review (not ticked until it reads back):* two reviewers read `git diff 85d5a2b HEAD`,
+  S1 to S10 on the server and C1 to C12 on the client. Each is `[FIXED]` unless said, and each new or
+  changed test was seen red once from its assertion, under a mutation or before the code. No screen
+  of the 16 changed: the walks page reads 0 asked again and 58 yes, and the data set is untouched.
+  - S1 `[FIXED]` a claim is taken over only once older than `ADD_MAX_MS` (60 s), else 409; red:
+    the window's line removed turns the racing-adds test and row 37's test red. S2 `[FIXED]` a test
+    for the stale save naming a removed unit, red with the early version check removed (400, not
+    409). S3 `[FIXED]` write requests take `extra` and a unit's `permissions` as required
+    (`extraInputSchema`), reads keep the default; red with the default put back on the input. S4
+    `[FIXED]` a session holds the sign-in record's `passwordAt` and must equal it, and a new password
+    is at least the last plus one; red with the clock-only rule. S5 `[FIXED]` 8,192 and 8,193 as
+    literals; red with the constant changed. S6 `[FIXED]` piece 1's session shape is a 401; red with
+    `device` and the generation defaulted. S7 `[FIXED]` the person and the setup the check reads are
+    handed on, a staff call reads five records, counted; red with either re-read. S8 `[FIXED]` any
+    printable character, 8 to 128, the four must-haves kept; red with the old class. S9 `[FIXED]` the
+    seed door's bind is read as `127.0.0.1` and its failures go to the stack's own `stack.log`; red
+    with `0.0.0.0` and with the log call removed. S10 = C3 `[FIXED]` "Try again" resets the sign-in
+    status, with a test that signs in after a cued 503; open item 17 deleted; red with the reset
+    removed. Info: open item 18 names the browser as a caller and a `Host` check; the hazard line for
+    a removed unit is above; the password route's comment states that a takeover writes the record
+    too; the two reds through a schema parse now assert the status first.
+  - C1 `[FIXED]` the full run's script (outside git) reads pass 1's `pass1.json`: red on any error
+    that is not a screenshot mismatch or on fewer than 96 screens compared with a reference, and names
+    a missing reference in `differs.txt`; under stubs a timeout beside one diff was green before and is
+    red now. C2 `[FIXED]` one `layersOf` in `shared/` for the BFF, the fake and the person's page, and a
+    UI test of a position that refuses over a department that allows; red with the order swapped, in
+    the helper's test and the UI's. C4 `[DEFERRED]` to step 12. C5 `[FIXED]` the BFF's order is the
+    one home (`byCode`), the page no longer sorts and the fake answers in code order, held by a test;
+    red with the fake's sort removed. C6 `[FIXED]` the setup page's strip is the one, the editor
+    writes what is checked, and a test saves a department loaded holding `false`; red with the strip
+    off. C7 `[FIXED]` no `vi` value equals its `en` one but three; red with one word left English.
+    C8 `[FIXED]` the pointer move is `shot`'s first statement, a test reads that; red with a statement
+    ahead of it. C9 `[FIXED]` a test holds each scene's person and cue at its screen in the spec; the
+    hazard is above; red with a cue and a person changed. C10 `[FIXED]` the 409 rule's calls are
+    awaited under `resolves`; red with the 409 made a throw. C11 `[FIXED]` the script resolves its own
+    path, says how to clear the bases, prints the diff since the fake run; 15 clients, here and in the
+    config; the missing-variable message names `CREDO_FAKE_DIR` and who sets it. C12 `[FIXED]` the
+    coverage reason names `scripts/src/fake.test.ts`.
+  - The reviewer's observations, logged and not fixed: open items 19, 20 and 21.
+  - *Gates:* the whole `pnpm check` green after the fixes at 100 % in each package, no warning
+    (shared 59 tests, ui 188, bff 148, scripts 73, visual 218); `pnpm report` reads 0 waiting, 0 asked
+    again, 0 no, 58 yes. The full run's script: `bash -n` and ShellCheck clean, and seven stubbed
+    cases read right (green; one diff green; a timeout beside a diff red; a missing reference red;
+    five walks of six red; a failure with no error red; no report red).
 - [ ] **11. A's full walk and final review.** Who: 👤 runs the script, after step 10, about 30
   minutes; 🤖 reads. Done when: the log read whole; each screen that differs from the fake's named,
   with its cause, and fixed where it is wrong; its answers removed and answered again on the walks
@@ -742,7 +786,11 @@ itself:
   staff setup's fields and numbering, the company's own fields on the form, page and list, the photo,
   search and filters with their address, a code changed, Settings by permission, and B's 7 screens on
   the walks page. Done when: the UI and shared halves of B's rows each seen red once; `walks.json`
-  reads B's screens waiting; `pnpm check` green.
+  reads B's screens waiting; `pnpm check` green. *Also, from step 10's review (C4 `[DEFERRED]`):*
+  `/staff` and `/staff/:id` have no route guard in the UI, which is latent while the root and
+  `staff.canView` are the only ways in. The first page group B gives to someone who is not the root
+  (Settings by permission) makes it real, so a guard per route, from the same `can` the menu uses,
+  comes in this step.
 - [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
@@ -829,9 +877,19 @@ ridge-app left.
   its strict parse refuses them: "service unavailable" until a reload. *Accepted:* one reload after
   the deploy, on ridge's invented data. *Trigger:* the first client's own stack; then answers parsed
   so that a key they do not know passes.
-- **The take-over of a stale sign-in record** rests on its person not naming it back. A later writer
-  of people that skips the add (an import of another kind, say) could break that, and no gate reads
-  it. *Trigger:* the first writer of people other than the add.
+- **The take-over of a stale sign-in record** rests on its person not naming it back, and on its
+  claim being older than the longest an add runs (60 seconds, `ADD_MAX_MS`), so a second add cannot
+  take a running add's claim. A later writer of people that skips the add (an import of another
+  kind, say) could break that, and no gate reads it. *Trigger:* the first writer of people other
+  than the add.
+- **Removing a unit makes its layer add nothing**, so removing a position that refused something
+  widens what its people may do: they fall back to the department's allowance. *Accepted for now:*
+  the setup page says nothing of it. *Trigger:* the first company that removes a position that
+  refused; then the page asks first, naming what its people would gain.
+- **A scenario has two homes:** `visual/src/walks.ts`' scenes and `walk/specs/piece-2.spec.ts`. A test
+  holds that each scene's person and cue are at its screen in the spec (`walks.test.ts`), not its
+  address or its steps. *Guard:* the fake run's pictures and the full run's comparison (row 55) read
+  the rest.
 - **A QR code forwarded within its 15 minutes** signs in whoever opens it first. *Accepted*, the old
   app's rule; the code shows on the root's screen alone.
 - **jsdom lays nothing out**, so a step may press a button CSS hides. *Guard:* the pictures.
