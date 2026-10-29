@@ -1,13 +1,16 @@
 import { LANGUAGES, type Language } from '@credo/shared';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { type Bulk, fillIn, yesTo } from './bulk';
+import { type Bulk, fillIn, openToBulk, yesTo } from './bulk';
 import { LABEL } from './block';
 import {
+  blockOf,
   type Choices,
   loadChoices,
+  loadGuideSeen,
   loadLabel,
   loadOnly,
   saveChoices,
+  saveGuideSeen,
   saveLabel,
   saveOnly,
 } from './choices';
@@ -24,10 +27,11 @@ import {
   placesOf,
   visibleOf,
 } from './nav';
+import { Guide } from './guide';
 import { Rail } from './rail';
 import type { Report, ReportScreen, ReportWalk } from './report';
 import { type Choose, ScreenCard, type View } from './screen';
-import { Send } from './send';
+import { type Notice, Send } from './send';
 import { normalizeLabel } from './share';
 import type { Tally } from './states';
 import { answerKey, DEVICE_LABEL } from './walks';
@@ -146,6 +150,7 @@ function Where({
   onGo,
   onNext,
   onList,
+  onHelp,
 }: {
   walk: ReportWalk;
   screen: ReportScreen;
@@ -155,11 +160,12 @@ function Where({
   next: Place | undefined;
   nextText: { text: string; none: boolean };
   /** Nothing waits on the page: how many are answered, and the last action. */
-  done: { text: string; label: string; onDone: () => void } | undefined;
+  done: { text: string; label: string; off: boolean; onDone: () => void } | undefined;
   said: string;
   onGo: (id: string) => void;
   onNext: () => void;
   onList: () => void;
+  onHelp: () => void;
 }) {
   const device = report.devices.find((candidate) => candidate.id === view.show);
   return (
@@ -173,6 +179,9 @@ function Where({
           {LANGUAGE_LABEL[view.language]} ·{' '}
           {device ? `${device.label} ${device.width}` : 'all three widths'}
         </span>
+        <button type="button" className="w-help" aria-label="How this page works" onClick={onHelp}>
+          ?
+        </button>
       </p>
       <div className="w-moves">
         <button type="button" disabled={!prev} onClick={() => onGo(prev!.id)}>
@@ -184,7 +193,7 @@ function Where({
         {done ? (
           <>
             <span className="w-all">{done.text}</span>
-            <button type="button" className="w-next" onClick={done.onDone}>
+            <button type="button" className="w-next" disabled={done.off} onClick={done.onDone}>
               {done.label}
             </button>
           </>
@@ -243,8 +252,34 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   const [view, setView] = useState<View>({ language: LANGUAGES[0], show: 'pc' });
   const [listOpen, setListOpen] = useState(false);
   const [asked, setAsked] = useState(0);
-  const [note, setNote] = useState('');
-  const [undo, setUndo] = useState<{ before: Choices; label?: string }>();
+  const [notice, setNotice] = useState<Notice>({ text: '' });
+  const setNote = (text: string) => setNotice({ text });
+  const [undo, setUndo] = useState<{
+    before: Choices;
+    label?: string;
+    made: ReadonlySet<string>;
+  }>();
+  /** The keys a bulk action or a paste answered, which a change of label re-judges. */
+  const [made, setMade] = useState<ReadonlySet<string>>(new Set());
+  const [guideOpen, setGuideOpen] = useState(() => !loadGuideSeen());
+  useEffect(() => {
+    if (guideOpen) saveGuideSeen();
+  }, [guideOpen]);
+  const entries = useMemo(
+    () =>
+      new Map(
+        places.flatMap((one) =>
+          LANGUAGES.map(
+            (language) =>
+              [
+                answerKey(one.walk.id, one.screen.id, language),
+                one.screen.languages[language],
+              ] as const,
+          ),
+        ),
+      ),
+    [places],
+  );
 
   const place = places.find(({ id }) => id === current)!;
   const shown = visibleOf(places, choices, whose, only, stay);
@@ -260,6 +295,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
 
   const choose: Choose = (at, choice) => {
     setChoices((before) => ({ ...before, [at]: choice }));
+    setMade((before) => new Set([...before].filter((one) => one !== at)));
     setStay(current);
     if (undo) {
       setUndo(undefined);
@@ -269,7 +305,13 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   /** A bulk action or a paste: it acts at once, says what it did, and can be undone until a choice changes. */
   const apply = (bulk: Bulk, said: string, label?: string) => {
     setChoices(bulk.next);
-    setUndo({ before: bulk.undo, label });
+    setUndo({ before: bulk.undo, label, made });
+    setMade(
+      new Set([
+        ...[...made].filter((one) => one in bulk.next),
+        ...Object.keys(bulk.next).filter((one) => bulk.next[one] !== bulk.undo[one]),
+      ]),
+    );
     setNote(said);
     setStay(current);
   };
@@ -279,6 +321,22 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
       setLabel(fill.label);
       saveLabel(fill.label);
     }
+  };
+  /** A new label: what a bulk action answered is judged again, as that partner's own record. */
+  const changeLabel = (typed: string) => {
+    setLabel(typed);
+    saveLabel(typed);
+    const reading: Whose = { partner: true, label: normalizeLabel(typed) };
+    const taken = [...made].filter((at) => !openToBulk(entries.get(at)!, undefined, reading));
+    if (taken.length === 0) return;
+    setChoices((before) =>
+      Object.fromEntries(Object.entries(before).filter(([at]) => !taken.includes(at))),
+    );
+    setMade(new Set([...made].filter((at) => !taken.includes(at))));
+    setUndo(undefined);
+    setNote(
+      `${plural(taken.length, 'answer')} taken back: ${reading.label} had answered them already`,
+    );
   };
   const bothCount = yesTo([place], choices, whose).count;
   const go = (id: string, language?: Language) => {
@@ -318,7 +376,13 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         const to = neighbour(shown, current, by);
         if (to) go(to.id);
       };
+      if (document.querySelector('dialog[open]')) return;
       const typed = event.key.toLowerCase();
+      if (typed === '?') {
+        event.preventDefault();
+        setGuideOpen(true);
+        return;
+      }
       if (none && ['y', 'n', 'l'].includes(typed)) return;
       const keys: Record<string, () => void> = {
         j: () => step(1),
@@ -364,6 +428,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   if (here.answer === 'no' && here.reason.trim() === '') action = 'reason';
   else if (nothingWaits) action = 'done';
   else if (drawn === 'open' || drawn === 'again') action = 'answer';
+  const chosen = blockOf(report, choices).answered;
   const finish = () =>
     document
       .querySelector<HTMLButtonElement>(partner ? '.w-send .w-share' : '.w-send .w-copy')!
@@ -374,11 +439,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         <div className="w-intro">
           <h1>A business’s day in Credo</h1>
           <p className="w-sub">Who does what, on the device they use.</p>
-          <p className="w-howto">
-            Answer each screen’s question Yes or No, in Tiếng Việt and in English, with a reason for
-            any No. A partner types their label and presses “Share”, then posts the message in
-            Slack; “Copy my answers” is not for partners. This page sends nothing.
-          </p>
+          <p className="w-howto">Answer Yes or No for each screen; press ? for how.</p>
         </div>
         <div className="w-meta">
           <p className="w-build">
@@ -415,7 +476,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                 <h2 id="done-title">Nothing left to answer</h2>
                 <p>All {plural(places.length * LANGUAGES.length, 'answer')} are given.</p>
                 <div className="w-moves">
-                  <button type="button" className="w-next" onClick={finish}>
+                  <button type="button" className="w-next" disabled={chosen === 0} onClick={finish}>
                     {partner ? 'Share' : 'Copy my answers'}
                   </button>
                   <button type="button" onClick={() => toggle(false)}>
@@ -438,6 +499,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                       ? {
                           text: `All ${places.length * LANGUAGES.length} answered`,
                           label: partner ? 'Share' : 'Copy my answers',
+                          off: chosen === 0,
                           onDone: finish,
                         }
                       : undefined
@@ -446,6 +508,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                   onGo={go}
                   onNext={goNext}
                   onList={() => setListOpen(true)}
+                  onHelp={() => setGuideOpen(true)}
                 />
                 <ScreenCard
                   report={report}
@@ -484,15 +547,16 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         choices={choices}
         whose={whose}
         label={label}
-        onLabel={setLabel}
-        only={only}
+        onLabel={changeLabel}
+        onOpenWalk={openWalk}
         onGo={go}
-        note={note}
-        onNote={setNote}
+        note={notice}
+        onNote={setNotice}
         onUndo={
           undo
             ? () => {
                 setChoices(undo.before);
+                setMade(undo.made);
                 if (undo.label !== undefined) {
                   setLabel(undo.label);
                   saveLabel(undo.label);
@@ -504,6 +568,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         }
         action={action}
       />
+      <Guide open={guideOpen} partner={partner} onClose={() => setGuideOpen(false)} />
     </>
   );
 }

@@ -728,11 +728,13 @@ a.w-cell:hover b {
   gap: 16px;
 }
 .w-stage {
+  order: 1;
   container: stage / inline-size;
   min-width: 0;
   pointer-events: none;
 }
 .w-panel {
+  order: 2;
   position: sticky;
   bottom: calc(var(--bar) + 8px);
   z-index: 2;
@@ -930,6 +932,7 @@ a.w-cell:hover b {
 
 /* The words the answer is keyed to: the machine's record, folded. */
 .w-words {
+  order: 4;
   min-width: 0;
   font-size: 13px;
   color: var(--muted);
@@ -975,13 +978,12 @@ a.w-cell:hover b {
   gap: 8px;
 }
 
-/* The bar at the foot, always in view: the ledger, the count, the copy. */
+/* The footer, always in view and always one row: a bar a walk, the count, one button. Notices ride
+   above it, never in it. */
 .w-send {
   position: sticky;
   bottom: 0;
   z-index: 4;
-  display: grid;
-  gap: 8px;
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
   background: var(--sheet);
   box-shadow:
@@ -992,87 +994,99 @@ a.w-cell:hover b {
   .w-send {
     padding-inline: 32px;
   }
-  /* One row, however many segments: the ledger takes what the count and the buttons leave, and
-     each segment shrinks to fit. */
-  .w-send-row {
-    flex-wrap: nowrap;
-  }
-  .w-ledger {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 1px;
-  }
-  .w-tick {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 9px;
-  }
-  .w-tick:nth-child(2n) {
-    margin-right: 2px;
-  }
-  .w-count,
-  .w-label,
-  .w-share,
-  .w-copy {
-    flex: none;
-  }
 }
 .w-send-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 8px 18px;
+  gap: 12px 18px;
+  min-height: 44px;
 }
 .w-ledger {
   display: flex;
-  gap: 3px;
+  flex: 1 1 0;
+  min-width: 40px;
+  gap: 4px;
 }
-.w-tick {
+.w-walkbar {
+  position: relative;
   display: block;
   box-sizing: border-box;
-  width: 9px;
+  flex: 1 1 0;
+  min-width: 6px;
   height: 16px;
-  border: 1.5px solid var(--rule-strong);
-  border-radius: 2px;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1.5px var(--rule-strong);
+  cursor: pointer;
 }
-/* A screen's two languages sit as a pair. */
-.w-tick:nth-child(2n) {
-  margin-right: 4px;
-}
-.w-tick[data-mark='yes'] {
+.w-walkfill {
+  position: absolute;
+  inset: 0 auto 0 0;
   background: var(--teal);
-  border-color: var(--teal);
-}
-.w-tick[data-mark='no'] {
-  background: var(--red);
-  border-color: var(--red);
-}
-.w-tick[data-mark='again'] {
-  border-style: dashed;
-  border-color: var(--amber);
-  background: var(--amber-soft);
 }
 .w-count {
-  display: grid;
-  line-height: 1.3;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .w-progress {
   font-weight: 650;
-  font-variant-numeric: tabular-nums;
 }
 .w-tocopy {
-  font-size: 13px;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 .w-note {
-  min-height: 1.4em;
+  position: absolute;
+  left: 16px;
+  bottom: calc(100% + 8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 32px);
+  padding: 6px 8px 6px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--sheet);
   font-size: 13.5px;
   line-height: 1.4;
-  color: var(--muted);
-  text-align: right;
+  box-shadow: 0 8px 24px -12px rgb(26 35 40 / 0.6);
 }
-.w-copy {
+.w-note:empty {
+  display: none;
+}
+.w-note-go,
+.w-note .w-undo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.w-dismiss {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.w-dismiss::before {
+  content: '×';
+  font-size: 18px;
+  line-height: 1;
+}
+.w-copy,
+.w-share {
+  flex: none;
   min-height: 42px;
   padding: 0 18px;
   border: 1.5px solid var(--rule-strong);
@@ -1085,9 +1099,19 @@ a.w-cell:hover b {
   white-space: nowrap;
   cursor: pointer;
 }
+.w-copy:disabled,
+.w-share:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.w-copy:not(:disabled):hover,
+.w-share:not(:disabled):hover {
+  border-color: var(--ink);
+}
 .w-label {
   box-sizing: border-box;
-  width: 9.5em;
+  flex: none;
+  width: 11em;
   min-height: 42px;
   padding: 0 10px;
   border: 1.5px solid var(--rule-strong);
@@ -1097,47 +1121,86 @@ a.w-cell:hover b {
   font: inherit;
   font-size: 15px;
 }
-.w-share {
-  min-height: 42px;
-  padding: 0 18px;
-  border: 1.5px solid var(--rule-strong);
-  border-radius: 10px;
-  background: var(--sheet);
-  color: var(--ink);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 650;
-  cursor: pointer;
+.w-label-kept {
+  flex: none;
+  font-size: 14px;
+  white-space: nowrap;
 }
 .w-partners {
+  order: 3;
   margin: 0;
   padding-left: 18px;
   font-size: 13.5px;
   color: var(--muted);
 }
-.w-copy:hover,
-.w-share:hover {
-  border-color: var(--ink);
+@media (max-width: 599.98px) {
+  .w-send-row {
+    gap: 8px;
+  }
+  .w-label {
+    width: 7em;
+  }
 }
-.w-block-row {
+
+/* A modal dialog: the guide, and the text a copy made. */
+.w-dialog {
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  padding: 20px 22px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: 0 24px 60px -20px rgb(26 35 40 / 0.6);
+}
+.w-dialog::backdrop {
+  background: rgb(26 35 40 / 0.5);
+}
+.w-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.w-guide h3 {
+  margin: 14px 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.w-guide dl {
   display: grid;
-  gap: 6px;
-  justify-items: start;
+  grid-template-columns: auto 1fr;
+  gap: 4px 16px;
+  margin: 0;
+}
+.w-guide dt {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.w-guide dd,
+.w-guide p {
+  margin: 0;
+  font-size: 14.5px;
+}
+.w-guide .w-moves {
+  margin-top: 16px;
 }
 .w-block {
-  max-height: 30vh;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 40vh;
+  margin: 8px 0 12px;
   font: 12px/1.5 var(--mono);
 }
-@media (max-width: 599.98px) {
-  .w-ledger {
-    display: none;
-  }
-  .w-note {
-    order: 3;
-    flex-basis: 100%;
-    text-align: left;
-  }
-  .w-share {
-    margin-left: auto;
-  }
+.w-help {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
 }

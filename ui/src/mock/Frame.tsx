@@ -1,5 +1,5 @@
 import type { Language } from '@credo/shared';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MemoryRouter } from 'react-router';
 import { Providers } from '../Providers';
@@ -42,6 +42,8 @@ const FLOOR = 320;
 export function Frame({ title, colour, language, scheme, width, children }: Props) {
   const [body, setBody] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(FLOOR);
+  const watcher = useRef<MutationObserver>(undefined);
+  useEffect(() => () => watcher.current?.disconnect(), []);
 
   const load = (frame: HTMLIFrameElement) => {
     const inner = frame.contentDocument!;
@@ -50,8 +52,20 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
     }
     inner.documentElement.lang = language;
     setBody(inner.body);
+    // The screen is measured when something inside it changes, never because the frame's own
+    // height did: the app's shell fills the frame, so a measure taken after every resize grows by
+    // whatever sits under the shell each time, and never settles.
     const fit = () => setHeight(Math.max(FLOOR, inner.documentElement.scrollHeight));
-    new ResizeObserver(fit).observe(inner.documentElement);
+    watcher.current = new MutationObserver(fit);
+    watcher.current.observe(inner.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+    // An image or a font that arrives later changes the height without changing a node.
+    inner.addEventListener('load', fit, true);
+    void (inner as Document & { fonts?: FontFaceSet }).fonts?.ready.then(fit);
   };
 
   return (

@@ -5,6 +5,13 @@ import { inlineJson, REPORT_ELEMENT } from './page-data';
 import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
+// Whose page this is is read from the address, which a jsdom test cannot make a file's.
+const page = vi.hoisted(() => ({ partner: true }));
+vi.mock('./nav', async (original) => ({
+  ...(await original<typeof import('./nav')>()),
+  isPartnersPage: () => page.partner,
+}));
+
 /** Imports the entry, which renders the page as it loads: inside `act`, as its first update is. */
 async function mount() {
   let loaded!: typeof import('./main');
@@ -57,11 +64,12 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
       },
     },
   });
+  page.partner = true;
   vi.resetModules();
   const root = await mount();
   await screen.findByRole('heading', { level: 1 });
 
-  fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
+  fireEvent.change(screen.getByLabelText('Label from the invite'), { target: { value: 'p1' } });
   const first = document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]');
   fireEvent.click(first[0]);
   fireEvent.click(screen.getByRole('button', { name: 'Next ›' }));
@@ -73,7 +81,18 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
     });
   await press('Share');
   const shown = screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value;
+  await press('Done');
+  expect(screen.queryByRole('button', { name: 'Copy my answers' })).toBeNull();
+  act(() => root.unmount());
+
+  // The same answers, on the human's page: Copy my answers, and no Share.
+  page.partner = false;
+  vi.resetModules();
+  const human = await mount();
+  await screen.findByRole('heading', { level: 1 });
+  expect(screen.queryByRole('button', { name: 'Share' })).toBeNull();
   await press('Copy my answers');
+  expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(written[1]);
 
   const [shared, copied] = written;
   expect(shown).toBe(shared);
@@ -86,7 +105,7 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
       .split('\n')
       .filter((line) => line.includes(' | ')),
   ).toEqual(copied.split('\n').filter((line) => line.includes(' | ')));
-  act(() => root.unmount());
+  act(() => human.unmount());
   Reflect.deleteProperty(navigator, 'clipboard');
   localStorage.clear();
 });
@@ -113,6 +132,7 @@ it('the mounted page: the same answers given by “Yes for both languages” giv
       },
     },
   });
+  page.partner = true;
   vi.resetModules();
   const root = await mount();
   await screen.findByRole('heading', { level: 1 });
@@ -121,6 +141,7 @@ it('the mounted page: the same answers given by “Yes for both languages” giv
       fireEvent.click(screen.getByRole('button', { name: 'Share' }));
       return Promise.resolve();
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     return written.at(-1)!;
   };
   const lines = (post: string) =>
@@ -129,7 +150,7 @@ it('the mounted page: the same answers given by “Yes for both languages” giv
       .split('\n')
       .filter((line) => line.includes(' | '));
 
-  fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
+  fireEvent.change(screen.getByLabelText('Label from the invite'), { target: { value: 'p1' } });
   fireEvent.click(screen.getByLabelText('Yes'));
   fireEvent.click(screen.getByRole('button', { name: 'Show in English' }));
   fireEvent.click(screen.getByLabelText('Yes'));

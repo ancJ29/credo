@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { JSDOM } from 'jsdom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { installDom, prepareDom } from './dom';
 
 describe('a DOM for a Node process', () => {
@@ -70,5 +70,24 @@ describe('a DOM for a Node process', () => {
     prepareDom(win);
 
     expect(win.ResizeObserver).toBe(own);
+  });
+});
+
+describe('a dialog for jsdom', () => {
+  it('opens with showModal, and close shuts it and says so with a close event', () => {
+    const win = new JSDOM('<!doctype html><dialog></dialog>').window as unknown as Window &
+      typeof globalThis;
+    prepareDom(win);
+    const dialog = win.document.querySelector('dialog')!;
+    const closed = vi.fn();
+    dialog.addEventListener('close', closed);
+
+    expect(dialog.open).toBe(false);
+    dialog.showModal();
+    expect(dialog.open).toBe(true);
+    dialog.close();
+
+    expect(dialog.open).toBe(false);
+    expect(closed).toHaveBeenCalledTimes(1);
   });
 });

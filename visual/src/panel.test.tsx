@@ -144,10 +144,12 @@ describe('one action stands out', () => {
     expect(
       within(document.querySelector<HTMLElement>('.w-where')!).getByText('Copy my answers'),
     ).toBeTruthy();
-    fireEvent.click(
-      within(document.querySelector<HTMLElement>('.w-where')!).getByText('Copy my answers'),
-    );
-    expect(note()).toContain('Nothing chosen yet');
+    expect(
+      within(document.querySelector<HTMLElement>('.w-where')!).getByRole<HTMLButtonElement>(
+        'button',
+        { name: 'Copy my answers' },
+      ).disabled,
+    ).toBe(true);
     expect(css).toMatch(/\.w-send\[data-action='done'\]\[data-partner='false'\] \.w-copy/);
   });
 
@@ -156,9 +158,12 @@ describe('one action stands out', () => {
     render(<Page report={make(everything('@p1'))} partner />);
 
     expect(action()).toBe('done');
-    fireEvent.click(within(document.querySelector<HTMLElement>('.w-where')!).getByText('Share'));
-
-    expect(note()).toBe('Nothing chosen yet: answer a screen first.');
+    expect(
+      within(document.querySelector<HTMLElement>('.w-where')!).getByRole<HTMLButtonElement>(
+        'button',
+        { name: 'Share' },
+      ).disabled,
+    ).toBe(true);
     expect(css).toMatch(/\.w-send\[data-action='done'\]\[data-partner='true'\] \.w-share/);
   });
 
@@ -167,6 +172,30 @@ describe('one action stands out', () => {
     render(<Page report={make(everything())} partner />);
 
     expect(action()).toBe('answer');
+  });
+});
+
+describe('the last action, from the place nothing waits', () => {
+  it('copies on the human’s page when the answers are chosen here', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.resolve() },
+    });
+    render(<Page report={make()} />);
+    fireEvent.click(rail().getByRole('button', { name: 'Yes to 18 unanswered on the page' }));
+    expect(action()).toBe('done');
+
+    await act(() => {
+      fireEvent.click(
+        within(document.querySelector<HTMLElement>('.w-where')!).getByRole('button', {
+          name: 'Copy my answers',
+        }),
+      );
+      return Promise.resolve();
+    });
+
+    expect(screen.getByRole('heading', { name: 'Copied: 18 answers' })).toBeTruthy();
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 });
 
@@ -330,7 +359,7 @@ describe('paste last answers', () => {
     paste(post);
     fireEvent.click(button('Fill'));
 
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p7');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p7');
     expect(localStorage.getItem('credo-walks-label')).toBe('p7');
     expect(screen.getByLabelText<HTMLInputElement>('Yes').checked).toBe(true);
   });
@@ -350,7 +379,7 @@ describe('what the review found', () => {
     ] as const;
   }
 
-  it('keeps Yes to the unanswered off on a partner’s page until a label is kept, so no yes goes over their No on record', async () => {
+  it('keeps Yes to the unanswered off on a partner’s page until a label is kept, so no yes goes over their No on record', () => {
     const written: string[] = [];
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -365,15 +394,10 @@ describe('what the review found', () => {
 
     for (const name of names) expect((button(name) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(button(names[0]));
-    fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
+    fireEvent.change(screen.getByLabelText('Label from the invite'), { target: { value: 'p1' } });
     expect((button(names[0]) as HTMLButtonElement).disabled).toBe(false);
-    await act(() => {
-      fireEvent.click(document.querySelector('.w-send .w-share')!);
-      return Promise.resolve();
-    });
-
+    expect(button('Share')).toHaveProperty('disabled', true);
     expect(written).toHaveLength(0);
-    expect(note()).toContain('Nothing chosen yet');
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
@@ -385,11 +409,11 @@ describe('what the review found', () => {
       ]),
     );
     fireEvent.click(button('Fill'));
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p7');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p7');
 
     fireEvent.click(button('Undo'));
 
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('');
     expect(localStorage.getItem('credo-walks-label')).toBe('');
   });
 
@@ -437,3 +461,52 @@ describe('what the review found', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 });
+
+describe('the label judged again', () => {
+  it('takes back what a bulk action answered when the label typed turns out to have answered it already', async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text: string) => (written.push(text), Promise.resolve()) },
+    });
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    const label = screen.getByLabelText('Label from the invite');
+
+    fireEvent.change(label, { target: { value: 'p' } });
+    fireEvent.click(rail().getByRole('button', { name: /^Yes to \d+ unanswered on the page$/ }));
+    fireEvent.change(label, { target: { value: 'p1' } });
+
+    expect(note()).toBe('1 answer taken back: p1 had answered them already');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+    await act(() => {
+      fireEvent.click(document.querySelector('.w-send .w-share')!);
+      return Promise.resolve();
+    });
+    expect(written.join('\n')).not.toContain('admin-setup:1-sign-in:vi | yes');
+    expect(written.join('\n')).toContain('admin-setup:2-sign-in-refused:vi | yes');
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('leaves what was answered by hand, and what the new label has not answered', () => {
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    const label = screen.getByLabelText('Label from the invite');
+    fireEvent.change(label, { target: { value: 'p' } });
+    yes();
+    fireEvent.click(button(/^Yes for both languages/));
+    fireEvent.change(label, { target: { value: 'p2' } });
+
+    expect(note()).toBe('1 answered Yes · Undo');
+  });
+});
+
+function yesOnNoRecord() {
+  return [
+    'admin-setup:1-sign-in:vi@p1',
+    {
+      answer: 'no' as const,
+      on: '2026-10-29',
+      reason: 'too small',
+      words: screenOf('1-sign-in').languages.vi.words,
+    },
+  ] as const;
+}

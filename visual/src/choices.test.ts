@@ -4,8 +4,10 @@ import {
   blockOf,
   fingerprintsOf,
   loadChoices,
+  loadGuideSeen,
   loadLabel,
   saveChoices,
+  saveGuideSeen,
   saveLabel,
   shareOf,
 } from './choices';
@@ -309,5 +311,25 @@ describe('the partner’s label', () => {
 
     expect(loadLabel()).toBe('');
     expect(() => saveLabel('p1')).not.toThrow();
+  });
+});
+
+describe('the guide’s first visit', () => {
+  it('is kept in the browser, and with none the guide is never taken as seen', () => {
+    localStorage.removeItem('credo-walks-guide-seen');
+    expect(loadGuideSeen()).toBe(false);
+    saveGuideSeen();
+    expect(loadGuideSeen()).toBe(true);
+
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(loadGuideSeen()).toBe(false);
+    expect(() => saveGuideSeen()).not.toThrow();
   });
 });

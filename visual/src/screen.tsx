@@ -324,7 +324,29 @@ export function ScreenCard({
       </div>
       <div className="w-screen-body">
         <div className="w-screen-grid">
-          <div className="w-stage" inert>
+          <Panel
+            screen={screen}
+            language={language}
+            name={key}
+            choice={choices[key] ?? NO_CHOICE}
+            shown={shownIn(here, whose)}
+            otherMark={markIn(
+              screen.languages[LANGUAGES.find((one) => one !== language)!],
+              choices[
+                answerKey(
+                  walk.id,
+                  screen.id,
+                  LANGUAGES.find((one) => one !== language)!,
+                )
+              ],
+              whose,
+            )}
+            both={{ count: bothCount, onBoth, off: bothOff }}
+            onChange={(choice) => choose(key, choice)}
+            onNo={onNo}
+            onShow={onShow}
+          />
+          <div className="w-stage">
             <div className="w-frames" data-show={show}>
               {devices.map((device) => (
                 <figure
@@ -352,28 +374,6 @@ export function ScreenCard({
               ))}
             </div>
           </div>
-          <Panel
-            screen={screen}
-            language={language}
-            name={key}
-            choice={choices[key] ?? NO_CHOICE}
-            shown={shownIn(here, whose)}
-            otherMark={markIn(
-              screen.languages[LANGUAGES.find((one) => one !== language)!],
-              choices[
-                answerKey(
-                  walk.id,
-                  screen.id,
-                  LANGUAGES.find((one) => one !== language)!,
-                )
-              ],
-              whose,
-            )}
-            both={{ count: bothCount, onBoth, off: bothOff }}
-            onChange={(choice) => choose(key, choice)}
-            onNo={onNo}
-            onShow={onShow}
-          />
           {(here.partners.length > 0 || (whose.partner && here.shown.kind !== 'waiting')) && (
             <ul className="w-partners" aria-label="Partners’ answers">
               {whose.partner && here.shown.kind !== 'waiting' && (

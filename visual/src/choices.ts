@@ -194,3 +194,22 @@ export function saveOnly(only: boolean) {
     // The page works without it.
   }
 }
+
+const GUIDE_KEY = 'credo-walks-guide-seen';
+
+/** Whether the guide has opened by itself on this browser before; without storage, never. */
+export function loadGuideSeen() {
+  try {
+    return localStorage.getItem(GUIDE_KEY) === 'yes';
+  } catch {
+    return false;
+  }
+}
+
+export function saveGuideSeen() {
+  try {
+    localStorage.setItem(GUIDE_KEY, 'yes');
+  } catch {
+    // The guide opens at each load, then.
+  }
+}

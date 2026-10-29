@@ -1,6 +1,28 @@
 import { JSDOM } from 'jsdom';
 
 /**
+ * jsdom's `<dialog>` is a bare element: no `open`, no `showModal`, no `close`. This gives it the
+ * parts the page uses, as a browser's modal dialog has them: `showModal` opens it, `close` shuts it
+ * and says so with a `close` event. The page behind and Escape are the browser's, not stubbed.
+ */
+export function stubDialog(win: Window & typeof globalThis) {
+  const dialog = win.HTMLDialogElement.prototype;
+  Object.defineProperty(dialog, 'open', {
+    configurable: true,
+    get(this: HTMLDialogElement) {
+      return this.hasAttribute('open');
+    },
+  });
+  dialog.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute('open', '');
+  };
+  dialog.close = function (this: HTMLDialogElement) {
+    this.removeAttribute('open');
+    this.dispatchEvent(new win.Event('close'));
+  };
+}
+
+/**
  * What the app's components read of a browser that jsdom leaves out: Mantine asks `matchMedia` for
  * the colour scheme and watches sizes, its controls scroll options into view, and React's `act`
  * wants to know it is allowed.
@@ -23,6 +45,7 @@ export function prepareDom(win: Window & typeof globalThis) {
     disconnect() {}
   };
   win.Element.prototype.scrollIntoView = () => {};
+  stubDialog(win);
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 }
 

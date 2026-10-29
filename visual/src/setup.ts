@@ -1,5 +1,5 @@
 import { cleanup } from '@testing-library/react';
-import { afterEach, expect } from 'vitest';
+import { afterEach, beforeEach, expect } from 'vitest';
 import { prepareDom } from './dom';
 
 /**
@@ -48,6 +48,11 @@ console.error = (...args: unknown[]) => {
   if (String(args[0]).includes('not wrapped in act')) outsideAct.push(String(args[0]));
   print(...args);
 };
+// The guide opens by itself on a first visit and takes the page's keys while it is open: a test
+// starts as a returning visitor, and the tests of the first visit clear this.
+beforeEach(() => {
+  if (typeof window !== 'undefined') localStorage.setItem('credo-walks-guide-seen', 'yes');
+});
 afterEach(() => {
   cleanup();
   // A page names its screen in the address; the next test starts with none.

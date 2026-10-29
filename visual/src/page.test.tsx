@@ -621,8 +621,8 @@ describe('the walks page: its layout', () => {
     const ask = within(grid.querySelector<HTMLElement>('.w-panel')!);
 
     expect([...grid.children].map((child) => child.className)).toEqual([
-      'w-stage',
       'w-panel',
+      'w-stage',
       'w-words',
     ]);
     expect(ask.getByText('Is this what an admin sets up first?')).toBeTruthy();
@@ -690,15 +690,12 @@ describe('the walks page: answering', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
-  it('The page says at its top how to answer: a partner shares under their label, “Copy my answers” is not for partners', () => {
+  it('The page says at its top, in one line, how to answer and where to read more', () => {
     render(<Page report={reportWith()} />);
 
-    const line = document.querySelector('.w-howto')!.textContent;
-
-    expect(line).toContain('Yes or No, in Tiếng Việt and in English, with a reason for any No');
-    expect(line).toContain('A partner types their label and presses “Share”');
-    expect(line).toContain('“Copy my answers” is not for partners');
-    expect(line).toContain('sends nothing');
+    expect(document.querySelector('.w-howto')!.textContent).toBe(
+      'Answer Yes or No for each screen; press ? for how.',
+    );
   });
 
   it('Each screen, in each language, has Yes and No, and a reason box that a No brings', () => {
@@ -804,38 +801,39 @@ describe('the walks page: answering', () => {
     ].join('\n');
     expect(write).toHaveBeenCalledWith(expected);
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
-    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into the chat.');
+    expect(screen.getByRole('heading', { name: 'Copied: 2 answers' })).toBeTruthy();
+    expect(screen.getByText('Paste it into the chat.')).toBeTruthy();
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('2 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('2 copied');
   });
 
-  it('shows the block to select when the clipboard refuses, until it is hidden', async () => {
+  it('shows the block to select when the clipboard refuses, until it is done', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
     render(<Page report={reportWith()} />);
     choose('1-sign-in', 'Yes');
 
     await press();
 
-    expect(screen.getByRole('status').textContent).toContain('Select the text below');
+    expect(screen.getByText(/Select the text and copy it\./)).toBeTruthy();
     const area = screen.getByLabelText<HTMLTextAreaElement>('The text to paste');
     expect(area.value).toContain('admin-setup:1-sign-in:vi | yes | ');
     fireEvent.focus(area);
     expect(area.selectionEnd - area.selectionStart).toBe(area.value.length);
-    fireEvent.click(screen.getByRole('button', { name: 'Hide the text' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
   });
 
-  it('gives no block, and says so, when nothing is answered', async () => {
+  it('gives no block, and the button is off, when nothing is answered', async () => {
     render(<Page report={reportWith()} />);
 
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Copy my answers' }).disabled,
+    ).toBe(true);
     await press();
 
-    expect(screen.getByRole('status').textContent).toBe(
-      'Nothing chosen yet: answer a screen first.',
-    );
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('0 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
   });
 
   it('gives no block while a No lacks its reason, naming the screens', async () => {
@@ -854,7 +852,7 @@ describe('the walks page: answering', () => {
     );
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(write).not.toHaveBeenCalled();
-    expect(screen.getByText('3 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('3 ready to copy');
   });
 
   const shareButton = async () => {
@@ -864,15 +862,15 @@ describe('the walks page: answering', () => {
     });
   };
   const label = (text: string) =>
-    fireEvent.change(screen.getByLabelText('Your label'), { target: { value: text } });
+    fireEvent.change(screen.getByLabelText('Label from the invite'), { target: { value: text } });
 
-  it('Beside "Copy my answers", Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
+  it('On a partner’s page, Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
     const report = reportWith();
-    render(<Page report={report} />);
+    render(<Page report={report} partner />);
     label('P1');
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p1');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p1');
     choose('1-sign-in', 'Yes');
     pick('Language', 'English');
     choose('3-settings', 'No', 'English');
@@ -897,40 +895,41 @@ describe('the walks page: answering', () => {
     ].join('\n');
     expect(write).toHaveBeenCalledWith(expected);
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
-    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into Slack.');
+    expect(screen.getByText('Post it in Slack.')).toBeTruthy();
   });
 
   it('Share asks once for the partner’s label, keeps it in the browser, and gives no message without one, saying so', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    const { unmount } = render(<Page report={reportWith()} />);
+    const { unmount } = render(<Page report={reportWith()} partner />);
     choose('1-sign-in', 'Yes');
 
     await shareButton();
 
     expect(write).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toContain('Type your label first');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Type the label from your invite first',
+    );
     label('Not A Label!');
     await shareButton();
     expect(write).not.toHaveBeenCalled();
     label('p-1');
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p-1');
     unmount();
 
-    render(<Page report={reportWith()} />);
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    render(<Page report={reportWith()} partner />);
+    expect(document.querySelector('.w-label-kept')!.textContent).toBe('as p-1, change');
     choose('1-sign-in', 'Yes');
     await shareButton();
     expect(write).toHaveBeenCalledTimes(1);
   });
 
-  it('Share says so when nothing is chosen, and when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
+  it('Share is off when nothing is chosen, says so when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
-    render(<Page report={reportWith()} />);
+    render(<Page report={reportWith()} partner />);
     label('p1');
 
-    await shareButton();
-    expect(screen.getByRole('status').textContent).toContain('Nothing chosen yet');
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Share' }).disabled).toBe(true);
 
     choose('3-settings', 'No');
     await shareButton();
@@ -938,13 +937,13 @@ describe('the walks page: answering', () => {
 
     reason('3-settings', 'too small');
     await shareButton();
-    expect(screen.getByRole('status').textContent).toContain('paste it into Slack');
+    expect(screen.getByText(/Select the text and copy it\./)).toBeTruthy();
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toContain(
       'By: p1',
     );
   });
 
-  it('The bar counts the answers on record with those chosen here, of all there are, and the ones to copy', () => {
+  it('The footer counts the answers on record with those chosen here, of all there are, and the ones ready to copy, with a bar a walk', () => {
     render(
       <Page
         report={reportWith(
@@ -952,18 +951,15 @@ describe('the walks page: answering', () => {
         )}
       />,
     );
-    const ticks = () =>
-      [...document.querySelectorAll('.w-ledger .w-tick')].map((tick) =>
-        tick.getAttribute('data-mark'),
-      );
+    const fill = () => document.querySelector<HTMLElement>('.w-walkfill')!.style.width;
 
     expect(screen.getByText('1 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('0 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
     choose('3-settings', 'Yes');
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('1 answer to copy')).toBeTruthy();
-    expect(ticks()).toHaveLength(18);
-    expect(ticks().slice(0, 6)).toEqual(['yes', 'open', 'open', 'open', 'yes', 'open']);
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('1 ready to copy');
+    expect(document.querySelectorAll('.w-walkbar')).toHaveLength(1);
+    expect(fill()).toBe(`${(2 / 18) * 100}%`);
   });
 
   it('The bar keeps its height on the page, so an answer at the foot of the window rests above it', () => {

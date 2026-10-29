@@ -267,14 +267,15 @@ describe('moving', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Reason for the No'));
   });
 
-  it('a key does nothing in a text box, in the label, or with Ctrl, Cmd or Alt', () => {
+  it('a key does nothing in a text box, in the paste box, or with Ctrl, Cmd or Alt', () => {
     render(<Page report={make()} />);
     fireEvent.click(screen.getByLabelText('No'));
     const box = screen.getByLabelText('Reason for the No');
-    const label = screen.getByLabelText('Your label');
+    fireEvent.click(button('Paste last answers…'));
+    const pasteBox = screen.getByLabelText('Paste an earlier block or Share message');
 
     key('j', {}, box);
-    key('j', {}, label);
+    key('j', {}, pasteBox);
     key('j', { ctrlKey: true });
     key('j', { metaKey: true });
     key('j', { altKey: true });
@@ -284,17 +285,21 @@ describe('moving', () => {
     expect(number()).toBe('2');
   });
 
-  it('Tab from the line atop reaches the drawn language’s Yes and No before any drawn screen, and the drawn screens take no pointer', () => {
+  it('Tab from the line atop reaches the drawn language’s Yes and No before any drawn screen, and the drawn screens take no pointer and are not inert', () => {
     render(<Page report={make()} />);
     const css = readFileSync(join(process.cwd(), 'src/page.css'), 'utf8');
     const stage = document.querySelector('.w-stage')!;
     const atop = document.querySelector('.w-where')!;
     const yesNo = screen.getByLabelText('Yes');
 
-    expect(stage.hasAttribute('inert')).toBe(true);
+    expect(stage.hasAttribute('inert')).toBe(false);
+    expect(yesNo.compareDocumentPosition(stage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(stage.querySelector('iframe')).toBeTruthy();
     expect(atop.compareDocumentPosition(yesNo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(css).toMatch(/\.w-stage \{[^}]*pointer-events: none/);
+    // The panel is first in the page's order, and the stage is drawn before it.
+    expect(css).toMatch(/\.w-stage \{[^}]*order: 1/);
+    expect(css).toMatch(/\.w-panel \{[^}]*order: 2/);
   });
 
   it('opens the list over the page from the line atop on a phone, and closes it on a screen', () => {
@@ -309,18 +314,6 @@ describe('moving', () => {
     fireEvent.click(button('Screens'));
     go('4-saved');
     expect(list.getAttribute('data-open')).toBe('false');
-  });
-
-  it('opens each segment of the bar to its screen in its language, as a click and no Tab stop', () => {
-    render(<Page report={make()} />);
-    const ticks = [...document.querySelectorAll<HTMLAnchorElement>('.w-ledger a.w-tick')];
-
-    expect(ticks).toHaveLength(18);
-    expect(ticks.every((tick) => tick.tabIndex === -1)).toBe(true);
-    fireEvent.click(ticks[5]);
-
-    expect(number()).toBe('3');
-    expect(place()).toContain('English');
   });
 
   it('keeps the screen in view marked in the list, one at a time', () => {
@@ -353,16 +346,6 @@ describe('only unanswered', () => {
     key('k');
     expect(number()).toBe('2');
     expect((button('‹ Prev') as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('keeps the bar’s segments, but those answered are no links', () => {
-    render(<Page report={make(done)} />);
-    fireEvent.click(screen.getByLabelText('Only unanswered'));
-
-    const ticks = [...document.querySelectorAll('.w-ledger .w-tick')];
-
-    expect(ticks).toHaveLength(18);
-    expect(ticks.filter((tick) => tick.localName === 'a')).toHaveLength(14);
   });
 
   it('keeps a screen answered while in view until the person moves, so a reason can be typed', () => {
@@ -442,7 +425,7 @@ describe('only unanswered', () => {
     expect(document.querySelectorAll('.w-screen')).toHaveLength(1);
   });
 
-  it('with none left, offers Share on a partner’s page', () => {
+  it('with none left, offers Share, off while nothing is chosen, on a partner’s page', () => {
     const everything = yes(
       ...[
         '1-sign-in',
@@ -463,11 +446,10 @@ describe('only unanswered', () => {
 
     expect(screen.getAllByRole('button', { name: 'Share' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Nothing left to answer' })).toBeTruthy();
-    fireEvent.click(document.querySelector('.w-done .w-next')!);
-    expect(document.querySelector('.w-note')!.textContent).not.toBe('');
+    expect(document.querySelector<HTMLButtonElement>('.w-done .w-next')!.disabled).toBe(true);
   });
 
-  it('copies from the empty place on the human’s page', () => {
+  it('offers Copy, off while nothing is chosen, from the empty place on the human’s page', () => {
     const everything = yes(
       ...[
         '1-sign-in',
@@ -484,9 +466,7 @@ describe('only unanswered', () => {
     render(<Page report={make(everything)} />);
     fireEvent.click(screen.getByLabelText('Only unanswered'));
 
-    fireEvent.click(document.querySelector('.w-done .w-next')!);
-
-    expect(document.querySelector('.w-note')!.textContent).toContain('Nothing chosen yet');
+    expect(document.querySelector<HTMLButtonElement>('.w-done .w-next')!.disabled).toBe(true);
   });
 });
 
@@ -513,7 +493,7 @@ describe('a partner’s page', () => {
 
   it('follows the label kept in the browser as it is typed, and reads next unanswered by it', () => {
     render(<Page report={make({ ...human, ...mine })} partner />);
-    const label = screen.getByLabelText('Your label');
+    const label = screen.getByLabelText('Label from the invite');
 
     fireEvent.change(label, { target: { value: 'p1' } });
 
@@ -617,7 +597,7 @@ describe('what the review found', () => {
     key('n');
     key('l');
 
-    expect(document.querySelector('.w-tocopy')!.textContent).toBe('0 answers to copy');
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
     fireEvent.click(button('Show all screens'));
     expect(place()).toContain('Tiếng Việt');
   });
