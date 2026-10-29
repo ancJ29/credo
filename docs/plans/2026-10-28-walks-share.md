@@ -1,11 +1,10 @@
 # Sharing the walks with partners, on Cloudflare
 
-**Where it stands — 2026-10-29 01:13 +07:** the six calls are answered, all as recommended
-([the human's calls](#the-humans-calls)); step 4's workflow is built, reviewed and read green under
-`act`. Step 6's code is built and reviewed four times by Opus, fixed after each (10, 8, 5 and 3
-findings); the reviews are done, and `main` is merged in. What is left is the human's round trip in Slack after the merge
-and the deploy, and, once it is read, the real copy of Slack's text. The human's setup (step 3)
-and its script wait for the latest point that needs them; step 7 is next.
+**Where it stands — 2026-10-29 07:32 +07:** done. All seven steps are ticked, and the recap is
+[written](../recaps/2026-10-29-walks-share.md). The walks page is live at `main`'s `85d5a2b` on
+Cloudflare Pages behind Access, deployed by GitHub; a partner's Share post was read back from
+Slack and taken under its label in a dry run. What stays is the human's: the real partners' labels
+(a label is never a name) and open item 16, which waits for a paste of several posts.
 
 > **Drafted** 2026-10-28 by the machine, on the human's ask at about 17:30 +07: "next, on the
 > daily walks, how can I share with other partners? Since there're a lot of photo, I think of using
@@ -32,7 +31,8 @@ flowchart LR
   git -.-> push
 ```
 
-Drawn from this plan; no code holds it yet.
+Drawn from [`walks.yml`](../../.github/workflows/walks.yml), [`send.tsx`](../../visual/src/send.tsx) and
+[`take.ts`](../../visual/src/take.ts).
 
 | | Recommended | A month |
 | --- | --- | --- |
@@ -308,7 +308,7 @@ plan stands in its way.
 | 10 | | The workflow changes no base, no `answers.json` and nothing in `walk/` | `contents: read`; no step writes them |
 | 11 | 👤 | Beside "Copy my answers", a Share button copies the answers chosen on the page as one Slack message: each screen's number, sentence and language, Yes or No, a No's reason, and the machine's lines in a code block at its end | unit, `share.test.ts`, `page.test.tsx` |
 | 12 | 👤 | Share asks once for the partner's label, keeps it in the browser, and gives no message without one, saying so | unit, `page.test.tsx`, `choices.test.ts` |
-| 13 | 👤 | A Share message posted in Slack and copied back by the human is taken whole by `pnpm answers`, several posts in one paste: every answer, its label and its fingerprint | unit, `take.test.ts`, on a sample as we expect Slack's copy to give it (the marks dropped, the fences gone, a name and a time between posts, CRLF), swapped for the real copy after the human's round trip; read back, the human's round trip, step 6 |
+| 13 | 👤 | A Share message posted in Slack and copied back by the human is taken whole by `pnpm answers`, several posts in one paste: every answer, its label and its fingerprint | unit, `take.test.ts`, on a sample as we expect Slack's copy to give it (the marks dropped, the fences gone, a name and a time between posts, CRLF), swapped for the real copy after the human's round trip (read 10-29, a single post: the sample's several posts and name lines are still the sample's); read back, the human's round trip, step 6 |
 | 14 | 👤 | Each partner's answer is kept under their label, beside the human's and every other partner's; a later answer from one label replaces only that label's | unit, `take.test.ts` |
 | 15 | 👤 | Each screen shows the partners' answers by label; the human's yes or no alone marks the screen, counts in the bar and closes a walk | unit, `states.test.ts`, `page.test.tsx` |
 | 16 | 👤 | "Copy my answers" and its block stay as they are, and its answers are the human's | unit, `block.test.ts`, `take.test.ts` |
@@ -418,29 +418,51 @@ plan stands in its way.
 
 ## Steps
 
-- [ ] **1. This plan.** Who: 🤖, 10-28. Done when: committed on `walks-share`; the path and name
+- [x] **1. This plan.** Who: 🤖, 10-28. Done when: committed on `walks-share`; the path and name
   checks find nothing and every relative link resolves.
+  *Done* 2026-10-29: committed, and merged into `main` at `85d5a2b`. The path check
+  of the documentation convention finds only the convention's own text;
+  the name check finds no person's name in any file; all 86 relative links of this plan, the
+  visual report's plan and the open items resolve, anchors included.
 - [x] **2. The human's calls.** Who: 👤, 10 minutes. Done when: each call answered under it,
   dated. *Done* 2026-10-28: all six answered under their calls, each "yes to all", as
   recommended.
-- [ ] **3. The human's setup, once.** Who: 👤, after calls 3 and 4 (the sign-in, and that GitHub
-  uploads), about 20 minutes. In Cloudflare's dashboard:
-  1. a Pages project by direct upload, named by the human, its production branch `main`, its first
-     upload a one-line `index.html` that holds nothing;
-  2. the machine fetches its address with no sign-in and reads 200, so the refusal it reads after
-     the next step is Access's; that same fetch, through `ops/walks-refused.sh`, is the refusal
-     check seen red on a public address that answers 200 (it is red there, and green after the
-     next step);
-  3. Zero Trust's Free plan (a team name and a card), the one-time PIN, and the two Access
-     applications by the known-issues steps, each with one policy, the partners' emails;
-  4. a token: Account · Cloudflare Pages · Edit, the one account, an end date.
+- [x] **3. The human's setup, once.** Who: 👤, after calls 3 and 4 (the sign-in, and that GitHub
+  uploads), about 20 minutes, by one script the machine writes,
+  `$ROOT_DIR/one-off/<stamp>-walks-setup.sh`, outside git, run in the human's terminal with their
+  own `wrangler` and `gh`. It does by command what a command can do, and prints the dashboard page
+  and field, then waits, where one cannot:
+  1. the Pages project by direct upload (`wrangler pages project create`, its production branch
+     `main`), named by the human, its address proved to be `<name>.pages.dev`; for a new project a
+     one-line `index.html` that holds nothing, never for one that exists;
+  2. the script fetches its address with no sign-in and reads 200, through `ops/walks-refused.sh`,
+     the refusal check seen red on a public address that answers 200 (red there, green after the
+     next step); an address already refused skips this;
+  3. in the dashboard, with the page and field printed: Zero Trust's Free plan (a team name and a
+     card), the one-time PIN as an identity provider, and Access for the project by the known-issues
+     steps (the dashboard's "Preview access" and its button "Restrict previews", then in Zero Trust
+     the made application's public hostname with the `*` removed from its Subdomain, then Restrict
+     previews again), so two applications stand; both policies edited, never a second added, to the
+     partners' emails and the human's own;
+  4. in the dashboard: a token, Account · Cloudflare Pages · Edit, the one account, an end date;
+     read by the script hidden.
 
-  Then one script the machine writes, `$ROOT_DIR/one-off/<stamp>-walks-env.sh`, outside git: it
-  makes GitHub's environment `walks`, admitting `main` alone, sets its three secrets from the
-  terminal, and reads back the rule and the secrets' names into its log in `$ROOT_DIR/logs/`. Done
-  when: the log names the rule and the three secrets, and no value; the machine's fetches of the
-  address and of the placeholder deploy's own address are refused, each a redirect to Access's
-  sign-in.
+  The same script then makes GitHub's environment `walks`, admitting `main` alone, sets its three
+  secrets from stdin, and reads back the rule and the secrets' names into its log in
+  `$ROOT_DIR/logs/`. Done when: the log names the rule and the three secrets, and no value (the
+  script reads its own log for the token, the account id, any address and any email); the script's
+  own fetches of the address and of the placeholder deploy's own address are refused, each a
+  redirect to Access's sign-in.
+  *Done* 2026-10-29 02:09 +07, read whole from `logs/20261029-0113-walks-setup.log` (44 lines): a
+  first run refused at once, a tool not installed, nothing changed; the second, from 01:50 to
+  02:09, green. Wrangler and gh signed in, admin on the repository and the guard found (line 8);
+  the project made and the placeholder deployed, its subdomain the name; the check read "an
+  anonymous fetch was answered 200, not refused" (line 29), red as it must be; Access set in the
+  dashboard (Preview access, Restrict previews, the made application's hostname without the `*`,
+  Restrict previews again, both policies edited); both addresses then "refused: a redirect to
+  Access's sign-in" (lines 34 and 35); the token valid, the environment admitting `main` alone and
+  three secrets set, by name (lines 38 to 42); the verdict green (line 43). The log holds no
+  32-hex, no long token, no email, no `pages.dev` or `cloudflareaccess.com` address.
 - [x] **4. The workflow.** Who: 🤖, after call 4 (it needs none of step 3), 1.5 hours. Done when:
   wrangler's version and each action's SHA read from their releases; `actionlint` clean; the
   human's run of the machine's script `$ROOT_DIR/one-off/<stamp>-act-walks-share.sh`, which runs
@@ -494,13 +516,25 @@ plan stands in its way.
   its job-level `if` off `main`; no wrangler, Cloudflare or `pages` command ran, and no account id,
   address or key is in the log. The one "error" line, "Non-terminating error while running 'git
   clone'" (L11), is act's own, in Set up job, which succeeded.
-- [ ] **5. The first deploy.** Who: 👤 pushes `main` after the merge, by a one-off script the
+- [x] **5. The first deploy.** Who: 👤 pushes `main` after the merge, by a one-off script the
   machine writes that follows GitHub's run and saves its log, as ridge's pushes do; after steps 3
   and 4 (the environment and its secrets; the workflow). Done when: GitHub's run green and its log
   read whole: the folder and its two files, wrangler's upload, the read-back naming the commit,
   both refusals, and no secret's value, each masked; the machine's own fetches refused; the human
   opens the address, signs in by code, sees the page naming `main`'s commit, and says yes (row 1).
-- [ ] **6. Share, and `pnpm answers` by label.** Who: 🤖, after calls 5 and 6 (the label, and what
+  *Done* 2026-10-29 07:09 +07: the push of `main` at `85d5a2b` by the push script, GitHub's run
+  read whole from `logs/20261029-0211-push-main-walks-walks.log` (529 lines). Build: success, the
+  tally 0 waiting and 26 yes, the artifact 692,671 bytes. Deploy: success; the digest matched (line
+  433); the project's address refused a visitor before the upload (line 448); wrangler 4.151.0
+  uploaded 2 files (line 488) and the deploy completed (line 491); the newest production deploy
+  carries `85d5a2b` (line 505); the deploy's own address refused a visitor (line 512); 12 lines
+  masked as `***`, none unmasked. `ci.yml` on the same push (`logs/20261029-0211-push-main-walks-ci.log`,
+  8857 lines): every job succeeded. The push script's own red was a false positive: 12 digits in a
+  runner's temporary path (line 8472 of that log), no address or id; the script is outside git.
+  Row 1: the human's Share test carries the build line `main, commit 85d5a2be6`, and the only page
+  built at `85d5a2b` is the one deployed behind Access (both addresses refuse a visitor), so the
+  human signed in by code and opened the live page on 10-29, before 07:27.
+- [x] **6. Share, and `pnpm answers` by label.** Who: 🤖, after calls 5 and 6 (the label, and what
   an answer does), 3 hours; 👤 one round trip in Slack, 10 minutes, after the deploy that carries
   it. The page's Share and label field, `pnpm answers` reading both blocks, the labelled keys, and
   each screen showing the partners' answers; the model files are `visual/src/block.ts`,
@@ -634,6 +668,18 @@ plan stands in its way.
     the fences (loud, nothing misattributed, waits for the real copy).
   - I3 [FIXED] the plan's "c-storage's deploy job" now names `ci.yml`, and the hazard of two
     branches appending to `ops/test.sh` is marked done.
+  *Round trip read* 2026-10-29: a Share post from the walks page live at `85d5a2b`, posted in Slack
+  and copied back by the human (row 13), run in a throwaway copy of the tree, nothing written:
+  - plain `pnpm answers` refused the whole paste with one line, `answers.json` unchanged;
+  - `pnpm answers --partners` took the three answers under the post's label, 3 written and 0
+    refused; the readable part was skipped, and the diff was those three rows alone;
+  - the three fingerprints equal the live page's, and `pnpm report` shows them by label with the
+    human's 26 yeses unchanged;
+  - Slack's copy equals Share's output: the fences bare, the bold kept, the curly apostrophe kept,
+    NFC, no CR, no no-break or zero-width character, the two build lines as Share writes them.
+  It was the human's own test, so nothing was taken or committed. [DEFERRED] stays: open item 16
+  (several posts with Slack's name-and-time lines between them) is unconfirmed until a paste of
+  several posts.
 - [x] **7. The pointer line.** Who: 🤖, after the yes to calls 3 and 4, 5 minutes. Done when: one
   line under the visual report's calls 4 and 5 points here, committed on this branch.
   *Done* 2026-10-29 01:13 +07: the line stands under call 5's answer in
@@ -641,8 +687,8 @@ plan stands in its way.
   of this plan's calls); calls 3 and 4 were answered as recommended 10-28, read in this plan's
   [calls](#the-humans-calls).
 
-**Then stop.** After step 6. Step 6's code takes the first free slot after calls 5 and 6; its
-round trip waits for step 5's deploy. Step 7 takes the first free slot after the calls.
+**Then stop.** All seven steps are ticked; the recap is
+[`docs/recaps/2026-10-29-walks-share.md`](../recaps/2026-10-29-walks-share.md).
 
 ## Left behind
 
