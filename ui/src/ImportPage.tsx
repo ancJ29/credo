@@ -5,22 +5,12 @@ import {
   type Language,
   type StaffSetup,
 } from '@credo/shared';
-import {
-  Alert,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Alert, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { readFirstSheet, saveAs, writeWorkbook } from './importFile';
+import { readFirstSheet, writeWorkbook } from './importFile';
 import {
   columnsOf,
   headingOf,
@@ -32,6 +22,7 @@ import {
 import { Loaded } from './Loaded';
 import { INVALID } from './ownFields';
 import { type PageProps, refusal, useLoad } from './page';
+import { saveAs } from './saveAs';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-name' | 'no-rows';
@@ -75,8 +66,7 @@ function reasonOf(problem: Problem, t: TFunction, language: Language) {
  */
 export function ImportPage(page: PageProps) {
   const { api } = page;
-  const { t, i18n } = useTranslation();
-  const language = i18n.language as Language;
+  const { t } = useTranslation();
   const loaded = useLoad(
     async () => {
       const [setup, people] = await Promise.all([api.getStaffSetup(), api.listEmployees()]);
@@ -85,34 +75,55 @@ export function ImportPage(page: PageProps) {
     page,
     [api],
   );
+  if (loaded.data) return <ImportForm page={page} {...loaded.data} />;
+  return (
+    <Stack gap="lg">
+      <Title order={2}>{t('import.title')}</Title>
+      <Loaded status={loaded.status} onRetry={loaded.reload}>
+        {null}
+      </Loaded>
+    </Stack>
+  );
+}
+
+/** The page once the staff setup and the codes taken are read. */
+function ImportForm({
+  page,
+  setup,
+  taken,
+}: {
+  page: PageProps;
+  setup: StaffSetup;
+  taken: ReadonlySet<string>;
+}) {
+  const { api } = page;
+  const { t, i18n } = useTranslation();
+  const language = i18n.language as Language;
   const [file, setFile] = useState<File | null>(null);
   const [problem, setProblem] = useState<FileProblem | null>(null);
   const [rows, setRows] = useState<ReadRow[] | null>(null);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
   const [done, setDone] = useState<{ added: number; refused: number } | null>(null);
 
-  const setup: StaffSetup | undefined = loaded.data?.setup;
   const held = rows?.filter((row) => row.request !== null) ?? [];
 
   async function template() {
-    if (!setup) return;
     saveAs(await writeWorkbook(templateSheets(setup, language)), `staff-${language}.xlsx`);
   }
 
-  async function read() {
-    if (!file || !loaded.data) return;
+  async function read(chosen: File) {
     setProblem(null);
-    if (file.size > IMPORT_MAX_BYTES) return setProblem('too-big');
+    if (chosen.size > IMPORT_MAX_BYTES) return setProblem('too-big');
     setStatus('busy');
     let table;
     try {
-      table = await readFirstSheet(file);
+      table = await readFirstSheet(chosen);
     } catch {
       setStatus('idle');
       return setProblem('unreadable');
     }
     setStatus('idle');
-    const found = readStaff(table, loaded.data.setup, loaded.data.taken);
+    const found = readStaff(table, setup, taken);
     if (found.kind === 'failed') return setProblem(found.reason);
     setRows(found.rows);
   }
@@ -170,112 +181,104 @@ export function ImportPage(page: PageProps) {
         <Title order={2}>{t(rows ? 'import.previewTitle' : 'import.title')}</Title>
         {!rows && <Text c="dimmed">{t('import.intro')}</Text>}
       </div>
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {status === 'failed' && (
-          <Alert color="red" role="alert">
-            {t('import.failed')}
-          </Alert>
-        )}
-        {rows ? (
-          <Stack gap="md">
-            <Text>
-              {t('import.summary', {
-                held: held.length,
-                total: rows.length,
-                refused: rows.length - held.length,
-              })}
-            </Text>
-            <Table.ScrollContainer minWidth={720}>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>{t('import.colRow')}</Table.Th>
-                    <Table.Th>{t('staff.colName')}</Table.Th>
-                    <Table.Th>{t('staff.colCode')}</Table.Th>
-                    <Table.Th>{t('staff.colDepartment')}</Table.Th>
-                    <Table.Th>{t('staff.colPosition')}</Table.Th>
-                    <Table.Th>{t('import.colResult')}</Table.Th>
+      {status === 'failed' && (
+        <Alert color="red" role="alert">
+          {t('import.failed')}
+        </Alert>
+      )}
+      {rows ? (
+        <Stack gap="md">
+          <Text>
+            {t('import.summary', {
+              held: held.length,
+              total: rows.length,
+              refused: rows.length - held.length,
+            })}
+          </Text>
+          <Table.ScrollContainer minWidth={720}>
+            <Table>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{t('import.colRow')}</Table.Th>
+                  <Table.Th>{t('staff.colName')}</Table.Th>
+                  <Table.Th>{t('staff.colCode')}</Table.Th>
+                  <Table.Th>{t('staff.colDepartment')}</Table.Th>
+                  <Table.Th>{t('staff.colPosition')}</Table.Th>
+                  <Table.Th>{t('import.colResult')}</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {rows.map((row) => (
+                  <Table.Tr key={row.line}>
+                    <Table.Td>{row.line}</Table.Td>
+                    <Table.Td>{row.name}</Table.Td>
+                    <Table.Td>{row.code || (row.request ? t('import.numbered') : '')}</Table.Td>
+                    <Table.Td>{row.department}</Table.Td>
+                    <Table.Td>{row.position}</Table.Td>
+                    <Table.Td>
+                      {row.request ? (
+                        <Text c="green">{t('import.willAdd')}</Text>
+                      ) : (
+                        row.problems.map((found) => (
+                          <Text key={reasonOf(found, t, language)} c="red">
+                            {reasonOf(found, t, language)}
+                          </Text>
+                        ))
+                      )}
+                    </Table.Td>
                   </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {rows.map((row) => (
-                    <Table.Tr key={row.line}>
-                      <Table.Td>{row.line}</Table.Td>
-                      <Table.Td>{row.name}</Table.Td>
-                      <Table.Td>
-                        {row.code || (row.request ? t('import.numbered') : '')}
-                      </Table.Td>
-                      <Table.Td>{row.department}</Table.Td>
-                      <Table.Td>{row.position}</Table.Td>
-                      <Table.Td>
-                        {row.request ? (
-                          <Text c="green">{t('import.willAdd')}</Text>
-                        ) : (
-                          row.problems.map((found) => (
-                            <Text key={reasonOf(found, t, language)} c="red">
-                              {reasonOf(found, t, language)}
-                            </Text>
-                          ))
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-            <Group>
-              <Button
-                disabled={held.length === 0}
-                loading={status === 'busy'}
-                onClick={() => void send()}
-              >
-                {t('import.add', { count: held.length })}
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+          <Group>
+            <Button
+              disabled={held.length === 0}
+              loading={status === 'busy'}
+              onClick={() => void send()}
+            >
+              {t('import.add', { count: held.length })}
+            </Button>
+            <Button variant="default" onClick={chooseAgain}>
+              {t('import.another')}
+            </Button>
+          </Group>
+        </Stack>
+      ) : (
+        <Paper withBorder p="md">
+          <Stack gap="lg">
+            <Stack gap="xs" align="flex-start">
+              <Button variant="default" onClick={() => void template()}>
+                {t('import.template')}
               </Button>
-              <Button variant="default" onClick={chooseAgain}>
-                {t('import.another')}
-              </Button>
-            </Group>
-          </Stack>
-        ) : (
-          <Paper withBorder p="md">
-            <Stack gap="lg">
-              <Stack gap="xs" align="flex-start">
-                <Button variant="default" onClick={() => void template()}>
-                  {t('import.template')}
-                </Button>
-                <Text c="dimmed" size="sm">
-                  {t('import.templateHint')}
-                </Text>
-              </Stack>
-              <TextInput
-                type="file"
-                accept=".xlsx"
-                label={t('import.file')}
-                description={t('import.fileHint')}
-                onChange={(event) => {
-                  setFile(event.currentTarget.files?.[0] ?? null);
-                  setProblem(null);
-                }}
-              />
-              {file && <Text>{t('import.chosen', { name: file.name })}</Text>}
-              {problem && (
-                <Alert color="red" role="alert">
-                  {t(FILE_WORDS[problem], {
-                    name: setup ? headingOf(columnsOf(setup)[0], language) : '',
-                  })}
-                </Alert>
-              )}
-              <Button
-                disabled={!file}
-                loading={status === 'busy'}
-                onClick={() => void read()}
-              >
-                {t('import.read')}
-              </Button>
+              <Text c="dimmed" size="sm">
+                {t('import.templateHint')}
+              </Text>
             </Stack>
-          </Paper>
-        )}
-      </Loaded>
+            <TextInput
+              type="file"
+              accept=".xlsx"
+              label={t('import.file')}
+              description={t('import.fileHint')}
+              onChange={(event) => {
+                setFile(event.currentTarget.files?.[0] ?? null);
+                setProblem(null);
+              }}
+            />
+            {file && <Text>{t('import.chosen', { name: file.name })}</Text>}
+            {problem && (
+              <Alert color="red" role="alert">
+                {t(FILE_WORDS[problem], {
+                  name: headingOf(columnsOf(setup)[0], language),
+                })}
+              </Alert>
+            )}
+            <Button disabled={!file} loading={status === 'busy'} onClick={() => void read(file!)}>
+              {t('import.read')}
+            </Button>
+          </Stack>
+        </Paper>
+      )}
     </Stack>
   );
 }

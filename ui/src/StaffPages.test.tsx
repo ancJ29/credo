@@ -98,6 +98,22 @@ describe('the staff list', () => {
     expect(menu().queryAllByRole('link')).toEqual([]);
   });
 
+  it('Only the root imports staff: the list shows it the button to the import page, and shows it to no one else, whatever staff rights they hold', async () => {
+    // the root: the button leads to the import page
+    const root = openApp('/staff');
+    await userEvent.click(await screen.findByRole('link', { name: 'Import from Excel' }));
+    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
+      'Add staff from Excel',
+    );
+    root.unmount();
+
+    // an office manager who may see and add people: the add button, and no import
+    const lan = openApp('/staff', { as: 'EMP-0001' });
+    expect(await screen.findByRole('link', { name: 'Add a person' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+    lan.unmount();
+  });
+
   it('A 403 makes the UI read `me` again and redraw', async () => {
     // the cue stands for what the root just changed: the list is refused once, and `me` is read
     const { api } = openApp('/staff', { as: 'EMP-0004', cue: 'listEmployees:403' });

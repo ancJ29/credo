@@ -161,7 +161,8 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
     `textbox "${w.staff.search}" = "phong" placeholder "${w.staff.searchPlaceholder}"`,
   'admin-staff:staff-15-code-changed': () => 'main: NV-12',
   'admin-staff:staff-16-field-refused': (w) => `form: ${w.fields.invalidNumber}`,
-  'admin-staff:staff-19-import': (w) => `main: ${w.import.chosen.replace('{{name}}', 'import.xlsx')}`,
+  'admin-staff:staff-19-import': (w) =>
+    `main: ${w.import.chosen.replace('{{name}}', 'import.xlsx')}`,
   'admin-staff:staff-20-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-staff:staff-21-imported': (w) => `heading: ${w.import.doneTitle}`,
   'admin-staff:staff-22-no-name': (w) =>
@@ -187,7 +188,10 @@ describe('the app’s own scenes, drawn', () => {
         const words = await readWords(what, language, navigation);
         expect(words, `${key} ${language}`).toContain(PROOF[key](DICTIONARIES[language]));
         expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          // a dictionary key left showing; the demo file's name is not one
+          words.filter((line) =>
+            /\b[a-z]+\.[a-zA-Z]+\b/.test(line.replaceAll(/[\w-]+\.xlsx/g, '')),
+          ),
           key,
         ).toEqual([]);
       }

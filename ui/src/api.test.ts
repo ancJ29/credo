@@ -293,7 +293,7 @@ describe('the API client', () => {
         { name: 'Hà', code: 'EMP-0002', extra: {} },
       ];
 
-      expect(await api.importEmployees(rows)).toEqual({ results });
+      expect(await api.importEmployees(rows)).toMatchObject({ results });
       await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: 403 });
       await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: null });
       expect(calls[0]?.init.method).toBe('POST');

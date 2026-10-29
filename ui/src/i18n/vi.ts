@@ -150,6 +150,7 @@ export const vi: Dictionary = {
   staff: {
     title: 'Nhân viên',
     add: 'Thêm nhân viên',
+    import: 'Nhập từ Excel',
     showLeft: 'Hiện người đã nghỉ',
     search: 'Tìm kiếm',
     searchPlaceholder: 'Tên, mã, phòng ban, điện thoại',
@@ -282,7 +283,8 @@ export const vi: Dictionary = {
     writeName: 'Tên của người đó. Cột duy nhất mà dòng nào cũng cần.',
     writeCode:
       'Để trống để lấy số tiếp theo, hoặc nhập 2 đến 20 chữ cái, chữ số hoặc dấu gạch nối, mỗi mã dùng một lần.',
-    writePhone: 'Số điện thoại, viết dạng chữ.',
+    writePhone:
+      'Số điện thoại. Excel bỏ số 0 đầu của một con số: hãy đặt ô ở định dạng Text trước, hoặc gõ dấu nháy đơn trước số.',
     writeDepartment: 'Một trong: {{names}}. Để trống nếu không có.',
     writePosition: 'Một trong: {{names}}. Để trống nếu không có.',
     writeNote: 'Ghi chú tùy ý.',
@@ -297,13 +299,15 @@ export const vi: Dictionary = {
       'Tệp này không có cột “{{name}}”, mà dòng nào cũng cần. Hãy thêm một cột có tiêu đề “{{name}}”, như tệp mẫu, rồi chọn lại tệp.',
     noRows: 'Tệp này không có dòng nào để thêm bên dưới hàng tiêu đề.',
     previewTitle: 'Kiểm tra các dòng',
-    summary: '{{held}} trên {{total}} dòng sẽ được thêm. {{refused}} dòng sẽ không, mỗi dòng có lý do.',
+    summary:
+      '{{held}} trên {{total}} dòng sẽ được thêm. {{refused}} dòng sẽ không, mỗi dòng có lý do.',
     colRow: 'Dòng',
     colResult: 'Kết quả',
     willAdd: 'Sẽ được thêm',
     numbered: 'Tự đánh số khi thêm',
     refusedName: 'Tên bị trống hoặc dài hơn 200 ký tự.',
-    refusedCodeInvalid: 'Mã “{{code}}” không phải 2 đến 20 chữ cái A đến Z, chữ số hoặc dấu gạch nối.',
+    refusedCodeInvalid:
+      'Mã “{{code}}” không phải 2 đến 20 chữ cái A đến Z, chữ số hoặc dấu gạch nối.',
     refusedCodeTaken: 'Mã “{{code}}” đã thuộc về một người trong công ty.',
     refusedCodeTwice: 'Mã “{{code}}” đã được một dòng trước trong tệp này dùng.',
     refusedDepartment: 'Công ty không có phòng ban “{{name}}”.',

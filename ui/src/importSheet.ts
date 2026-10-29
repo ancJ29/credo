@@ -68,7 +68,7 @@ export const textOf = (cell: Cell | undefined) =>
 
 /** The template, as sheets of cells: the staff sheet (the headings and two sample rows with this
  * company's real departments, positions and fields) and a sheet that says what each column takes.
- * Every cell is text, so a phone keeps its leading zero. */
+ * Every sample is text. */
 export function templateSheets(
   setup: StaffSetup,
   language: Language,
@@ -82,7 +82,7 @@ export function templateSheets(
     if (field?.kind === 'choice') return (field.options[row] ?? field.options[0]).label[language];
     if (field) {
       return { text: words.sampleText, number: String(row + 1), date: `2026-0${row + 1}-15` }[
-        field.kind as 'text' | 'number' | 'date'
+        field.kind
       ];
     }
     return {
@@ -105,7 +105,7 @@ export function templateSheets(
     }
     if (column.field) {
       return { text: words.writeText, number: words.writeNumber, date: words.writeDate }[
-        column.field.kind as 'text' | 'number' | 'date'
+        column.field.kind
       ];
     }
     return {
@@ -241,7 +241,15 @@ export function readStaff(table: Table, setup: StaffSetup, taken: ReadonlySet<st
       problems.length > 0
         ? null
         : { name, ...(code === '' ? {} : { code }), extra, departmentId, positionId };
-    return { line, name, code: typedCode, department: cell('department'), position: cell('position'), problems, request };
+    return {
+      line,
+      name,
+      code: typedCode,
+      department: cell('department'),
+      position: cell('position'),
+      problems,
+      request,
+    };
   });
   return { kind: 'read', rows };
 }

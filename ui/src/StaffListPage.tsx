@@ -120,14 +120,26 @@ export function StaffListPage(page: PageProps) {
     />
   );
 
+  const add = can(user, 'staff.canCreate') && (
+    <Button component={Link} to="/staff/new">
+      {t('staff.add')}
+    </Button>
+  );
+
   return (
     <Stack gap="lg">
       <Group justify="space-between">
         <Title order={2}>{t('staff.title')}</Title>
-        {can(user, 'staff.canCreate') && (
-          <Button component={Link} to="/staff/new">
-            {t('staff.add')}
-          </Button>
+        {user.root ? (
+          // The root alone imports staff, as the import page's route checks (case-table row 4).
+          <Group>
+            <Button component={Link} to="/staff/import" variant="default">
+              {t('staff.import')}
+            </Button>
+            {add}
+          </Group>
+        ) : (
+          add
         )}
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>

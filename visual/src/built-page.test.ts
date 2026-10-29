@@ -21,7 +21,10 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
   const close = full.indexOf('</script>', open);
   const script = full
     .slice(open + '<script type="module">'.length, close)
-    .replaceAll('<\\/script', '</script');
+    .replaceAll('<\\/script', '</script')
+    // the import page's libraries load on demand, and Vite's loader reads `import.meta`, which
+    // only a module may: a classic script is given the page's address in its place
+    .replaceAll('import.meta', '({ url: "file:///index.html" })');
   const dom = new JSDOM(full.slice(0, open) + full.slice(close + '</script>'.length), {
     runScripts: 'outside-only',
     pretendToBeVisual: true,

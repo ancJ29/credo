@@ -64,10 +64,10 @@ describe('the staff file’s columns', () => {
   it('are headed by the form’s own words, or the field’s name, in the language', () => {
     const [name, , , , , , , licence] = columnsOf(DEMO_STAFF_SETUP);
 
-    expect(headingOf(name!, 'en')).toBe('Name');
-    expect(headingOf(name!, 'vi')).toBe('Tên');
-    expect(headingOf(licence!, 'en')).toBe('Driving licence');
-    expect(headingOf(licence!, 'vi')).toBe('Bằng lái xe');
+    expect(headingOf(name, 'en')).toBe('Name');
+    expect(headingOf(name, 'vi')).toBe('Tên');
+    expect(headingOf(licence, 'en')).toBe('Driving licence');
+    expect(headingOf(licence, 'vi')).toBe('Bằng lái xe');
   });
 
   it('read a cell as the text a person typed: a date as year-month-day, empty as nothing', () => {
@@ -99,7 +99,7 @@ describe('the template', () => {
     }
 
     const [staff, notes] = templateSheets(DEMO_STAFF_SETUP, 'en');
-    const [first, second] = staff!.rows.slice(1);
+    const [first, second] = staff.rows.slice(1);
     expect(first).toEqual([
       'Nguyen Van A',
       '',
@@ -120,7 +120,7 @@ describe('the template', () => {
   });
 
   it('says on its second sheet what each column takes, and which is needed', () => {
-    const rows = templateSheets(DEMO_STAFF_SETUP, 'en')[1]!.rows;
+    const rows = templateSheets(DEMO_STAFF_SETUP, 'en')[1].rows;
     const of = (heading: string) => rows.find((row) => row[0] === heading);
 
     expect(rows[0]).toEqual(['Column', 'Needed?', 'What to write']);
@@ -131,8 +131,12 @@ describe('the template', () => {
     expect(of('Code')?.[1]).toBe('Optional');
     expect(of('Department')?.[2]).toBe('One of: Kho, Văn phòng, Giao hàng. Leave empty for none.');
     expect(of('Position')?.[2]).toBe('One of: Quản lý, Nhân viên, Thực tập. Leave empty for none.');
-    expect(of('Phone')?.[2]).toBe('A phone number, written as text.');
-    expect(of('Second phone')?.[2]).toBe('A phone number, written as text.');
+    expect(of('Phone')?.[2]).toBe(
+      'A phone number. Excel drops a leading 0 from a number: format the cell as Text first, or type an apostrophe before it.',
+    );
+    expect(of('Second phone')?.[2]).toBe(
+      'A phone number. Excel drops a leading 0 from a number: format the cell as Text first, or type an apostrophe before it.',
+    );
     expect(of('Note')?.[2]).toBe('Any note.');
     expect(of('Driving licence')?.[2]).toBe('One of: Class B2, Class C.');
     expect(of('Start date')?.[2]).toBe('A date as year-month-day, for example 2026-10-29.');
@@ -150,7 +154,15 @@ describe('the template', () => {
     };
     const [staff, notes] = templateSheets({ ...BARE, customFields: [choice] }, 'vi');
 
-    expect(staff?.rows[0]).toEqual(['Tên', 'Mã', 'Điện thoại', 'Phòng ban', 'Chức vụ', 'Ghi chú', 'Cỡ']);
+    expect(staff?.rows[0]).toEqual([
+      'Tên',
+      'Mã',
+      'Điện thoại',
+      'Phòng ban',
+      'Chức vụ',
+      'Ghi chú',
+      'Cỡ',
+    ]);
     expect(staff?.rows[1]?.slice(4)).toEqual(['', '', 'Vừa']);
     expect(staff?.rows[2]?.slice(6)).toEqual(['Vừa']);
     expect(notes?.rows.at(-1)).toEqual(['Cỡ', 'Tùy chọn', 'Một trong: Vừa.']);
@@ -226,6 +238,15 @@ describe('the staff file, read', () => {
     expect(second?.request?.departmentId).toBeNull();
   });
 
+  it('takes the first of two columns headed alike', () => {
+    const [row] = read([
+      ['Tên', 'Name', 'Mã'],
+      ['Hạ', 'Bình', 'nv-9'],
+    ]);
+
+    expect(row?.name).toBe('Hạ');
+  });
+
   it('skips empty rows but counts them in the line, and ignores a column the company does not keep', () => {
     const table: Table = [
       [],
@@ -285,7 +306,13 @@ describe('the staff file, read', () => {
     };
     const setup = { ...DEMO_STAFF_SETUP, customFields: [field] };
 
-    const [row] = read([['Name', 'Department', 'Old part'], ['Lan', 'Kho', 'x']], setup);
+    const [row] = read(
+      [
+        ['Name', 'Department', 'Old part'],
+        ['Lan', 'Kho', 'x'],
+      ],
+      setup,
+    );
 
     expect(row?.request).toMatchObject({
       departmentId: DEMO_STAFF_SETUP.departments[0]?.id,

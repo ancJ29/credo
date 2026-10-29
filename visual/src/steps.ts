@@ -104,7 +104,7 @@ function setValue(element: HTMLInputElement | HTMLSelectElement, value: string) 
 /** Puts a file in a file field as choosing it does: the field's files, then its `change`. */
 function attach(element: HTMLInputElement, file: File) {
   Object.defineProperty(element, 'files', { value: [file], configurable: true });
-  element.dispatchEvent(new (element.ownerDocument.defaultView!.Event)('change', { bubbles: true }));
+  element.dispatchEvent(new element.ownerDocument.defaultView!.Event('change', { bubbles: true }));
 }
 
 /** Waits until the page has gone `stillFor` ms with no change, or `stillAtMost` in all. */

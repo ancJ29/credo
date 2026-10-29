@@ -9,28 +9,23 @@ export async function readFirstSheet(file: Blob): Promise<Table> {
   return (await readSheet(file)) as Table;
 }
 
-/** An `.xlsx` file of these sheets, every cell text, the first row of each in bold. */
+/** An `.xlsx` file of these sheets, every cell Text (`@`, the format write-excel-file's documentation
+ * gives to stop Excel reading a text as a number or a date), the first row of each in bold. A
+ * column's format cannot be set, only a cell's, so the cells a person fills in later are General. */
 export async function writeWorkbook(sheets: { name: string; rows: string[][] }[]): Promise<Blob> {
   const { default: writeExcelFile } = await import('write-excel-file/browser');
   return await writeExcelFile(
     sheets.map(({ name, rows }) => ({
       sheet: name,
       data: rows.map((row, at) =>
-        row.map((value) => ({ value, type: String, ...(at === 0 ? { fontWeight: 'bold' as const } : {}) })),
+        row.map((value) => ({
+          value,
+          type: String,
+          format: '@',
+          ...(at === 0 ? { fontWeight: 'bold' as const } : {}),
+        })),
       ),
       columns: rows[0].map(() => ({ width: 28 })),
     })),
   ).toBlob();
-}
-
-/** Hands a file to the person's browser to save. */
-export function saveAs(blob: Blob, name: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
 }

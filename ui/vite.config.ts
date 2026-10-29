@@ -7,7 +7,10 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   build: {
     outDir: mode === 'fake' ? 'dist/fake' : 'dist/app',
-    // One bundle of React and Mantine, about 650 kB: no route is split off until a page is heavy.
-    chunkSizeWarningLimit: 1000,
+    // One bundle of React and Mantine, about 760 kB: no route is split off until a page is heavy.
+    // The import page's two libraries are already split off, loaded when the root reads a file or
+    // takes the template. The scripts' tests build it under NODE_ENV=test, which carries React's
+    // development build, about 1,010 kB; the limit sits above that so only growth warns.
+    chunkSizeWarningLimit: 1100,
   },
 }));

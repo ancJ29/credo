@@ -149,6 +149,7 @@ export const en = {
   staff: {
     title: 'Staff',
     add: 'Add a person',
+    import: 'Import from Excel',
     showLeft: 'Show people who left',
     search: 'Search',
     searchPlaceholder: 'Name, code, department, phone',
@@ -283,7 +284,8 @@ export const en = {
     writeName: 'The person’s name. The only column every row needs.',
     writeCode:
       'Leave empty for the next number, or give 2 to 20 letters, digits or hyphens, used once.',
-    writePhone: 'A phone number, written as text.',
+    writePhone:
+      'A phone number. Excel drops a leading 0 from a number: format the cell as Text first, or type an apostrophe before it.',
     writeDepartment: 'One of: {{names}}. Leave empty for none.',
     writePosition: 'One of: {{names}}. Leave empty for none.',
     writeNote: 'Any note.',
@@ -299,7 +301,8 @@ export const en = {
       'This file has no “{{name}}” column, which every row needs. Add a column headed “{{name}}”, as the template has, and choose the file again.',
     noRows: 'This file has no rows to add below its headings.',
     previewTitle: 'Check the rows',
-    summary: '{{held}} of {{total}} rows will be added. {{refused}} will not, each with its reason.',
+    summary:
+      '{{held}} of {{total}} rows will be added. {{refused}} will not, each with its reason.',
     colRow: 'Row',
     colResult: 'Result',
     willAdd: 'Will be added',

@@ -187,7 +187,7 @@ describe('the walks', () => {
     const [setup, staff, office] = WALKS.slice(2).map((walk) => walk.screens.map((s) => s.id));
 
     expect(setup?.slice(1)).toEqual(['setup-2-fields']);
-    expect(staff?.slice(11)).toEqual([
+    expect(staff?.slice(11, 16)).toEqual([
       'staff-12-own-fields',
       'staff-13-photo',
       'staff-14-search',

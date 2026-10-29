@@ -115,20 +115,14 @@ const personNamed = async (page: Page, name: string) => {
 
 /** Chooses the data set's staff file in the import page's file field, as a person does, and waits
  * for the page to show it chosen: the page hears the choice a moment after it is set. */
-async function chooseFile(
-  page: Page,
-  language: Language,
-  which: 'import' | 'import-no-name',
-) {
+async function chooseFile(page: Page, language: Language, which: 'import' | 'import-no-name') {
   const words = DICTIONARIES[language];
   const file = await demoImportFile(language, which);
-  await page
-    .getByLabel(exactly(words.import.file))
-    .setInputFiles({
-      name: file.name,
-      mimeType: file.type,
-      buffer: Buffer.from(await file.arrayBuffer()),
-    });
+  await page.getByLabel(exactly(words.import.file)).setInputFiles({
+    name: file.name,
+    mimeType: file.type,
+    buffer: Buffer.from(await file.arrayBuffer()),
+  });
   await expect(page.getByText(words.import.chosen.replace('{{name}}', file.name))).toBeVisible();
 }
 

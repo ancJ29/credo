@@ -25,11 +25,11 @@ describe('the import’s contract', () => {
   });
 
   it('Each row is checked as one add: a row the add refuses is refused here', () => {
-    const request = (value: object) => importEmployeesRequestSchema.safeParse({ rows: [value]});
+    const request = (value: object) => importEmployeesRequestSchema.safeParse({ rows: [value] });
     expect(request({ ...row, code: 'EMP-0100', departmentId: null }).success).toBe(true);
     expect(request({ ...row, code: 'a b' }).success).toBe(false);
     expect(request({ extra: {} }).success).toBe(false);
-    expect(request({ ...row, extra: JSON.parse('{"__proto__":1}') }).success).toBe(false);
+    expect(request({ ...row, extra: JSON.parse('{"__proto__":1}') as object }).success).toBe(false);
     expect(request({ ...row, password: 'x' }).success).toBe(false);
   });
 
