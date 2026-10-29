@@ -144,3 +144,10 @@ it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package
 99.68 % and fails. Run alone, the package reads 100 % each time. The test passes either way; the gate
 fails. Make the test wait for the child's log line before it starts the clock (a longer timeout would
 only hide the cause).
+
+## 24. `nextCode` can still make a code of 21 characters, and the add page then says "try again" — the machine; *parked*, on the human's word that it never happens (the employee list plan, step 15, 2026-10-29)
+
+With a prefix of `EMP-` and a last number of 16 digits, `nextCode` makes a code longer than the 20 a code may be.
+The BFF now parses the person before any write and answers 400, so no record the list cannot read is stored.
+The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
+never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.

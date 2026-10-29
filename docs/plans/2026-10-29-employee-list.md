@@ -1037,7 +1037,14 @@ itself:
     that never said anything about seeing; M22 with a code of spaces sent. Each seen red. The
     timeout in `ui/vitest.config.ts` is back at the default (rule 6 of QA): all 253 tests pass at
     5 s under the whole gate; `visual`'s and `scripts`' are older and named in their configs.
-  - *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every package (shared 75 tests, ui 253, bff 199, scripts 76, visual 219; knip
+  - *Last pass, 15:13 +07, after both reviewers re-checked this pass:* N1 `[FIXED]` count past covers a
+    typed code too: the code route raises the last number given under the current prefix to the
+    number of the code it frees, over the tag it read, three tries then 503, before it claims the new
+    code (a number burned is harmless); red with the raise off (the typed `EMP-0002` changed to `BOSS`
+    gave `EMP-0002` again, and the 503 test). C10 `[FIXED]` `findLastIndex` for the address written and
+    seen back; red with `findIndex` ("a", "", "a" in one update leaves the box at "a" after the
+    menu's link). C8's remainder `[DEFERRED]` to open item 24 on the human's word.
+  - *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every package (shared 75 tests, ui 254, bff 202, scripts 76, visual 219; knip
     silent). `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes. *The 23 scenes dumped (words and DOM, Mantine's ids, UUIDs
     and React's `useId` ids masked) at `caa52d7` (a copy of its tree, built from `git archive`) and at
     the end:* equal in both languages (46 scene dumps and the 38 mock states), after the code
