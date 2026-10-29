@@ -152,7 +152,8 @@ shown for reading.
 
 ## 21. A reload in `pnpm fake` drops `?fake` — the machine; *parked* until the fake is next used by hand (the employee list plan, step 10, 2026-10-29)
 
-`/?fake` is read at the first load only; a browser reload after the app has moved to another path
-opens an address without it, which is the real app on no BFF. The fake's session lives in the tab, so
-the walk and the tests are unaffected. Fix: keep the switch in the tab's own storage once read, and
-read it from there.
+`?fake` is read only when the page loads (`ui/src/main.tsx`), and the sign-in's
+`<Navigate to={first.path} replace />` (`ui/src/ClientApp.tsx`) drops the address's search. A reload
+after signing in then builds the real `Api`, which shows the unknown-company page. The fake's session
+lives in the tab, so the walk and the tests are unaffected. Fix: keep the switch in the tab's own
+storage once read, and read it from there, or keep the search through the redirect.

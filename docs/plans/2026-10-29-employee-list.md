@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 09:58 +07:** steps 2 to 9 are ticked and step 10's fix pass is made, awaiting its re-review: the two reviewers' S1 to S10 and C1 to C12 are each fixed, rejected or deferred with their reds, under step 10 below, and no walk screen changed. **Next:** the re-review of the fixes (step 10 stays unticked until it reads back, and `make check` is not needed, c-storage untouched); then step 11, the human's full run, on the commit step 10 ends on.
+**Where it stands — 2026-10-29 10:38 +07:** steps 2 to 10 are ticked: group A's review and the re-review of its fixes are done, every finding fixed or deferred with its home (steps 12 and 14), and no walk screen changed. **Next:** step 11, the human's full run, on the commit step 10 ends on.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -136,7 +136,9 @@ Every key is built by `recordKeys` in `shared/src/records.ts`, under the tenant'
   sign-in record first and the person last, since the list finds a person as soon as they are
   written. A sign-in record left by a failure in between names a person who does not name it: it
   signs no one in, its password was never shown, and the next add or new code of that code takes it
-  over with its tag (row 37). *Rejected:* the person first, then the sign-in, as the old app's login
+  over with its tag (row 37) once its claim is older than the longest an add runs (a minute); a younger
+  one may be an add still writing its person, so a retry then is answered 503, "the save failed", and
+  meets the real 409 or the free code on its next try. *Rejected:* the person first, then the sign-in, as the old app's login
   followed its row: a failure between leaves a listed person whose retry lists the code twice.
 - **An archived person keeps both records**, so the code stays taken (row 9) and every session of
   theirs is refused at its next request (row 41). *Rejected:* removing the sign-in at the archive.
@@ -442,7 +444,7 @@ the group whose walk holds it.
 | 34 | | B: A company's own field's key is 1 to 64 letters, digits and underscores, a letter first, unique, fixed once made, and never `phone`, `personalPhone` or `note` | unit, shared |
 | 35 | | One catalogue and one resolver, in `shared/`, serve the BFF's check and the root's editors; the editors list the catalogue in its order | unit, shared |
 | 36 | | A permission layer that cannot be read answers 503, never a partial set | BFF route |
-| 37 | | Each person is one record under a minted id; their sign-in record names that id; a sign-in record its person does not name back signs no one in, and the next add or new code of that code takes it over with its tag | BFF route, with a client that fails on a chosen write |
+| 37 | | Each person is one record under a minted id; their sign-in record names that id; a sign-in record its person does not name back signs no one in, and the next add or new code of that code takes it over with its tag once the claim is older than an add can run (a minute), a younger one answering 503 | BFF route, with a client that fails on a chosen write |
 | 38 | | Every write names the tag it read; a moved record answers 409 with the current one; a numbered code lost to a race takes the next number, three times at most | BFF route |
 | 39 | | c-storage lists one service's records under a non-empty prefix, at most 1,000 in key order with their tags, and says when there are more; the route sits behind the same two key gates as every record route | Go tests, `server_test.go`; Bruno; unit, shared: the client and its Bruno parity |
 | 40 | | The BFF's list answers 500 when c-storage says there are more, or when a record under the prefix does not parse, naming its kind and never its key; it never answers a short list | BFF route |
@@ -726,14 +728,15 @@ itself:
   the full path of `piece-2.spec.ts`, and `one-off/20261029-0305-fake-run-employee-list.sh` for the
   script.
 
-- [ ] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
+- [x] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or deferred
   with its reason, tagged in the recap; `pnpm check` and `make check` green. *Fix pass, 2026-10-29,
-  pending the re-review (not ticked until it reads back):* two reviewers read `git diff 85d5a2b HEAD`,
+  re-reviewed by both reviewers, whose findings follow it (`make check` not run: `c-storage/` is
+  untouched):* two reviewers read `git diff 85d5a2b HEAD`,
   S1 to S10 on the server and C1 to C12 on the client. Each is `[FIXED]` unless said, and each new or
   changed test was seen red once from its assertion, under a mutation or before the code. No screen
   of the 16 changed: the walks page reads 0 asked again and 58 yes, and the data set is untouched.
-  - S1 `[FIXED]` a claim is taken over only once older than `ADD_MAX_MS` (60 s), else 409; red:
+  - S1 `[FIXED]` a claim is taken over only once older than `ADD_MAX_MS` (60 s), else 503 (after the re-review's T2; 409 as first made); red:
     the window's line removed turns the racing-adds test and row 37's test red. S2 `[FIXED]` a test
     for the stale save naming a removed unit, red with the early version check removed (400, not
     409). S3 `[FIXED]` write requests take `extra` and a unit's `permissions` as required
@@ -767,12 +770,34 @@ itself:
     path, says how to clear the bases, prints the diff since the fake run; 15 clients, here and in the
     config; the missing-variable message names `CREDO_FAKE_DIR` and who sets it. C12 `[FIXED]` the
     coverage reason names `scripts/src/fake.test.ts`.
-  - The reviewer's observations, logged and not fixed: open items 19, 20 and 21.
+  - The reviewer's observations, logged and not fixed: open items 19, 20 and 21 (21's mechanism read
+    and confirmed by the re-review).
+  - *Re-review, T1 to T5 and D1, D2.* T1 `[FIXED]` a password is hashed and checked in its composed
+    form (NFC) in `hashPassword` and `verifyPassword`, `bff/src/password.ts`, and one with a space at
+    either end is refused (`shared/src/staff.ts`); red with each normalisation removed (unit and
+    route), and with each end's check removed. T2 `[FIXED]` a young claim no one is named by answers
+    503, a named one 409, in `claimSignIn`; row 37's line amended in the table, the section and the
+    test's name; red with the 503 made a 409 (three assertions). T3 `[FIXED]` the seed door answers
+    first, then logs in a try/catch to the stack's stderr, and the stack's `stack.log` is gone; a test
+    reads the reason on stderr after the stack's folder is removed (`withStack` takes a `seed` for it);
+    red with the log a no-op, and with the log ahead of the answer (the request hangs). T4
+    `[DEFERRED]` to step 14, written into its text. T5 `[FIXED]` U+200B and U+FEFF refused; red
+    under `\p{Cc}`. D1 `[FIXED]` the full run's script strips ANSI and matches Playwright's own
+    wording (`toHaveScreenshot(expected) failed`, then a pixel count or an image size), counts a
+    test's 16 screens only for one that passed or failed on pictures alone, and the stub rig's
+    messages are captured from the installed Playwright 1.64 (a browserless `toMatchSnapshot` run,
+    with a timeout and an interrupted result), not invented. Rig, each against the real wording: one
+    diff green, a size difference green, a timeout beside a diff red, a missing reference red, a
+    failed test with no error red, an interrupted test beside a diff red; the previous reader read
+    the real one-diff case red. D2 `[FIXED]` the scene test compares each spec screen's `as` and `cue`
+    for equality; red with an extra `as` and with an extra `cue` at screen 4. Item 21's mechanism is
+    written into the log.
   - *Gates:* the whole `pnpm check` green after the fixes at 100 % in each package, no warning
-    (shared 59 tests, ui 188, bff 148, scripts 73, visual 218); `pnpm report` reads 0 waiting, 0 asked
+    (after the re-review's fixes: shared 59 tests, ui 188, bff 152, scripts 75, visual 218); `pnpm report` reads 0 waiting, 0 asked
     again, 0 no, 58 yes. The full run's script: `bash -n` and ShellCheck clean, and seven stubbed
-    cases read right (green; one diff green; a timeout beside a diff red; a missing reference red;
-    five walks of six red; a failure with no error red; no report red).
+    cases read right (first made). *Corrected by the
+    re-review:* that rig's messages were invented, and a real Playwright 1.64 difference read red; see
+    the re-review's evidence below.
 - [ ] **11. A's full walk and final review.** Who: 👤 runs the script, after step 10, about 30
   minutes; 🤖 reads. Done when: the log read whole; each screen that differs from the fake's named,
   with its cause, and fixed where it is wrong; its answers removed and answered again on the walks
@@ -795,7 +820,11 @@ itself:
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
-  each seen red once; `pnpm check` green.
+  each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
+  writes `passwordAt: now()`, and a session's equality with it could match an old session once a code
+  is freed, which only a code change (this step) or an archive that frees a code can do. The fix: a
+  random generation minted at every claim and every password, copied into the session, with no clock
+  in it.
 - [ ] **15. B's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
