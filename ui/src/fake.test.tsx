@@ -7,6 +7,7 @@ import {
   meReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
+  photoReplySchema,
   sessionReplySchema,
   setPasswordReplySchema,
   staffSetupDocSchema,
@@ -15,6 +16,7 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
   DEMO_ROOT_NAME,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -42,6 +44,8 @@ const fake = (cue = '', held: { client?: string; operator?: string } = {}) =>
     device: { authId: () => held.client ?? null, operatorAuthId: () => held.operator ?? null },
     cue: parseCue(cue || null),
   });
+
+const DEMO_PHOTO = Object.values(DEMO_PHOTOS)[0];
 
 const status = async (answer: Promise<unknown>) =>
   await answer.then(
@@ -101,12 +105,20 @@ describe('the fake Api', () => {
     });
     parses('saveEmployee', employeeDocSchema, saved.kind === 'saved' ? saved.doc : null);
     parses('setPassword', setPasswordReplySchema, await api.setPassword(id, null));
+    parses('getPhoto', photoReplySchema, await api.getPhoto(id));
+    const photo = await api.savePhoto(id, { photo: DEMO_PHOTO, version: '' });
+    parses('savePhoto', photoReplySchema, photo.kind === 'saved' ? photo.reply : null);
     const archived = await api.archiveEmployee(id, saved.kind === 'saved' ? saved.doc.version : '');
     parses(
       'archiveEmployee',
       employeeDocSchema,
       archived.kind === 'archived' ? archived.doc : null,
     );
+    const coded = await api.changeCode(id, {
+      version: archived.kind === 'archived' ? archived.doc.version : '',
+      code: 'moi-1',
+    });
+    parses('changeCode', employeeDocSchema, coded.kind === 'changed' ? coded.doc : null);
     const savedConfig = await api.saveConfig(DEMO_CONFIG, 'v1');
     parses('saveConfig', configDocSchema, savedConfig.kind === 'saved' ? savedConfig.doc : null);
     const made = await api.makeClient('another-one', 'Another One');
@@ -128,6 +140,9 @@ describe('the fake Api', () => {
         'addEmployee',
         'saveEmployee',
         'setPassword',
+        'changeCode',
+        'getPhoto',
+        'savePhoto',
         'archiveEmployee',
         'saveConfig',
         'makeClient',
@@ -211,6 +226,7 @@ describe('the fake Api’s staff', () => {
         'staff.canCreate': true,
         'staff.canEdit': true,
         'staff.canDelete': true,
+        'settings.canEdit': false,
       },
     });
     // the warehouse sees, and nothing more
@@ -219,6 +235,7 @@ describe('the fake Api’s staff', () => {
       'staff.canCreate': false,
       'staff.canEdit': false,
       'staff.canDelete': false,
+      'settings.canEdit': false,
     });
 
     // a person who left, one with no password yet and one unknown are each a 401
@@ -295,6 +312,110 @@ describe('the fake Api’s staff', () => {
     expect(await status(api.getEmployee('missing'))).toBe(404);
     expect(await api.saveStaffSetup({ departments: [], positions: [], extra: {} }, 's0')).toEqual({
       kind: 'conflict',
+    });
+  });
+});
+
+describe('the fake Api’s record and list', () => {
+  const [, hung, chau, , , , , left] = DEMO_EMPLOYEES;
+
+  it('A code left empty is the next number under the company’s prefix and length, counted past every code ever given, people who left included', async () => {
+    const api = fake();
+
+    const first = await api.addEmployee({ name: 'Một', extra: {} });
+    // the data set's highest code is the one who left, EMP-0008
+    expect(first.kind === 'added' && first.reply.employee.employee.code).toBe('EMP-0009');
+    const second = await api.addEmployee({ name: 'Hai', code: '', extra: {} });
+    expect(second.kind === 'added' && second.reply.employee.employee.code).toBe('EMP-0010');
+    // a numbering the root saved is the one used
+    const setup = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...setup.setup, numbering: { prefix: 'NV', digits: 3 } },
+      setup.version,
+    );
+    const third = await api.addEmployee({ name: 'Ba', extra: {} });
+    expect(third.kind === 'added' && third.reply.employee.employee.code).toBe('NV001');
+    // and a code given is kept as given, in capitals
+    const given = await api.addEmployee({ name: 'Bốn', code: 'nv-7', extra: {} });
+    expect(given.kind === 'added' && given.reply.employee.employee.code).toBe('NV-7');
+  });
+
+  it('The root changes a person’s code: the person is then found under the new one, a code taken or a version moved is a result, and a person who is not there is a 404', async () => {
+    const api = fake();
+    const id = chau?.id ?? '';
+    const read = await api.getEmployee(id);
+
+    expect(await api.changeCode(id, { version: 'e0', code: 'NEW-9' })).toEqual({
+      kind: 'conflict',
+    });
+    expect(
+      await api.changeCode(id, { version: read.version, code: ` ${hung?.code.toLowerCase()} ` }),
+    ).toEqual({
+      kind: 'taken',
+    });
+    expect(await api.changeCode(id, { version: read.version, code: left?.code ?? '' })).toEqual({
+      kind: 'taken',
+    });
+    const changed = await api.changeCode(id, { version: read.version, code: 'new-9' });
+    expect(changed.kind === 'changed' && changed.doc).toMatchObject({
+      employee: { code: 'NEW-9' },
+      signIn: { name: 'NEW-9' },
+      version: 'e2',
+    });
+    // the same code on the same person is not taken by themselves
+    const again = await api.changeCode(id, { version: 'e2', code: 'NEW-9' });
+    expect(again.kind).toBe('changed');
+    expect(await status(api.changeCode('missing', { version: 'e1', code: 'NEW-8' }))).toBe(404);
+    // it signs in under the new code, and the old is free
+    expect((await api.signIn('new-9', 'pw')).authId).toBe(`fake.session.${id}`);
+    expect(await status(api.signIn(chau?.code ?? '', 'pw'))).toBe(401);
+  });
+
+  it('A photo is read with its version, saved over the version read, and a moved one is a conflict', async () => {
+    const api = fake();
+    const photo = DEMO_PHOTO;
+
+    // the data set holds one photo, the others have none yet
+    expect(await api.getPhoto(chau?.id ?? '')).toEqual({ photo, version: 'p1' });
+    expect(await api.getPhoto(hung?.id ?? '')).toEqual({ photo: null, version: '' });
+    expect(await api.savePhoto(hung?.id ?? '', { photo, version: 'p1' })).toEqual({
+      kind: 'conflict',
+    });
+    expect(await api.savePhoto(hung?.id ?? '', { photo, version: '' })).toEqual({
+      kind: 'saved',
+      reply: { photo, version: 'p1' },
+    });
+    expect(await api.savePhoto(hung?.id ?? '', { photo, version: 'p1' })).toEqual({
+      kind: 'saved',
+      reply: { photo, version: 'p2' },
+    });
+    expect(await status(api.getPhoto('missing'))).toBe(404);
+    expect(await status(api.savePhoto('missing', { photo, version: '' }))).toBe(404);
+  });
+
+  it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them has none', async () => {
+    const api = fake();
+    const { setup, version } = await api.getStaffSetup();
+    expect(setup.fields).toEqual({ personalPhone: true, photo: true });
+    expect(setup.customFields).toHaveLength(4);
+
+    const changed = {
+      ...setup,
+      fields: { personalPhone: false, photo: false },
+      customFields: [],
+      numbering: { prefix: 'X-', digits: 2 },
+    };
+    const kept = await api.saveStaffSetup(changed, version);
+    expect(kept.kind === 'saved' && kept.doc.setup).toMatchObject(changed);
+
+    const bare = await api.saveStaffSetup(
+      { departments: [], positions: [], extra: {} },
+      kept.kind === 'saved' ? kept.doc.version : '',
+    );
+    expect(bare.kind === 'saved' && bare.doc.setup).toEqual({
+      departments: [],
+      positions: [],
+      extra: {},
     });
   });
 });

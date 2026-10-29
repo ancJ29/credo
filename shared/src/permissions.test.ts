@@ -19,12 +19,14 @@ describe('permissions', () => {
       'staff.canCreate': false,
       'staff.canEdit': false,
       'staff.canDelete': false,
+      'settings.canEdit': false,
     });
     expect(resolvePermissions([department, position])).toEqual({
       'staff.canView': true,
       'staff.canCreate': true,
       'staff.canEdit': false,
       'staff.canDelete': false,
+      'settings.canEdit': false,
     });
     expect(resolvePermissions([department, position, person])['staff.canEdit']).toBe(true);
     // a refusal at the person's layer beats an allowance above it
@@ -55,12 +57,35 @@ describe('permissions', () => {
       'staff.canCreate',
       'staff.canEdit',
       'staff.canDelete',
+      'settings.canEdit',
     ]);
     // each of the three levels takes any of them, and nothing the catalogue lacks
     const everything = Object.fromEntries(PERMISSIONS.map((id) => [id, true]));
     expect(permissionLayerSchema.safeParse(everything).success).toBe(true);
     expect(permissionLayerSchema.safeParse({ 'staff.canFire': true }).success).toBe(false);
     expect(permissionLayerSchema.safeParse({ 'staff.canView': 'yes' }).success).toBe(false);
+  });
+
+  it('A department, a position or a person may be allowed to change the company’s settings', () => {
+    const allowed = { 'settings.canEdit': true };
+    const nobody = { root: false, permissions: {} };
+
+    expect(can(nobody, 'settings.canEdit')).toBe(false);
+    // each level on its own gives it, and a later refusal takes it away
+    for (const layers of [
+      [allowed, {}, {}],
+      [{}, allowed, {}],
+      [{}, {}, allowed],
+    ]) {
+      const permissions = resolvePermissions(layers);
+      expect(can({ root: false, permissions }, 'settings.canEdit'), JSON.stringify(layers)).toBe(
+        true,
+      );
+    }
+    expect(resolvePermissions([allowed, { 'settings.canEdit': false }])['settings.canEdit']).toBe(
+      false,
+    );
+    expect(permissionLayerSchema.safeParse(allowed).success).toBe(true);
   });
 
   it('One catalogue and one resolver, in `shared/`, serve the BFF’s check and the root’s editors; the editors list the catalogue in its order', () => {

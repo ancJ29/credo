@@ -49,6 +49,7 @@ describe('the staff setup page', () => {
       'Add a person',
       'Change a person’s name and details',
       'Archive a person',
+      'Change the company’s settings',
     ];
     // a department takes each as a choice, in the catalogue's order
     const office = screen
@@ -63,6 +64,7 @@ describe('the staff setup page', () => {
       true,
       true,
       false,
+      false,
     ]);
     // a position takes each as allow, refuse or as the level above
     const trainee = screen
@@ -74,7 +76,7 @@ describe('the staff setup page', () => {
     expect(within(edit).getByRole<HTMLInputElement>('radio', { name: 'Refuse' }).checked).toBe(
       true,
     );
-    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(4);
+    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(5);
   });
 
   it('The root’s save over newer ones is refused and what was typed is kept, and a failed save says so and keeps it too', async () => {

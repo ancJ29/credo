@@ -11,5 +11,8 @@ export const staffCalls = {
   addEmployee: down,
   saveEmployee: down,
   setPassword: down,
+  changeCode: down,
+  getPhoto: down,
+  savePhoto: down,
   archiveEmployee: down,
 };

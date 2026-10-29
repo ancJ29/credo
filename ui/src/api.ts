@@ -4,6 +4,7 @@ import {
   type AddEmployeeRequest,
   AUTH_HEADER,
   CLIENT_HEADER,
+  type ChangeCodeRequest,
   type ConfigDoc,
   configDocSchema,
   type CreateClientReply,
@@ -16,12 +17,15 @@ import {
   employeeRoutes,
   meReplySchema,
   type MeReply,
+  type PhotoReply,
+  photoReplySchema,
   type OperatorMeReply,
   operatorMeReplySchema,
   type OperatorSessionReply,
   operatorSessionReplySchema,
   ROUTES,
   type SaveEmployeeRequest,
+  type SavePhotoRequest,
   type SaveStaffSetupRequest,
   type SessionReply,
   sessionReplySchema,
@@ -51,6 +55,16 @@ export type MakeResult = { kind: 'made'; client: CreateClientReply } | { kind: '
 
 /** A person added, or the code was already taken: the answer 409 is not an error to the form. */
 export type AddResult = { kind: 'added'; reply: AddEmployeeReply } | { kind: 'taken' };
+
+/** A person as the add form gives them: a code left out asks for the next number. */
+export type NewPerson = Omit<AddEmployeeRequest, 'code'> & { code?: string };
+
+/** A new code given, or one already taken, or the version moved: none is an error to the form. */
+export type ChangeCodeResult =
+  { kind: 'changed'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** A photo saved, or the version moved. */
+export type SavePhotoResult = { kind: 'saved'; reply: PhotoReply } | { kind: 'conflict' };
 
 /** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
@@ -192,7 +206,7 @@ export function createApi({
     },
 
     /** A code already taken is a result: the form says so and keeps what was typed. */
-    async addEmployee(request: AddEmployeeRequest): Promise<AddResult> {
+    async addEmployee(request: NewPerson): Promise<AddResult> {
       const response = await send('POST', ROUTES.employees, request);
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
@@ -211,6 +225,31 @@ export function createApi({
       const response = await send('PUT', employeeRoutes.password(id), { password });
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, setPasswordReplySchema);
+    },
+
+    /** The root's. A 409 that carries the newer person is a moved version, any other is a code
+     * already taken. */
+    async changeCode(id: string, request: ChangeCodeRequest): Promise<ChangeCodeResult> {
+      const response = await send('PUT', employeeRoutes.code(id), request);
+      if (response.status === 409) {
+        const body = (await response.json().catch(() => null)) as object | null;
+        return body !== null && 'current' in body ? { kind: 'conflict' } : { kind: 'taken' };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'changed', doc: await read(response, employeeDocSchema) };
+    },
+
+    async getPhoto(id: string): Promise<PhotoReply> {
+      const response = await send('GET', employeeRoutes.photo(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, photoReplySchema);
+    },
+
+    async savePhoto(id: string, request: SavePhotoRequest): Promise<SavePhotoResult> {
+      const response = await send('PUT', employeeRoutes.photo(id), request);
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', reply: await read(response, photoReplySchema) };
     },
 
     async archiveEmployee(id: string, version: string): Promise<ArchiveResult> {

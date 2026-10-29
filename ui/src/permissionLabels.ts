@@ -6,4 +6,5 @@ export const PERMISSION_LABEL = {
   'staff.canCreate': 'permissions.staff_canCreate',
   'staff.canEdit': 'permissions.staff_canEdit',
   'staff.canDelete': 'permissions.staff_canDelete',
+  'settings.canEdit': 'permissions.settings_canEdit',
 } as const satisfies Record<PermissionId, string>;

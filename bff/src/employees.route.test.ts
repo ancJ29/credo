@@ -529,6 +529,7 @@ describe('A person signs in with their code and password on the company’s link
           'staff.canCreate': false,
           'staff.canEdit': false,
           'staff.canDelete': false,
+          'settings.canEdit': false,
         },
       });
     }
@@ -626,6 +627,7 @@ describe('Piece 2’s permissions are to see the staff list, to add a person, to
       'staff.canCreate': true,
       'staff.canEdit': true,
       'staff.canDelete': true,
+      'settings.canEdit': false,
     });
   });
 });

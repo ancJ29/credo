@@ -6,6 +6,12 @@ import { ApiError } from './api';
 import { Loaded } from './Loaded';
 import { type PageProps, refusal, useLoad } from './page';
 import { PermissionEditor } from './PermissionEditor';
+import {
+  draftOf as fieldsDraftOf,
+  FieldsEditor,
+  type FieldsDraft,
+  savedFrom,
+} from './StaffFieldsEditor';
 
 /** A unit being edited: `id` is absent until the BFF mints it, `key` tells the rows apart. */
 type Draft = {
@@ -15,7 +21,8 @@ type Draft = {
   permissions: PermissionLayer;
   extra: object;
 };
-type Outcome = 'saved' | 'failed' | 'refused' | 'conflict' | null;
+type Outcome =
+  'saved' | 'failed' | 'refused' | 'conflict' | 'invalidFields' | 'invalidNumbering' | null;
 
 const draftOf = (units: StaffSetup['departments'], from: number): Draft[] =>
   units.map((unit, index) => ({ ...unit, key: from + index }));
@@ -102,14 +109,17 @@ type FormProps = {
   saving: boolean;
   outcome: Outcome;
   onSave: (setup: SaveStaffSetupRequest['setup']) => void;
+  /** The fields or the numbering are not ones the BFF would take: nothing is sent. */
+  onRefused: (outcome: 'invalidFields' | 'invalidNumbering') => void;
   onReload: () => void;
 };
 
-function SetupForm({ setup, saving, outcome, onSave, onReload }: FormProps) {
+function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: FormProps) {
   const { t } = useTranslation();
   const [departments, setDepartments] = useState(() => draftOf(setup.departments, 0));
   const [positions, setPositions] = useState(() => draftOf(setup.positions, 1000));
-  const [counter, setCounter] = useState(2000);
+  const [fields, setFields] = useState<FieldsDraft>(() => fieldsDraftOf(setup));
+  const [counter, setCounter] = useState(3000);
   const nextKey = () => {
     setCounter((n) => n + 1);
     return counter;
@@ -135,6 +145,11 @@ function SetupForm({ setup, saving, outcome, onSave, onReload }: FormProps) {
           {t('setup.saveRefused')}
         </Alert>
       )}
+      {(outcome === 'invalidFields' || outcome === 'invalidNumbering') && (
+        <Alert color="red" role="alert">
+          {t(outcome === 'invalidFields' ? 'setup.ownInvalid' : 'setup.numberingInvalid')}
+        </Alert>
+      )}
       {outcome === 'conflict' && (
         <Alert color="orange" role="alert">
           <Stack gap="xs" align="flex-start">
@@ -152,16 +167,22 @@ function SetupForm({ setup, saving, outcome, onSave, onReload }: FormProps) {
         nextKey={nextKey}
       />
       <UnitList kind="positions" drafts={positions} onChange={setPositions} nextKey={nextKey} />
+      <FieldsEditor draft={fields} onChange={setFields} nextKey={nextKey} />
       <Button
         loading={saving}
         style={{ alignSelf: 'flex-start' }}
-        onClick={() =>
+        onClick={() => {
+          const kept = savedFrom(fields);
+          if ('refused' in kept) {
+            return onRefused(kept.refused === 'fields' ? 'invalidFields' : 'invalidNumbering');
+          }
           onSave({
             departments: departments.map((draft) => stored(draft, 'departments')),
             positions: positions.map((draft) => stored(draft, 'positions')),
+            ...kept,
             extra: setup.extra,
-          })
-        }
+          });
+        }}
       >
         {t('setup.save')}
       </Button>
@@ -203,6 +224,7 @@ export function StaffSetupPage(page: PageProps) {
           saving={saving}
           outcome={outcome}
           onSave={(setup) => void save(setup, doc.version)}
+          onRefused={setOutcome}
           onReload={() => {
             setSaved(null);
             setOutcome(null);

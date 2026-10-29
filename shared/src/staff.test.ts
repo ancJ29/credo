@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addEmployeeRequestSchema,
+  changeCodeRequestSchema,
   byCode,
   employeeCodeIsValid,
   employeeSchema,
@@ -9,6 +10,7 @@ import {
   saveEmployeeRequestSchema,
   saveStaffSetupRequestSchema,
   setPasswordRequestSchema,
+  staffConfig,
   staffSetupSchema,
 } from './staff';
 
@@ -151,5 +153,53 @@ describe('staff', () => {
       id: ID,
       name: 'Kho cũ',
     });
+  });
+
+  it('The root chooses which optional fields the company keeps on a person, all off until turned on, and the setup keeps the company’s own fields and its numbering', () => {
+    const label = { vi: 'Nhãn', en: 'Label' };
+    const own = { key: 'plate', label, kind: 'text' };
+    const bare = { departments: [], positions: [], extra: {} };
+
+    // a setup saved before these existed has none, and reads as the defaults
+    expect(staffSetupSchema.safeParse(bare).success).toBe(true);
+    expect(staffConfig(bare)).toEqual({
+      fields: { personalPhone: false, photo: false },
+      customFields: [],
+      numbering: { prefix: 'EMP-', digits: 4 },
+    });
+    // a switch left out is off
+    const set = {
+      ...bare,
+      fields: { photo: true },
+      customFields: [own],
+      numbering: { prefix: 'NV', digits: 3 },
+    };
+    expect(staffSetupSchema.safeParse(set).success).toBe(true);
+    expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
+      fields: { personalPhone: false, photo: true },
+      customFields: [{ ...own, options: [], inList: false }],
+      numbering: { prefix: 'NV', digits: 3 },
+    });
+    // a switch the app does not know, a field of no known kind and a repeated key are refused
+    expect(staffSetupSchema.safeParse({ ...bare, fields: { fax: true } }).success).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({ ...bare, customFields: [{ ...own, kind: 'file' }] }).success,
+    ).toBe(false);
+    expect(staffSetupSchema.safeParse({ ...bare, customFields: [own, own] }).success).toBe(false);
+    // a save carries them the same
+    const save = (setup: object) =>
+      saveStaffSetupRequestSchema.safeParse({ setup, version: '' }).success;
+    expect(save(set)).toBe(true);
+    expect(save({ ...set, numbering: { prefix: 'nv', digits: 3 } })).toBe(false);
+    expect(save({ ...set, customFields: [{ ...own, key: 'note' }] })).toBe(false);
+  });
+
+  it('The root changes a person’s code: a new code is a valid code over the version read', () => {
+    const version = 'a'.repeat(64);
+
+    expect(changeCodeRequestSchema.safeParse({ version, code: 'nv-12' }).success).toBe(true);
+    expect(changeCodeRequestSchema.safeParse({ version, code: 'x' }).success).toBe(false);
+    expect(changeCodeRequestSchema.safeParse({ version: 'v', code: 'NV-12' }).success).toBe(false);
+    expect(changeCodeRequestSchema.safeParse({ code: 'NV-12' }).success).toBe(false);
   });
 });

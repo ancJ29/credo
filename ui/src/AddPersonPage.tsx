@@ -1,4 +1,4 @@
-import { type EmployeeDoc, employeeCodeIsValid } from '@credo/shared';
+import { can, type EmployeeDoc, employeeCodeIsValid, staffConfig } from '@credo/shared';
 import {
   Alert,
   Button,
@@ -14,49 +14,68 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { Loaded } from './Loaded';
+import { OwnFieldInput, type OwnTexts, mergeExtra, ownStored, refusedFields } from './ownFields';
 import { type PageProps, refusal, useLoad } from './page';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
+const EMPTY = {
+  name: '',
+  code: '',
+  phone: '',
+  personalPhone: '',
+  note: '',
+  department: '',
+  position: '',
+};
 
-/** Adding a person. Whoever may add gives a name, a code, a phone and a note; only the root also
- * gives a department and a position, and is then shown the sign-in name and first password once. */
+/** Adding a person. Whoever may add gives a name, a code (left empty, the next number), a phone, a
+ * note and what the company keeps besides; only the root also gives a department and a position,
+ * and is then shown the sign-in name and first password once. */
 export function AddPersonPage(page: PageProps) {
   const { api, user } = page;
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const loaded = useLoad(async () => (user.root ? (await api.getStaffSetup()).setup : null), page, [
+  // Whoever may add reads the setup when they may see the staff: the fields the company keeps are in
+  // it; the departments and positions are chosen by the root alone.
+  const reads = can(user, 'staff.canView');
+  const loaded = useLoad(async () => (reads ? (await api.getStaffSetup()).setup : null), page, [
     api,
-    user.root,
+    reads,
   ]);
-  const [form, setForm] = useState({
-    name: '',
-    code: '',
-    phone: '',
-    note: '',
-    department: '',
-    position: '',
-  });
+  const [form, setForm] = useState(EMPTY);
+  const [own, setOwn] = useState<OwnTexts>({});
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed' | 'taken'>('idle');
   const [codeShown, setCodeShown] = useState(false);
   /** Held in this state alone: the password is shown once and kept nowhere else. */
   const [made, setMade] = useState<{ employee: EmployeeDoc; password: string } | null>(null);
   const change = (next: Partial<typeof form>) => setForm((was) => ({ ...was, ...next }));
   const setup = loaded.data;
-  const codeOk = employeeCodeIsValid(form.code);
+  const { fields, customFields } = staffConfig(setup ?? {});
+  // An empty code is the next number, which the BFF counts.
+  const codeOk = form.code.trim() === '' || employeeCodeIsValid(form.code);
+  // A value refused after a try is said at its field until it fits.
+  const refused = codeShown ? refusedFields(customFields, own) : [];
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setCodeShown(true);
-    if (!codeOk) return;
+    if (!codeOk || refusedFields(customFields, own).length > 0) return;
     setStatus('busy');
     try {
-      const extra = {
-        ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
-        ...(form.note.trim() ? { note: form.note.trim() } : {}),
-      };
+      const extra = mergeExtra(
+        {},
+        {
+          phone: form.phone.trim() || undefined,
+          ...(fields.personalPhone
+            ? { personalPhone: form.personalPhone.trim() || undefined }
+            : {}),
+          note: form.note.trim() || undefined,
+          ...ownStored(customFields, own),
+        },
+      );
       const result = await api.addEmployee({
         name: form.name,
-        code: form.code,
+        ...(form.code.trim() ? { code: form.code } : {}),
         extra,
         ...(user.root
           ? { departmentId: form.department || null, positionId: form.position || null }
@@ -104,7 +123,8 @@ export function AddPersonPage(page: PageProps) {
             variant="default"
             onClick={() => {
               setMade(null);
-              setForm({ name: '', code: '', phone: '', note: '', department: '', position: '' });
+              setForm(EMPTY);
+              setOwn({});
               setCodeShown(false);
             }}
           >
@@ -144,7 +164,6 @@ export function AddPersonPage(page: PageProps) {
               <TextInput
                 label={t('addPerson.code')}
                 description={t('addPerson.codeHint')}
-                required
                 autoCapitalize="characters"
                 autoComplete="off"
                 error={(codeShown && !codeOk && t('addPerson.codeInvalid')) || status === 'taken'}
@@ -157,7 +176,15 @@ export function AddPersonPage(page: PageProps) {
                 value={form.phone}
                 onChange={(event) => change({ phone: event.currentTarget.value })}
               />
-              {setup && (
+              {fields.personalPhone && (
+                <TextInput
+                  label={t('addPerson.personalPhone')}
+                  type="tel"
+                  value={form.personalPhone}
+                  onChange={(event) => change({ personalPhone: event.currentTarget.value })}
+                />
+              )}
+              {user.root && setup && (
                 <>
                   <NativeSelect
                     label={t('addPerson.department')}
@@ -184,6 +211,16 @@ export function AddPersonPage(page: PageProps) {
                 value={form.note}
                 onChange={(event) => change({ note: event.currentTarget.value })}
               />
+              {customFields.map((field) => (
+                <OwnFieldInput
+                  key={field.key}
+                  field={field}
+                  value={own[field.key] ?? ''}
+                  refused={refused.includes(field.key)}
+                  readOnly={false}
+                  onChange={(value) => setOwn((was) => ({ ...was, [field.key]: value }))}
+                />
+              ))}
               <Button type="submit" loading={status === 'busy'}>
                 {t('addPerson.submit')}
               </Button>

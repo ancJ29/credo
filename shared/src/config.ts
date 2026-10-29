@@ -34,15 +34,25 @@ export const CREDO_COLOUR = '#3e618c';
 
 export const MAX_LOGO_BYTES = 200 * 1024;
 
-const IMAGE_DATA_URL = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*)(={0,2})$/;
+const IMAGE_DATA_URL = /^data:image\/([a-z0-9.+-]+);base64,([A-Za-z0-9+/]*)(={0,2})$/;
+
+/** The image type and the decoded size in bytes of an image data URL, or null when it is not a
+ * well-formed one with a payload. */
+export function imageDataUrl(url: string) {
+  const match = IMAGE_DATA_URL.exec(url);
+  const payload = match?.[2] ?? '';
+  const padding = match?.[3] ?? '';
+  if (!match || payload.length === 0 || (payload.length + padding.length) % 4 !== 0) return null;
+  return {
+    type: match[1],
+    bytes: ((payload.length + padding.length) / 4) * 3 - padding.length,
+  };
+}
 
 /** An image data URL whose decoded bytes are at most `MAX_LOGO_BYTES`. */
 export function logoIsValid(logo: string) {
-  const match = IMAGE_DATA_URL.exec(logo);
-  const payload = match?.[1] ?? '';
-  const padding = match?.[2] ?? '';
-  if (!match || payload.length === 0 || (payload.length + padding.length) % 4 !== 0) return false;
-  return ((payload.length + padding.length) / 4) * 3 - padding.length <= MAX_LOGO_BYTES;
+  const image = imageDataUrl(logo);
+  return image !== null && image.bytes <= MAX_LOGO_BYTES;
 }
 
 export const tenantConfigSchema = z

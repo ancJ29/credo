@@ -1,12 +1,15 @@
 import {
   can,
   differences,
+  employeeCodeIsValid,
   layersOf,
   type EmployeeDoc,
   type PermissionLayer,
   passwordIsValid,
+  type PhotoReply,
   type SaveEmployeeRequest,
   type StaffSetup,
+  staffConfig,
 } from '@credo/shared';
 import {
   Alert,
@@ -26,9 +29,18 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { Loaded } from './Loaded';
+import {
+  mergeExtra,
+  OwnFieldInput,
+  type OwnTexts,
+  ownStored,
+  ownTextsOf,
+  refusedFields,
+} from './ownFields';
 import { type PageProps, refusal, useLoad } from './page';
 import { PermissionEditor } from './PermissionEditor';
-import { noteOf, phoneOf, unitName } from './staffNames';
+import { PhotoPanel } from './PhotoPanel';
+import { noteOf, personalPhoneOf, phoneOf, unitName } from './staffNames';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 type SaveOutcome = 'saved' | 'failed' | 'conflict' | null;
@@ -125,6 +137,83 @@ function PasswordPanel({
   );
 }
 
+/** A new code: the root's alone. The person signs in with it from then on and is signed out
+ * everywhere; the old code is free again. */
+function CodePanel({
+  page,
+  id,
+  version,
+  changedTo,
+  onChanged,
+  onConflict,
+}: {
+  page: PageProps;
+  id: string;
+  version: string;
+  /** The code the person was just given, kept above the form that was redrawn by it. */
+  changedTo: string | null;
+  onChanged: (doc: EmployeeDoc) => void;
+  onConflict: () => void;
+}) {
+  const { t } = useTranslation();
+  const [typed, setTyped] = useState('');
+  const [problem, setProblem] = useState<'invalid' | 'taken' | 'failed' | null>(null);
+
+  async function change(event: FormEvent) {
+    event.preventDefault();
+    if (!employeeCodeIsValid(typed)) return setProblem('invalid');
+    setProblem(null);
+    try {
+      const result = await page.api.changeCode(id, { version, code: typed });
+      if (result.kind === 'changed') onChanged(result.doc);
+      else if (result.kind === 'conflict') onConflict();
+      else setProblem('taken');
+    } catch (error) {
+      refusal(error, page);
+      setProblem('failed');
+    }
+  }
+
+  return (
+    <Paper withBorder p="md">
+      <Stack gap="sm">
+        <Title order={3}>{t('person.codeTitle')}</Title>
+        <Text c="dimmed">{t('person.codeText')}</Text>
+        {changedTo !== null && (
+          <Alert color="green" role="alert">
+            {t('person.codeChanged', { code: changedTo })}
+          </Alert>
+        )}
+        {problem !== null && (
+          <Alert color="red" role="alert">
+            {t(
+              problem === 'invalid'
+                ? 'person.codeInvalid'
+                : problem === 'taken'
+                  ? 'person.codeTaken'
+                  : 'person.codeFailed',
+            )}
+          </Alert>
+        )}
+        <form onSubmit={(event) => void change(event)}>
+          <Stack gap="sm" align="flex-start">
+            <TextInput
+              label={t('person.codeNew')}
+              autoCapitalize="characters"
+              autoComplete="off"
+              value={typed}
+              onChange={(event) => setTyped(event.currentTarget.value)}
+            />
+            <Button type="submit" variant="default">
+              {t('person.codeSet')}
+            </Button>
+          </Stack>
+        </form>
+      </Stack>
+    </Paper>
+  );
+}
+
 /** Archiving, after a check: someone who left is stopped at their next step, and no one comes back. */
 function ArchivePanel({
   name,
@@ -174,6 +263,11 @@ type FormProps = {
   saving: boolean;
   ready: boolean;
   archiveFailed: boolean;
+  photo: PhotoReply | null;
+  /** The code the person was just given, or null. */
+  codeChanged: string | null;
+  onCodeChanged: (doc: EmployeeDoc) => void;
+  onConflict: () => void;
   onSave: (request: Omit<SaveEmployeeRequest, 'version'>) => void;
   onReload: () => void;
   onArchive: () => void;
@@ -188,6 +282,8 @@ function PersonForm({
   saving,
   ready,
   archiveFailed,
+  photo,
+  codeChanged,
   ...actions
 }: FormProps) {
   const { t } = useTranslation();
@@ -195,8 +291,14 @@ function PersonForm({
   const { employee } = doc;
   const editable = can(user, 'staff.canEdit') && !employee.archived;
   const [name, setName] = useState(employee.name);
+  const { fields, customFields } = staffConfig(setup);
   const [phone, setPhone] = useState(phoneOf(employee));
+  const [personalPhone, setPersonalPhone] = useState(personalPhoneOf(employee));
   const [note, setNote] = useState(noteOf(employee));
+  const [values, setValues] = useState<OwnTexts>(() => ownTextsOf(customFields, employee.extra));
+  const [tried, setTried] = useState(false);
+  // A value refused after a try is said at its field until it fits.
+  const refused = tried ? refusedFields(customFields, values) : [];
   const [department, setDepartment] = useState(employee.department?.id ?? '');
   const [position, setPosition] = useState(employee.position?.id ?? '');
   const [own, setOwn] = useState<PermissionLayer>(employee.permissions);
@@ -206,16 +308,18 @@ function PersonForm({
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    setTried(true);
+    if (refusedFields(customFields, values).length > 0) return;
     // The form starts from the stored bag: a key it does not show survives, and an emptied field
     // removes its own.
-    const { phone: _phone, note: _note, ...kept } = employee.extra;
     actions.onSave({
       name,
-      extra: {
-        ...kept,
-        ...(phone.trim() ? { phone: phone.trim() } : {}),
-        ...(note.trim() ? { note: note.trim() } : {}),
-      },
+      extra: mergeExtra(employee.extra, {
+        phone: phone.trim() || undefined,
+        ...(fields.personalPhone ? { personalPhone: personalPhone.trim() || undefined } : {}),
+        note: note.trim() || undefined,
+        ...ownStored(customFields, values),
+      }),
       ...(user.root
         ? {
             departmentId: department || null,
@@ -299,12 +403,31 @@ function PersonForm({
               value={phone}
               onChange={(event) => setPhone(event.currentTarget.value)}
             />
+            {fields.personalPhone && (
+              <TextInput
+                label={t('person.personalPhone')}
+                type="tel"
+                readOnly={!editable}
+                value={personalPhone}
+                onChange={(event) => setPersonalPhone(event.currentTarget.value)}
+              />
+            )}
             <Textarea
               label={t('person.note')}
               readOnly={!editable}
               value={note}
               onChange={(event) => setNote(event.currentTarget.value)}
             />
+            {customFields.map((field) => (
+              <OwnFieldInput
+                key={field.key}
+                field={field}
+                value={values[field.key]}
+                refused={refused.includes(field.key)}
+                readOnly={!editable}
+                onChange={(value) => setValues((was) => ({ ...was, [field.key]: value }))}
+              />
+            ))}
             {user.root ? (
               <>
                 {unitSelect(t('person.department'), department, setDepartment, setup.departments)}
@@ -347,6 +470,15 @@ function PersonForm({
           </Stack>
         </Paper>
       </form>
+      {photo && (
+        <PhotoPanel
+          page={page}
+          id={employee.id}
+          name={employee.name}
+          read={photo}
+          editable={editable}
+        />
+      )}
       <Paper withBorder p="md">
         <Stack gap="xs">
           <Title order={3}>{t('person.signIn')}</Title>
@@ -357,6 +489,16 @@ function PersonForm({
       </Paper>
       {user.root && !employee.archived && (
         <PasswordPanel page={page} id={employee.id} onGiven={actions.onPasswordGiven} />
+      )}
+      {user.root && !employee.archived && (
+        <CodePanel
+          page={page}
+          id={employee.id}
+          version={doc.version}
+          changedTo={codeChanged}
+          onChanged={actions.onCodeChanged}
+          onConflict={actions.onConflict}
+        />
       )}
       {can(user, 'staff.canDelete') && !employee.archived && (
         <ArchivePanel name={employee.name} onArchive={actions.onArchive} failed={archiveFailed} />
@@ -371,7 +513,12 @@ export function PersonPage(page: PageProps) {
   const { api } = page;
   const { id = '' } = useParams();
   const loaded = useLoad(
-    async () => ({ doc: await api.getEmployee(id), setup: (await api.getStaffSetup()).setup }),
+    async () => {
+      const doc = await api.getEmployee(id);
+      const { setup } = await api.getStaffSetup();
+      const photo = staffConfig(setup).fields.photo ? await api.getPhoto(id) : null;
+      return { doc, setup, photo };
+    },
     page,
     [api, id],
   );
@@ -380,6 +527,7 @@ export function PersonPage(page: PageProps) {
   const [saving, setSaving] = useState(false);
   const [gavePassword, setGavePassword] = useState(false);
   const [archiveFailed, setArchiveFailed] = useState(false);
+  const [codeChanged, setCodeChanged] = useState<string | null>(null);
   const data = loaded.data;
 
   async function act<T extends { kind: string }>(
@@ -433,10 +581,19 @@ export function PersonPage(page: PageProps) {
           saving={saving}
           ready={(current ?? data.doc).signIn.ready || gavePassword}
           archiveFailed={archiveFailed}
+          photo={data.photo}
+          codeChanged={codeChanged}
+          onCodeChanged={(next) => {
+            setCurrent(next);
+            setOutcome(null);
+            setCodeChanged(next.employee.code);
+          }}
+          onConflict={() => setOutcome('conflict')}
           onSave={(request) => void save(request, (current ?? data.doc).version)}
           onReload={() => {
             setCurrent(null);
             setOutcome(null);
+            setCodeChanged(null);
             loaded.reload();
           }}
           onArchive={() => void archive((current ?? data.doc).version)}

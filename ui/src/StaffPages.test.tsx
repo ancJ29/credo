@@ -18,11 +18,12 @@ describe('the staff list', () => {
     openApp('/staff');
 
     const lan = await rowOf('Nguyễn Thị Lan');
+    // the avatar's initials come with the name, and the company's own fields shown in the list after
     expect(
       within(lan)
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
-    ).toEqual(['Nguyễn Thị Lan', 'EMP-0001', 'Văn phòng', 'Quản lý', '0903 111 001']);
+    ).toEqual(['NTNguyễn Thị Lan', 'EMP-0001', 'Văn phòng', 'Quản lý', '0903 111 001', '', '']);
     const codes = screen
       .getAllByRole('row')
       .slice(1)
@@ -361,7 +362,7 @@ describe('a person’s page', () => {
       within(group('See the staff list')).getByRole('radio', { name: 'As the level above' }),
     ).toBeTruthy();
     expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(1);
-    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(3);
+    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(4);
 
     // the person's own: allow archiving, which nothing above allows; allow seeing, which the department already does
     await userEvent.click(within(group('Archive a person')).getByText('Allow'));

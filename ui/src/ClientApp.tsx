@@ -6,7 +6,7 @@ import {
   normaliseClientCode,
   type UserView,
 } from '@credo/shared';
-import { useEffect, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { AddPersonPage } from './AddPersonPage';
 import { type Api, ApiError } from './api';
@@ -16,7 +16,7 @@ import type { DeviceStore } from './device';
 import { type PageProps } from './page';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
-import { pagesOf } from './nav';
+import { mayOpen, type Page, pagesOf } from './nav';
 import { Notice } from './Notice';
 import { SettingsPage } from './SettingsPage';
 import { Shell } from './Shell';
@@ -168,7 +168,9 @@ export function ClientApp({ api, device, test, look }: Props) {
 
   const pages = user ? pagesOf(user) : [];
   const first = pages[0];
-  const forbidden = <Notice kind="forbidden" />;
+  /** A page by its address opens only for someone whose menu lists it; else the 403 page. */
+  const guarded = (who: UserView, id: Page['id'], page: ReactElement) =>
+    mayOpen(who, id) ? page : <Notice kind="forbidden" />;
   const pageFor = (who: UserView): PageProps => ({
     api,
     user: who,
@@ -194,25 +196,33 @@ export function ClientApp({ api, device, test, look }: Props) {
             <Routes>
               <Route
                 path="/settings"
+                element={guarded(
+                  user,
+                  'settings',
+                  <SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />,
+                )}
+              />
+              <Route
+                path="/staff"
+                element={guarded(user, 'staff', <StaffListPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/staff/new"
                 element={
-                  user.root ? (
-                    <SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />
+                  can(user, 'staff.canCreate') ? (
+                    <AddPersonPage {...pageFor(user)} />
                   ) : (
                     <Notice kind="forbidden" />
                   )
                 }
               />
-              <Route path="/staff" element={<StaffListPage {...pageFor(user)} />} />
               <Route
-                path="/staff/new"
-                element={
-                  can(user, 'staff.canCreate') ? <AddPersonPage {...pageFor(user)} /> : forbidden
-                }
+                path="/staff/:id"
+                element={guarded(user, 'staff', <PersonPage {...pageFor(user)} />)}
               />
-              <Route path="/staff/:id" element={<PersonPage {...pageFor(user)} />} />
               <Route
                 path="/staff-setup"
-                element={user.root ? <StaffSetupPage {...pageFor(user)} /> : forbidden}
+                element={guarded(user, 'staff-setup', <StaffSetupPage {...pageFor(user)} />)}
               />
               <Route path="*" element={<Navigate to={first.path} replace />} />
             </Routes>

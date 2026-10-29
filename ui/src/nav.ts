@@ -12,7 +12,7 @@ export const PAGES = [
     path: '/settings',
     label: 'nav.settings',
     icon: IconSettings,
-    allowed: (user: Person) => user.root,
+    allowed: (user: Person) => can(user, 'settings.canEdit'),
   },
   {
     id: 'staff',
@@ -35,3 +35,8 @@ export type Page = (typeof PAGES)[number];
 /** The pages a person's menu lists. */
 export const pagesOf = (user: Person): readonly Page[] =>
   PAGES.filter((page) => page.allowed(user));
+
+/** Whether a page may be opened by a person: the one question the menu and every route ask, so a
+ * page never opens by its address for someone whose menu lacks it. */
+export const mayOpen = (user: Person, id: Page['id']) =>
+  PAGES.some((page) => page.id === id && page.allowed(user));

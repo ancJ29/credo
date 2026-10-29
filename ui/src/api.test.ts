@@ -326,5 +326,58 @@ describe('the API client', () => {
       expect(calls[0]?.init).toMatchObject({ method: 'POST', body: '{"version":"e1"}' });
       expect(calls[0]?.path).toBe(`/api/employees/${id}/archive`);
     });
+
+    it('changes a person’s code over the version read, a 409 with the newer person being a moved version and any other 409 a code taken', async () => {
+      const { calls, api } = fake(
+        json(personDoc),
+        json({ current: personDoc }, 409),
+        json({ error: 'That code is taken' }, 409),
+        new Response('not json', { status: 409 }),
+        json({}, 403),
+      );
+      const request = { version: 'e1', code: 'NV-1' };
+
+      expect(await api.changeCode(id, request)).toMatchObject({
+        kind: 'changed',
+        doc: { version: 'e1' },
+      });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'conflict' });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'taken' });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'taken' });
+      await expect(api.changeCode(id, request)).rejects.toMatchObject({ status: 403 });
+      expect(calls[0]?.init).toMatchObject({ method: 'PUT', body: JSON.stringify(request) });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/code`);
+    });
+
+    it('reads a person’s photo with its version and saves one over the version read, a moved version being a conflict', async () => {
+      const photo = 'data:image/png;base64,AAAA';
+      const { calls, api } = fake(
+        json({ photo, version: 'p1' }),
+        json({ photo: null, version: '' }),
+        json({ photo, version: 'p2' }),
+        json({}, 409),
+        json({}, 413),
+        json({ photo: 'not an image', version: 'p3' }),
+        json({}, 404),
+      );
+
+      expect(await api.getPhoto(id)).toEqual({ photo, version: 'p1' });
+      expect(await api.getPhoto(id)).toEqual({ photo: null, version: '' });
+      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+        kind: 'saved',
+        reply: { photo, version: 'p2' },
+      });
+      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({ kind: 'conflict' });
+      await expect(api.savePhoto(id, { photo, version: 'p1' })).rejects.toMatchObject({
+        status: 413,
+      });
+      // a photo the schema refuses is no usable answer
+      await expect(api.savePhoto(id, { photo, version: 'p2' })).rejects.toMatchObject({
+        status: null,
+      });
+      await expect(api.getPhoto(id)).rejects.toMatchObject({ status: 404 });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/photo`);
+      expect(calls[2]?.init).toMatchObject({ method: 'PUT' });
+    });
   });
 });

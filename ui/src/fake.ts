@@ -3,9 +3,11 @@ import {
   type Employee,
   type EmployeeDoc,
   layersOf,
+  nextCode,
   normaliseEmployeeCode,
   normaliseSignInName,
   resolvePermissions,
+  staffConfig,
   type StaffSetup,
   type TenantConfig,
   type UserView,
@@ -14,6 +16,7 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
@@ -63,6 +66,10 @@ export function createFakeApi({ device, cue }: Options): Api {
     DEMO_EMPLOYEES.map((person) => [person.id, structuredClone(person)]),
   );
   const versions = new Map<string, number>(DEMO_EMPLOYEES.map((person) => [person.id, 1]));
+  /** Each person's photo and the version it is at; a person with none is not here. */
+  const photos = new Map(
+    Object.entries(DEMO_PHOTOS).map(([owner, photo]) => [owner, { photo, version: 1 }]),
+  );
   /** Who holds a password: the data set's people but one, and each one given a password since. */
   const ready = new Set(
     DEMO_EMPLOYEES.filter((person) => person.code !== 'EMP-0007').map((p) => p.id),
@@ -201,6 +208,9 @@ export function createFakeApi({ device, cue }: Options): Api {
           setup = structuredClone({
             departments: mint(next.departments),
             positions: mint(next.positions),
+            ...(next.fields ? { fields: next.fields } : {}),
+            ...(next.customFields ? { customFields: next.customFields } : {}),
+            ...(next.numbering ? { numbering: next.numbering } : {}),
             extra: next.extra,
           });
           setupVersion += 1;
@@ -223,7 +233,12 @@ export function createFakeApi({ device, cue }: Options): Api {
       call(
         'addEmployee',
         () => {
-          const code = normaliseEmployeeCode(request.code);
+          const code = request.code
+            ? normaliseEmployeeCode(request.code)
+            : nextCode(
+                staffConfig(setup).numbering,
+                [...people.values()].map((existing) => existing.code),
+              );
           if ([...people.values()].some((existing) => existing.code === code)) {
             return { kind: 'taken' as const };
           }
@@ -274,6 +289,50 @@ export function createFakeApi({ device, cue }: Options): Api {
         ready.add(person(id).id);
         return { password: password ?? MADE_PASSWORD };
       }),
+
+    changeCode: (id, request) =>
+      call(
+        'changeCode',
+        () => {
+          const found = person(id);
+          if (request.version !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          const code = normaliseEmployeeCode(request.code);
+          if ([...people.values()].some((other) => other.id !== id && other.code === code)) {
+            return { kind: 'taken' as const };
+          }
+          found.code = code;
+          return { kind: 'changed' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
+    getPhoto: (id) =>
+      call('getPhoto', () => {
+        person(id);
+        const held = photos.get(id);
+        return held
+          ? { photo: held.photo, version: `p${held.version}` }
+          : { photo: null, version: '' };
+      }),
+
+    savePhoto: (id, request) =>
+      call(
+        'savePhoto',
+        () => {
+          person(id);
+          const held = photos.get(id);
+          if (request.version !== (held ? `p${held.version}` : '')) {
+            return { kind: 'conflict' as const };
+          }
+          const version = (held?.version ?? 0) + 1;
+          photos.set(id, { photo: request.photo, version });
+          return {
+            kind: 'saved' as const,
+            reply: { photo: request.photo, version: `p${version}` },
+          };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
 
     archiveEmployee: (id, readAt) =>
       call(
