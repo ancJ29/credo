@@ -151,3 +151,12 @@ With a prefix of `EMP-` and a last number of 16 digits, `nextCode` makes a code 
 The BFF now parses the person before any write and answers 400, so no record the list cannot read is stored.
 The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
 never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.
+
+## 25. The app's fixed top bar lands mid-page in a full-page picture, so a screen reached after scrolling can differ between two runs on the bar alone — the walk; *parked* until the walk is next changed, or a second such difference (the employee list plan, step 16, 2026-10-29)
+
+The walk scrolls to a panel before it takes the picture, and a full-page picture at phone width draws the
+fixed bar (company name, menu, avatar) at the scroll position the walk leaves. That position moved a little
+between the fake run and the full run, so `staff-15-code-changed-vi-390` differed (3597 pixels) on the bar
+alone; the fields, words and layout were the same. The fix belongs to the next change to the walk: scroll to
+the top, or capture with the bar unfixed, before each picture. It moves every such screen's base and its fake
+reference at once, so it is done once, not per screen.

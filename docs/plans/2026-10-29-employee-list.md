@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 14:55 +07:** group A is done (steps 2 to 11); group B's steps 12 to 15 are done: its pages on the fake, the human's fake walk (all yes), the fake run's 138 pictures, its back end, and now the two reviews' fix pass (the numbering counts past every code ever given, a password given during a code change is carried, the photo and the typed details survive a save and a code change, the list's address). No screen changed. **Next:** step 16, the human's full run of B's 23 screens.
+**Where it stands — 2026-10-29 15:32 +07:** group A is done (steps 2 to 11); group B's steps 12 to 15 are done, and step 16's run is read and its bases committed: the human's full run was green at threshold 0, one screen (`staff-15` in Vietnamese at 390) differed from the fake's on the app's fixed top bar alone (open item 25), and its answer is removed so it is asked again. **Next:** the human answers that screen on the walks page, then step 16 is ticked.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1052,6 +1052,21 @@ itself:
     emptied on success. No screen changed; the walk spec was not run.
 - [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
+  *Evidence so far, 2026-10-29 15:32 +07:* the human's full run at `66eb3c3` (checks clean), its log
+  `logs/20261029-1314-full-run-employee-list-b.log` (528 lines, 15:20 to 15:27) read whole by a subagent and
+  its folder `walks/full-run-2026-10-29-152028-66eb3c3/` read: 138 pictures in 6 tests, pass 1 "1 failed"
+  and "5 passed" (the one a picture against the fake run's), pass 2 and pass 3 each "6 passed", the 138
+  bases of 138 read back at threshold 0, piece 1's and the operator's walks "12 passed" written and "12
+  passed" compared; no warning, timeout, retry, flaky, skip or secret. `differs.txt`: 1 differs
+  (`staff-15-code-changed-vi-390`, 3597 pixels, ratio 0.01), 0 without a reference, 0 other errors. Its cause,
+  read in `vs-fake/staff-15-code-changed-vi-390-diff.png`: the only red is the fixed top bar drawn mid-page,
+  at a scroll position that differed slightly from the fake run's; the fields, words and layout are the
+  same (open item 25, the walk's to fix). Committed: B's 42 new bases and 81 moved ones of group A (the
+  list now draws search, filters, avatars and two more columns; the person, add, password and other pages
+  moved with it), nothing else changed. Row 55: `admin-staff:staff-15-code-changed:vi` has its answer
+  removed in `visual/answers.json` (the three widths share it), so it is asked again.
+  *Left:* the human's answer on that screen, beside the full run's picture and its difference; the step
+  stays unticked until the page shows none waiting and no open "no".
 
 **Group C, the ways to sign in.** Each step as its group A step, for rows 25 to 28, 46 and 47.
 
