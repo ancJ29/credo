@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 11:59 +07:** group A is done (steps 2 to 11); step 12 is done, with a fix pass for open items 19 to 22: group B's pages are on the fake, its 7 screens are on the walks page, and the route guard (C4) is in. The preview waits for the human at step 13: 14 answers for B's screens and 26 asked again, since 13 of A's 16 screens changed with B's features. **Next:** step 13, the human's fake walk, then stop.
+**Where it stands — 2026-10-29 12:11 +07:** group A is done (steps 2 to 11); group B's steps 12 and 13 are done: its pages are on the fake (with a fix pass for open items 19 to 22), and the human's fake walk answered all 40 asked screens yes, so the walks page reads 0 waiting, 0 asked again, 0 no, 72 yes. **Next:** the human's fake run of B (the pictures of all 23 screens, as step 6), then step 14, B's back end.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -886,6 +886,13 @@ itself:
   the new line; the walk spec was not run (it needs a browser).
 - [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
+  *Answers, 2026-10-29 12:11:* the human previewed the walks page built at `a218234` and pasted 41 lines, every one
+  "yes": B's 14 answers and A's 26 asked again, plus `admin-setup:1-sign-in:vi`, a screen of piece 1
+  that was already yes (10-28) and is yes again (10-29). `pnpm answers` wrote 41 and refused 0 (the
+  match is by the screen's words, and the fix pass changed none); `visual/answers.json` holds them;
+  `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes; the whole `pnpm check` exit 0, no
+  warning (shared 71 tests, ui 236, bff 152, scripts 75, visual 219). *Left:* the fake run's
+  pictures, the human's last act of this step, so the step stays unticked.
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
