@@ -13,7 +13,7 @@ import { createFront } from './front';
 import { newOperatorPassword, ROOT_NAME, seedClient, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
-import { createSeeding } from './seeding';
+import { createSeeding, logToFile } from './seeding';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const UI_DIR = join(ROOT, 'ui');
@@ -55,9 +55,10 @@ export type RunningStack = {
   dataDir: string;
 };
 
-const listening = (server: Server) =>
-  new Promise<number>((resolve) => {
-    server.listen(0, '127.0.0.1', () => resolve((server.address() as AddressInfo).port));
+/** Listens on loopback alone, on a free port, and answers where it is bound. */
+export const listening = (server: Server) =>
+  new Promise<AddressInfo>((resolve) => {
+    server.listen(0, '127.0.0.1', () => resolve(server.address() as AddressInfo));
   });
 
 const key = () => randomBytes(24).toString('hex');
@@ -123,9 +124,12 @@ export async function withStack<T>(
     });
     const { rootPassword, people } = await seedDemo(storage, { operatorPassword });
     let seeded = 0;
-    const seeding = createSeeding(() => seedClient(storage, `walk-${++seeded}`));
+    const seeding = createSeeding(
+      () => seedClient(storage, `walk-${++seeded}`),
+      logToFile(join(dataDir, 'stack.log')),
+    );
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
-    const seedPort = await listening(seeding);
+    const { port: seedPort } = await listening(seeding);
 
     const bffPort = await freePort();
     const bffUrl = `http://127.0.0.1:${bffPort}`;
@@ -144,7 +148,7 @@ export async function withStack<T>(
 
     const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
-    const port = await listening(front);
+    const { port } = await listening(front);
 
     return await use({
       url: `http://127.0.0.1:${port}`,

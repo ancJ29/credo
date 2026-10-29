@@ -1,14 +1,24 @@
+import { appendFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { SeededClient } from './generator';
+
+/** Where a failure goes: a line in the stack's own log, with the error's name and message. The
+ * answer to the caller stays "could not seed", and the BFF's and c-storage's logs name no more. */
+export const logToFile = (path: string) => (error: unknown) => {
+  appendFileSync(path, `${new Date().toISOString()} seed failed: ${String(error)}\n`);
+};
 
 /**
  * The one door a command has to more data: `POST /seed` makes a client of its own from the data
  * set and answers its code and first passwords. A walk that adds or archives someone cannot be
  * undone, so each screen of the full run opens on a client no earlier screen touched. The stack
  * serves it on loopback alone, for as long as it stands; nothing else is routed, and a refusal
- * names no more than "could not seed".
+ * names no more than "could not seed"; the reason goes to `log`, for whoever reads the stack's own log.
  */
-export function createSeeding(seed: () => Promise<SeededClient>): Server {
+export function createSeeding(
+  seed: () => Promise<SeededClient>,
+  log: (error: unknown) => void,
+): Server {
   return createServer((request, response) => {
     const reply = (status: number, body: unknown) => {
       response.writeHead(status, { 'content-type': 'application/json' });
@@ -20,7 +30,10 @@ export function createSeeding(seed: () => Promise<SeededClient>): Server {
     }
     seed().then(
       (client) => reply(201, client),
-      () => reply(500, { error: 'could not seed' }),
+      (error: unknown) => {
+        log(error);
+        reply(500, { error: 'could not seed' });
+      },
     );
   });
 }

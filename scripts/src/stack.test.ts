@@ -1,11 +1,12 @@
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CLIENT_HEADER } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { commandOf, runStack } from './cli';
 import { BFF_ENV_KEYS } from '@credo/bff/env';
-import { type Artifacts, bffEnvironment, buildArtifacts, withStack } from './stack';
+import { type Artifacts, bffEnvironment, buildArtifacts, listening, withStack } from './stack';
 
 let dir: string;
 let artifacts: Artifacts;
@@ -184,6 +185,17 @@ describe('what the stack builds', () => {
 });
 
 describe('what the BFF is given', () => {
+  it('binds a door it opens to loopback alone, never to every address', async () => {
+    const server = createServer();
+    try {
+      const bound = await listening(server);
+      expect(bound.address).toBe('127.0.0.1');
+      expect(bound.port).toBeGreaterThan(0);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  });
+
   it('The BFF never holds the super-admin key: its environment is exactly the variables it reads', () => {
     const environment = bffEnvironment({
       port: 4000,
