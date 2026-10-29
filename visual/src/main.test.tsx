@@ -5,6 +5,15 @@ import { inlineJson, REPORT_ELEMENT } from './page-data';
 import { makeReport } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
+/** Imports the entry, which renders the page as it loads: inside `act`, as its first update is. */
+async function mount() {
+  let loaded!: typeof import('./main');
+  await act(async () => {
+    loaded = await import('./main');
+  });
+  return loaded.root;
+}
+
 it('mounts the page the build inlined its report into', async () => {
   const report = makeReport({
     walks: WALKS,
@@ -18,7 +27,7 @@ it('mounts the page the build inlined its report into', async () => {
   });
   document.body.innerHTML = `<div id="root"></div><script type="application/json" id="${REPORT_ELEMENT}">${inlineJson(report)}</script>`;
 
-  const { root } = await import('./main');
+  const root = await mount();
 
   expect(await screen.findByRole('heading', { level: 1 })).toBeTruthy();
   expect(screen.getByText('A business’s day in Credo')).toBeTruthy();
@@ -49,7 +58,7 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
     },
   });
   vi.resetModules();
-  const { root } = await import('./main');
+  const root = await mount();
   await screen.findByRole('heading', { level: 1 });
 
   fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
