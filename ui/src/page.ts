@@ -11,18 +11,22 @@ export type PageProps = {
   onForbidden: () => void;
 };
 
+/** What a refusal needs of its page: a 401 signs out, and a 403, where the page has one to answer,
+ * reads who the person is again. */
+export type Refusal = Pick<PageProps, 'onSignedOut'> & Partial<Pick<PageProps, 'onForbidden'>>;
+
 /** A refusal is the app's to answer, whatever the page was doing: a 401 signs the person out, and a
  * 403 reads `me` again, since what they may do has changed. The redraw replaces this page if it is
  * no longer theirs; if it still is, the page shows its failure and offers another try. */
-export function refusal(error: unknown, { onSignedOut, onForbidden }: PageProps) {
+export function refusal(error: unknown, { onSignedOut, onForbidden }: Refusal) {
   if (error instanceof ApiError && error.status === 401) onSignedOut();
-  if (error instanceof ApiError && error.status === 403) onForbidden();
+  if (error instanceof ApiError && error.status === 403) onForbidden?.();
 }
 
 /** A page's data as one state, read again when `deps` change or `reload` is called. */
 export function useLoad<T>(
   load: () => Promise<T>,
-  page: PageProps,
+  page: Refusal,
   deps: DependencyList,
 ): { status: 'loading' | 'failed' | 'ready'; data: T | null; reload: () => void } {
   const [state, setState] = useState<{ status: 'loading' | 'failed' | 'ready'; data: T | null }>({

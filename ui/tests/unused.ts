@@ -1,6 +1,6 @@
 import { ApiError } from '../src/api';
 
-/** The calls of the staff pages, for a test of something else: each fails as if the service
+/** The calls of the pages a test is not about (the staff's, and the operator's list), for a test of something else: each fails as if the service
  * were down, so a test that did not mean to call one finds out. */
 const down = () => Promise.reject(new ApiError(null));
 export const staffCalls = {
@@ -12,4 +12,5 @@ export const staffCalls = {
   saveEmployee: down,
   setPassword: down,
   archiveEmployee: down,
+  listClients: down,
 };

@@ -1,5 +1,7 @@
-import { Alert, Button, Paper, Stack, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
+import { CopyText } from './CopyText';
 
 type Props = {
   /** The client's sign-in address, `…/login?client-code=<code>`. */
@@ -12,6 +14,21 @@ type Props = {
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 
+/** A read-only field with a button that copies it. */
+function Field({ label, value }: { label: string; value: string }) {
+  const { t } = useTranslation();
+  return (
+    <TextInput
+      label={label}
+      value={value}
+      readOnly
+      styles={READ_ONLY}
+      rightSectionWidth={96}
+      rightSection={<CopyText value={value} label={t('operator.copy')} about={label} />}
+    />
+  );
+}
+
 /** What the operator sends the client, once: the link, the root's name and its first password. */
 export function ClientMade({ link, rootName, password, onAnother }: Props) {
   const { t } = useTranslation();
@@ -23,19 +40,19 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
       </Alert>
       <Paper withBorder p="md">
         <Stack gap="lg">
-          <TextInput label={t('operator.link')} value={link} readOnly styles={READ_ONLY} />
-          <TextInput label={t('operator.rootName')} value={rootName} readOnly styles={READ_ONLY} />
-          <TextInput
-            label={t('operator.firstPassword')}
-            value={password}
-            readOnly
-            styles={READ_ONLY}
-          />
+          <Field label={t('operator.link')} value={link} />
+          <Field label={t('operator.rootName')} value={rootName} />
+          <Field label={t('operator.firstPassword')} value={password} />
         </Stack>
       </Paper>
-      <Button variant="default" onClick={onAnother} style={{ alignSelf: 'flex-start' }}>
-        {t('operator.another')}
-      </Button>
+      <Group>
+        <Button component={Link} to="/operator/clients">
+          {t('operator.back')}
+        </Button>
+        <Button variant="default" onClick={onAnother}>
+          {t('operator.another')}
+        </Button>
+      </Group>
     </Stack>
   );
 }

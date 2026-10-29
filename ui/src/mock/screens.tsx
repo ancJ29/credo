@@ -58,7 +58,7 @@ const newClient = (
   status: 'idle' | 'busy' | 'failed' | 'taken',
   initial?: { code: string; name: string },
 ) => (
-  <OperatorPage onSignOut={inert}>
+  <OperatorPage name={OPERATOR.username} onLanguage={inert} onSignOut={inert}>
     <NewClient status={status} initial={initial} onSubmit={inert} />
   </OperatorPage>
 );
@@ -252,7 +252,7 @@ export const SCREENS: MockScreen[] = [
         label: 'filled: shown once',
         colour: CREDO,
         screen: (
-          <OperatorPage onSignOut={inert}>
+          <OperatorPage name={OPERATOR.username} onLanguage={inert} onSignOut={inert}>
             <ClientMade {...MADE} onAnother={inert} />
           </OperatorPage>
         ),

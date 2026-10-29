@@ -125,3 +125,25 @@ export const createClientReplySchema = z.strictObject({
   password: z.string(),
 });
 export type CreateClientReply = z.infer<typeof createClientReplySchema>;
+
+/** The path a client signs in at, `…/login?client-code=<code>`: the one function that builds it,
+ * for the create's answer and the list's alike. */
+export const clientLinkPath = (code: string) => `/login?client-code=${code}`;
+
+/** One client in the operator's list: its code, the name as made, when it was made (null for a
+ * client made before the time was kept) and the path of its link. */
+export const clientListItemSchema = z.strictObject({
+  code: clientCodeSchema,
+  name: z.string(),
+  madeAt: z.number().nullable(),
+  link: z.string(),
+});
+export type ClientListItem = z.infer<typeof clientListItemSchema>;
+
+export const clientListReplySchema = z.strictObject({ clients: z.array(clientListItemSchema) });
+export type ClientListReply = z.infer<typeof clientListReplySchema>;
+
+/** The list's order: newest first, and the clients with no time after them, by code. */
+export const newestFirst = (a: ClientListItem, b: ClientListItem) =>
+  // A time is positive, so -1 stands for none and falls after every real one.
+  (b.madeAt ?? -1) - (a.madeAt ?? -1) || a.code.localeCompare(b.code);

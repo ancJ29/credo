@@ -136,6 +136,22 @@ describe('the API client', () => {
     await expect(api.operatorSignIn('a', 'b')).rejects.toMatchObject({ status: 401 });
   });
 
+  it('The operator’s list is read with the operator’s handle and no client code, and returns the clients as answered; a refusal or a reply of the wrong shape is an error', async () => {
+    const clients = [
+      { code: 'binh-an', name: 'Bình An', madeAt: 5, link: '/login?client-code=binh-an' },
+      { code: 'old-one', name: 'Old One', madeAt: null, link: '/login?client-code=old-one' },
+    ];
+    const { calls, api } = fake(json({ clients }), json({}, 401), json({ clients: [{ code: 1 }] }));
+
+    expect(await api.listClients()).toEqual(clients);
+    await expect(api.listClients()).rejects.toMatchObject({ status: 401 });
+    await expect(api.listClients()).rejects.toMatchObject({ status: null });
+    expect(calls[0]?.path).toBe('/api/operator/clients');
+    expect(calls[0]?.init.method).toBe('GET');
+    expect(headersOf(calls[0]).has('x-client-code')).toBe(false);
+    expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
+  });
+
   it('sends the device id and the session handle on every call', async () => {
     const { calls, api } = fake(json({ user: { name: 'root', root: true } }));
 

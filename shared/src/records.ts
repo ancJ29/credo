@@ -29,8 +29,14 @@ export const clientCodeSchema = z.string().regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$
 /** A code as typed or linked, to the form the BFF takes: spaces around it go and capitals fall. */
 export const normaliseClientCode = (raw: string) => raw.trim().toLowerCase();
 
-/** The index record: the tenant's minted id, and the name as made, for the reader. */
-export const storedClientSchema = z.strictObject({ id: z.uuid(), name: z.string() });
+/** The index record: the tenant's minted id, the name as made for the reader, and the time it was
+ * made, in milliseconds since the epoch. An index written before the time was kept has none, and
+ * reads as none; nothing rewrites it. */
+export const storedClientSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  madeAt: z.number().optional(),
+});
 export type StoredClient = z.infer<typeof storedClientSchema>;
 
 /** The operator's account. It belongs to no tenant, and its record has no `root` flag. */

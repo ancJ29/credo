@@ -14,7 +14,7 @@ describe('ClientMade', () => {
       [/Root name/, MADE.rootName],
       [/First password/, MADE.password],
     ] as const) {
-      const field = screen.getByLabelText<HTMLInputElement>(label);
+      const field = screen.getByRole<HTMLInputElement>('textbox', { name: label });
       expect(field.value).toBe(value);
       expect(field.readOnly).toBe(true);
     }
@@ -30,8 +30,32 @@ describe('ClientMade', () => {
     const onAnother = vi.fn();
     draw(<ClientMade {...MADE} onAnother={onAnother} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Make another client' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
 
     expect(onAnother).toHaveBeenCalledOnce();
+  });
+
+  it('copies each of the three with its own button', async () => {
+    draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
+    const user = userEvent.setup();
+    const copied = vi.spyOn(navigator.clipboard, 'writeText');
+
+    for (const [name, value] of [
+      ['Copy: Link', MADE.link],
+      ['Copy: Root name', MADE.rootName],
+      ['Copy: First password', MADE.password],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name }));
+      expect(copied).toHaveBeenLastCalledWith(value);
+    }
+    expect(copied).toHaveBeenCalledTimes(3);
+  });
+
+  it('offers the way back to the clients, a link to the list', () => {
+    draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'Back to the clients' }).getAttribute('href')).toBe(
+      '/operator/clients',
+    );
   });
 });

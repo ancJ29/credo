@@ -1,8 +1,11 @@
 import {
   byCode,
+  type ClientListItem,
+  clientLinkPath,
   type Employee,
   type EmployeeDoc,
   layersOf,
+  newestFirst,
   normaliseEmployeeCode,
   normaliseSignInName,
   resolvePermissions,
@@ -11,6 +14,7 @@ import {
   type UserView,
 } from '@credo/shared';
 import {
+  DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
@@ -79,6 +83,11 @@ export function createFakeApi({ device, cue }: Options): Api {
     }
     return await answer();
   }
+
+  /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
+  const clients = new Map<string, ClientListItem>(
+    DEMO_CLIENTS.map((client) => [client.code, { ...client, link: clientLinkPath(client.code) }]),
+  );
 
   const signedOut = () => new ApiError(401);
   const notFound = () => new ApiError(404);
@@ -287,20 +296,27 @@ export function createFakeApi({ device, cue }: Options): Api {
         () => ({ kind: 'conflict' as const }),
       ),
 
-    makeClient: (code) =>
+    listClients: () =>
+      call('listClients', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return [...clients.values()].map((client) => ({ ...client })).sort(newestFirst);
+      }),
+
+    makeClient: (code, name) =>
       call(
         'makeClient',
-        () =>
-          code === DEMO_CODE
-            ? { kind: 'taken' as const }
-            : {
-                kind: 'made' as const,
-                client: {
-                  link: `/login?client-code=${code}`,
-                  rootName: DEMO_ROOT_NAME,
-                  password: MADE_PASSWORD,
-                },
-              },
+        () => {
+          if (clients.has(code)) return { kind: 'taken' as const };
+          clients.set(code, { code, name, madeAt: Date.now(), link: clientLinkPath(code) });
+          return {
+            kind: 'made' as const,
+            client: {
+              link: clientLinkPath(code),
+              rootName: DEMO_ROOT_NAME,
+              password: MADE_PASSWORD,
+            },
+          };
+        },
         () => ({ kind: 'taken' as const }),
       ),
   };

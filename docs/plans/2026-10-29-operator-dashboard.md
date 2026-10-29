@@ -1,9 +1,10 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 11:25 +07:** planned; the human answered the three calls (step 2),
-and this branch now starts from piece 2's group A, `35ce945` (step 4). The 12 business rows wait for
-the human's read, with one small call ([the case table](#the-case-table),
-[call 4](#the-humans-calls)). **Next:** step 3, the human's read; no code before it.
+**Where it stands — 2026-10-29 12:59 +07:** the human's read is done (step 3) and the pages are built
+on the fake (step 5): the frame with its five-section menu, the clients list with the made-on day,
+adding a client, the "coming soon" page and the failure screens, 100 % in every package. The mock's
+operator screens are not retired yet: the walk still draws them, so they go with the scenes in step 6
+([the step](#steps)). **Next:** step 6, the walk on the fake.
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -277,7 +278,8 @@ at 100 % (rule 8).
 3. **A made-on date in the list.** *Recommended:* not now. **Answered** 2026-10-29 11:2x +07 by the
    human: "yes, no real client yet". Read as: add it now, since no real client's records would show
    the gap; only ridge's invented clients show "—" ([the list](#the-clients-list), rows 3, 26, 27).
-4. **Open: the deploy check's clients on ridge.** Each deploy's check makes a client `check-<time>`
+4. **The deploy check's clients on ridge.** **Answered** 2026-10-29 12:15 +07 by the human, by the
+   yes to the 12 rows: *show them*, the recommended option. Each deploy's check makes a client `check-<time>`
    through the operator's create ([`check.sh#L150`](../../ops/check.sh#L150)), so ridge's list holds
    one a deploy, and from this piece on each new one leads the list.
    - **Show them** (*recommended*). *For:* the list is what the stack holds, with no rule keyed on a
@@ -342,13 +344,15 @@ worktree; B to D will touch more of the same:
 - [x] **2. The human's calls.** Who: 👤, 10-29. Done when: calls 1 to 3 answered, dated. *Evidence:*
   the human, 2026-10-29 11:2x +07, relayed by the orchestrator, each quoted under its call: five
   sections, order B, the made-on date in. None as first recommended; the plan is amended to them.
-- [ ] **3. The human's read.** Who: 👤, about 20 minutes. Done when: each 👤 row kept or corrected,
-  and call 4 answered, dated. **Then stop:** no code before it.
+- [x] **3. The human's read.** Who: 👤, about 20 minutes. Done when: each 👤 row kept or corrected,
+  and call 4 answered, dated. *Evidence:* the human, 2026-10-29 12:15 +07, relayed by the
+  orchestrator: "yes" to the 12 👤 rows ([rows 1 to 12](#the-case-table)), kept as written; and, by
+  that yes, call 4 answered with its recommended option: ridge's `check-…` clients are shown.
 - [x] **4. The base.** Who: 🤖, 10-29, about 15 minutes. Done when: this branch sits on `35ce945`,
   `git log 35ce945..` reads this plan's commits alone, and the workspace installs. *Evidence:*
   `git rebase --onto 35ce945 570f2f8 operator-dashboard` applied the plan's one commit clean at 11:21
   +07; `pnpm install --offline` ended "Done", 330 packages from the local store, none downloaded.
-- [ ] **5. The pages, on the fake.** Who: 🤖, after step 3, about a day: the frame (the shell with the
+- [x] **5. The pages, on the fake.** Who: 🤖, after step 3, about a day: the frame (the shell with the
   badge and the operator's sections, the language, who is signed in), the list with its made-on day,
   the add page and its answer with copy buttons, the one "coming soon" page, the routes;
   `listClients` in `createApi` and the fake, the list's reply schema, `madeAt` in the index's schema
@@ -359,8 +363,22 @@ worktree; B to D will touch more of the same:
   (a list, its empty and failed states), [`AddPersonPage.tsx`](../../ui/src/AddPersonPage.tsx) (a
   form and an answer shown once), [`page.ts`](../../ui/src/page.ts) and `Loaded.tsx` (a page's one
   state).
+  *Evidence:* 12:59 +07. Built: `OperatorPage` is the client's `Shell` with a `badge` option and the
+  operator's five sections (`operatorNav.ts`); `ClientsPage`, `AddClientPage` (over `NewClient`, which
+  checks with `createClientRequestSchema`, and `ClientMade`, each field with a copy button),
+  `SoonPage`; `listClients` in `createApi` and the fake (cue `listClients:503`); in `shared/`:
+  `clientLinkPath`, `clientListReplySchema`, `newestFirst`, `madeAt` optional in `storedClientSchema`,
+  `DEMO_CLIENTS`. Rows 1 to 11, 17 to 21, 25 to 27 held by unit tests in `ui` and `shared`; 29
+  mutations of the new lines, 28 turned a test red from its assertion (the 29th, an id in
+  `operatorNav.ts`, is no behaviour). `pnpm check` exit 0, every package 100 %, no warning, no act warning, eslint,
+  prettier and knip clean. Piece 1's and piece 2's screens: 70 dumps (words and DOM, ids and UUIDs
+  masked) at `3a47f72` and after, equal. **Moved to step 6:** the mock's operator screens (11 to 13)
+  and row 23, since `visual/src/walks.ts` still draws the operator's walk from them until its scenes
+  replace them; their components stay until then.
+
 - [ ] **6. The walk, on the fake.** Who: 🤖, after step 5, about half a day: the nine screens as fake
-  scenes in `visual/src/walks.ts`, `walk/specs/operator.spec.ts` with a `fake` and a `full` project,
+  scenes in `visual/src/walks.ts` (a scene signed in as the operator in `sceneParts`; the mock's
+  operator screens 11 to 13 retired with them, step 5's leftover), `walk/specs/operator.spec.ts` with a `fake` and a `full` project,
   the fake run's one script in the credo root's `one-off/`. Done when: row 23 seen red once;
   `pnpm report` builds and `walks.json` reads the operator's nine screens, the new and the changed
   waiting; the visual tests' log holds no act warning. *Model files:*

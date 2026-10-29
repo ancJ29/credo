@@ -1,5 +1,6 @@
 import {
   addEmployeeReplySchema,
+  clientListReplySchema,
   configDocSchema,
   createClientReplySchema,
   employeeDocSchema,
@@ -12,6 +13,7 @@ import {
   staffSetupDocSchema,
 } from '@credo/shared';
 import {
+  DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
@@ -109,6 +111,7 @@ describe('the fake Api', () => {
     );
     const savedConfig = await api.saveConfig(DEMO_CONFIG, 'v1');
     parses('saveConfig', configDocSchema, savedConfig.kind === 'saved' ? savedConfig.doc : null);
+    parses('listClients', clientListReplySchema, { clients: await api.listClients() });
     const made = await api.makeClient('another-one', 'Another One');
     parses('makeClient', createClientReplySchema, made.kind === 'made' ? made.client : null);
 
@@ -131,6 +134,7 @@ describe('the fake Api', () => {
         'archiveEmployee',
         'saveConfig',
         'makeClient',
+        'listClients',
         'signOut',
         'operatorSignOut',
       ].sort(),
@@ -183,14 +187,45 @@ describe('the fake Api', () => {
     await expect(api.operatorSignOut()).resolves.toBeUndefined();
   });
 
-  it('The demo company’s code is taken, and any other makes a client with a link', async () => {
-    const api = fake();
+  it('A code any listed client holds is taken, and any other makes a client with a link', async () => {
+    const api = fake('', { operator: 'fake.operator' });
 
-    expect(await api.makeClient(DEMO_CODE, 'Minh Phát')).toEqual({ kind: 'taken' });
+    for (const client of DEMO_CLIENTS) {
+      expect(await api.makeClient(client.code, client.name), client.code).toEqual({
+        kind: 'taken',
+      });
+    }
     expect(await api.makeClient('another-one', 'Another One')).toMatchObject({
       kind: 'made',
       client: { link: '/login?client-code=another-one', rootName: DEMO_ROOT_NAME },
     });
+    expect(await api.makeClient('another-one', 'Again')).toEqual({ kind: 'taken' });
+  });
+
+  it('The client list answers the data set’s three newest first, then a client made since leads it, and a device without the operator’s handle is a 401', async () => {
+    const api = fake('', { operator: 'fake.operator' });
+    const first = await api.listClients();
+
+    expect(first.map((client) => client.code)).toEqual(['binh-an', 'hoa-sen', DEMO_CODE]);
+    expect(first[0]).toEqual({
+      code: 'binh-an',
+      name: 'Bình An',
+      madeAt: Date.UTC(2026, 9, 21, 12),
+      link: '/login?client-code=binh-an',
+    });
+
+    await api.makeClient('another-one', 'Another One');
+    const second = await api.listClients();
+    expect(second.map((client) => client.code)).toEqual([
+      'another-one',
+      'binh-an',
+      'hoa-sen',
+      DEMO_CODE,
+    ]);
+    expect(second[0]?.name).toBe('Another One');
+    expect(second[0]?.madeAt).toBeGreaterThan(Date.UTC(2026, 9, 21, 12));
+
+    expect(await status(fake().listClients())).toBe(401);
   });
 });
 
@@ -313,6 +348,14 @@ describe('the cue', () => {
     const api = fake('saveConfig:409');
     await expect(api.saveConfig(DEMO_CONFIG, 'v1')).resolves.toEqual({ kind: 'conflict' });
     await expect(api.saveConfig(DEMO_CONFIG, 'v1')).resolves.toMatchObject({ kind: 'saved' });
+
+    const listed = fake('listClients:503', { operator: 'fake.operator' });
+    expect(await status(listed.listClients())).toBe(503);
+    await expect(listed.listClients()).resolves.toHaveLength(3);
+
+    const failing = fake('makeClient:503');
+    expect(await status(failing.makeClient('another-one', 'x'))).toBe(503);
+    await expect(failing.makeClient('another-one', 'x')).resolves.toMatchObject({ kind: 'made' });
 
     const clients = fake('makeClient:409');
     await expect(clients.makeClient('another-one', 'x')).resolves.toEqual({ kind: 'taken' });

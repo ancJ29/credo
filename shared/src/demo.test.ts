@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { tenantConfigSchema } from './config';
-import { DEMO_CONFIG, DEMO_EMPLOYEES, DEMO_STAFF_SETUP } from './demo';
+import { DEMO_CLIENTS, DEMO_CODE, DEMO_CONFIG, DEMO_EMPLOYEES, DEMO_STAFF_SETUP } from './demo';
+import { clientCodeSchema } from './records';
 import { employeeSchema, staffSetupSchema } from './staff';
 
 describe('the demo data set', () => {
@@ -23,5 +24,18 @@ describe('the demo data set', () => {
     expect(
       DEMO_EMPLOYEES.filter((person) => Object.keys(person.permissions).length > 0),
     ).toHaveLength(1);
+  });
+});
+
+describe('the demo clients', () => {
+  it('The operator’s list holds three invented clients, the demo company among them, each made at noon UTC so its day reads the same in every zone', () => {
+    expect(DEMO_CLIENTS).toHaveLength(3);
+    expect(new Set(DEMO_CLIENTS.map((client) => client.code)).size).toBe(3);
+    expect(DEMO_CLIENTS.map((client) => client.code)).toContain(DEMO_CODE);
+    for (const client of DEMO_CLIENTS) {
+      expect(clientCodeSchema.safeParse(client.code).success, client.code).toBe(true);
+      expect(new Date(client.madeAt).getUTCHours(), client.code).toBe(12);
+      expect(new Date(client.madeAt).getUTCMinutes(), client.code).toBe(0);
+    }
   });
 });

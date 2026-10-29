@@ -47,7 +47,34 @@ describe('a client code', () => {
   });
 });
 
+describe('the index prefix', () => {
+  it('Only index records sit under `client.`: no other key the layout builds starts with it', () => {
+    const tenant = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000001');
+    const others = [
+      recordKeys.operatorUser('operator'),
+      recordKeys.operatorSession('device-0001'),
+      tenant.config,
+      tenant.user('root'),
+      tenant.session('device-0001'),
+      tenant.employee('p1'),
+      tenant.employeePrefix,
+      tenant.staffSetup,
+    ];
+    for (const key of others) expect(key.startsWith('client.'), key).toBe(false);
+    expect(recordKeys.client('acme').startsWith('client.')).toBe(true);
+  });
+});
+
 describe('the index and the operator’s account', () => {
+  it('An index made before the time was kept reads as none, and one with the time keeps it', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    expect(storedClientSchema.parse({ id, name: 'Acme' }).madeAt).toBeUndefined();
+    expect(storedClientSchema.parse({ id, name: 'Acme', madeAt: 1_700_000_000_000 }).madeAt).toBe(
+      1_700_000_000_000,
+    );
+    expect(storedClientSchema.safeParse({ id, name: 'Acme', madeAt: 'soon' }).success).toBe(false);
+  });
+
   it('hold an id and a name, and a hash, and nothing more', () => {
     const id = '3f2a91bc-0000-4000-8000-000000000001';
     expect(storedClientSchema.safeParse({ id, name: 'Acme' }).success).toBe(true);

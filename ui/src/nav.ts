@@ -1,5 +1,14 @@
 import { can, type PermissionLayer } from '@credo/shared';
 import { IconSettings, IconSitemap, IconUsers } from '@tabler/icons-react';
+import type { ParseKeys } from 'i18next';
+
+/** What the shell's menu draws of a page: where it is, its words and its icon. */
+export type MenuPage = {
+  id: string;
+  path: string;
+  label: ParseKeys;
+  icon: typeof IconUsers;
+};
 
 type Person = { root: boolean; permissions: PermissionLayer };
 

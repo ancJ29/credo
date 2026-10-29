@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type ClientListItem,
+  clientLinkPath,
+  clientListReplySchema,
   conflictReplySchema,
   configDocSchema,
   createClientReplySchema,
   createClientRequestSchema,
   errorReplySchema,
   meReplySchema,
+  newestFirst,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   employeeRoutes,
@@ -107,5 +111,45 @@ describe('what a sign-in answers', () => {
       meReplySchema.safeParse({ user: { ...held, permissions: { 'staff.canFire': true } } })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('the operator’s list of clients', () => {
+  const item = (code: string, madeAt: number | null): ClientListItem => ({
+    code,
+    name: code,
+    madeAt,
+    link: clientLinkPath(code),
+  });
+
+  it('The link’s path is built by one function, `…/login?client-code=<code>`', () => {
+    expect(clientLinkPath('acme')).toBe('/login?client-code=acme');
+  });
+
+  it('The reply holds each client’s code, name as made, made-on time (or none) and link path, and nothing more', () => {
+    const good = { clients: [item('acme', 5), item('old-one', null)] };
+    expect(clientListReplySchema.safeParse(good).data).toEqual(good);
+    expect(
+      clientListReplySchema.safeParse({ clients: [{ ...item('acme', 5), id: 'x' }] }).success,
+    ).toBe(false);
+    expect(clientListReplySchema.safeParse({ clients: [item('A c', 5)] }).success).toBe(false);
+  });
+
+  it('The list runs newest first, and the clients with no time come after them, by code', () => {
+    const shuffled = [
+      item('zeta', null),
+      item('beta', 10),
+      item('alpha', null),
+      item('gamma', 20),
+      item('delta', 10),
+    ];
+    expect(shuffled.sort(newestFirst).map((client) => client.code)).toEqual([
+      'gamma',
+      'beta',
+      'delta',
+      'alpha',
+      'zeta',
+    ]);
+    expect([item('b', 1), item('a', 1)].sort(newestFirst).map((c) => c.code)).toEqual(['a', 'b']);
   });
 });

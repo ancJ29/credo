@@ -89,4 +89,23 @@ describe('Shell', () => {
     expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeTruthy();
     expect(document.querySelector('header img')).toBeNull();
   });
+
+  it('shows a badge beside the brand only when it is given one, as the operator’s frame does', () => {
+    shell(['en']);
+    expect(document.querySelector('header .mantine-Badge-root')).toBeNull();
+
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        badge="Operator"
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    expect(document.querySelector('header .mantine-Badge-root')?.textContent).toBe('Operator');
+  });
 });

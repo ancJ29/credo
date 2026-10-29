@@ -20,6 +20,15 @@ export const DEMO_CODE = 'demo';
 export const DEMO_ROOT_NAME = 'root';
 export const OPERATOR_NAME = 'operator';
 
+/** The clients the operator's list shows: the demo company and two more invented ones, never a
+ * real client's. Each time is noon UTC, so its day reads the same in every zone from UTC-11 to
+ * UTC+11. */
+export const DEMO_CLIENTS: { code: string; name: string; madeAt: number }[] = [
+  { code: DEMO_CODE, name: DEMO_CONFIG.name, madeAt: Date.UTC(2026, 8, 14, 12) },
+  { code: 'hoa-sen', name: 'Hoa Sen', madeAt: Date.UTC(2026, 9, 2, 12) },
+  { code: 'binh-an', name: 'Bình An', madeAt: Date.UTC(2026, 9, 21, 12) },
+];
+
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const DEPARTMENTS = { warehouse: id(1), office: id(2), delivery: id(3) };

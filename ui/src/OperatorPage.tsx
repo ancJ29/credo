@@ -1,32 +1,34 @@
-import { AppShell, Badge, Button, Container, Group } from '@mantine/core';
+import { type Language, LANGUAGES } from '@credo/shared';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CREDO_BRAND } from './brand';
-import { BrandMark } from './BrandMark';
+import { OPERATOR_PAGES } from './operatorNav';
+import { Shell } from './Shell';
 
-type Props = { onSignOut: () => void; children: ReactNode };
+type Props = {
+  /** Who is signed in, shown in the header. */
+  name: string;
+  onLanguage: (language: Language) => void;
+  onSignOut: () => void;
+  children: ReactNode;
+};
 
-/** The operator's signed-in frame: credo's name, a badge saying whose door this is, and a way out. No menu: the page makes clients and nothing else. */
-export function OperatorPage({ onSignOut, children }: Props) {
+/** The operator's signed-in frame: the client's shell in credo's name, a badge saying whose door
+ * this is, the operator's five sections in the menu, and the language and sign-out in the user's
+ * menu. */
+export function OperatorPage({ name, onLanguage, onSignOut, children }: Props) {
   const { t } = useTranslation();
   return (
-    <AppShell header={{ height: 56 }} padding="md">
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group wrap="nowrap">
-            <BrandMark brand={CREDO_BRAND} />
-            <Badge variant="light">{t('operator.badge')}</Badge>
-          </Group>
-          <Button variant="subtle" color="gray" onClick={onSignOut}>
-            {t('user.signOut')}
-          </Button>
-        </Group>
-      </AppShell.Header>
-      <AppShell.Main>
-        <Container size={640} px={0}>
-          {children}
-        </Container>
-      </AppShell.Main>
-    </AppShell>
+    <Shell
+      brand={CREDO_BRAND}
+      badge={t('operator.badge')}
+      user={name}
+      pages={OPERATOR_PAGES}
+      languages={LANGUAGES}
+      onLanguage={onLanguage}
+      onSignOut={onSignOut}
+    >
+      {children}
+    </Shell>
   );
 }

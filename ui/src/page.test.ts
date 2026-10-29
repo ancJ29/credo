@@ -28,3 +28,13 @@ describe('a refusal on a page', () => {
     expect(other.onForbidden).not.toHaveBeenCalled();
   });
 });
+
+describe('a refusal on a page with no 403 to answer', () => {
+  it('A 403 is the page’s own failure there, and a 401 still signs out', () => {
+    const onSignedOut = vi.fn();
+    expect(() => refusal(new ApiError(403), { onSignedOut })).not.toThrow();
+    expect(onSignedOut).not.toHaveBeenCalled();
+    refusal(new ApiError(401), { onSignedOut });
+    expect(onSignedOut).toHaveBeenCalledOnce();
+  });
+});

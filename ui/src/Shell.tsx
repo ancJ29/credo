@@ -1,5 +1,5 @@
 import type { Language } from '@credo/shared';
-import { AppShell, Avatar, Burger, Button, Group, Menu, NavLink, Text } from '@mantine/core';
+import { AppShell, Avatar, Badge, Burger, Button, Group, Menu, NavLink, Text } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconChevronDown } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
@@ -8,7 +8,7 @@ import { Link, useLocation } from 'react-router';
 import type { Brand } from './brand';
 import { BrandMark } from './BrandMark';
 import { LANGUAGE_NAMES } from './i18n';
-import { PAGES, type Page } from './nav';
+import { type MenuPage, PAGES } from './nav';
 
 type Props = {
   brand: Brand;
@@ -20,7 +20,9 @@ type Props = {
   /** Starts with the user's menu open, for a mock of it. */
   userMenuOpen?: boolean;
   /** The pages this person's menu lists; every page, for a mock of the whole menu. */
-  pages?: readonly Page[];
+  pages?: readonly MenuPage[];
+  /** A word beside the brand, which says whose door this is; a client's app passes none. */
+  badge?: string;
   children: ReactNode;
 };
 
@@ -33,6 +35,7 @@ export function Shell({
   onSignOut,
   userMenuOpen,
   pages = PAGES,
+  badge,
   children,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -57,6 +60,7 @@ export function Shell({
               aria-label={t('nav.menu')}
             />
             <BrandMark brand={brand} />
+            {badge && <Badge variant="light">{badge}</Badge>}
           </Group>
           <Menu position="bottom-end" withinPortal={false} defaultOpened={userMenuOpen}>
             <Menu.Target>

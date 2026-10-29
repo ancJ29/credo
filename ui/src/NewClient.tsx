@@ -1,3 +1,4 @@
+import { createClientRequestSchema, normaliseClientCode } from '@credo/shared';
 import { Alert, Button, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,9 +17,21 @@ export function NewClient({ status, initial, onSubmit }: Props) {
   const [code, setCode] = useState(initial?.code ?? '');
   const [name, setName] = useState(initial?.name ?? '');
 
+  /** Which fields the last submit found wrong, by the same schema the BFF parses with. */
+  const [wrong, setWrong] = useState<{ code: boolean; name: boolean }>({
+    code: false,
+    name: false,
+  });
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSubmit(code, name);
+    const checked = createClientRequestSchema.safeParse({
+      code: normaliseClientCode(code),
+      name,
+    });
+    const fields = new Set(checked.error?.issues.map((issue) => issue.path[0]));
+    setWrong({ code: fields.has('code'), name: fields.has('name') });
+    if (checked.success) onSubmit(checked.data.code, checked.data.name);
   };
 
   return (
@@ -47,13 +60,14 @@ export function NewClient({ status, initial, onSubmit }: Props) {
               autoCapitalize="none"
               autoComplete="off"
               required
-              error={status === 'taken'}
+              error={(wrong.code && t('operator.codeInvalid')) || status === 'taken'}
               value={code}
               onChange={(event) => setCode(event.currentTarget.value)}
             />
             <TextInput
               label={t('operator.companyName')}
               required
+              error={wrong.name && t('operator.nameInvalid')}
               value={name}
               onChange={(event) => setName(event.currentTarget.value)}
             />

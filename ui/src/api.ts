@@ -3,6 +3,8 @@ import {
   addEmployeeReplySchema,
   type AddEmployeeRequest,
   AUTH_HEADER,
+  type ClientListItem,
+  clientListReplySchema,
   CLIENT_HEADER,
   type ConfigDoc,
   configDocSchema,
@@ -161,6 +163,13 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };
+    },
+
+    /** Every client on this stack, newest first, as the operator is shown them. */
+    async listClients(): Promise<ClientListItem[]> {
+      const response = await send('GET', ROUTES.operatorClients, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, clientListReplySchema)).clients;
     },
 
     async getStaffSetup(): Promise<StaffSetupDoc> {
