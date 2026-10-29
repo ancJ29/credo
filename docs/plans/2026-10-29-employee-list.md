@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 10:46 +07:** group A is done: steps 2 to 11 are ticked, its 16 screens walked on the fake and on the full stack with 0 differences, its bases committed and no answer open. **Next:** step 12, group B's pages and walk on the fake, alone; then C and D in parallel worktrees from B's end, as the human decided.
+**Where it stands — 2026-10-29 11:49 +07:** group A is done (steps 2 to 11); step 12 is done: group B's pages are on the fake, its 7 screens are on the walks page, and the route guard (C4) is in. The preview waits for the human at step 13: 14 answers for B's screens and 26 asked again, since 13 of A's 16 screens changed with B's features. **Next:** step 13, the human's fake walk, then stop.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -819,7 +819,7 @@ itself:
 
 **Group B, the record and the list.** Each step as its group A step, for rows 18 to 24, 34 and 45.
 
-- [ ] **12. B's pages and walk, on the fake.** Who: 🤖, after step 11, about a day and a half: the
+- [x] **12. B's pages and walk, on the fake.** Who: 🤖, after step 11, about a day and a half: the
   staff setup's fields and numbering, the company's own fields on the form, page and list, the photo,
   search and filters with their address, a code changed, Settings by permission, and B's 7 screens on
   the walks page. Done when: the UI and shared halves of B's rows each seen red once; `walks.json`
@@ -828,6 +828,45 @@ itself:
   `staff.canView` are the only ways in. The first page group B gives to someone who is not the root
   (Settings by permission) makes it real, so a guard per route, from the same `can` the menu uses,
   comes in this step.
+  *Evidence:* the UI and shared halves of rows 17 to 24, 34 and 45, row 49's new answers and rows 53
+  and 54 for B's screens, and C4's guard, each seen red once from its assertion by changing the rule's
+  line and putting it back: a reserved key let through, a date of 30 February, the next number from a
+  count and not the highest, a photo of exactly 50 KB, the fifth permission left out of the catalogue
+  (`shared`); the guard removed from the route and from Settings' route, Settings in the menu for the
+  root alone, search without accents, any word and not every word, a person who left shown without the
+  filter, the address written with nothing set, the address written mid-syllable, initials without the
+  photo switch, a second phone and a photo panel shown with their switch off, the own fields' keys
+  merged away or kept empty, a code sent when left empty, the photo saved over no version, the code
+  panel open to others, a numbering and own fields the BFF would refuse sent anyway, a key unfixed
+  after saving, the fake's number, its taken code and its photo version, and the API's 409 told apart
+  (`ui`); a walk screen renamed, a step naming a field the data set lacks, an office screen opened as
+  another person and a search that finds nothing (`visual`). One slip caught on the way: a date of
+  month 13 threw instead of being refused. The whole `pnpm check` exit 0, no warning, 100 % in every
+  package (shared 71 tests, ui 232, bff 152, scripts 75, visual 219; knip silent). `pnpm report` reads
+  14 waiting (B's 7 screens in two languages), 26 asked again, 0 no, 32 yes; `walks.json` lists B's 7
+  screens, each a scene and none from the mock. *Not run here:* the walk spec, which needs a browser;
+  `pnpm check` typechecks and lints it.
+  *The 16 screens of A, dumped (words and DOM, Mantine's ids and UUIDs masked) at `35ce945` and at the
+  end of this step:* 3 are equal (3 added, 3 forbidden, 4 nothing) and 13 differ in both languages.
+  Every difference is an addition B's text asks for, and the only lines removed are the code field's
+  required mark and its old hint and the list's row text: the staff setup and the list gain the fields,
+  the search and the filters; the add form gains the hint for an empty code, the second phone and the
+  company's own fields; a person's page gains the same, the photo and the code change; every
+  permissions editor gains the fifth permission. Each changed screen's words changed, so the walks page
+  asks it again (26 answers), and its bases move at B's full walk (step 16), as piece 1's did at A's.
+  *Choices:* the data set holds B's config for all screens (rule 55's one data set), and a scene's step
+  names a company's own field by `field.<key>` in the walks' words; the email switch waits for C's
+  email field, since a switch that changes nothing would mislead the preview; an empty code is the UI's
+  and the fake's alone, and the shared request still requires a code until step 14; the photo is the
+  middle square, shrunk to 256 px as a JPEG within 50 KB by `ui/src/photo.ts` (untested on jsdom, the
+  page's tests put a stand-in for it); a search finds every typed word among the words the list shows;
+  the address holds `q`, `department`, `position`, `left` and `f.<key>`, written only when set;
+  `bff/src/employees.route.test.ts` is the one BFF file touched, two expected answers that now carry
+  the fifth permission; `ui` and `visual` raise their test timeouts, as the walks page draws 23 scenes
+  twice. *Model files:* `ui/src/StaffSetupPage.tsx`, `PersonPage.tsx`, `AddPersonPage.tsx` and
+  `StaffListPage.tsx` as they were; `Settings.tsx` for the photo chooser. *Logged:* open item 22. The
+  fake run's script in the credo root's `one-off/` counts 96 pictures and six sets of 16 screens, and
+  is to count 138 and six sets of 23 at step 13.
 - [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
@@ -837,6 +876,12 @@ itself:
   is freed, which only a code change (this step) or an archive that frees a code can do. The fix: a
   random generation minted at every claim and every password, copied into the session, with no clock
   in it.
+  *Consumed from step 12, the UI's side of B's contract as the fake fixed it:* an add without `code`
+  asks for the next number (the shared request requires a code until then); `PUT` of a code answers
+  the person, a 409 carrying `current` for a moved version and a 409 without it for a taken code;
+  `GET` of a photo answers `{photo, version}` with `null` and `''` for none, never a 404, and `PUT`
+  answers the same, a 409 for a moved version; a staff setup save carries `fields`, `customFields` and
+  `numbering`, which the BFF drops today.
 - [ ] **15. B's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.

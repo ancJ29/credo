@@ -157,3 +157,11 @@ shown for reading.
 after signing in then builds the real `Api`, which shows the unknown-company page. The fake's session
 lives in the tab, so the walk and the tests are unaffected. Fix: keep the switch in the tab's own
 storage once read, and read it from there, or keep the search through the redirect.
+
+## 22. Someone who may add a person but not see the staff list is sent, after the add, to a page the route guard refuses — the machine; *parked* until the editors are next touched (the employee list plan, step 12, 2026-10-29)
+
+An add by someone who is not the root ends on the new person's page, which needs "see the staff list".
+A grant of "add a person" without it gets the 403 page right after a good add (`StaffRecord.test.tsx`
+holds it). Item 19 is the same gap seen from the editors, and its trigger, a page for someone who is
+not the root, has come with Settings. Fix with item 19: say in the editors that adding, changing and
+archiving need seeing, or end the add on a page that asks no more than adding.
