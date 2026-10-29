@@ -11,8 +11,10 @@
 # ssh (every way the tunnel ends), and the release's checks of /health against the real c-storage
 # binary, built here with several stamps and without one (it needs Go): the build it waits for, and
 # the newer build it must never overwrite; and the walks page's three guards (walks-refused.sh,
-# walks-digest.sh, walks-served.sh), which the walks workflow runs.
-# Expected length: about 40 seconds with a cold Go cache, about 20 with a warm one.
+# walks-digest.sh, walks-served.sh), which the walks workflow runs; and ops/seed.sh whole (/health must
+# name its own commit, the box above its floor, no key, address or password in its log) and the seed
+# workflow's guards.
+# Expected length: about a minute with a cold Go cache, about 40 seconds with a warm one.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -721,6 +723,81 @@ refuses "  an app job that never names Node 24 is refused" "node-version: 24" ap
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
 
+echo "== the seed workflow (a schedule and a manual run, main alone, environment ridge, its own group, never under act; row 24)"
+SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
+# seed_guards <workflow>: dies naming each condition of the plan's "The daily run" that the seed
+# workflow lacks. As in the deploy job, the job's own `if` cannot read env, so every step carries
+# `if: ${{ !env.ACT }}` for act, which has no AWS.
+seed_guards() {
+  local block missing='' steps guarded role inst run want_region have_region
+  [ -f "$1" ] || die "no seed workflow"
+  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
+  [ -n "$block" ] || die "no seed job"
+  need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
+  grep -qxF -- '    - cron: "0 23 * * *"' "$1" || missing="${missing}[the schedule: 23:00 UTC, 06:00 in Vietnam] "
+  grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
+  if grep -qE '^  (push|pull_request|pull_request_target|workflow_run):' "$1"; then missing="${missing}[no trigger but the schedule and the manual run] "; fi
+  need "    if: github.ref == 'refs/heads/main'"
+  need "    runs-on: ubuntu-24.04"
+  need "    environment: ridge"
+  need "      group: ridge-seed"
+  need "      cancel-in-progress: false"
+  need "      id-token: write"
+  need "      contents: read"
+  need "          mask-aws-account-id: true"
+  grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
+  grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
+    missing="${missing}[credentials step pinned by sha] "
+  steps=$(grep -c '^      - ' <<<"$block" || true)
+  # shellcheck disable=SC2016 # a literal workflow expression
+  guarded=$(grep -cxF -- '        if: ${{ !env.ACT }}' <<<"$block" || true)
+  # shellcheck disable=SC2016 # a literal workflow expression
+  [ "$steps" -gt 0 ] && [ "$steps" = "$guarded" ] || missing="${missing}[if: \${{ !env.ACT }} on each of the $steps steps, found $guarded] "
+  # The seed's own group, never the deploy's, which a waiting seed would replace a waiting deploy in.
+  if grep -qE '^ +group: ridge$' "$1"; then missing="${missing}[never the deploy's group, ridge] "; fi
+  if grep 'cancel-in-progress:' "$1" | grep -qv 'cancel-in-progress: false$'; then missing="${missing}[cancel-in-progress: false everywhere in the file] "; fi
+  if grep -q 'continue-on-error' "$1"; then missing="${missing}[no continue-on-error] "; fi
+  [ "$(grep -c 'id-token:' "$1" || true)" = 1 ] || missing="${missing}[id-token in the seed job alone] "
+  [ "$(grep -c 'secrets\.' "$1" || true)" = 1 ] || missing="${missing}[one secret read, in the seed job] "
+  # The install runs third-party code, so it comes before the role; the seed comes after it.
+  inst=$(grep -nF 'run: pnpm install --frozen-lockfile' <<<"$block" | head -n 1 | cut -d: -f1)
+  role=$(grep -nF 'uses: aws-actions/configure-aws-credentials' <<<"$block" | head -n 1 | cut -d: -f1)
+  run=$(grep -nF 'run: bash ops/seed.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  [ -n "$inst" ] && [ -n "$role" ] && [ -n "$run" ] && [ "$inst" -lt "$role" ] && [ "$role" -lt "$run" ] ||
+    missing="${missing}[the install, then the role, then ops/seed.sh ridge] "
+  # shellcheck disable=SC2016 # lib.sh's text, not an expansion
+  want_region=$(sed -n 's/^CREDO_REGION=\${CREDO_REGION:-\(.*\)}$/\1/p' "$OPS_DIR/lib.sh")
+  have_region=$(sed -n 's/^ *aws-region: //p' <<<"$block")
+  [ -n "$want_region" ] && [ "$want_region" = "$have_region" ] || missing="${missing}[aws-region is lib.sh's $want_region, found '$have_region'] "
+  [ -z "$missing" ] || die "the seed workflow lacks: $missing"
+}
+passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
+sed 's/- cron: "0 23 \* \* \*"/- cron: "0 22 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
+refuses "a seed that no longer runs at 06:00 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
+sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
+refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
+awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"
+refuses "a seed that also runs on a push is refused" "no trigger but the schedule" seed_guards "$WORK/seed-push.yml"
+sed "s/^    if: github.ref == 'refs\/heads\/main'\$/    if: true/" "$SEED_WORKFLOW" >"$WORK/seed-branch.yml"
+refuses "a seed job that also runs from a branch is refused" "github.ref == 'refs/heads/main'" seed_guards "$WORK/seed-branch.yml"
+sed '/^    environment: ridge$/d' "$SEED_WORKFLOW" >"$WORK/seed-env.yml"
+refuses "a seed outside environment ridge is refused" "environment: ridge" seed_guards "$WORK/seed-env.yml"
+sed 's/^      group: ridge-seed$/      group: ridge/' "$SEED_WORKFLOW" >"$WORK/seed-group.yml"
+refuses "a seed in the deploy's group, where it would replace a waiting deploy, is refused" "group: ridge-seed" seed_guards "$WORK/seed-group.yml"
+sed 's/cancel-in-progress: false/cancel-in-progress: true/' "$SEED_WORKFLOW" >"$WORK/seed-cancel.yml"
+refuses "a seed that may cancel a running one is refused" "cancel-in-progress" seed_guards "$WORK/seed-cancel.yml"
+awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-act.yml"
+refuses "a seed step that would run under act is refused" "!env.ACT" seed_guards "$WORK/seed-act.yml"
+awk '/^        run: bash ops\/seed.sh ridge$/ {print "        continue-on-error: true"} 1' "$SEED_WORKFLOW" >"$WORK/seed-continue.yml"
+refuses "a seed step that may fail and go on is refused" "continue-on-error" seed_guards "$WORK/seed-continue.yml"
+sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$SEED_WORKFLOW" >"$WORK/seed-mask.yml"
+refuses "a seed that leaves the account id unmasked is refused" "mask-aws-account-id" seed_guards "$WORK/seed-mask.yml"
+sed 's/aws-region: ap-southeast-5/aws-region: eu-west-1/' "$SEED_WORKFLOW" >"$WORK/seed-region.yml"
+refuses "a seed in another Region than lib.sh's is refused" "aws-region is lib.sh's" seed_guards "$WORK/seed-region.yml"
+# shellcheck disable=SC2016 # a literal workflow expression
+awk '/^      - name: pnpm 12.10.1$/ {skip = 1} skip && /^      # The same exchange/ {skip = 0} !skip' "$SEED_WORKFLOW" >"$WORK/seed-noinstall.yml"
+refuses "a seed that installs nothing before the role is refused" "the install, then the role" seed_guards "$WORK/seed-noinstall.yml"
+
 echo "== the checks of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }
 STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/c-storage/Makefile")
@@ -1201,6 +1278,7 @@ case $cmd in
   *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
+  *"bash -s"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"curl -fsS -m 5 http://"*"/health"*) if [ -n "${FAKE_RUNNING:-}" ]; then printf '{"status":"OK","buildVersion":"%s"}' "$FAKE_RUNNING"; else exit 7; fi ;;
   *) echo "stand-in ssh: unknown command:$cmd" >&2; exit 1 ;;
 esac
@@ -1663,6 +1741,80 @@ check "without a terminal it refuses, and writes no account" "1 1 0" \
 rc=0
 out=$(GITHUB_ACTIONS=true bash "$E2E/repo/ops/operator.sh" ridge 2>&1) || rc=$?
 check "in GitHub's job it refuses before anything else" "1 1" "$rc $(grep -c "never in a job's log" <<<"$out" || true)"
+
+echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"
+build "$WORK/server-newer" "$desc_newer"
+# seed_copy: makes the first mapped copy as the operator's page would, through a c-storage on this
+# state's database and the BFF's own service; prints the root's first password. The tunnel's server
+# is a stand-in that stops with its run, so the copy is made apart from it.
+seed_copy() {
+  local port pid code
+  port=$(free_port)
+  mkdir -p "$S/db"
+  env -i PATH="$PATH" PORT="$port" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    "$FAKE_CS" >>"$S/server.log" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.1; done
+  code=$(cd "$REPO_DIR/scripts" && node --import tsx -e "import('./src/demo/mapping.ts').then((m) => console.log(m.allCopies()[0].code))")
+  INTERNAL_ACCESS_KEY=$FAKE_IKEY SERVICE_CODE=bff SERVICE_ACCESS_KEY=$FAKE_SKEY C_STORAGE_URL=http://127.0.0.1:$port \
+    ridge_cli tenant "$code" "A demo copy"
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+seed_log() { cat "$OPS_LOG_DIR"/*.log; }
+seed_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+sport=$(free_port)
+export SEED_LOCAL_PORT=$sport
+
+e2e_fresh seed-other-env
+OPS_LOG_DIR=$E2E/logs-seed-other-env e2e_run seed.sh other
+check "seed.sh seeds ridge alone: another environment is refused before any aws call" "1 1 gone" \
+  "$RC $(grep -c '^error: seed.sh seeds ridge alone' "$E2E/logs-seed-other-env"/*.log || true) $(file_state "$S/aws.calls")"
+
+e2e_fresh seed-dirty
+export OPS_LOG_DIR=$E2E/logs-seed-dirty
+printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+e2e_run seed.sh ridge
+git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+check "a tree that differs from its commit is refused before any aws call, naming why" "1 1 gone" \
+  "$RC $(seed_lines '^error: this tree differs from') $(file_state "$S/aws.calls")"
+
+e2e_fresh seed
+export OPS_LOG_DIR=$E2E/logs-seed-app
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the box, for the seed to write with it" 0 "$RC"
+root_password=$(seed_copy)
+check "the human's part is done by the operator's own create: the first mapped copy exists, with a root password" 16 "${#root_password}"
+
+export OPS_LOG_DIR=$E2E/logs-seed-newer
+FAKE_CS=$WORK/server-newer e2e_run seed.sh ridge
+check "a ridge that runs another commit than the seed's stops the run, naming both" "1 1" \
+  "$RC $(seed_lines "^error: /health names $desc_newer, not $e2e_sha")"
+check "  before the seed ran" 0 "$(seed_lines '^seed: ')"
+export OPS_LOG_DIR=$E2E/logs-seed-dev
+FAKE_CS=$WORK/server-dev e2e_run seed.sh ridge
+check "an unstamped ridge (dev) stops the run, naming why" "1 1 0" "$RC $(seed_lines '^error: /health names no commit') $(seed_lines '^seed: ')"
+export OPS_LOG_DIR=$E2E/logs-seed-disk
+FAKE_BOX='2048 2048 100' e2e_run seed.sh ridge
+check "a box below the disk floor stops the run before /health is read" "1 1 0 0" \
+  "$RC $(seed_lines "^error: disk: 100 MiB free, below the floor of $FLOOR_DISK_MB") $(seed_lines '^ok   /health names') $(seed_lines '^seed: ')"
+export OPS_LOG_DIR=$E2E/logs-seed-memory
+FAKE_BOX="$((FLOOR_MEM_MB - 1)) 2048 8192" e2e_run seed.sh ridge
+check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory: $((FLOOR_MEM_MB - 1)) MiB available, below the floor")"
+
+export OPS_LOG_DIR=$E2E/logs-seed-first
+e2e_launch seed.sh ridge
+e2e_reap 120
+check "ridge on the seed's own commit: the copy is filled and brought to yesterday, exit 0 (nothing before had written it)" "0 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 7 days applied$') $(seed_lines "^seeded $e2e_sha\$")"
+check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
+check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
+  "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
+check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in this log')"
+export OPS_LOG_DIR=$E2E/logs-seed-second
+e2e_run seed.sh ridge
+check "a second run adds nothing" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied$')"
+unset SEED_LOCAL_PORT
 
 echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
 # A clone whose origin is named as GitHub's are, so the script reads the repository from it; the stack

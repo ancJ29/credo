@@ -17,6 +17,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator's account on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
+| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -181,6 +182,34 @@ log, then searches the log for it. It refuses in GitHub's job and without a term
 2. Open `<the app's address>/operator` and sign in. The address is in the local log of
    `ops/stack.sh env ridge` (never in a committed file or a public log).
 
+## The seed
+
+The demo copies on ridge get a day each morning from `.github/workflows/seed.yml` (06:00 in Vietnam,
+and a manual run), which runs `ops/seed.sh ridge` under the deploy role. The script makes no client and
+no password: the human makes each copy at `/operator` first, under its mapped code. The why is
+[the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
+
+1. Make a copy at `/operator` under its code from the mapping (`scripts/src/demo/mapping.ts`), and
+   send its link and root password privately. Then run `ops/seed.sh ridge` by hand from a worktree at
+   `main` with `pnpm install` done, or wait for the morning's run.
+2. Read the log's lines: `seed: <n> copies mapped, <n> up to date, <n> not on this service, <n> days
+   applied`, then `seeded <sha>`.
+   - **<code>: not on this service, left:** that mapped code has no client on ridge. Make it at
+     `/operator`; a mistyped code is not in the mapping, so it stays empty.
+   - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
+     stays as it is; make a new copy under a new code.
+   - **<code>: <n> days behind, more than 30, left:** the schedule stopped for a month; the run ends red.
+     Run it again after reading why.
+   - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's. Nothing was
+     written. After a deploy, run it again once the deploy is green; the next morning catches the day up.
+   - **below the floor:** the box has too little free disk, memory or swap; free it first.
+   - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
+3. A red scheduled run is a defect, never a run to repeat. GitHub disables a public repository's
+   schedules after 60 days without activity: if the last green is older than two days, run the workflow
+   by hand (`gh workflow run seed`, or Actions, "Run workflow", on `main`).
+   - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
+   - **a key is in this log:** as in [the check](#the-check).
+
 ## The check
 
 1. `ops/check.sh ridge`; it ends `== green`, or names each red. Once the stack holds layer four it also
@@ -242,7 +271,7 @@ state, so release first.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among
-them), `app.sh` and `operator.sh` whole on stand-ins for aws and ssh, and the `/health` check against
+them), `app.sh`, `operator.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
 the real c-storage, built there, so Go must be installed. The guards also need Ruby (reads `env.yml`
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
@@ -251,7 +280,8 @@ Run the same three before pushing an `ops/` change:
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,
-   no `continue-on-error`, the Region, and the account id's mask.
+   no `continue-on-error`, the Region, and the account id's mask; and the seed workflow's (a schedule
+   and a manual run, `main` alone, environment `ridge`, the group `ridge-seed`, `!env.ACT` on each step).
 
 Under `act` two things are act's own, not the scripts': the `check` job's "Post actions/setup-go"
 fails (act's copy of the action lacks its cache-save module, and its cache server is unreachable),
