@@ -469,7 +469,13 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         <div className="w-intro">
           <h1>A business’s day in Credo</h1>
           <p className="w-sub">Who does what, on the device they use.</p>
-          <p className="w-howto">Answer Yes or No for each screen; press ? for how.</p>
+          <p className="w-howto">
+            Answer Yes or No for each screen;{' '}
+            <button type="button" className="w-howto-open" onClick={() => setGuideOpen(true)}>
+              How this page works
+            </button>
+            .
+          </p>
         </div>
         <div className="w-meta">
           <p className="w-build">

@@ -67,13 +67,27 @@ describe('the guide opens', () => {
     render(<Page report={report()} />);
     expect(guide().open).toBe(false);
 
-    fireEvent.click(screen.getByRole('button', { name: 'How this page works' }));
+    fireEvent.click(screen.getByText('?'));
     expect(guide().open).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(guide().open).toBe(false);
 
     key('?');
     expect(guide().open).toBe(true);
+  });
+
+  it('from the header’s “How this page works” button, when the browser has seen it already', () => {
+    localStorage.setItem(SEEN, 'yes');
+    render(<Page report={report()} />);
+    expect(guide().open).toBe(false);
+
+    const header = document.querySelector<HTMLElement>('.w-head')!;
+    fireEvent.click(within(header).getByRole('button', { name: 'How this page works' }));
+
+    expect(guide().open).toBe(true);
+    expect(document.activeElement).toBe(
+      within(guide() as HTMLElement).getByRole('heading', { name: 'How this page works' }),
+    );
   });
 
   it('holds the keys, the teal button, many at once, and where this page’s answers go', () => {
@@ -138,7 +152,7 @@ describe('the guide is a modal dialog', () => {
 
   it('moves the focus in, shuts on Escape, and gives the focus back where it was', () => {
     render(<Page report={report()} />);
-    const opener = screen.getByRole('button', { name: 'How this page works' });
+    const opener = screen.getByText('?');
     opener.focus();
 
     fireEvent.click(opener);

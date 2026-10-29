@@ -694,7 +694,7 @@ describe('the walks page: answering', () => {
     render(<Page report={reportWith()} />);
 
     expect(document.querySelector('.w-howto')!.textContent).toBe(
-      'Answer Yes or No for each screen; press ? for how.',
+      'Answer Yes or No for each screen; How this page works.',
     );
   });
 

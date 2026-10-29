@@ -126,6 +126,17 @@ html.walks :focus-visible {
   margin: 14px 0 0;
   max-width: 68ch;
 }
+.w-howto-open {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
 .w-meta {
   display: grid;
   gap: 10px;
