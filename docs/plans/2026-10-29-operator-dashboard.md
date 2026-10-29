@@ -438,7 +438,7 @@ worktree; B to D will touch more of the same:
   typecheck clean. c-storage unchanged, so no `make check`. The 88 scene dumps (the 70 of piece 1 and
   2 and the operator's 18) are equal before and after, Mantine and React ids masked.
 
-- [ ] **9. The full run's script.** Who: 🤖, after step 8, about two hours: one script in `one-off/`
+- [x] **9. The full run's script.** Who: 🤖, after step 8, about two hours: one script in `one-off/`
   runs the operator's spec once per language and width, each on a stack of its own, first against the
   fake run's pictures, then writing its bases, then comparing; piece 1's spec on a stack as before.
   Done when: `playwright test --list` reads the operator's six runs; `pnpm check` green.
@@ -453,15 +453,38 @@ worktree; B to D will touch more of the same:
   names the old `chromium` ones it leaves for step 11. ShellCheck clean; its refusals and the listing
   checks were replayed, and the pass-1 reader seen on a moved picture and on a timeout. No code
   changed, so `pnpm check` stands as at step 8. **Then stop.**
-- [ ] **10. The review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
+- [x] **10. The review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or
   deferred with its reason; `pnpm check` green.
+  *Evidence:* 01:24 +07. Opus reviewed `4f77e98`; six findings, all fixed, each test seen red first.
+  F1 (High): the spec shot screen 5 after screen 3 made a client, so a stack's dashboard listed
+  four rows where the fake lists three; screens 5, 6 and 7 are now shot right after screen 1, ids and
+  numbers unchanged, and the two order checks in `visual/src/walks.test.ts` compare ids unordered.
+  The new test there (the three shot before the first make) was red on the old spec (`op-5-dashboard`
+  at 2751, the make at 1703). `scripts/src/dashboard-list.test.ts` holds the data on a seeded stack:
+  the fake's three until the make, then four with the new one first. `ui/src/OperatorWalk.test.tsx`
+  replays the moved steps in jsdom on the fake with the real router, in both languages, whole-label
+  matches and an expect after each opening. The fake run's 54 pictures stay valid: no source file the
+  walks page or a scene draws from changed (`git diff 4f77e98` over `ui/src`, `shared`, `visual/src`,
+  `walk/support.ts` is empty but for tests), and `pnpm report` still builds. F2 (Medium): the
+  script reads piece 2's 96 `-full-darwin` bases too, one more stack (`--project full
+  --update-snapshots=none`, 6 runs listed first); 21 stacks; replayed whole on stubs, green with
+  `--project full` called, and red when it fails. F3: `operator.route.test.ts` reads the log stream,
+  each of the list's three 500s logged by its kind and holding neither the key nor a value; mutants
+  B3 (parse check removed) and B4 (the key in the message) turn it red. F4: `ridge.test.ts` reads
+  the `tenant` command's `madeAt` between the times before and after the run; S1 (`madeAt: 0`)
+  turns it red. F5: `AddClientPage.test.tsx` makes a second client after "Add another client"; U7
+  (no `setStatus('idle')`) turns it red. F6: the hazard above. The two gaps: the script's busy check
+  now names an idle `pnpm stack` or `pnpm fake` and `src/main.ts` or `src/fake-main.ts` with no
+  command, and its load is compared as a decimal (12.99 is refused above 12, either decimal mark).
+  `pnpm check` exit 0, no warning: shared 65 tests, ui 226, bff 161, scripts 79, visual 221, each at
+  100 %. ShellCheck clean.
 - [ ] **11. The full walk.** Who: 👤 runs the script, after step 10, about 20 minutes; 🤖 reads. Done
   when: the log read whole; each screen that differs from the fake's named with its cause and asked
   again; the second pass green at threshold 0, no warning; the operator's 54 bases committed, piece 1's
   and piece 2's read unchanged; the walks page shows nothing waiting and no open "no".
 - [ ] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
-  the review's findings tagged.
+  the review's findings tagged, and the hazard of reverting past this piece on ridge repeated.
 - [ ] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
   the full run's script, about 20 minutes. Done when: this branch rebased onto that `main`, each
   conflict kept both sides; `pnpm check` green at 100 %, no act warning (`f8c85e6`'s rule); the full
@@ -511,5 +534,9 @@ the operator console plan's.
 - **The rebase onto `main` meets piece 2's B to D** in the shell, the words, the fake, the walks and
   `visual/answers.json`. *Guard:* this piece adds beside piece 2's lines and rewrites none; step 13's
   gate and full run read the result.
+- **A revert past this piece on ridge** makes every client made after it answer 500: the old strict
+  client schema refuses the `madeAt` the create now writes (`shared/src/records.ts`, read strictly in
+  `bff/src/app.ts`). *Guard:* on ridge, roll forward, never revert past this piece; step 12's recap
+  repeats it.
 - **The operator console plan changes the frame in parallel.** *Guard:* it builds on this frame and
   merges after it; a change it needs in the shell is its own step, after this piece is in `main`.
