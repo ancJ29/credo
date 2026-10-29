@@ -107,7 +107,10 @@ const exactly = (label: string) =>
   new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`);
 
 /** A person of the data set, by name, from the list. */
-const personNamed = (page: Page, name: string) => page.getByRole('link', { name }).click();
+const personNamed = async (page: Page, name: string) => {
+  await page.getByRole('link', { name }).click();
+  await expect(page.getByRole('heading', { level: 2, name })).toBeVisible();
+};
 
 async function walk(page: Page, language: Language, width: number) {
   const at = (screen: string, mask: Locator[] = []) => shot(page, screen, language, width, mask);
@@ -194,7 +197,10 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 8. People who left, shown by the filter.
   await open(page, language, { path: '/staff' });
-  await page.getByLabel(words.staff.showLeft).check();
+  // Not `check()`: it reads the box at once, and the address writes the box's state a moment
+  // after the click, so it would call a box that is about to tick unchanged.
+  await page.getByLabel(words.staff.showLeft).click();
+  await expect(page.getByLabel(words.staff.showLeft)).toBeChecked();
   await expect(page.getByRole('link', { name: 'Hoàng Gia Huy' })).toBeVisible();
   await at('staff-8-left');
 

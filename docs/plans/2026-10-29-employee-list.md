@@ -907,6 +907,18 @@ itself:
   or the label's text) in both languages: all 23 screens' locators and actions resolved, and the two
   slips above were seen red there before the fix and green after. *Not checkable there:* widths
   (CSS), real focus and the pictures.
+  *Second fix pass, 2026-10-29 12:50 +07, after the second red run (54 of 138 pictures, all 6 tests
+  alike at screen 8):* Playwright's `check()` clicks and reads the box at once. The "show people who
+  left" box takes its state from the address (`StaffListPage.tsx`, `criteriaOf` and `narrow`), and
+  the router writes the address in a transition, so the box ticks a moment after the click. Seen in
+  jsdom with the real router and a real click: unchecked right after the click, checked a moment
+  later, the same element, in both languages; unchecking the same. The page is right (a person sees
+  it tick), so the spec changed: `click()`, then `toBeChecked()` (`walk/specs/piece-2.spec.ts`).
+  Sweep of the other actions: `check()` was the only one that reads state back; a search typed
+  and then a position chosen with no wait between kept both (the list shows the manager Lan, not
+  Hùng; the search box still holds the text); every other action is followed by an assertion that
+  waits, except the link to a person's page, which now waits for that person's heading (5 people, both
+  languages seen). No screen changed.
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
