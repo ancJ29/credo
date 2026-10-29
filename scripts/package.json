@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage",
     "stack": "node --import tsx src/main.ts",
+    "demo": "node --import tsx src/demo-main.ts",
     "fake": "node --import tsx src/fake-main.ts"
   },
   "dependencies": {

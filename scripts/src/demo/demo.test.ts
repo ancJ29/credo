@@ -8,7 +8,7 @@ import {
 } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { companyConfig, staffSetupOf } from './company';
-import { addDays, atMinute, daysBetween, isSunday } from './days';
+import { addDays, atMinute, daysBetween, isSunday, vietnamToday } from './days';
 import { allCopies, assertLedgerScenario, CLIENTS, copyOfCode, PARTNER_LABEL } from './mapping';
 import { SCENARIO_IDS, SCENARIOS } from './scenarios';
 import { ANCHOR, dayEvents, type Person, staffAsOf, uniqueName } from './staff';
@@ -59,6 +59,8 @@ describe('the stream and the days', () => {
       '2026-11-01',
     ]);
     expect(new Date(atMinute('2026-10-30', 450)).toISOString()).toBe('2026-10-30T00:30:00.000Z');
+    expect(vietnamToday(Date.parse('2026-10-28T16:59:00Z'))).toBe('2026-10-28');
+    expect(vietnamToday(Date.parse('2026-10-28T17:00:00Z'))).toBe('2026-10-29');
     expect(() => addDays('2026-02-30', 1)).toThrow('not a day');
     expect(() => addDays('30/10/2026', 1)).toThrow('not a day');
   });

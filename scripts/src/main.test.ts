@@ -89,6 +89,30 @@ describe('pnpm stack as a process', () => {
   });
 });
 
+describe('pnpm demo as a process', () => {
+  it('makes one partner’s copies and runs its command against them, then leaves nothing behind', async () => {
+    const demoTemp = await mkdtemp(join(temp, 'tmp-'));
+    const demo = spawn(
+      process.execPath,
+      ['--import', 'tsx', 'src/demo-main.ts', '--', process.execPath, '-e', 'process.exit(0)'],
+      {
+        cwd: SCRIPTS,
+        env: {
+          ...process.env,
+          ...goBuildEnv(process.env),
+          TMPDIR: demoTemp,
+          CREDO_DEMO_PARTNER: 'p3',
+        },
+        stdio: ['ignore', 'ignore', 'inherit'],
+      },
+    );
+    const status = await new Promise((resolve) => demo.once('exit', resolve));
+
+    expect(status).toBe(0);
+    expect((await readdir(demoTemp)).filter((name) => name.startsWith('credo-'))).toEqual([]);
+  });
+});
+
 describe('pnpm fake as a process', () => {
   it('serves the fake’s page to its command and, when the command ends, leaves nothing listening or behind', async () => {
     const file = join(temp, 'fake-read');

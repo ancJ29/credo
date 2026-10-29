@@ -27,6 +27,12 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   server. In the agent's sandbox set `GOPROXY=off GOFLAGS=-mod=mod`. One helper, `bff/tests/build.ts`,
   builds c-storage for the route tests and for `pnpm stack` alike, and sets `GOCACHE` under the temp
   folder when none is set.
+- **`pnpm demo -- <command>` is `pnpm stack` with the demo seed's copies on it**
+  ([the plan](docs/plans/2026-10-29-demo-seed.md)). Every copy of `scripts/src/demo/mapping.ts` (or one
+  partner's, by `CREDO_DEMO_PARTNER=p1`) is made by the operator's create, filled as of four days ago
+  and run three days to yesterday. The command gets `CREDO_URL`, the operator's two variables and
+  `CREDO_COPIES` (JSON: each copy's code, partner, scenario, company, `rootName` and `rootPassword`);
+  without one, the links and the root passwords are printed once.
 - **Wire-contract code goes into the shared package, extended generically, not into a new
   standalone package per service.** The one shared package is `shared/`
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).

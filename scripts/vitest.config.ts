@@ -17,10 +17,19 @@ export default defineConfig({
       // src/cli.ts's runFake in this process, and src/main.test.ts runs the entry as a process and
       // reads its command served the page and nothing left listening.
       //
+      // elsewhere: demo-main.ts is the same hand-off for `pnpm demo`: src/demo.test.ts runs
+      // src/cli.ts's runDemo in this process, and src/main.test.ts runs the entry as a process.
+      //
       // elsewhere: ridge-main.ts only binds runRidge to the process and to fd 3, the terminal ops/
       // operator.sh hands on. ops/test.sh runs ops/operator.sh whole under a pseudo-terminal and
       // reads the password on it and nowhere else; runRidge is tested in src/ridge.test.ts.
-      exclude: ['src/**/*.test.ts', 'src/main.ts', 'src/fake-main.ts', 'src/ridge-main.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/main.ts',
+        'src/fake-main.ts',
+        'src/ridge-main.ts',
+        'src/demo-main.ts',
+      ],
       reporter: [['text', { skipFull: true }]],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },

@@ -29,3 +29,7 @@ export function daysBetween(from: string, to: string) {
 /** The moment, in milliseconds, at `minutes` past midnight of that day in Vietnam. */
 export const atMinute = (date: string, minutes: number) =>
   utcOf(date).getTime() - 7 * 60 * MINUTE + minutes * MINUTE;
+
+/** Today in Vietnam, from a clock in milliseconds. */
+export const vietnamToday = (now: number) =>
+  new Date(now + 7 * 60 * MINUTE).toISOString().slice(0, 10);

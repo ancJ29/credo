@@ -10,6 +10,8 @@ export const recordKeys = {
   operatorSession: (sessionId: string) => `operator.session.${sessionId}`,
   /** Every record of one tenant, by its minted id. */
   tenant: (id: string) => ({
+    /** Every record of the tenant: the seed reads it to see that a client is new. */
+    all: `tenant.${id}.`,
     config: `tenant.${id}.config`,
     user: (name: string) => `tenant.${id}.user.${name}`,
     /** By the session's minted id; the device it was issued to is beside it in the record. */
@@ -19,6 +21,9 @@ export const recordKeys = {
     /** What the staff list reads: every person's key starts with it. */
     employeePrefix: `tenant.${id}.employee.`,
     staffSetup: `tenant.${id}.staff-setup`,
+    /** The demo seed's ledger for the tenant, the seed's alone: the BFF never reads it, and its key
+     * starts with none of the prefixes the BFF lists. */
+    seed: `tenant.${id}.seed`,
     /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
      * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
     employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,

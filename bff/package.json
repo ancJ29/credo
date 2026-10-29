@@ -6,8 +6,10 @@
     ".": "./src/app.ts",
     "./password": "./src/password.ts",
     "./clients": "./src/clients.ts",
+    "./sessions": "./src/sessions.ts",
     "./env": "./src/env.ts",
-    "./tests/build": "./tests/build.ts"
+    "./tests/build": "./tests/build.ts",
+    "./tests/c-storage": "./tests/c-storage.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

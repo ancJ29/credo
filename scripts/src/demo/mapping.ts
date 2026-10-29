@@ -45,6 +45,9 @@ export const allCopies = () =>
     copies.map((copy) => ({ client, scenario, company, ...copy })),
   );
 
+/** One copy of the mapping, flat, with its client's scenario and company. */
+export type MappedCopy = ReturnType<typeof allCopies>[number];
+
 /** The copy a code names, or nothing: a code outside the mapping is never touched. */
 export const copyOfCode = (code: string) => allCopies().find((copy) => copy.code === code);
 
