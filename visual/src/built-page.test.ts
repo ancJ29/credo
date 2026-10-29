@@ -23,6 +23,8 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
     .slice(open + '<script type="module">'.length, close)
     .replaceAll('<\\/script', '</script');
   const dom = new JSDOM(full.slice(0, open) + full.slice(close + '</script>'.length), {
+    // The page is opened from disk, as the human opens it.
+    url: 'file:///walks/index.html',
     runScripts: 'outside-only',
     pretendToBeVisual: true,
   });
@@ -79,5 +81,23 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
   expect(shared.match(/ \| (yes|no) \| /g)).toHaveLength(2);
   expect(copied).toContain('Credo walks answers');
   expect(copied).not.toContain('By:');
+
+  // "Yes for both languages" answers the two languages of the screen in view, and the block that
+  // gives is the one by hand gives.
+  document
+    .querySelector<HTMLButtonElement>('button[aria-label="Clear 2 choices on the page"]')!
+    .click();
+  await until(
+    () => document.querySelector('button[aria-label="Clear 0 choices on the page"]') !== null,
+  );
+  [...document.querySelectorAll('button')]
+    .find((button) => button.textContent === 'Yes for both languages (2)')!
+    .click();
+  await until(() => document.querySelector('.w-note')!.textContent.startsWith('2 answered Yes'));
+  await press('Copy my answers', 3);
+  const [, , bulk] = written;
+  expect(bulk.match(/ \| yes \| /g)).toHaveLength(2);
+  expect(bulk).toContain('admin-setup:2-sign-in-refused:vi | yes | ');
+  expect(bulk).toContain('admin-setup:2-sign-in-refused:en | yes | ');
   window.close();
 });

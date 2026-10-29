@@ -192,8 +192,9 @@ describe('moving', () => {
     fireEvent.click(screen.getByLabelText('Yes'));
     key('u');
 
+    expect(document.querySelector('.w-all')!.textContent).toBe('All 18 answered');
+    key('u');
     expect(document.querySelector('.w-moved')!.textContent).toBe('Nothing left to answer.');
-    expect((button('Nothing left to answer') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('wraps past the last screen to the first one waiting', () => {

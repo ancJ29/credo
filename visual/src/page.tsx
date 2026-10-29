@@ -1,7 +1,17 @@
 import { LANGUAGES, type Language } from '@credo/shared';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { loadChoices, loadLabel, loadOnly, saveChoices, saveOnly } from './choices';
-import { HUMAN, LANGUAGE_LABEL, plural, type Whose } from './marks';
+import { type Bulk, fillIn, yesTo } from './bulk';
+import {
+  type Choices,
+  loadChoices,
+  loadLabel,
+  loadOnly,
+  saveChoices,
+  saveLabel,
+  saveOnly,
+} from './choices';
+import type { Fill } from './fill';
+import { HUMAN, LANGUAGE_LABEL, markIn, plural, type Whose } from './marks';
 import {
   firstWaiting,
   leftIn,
@@ -40,15 +50,22 @@ function TallyPills({ tally }: { tally: Tally }) {
 function WalkSection({
   report,
   walk,
+  action,
   children,
 }: {
   report: Report;
   walk: ReportWalk;
+  action: string;
   children: ReactNode;
 }) {
   const person = report.people.find((candidate) => candidate.id === walk.person)!;
   return (
-    <section id={walk.id} className="w-walk" aria-labelledby={`${walk.id}-title`}>
+    <section
+      id={walk.id}
+      className="w-walk"
+      aria-labelledby={`${walk.id}-title`}
+      data-action={action}
+    >
       <div className="w-walk-head">
         <h2 id={`${walk.id}-title`}>{walk.title.en}</h2>
         <p className="w-sub">
@@ -123,6 +140,7 @@ function Where({
   prev,
   next,
   nextText,
+  done,
   said,
   onGo,
   onNext,
@@ -135,6 +153,8 @@ function Where({
   prev: Place | undefined;
   next: Place | undefined;
   nextText: { text: string; none: boolean };
+  /** Nothing waits on the page: how many are answered, and the last action. */
+  done: { text: string; label: string; onDone: () => void } | undefined;
   said: string;
   onGo: (id: string) => void;
   onNext: () => void;
@@ -160,9 +180,18 @@ function Where({
         <button type="button" disabled={!next} onClick={() => onGo(next!.id)}>
           Next ›
         </button>
-        <button type="button" className="w-next" disabled={nextText.none} onClick={onNext}>
-          {nextText.text}
-        </button>
+        {done ? (
+          <>
+            <span className="w-all">{done.text}</span>
+            <button type="button" className="w-next" onClick={done.onDone}>
+              {done.label}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="w-next" disabled={nextText.none} onClick={onNext}>
+            {nextText.text}
+          </button>
+        )}
       </div>
       <p className="w-keys">
         Keys: J next · K previous · Y yes · N no · L other language · U next unanswered
@@ -213,6 +242,8 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   const [view, setView] = useState<View>({ language: LANGUAGES[0], show: 'pc' });
   const [listOpen, setListOpen] = useState(false);
   const [asked, setAsked] = useState(0);
+  const [note, setNote] = useState('');
+  const [undo, setUndo] = useState<Choices>();
 
   const place = places.find(({ id }) => id === current)!;
   const shown = visibleOf(places, choices, whose, only, stay);
@@ -226,7 +257,26 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   const choose: Choose = (at, choice) => {
     setChoices((before) => ({ ...before, [at]: choice }));
     setStay(current);
+    if (undo) {
+      setUndo(undefined);
+      setNote('');
+    }
   };
+  /** A bulk action or a paste: it acts at once, says what it did, and can be undone until a choice changes. */
+  const apply = (bulk: Bulk, said: string) => {
+    setChoices(bulk.next);
+    setUndo(bulk.undo);
+    setNote(said);
+    setStay(current);
+  };
+  const fillFrom = (fill: Fill) => {
+    apply(fillIn(fill.fills, choices), `${fill.filled} filled`);
+    if (fill.label) {
+      setLabel(fill.label);
+      saveLabel(fill.label);
+    }
+  };
+  const bothCount = yesTo([place], choices, whose).count;
   const go = (id: string, language?: Language) => {
     setCurrent(id);
     setStay(undefined);
@@ -298,6 +348,17 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   }, [current]);
 
   const none = only && shown.length === 0;
+  const nothingWaits = places.every((one) => leftIn(one, choices, whose).length === 0);
+  const here = choices[key] ?? NO_CHOICE;
+  const drawn = markIn(place.screen.languages[view.language], here, whose);
+  let action = 'next';
+  if (nothingWaits) action = 'done';
+  else if (drawn === 'open' || drawn === 'again') action = 'answer';
+  else if (here.answer === 'no' && here.reason.trim() === '') action = 'reason';
+  const finish = () =>
+    document
+      .querySelector<HTMLButtonElement>(partner ? '.w-send .w-share' : '.w-send .w-copy')!
+      .click();
   return (
     <>
       <header className="w-head">
@@ -335,6 +396,8 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
             open={listOpen}
             onGo={go}
             onClose={() => setListOpen(false)}
+            onBulk={apply}
+            onFill={fillFrom}
           />
           <div className="w-walks">
             {none ? (
@@ -342,17 +405,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                 <h2 id="done-title">Nothing left to answer</h2>
                 <p>All {plural(places.length * LANGUAGES.length, 'answer')} are given.</p>
                 <div className="w-moves">
-                  <button
-                    type="button"
-                    className="w-next"
-                    onClick={() =>
-                      document
-                        .querySelector<HTMLButtonElement>(
-                          partner ? '.w-send .w-share' : '.w-send .w-copy',
-                        )!
-                        .click()
-                    }
-                  >
+                  <button type="button" className="w-next" onClick={finish}>
                     {partner ? 'Share' : 'Copy my answers'}
                   </button>
                   <button type="button" onClick={() => toggle(false)}>
@@ -361,7 +414,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                 </div>
               </section>
             ) : (
-              <WalkSection report={report} walk={place.walk}>
+              <WalkSection report={report} walk={place.walk} action={action}>
                 <Where
                   walk={place.walk}
                   screen={place.screen}
@@ -370,6 +423,15 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                   prev={neighbour(shown, current, -1)}
                   next={neighbour(shown, current, 1)}
                   nextText={{ text: nextLabel(next, places, current), none: !next }}
+                  done={
+                    nothingWaits
+                      ? {
+                          text: `All ${places.length * LANGUAGES.length} answered`,
+                          label: partner ? 'Share' : 'Copy my answers',
+                          onDone: finish,
+                        }
+                      : undefined
+                  }
                   said={said}
                   onGo={go}
                   onNext={goNext}
@@ -384,6 +446,9 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                   choose={choose}
                   whose={whose}
                   onNo={() => setAsked((count) => count + 1)}
+                  onBoth={() => apply(yesTo([place], choices, whose), `${bothCount} answered Yes`)}
+                  bothCount={bothCount}
+                  onShow={(language) => setView((before) => ({ ...before, language }))}
                 />
               </WalkSection>
             )}
@@ -411,6 +476,18 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         onLabel={setLabel}
         only={only}
         onGo={go}
+        note={note}
+        onNote={setNote}
+        onUndo={
+          undo
+            ? () => {
+                setChoices(undo);
+                setUndo(undefined);
+                setNote('');
+              }
+            : undefined
+        }
+        action={action}
       />
     </>
   );

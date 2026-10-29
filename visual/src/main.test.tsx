@@ -90,3 +90,66 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
   Reflect.deleteProperty(navigator, 'clipboard');
   localStorage.clear();
 });
+
+it('the mounted page: the same answers given by “Yes for both languages” give the same lines byte for byte, and a post pasted and shared again gives its own lines', async () => {
+  const report = makeReport({
+    walks: WALKS,
+    people: PEOPLE,
+    parts: PARTS,
+    mock: SCREENS,
+    answers: {},
+    source: { branch: 'b', commit: 'c', changed: false, committedAt: new Date(0), home: '/h' },
+    builtAt: new Date(0),
+    readWords: (state, language) => [`text: ${state.id} ${language}`],
+  });
+  document.body.innerHTML = `<div id="root"></div><script type="application/json" id="${REPORT_ELEMENT}">${inlineJson(report)}</script>`;
+  const written: string[] = [];
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
+      writeText: (text: string) => {
+        written.push(text);
+        return Promise.resolve();
+      },
+    },
+  });
+  vi.resetModules();
+  const root = await mount();
+  await screen.findByRole('heading', { level: 1 });
+  const share = async () => {
+    await act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+      return Promise.resolve();
+    });
+    return written.at(-1)!;
+  };
+  const lines = (post: string) =>
+    post
+      .split('```')[1]
+      .split('\n')
+      .filter((line) => line.includes(' | '));
+
+  fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
+  fireEvent.click(screen.getByLabelText('Yes'));
+  fireEvent.click(screen.getByRole('button', { name: 'Show in English' }));
+  fireEvent.click(screen.getByLabelText('Yes'));
+  const byHand = lines(await share());
+  expect(byHand).toHaveLength(2);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Clear 2 choices on the page' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Yes for both languages (2)' }));
+  const bulk = lines(await share());
+  expect(bulk).toEqual(byHand);
+
+  const post = written.at(-1)!;
+  fireEvent.click(screen.getByRole('button', { name: 'Clear 2 choices on the page' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Paste last answers…' }));
+  fireEvent.change(screen.getByLabelText('Paste an earlier block or Share message'), {
+    target: { value: post },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Fill' }));
+  expect(lines(await share())).toEqual(byHand);
+  act(() => root.unmount());
+  Reflect.deleteProperty(navigator, 'clipboard');
+  localStorage.clear();
+});

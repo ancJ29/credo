@@ -2,7 +2,16 @@ import { LANGUAGES, type Language } from '@credo/shared';
 import { Frame, SCREENS } from '@credo/ui/mock';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { Choice, Choices } from './choices';
-import { HUMAN, LANGUAGE_LABEL, MARK_TEXT, markIn, screenId, shownIn, type Whose } from './marks';
+import {
+  HUMAN,
+  LANGUAGE_LABEL,
+  MARK_TEXT,
+  type Mark,
+  markIn,
+  screenId,
+  shownIn,
+  type Whose,
+} from './marks';
 import type { Report, ReportScreen, ReportWalk } from './report';
 import type { Held, Shown } from './states';
 import { answerKey } from './walks';
@@ -128,17 +137,26 @@ function Panel({
   name,
   choice,
   shown,
+  otherMark,
+  both,
   onChange,
   onNo,
+  onShow,
 }: {
   screen: ReportScreen;
   language: Language;
   name: string;
   choice: Choice;
   shown: Shown;
+  /** Where the screen's other language stands. */
+  otherMark: Mark;
+  /** "Yes for both languages": how many it would answer, and the press. */
+  both: { count: number; onBoth: () => void };
   onChange: (choice: Choice) => void;
   onNo: () => void;
+  onShow: (language: Language) => void;
 }) {
+  const other = LANGUAGES.find((one) => one !== language)!;
   const lacksReason = choice.answer === 'no' && choice.reason.trim() === '';
   return (
     <div className="w-panel">
@@ -182,6 +200,20 @@ function Panel({
           </div>
         )}
       </fieldset>
+      <button type="button" className="w-both" disabled={both.count === 0} onClick={both.onBoth}>
+        Yes for both languages ({both.count})
+      </button>
+      <div className="w-other">
+        <span className="w-mark" data-mark={otherMark}>
+          <span aria-hidden="true">{other.toUpperCase()}</span>
+          <span className="w-sr">
+            {LANGUAGE_LABEL[other]}: {MARK_TEXT[otherMark]}
+          </span>
+        </span>
+        <button type="button" className="w-show-other" onClick={() => onShow(other)}>
+          Show in {LANGUAGE_LABEL[other]}
+        </button>
+      </div>
       <p className="w-state">
         <span>{stateLine(shown, choice)}</span>
         {choice.answer !== '' && (
@@ -252,6 +284,9 @@ export function ScreenCard({
   choose,
   whose = HUMAN,
   onNo,
+  onBoth,
+  bothCount,
+  onShow,
 }: {
   report: Report;
   walk: ReportWalk;
@@ -261,6 +296,9 @@ export function ScreenCard({
   choose: Choose;
   whose?: Whose;
   onNo: () => void;
+  onBoth: () => void;
+  bothCount: number;
+  onShow: (language: Language) => void;
 }) {
   const state = stateOf(screen);
   const { language, show } = view;
@@ -313,8 +351,21 @@ export function ScreenCard({
             name={key}
             choice={choices[key] ?? NO_CHOICE}
             shown={shownIn(here, whose)}
+            otherMark={markIn(
+              screen.languages[LANGUAGES.find((one) => one !== language)!],
+              choices[
+                answerKey(
+                  walk.id,
+                  screen.id,
+                  LANGUAGES.find((one) => one !== language)!,
+                )
+              ],
+              whose,
+            )}
+            both={{ count: bothCount, onBoth }}
             onChange={(choice) => choose(key, choice)}
             onNo={onNo}
+            onShow={onShow}
           />
           {(here.partners.length > 0 || (whose.partner && here.shown.kind !== 'waiting')) && (
             <ul className="w-partners" aria-label="Partners’ answers">

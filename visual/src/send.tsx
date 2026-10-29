@@ -21,6 +21,10 @@ export function Send({
   onLabel,
   only,
   onGo,
+  note,
+  onNote,
+  onUndo,
+  action,
 }: {
   report: Report;
   choices: Choices;
@@ -29,10 +33,15 @@ export function Send({
   onLabel: (label: string) => void;
   only: boolean;
   onGo: (id: string, language: Language) => void;
+  note: string;
+  onNote: (note: string) => void;
+  /** Puts back the choices before the last bulk action or paste, while there is one to undo. */
+  onUndo: (() => void) | undefined;
+  /** The one action that stands out on the page now. */
+  action: string;
 }) {
   const bar = useRef<HTMLElement>(null);
   const [block, setBlock] = useState('');
-  const [note, setNote] = useState('');
   const { answered: chosen } = blockOf(report, choices);
   const progress = progressOf(report, choices, whose);
 
@@ -48,32 +57,44 @@ export function Send({
   const copy = async (share: boolean) => {
     setBlock('');
     if (share && !LABEL.test(normalizeLabel(label))) {
-      setNote('Type your label first: 1 to 20 lowercase letters, digits or hyphens.');
+      onNote('Type your label first: 1 to 20 lowercase letters, digits or hyphens.');
       return;
     }
     const made = share ? shareOf(report, choices, normalizeLabel(label)) : blockOf(report, choices);
     if (made.answered === 0) {
-      setNote('Nothing chosen yet: answer a screen first.');
+      onNote('Nothing chosen yet: answer a screen first.');
     } else if (made.missing.length > 0) {
       const labels = labelsOf(report);
-      setNote(`A No needs its reason: ${made.missing.map((key) => labels.get(key)).join(', ')}.`);
+      onNote(`A No needs its reason: ${made.missing.map((key) => labels.get(key)).join(', ')}.`);
     } else {
       setBlock(made.text);
       try {
         await navigator.clipboard.writeText(made.text);
-        setNote(share ? 'Copied. Paste it into Slack.' : 'Copied. Paste it into the chat.');
+        onNote(share ? 'Copied. Paste it into Slack.' : 'Copied. Paste it into the chat.');
       } catch {
-        setNote(
-          `Select the text below, copy it and paste it into ${share ? 'Slack' : 'the chat'}.`,
-        );
+        onNote(`Select the text below, copy it and paste it into ${share ? 'Slack' : 'the chat'}.`);
       }
     }
   };
 
   return (
-    <section ref={bar} className="w-send" aria-label="Your answers">
+    <section
+      ref={bar}
+      className="w-send"
+      aria-label="Your answers"
+      data-action={action}
+      data-partner={whose.partner}
+    >
       <span role="status" className="w-note">
         {note}
+        {onUndo && (
+          <>
+            {' · '}
+            <button type="button" className="w-undo" onClick={onUndo}>
+              Undo
+            </button>
+          </>
+        )}
       </span>
       <div className="w-send-row">
         <span className="w-ledger" aria-hidden="true">

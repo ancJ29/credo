@@ -495,9 +495,11 @@ describe('the walks page: the answers', () => {
     ];
     render(<Page report={reportWith(Object.fromEntries(both('1-sign-in', 'empty')))} />);
 
-    expect(document.querySelector('.w-rail-title')!.textContent).toBe(
-      'Set up the company: its name, colour and languages8 left',
-    );
+    expect(
+      [...document.querySelectorAll('.w-rail-title > span')]
+        .slice(0, 2)
+        .map((one) => one.textContent),
+    ).toEqual(['Set up the company: its name, colour and languages', '8 left']);
     expect(document.querySelector('#admin-setup-2-sign-in-refused')).toBeTruthy();
   });
 
@@ -558,7 +560,7 @@ describe('the walks page: the answers', () => {
     render(<Page report={reportWith({ ...yes('vi'), ...yes('en') })} />);
 
     expect(
-      [...card('1-sign-in').querySelectorAll('.w-mark')].map((mark) =>
+      [...card('1-sign-in').querySelectorAll('.w-screen-head .w-mark')].map((mark) =>
         mark.getAttribute('data-mark'),
       ),
     ).toEqual(['open', 'open']);

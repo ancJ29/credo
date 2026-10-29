@@ -1,6 +1,9 @@
 import { LANGUAGES } from '@credo/shared';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { type Bulk, clearIn, yesTo } from './bulk';
 import type { Choices } from './choices';
+import type { Fill } from './fill';
+import { PasteBox } from './paste';
 import { LANGUAGE_LABEL, type Whose } from './marks';
 import { leftIn, type Place } from './nav';
 import type { Report } from './report';
@@ -41,6 +44,50 @@ function Segmented<T extends string>({
   );
 }
 
+/** Yes to the unanswered, and Clear the choices made here, for some screens; each with its count. */
+function BulkRow({
+  places,
+  choices,
+  whose,
+  scope,
+  onBulk,
+}: {
+  places: readonly Place[];
+  choices: Choices;
+  whose: Whose;
+  scope: string;
+  onBulk: (bulk: Bulk, said: string) => void;
+}) {
+  const yes = yesTo(places, choices, whose);
+  const clear = clearIn(places, choices);
+  return (
+    <span className="w-bulk">
+      <button
+        type="button"
+        disabled={yes.count === 0}
+        aria-label={`Yes to ${yes.count} unanswered ${scope}`}
+        onClick={(event) => {
+          event.preventDefault();
+          onBulk(yes, `${yes.count} answered Yes`);
+        }}
+      >
+        Yes to {yes.count}
+      </button>
+      <button
+        type="button"
+        disabled={clear.count === 0}
+        aria-label={`Clear ${clear.count} choices ${scope}`}
+        onClick={(event) => {
+          event.preventDefault();
+          onBulk(clear, `${clear.count} choices cleared`);
+        }}
+      >
+        Clear {clear.count}
+      </button>
+    </span>
+  );
+}
+
 /**
  * The list: the language and the widths, the toggle for the unanswered, then each walk with what is
  * left in it, the walk in view open and the others folded, and each of its screens on one line in
@@ -61,6 +108,8 @@ export function Rail({
   open,
   onGo,
   onClose,
+  onBulk,
+  onFill,
 }: {
   report: Report;
   places: readonly Place[];
@@ -75,7 +124,11 @@ export function Rail({
   open: boolean;
   onGo: (id: string) => void;
   onClose: () => void;
+  /** A bulk action, with the words the note says of it once it acts. */
+  onBulk: (bulk: Bulk, said: string) => void;
+  onFill: (fill: Fill) => void;
 }) {
+  const [pasting, setPasting] = useState(false);
   const list = useRef<HTMLElement>(null);
   useEffect(() => {
     list.current!.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
@@ -112,6 +165,28 @@ export function Rail({
           />
           Only unanswered
         </label>
+        <BulkRow
+          places={places}
+          choices={choices}
+          whose={whose}
+          scope="on the page"
+          onBulk={onBulk}
+        />
+        <button type="button" className="w-paste-open" onClick={() => setPasting(!pasting)}>
+          Paste last answers…
+        </button>
+        {pasting && (
+          <PasteBox
+            report={report}
+            choices={choices}
+            whose={whose}
+            onFill={(fill) => {
+              setPasting(false);
+              onFill(fill);
+            }}
+            onClose={() => setPasting(false)}
+          />
+        )}
         <button type="button" className="w-rail-close" onClick={onClose}>
           Close the list
         </button>
@@ -126,6 +201,13 @@ export function Rail({
               <summary className="w-rail-title">
                 <span>{walk.title.en}</span>
                 <span className="w-rail-left">{left === 0 ? 'done' : `${left} left`}</span>
+                <BulkRow
+                  places={mine}
+                  choices={choices}
+                  whose={whose}
+                  scope="in this walk"
+                  onBulk={onBulk}
+                />
               </summary>
               <ul>
                 {mine

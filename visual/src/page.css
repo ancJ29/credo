@@ -418,10 +418,85 @@ a.w-cell:hover b {
   opacity: 0.45;
   cursor: default;
 }
-.w-moves .w-next:not(:disabled) {
+/* The one action that stands out: teal, and nothing else is. */
+.w-walk[data-action='next'] .w-moves .w-next:not(:disabled),
+.w-walk[data-action='done'] .w-moves .w-next,
+.w-send[data-action='done'][data-partner='false'] .w-copy,
+.w-send[data-action='done'][data-partner='true'] .w-share {
   border-color: var(--teal);
   background: var(--teal);
   color: var(--on-teal);
+}
+.w-walk[data-action='answer'] .w-big .w-face {
+  box-shadow: inset 0 0 0 2px var(--teal);
+}
+.w-all {
+  align-self: center;
+  font-weight: 650;
+}
+.w-both,
+.w-show-other,
+.w-bulk button,
+.w-paste-open,
+.w-paste .w-moves button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1.5px solid var(--rule-strong);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.w-both:disabled,
+.w-bulk button:disabled,
+.w-paste .w-moves button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.w-other {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.w-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.w-rail-title {
+  flex-wrap: wrap;
+}
+.w-paste {
+  display: grid;
+  gap: 8px;
+}
+.w-paste label {
+  display: grid;
+  gap: 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.w-paste textarea {
+  font: 12px/1.5 var(--mono);
+}
+.w-fill-says {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.w-undo {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--teal);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  cursor: pointer;
 }
 .w-rail-nav {
   display: grid;
@@ -1000,10 +1075,10 @@ a.w-cell:hover b {
 .w-copy {
   min-height: 42px;
   padding: 0 18px;
-  border: 0;
+  border: 1.5px solid var(--rule-strong);
   border-radius: 10px;
-  background: var(--teal);
-  color: var(--on-teal);
+  background: var(--sheet);
+  color: var(--ink);
   font: inherit;
   font-size: 15px;
   font-weight: 650;
@@ -1025,10 +1100,10 @@ a.w-cell:hover b {
 .w-share {
   min-height: 42px;
   padding: 0 18px;
-  border: 1.5px solid var(--teal);
+  border: 1.5px solid var(--rule-strong);
   border-radius: 10px;
   background: var(--sheet);
-  color: var(--teal);
+  color: var(--ink);
   font: inherit;
   font-size: 15px;
   font-weight: 650;
@@ -1040,8 +1115,9 @@ a.w-cell:hover b {
   font-size: 13.5px;
   color: var(--muted);
 }
-.w-copy:hover {
-  background: color-mix(in srgb, var(--teal) 86%, var(--ink));
+.w-copy:hover,
+.w-share:hover {
+  border-color: var(--ink);
 }
 .w-block-row {
   display: grid;
