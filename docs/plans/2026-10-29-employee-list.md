@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 13:12 +07:** group A is done (steps 2 to 11); group B's steps 12 to 14 are done: its pages on the fake, the human's fake walk (all yes) and the fake run's 138 pictures, and now its back end (the numbering, the code change, the photo, `settings.canEdit`, T4's random generation, the generator's B data). **Next:** step 15, B's review by another model.
+**Where it stands — 2026-10-29 14:55 +07:** group A is done (steps 2 to 11); group B's steps 12 to 15 are done: its pages on the fake, the human's fake walk (all yes), the fake run's 138 pictures, its back end, and now the two reviews' fix pass (the numbering counts past every code ever given, a password given during a code change is carried, the photo and the typed details survive a save and a code change, the list's address). No screen changed. **Next:** step 16, the human's full run of B's 23 screens.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -118,6 +118,7 @@ Every key is built by `recordKeys` in `shared/src/records.ts`, under the tenant'
 | `tenant.<id>.user.<sign-in name>` | piece 1's sign-in record: the password's hash (none until one is given), the person's id, the time of the last password | an add or a new code, first, `If-None-Match: *` (or over a stale one with its tag); a password, with its tag. It also holds when it was claimed or last given a password (a failed add's age) and a random generation, minted at each, which a session copies |
 | `tenant.<id>.staff-setup` | the departments and positions (each an id, a name, permissions and `extra`), the field switches, the company's own fields, the numbering, the QR switch, `extra` | the staff setup page's save, with its tag |
 | `tenant.<id>.session.<session id>` | piece 1's session, plus the device id and when it was issued | a sign-in, `If-None-Match: *` on a fresh id; a renewal, with its tag |
+| `tenant.<id>.staff-numbering` (group B) | the last number given under each numbering prefix | a numbered add raises it, with its tag, before it claims the code; a record that moved is read again, three times at most |
 | `tenant.<id>.employee-photo.<employee id>` (group B) | one square image of at most 50 KB | a photo saved, with its tag |
 | `tenant.<id>.signin-email.<email>` (group C) | the person's id | an email set, `If-None-Match: *`; removed with its tag when it changes |
 | `tenant.<id>.signin-qr.<employee id>` (group C) | the hash of a QR code's secret and when it ends | a code issued, replacing the last; removed with its tag when spent |
@@ -980,7 +981,68 @@ itself:
   code change removes the old sign-in record is lost with it (the root sees it fail and gives another).
   *Logged:* open item 23. The step's own run on the stack was not made, since the generator's test and
   the route tests meet the real c-storage.
-- [ ] **15. B's review.** Who: 🤖, another model. Done when: as step 10.
+- [x] **15. B's review.** Who: 🤖, another model. Done when: as step 10. *Fix pass, 2026-10-29 14:55 +07
+  (`make check` not run: `c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
+  group B, S1 to S4 and R1 to R7 on the server, C1 to C9 and mutations M1 to M36 on the client, each
+  with a proof test red on `caa52d7`. The human's two answers: R5, a number freed by a code change is
+  never given again ("no, 8 count past"), and S1/C8, no BigInt and no special 409, only the add's
+  person checked against `employeeSchema` before any write ("EMP-9999999999999999 never happen").
+  Each is `[FIXED]` unless said, and each new or changed test was seen red from its assertion under
+  a mutation of the rule's line.*
+  - S1 `[FIXED]` (trimmed) the add builds the person and parses it with `employeeSchema` before the
+    first write, numbered or not, a 400 if it does not parse; `nextCode` is untouched. Red: with the
+    check removed the list reads 500 after the add of `EMP-10000000000000000`. R5 `[FIXED]` a record
+    `tenant.<id>.staff-numbering` (the last number given under each prefix) is raised, over the tag it
+    was read at, before the code is claimed; `nextCode` counts the list and that number, so row 20
+    holds as written. A moved record is read again, three times, then 503; a tag is never bypassed.
+    Red: with the last number ignored (3 tests), not raised, or raised with no tag (the race test).
+    S2 `[FIXED]` folded into R5: a try that fails on a young claim has already raised the number, so a
+    retry goes on and does not recount the same one; red with the number ignored (the row 38 test, a
+    retry after a 503 gets `EMP-0004`, not `EMP-0001`). S3 `[FIXED]` chosen: carry, not 409. On
+    the removal's `moved` the old record is read again; if it still names this person its hash is
+    written onto the new record under a fresh generation and its own tag, then the old record is
+    removed over the tag just read, three times at most, then 503 (the person stays on the new code);
+    a new record that is another person's is left alone, as is an old one another took over. The
+    hazard in step 14's *Accepted* line is gone. Red: the hash not carried (2 tests); the 503 turned
+    into a success. The fresh generation is asserted but its removal stays green: nothing can hold a
+    session on the new name before the person is written, so the test pins the rule and does not
+    prove it. S4 `[FIXED]` R4 (a code changed away and back keeps no session), R6 (a failed change's
+    new code held a minute from the change) and R7 (the old record left to the add that took it over)
+    are tests of `employee-code.route.test.ts`; M1, M3, M4 are the reviewer's, held by them, and M2 by
+    S2's test.
+  - C1 `[FIXED]` the photo is held by the person's page, outside the form's key, and a 409 carries
+    the photo as it is (`SavePhotoResult` has `current`, the real client reads it, the fake sends it); the form is keyed by a
+    counter that a save, an archive and a reload bump and a code change does not, so what was typed
+    survives a code change (the box for the new code is emptied, as the redrawn form's was). Red:
+    the photo not held (2 tests), the newer photo not taken, the form keyed by version. C2 `[FIXED]`
+    `SettingsPage` takes `onForbidden` and the app passes its re-read of `me`; red with it not called.
+    C3 `[FIXED]` a stored value kept on a person is listed as its own option and is refused only if
+    changed (`refusedFields` takes what was stored; `ownStored` keeps the stored value of an unchanged
+    field, a `NaN` would have replaced a number that no longer parses); red with each of the three
+    off. C4 `[FIXED]` the walk spec checks the search survived (Lê Minh Châu absent and `q=phong` in
+    the address, in `staff-14`; the browser is not run here), and `narrow` builds on the last address
+    written and not yet seen back; red with the base the address (the two-narrowings test).
+    C5 `[FIXED]` the search box follows an address another page set, the menu or the history; red with
+    the follow removed. C6 `[FIXED]` a department, position, field or option the page cannot show
+    narrows nothing and is dropped at the next write; red with it kept. C7 `[FIXED]` a person opened
+    from the list carries the list's address, and the Back link returns to it (a bare list otherwise);
+    red with the state dropped. C9 `[FIXED]` the fake keeps the setup's parts a save leaves out, by
+    the same `keptSetupParts` the BFF uses (moved to `shared`, with a test of its own), and its test
+    says so; red with the parts dropped (2 tests). C8 is S1, trimmed. M4 `[FIXED]` red with the list's
+    narrowings pushed (a history-back test); M6 with every choice field filtered (a choice not in the
+    list has no filter); M10 with the code panel's stale problem kept; M17: the page shows no
+    chooser for a person who left, and the BFF's photo route, like its details route, checks the
+    permission and not the archive (decided: left as the BFF has it, since nothing there is
+    reachable from the UI); M19 with the new-code words kept past a reload; M21 with a department
+    that never said anything about seeing; M22 with a code of spaces sent. Each seen red. The
+    timeout in `ui/vitest.config.ts` is back at the default (rule 6 of QA): all 253 tests pass at
+    5 s under the whole gate; `visual`'s and `scripts`' are older and named in their configs.
+  - *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every package (shared 75 tests, ui 253, bff 199, scripts 76, visual 219; knip
+    silent). `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes. *The 23 scenes dumped (words and DOM, Mantine's ids, UUIDs
+    and React's `useId` ids masked) at `caa52d7` (a copy of its tree, built from `git archive`) and at
+    the end:* equal in both languages (46 scene dumps and the 38 mock states), after the code
+    box's value was caught as the one difference (the form no longer redraws on a code change) and
+    emptied on success. No screen changed; the walk spec was not run.
 - [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
 
