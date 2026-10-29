@@ -144,8 +144,11 @@ describe('the walks', () => {
     for (const screen of screens) {
       const steps = openings.get(screen.id)!;
       const { as, cue } = screen.scene!;
-      expect(steps.includes(`as: '${as}'`), `${screen.id}: as`).toBe(as !== undefined);
-      expect(steps.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
+      // equal, not only present: a screen given another person or another cue is a difference too
+      const named = (key: string) =>
+        [...steps.matchAll(new RegExp(`\\b${key}: '([^']+)'`, 'g'))].map((found) => found[1]);
+      expect(named('as'), `${screen.id}: as`).toEqual(as === undefined ? [] : [as]);
+      expect(named('cue'), `${screen.id}: cue`).toEqual(cue === undefined ? [] : [cue]);
     }
   });
 
