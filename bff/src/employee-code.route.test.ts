@@ -110,6 +110,64 @@ describe('Numbering counts past every code ever given', () => {
     expect(next.employee.employee.code).toBe('EMP-0003');
   });
 
+  it('never gives a number again that a typed code held before a code change freed it', async () => {
+    const t = await staffTenant(cs);
+    await added(t.rootCall, { code: 'EMP-0001', name: 'One' });
+    const two = await added(t.rootCall, { code: 'EMP-0002', name: 'Two' });
+    const moved = await t.rootCall.send('PUT', `/api/employees/${two.employee.employee.id}/code`, {
+      version: two.employee.version,
+      code: 'BOSS',
+    });
+    expect(moved.statusCode).toBe(200);
+
+    const next = await added(t.rootCall, { code: undefined, name: 'Three' });
+
+    expect(next.employee.employee.code).toBe('EMP-0003');
+  });
+
+  it('leaves the numbering alone when the code freed is not under the prefix', async () => {
+    const t = await staffTenant(cs);
+    const boss = await added(t.rootCall, { code: 'BOSS' });
+
+    await t.rootCall.send('PUT', `/api/employees/${boss.employee.employee.id}/code`, {
+      version: boss.employee.version,
+      code: 'ZED',
+    });
+
+    expect(await t.client.getRecord(t.keys.staffNumbering)).toBeNull();
+  });
+
+  it('answers 503 and changes nothing when the numbering moves on every try to raise it', async () => {
+    let busy = false;
+    let moves = 0;
+    const t = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async putRecord(key, data, ifTag) {
+          if (busy && key.endsWith('.staff-numbering')) {
+            const found = await client.getRecord(key);
+            await client.putRecord(key, { given: { other: ++moves } }, found ? found.tag : null);
+          }
+          return await client.putRecord(key, data, ifTag);
+        },
+      }),
+    });
+    const reply = await added(t.rootCall, { code: 'EMP-0005' });
+    busy = true;
+
+    const changed = await t.rootCall.send(
+      'PUT',
+      `/api/employees/${reply.employee.employee.id}/code`,
+      {
+        version: reply.employee.version,
+        code: 'NEW-1',
+      },
+    );
+
+    expect(changed.statusCode).toBe(503);
+    expect((await doc(t.rootCall, reply.employee.employee.id)).employee.code).toBe('EMP-0005');
+  });
+
   it('counts each prefix on its own, and a prefix come back to goes on from its last number', async () => {
     const t = await staffTenant(cs);
     await added(t.rootCall, { code: undefined });

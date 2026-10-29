@@ -203,6 +203,23 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return { given: parsed.data.given, tag: found.tag };
   }
 
+  /** Raises the last number given under `prefix` to at least `number`, over the tag it was read at,
+   * read again when it moved, a few times at most. A code the code route frees counts as given. */
+  async function raiseGiven(tenantId: string, prefix: string, number: number) {
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const held = await numberingOf(tenantId);
+      if ((held.given[prefix] ?? 0) >= number) return;
+      const given = { ...held.given, [prefix]: number };
+      const saved = await storage.putRecord(
+        recordKeys.tenant(tenantId).staffNumbering,
+        { given },
+        held.tag,
+      );
+      if (saved === 'saved') return;
+    }
+    throw new CStorageError(412, 'the numbering moved on every attempt to be raised');
+  }
+
   /** The code after every code ever given, claimed as a sign-in name. A number is raised in the
    * numbering record, over the tag it was read at, before it is claimed: a number freed by a code
    * change, or lost to a claim that is taken or may be a running add's, is never given again. A
@@ -412,6 +429,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const oldName = normaliseSignInName(found.employee.code);
     const old = await readSignIn(storage, request.tenantId, oldName);
     if (!old || old.user.employeeId !== found.employee.id) throw new HttpError(409, 'Conflict');
+    // The code about to be freed counts as given, so a numbered add never gives its number again,
+    // whether it was typed or numbered: raised first, since a number burned is harmless.
+    const { prefix } = staffConfig((await setupDoc(request.tenantId)).setup).numbering;
+    const freed = new RegExp(`^${prefix}(\\d+)$`).exec(found.employee.code);
+    if (freed) await raiseGiven(request.tenantId, prefix, Number(freed[1]));
     const name = normaliseSignInName(code);
     await claimSignIn(request.tenantId, name, {
       passwordHash: old.user.passwordHash,

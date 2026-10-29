@@ -907,6 +907,40 @@ describe('the list and its address', () => {
     expect(address()).toBe(`/settings?q=phong&position=${manager}`);
   });
 
+  it('A word typed and undone inside one router update leaves nothing behind: the menu’s Staff link then clears the box', async () => {
+    const { api, device } = sceneParts({ language: 'en' });
+    render(
+      <MemoryRouter initialEntries={['/staff']}>
+        <App api={api} device={device} test />
+        <Probe />
+      </MemoryRouter>,
+    );
+    const search = await screen.findByLabelText<HTMLInputElement>('Search');
+    await screen.findByText('Nguyễn Thị Lan');
+    // The native setter, called on the element.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set as (
+      this: unknown,
+      v: string,
+    ) => void;
+    const global = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
+    global.IS_REACT_ACT_ENVIRONMENT = false;
+    for (const text of ['a', '', 'a']) {
+      setValue.call(search, text);
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    global.IS_REACT_ACT_ENVIRONMENT = true;
+    await act(async () => {});
+    expect(search.value).toBe('a');
+
+    await userEvent.click(menu().getByRole('link', { name: 'Staff' }));
+
+    await screen.findByText('Trần Văn Hùng');
+    expect(address()).toBe('/staff');
+    expect(screen.getByLabelText<HTMLInputElement>('Search').value).toBe('');
+  });
+
   it('A criterion the page cannot show, a removed department or a field it does not list, narrows nothing', async () => {
     appAt('/staff?department=gone&position=gone&f.plate=51C&f.licence=zzz');
     await screen.findByLabelText('Search');

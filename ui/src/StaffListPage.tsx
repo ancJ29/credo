@@ -84,7 +84,7 @@ export function StaffListPage(page: PageProps) {
   const written = useRef<{ address: string; criteria: Criteria }[]>([]);
   const address = params.toString();
   useEffect(() => {
-    const mine = written.current.findIndex((entry) => entry.address === address);
+    const mine = written.current.findLastIndex((entry) => entry.address === address);
     if (mine >= 0) written.current.splice(0, mine + 1);
     else {
       // Another page, the menu or the history set the address: the box follows it.
