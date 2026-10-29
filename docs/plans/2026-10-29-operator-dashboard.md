@@ -1,10 +1,9 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 12:59 +07:** the human's read is done (step 3) and the pages are built
-on the fake (step 5): the frame with its five-section menu, the clients list with the made-on day,
-adding a client, the "coming soon" page and the failure screens, 100 % in every package. The mock's
-operator screens are not retired yet: the walk still draws them, so they go with the scenes in step 6
-([the step](#steps)). **Next:** step 6, the walk on the fake.
+**Where it stands — 2026-10-29 13:19 +07:** the human's read is done (step 3), the pages are built on
+the fake (step 5) and the walk is built on it (step 6): the operator's nine screens are fake scenes,
+the operator spec has its `operator-fake` and `operator-full` projects, and the fake run's script is
+written. **Next:** step 7, the human's preview, then the fake run's script ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -376,13 +375,29 @@ worktree; B to D will touch more of the same:
   and row 23, since `visual/src/walks.ts` still draws the operator's walk from them until its scenes
   replace them; their components stay until then.
 
-- [ ] **6. The walk, on the fake.** Who: 🤖, after step 5, about half a day: the nine screens as fake
+- [x] **6. The walk, on the fake.** Who: 🤖, after step 5, about half a day: the nine screens as fake
   scenes in `visual/src/walks.ts` (a scene signed in as the operator in `sceneParts`; the mock's
   operator screens 11 to 13 retired with them, step 5's leftover), `walk/specs/operator.spec.ts` with a `fake` and a `full` project,
   the fake run's one script in the credo root's `one-off/`. Done when: row 23 seen red once;
   `pnpm report` builds and `walks.json` reads the operator's nine screens, the new and the changed
   waiting; the visual tests' log holds no act warning. *Model files:*
   [`piece-2.spec.ts`](../../walk/specs/piece-2.spec.ts) and piece 2's scenes in `visual/src/walks.ts`.
+  *Evidence:* 13:19 +07. The nine screens are scenes in `visual/src/walks.ts` (a scene gains
+  `operator`, which `sceneParts` turns into the operator's handle); the mock's operator screens 11 to
+  13 and their fixtures are gone, and `NewClient` lost the `initial` prop only they used. The spec
+  `walk/specs/operator.spec.ts` opens each screen at an address of its own, with whole-label
+  patterns and no `check()`; `playwright.config.ts` names `operator-fake` and `operator-full` (the
+  `chromium` project ignores the spec), and `support.ts` takes pictures only in both fake projects.
+  The spec's openings (path, operator, cue) equal the scenes' by a test, and each is seen red when
+  one is changed. The spec was replayed in jsdom, its real source over a shim of Playwright's page
+  (real router, real clicks and typing, the fake from `?fake`): both languages, 132 actions and
+  checks each, every locator resolving to exactly one element, every effect showing; a bare name that
+  matches three buttons was seen refused. `pnpm check` exit 0, every package at 100 %, no warning;
+  piece 1's and piece 2's screens: the 70 dumps equal those at `3a47f72`. `pnpm report` reads the
+  operator's nine screens: screen 1 holds its yes, screens 2 to 4 are asked again, screens 5 to 9
+  wait. The 24 old bases in `walk/specs/operator.spec.ts-snapshots` are not read by any project now;
+  the full walk (step 11) writes the 54 new ones. The fake run's script is written, not run.
+
 - [ ] **7. The human's preview.** Who: 👤, after step 6, about 30 minutes, and a round for each "no".
   The human answers each screen on the newest walks page and pastes the block; the machine runs
   `pnpm answers`. A "no" becomes a row here, fixed on the fake and asked again. Last, the fake run's

@@ -30,10 +30,17 @@ export type Step =
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
- * as the data-set person with this code (the root when none), with one call's failure cued, then
+ * as the data-set person with this code (the root when none) or as the operator, with one call's failure cued, then
  * the steps.
  */
-export type Scene = { path: string; as?: string; cue?: string; steps?: Step[] };
+export type Scene = {
+  path: string;
+  as?: string;
+  /** Signed in as the operator, not as a person of the data set. */
+  operator?: true;
+  cue?: string;
+  steps?: Step[];
+};
 
 export type Person = { id: string; name: Bilingual; device: Device };
 export type Part = { id: string; name: Bilingual };
@@ -99,12 +106,18 @@ const FILLED_ADD: Step[] = [
 /** The same for someone allowed to add people, who has no department, position or sign-in to give. */
 const FILLED_ADD_BY_OFFICE: Step[] = FILLED_ADD.filter((step) => !('choose' in step));
 
+/** The operator's add form, filled as the operator fills it: the same steps for the form and for what follows. */
+const FILLED_CLIENT: Step[] = [
+  { fill: 'operator.code', text: 'minh-phat' },
+  { fill: 'operator.companyName', text: 'Minh Phát' },
+];
+
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
- * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
+ * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 9;
  * then piece 2's group A (the staff setup, the staff, the office's), each screen a scene of the
  * app on the fake. Group C adds the phone's walk, whose screens are all C's.
  */
@@ -226,7 +239,7 @@ export const WALKS: Walk[] = [
         id: 'op-1-sign-in',
         number: 1,
         path: 'main',
-        mock: { screen: 11, state: 'empty' },
+        scene: { path: '/operator' },
         sentence: {
           en: 'Sign in at the operator’s page',
           vi: 'Đăng nhập tại trang người vận hành',
@@ -237,10 +250,10 @@ export const WALKS: Walk[] = [
         id: 'op-2-new-client',
         number: 2,
         path: 'main',
-        mock: { screen: 12, state: 'typed' },
+        scene: { path: '/operator/clients/new', operator: true, steps: FILLED_CLIENT },
         sentence: {
-          en: 'A new client: its code and the company’s name',
-          vi: 'Khách hàng mới: mã và tên công ty',
+          en: 'A new client: its code and the company’s name, in the frame',
+          vi: 'Khách hàng mới: mã và tên công ty, trong khung',
         },
         question: 'Is this all you need to start a client?',
       },
@@ -248,10 +261,14 @@ export const WALKS: Walk[] = [
         id: 'op-3-made',
         number: 3,
         path: 'main',
-        mock: { screen: 13, state: 'made' },
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          steps: [...FILLED_CLIENT, { press: 'operator.make' }],
+        },
         sentence: {
-          en: 'Made: the link, the root’s name and its first password, once',
-          vi: 'Đã tạo: đường dẫn, tên tài khoản root và mật khẩu đầu tiên, chỉ một lần',
+          en: 'Made: the link, the root’s name and its first password, once, to copy',
+          vi: 'Đã tạo: đường dẫn, tên tài khoản root và mật khẩu đầu tiên, chỉ một lần, để sao chép',
         },
         question:
           'Would you know what to send the client, and that the password is not shown again?',
@@ -260,9 +277,84 @@ export const WALKS: Walk[] = [
         id: 'op-4-code-taken',
         number: 4,
         path: 'wrong',
-        mock: { screen: 12, state: 'taken' },
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          steps: [
+            { fill: 'operator.code', text: 'hoa-sen' },
+            { fill: 'operator.companyName', text: 'Hoa Sen' },
+            { press: 'operator.make' },
+          ],
+        },
         sentence: { en: 'The code already taken', vi: 'Mã đã được dùng' },
         question: 'Does this say what to do?',
+      },
+      {
+        id: 'op-5-dashboard',
+        number: 5,
+        path: 'main',
+        navigation: true,
+        scene: { path: '/operator/clients', operator: true },
+        sentence: {
+          en: 'The dashboard: the five sections, who is signed in, the clients newest first with the day each was made',
+          vi: 'Bảng điều khiển: năm mục, người đang đăng nhập, khách hàng mới nhất trước kèm ngày tạo',
+        },
+        question:
+          'Is this what you need to see of your clients, and are these the sections you expect?',
+      },
+      {
+        id: 'op-6-coming-soon',
+        number: 6,
+        path: 'main',
+        scene: { path: '/operator/usage', operator: true },
+        sentence: {
+          en: 'A section coming soon (Usage and costs)',
+          vi: 'Một mục sắp có (Mức dùng và chi phí)',
+        },
+        question: 'Is it clear this part is not built yet?',
+      },
+      {
+        id: 'op-7-list-failed',
+        number: 7,
+        path: 'wrong',
+        scene: { path: '/operator/clients', operator: true, cue: 'listClients:503' },
+        sentence: { en: 'The list could not be loaded', vi: 'Không tải được danh sách' },
+        question: 'Would you know it is not your fault, and to try again?',
+      },
+      {
+        id: 'op-8-code-invalid',
+        number: 8,
+        path: 'wrong',
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          steps: [
+            { fill: 'operator.code', text: 'minh phat' },
+            { fill: 'operator.companyName', text: 'Minh Phát' },
+            { press: 'operator.make' },
+          ],
+        },
+        sentence: {
+          en: 'A code not in the form, said before anything is sent',
+          vi: 'Mã không đúng dạng, báo trước khi gửi đi',
+        },
+        question: 'Does this say what to fix?',
+      },
+      {
+        id: 'op-9-make-failed',
+        number: 9,
+        path: 'wrong',
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          cue: 'makeClient:503',
+          steps: [...FILLED_CLIENT, { press: 'operator.make' }],
+        },
+        sentence: {
+          en: 'The client was not made, what was typed kept',
+          vi: 'Chưa tạo được khách hàng, những gì đã nhập vẫn còn',
+        },
+        question: 'Would you know the client was not made, and that nothing typed is lost?',
       },
     ],
   },

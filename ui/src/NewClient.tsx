@@ -6,16 +6,14 @@ import { useTranslation } from 'react-i18next';
 type Props = {
   /** Idle, waiting on the service, the last attempt failed, or the code was already taken. */
   status: 'idle' | 'busy' | 'failed' | 'taken';
-  /** What is already typed, for a mock of a half-filled form. */
-  initial?: { code: string; name: string };
   onSubmit: (code: string, name: string) => void;
 };
 
 /** The operator's form: a code and the company's name, and nothing else a client needs to start. */
-export function NewClient({ status, initial, onSubmit }: Props) {
+export function NewClient({ status, onSubmit }: Props) {
   const { t } = useTranslation();
-  const [code, setCode] = useState(initial?.code ?? '');
-  const [name, setName] = useState(initial?.name ?? '');
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
 
   /** Which fields the last submit found wrong, by the same schema the BFF parses with. */
   const [wrong, setWrong] = useState<{ code: boolean; name: boolean }>({

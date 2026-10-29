@@ -18,7 +18,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(58);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(68);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;

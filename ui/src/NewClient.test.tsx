@@ -25,19 +25,6 @@ describe('NewClient', () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });
 
-  it('starts from what is already typed', () => {
-    draw(
-      <NewClient
-        status="idle"
-        initial={{ code: 'minh-phat', name: 'Minh Phát' }}
-        onSubmit={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Minh Phát');
-  });
-
   it('waits while the service answers', () => {
     draw(<NewClient status="busy" onSubmit={vi.fn()} />);
 

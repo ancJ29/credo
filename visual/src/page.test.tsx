@@ -120,14 +120,14 @@ describe('the walks page: the map', () => {
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(19);
   });
 
-  it('puts the operator’s walk on its own row, above the client’s admin, with its four screens and its questions', async () => {
+  it('puts the operator’s walk on its own row, above the client’s admin, with its nine screens and its questions', async () => {
     render(<Page report={await reportWith({}, false, WALKS.slice(0, 2))} />);
 
     const map = screen.getByRole('region', { name: 'The map of the day' });
     const [operator, admin] = within(map).getAllByRole('link');
     expect(operator.getAttribute('href')).toBe('#operator-setup');
     expect(operator.textContent).toContain('Make a client and send it its link');
-    expect(operator.textContent).toContain('4 screens');
+    expect(operator.textContent).toContain('9 screens');
     expect(admin.getAttribute('href')).toBe('#admin-setup');
     expect(within(map).getByText('The operator').parentElement!.textContent).toContain('PC');
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(18);
@@ -137,7 +137,12 @@ describe('the walks page: the map', () => {
       '1',
       '2',
       '3',
+      '5',
+      '6',
       '4',
+      '7',
+      '8',
+      '9',
     ]);
     expect(walk.textContent).toContain('Would you know this is our own door, not a client’s?');
     expect(walk.textContent).toContain('Does this say what to do?');

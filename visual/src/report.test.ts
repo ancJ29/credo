@@ -37,9 +37,9 @@ describe('the report', () => {
     expect(screens[7].id).toBe('8-save-conflict');
     expect(screens[7].languages.vi.words).toEqual(['text: vi']);
     expect(screens[7].languages.en.shown).toEqual({ kind: 'waiting' });
-    expect(report.tally).toEqual({ waiting: 26, yes: 0, no: 0, changed: 0 });
+    expect(report.tally).toEqual({ waiting: 36, yes: 0, no: 0, changed: 0 });
     expect(report.walks[0].tally).toEqual({ waiting: 18, yes: 0, no: 0, changed: 0 });
-    expect(report.walks[1].tally).toEqual({ waiting: 8, yes: 0, no: 0, changed: 0 });
+    expect(report.walks[1].tally).toEqual({ waiting: 18, yes: 0, no: 0, changed: 0 });
   });
 
   it('draws every screen at three widths, widest first, and keeps each person’s device width for the map', async () => {
@@ -97,7 +97,7 @@ describe('the report', () => {
     expect(first.languages.en.shown.kind).toBe('changed');
     expect(second.languages.vi.shown.kind).toBe('no');
     expect(report.orphans.map((orphan) => orphan.key)).toEqual(['admin-setup:9-gone:vi']);
-    expect(report.tally).toEqual({ waiting: 23, yes: 1, no: 2, changed: 1 });
+    expect(report.tally).toEqual({ waiting: 33, yes: 1, no: 2, changed: 1 });
   });
 
   it('hands the words reader the screen’s state, the language and whether it is about the menu', async () => {
@@ -107,7 +107,7 @@ describe('the report', () => {
       return [];
     });
 
-    expect(asked).toHaveLength(26);
+    expect(asked).toHaveLength(36);
     expect(asked).toContain('save-failed en false');
     expect(asked).toContain('conflict en false');
   });
@@ -132,7 +132,7 @@ describe('the report', () => {
     ]);
     expect(vi.shown).toEqual({ kind: 'waiting' });
     expect(report.walks[0].screens[0].languages.en.partners).toEqual([]);
-    expect(report.tally).toEqual({ waiting: 26, yes: 0, no: 0, changed: 0 });
+    expect(report.tally).toEqual({ waiting: 36, yes: 0, no: 0, changed: 0 });
     expect(report.walks[0].tally.no).toBe(0);
   });
 
@@ -163,7 +163,7 @@ describe('the report', () => {
     expect('mock' in drawn).toBe(false);
     expect(drawn.scene!.steps!.at(-1)).toEqual({ press: 'addPerson.submit' });
     expect(drawn.languages.en.words).toEqual(['text: staff-3-added en']);
-    expect(report.tally.waiting).toBe(58);
+    expect(report.tally.waiting).toBe(68);
   });
 
   it('waits for a reader that answers later, as a scene’s does', async () => {

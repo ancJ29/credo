@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
 import { ClientMade } from './ClientMade';
-import { MADE } from './mock/fixtures';
+
+const MADE = {
+  link: 'https://credo.example/login?client-code=minh-phat',
+  rootName: 'root',
+  password: 'q7Hn4VdM2xKp9sRw',
+};
 
 describe('ClientMade', () => {
   it('shows the link, the root’s name and its first password, to select and send', () => {

@@ -23,6 +23,14 @@ describe('a scene’s parts', () => {
     expect((await api.me()).user).toMatchObject({ name: 'Nguyễn Thị Lan', root: false });
   });
 
+  it('sign the operator in, with a handle kept apart from the root’s, when asked', async () => {
+    const operator = sceneParts({ operator: true, language: 'en' });
+    expect(operator.device.operatorAuthId()).toBe('fake.operator');
+    expect(await operator.api.operatorMe()).toEqual({ operator: { name: 'operator' } });
+
+    expect(sceneParts({ language: 'en' }).device.operatorAuthId()).toBeNull();
+  });
+
   it('refuse a code the data set does not hold, naming it', () => {
     expect(() => sceneParts({ as: 'EMP-9999', language: 'en' })).toThrow(
       'no EMP-9999 in the data set',

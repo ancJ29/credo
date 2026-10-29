@@ -26,7 +26,7 @@ export async function shot(
 ) {
   await page.mouse.move(0, 0);
   const name = `${screen}-${language}-${width}.png`;
-  if (test.info().project.name === 'fake') {
+  if (['fake', 'operator-fake'].includes(test.info().project.name)) {
     await page.screenshot({
       path: join(
         required('CREDO_FAKE_DIR', 'the fake run’s script gives it the folder for the pictures'),

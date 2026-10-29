@@ -44,7 +44,7 @@ function Filter<T extends string | number>({
 }
 
 /**
- * The walks as one static page: piece 1's screens and the operator's, each in every state, light
+ * The walks as one static page: piece 1's screens, each in every state, light
  * and dark, at 390, 768 and 1280 pixels, in Vietnamese and English. Its screens are the app's own components.
  */
 export function MockPage() {
@@ -58,7 +58,7 @@ export function MockPage() {
       <Container size="100%" py="md">
         <Stack gap="xl">
           <div>
-            <Title order={1}>The mock: piece 1 and the operator</Title>
+            <Title order={1}>The mock: piece 1</Title>
             <Text c="dimmed">
               Each screen of the walks, from fixtures, in each of its states. No network.
             </Text>

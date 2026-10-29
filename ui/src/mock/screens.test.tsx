@@ -50,13 +50,13 @@ describe('the walk’s screens', () => {
     expect(drawn('logo-too-large', 'en')).not.toContain(DICTIONARIES.en.settings.saveRefused);
   });
 
-  it('numbers piece 1’s screens as its walk does, screen 9 after them, and the operator’s walk from 11', () => {
-    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 9, 11, 12, 13]);
+  it('numbers piece 1’s screens as its walk does, screen 9 after them, and draws no operator screen', () => {
+    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 9]);
   });
 
-  it('draws screen 9 in credo’s colour and the operator’s pages in credo’s name, never a company’s', () => {
+  it('draws screen 9 in credo’s colour and in no company’s name', () => {
     const credo = '#3e618c';
-    for (const number of [9, 11, 12, 13]) {
+    for (const number of [9]) {
       const found = SCREENS.find((screen) => screen.number === number)!;
       expect(
         found.states.map((state) => state.colour),

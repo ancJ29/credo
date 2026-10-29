@@ -20,15 +20,17 @@ type SceneOptions = {
   as?: string;
   /** One call and the status it answers once, as the address's `cue` names it. */
   cue?: string;
+  /** Signed in as the operator, whose handle is kept apart from a client's. */
+  operator?: boolean;
   language: Language;
 };
 
 /**
  * The fake `Api` and the device it answers for, on the demo company, already signed in as the
- * root or as a data-set person and speaking `language`: what one scene, or one test of a page, is
+ * root, as a data-set person or as the operator, and speaking `language`: what one scene, or one test of a page, is
  * drawn from. Each call makes a fake of its own, seeded afresh.
  */
-export function sceneParts({ as, cue, language }: SceneOptions) {
+export function sceneParts({ as, cue, operator, language }: SceneOptions) {
   const found = as === undefined ? null : DEMO_EMPLOYEES.find((person) => person.code === as);
   if (found === undefined) throw new Error(`no ${as} in the data set`);
   const device = createDeviceStore(
@@ -36,6 +38,7 @@ export function sceneParts({ as, cue, language }: SceneOptions) {
       'credo.client': DEMO_CODE,
       'credo.language': language,
       'credo.session': found ? `fake.session.${found.id}` : 'fake.session',
+      ...(operator ? { 'credo.operator': 'fake.operator' } : {}),
     }),
   );
   return { api: createFakeApi({ device, cue: parseCue(cue ?? null) }), device };

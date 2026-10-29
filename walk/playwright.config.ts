@@ -30,13 +30,22 @@ export default defineConfig({
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixels: 0, threshold: 0 },
   },
   projects: [
-    { name: 'chromium', testIgnore: 'piece-2.spec.ts' },
+    { name: 'chromium', testIgnore: ['piece-2.spec.ts', 'operator.spec.ts'] },
     { name: 'fake', testMatch: 'piece-2.spec.ts' },
     {
       name: 'full',
       testMatch: 'piece-2.spec.ts',
       // A walk opens each of its screens on a client of its own, which the stack makes first: 15
       // openings, beyond the default budget of 30 seconds.
+      timeout: 120_000,
+      ...(reference ? { snapshotPathTemplate: `${reference}/{arg}{ext}` } : {}),
+    },
+    // The operator's walk, the same two ways: pictures only on the fake, and the full run on a stack
+    // of its own for each language and width, compared with those pictures.
+    { name: 'operator-fake', testMatch: 'operator.spec.ts' },
+    {
+      name: 'operator-full',
+      testMatch: 'operator.spec.ts',
       timeout: 120_000,
       ...(reference ? { snapshotPathTemplate: `${reference}/{arg}{ext}` } : {}),
     },

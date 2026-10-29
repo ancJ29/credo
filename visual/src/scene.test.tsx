@@ -61,6 +61,21 @@ describe('a scene on the walks page', () => {
     );
   });
 
+  it('signs the operator in when the scene says so, and leaves the operator’s door shut when it does not', async () => {
+    const { container, unmount } = scene({ path: '/operator/clients', operator: true });
+
+    await waitFor(() => expect(phase(container)).toBe('done'), ENDS);
+    expect(await screen.findByText('Bình An', {}, ENDS)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    unmount();
+
+    scene({ path: '/operator/clients' });
+    expect(
+      (await screen.findByRole('heading', { level: 2, name: 'Operator sign-in' }, ENDS))
+        .textContent,
+    ).toBe('Operator sign-in');
+  });
+
   it('shows the failure of a call the scene cues, as the app does', async () => {
     const { container } = scene({ path: '/staff', cue: 'listEmployees:503' });
 

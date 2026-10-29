@@ -37,10 +37,10 @@ afterEach(() => {
 });
 
 describe('the unsent choices', () => {
-  it('holds a fingerprint for each of the twenty-six screens in a language', () => {
+  it('holds a fingerprint for each of the thirty-six screens in a language', () => {
     const prints = fingerprintsOf(report);
 
-    expect(prints.size).toBe(26);
+    expect(prints.size).toBe(36);
     expect(prints.get(VI)).toMatch(/^[0-9a-f]{12}$/);
     expect(prints.get(VI)).not.toBe(prints.get(EN));
   });
