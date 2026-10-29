@@ -1,9 +1,9 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 14:17 +07:** the UI is fixed on the fake: the human's read (step 3), the
-pages (step 5), the walk on the fake (step 6) and the preview with its fake run (step 7) are done; all
-68 answers are yes and the fake run's 54 pictures are the reference for the full walk. **Next:** step
-8, the BFF ([steps](#steps)).
+**Where it stands — 2026-10-29 15:21 +07:** the UI is fixed on the fake (steps 3 to 7) and the BFF is
+built (step 8): the operator's list route, `madeAt` set by the BFF's clock, the link's one function and
+the data set's three clients on the stack, read live. **Next:** step 9, the full run's script
+([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -416,12 +416,29 @@ worktree; B to D will touch more of the same:
   of about 40 failed on the machine, a worker that did not start and a timing test, none on a case).
   **Then stop:** the UI is fixed here.
 
-- [ ] **8. The BFF.** Who: 🤖, after step 7, about half a day: `GET /api/operator/clients`, `madeAt`
+- [x] **8. The BFF.** Who: 🤖, after step 7, about half a day: `GET /api/operator/clients`, `madeAt`
   written by the create, the link's one function used by the create, the route list, the generator's
   clients with their times. Done when: the BFF's halves of rows 3, 4, 7, 8 and 10, and rows 13 to 17,
   22 and 26, each seen red once; `pnpm check` green at 100 %; live, `pnpm stack -- <command>`: the
   operator lists the data set's three with their days, makes one and lists four with the new one
   first, and a root's handle is a 401.
+  *Evidence:* 15:21 +07. `GET /api/operator/clients` (`listClients` in `bff/src/clients.ts`): one
+  c-storage list under `recordKeys.clientPrefix`, newest first, 500 on `more`, a record that does not
+  parse or a key that holds no code, behind the operator's session; the create writes `madeAt` from
+  the BFF's `now()` (a time in the body is a 400) and builds the link with `clientLinkPath`; the
+  generator makes the data set's other two clients with their fixed times and `seedClient` takes a
+  time. The BFF halves of rows 3, 4, 7, 8, 10, 13 to 17, 22 and 26 are held by route and generator
+  tests; 14 mutations of the new lines, 13 turned a test red from its assertion (the 14th, the index
+  parse check, still ends in a 500 through a `TypeError`, so only the log's message differs). Live,
+  `pnpm stack -- <command>`: the operator listed `binh-an`, `hoa-sen`, `demo` with their days
+  (21 Oct, 2 Oct and 14 Sep), made `live-check` (201, `/login?client-code=live-check`), listed four
+  with it first dated today, a root's handle was 401 and no handle 401. `pnpm check` exit 0 but for
+  `scripts`, which missed coverage only at `scripts/src/processes.ts#L83` (the timing test, open item
+  23 of `employee-list`) under load, and passed at 100 % alone; visual alone 100 %. Counts: shared 65
+  tests, ui 219, bff 160, scripts 77, visual 220, each at 100 %; eslint, prettier, knip and every
+  typecheck clean. c-storage unchanged, so no `make check`. The 88 scene dumps (the 70 of piece 1 and
+  2 and the operator's 18) are equal before and after, Mantine and React ids masked.
+
 - [ ] **9. The full run's script.** Who: 🤖, after step 8, about two hours: one script in `one-off/`
   runs the operator's spec once per language and width, each on a stack of its own, first against the
   fake run's pictures, then writing its bases, then comparing; piece 1's spec on a stack as before.

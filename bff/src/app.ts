@@ -2,6 +2,8 @@ import {
   AUTH_HEADER,
   CLIENT_HEADER,
   clientCodeSchema,
+  clientLinkPath,
+  type ClientListReply,
   type ConfigDoc,
   createClientRequestSchema,
   type CreateClientReply,
@@ -27,7 +29,7 @@ import {
   type UserView,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest } from 'fastify';
-import { createClient, ROOT_NAME } from './clients';
+import { createClient, listClients, ROOT_NAME } from './clients';
 import { HttpError, parse, replyFor } from './errors';
 import { verifyAgainstNobody, verifyPassword } from './password';
 import { createSessions } from './sessions';
@@ -251,13 +253,18 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     operator: await operatorSignedIn(request),
   }));
 
+  app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
+    await operatorSignedIn(request);
+    return { clients: await listClients(storage) };
+  });
+
   app.post(ROUTES.operatorClients, async (request, reply): Promise<CreateClientReply> => {
     await operatorSignedIn(request);
     const body = parse(createClientRequestSchema, request.body);
-    const made = await createClient(storage, body);
+    const made = await createClient(storage, { ...body, madeAt: now() });
     if (made === 'taken') throw new HttpError(409, 'That code is taken');
     return reply.status(201).send({
-      link: `/login?client-code=${body.code}`,
+      link: clientLinkPath(body.code),
       rootName: ROOT_NAME,
       password: made.password,
     });

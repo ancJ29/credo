@@ -4,6 +4,7 @@ import {
   type CStorageClient,
   CStorageError,
   configDocSchema,
+  clientListReplySchema,
   createClientReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
@@ -17,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import {
   bffOn,
+  DAY_MS,
   DEVICE,
   OPERATOR,
   ROOT,
@@ -149,7 +151,7 @@ describe('The operator signs in at /operator with a name and password of its own
 });
 
 describe('An operator route without the operator’s session is a 401, and a client’s session is not one', () => {
-  it('refuses me and make-a-client with no handle, a made-up one, and a client root’s', async () => {
+  it('refuses me, make-a-client and the list with no handle, a made-up one, and a client root’s', async () => {
     const t = await withOperator();
     await seedTenant(t.client, 'other-co');
     const root = await signIn(scoped(t.app, 'other-co'));
@@ -163,7 +165,9 @@ describe('An operator route without the operator’s session is a 401, and a cli
         headers,
         payload: acme,
       });
-      expect([me.statusCode, make.statusCode]).toEqual([401, 401]);
+      const list = await t.app.inject({ method: 'GET', url: '/api/operator/clients', headers });
+      expect([me.statusCode, make.statusCode, list.statusCode]).toEqual([401, 401, 401]);
+      expect(list.body).not.toContain('other-co');
     }
     expect(await t.client.getRecord(recordKeys.client(acme.code))).toBeNull();
   });
@@ -418,7 +422,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/operator/sign-in (POST)',
         '├── /api/operator/sign-out (POST)',
         '├── /api/operator/me (GET, HEAD)',
-        '├── /api/operator/clients (POST)',
+        '├── /api/operator/clients (GET, HEAD, POST)',
         '├── /api/staff-setup (GET, HEAD, PUT)',
         '└── /api/employees (GET, HEAD, POST)',
         '    └── /:id (GET, HEAD, PUT)',
@@ -426,6 +430,173 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '        └── /password (PUT)',
       ].join('\n')}\n`,
     );
+  });
+});
+
+describe('The operator is shown every client on the stack, newest first, from the index alone', () => {
+  const list = (t: Awaited<ReturnType<typeof signedInOperator>>) =>
+    t.app.inject({ method: 'GET', url: '/api/operator/clients', headers: withAuth(t.authId) });
+
+  it('lists each client’s code, name as made, made-on time and link path, newest first, those with no time after them by code', async () => {
+    const t = await signedInOperator();
+    await seedTenant(t.client, 'zeta-co');
+    await seedTenant(t.client, 'alpha-co');
+    await createClient(t.client, {
+      code: 'older',
+      name: 'Older',
+      madeAt: Date.UTC(2026, 8, 1, 12),
+    });
+    expect((await t.make(acme)).statusCode).toBe(201);
+    t.time.advance(DAY_MS);
+    expect((await t.make({ code: 'newer', name: 'Newer' })).statusCode).toBe(201);
+
+    const answer = await list(t);
+    expect(answer.statusCode).toBe(200);
+    const { clients } = clientListReplySchema.parse(answer.json());
+    expect(clients.map((client) => client.code)).toEqual([
+      'newer',
+      'acme',
+      'older',
+      'alpha-co',
+      'zeta-co',
+    ]);
+    expect(clients[0]).toEqual({
+      code: 'newer',
+      name: 'Newer',
+      madeAt: Date.UTC(2026, 9, 29, 9),
+      link: '/login?client-code=newer',
+    });
+    expect(clients.map((client) => client.madeAt)).toEqual([
+      Date.UTC(2026, 9, 29, 9),
+      Date.UTC(2026, 9, 28, 9),
+      Date.UTC(2026, 8, 1, 12),
+      null,
+      null,
+    ]);
+  });
+
+  it('The link’s path is the one the create answered, built by one function', async () => {
+    const t = await signedInOperator();
+    const made = createClientReplySchema.parse((await t.make(acme)).json());
+
+    const { clients } = clientListReplySchema.parse((await list(t)).json());
+    expect(clients.map((client) => client.link)).toEqual([made.link]);
+  });
+
+  it('Create writes the time of the BFF’s own clock into the index, and a time sent by the caller is refused', async () => {
+    const t = await signedInOperator();
+    expect((await t.make({ ...acme, madeAt: 5 })).statusCode).toBe(400);
+    expect(await t.client.getRecord(recordKeys.client(acme.code))).toBeNull();
+
+    expect((await t.make(acme)).statusCode).toBe(201);
+    const index = storedClientSchema.parse((await t.client.getRecord('client.acme'))?.data);
+    expect(index.madeAt).toBe(Date.UTC(2026, 9, 28, 9));
+  });
+
+  it('shows the name given when the client was made, though its root has renamed the company since', async () => {
+    const t = await signedInOperator();
+    const made = createClientReplySchema.parse((await t.make(acme)).json());
+    const app = scoped(t.app, 'acme');
+    const root = await signIn(app, { name: made.rootName, password: made.password });
+    const doc = configDocSchema.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/api/config',
+          headers: withAuth(root.body.authId),
+        })
+      ).json(),
+    );
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/api/config',
+      headers: withAuth(root.body.authId),
+      payload: { config: { ...doc.config, name: 'Renamed Trading' }, version: doc.version },
+    });
+    expect(saved.statusCode).toBe(200);
+
+    const { clients } = clientListReplySchema.parse((await list(t)).json());
+    expect(clients.map((client) => client.name)).toEqual(['Acme Trading']);
+  });
+
+  it('A code already taken leaves the client that holds it as it was, in the list too', async () => {
+    const t = await signedInOperator();
+    await t.make(acme);
+    t.time.advance(DAY_MS);
+    expect((await t.make({ code: 'acme', name: 'Other Name' })).statusCode).toBe(409);
+
+    const { clients } = clientListReplySchema.parse((await list(t)).json());
+    expect(clients).toEqual([
+      {
+        code: 'acme',
+        name: 'Acme Trading',
+        madeAt: Date.UTC(2026, 9, 28, 9),
+        link: '/login?client-code=acme',
+      },
+    ]);
+  });
+
+  it('reads no record of a client’s own: a list over one reads the prefix once and nothing else', async () => {
+    let calls: ReturnType<typeof watched>['calls'] = [];
+    const t = await signedInOperator({
+      wrap: (client) => {
+        const w = watched(client);
+        calls = w.calls;
+        return {
+          ...w.wrapped,
+          listRecords: (prefix) => {
+            calls.push({ op: 'get', key: `list:${prefix}` });
+            return client.listRecords(prefix);
+          },
+        };
+      },
+    });
+    await t.make(acme);
+    calls.length = 0;
+    await list(t);
+
+    const own = calls.filter((call) => !call.key.startsWith('operator.'));
+    expect(own).toEqual([{ op: 'get', key: 'list:client.' }]);
+  });
+
+  it('answers 500, naming no key, when c-storage holds more than it returned, a record does not parse or a key holds no code', async () => {
+    const broken = {
+      more: { records: [], more: true },
+      record: {
+        records: [{ key: 'client.secret-co', data: { id: 'not an id' }, tag: 'x' }],
+        more: false,
+      },
+      key: {
+        records: [
+          {
+            key: 'client.NOT A CODE',
+            data: { id: '3f2a91bc-0000-4000-8000-000000000001', name: 'X' },
+            tag: 'x',
+          },
+        ],
+        more: false,
+      },
+    };
+    for (const [kind, reply] of Object.entries(broken)) {
+      const t = await signedInOperator({
+        wrap: (client) => ({ ...client, listRecords: () => Promise.resolve(reply) }),
+      });
+      const answer = await list(t);
+      expect(answer.statusCode, kind).toBe(500);
+      expect(answer.body, kind).not.toContain('secret-co');
+      expect(answer.body, kind).not.toContain('NOT A CODE');
+    }
+  });
+
+  it('answers 503 when c-storage does not answer, never a signed-out 401', async () => {
+    const t = await signedInOperator({
+      wrap: (client) => ({
+        ...client,
+        listRecords: () => Promise.reject(new CStorageError(null, 'c-storage did not answer')),
+      }),
+    });
+
+    expect((await list(t)).statusCode).toBe(503);
   });
 });
 
@@ -454,6 +625,7 @@ describe('The local stack makes its demo client by the same function, with setti
     const made = await createClient(t.client, {
       code: 'demo',
       name: 'Minh Phát',
+      madeAt: Date.UTC(2026, 8, 14, 12),
       settings: { colour: '#2f7d6d', languages: ['vi'] },
     });
     if (made === 'taken') throw new Error('the code was free');

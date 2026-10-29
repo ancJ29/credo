@@ -18,6 +18,7 @@ import {
   AUTH_HEADER,
 } from '@credo/shared';
 import {
+  DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
@@ -46,10 +47,15 @@ const ADDER = 'EMP-0001';
  * person's unit is named by the data set's position in its setup. A client of the same code stops
  * the run: nothing is replaced.
  */
-export async function seedClient(storage: CStorageClient, code: string): Promise<SeededClient> {
+export async function seedClient(
+  storage: CStorageClient,
+  code: string,
+  madeAt: number = Date.now(),
+): Promise<SeededClient> {
   const made = await createClient(storage, {
     code,
     name: DEMO_CONFIG.name,
+    madeAt,
     settings: DEMO_CONFIG,
   });
   if (made === 'taken') throw new Error('the service already holds data: not seeded over');
@@ -137,7 +143,8 @@ export async function seedClient(storage: CStorageClient, code: string): Promise
 }
 
 /**
- * The stack's data: the operator's account, and the demo client made from the data set. Only
+ * The stack's data: the operator's account, the demo client made from the data set, and the
+ * data set's other clients, made by the same function with their fixed times. Only
  * hashes are stored. Every write is where nothing exists, so a second run over a service stops
  * rather than replaces it. Returns the root's first password and each person's.
  */
@@ -148,6 +155,13 @@ export async function seedDemo(
   const operator: StoredOperator = { passwordHash: await hashPassword(operatorPassword) };
   const saved = await storage.putRecord(recordKeys.operatorUser(OPERATOR_NAME), operator, null);
   if (saved === 'moved') throw new Error('the service already holds data: not seeded over');
-  const { rootPassword, people } = await seedClient(storage, DEMO_CODE);
+  const demo = DEMO_CLIENTS.find((client) => client.code === DEMO_CODE)!;
+  const { rootPassword, people } = await seedClient(storage, demo.code, demo.madeAt);
+  // The operator's list shows three clients: the other two are only made, with their fixed times.
+  for (const { code, name, madeAt } of DEMO_CLIENTS.filter((client) => client !== demo)) {
+    if ((await createClient(storage, { code, name, madeAt })) === 'taken') {
+      throw new Error('the service already holds data: not seeded over');
+    }
+  }
   return { rootPassword, people };
 }

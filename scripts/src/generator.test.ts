@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { verifyPassword } from '@credo/bff/password';
 import { buildApp } from '@credo/bff';
 import {
+  clientLinkPath,
+  clientListReplySchema,
   type CStorageClient,
   recordKeys,
   storedClientSchema,
@@ -12,6 +14,7 @@ import {
   tenantConfigSchema,
 } from '@credo/shared';
 import {
+  DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
@@ -126,6 +129,50 @@ describe('the demo generator', () => {
     await expect(seedDemo(storage, { operatorPassword: 'fourth' })).rejects.toThrow(
       'not seeded over',
     );
+
+    // one of the data set's other clients already there
+    records.delete(recordKeys.operatorUser(OPERATOR_NAME));
+    records.delete(recordKeys.client(DEMO_CODE));
+    await expect(seedDemo(storage, { operatorPassword: 'fifth' })).rejects.toThrow(
+      'not seeded over',
+    );
+  });
+
+  it('The stack’s operator lists the data set’s three clients with their fixed days, the demo company’s name as made, and newest first', async () => {
+    const { storage } = memoryStorage();
+    const operatorPassword = newOperatorPassword();
+    await seedDemo(storage, { operatorPassword });
+    const app = buildApp({ storage, now: () => Date.now(), logger: false });
+    const session = await app.inject({
+      method: 'POST',
+      url: '/api/operator/sign-in',
+      headers: { 'x-device-id': 'device-aaaa-0001' },
+      payload: { name: OPERATOR_NAME, password: operatorPassword },
+    });
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/operator/clients',
+      headers: { 'x-auth-id': session.json<{ authId: string }>().authId },
+    });
+
+    expect(clientListReplySchema.parse(listed.json()).clients).toEqual(
+      [...DEMO_CLIENTS]
+        .sort((a, b) => b.madeAt - a.madeAt)
+        .map((client) => ({ ...client, link: clientLinkPath(client.code) })),
+    );
+  });
+
+  it('A client made through the stack’s seed door is made now, and one given a time is made then', async () => {
+    const { records, storage } = memoryStorage();
+    const before = Date.now();
+    await seedClient(storage, 'walk-1');
+    await seedClient(storage, 'walk-2', 42);
+
+    expect(
+      storedClientSchema.parse(records.get(recordKeys.client('walk-1'))).madeAt,
+    ).toBeGreaterThanOrEqual(before);
+    expect(storedClientSchema.parse(records.get(recordKeys.client('walk-2'))).madeAt).toBe(42);
   });
 
   describe('one data set for the fake and the stack', () => {

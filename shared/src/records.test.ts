@@ -61,7 +61,8 @@ describe('the index prefix', () => {
       tenant.staffSetup,
     ];
     for (const key of others) expect(key.startsWith('client.'), key).toBe(false);
-    expect(recordKeys.client('acme').startsWith('client.')).toBe(true);
+    expect(recordKeys.client('acme').startsWith(recordKeys.clientPrefix)).toBe(true);
+    expect(recordKeys.clientPrefix).toBe('client.');
   });
 });
 

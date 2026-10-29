@@ -76,7 +76,7 @@ export async function runRidge(
     if (command === 'tenant') {
       const [code, name] = rest;
       if (!clientCodeSchema.safeParse(code).success || !name) throw new Error(USAGE);
-      const made = await createClient(client(), { code, name });
+      const made = await createClient(client(), { code, name, madeAt: Date.now() });
       if (made === 'taken') throw new Error(`the code ${code} names a client already`);
       io.out(made.password);
       return 0;

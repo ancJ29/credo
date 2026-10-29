@@ -3,9 +3,12 @@ import { z } from 'zod';
 /** What the BFF's one c-storage service holds, and under which keys. A client is a tenant: its
  * records sit under its minted id, and its code reaches the id through one index record. This is
  * the layout's one home, so no other file builds a key. */
+const clientPrefix = 'client.';
 export const recordKeys = {
   /** The index: a client's code to its id. Written last, when the client is made. */
-  client: (code: string) => `client.${code}`,
+  client: (code: string) => `${clientPrefix}${code}`,
+  /** What the operator's list reads: every index key starts with it, and no other key does. */
+  clientPrefix,
   operatorUser: (name: string) => `operator.user.${name}`,
   operatorSession: (sessionId: string) => `operator.session.${sessionId}`,
   /** Every record of one tenant, by its minted id. */
