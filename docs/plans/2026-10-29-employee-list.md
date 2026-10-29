@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 10:38 +07:** steps 2 to 10 are ticked: group A's review and the re-review of its fixes are done, every finding fixed or deferred with its home (steps 12 and 14), and no walk screen changed. **Next:** step 11, the human's full run, on the commit step 10 ends on.
+**Where it stands — 2026-10-29 10:46 +07:** group A is done: steps 2 to 11 are ticked, its 16 screens walked on the fake and on the full stack with 0 differences, its bases committed and no answer open. **Next:** step 12, group B's pages and walk on the fake, alone; then C and D in parallel worktrees from B's end, as the human decided.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -798,12 +798,24 @@ itself:
     cases read right (first made). *Corrected by the
     re-review:* that rig's messages were invented, and a real Playwright 1.64 difference read red; see
     the re-review's evidence below.
-- [ ] **11. A's full walk and final review.** Who: 👤 runs the script, after step 10, about 30
+- [x] **11. A's full walk and final review.** Who: 👤 runs the script, after step 10, about 30
   minutes; 🤖 reads. Done when: the log read whole; each screen that differs from the fake's named,
   with its cause, and fixed where it is wrong; its answers removed and answered again on the walks
   page beside the full run's picture and its difference; the second run green at threshold 0, no
   warning; A's 96 bases committed, and piece 1's moved bases read in git's diff (the menu alone); the
   page shows none waiting and no open "no".
+  *Evidence:* the human's full run at `9b1c7c7`, its log `logs/full-run-employee-list.log` (278 lines,
+  10:39 to 10:44) read whole by a subagent and its folder `walks/full-run-2026-10-29-103910-9b1c7c7/`
+  read: the three passes of piece 2 on one stack each "6 passed", piece 1's and the operator's walks
+  "12 passed" written and "12 passed" compared, and no error, warning, timeout, retry, flaky or skip
+  line (the "snapshot doesn't exist, writing actual" notices are the write pass's own). The verdict is
+  "green", pass 1 against the fake run's pictures with 0 differences, 0 missing references and 0
+  errors (`pass1.json`: 6 expected, 0 unexpected, 0 flaky; `vs-fake/` empty; every pass exited 0), so
+  no screen's answers were removed and nothing is asked of the human again. Committed: 96 new bases
+  of piece 2 (16 screens x 2 languages x 3 widths) and 20 moved ones of piece 1 (screens 3, 4, 5, 7
+  and 8, in en and vi at 1280 and 768), the operator's unchanged; the moved ones read in git's diff
+  and in a pair of pictures, the menu's two new entries alone. `pnpm report` after the commit reads 0
+  waiting, 0 asked again, 0 no, 58 yes.
 
 **Group B, the record and the list.** Each step as its group A step, for rows 18 to 24, 34 and 45.
 
