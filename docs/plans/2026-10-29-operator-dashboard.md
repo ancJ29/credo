@@ -1,8 +1,9 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 00:42 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
-built (step 8) and the full run's script is written, not run (step 9). **Next:** step 10, the review
-by a model other than the author's ([steps](#steps)).
+**Where it stands — 2026-10-30 05:50 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+built (step 8), the full run's script is written (step 9), the review's six findings are fixed
+(step 10) and the full walk is green with the operator's 54 bases committed (step 11). **Next:**
+step 12, the recap ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -479,10 +480,28 @@ worktree; B to D will touch more of the same:
   command, and its load is compared as a decimal (12.99 is refused above 12, either decimal mark).
   `pnpm check` exit 0, no warning: shared 65 tests, ui 226, bff 161, scripts 79, visual 221, each at
   100 %. ShellCheck clean.
-- [ ] **11. The full walk.** Who: 👤 runs the script, after step 10, about 20 minutes; 🤖 reads. Done
+- [x] **11. The full walk.** Who: 👤 runs the script, after step 10, about 20 minutes; 🤖 reads. Done
   when: the log read whole; each screen that differs from the fake's named with its cause and asked
   again; the second pass green at threshold 0, no warning; the operator's 54 bases committed, piece 1's
   and piece 2's read unchanged; the walks page shows nothing waiting and no open "no".
+  *Evidence:* 05:50 +07. The human's full run, 2026-10-30 05:40:25 to 05:44:38 +07, of
+  `20261030-0040-full-run-operator-dashboard.sh` on `29e949f`, clean (log lines 1 to 441, read whole
+  by another agent): 54 pictures expected, 9 screens x 2 languages x 3 widths (line 4); 18 stacks,
+  every exit 0; pass 1 against the fake run's pictures 6 passed, `0 pictures differ, 0 have no
+  reference, 0 other errors, 54 screens reached` (lines 299 to 306), so no screen needs a cause or a
+  new question; the repo since the fake run's `63ae46b` is 3 files, +60 -2, `ui` tests only; pass 2
+  wrote 9 bases a run and pass 3 read them back at threshold 0, `pass 2: 6 passed, 0 not; pass 3: 6
+  passed, 0 not; 54 bases, 54 expected` (line 309). Piece 1's bases written then compared on another
+  stack, 6 passed and 6 passed (lines 311 to 357); piece 2's 96 compared with nothing written, 6
+  passed (from line 358). No warning or error line. Verdict, line 440: `green: 54 operator bases
+  written and read back at threshold 0, piece 1's too, piece 2's 96 unmoved; 0 pictures differ from
+  the fake's`. On disk before the commit, `git status` showed the 54 new `operator-full-darwin`
+  files and nothing else, so no byte of piece 1's or piece 2's bases moved. The 24 old bases (4
+  screens x 6, all `-chromium-darwin`, line 310) are removed in `178bef4` with the 54 new: the
+  `chromium` project ignores `operator.spec.ts` (`walk/playwright.config.ts#L33`), the other four
+  projects name a suffix of their own, and `git grep` finds no other reader of the folder. The walks
+  page was last read at step 7 (0 waiting, 0 no, 68 yes); no screen's words changed since, as the 0
+  differing pictures show. **Then stop.**
 - [ ] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
   the review's findings tagged, and the hazard of reverting past this piece on ridge repeated.
 - [ ] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
