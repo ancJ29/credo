@@ -1,9 +1,8 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 15:21 +07:** the UI is fixed on the fake (steps 3 to 7) and the BFF is
-built (step 8): the operator's list route, `madeAt` set by the BFF's clock, the link's one function and
-the data set's three clients on the stack, read live. **Next:** step 9, the full run's script
-([steps](#steps)).
+**Where it stands — 2026-10-30 00:42 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+built (step 8) and the full run's script is written, not run (step 9). **Next:** step 10, the review
+by a model other than the author's ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -443,6 +442,17 @@ worktree; B to D will touch more of the same:
   runs the operator's spec once per language and width, each on a stack of its own, first against the
   fake run's pictures, then writing its bases, then comparing; piece 1's spec on a stack as before.
   Done when: `playwright test --list` reads the operator's six runs; `pnpm check` green.
+  *Evidence:* 00:42 +07. The script is one file in the credo root's `one-off/`, written on the model
+  of piece 2's full run, not committed and not run (it needs a browser). `playwright test --list
+  --project operator-full` reads 6 tests, and the script's pattern for each run (device, width,
+  language) matches exactly 1, checked in the script before it acts. Because the walk makes a client
+  by a fixed code, a second pass on a stack would meet it, so each pass of each run has a stack of its
+  own: 6 runs x 3 passes (against the fake run's pictures, the bases written, compared) = 18 stacks,
+  and piece 1's write and compare 2 more. It refuses before acting (branch, clean tree, tools, another
+  run going, load above 12, counts, the fake run's 54 names), counts the 54 `operator-full` bases and
+  names the old `chromium` ones it leaves for step 11. ShellCheck clean; its refusals and the listing
+  checks were replayed, and the pass-1 reader seen on a moved picture and on a timeout. No code
+  changed, so `pnpm check` stands as at step 8. **Then stop.**
 - [ ] **10. The review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or
   deferred with its reason; `pnpm check` green.
@@ -470,7 +480,8 @@ for the operator console plan.
 
 ## Unverified
 
-- **A stack's start**, six in a full run: a few seconds each, unmeasured.
+- **A stack's start**, twenty in a full run (18 for the operator's six runs, 2 for piece 1): a few
+  seconds each plus a build, unmeasured; the script's 15 to 25 minutes is a guess.
 - **Copying from the page** needs the browser's clipboard, which a secure address gives: ridge's
   HTTPS and the local loopback. jsdom has none, so the tests stub it; the walk sees the button only.
 - **The header on a phone** holds the menu button, credo's name, the badge and the user's button at
