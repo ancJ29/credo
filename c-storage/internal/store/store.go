@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"unicode/utf8"
 )
 
 // Schema is the database's one shape; sqlitedb.Open applies it to a new file.
@@ -124,4 +125,63 @@ func (s *Store) Put(ctx context.Context, code, key string, data json.RawMessage,
 // Remove deletes key, present or not.
 func (s *Store) Remove(ctx context.Context, code, key string, p *Precondition) error {
 	return s.write(ctx, code, key, p, `DELETE FROM records WHERE service_code = ? AND key = ?`, code, key)
+}
+
+// MaxList bounds one list: a caller that needs more reads it as `more` and decides, never as a
+// short list.
+const MaxList = 1000
+
+// Listed is one record of a list: its key and its data as stored, whose Tag a caller reads.
+type Listed struct {
+	Key  string
+	Data json.RawMessage
+}
+
+// prefixEnd is the least string above every string that starts with prefix, or "" when none is:
+// the prefix with its last character raised by one. SQLite orders text by bytes, which for UTF-8
+// is the order of code points, so keys from the prefix up to this bound are exactly the keys that
+// start with it.
+func prefixEnd(prefix string) string {
+	runes := []rune(prefix)
+	for i := len(runes) - 1; i >= 0; i-- {
+		switch runes[i] {
+		case utf8.MaxRune:
+			continue
+		case 0xD7FF: // the next code point is a surrogate, which no text holds
+			runes[i] = 0xE000
+		default:
+			runes[i]++
+		}
+		return string(runes[:i+1])
+	}
+	return ""
+}
+
+// List returns the records whose key starts with prefix, in key order, at most MaxList of them,
+// and whether more are left. A prefix is a literal: no character in it is a pattern. On an error
+// the records are not to be read.
+func (s *Store) List(ctx context.Context, code, prefix string) (records []Listed, more bool, err error) {
+	query, args := `SELECT key, data FROM records WHERE service_code = ? AND key >= ?`, []any{code, prefix}
+	if end := prefixEnd(prefix); end != "" {
+		query, args = query+` AND key < ?`, append(args, end)
+	}
+	rows, err := s.db.QueryContext(ctx, query+` ORDER BY key LIMIT ?`, append(args, MaxList+1)...)
+	if err != nil {
+		return nil, false, err
+	}
+	defer rows.Close()
+	records = []Listed{}
+	// A TEXT column scanned into a string cannot fail, and rows.Err is the cursor's; both are joined
+	// into the one error a caller reads before it reads the records.
+	var failed error
+	for rows.Next() {
+		var key, data string
+		failed = errors.Join(failed, rows.Scan(&key, &data))
+		records = append(records, Listed{Key: key, Data: json.RawMessage(data)})
+	}
+	failed = errors.Join(failed, rows.Err())
+	if len(records) > MaxList {
+		return records[:MaxList], true, failed
+	}
+	return records, false, failed
 }

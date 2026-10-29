@@ -65,11 +65,22 @@ const recordReplySchema = z.object({ record: z.object({ data: z.unknown(), tag: 
 
 export type StoredRecord = { data: unknown; tag: string };
 
+const listReplySchema = z.object({
+  records: z.array(z.object({ key: z.string(), data: z.unknown(), tag: z.string() })),
+  more: z.boolean(),
+});
+
+/** What a list reads: the records under a prefix in key order, and whether c-storage holds more
+ * than its bound of 1,000. A caller that cannot work from a part reads `more` as a failure. */
+export type RecordList = { records: (StoredRecord & { key: string })[]; more: boolean };
+
 /** One service's records. Its keys belong to the instance, never to the process, so two clients
  * of two services (or a test's and the BFF's) never share a key. */
 export type CStorageClient = {
   /** A record that is not there is null; the tag is the one to send back in `ifTag`. */
   getRecord(key: string): Promise<StoredRecord | null>;
+  /** The records whose key starts with `prefix`, a non-empty literal, in key order, at most 1,000. */
+  listRecords(prefix: string): Promise<RecordList>;
   /** `ifTag` a string writes only over the record as that tag read it, null only where none
    * exists, undefined over whatever is there. A moved record is 'moved', not an error. */
   putRecord(key: string, data: unknown, ifTag?: string | null): Promise<'saved' | 'moved'>;
@@ -97,6 +108,16 @@ export function createCStorageClient(
       if (!parsed.success)
         throw new CStorageError(null, `c-storage sent a record in no known shape`);
       return parsed.data.record;
+    },
+
+    async listRecords(prefix) {
+      const path = `${base}?prefix=${encodeURIComponent(prefix)}`;
+      const what = 'GET a record list';
+      const response = await send(connection, path, { method: 'GET', headers: keyed }, what);
+      if (response.status !== 200) throw refused(response, what);
+      const parsed = listReplySchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success) throw new CStorageError(null, `c-storage sent a list in no known shape`);
+      return parsed.data;
     },
 
     async putRecord(key, data, ifTag) {

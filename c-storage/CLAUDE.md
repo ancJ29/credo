@@ -2,7 +2,8 @@
 Stack: Go 1.26, modernc.org/sqlite · Gate: make check · Ship: none yet
 
 Key-value records for the BFF, each under its own service: one Go binary, one SQLite file, one
-listener. Five routes, each with a caller in [the app frame](../docs/plans/2026-10-27-app-frame.md).
+listener. Six routes, each with a caller in [the app frame](../docs/plans/2026-10-27-app-frame.md) or
+[the employee list](../docs/plans/2026-10-29-employee-list.md#the-records).
 Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decision or hazard.
 
 ## Non-obvious facts

@@ -129,6 +129,54 @@ describe('the c-storage client', () => {
   });
 });
 
+describe('listing records', () => {
+  const listed = (more: boolean) =>
+    new Response(
+      JSON.stringify({
+        records: [
+          { key: 'employee.a', data: { n: 1 }, tag: 't1' },
+          { key: 'employee.b', data: {}, tag: 't2' },
+        ],
+        more,
+      }),
+      { status: 200 },
+    );
+
+  it('sends the prefix as one encoded query value, with its own keys, and reads the list and its more', async () => {
+    const { calls, call } = fake(listed(false), listed(true));
+    const list = await connect(call).listRecords('tenant.a b&c.employee.');
+    expect(list.records.map((r) => r.key)).toEqual(['employee.a', 'employee.b']);
+    expect(list.records[0]).toEqual({ key: 'employee.a', data: { n: 1 }, tag: 't1' });
+    expect(list.more).toBe(false);
+    expect(calls[0]?.url).toBe(
+      'http://cs.test/api/records/svc%20a?prefix=tenant.a%20b%26c.employee.',
+    );
+    expect(calls[0]?.init.method).toBe('GET');
+    expect(headersOf(calls[0]).get('x-access-key')).toBe('service-key');
+    expect((await connect(call).listRecords('p')).more).toBe(true);
+  });
+
+  it('refuses any other status, a list in no known shape and a call that gets no answer', async () => {
+    for (const answer of [
+      new Response('{}', { status: 404 }),
+      new Response('{}', { status: 400 }),
+      new Response('{"records":[]}', { status: 200 }),
+      new Response('not json', { status: 200 }),
+      new TypeError('fetch failed'),
+    ]) {
+      const error = await connect(fake(answer).call)
+        .listRecords('p')
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(CStorageError);
+    }
+    const refusedStatus = await connect(fake(new Response('{}', { status: 400 })).call)
+      .listRecords('user.nguyen.')
+      .catch((e: unknown) => e);
+    expect(refusedStatus).toMatchObject({ status: 400 });
+    expect((refusedStatus as Error).message).not.toContain('nguyen');
+  });
+});
+
 describe('registering a service', () => {
   const connection = (call: typeof fetch) => ({
     baseUrl: 'http://cs.test',

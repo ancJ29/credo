@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"unicode/utf8"
 
 	"credo/c-storage/internal/httpx"
 	"credo/c-storage/internal/store"
@@ -72,6 +73,38 @@ func (s *Server) getRecord(w http.ResponseWriter, r *http.Request) {
 		body.Record.Tag = store.Tag(data)
 		httpx.JSON(w, http.StatusOK, body)
 	}
+}
+
+type listBody struct {
+	Records []listedRecord `json:"records"`
+	More    bool           `json:"more"`
+}
+
+type listedRecord struct {
+	Key  string          `json:"key"`
+	Data json.RawMessage `json:"data"`
+	Tag  string          `json:"tag"`
+}
+
+// listRecords answers the records under one prefix, never a short list that looks whole: more
+// than store.MaxList is `more`, and a missing or empty prefix is refused, since it would read the
+// whole service.
+func (s *Server) listRecords(w http.ResponseWriter, r *http.Request) {
+	prefixes := r.URL.Query()["prefix"]
+	if len(prefixes) != 1 || prefixes[0] == "" || !utf8.ValidString(prefixes[0]) {
+		httpx.BadRequest(w, "prefix is one non-empty string")
+		return
+	}
+	found, more, err := s.store.List(r.Context(), r.PathValue("serviceCode"), prefixes[0])
+	if err != nil {
+		httpx.Internal(w, err)
+		return
+	}
+	body := listBody{Records: make([]listedRecord, len(found)), More: more}
+	for i, f := range found {
+		body.Records[i] = listedRecord{Key: f.Key, Data: f.Data, Tag: store.Tag(f.Data)}
+	}
+	httpx.JSON(w, http.StatusOK, body)
 }
 
 func (s *Server) pushRecord(w http.ResponseWriter, r *http.Request) {

@@ -80,6 +80,12 @@ describe('the c-storage client sends what its Bruno request sends', () => {
     expect(wire).toEqual(requestOf('02-records/04-get-record.yml', values));
   });
 
+  it('lists records as 20-list-records-by-prefix does', async () => {
+    const request = requestOf('02-records/20-list-records-by-prefix.yml', values);
+    const wire = await sent((call) => client(call).listRecords(`${key}.`));
+    expect(wire).toEqual(request);
+  });
+
   it('writes a record whole as 02-push-record does', async () => {
     const data = (requestOf('02-records/02-push-record.yml', values).body as { data: unknown })
       .data;

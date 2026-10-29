@@ -1,0 +1,41 @@
+info:
+  name: Push the first record of a list
+  type: http
+  seq: 19
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}.one",
+        "data": { "n": 1 }
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201 {}", function() {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody()).to.deep.equal({});
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The second record the list reads: **Expected: 201**.

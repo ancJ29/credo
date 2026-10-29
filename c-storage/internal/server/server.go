@@ -39,6 +39,7 @@ func Build(internalKey, superAdminKey string, st *store.Store) *Server {
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { httpx.NotFound(w) })
 
 	s.handle("GET /api/records/{serviceCode}/{key}", s.withAccessKey(s.getRecord))
+	s.handle("GET /api/records/{serviceCode}", s.withAccessKey(s.listRecords))
 	s.handle("POST /api/records/{serviceCode}", s.withAccessKey(s.pushRecord))
 	s.handle("DELETE /api/records/{serviceCode}/{key}", s.withAccessKey(s.removeRecord))
 

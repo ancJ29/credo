@@ -1,0 +1,41 @@
+info:
+  name: Push the second record of a list
+  type: http
+  seq: 18
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/records/{{serviceCode}}"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Access-Key
+      value: "{{accessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "key": "{{recordKey}}.two",
+        "data": { "n": 2 }
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201 {}", function() {
+          expect(res.getStatus()).to.equal(201);
+          expect(res.getBody()).to.deep.equal({});
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Pushed before the first, so the list below shows key order, not push order.

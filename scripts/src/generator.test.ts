@@ -18,6 +18,14 @@ function memoryStorage() {
   const storage: CStorageClient = {
     getRecord: (key) =>
       Promise.resolve(records.has(key) ? { data: records.get(key), tag: `tag-${key}` } : null),
+    listRecords: (prefix) =>
+      Promise.resolve({
+        records: [...records]
+          .filter(([key]) => key.startsWith(prefix))
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([key, data]) => ({ key, data, tag: `tag-${key}` })),
+        more: false,
+      }),
     putRecord: (key, data, ifTag) => {
       if (ifTag === null && records.has(key)) return Promise.resolve('moved');
       records.set(key, data);

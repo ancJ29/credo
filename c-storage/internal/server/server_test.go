@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -89,6 +91,7 @@ var everyRoute = []route{
 	{"GET", "/api/records/svc/k", "", true},
 	{"POST", "/api/records/svc", `{"key":"k","data":{}}`, true},
 	{"DELETE", "/api/records/svc/k", "", true},
+	{"GET", "/api/records/svc?prefix=k", "", true},
 	{"POST", "/api/services/register", `{"code":"new","accessKey":"k"}`, false},
 }
 
@@ -341,6 +344,104 @@ func TestAWriteNamingAMovedRecordIsRefused(t *testing.T) {
 	call(t, s, "GET", "/api/records/svc/k", "", http.StatusNotFound)
 }
 
+// seed writes records straight into the file, as the keys name them, under one service.
+func seed(t *testing.T, db *sql.DB, service string, keys ...string) {
+	t.Helper()
+	for _, key := range keys {
+		if _, err := db.Exec(`INSERT INTO records (service_code, key, data) VALUES (?, ?, ?)`, service, key, `{"key":"`+key+`"}`); err != nil {
+			t.Fatalf("seed %s: %v", key, err)
+		}
+	}
+}
+
+type listAnswer struct {
+	Records []struct {
+		Key  string
+		Data map[string]string
+		Tag  string
+	}
+	More bool
+}
+
+func list(t *testing.T, s *Server, prefix string, want int) listAnswer {
+	t.Helper()
+	var got listAnswer
+	body := call(t, s, "GET", "/api/records/svc?prefix="+url.QueryEscape(prefix), "", want)
+	if want == http.StatusOK {
+		if err := json.Unmarshal([]byte(body), &got); err != nil {
+			t.Fatalf("a list answers %s: %v", body, err)
+		}
+	}
+	return got
+}
+
+func keysOf(a listAnswer) []string {
+	out := []string{}
+	for _, r := range a.Records {
+		out = append(out, r.Key)
+	}
+	return out
+}
+
+// A list reads one service's records whose key starts with the prefix, as a literal and in key
+// order, each with the data and tag a read of that key gives.
+func TestAListHoldsTheRecordsUnderThePrefixInKeyOrder(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "a.2", "a.1", "ab", "a_1", "a%1", "b.1", "A.1")
+	seed(t, db, "other", "a.0")
+	for prefix, want := range map[string][]string{
+		"a.":  {"a.1", "a.2"},
+		"a":   {"a%1", "a.1", "a.2", "a_1", "ab"},
+		"a_":  {"a_1"},
+		"a%":  {"a%1"},
+		"b.1": {"b.1"},
+		"c":   {},
+	} {
+		if got := keysOf(list(t, s, prefix, http.StatusOK)); !slices.Equal(got, want) {
+			t.Errorf("a list under %q = %v, want %v", prefix, got, want)
+		}
+	}
+	got := list(t, s, "a.", http.StatusOK)
+	var one struct{ Record struct{ Tag string } }
+	if err := json.Unmarshal([]byte(call(t, s, "GET", "/api/records/svc/a.1", "", http.StatusOK)), &one); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got.Records[0].Tag != one.Record.Tag || got.Records[0].Data["key"] != "a.1" {
+		t.Errorf("a listed record = %+v, want the data and tag of a read of it (%s)", got.Records[0], one.Record.Tag)
+	}
+	if body := call(t, s, "GET", "/api/records/svc?prefix=c", "", http.StatusOK); body != `{"records":[],"more":false}` {
+		t.Errorf("an empty list = %s, want records [] and more false", body)
+	}
+}
+
+// A list holds at most 1,000 records and says when there are more, so a caller never takes a
+// short list for the whole.
+func TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore(t *testing.T) {
+	s, db := build(t)
+	var keys []string
+	for i := range 1000 {
+		keys = append(keys, fmt.Sprintf("n.%04d", i))
+	}
+	seed(t, db, "svc", keys...)
+	if got := list(t, s, "n.", http.StatusOK); len(got.Records) != 1000 || got.More {
+		t.Errorf("1,000 records: %d listed, more %v; want 1000 and false", len(got.Records), got.More)
+	}
+	seed(t, db, "svc", "n.1000")
+	got := list(t, s, "n.", http.StatusOK)
+	if len(got.Records) != 1000 || !got.More || got.Records[999].Key != "n.0999" {
+		t.Errorf("1,001 records: %d listed, more %v, last %q; want 1000, true and n.0999", len(got.Records), got.More, got.Records[999].Key)
+	}
+}
+
+// A list with no prefix, or an empty one, would read the whole service: refused.
+func TestAListNeedsOneNonEmptyPrefix(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "a")
+	for _, query := range []string{"", "?prefix=", "?prefix=a&prefix=b", "?prefix=%ff", "?other=a"} {
+		call(t, s, "GET", "/api/records/svc"+query, "", http.StatusBadRequest)
+	}
+}
+
 func TestAPushNeedsAKeyAndObjectData(t *testing.T) {
 	s, _ := build(t)
 	for _, body := range []string{`{}`, `{"key":""}`, `{"key":"k","data":null}`, `{"key":"k","data":[]}`, `{"key":"k","data":"x"}`, `null`} {
@@ -385,7 +486,7 @@ func TestAStoreFailureIsAGeneric500(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE records`); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
-	for _, rt := range everyRoute[:3] {
+	for _, rt := range everyRoute[:4] {
 		res := serve(s, request(rt.method, rt.path, rt.body, allKeys))
 		var body map[string]any
 		_ = json.Unmarshal(res.Body.Bytes(), &body)

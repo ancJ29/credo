@@ -54,7 +54,7 @@ func readCollection(t *testing.T) []collectionRequest {
 			t.Errorf("%s: no method or url line found", rel)
 			return nil
 		}
-		path := varRef.ReplaceAllString(strings.TrimPrefix(u[1], "{{baseUrl}}"), "x")
+		path, _, _ := strings.Cut(varRef.ReplaceAllString(strings.TrimPrefix(u[1], "{{baseUrl}}"), "x"), "?")
 		found = append(found, collectionRequest{rel, m[1], path})
 		return nil
 	})

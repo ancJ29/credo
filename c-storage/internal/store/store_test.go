@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -94,5 +95,48 @@ func TestAConditionalWriteThatFailsChangesNothing(t *testing.T) {
 	}
 	if _, err := s.Get(ctx, "svc", "k"); err != nil {
 		t.Fatalf("after it, the record reads %v", err)
+	}
+}
+
+// A prefix is exact at the edges of the text's order: its last character may be the highest
+// there is, or the one before the surrogates, which no text holds.
+func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	keys := []string{"a", "ab", "ab\U0010FFFF", "ab\U0010FFFFz", "ac", "\uD7FF", "\uD7FFx", "\uE000", "\U0010FFFF", "\U0010FFFFa"}
+	for _, key := range keys {
+		if err := s.Put(ctx, "svc", key, json.RawMessage(`{}`), nil); err != nil {
+			t.Fatalf("put: %v", err)
+		}
+	}
+	for _, prefix := range append(keys, "\U0010FFFF\U0010FFFF", "ab\U0010FFFF\U0010FFFF", "b") {
+		var want []string
+		for _, key := range keys {
+			if strings.HasPrefix(key, prefix) {
+				want = append(want, key)
+			}
+		}
+		listed, more, err := s.List(ctx, "svc", prefix)
+		if err != nil || more {
+			t.Fatalf("list %q: more %v, %v", prefix, more, err)
+		}
+		var got []string
+		for _, l := range listed {
+			got = append(got, l.Key)
+		}
+		if strings.Join(got, "|") != strings.Join(want, "|") {
+			t.Errorf("list under %q = %q, want %q", prefix, got, want)
+		}
+	}
+}
+
+// A list that cannot read is an error, never a short list.
+func TestAListThatFailsIsAnError(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	gone, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, _, err := s.List(gone, "svc", "k"); err == nil {
+		t.Fatal("a list under a cancelled context succeeded")
 	}
 }

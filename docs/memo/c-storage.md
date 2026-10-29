@@ -39,6 +39,7 @@ Drawn from [`server.go`](../../c-storage/internal/server/server.go),
 | No record is public | the shared key alone reading a record | [public](#no-record-is-public) |
 | Keys match exactly; a service's key is stored only as a hash | a nearly right key; a copied file giving a key away | [keys](#keys-are-compared-exactly-and-stored-hashed) |
 | A save over a record changed since it was read is refused, 412 | one person's save erasing another's | [412](#a-write-on-a-moved-record-is-refused) |
+| A list answers one prefix, at most 1,000 records, and says when there are more | a short list taken for the whole | [the list](#a-list-reads-one-prefix) |
 | One save at a time | two saves at once losing one | [one writer](#one-writer-at-a-time) |
 | The file's version is checked at start | running on a file it cannot read | [the schema](#the-schema-version-is-checked-at-open) |
 | It listens on one address: loopback, or the box's private address when told | every interface answering, so a firewall is the only wall | [the listener](#the-listener-binds-one-address) |
@@ -130,6 +131,29 @@ would run a guarded write unguarded while its caller believes otherwise.
   [the app frame](../plans/2026-10-27-app-frame.md#piece-1s-case-table); the root
   [`CLAUDE.md`](../../CLAUDE.md)'s rule to recover, never bypass, a concurrency token).
   *Trigger:* each write path the BFF adds.
+
+## A list reads one prefix
+
+`GET /api/records/{serviceCode}?prefix=…` answers `{records: [{key, data, tag}], more}`: the
+service's records whose key starts with the prefix, a literal, in key order, each with the tag a
+read of that key gives, at most 1,000. `more` is true when there are more, so a caller never takes
+a short list for the whole (`TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore`). No prefix or
+an empty one is a 400, since it would read the whole service (`TestAListNeedsOneNonEmptyPrefix`);
+the route sits behind the same two key gates as every record route
+(`TestEveryRecordRouteRefusesAMissingOrWrongAccessKeyOrAnUnknownService`). The prefix is a range
+over the table's primary key, the key from the prefix up to the prefix with its last character
+raised, never a `LIKE`, so `%` and `_` are plain and case counts
+(`TestAListHoldsTheRecordsUnderThePrefixInKeyOrder`,
+`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`); SQLite plans it as a search of that key,
+with no sort and no schema change.
+
+- *Rejected:* a list of keys, then a read of each. A list of 50 people would be 51 calls over
+  the tunnel for one page.
+- *Rejected:* paging past 1,000. Nothing calls it: the app's lists are about 500 records at most,
+  and a caller that meets `more` fails rather than show a part. *Trigger:* the first list that
+  reaches the bound.
+- *Hazard no gate catches:* a record is one JSON text, so a list of 1,000 records of 8 KB is 8 MB
+  in one answer. The callers bound each record's size (`extra`'s 8 KB), not this service.
 
 ## One writer at a time
 
