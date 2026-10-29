@@ -113,12 +113,22 @@ describe('the unsent choices', () => {
     other.walks[0].screens[0].languages.vi.fingerprint = 'ffffffffffff';
     saveChoices(other, { [VI]: { answer: 'yes', reason: '' } }, start);
     saveChoices(report, { [EN]: { answer: 'yes', reason: '' } }, start + 14 * day);
-    expect(loadChoices(other)[VI]).toEqual({ answer: 'yes', reason: '' });
+    expect(loadChoices(other, start + 14 * day)[VI]).toEqual({ answer: 'yes', reason: '' });
 
     saveChoices(report, { [EN]: { answer: 'yes', reason: '' } }, start + 14 * day + 1);
 
-    expect(loadChoices(other)[VI]).toBeUndefined();
-    expect(loadChoices(report)).toEqual({ [EN]: { answer: 'yes', reason: '' } });
+    expect(loadChoices(other, start + 14 * day + 1)[VI]).toBeUndefined();
+    expect(loadChoices(report, start + 14 * day + 1)).toEqual({
+      [EN]: { answer: 'yes', reason: '' },
+    });
+  });
+
+  it('does not read a choice older than 14 days, on a page of the same words either', () => {
+    const day = 24 * 60 * 60 * 1000;
+    saveChoices(report, { [VI]: { answer: 'yes', reason: '' } }, 0);
+
+    expect(loadChoices(report, 14 * day)).toEqual({ [VI]: { answer: 'yes', reason: '' } });
+    expect(loadChoices(report, 14 * day + 1)).toEqual({});
   });
 
   it('dates a choice when it is made or changed, not each time the page saves', () => {
@@ -156,8 +166,8 @@ describe('the unsent choices', () => {
     other.walks[0].screens[0].languages.en.fingerprint = 'ffffffffffff';
     saveChoices(other, { ...loadChoices(other), [EN]: { answer: 'no', reason: 'y' } }, 5);
 
-    expect(loadChoices(report)).toEqual({ [VI]: { answer: 'yes', reason: '' } });
-    expect(loadChoices(other)).toEqual({
+    expect(loadChoices(report, 5)).toEqual({ [VI]: { answer: 'yes', reason: '' } });
+    expect(loadChoices(other, 5)).toEqual({
       [VI]: { answer: 'yes', reason: '' },
       [EN]: { answer: 'no', reason: 'y' },
     });

@@ -18,6 +18,8 @@ export type Fill = {
   changed: number;
   absent: number;
   already: number;
+  /** Lines for a key given again later in the paste: the later line is kept. */
+  repeated: number;
   unreadable: { line: number; why: string }[];
   /** A partner's page with no label kept: the paste's own. */
   label?: string;
@@ -30,6 +32,7 @@ const NOTHING: Omit<Fill, 'whole'> = {
   changed: 0,
   absent: 0,
   already: 0,
+  repeated: 0,
   unreadable: [],
 };
 
@@ -83,13 +86,19 @@ export function fillFrom(text: string, report: Report, choices: Choices, whose: 
   let changed = 0;
   let absent = 0;
   let already = 0;
-  for (const entry of entries) {
+  const kept = new Map(entries.map((entry) => [entry.key, entry]));
+  // A partner's page with no label adopts the paste's: its record is read under that label.
+  const reading: Whose =
+    whose.partner && whose.label === '' && labels.length === 1
+      ? { partner: true, label: labels[0] }
+      : whose;
+  for (const entry of kept.values()) {
     const mine = entryOf.get(entry.key);
     if (!mine) absent += 1;
     else if (prints.get(entry.key) !== entry.fingerprint) changed += 1;
     else if (entry.answer === 'no' && entry.reason === '') {
       unreadable.push({ line: entry.line, why: `“${entry.key}”: a no needs its reason` });
-    } else if (!openToBulk(mine, choices[entry.key], whose)) already += 1;
+    } else if (!openToBulk(mine, choices[entry.key], reading)) already += 1;
     else fills[entry.key] = { answer: entry.answer, reason: entry.reason };
   }
   return {
@@ -99,6 +108,7 @@ export function fillFrom(text: string, report: Report, choices: Choices, whose: 
     changed,
     absent,
     already,
+    repeated: entries.length - kept.size,
     unreadable: unreadable.sort((a, b) => a.line - b.line),
     ...(whose.partner && whose.label === '' && labels.length === 1 ? { label: labels[0] } : {}),
   };
@@ -112,6 +122,7 @@ export function fillSays(fill: Fill) {
     ...(fill.changed > 0 ? [`${fill.changed} changed since`] : []),
     ...(fill.absent > 0 ? [`${fill.absent} not on this page`] : []),
     ...(fill.already > 0 ? [`${fill.already} already answered`] : []),
+    ...(fill.repeated > 0 ? [`${fill.repeated} repeated, the later line kept`] : []),
     ...fill.unreadable.map(({ line, why }) => `line ${line}: ${why}`),
   ].join('; ');
 }

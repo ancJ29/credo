@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Answers } from './answers';
 import { blockText } from './block';
@@ -333,5 +333,107 @@ describe('paste last answers', () => {
     expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p7');
     expect(localStorage.getItem('credo-walks-label')).toBe('p7');
     expect(screen.getByLabelText<HTMLInputElement>('Yes').checked).toBe(true);
+  });
+});
+
+describe('what the review found', () => {
+  const noOnRecord = () => make(Object.fromEntries([yesOnNo('1-sign-in', 'vi', '@p1')]));
+  function yesOnNo(id: string, language: 'vi' | 'en', label: string) {
+    return [
+      `admin-setup:${id}:${language}${label}`,
+      {
+        answer: 'no' as const,
+        on: '2026-10-29',
+        reason: 'too small',
+        words: screenOf(id).languages[language].words,
+      },
+    ] as const;
+  }
+
+  it('keeps Yes to the unanswered off on a partner’s page until a label is kept, so no yes goes over their No on record', async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text: string) => (written.push(text), Promise.resolve()) },
+    });
+    render(<Page report={noOnRecord()} partner />);
+    const names = [
+      /^Yes to \d+ unanswered on the page$/,
+      /^Yes to \d+ unanswered in this walk$/,
+      /^Yes for both languages/,
+    ];
+
+    for (const name of names) expect((button(name) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button(names[0]));
+    fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
+    expect((button(names[0]) as HTMLButtonElement).disabled).toBe(false);
+    await act(() => {
+      fireEvent.click(document.querySelector('.w-send .w-share')!);
+      return Promise.resolve();
+    });
+
+    expect(written).toHaveLength(0);
+    expect(note()).toContain('Nothing chosen yet');
+    Reflect.deleteProperty(navigator, 'clipboard');
+  });
+
+  it('puts the label back as it was when a paste that kept it is undone', () => {
+    render(<Page report={make()} partner />);
+    paste(
+      shareText(build, 'p7', [
+        { ...entryOf('1-sign-in', 'vi'), number: 1, sentence: 'x', language: 'Tiếng Việt' },
+      ]),
+    );
+    fireEvent.click(button('Fill'));
+    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p7');
+
+    fireEvent.click(button('Undo'));
+
+    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('');
+    expect(localStorage.getItem('credo-walks-label')).toBe('');
+  });
+
+  it('asks for the reason of a No before it offers the copy, even on the last language waiting', () => {
+    const all = Object.fromEntries(
+      IDS.flatMap((id) => [
+        yesOn(id, 'vi'),
+        ...(id === '9-unknown-company' ? [] : [yesOn(id, 'en')]),
+      ]),
+    );
+    render(<Page report={make(all)} />);
+    fireEvent.click(button('Show in English'));
+
+    fireEvent.click(screen.getByLabelText('No'));
+
+    expect(action()).toBe('reason');
+  });
+
+  it('keeps asking when a screen is asked again after a yes', () => {
+    const moved = make({
+      'admin-setup:1-sign-in:vi': { answer: 'yes', on: '2026-10-29', reason: '', words: ['moved'] },
+    });
+    render(<Page report={moved} />);
+
+    expect(action()).toBe('answer');
+  });
+
+  it('runs Share, not Copy, from the place nothing waits on a partner’s page', async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: (text: string) => (written.push(text), Promise.resolve()) },
+    });
+    localStorage.setItem('credo-walks-label', 'p1');
+    render(<Page report={make()} partner />);
+    fireEvent.click(rail().getByRole('button', { name: 'Yes to 18 unanswered on the page' }));
+    expect(action()).toBe('done');
+
+    await act(() => {
+      fireEvent.click(within(document.querySelector<HTMLElement>('.w-where')!).getByText('Share'));
+      return Promise.resolve();
+    });
+
+    expect(written.at(-1)).toContain('By: p1');
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 });

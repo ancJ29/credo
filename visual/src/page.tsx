@@ -1,6 +1,7 @@
 import { LANGUAGES, type Language } from '@credo/shared';
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type Bulk, fillIn, yesTo } from './bulk';
+import { LABEL } from './block';
 import {
   type Choices,
   loadChoices,
@@ -13,7 +14,7 @@ import {
 import type { Fill } from './fill';
 import { HUMAN, LANGUAGE_LABEL, markIn, plural, type Whose } from './marks';
 import {
-  firstWaiting,
+  landOn,
   leftIn,
   neighbour,
   nextLabel,
@@ -243,10 +244,13 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   const [listOpen, setListOpen] = useState(false);
   const [asked, setAsked] = useState(0);
   const [note, setNote] = useState('');
-  const [undo, setUndo] = useState<Choices>();
+  const [undo, setUndo] = useState<{ before: Choices; label?: string }>();
 
   const place = places.find(({ id }) => id === current)!;
   const shown = visibleOf(places, choices, whose, only, stay);
+  const none = only && shown.length === 0;
+  /** A partner's bulk answers wait for a label, as Share does: their record is read by it. */
+  const bulkOff = partner && !LABEL.test(normalizeLabel(label));
   const key = answerKey(place.walk.id, place.screen.id, view.language);
   const reason = useRef('');
   reason.current = `${key}:reason`;
@@ -263,14 +267,14 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
     }
   };
   /** A bulk action or a paste: it acts at once, says what it did, and can be undone until a choice changes. */
-  const apply = (bulk: Bulk, said: string) => {
+  const apply = (bulk: Bulk, said: string, label?: string) => {
     setChoices(bulk.next);
-    setUndo(bulk.undo);
+    setUndo({ before: bulk.undo, label });
     setNote(said);
     setStay(current);
   };
   const fillFrom = (fill: Fill) => {
-    apply(fillIn(fill.fills, choices), `${fill.filled} filled`);
+    apply(fillIn(fill.fills, choices), `${fill.filled} filled`, fill.label ? label : undefined);
     if (fill.label) {
       setLabel(fill.label);
       saveLabel(fill.label);
@@ -300,7 +304,11 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
     setSaid('');
     if (on && leftIn(place, choices, whose).length === 0 && next) go(next.id, next.language);
   };
-  const openWalk = (walkId: string) => go(firstWaiting(places, choices, whose, walkId).id);
+  const openWalk = (walkId: string) => {
+    const landed = landOn(places, choices, whose, walkId, only);
+    go(landed.id);
+    setSaid(landed.said);
+  };
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -310,6 +318,8 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         const to = neighbour(shown, current, by);
         if (to) go(to.id);
       };
+      const typed = event.key.toLowerCase();
+      if (none && ['y', 'n', 'l'].includes(typed)) return;
       const keys: Record<string, () => void> = {
         j: () => step(1),
         k: () => step(-1),
@@ -321,7 +331,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         l: () => setView((before) => ({ ...before, language: otherLanguage(before.language) })),
         u: goNext,
       };
-      const act = keys[event.key.toLowerCase()];
+      const act = keys[typed];
       if (!act) return;
       event.preventDefault();
       act();
@@ -347,14 +357,13 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
     moved.current = true;
   }, [current]);
 
-  const none = only && shown.length === 0;
   const nothingWaits = places.every((one) => leftIn(one, choices, whose).length === 0);
   const here = choices[key] ?? NO_CHOICE;
   const drawn = markIn(place.screen.languages[view.language], here, whose);
   let action = 'next';
-  if (nothingWaits) action = 'done';
+  if (here.answer === 'no' && here.reason.trim() === '') action = 'reason';
+  else if (nothingWaits) action = 'done';
   else if (drawn === 'open' || drawn === 'again') action = 'answer';
-  else if (here.answer === 'no' && here.reason.trim() === '') action = 'reason';
   const finish = () =>
     document
       .querySelector<HTMLButtonElement>(partner ? '.w-send .w-share' : '.w-send .w-copy')!
@@ -398,6 +407,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
             onClose={() => setListOpen(false)}
             onBulk={apply}
             onFill={fillFrom}
+            bulkOff={bulkOff}
           />
           <div className="w-walks">
             {none ? (
@@ -448,6 +458,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                   onNo={() => setAsked((count) => count + 1)}
                   onBoth={() => apply(yesTo([place], choices, whose), `${bothCount} answered Yes`)}
                   bothCount={bothCount}
+                  bothOff={bulkOff}
                   onShow={(language) => setView((before) => ({ ...before, language }))}
                 />
               </WalkSection>
@@ -481,7 +492,11 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         onUndo={
           undo
             ? () => {
-                setChoices(undo);
+                setChoices(undo.before);
+                if (undo.label !== undefined) {
+                  setLabel(undo.label);
+                  saveLabel(undo.label);
+                }
                 setUndo(undefined);
                 setNote('');
               }

@@ -56,9 +56,39 @@ export function firstWaiting(
   return among.find((place) => leftIn(place, choices, whose).length > 0) ?? among[0];
 }
 
+/**
+ * Where a walk opens: its first screen waiting. With only the unanswered on and nothing left in
+ * the walk, the first screen waiting anywhere, and it says so.
+ */
+export function landOn(
+  places: readonly Place[],
+  choices: Choices,
+  whose: Whose,
+  walkId: string | undefined,
+  only: boolean,
+) {
+  const inWalk = firstWaiting(places, choices, whose, walkId);
+  if (!only || !walkId || leftIn(inWalk, choices, whose).length > 0)
+    return { id: inWalk.id, said: '' };
+  const anywhere = firstWaiting(places, choices, whose);
+  const left = leftIn(anywhere, choices, whose).length > 0;
+  return {
+    id: anywhere.id,
+    said: left
+      ? 'Nothing is left to answer in that walk, so this is the first screen waiting.'
+      : '',
+  };
+}
+
 /** Where an address points: a screen, or a walk (its first screen waiting); nothing else. */
 export function addressTo(hash: string, places: readonly Place[]) {
-  const name = decodeURIComponent(hash.replace(/^#/, ''));
+  const raw = hash.replace(/^#/, '');
+  let name = raw;
+  try {
+    name = decodeURIComponent(raw);
+  } catch {
+    // A stray % in a pasted link: the text as it stands.
+  }
   return (
     places.find(({ id }) => id === name)?.id ?? places.find(({ walk }) => walk.id === name)?.walk.id
   );
@@ -122,7 +152,10 @@ export function opening(
 ) {
   const target = addressTo(hash, places);
   const named = places.find(({ id }) => id === target);
-  if (!named) return { id: firstWaiting(places, choices, whose, target).id, only, said: '' };
+  if (!named) {
+    const landed = landOn(places, choices, whose, target, only);
+    return { id: landed.id, only, said: landed.said };
+  }
   if (only && leftIn(named, choices, whose).length === 0) {
     return {
       id: named.id,

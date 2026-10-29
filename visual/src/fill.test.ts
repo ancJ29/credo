@@ -127,6 +127,37 @@ describe('what a paste fills', () => {
   });
 });
 
+describe('what a paste reads', () => {
+  it('judges a partner’s record under the paste’s own label when it adopts that label', () => {
+    const record = make({
+      [`${K1}@p1`]: {
+        answer: 'no',
+        on: '2026-10-29',
+        reason: 'too small',
+        words: report.walks[0].screens[0].languages.vi.words,
+      },
+    });
+
+    const fill = fillFrom(share('p1', entry(K1)), record, {}, { partner: true, label: '' });
+
+    expect(fill.fills).toEqual({});
+    expect(fill.already).toBe(1);
+  });
+
+  it('counts a key given twice, and keeps the later line', () => {
+    const text = block(entry(K1, 'no', 'old'), entry(K1), entry(K3));
+
+    const fill = fillFrom(text, report, {}, HUMAN);
+
+    expect(fill).toMatchObject({ total: 3, filled: 2, repeated: 1 });
+    expect(fill.fills[K1]).toEqual({ answer: 'yes', reason: '' });
+    expect(fillSays(fill)).toBe('Fills 2 of 3; 1 repeated, the later line kept');
+    expect(fill.filled + fill.changed + fill.absent + fill.already + fill.repeated).toBe(
+      fill.total,
+    );
+  });
+});
+
 describe('whose answers fill', () => {
   it('refuses a partner’s post on the human’s page, whole', () => {
     const fill = fillFrom(share('p1', entry(K1)), report, {}, HUMAN);

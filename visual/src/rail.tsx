@@ -51,11 +51,13 @@ function BulkRow({
   whose,
   scope,
   onBulk,
+  off,
 }: {
   places: readonly Place[];
   choices: Choices;
   whose: Whose;
   scope: string;
+  off: boolean;
   onBulk: (bulk: Bulk, said: string) => void;
 }) {
   const yes = yesTo(places, choices, whose);
@@ -64,7 +66,7 @@ function BulkRow({
     <span className="w-bulk">
       <button
         type="button"
-        disabled={yes.count === 0}
+        disabled={yes.count === 0 || off}
         aria-label={`Yes to ${yes.count} unanswered ${scope}`}
         onClick={(event) => {
           event.preventDefault();
@@ -110,6 +112,7 @@ export function Rail({
   onClose,
   onBulk,
   onFill,
+  bulkOff,
 }: {
   report: Report;
   places: readonly Place[];
@@ -127,6 +130,8 @@ export function Rail({
   /** A bulk action, with the words the note says of it once it acts. */
   onBulk: (bulk: Bulk, said: string) => void;
   onFill: (fill: Fill) => void;
+  /** A partner's page with no label kept: Yes to the unanswered is off. */
+  bulkOff: boolean;
 }) {
   const [pasting, setPasting] = useState(false);
   const list = useRef<HTMLElement>(null);
@@ -171,6 +176,7 @@ export function Rail({
           whose={whose}
           scope="on the page"
           onBulk={onBulk}
+          off={bulkOff}
         />
         <button type="button" className="w-paste-open" onClick={() => setPasting(!pasting)}>
           Paste last answers…
@@ -207,6 +213,7 @@ export function Rail({
                   whose={whose}
                   scope="in this walk"
                   onBulk={onBulk}
+                  off={bulkOff}
                 />
               </summary>
               <ul>

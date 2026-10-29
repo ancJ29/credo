@@ -67,11 +67,12 @@ function keptChoices(): Map<string, Kept & { key: string }> {
  * changed. The page works without storage: a browser that refuses it, or holds something else
  * under the key, gives no choices.
  */
-export function loadChoices(report: Report): Choices {
+export function loadChoices(report: Report, now = Date.now()): Choices {
   const prints = fingerprintsOf(report);
   const choices: Choices = {};
   for (const one of keptChoices().values()) {
-    if (prints.get(one.key) === one.fingerprint) {
+    const old = one.at !== undefined && now - one.at > KEEP_DAYS * DAY;
+    if (!old && prints.get(one.key) === one.fingerprint) {
       choices[one.key] = { answer: one.answer, reason: one.reason };
     }
   }

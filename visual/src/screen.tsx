@@ -151,7 +151,7 @@ function Panel({
   /** Where the screen's other language stands. */
   otherMark: Mark;
   /** "Yes for both languages": how many it would answer, and the press. */
-  both: { count: number; onBoth: () => void };
+  both: { count: number; onBoth: () => void; off: boolean };
   onChange: (choice: Choice) => void;
   onNo: () => void;
   onShow: (language: Language) => void;
@@ -200,7 +200,12 @@ function Panel({
           </div>
         )}
       </fieldset>
-      <button type="button" className="w-both" disabled={both.count === 0} onClick={both.onBoth}>
+      <button
+        type="button"
+        className="w-both"
+        disabled={both.count === 0 || both.off}
+        onClick={both.onBoth}
+      >
         Yes for both languages ({both.count})
       </button>
       <div className="w-other">
@@ -286,6 +291,7 @@ export function ScreenCard({
   onNo,
   onBoth,
   bothCount,
+  bothOff,
   onShow,
 }: {
   report: Report;
@@ -298,6 +304,7 @@ export function ScreenCard({
   onNo: () => void;
   onBoth: () => void;
   bothCount: number;
+  bothOff: boolean;
   onShow: (language: Language) => void;
 }) {
   const state = stateOf(screen);
@@ -362,7 +369,7 @@ export function ScreenCard({
               ],
               whose,
             )}
-            both={{ count: bothCount, onBoth }}
+            both={{ count: bothCount, onBoth, off: bothOff }}
             onChange={(choice) => choose(key, choice)}
             onNo={onNo}
             onShow={onShow}

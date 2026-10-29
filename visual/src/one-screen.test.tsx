@@ -531,3 +531,128 @@ describe('a partner’s page', () => {
     expect(document.querySelector('.w-partners')!.textContent).not.toContain('Recorded');
   });
 });
+
+describe('what the review found', () => {
+  const allOf = (walkId: string) => {
+    const walk = make({}, WALKS).walks.find((one) => one.id === walkId)!;
+    return Object.fromEntries(
+      walk.screens.flatMap((one) =>
+        (['vi', 'en'] as const).map((language) => [
+          `${walkId}:${one.id}:${language}`,
+          {
+            answer: 'yes' as const,
+            on: '2026-10-29',
+            reason: '',
+            words: one.languages[language].words,
+          },
+        ]),
+      ),
+    );
+  };
+  const every = () =>
+    yes(
+      ...[
+        '1-sign-in',
+        '2-sign-in-refused',
+        '3-settings',
+        '4-saved',
+        '5-language-menu',
+        '6-service-down',
+        '7-save-failed',
+        '8-save-conflict',
+        '9-unknown-company',
+      ].flatMap((id) => both(id)),
+    );
+
+  it('opens on the first screen waiting when the address has a stray percent sign, at the start and on a change', () => {
+    window.history.replaceState(null, '', '#100%');
+    render(<Page report={make()} />);
+    expect(number()).toBe('1');
+
+    hashTo('#50%');
+
+    expect(number()).toBe('1');
+  });
+
+  it('opens the first screen waiting elsewhere, and says so, when a walk is opened with nothing left in it under only unanswered', () => {
+    localStorage.setItem('credo-walks-only-unanswered', 'yes');
+    window.history.replaceState(null, '', '#operator-setup');
+
+    render(<Page report={make(allOf('operator-setup'), WALKS)} />);
+
+    expect(document.querySelector('.w-walk')!.id).toBe('admin-setup');
+    expect(screen.getByLabelText<HTMLInputElement>('Only unanswered').checked).toBe(true);
+    expect(document.querySelector('.w-moved')!.textContent).toBe(
+      'Nothing is left to answer in that walk, so this is the first screen waiting.',
+    );
+  });
+
+  it('does the same from the walk’s card on the map', () => {
+    localStorage.setItem('credo-walks-only-unanswered', 'yes');
+    render(<Page report={make(allOf('operator-setup'), WALKS)} />);
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'The map of the day' })).getAllByRole('link')[0],
+    );
+
+    expect(document.querySelector('.w-walk')!.id).toBe('admin-setup');
+    expect(document.querySelector('.w-moved')!.textContent).toContain('Nothing is left');
+  });
+
+  it('shows the place with nothing left, and no hidden screen, when every walk is answered', () => {
+    localStorage.setItem('credo-walks-only-unanswered', 'yes');
+    window.history.replaceState(null, '', '#admin-setup');
+
+    render(<Page report={make(every())} />);
+
+    expect(screen.getByRole('heading', { name: 'Nothing left to answer' })).toBeTruthy();
+    expect(document.querySelector('.w-moved')).toBeNull();
+  });
+
+  it('leaves Y, N and L alone while no screen shows', () => {
+    render(<Page report={make(every())} />);
+    fireEvent.click(screen.getByLabelText('Only unanswered'));
+    expect(screen.getByRole('heading', { name: 'Nothing left to answer' })).toBeTruthy();
+
+    key('y');
+    key('n');
+    key('l');
+
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('0 answers to copy');
+    fireEvent.click(button('Show all screens'));
+    expect(place()).toContain('Tiếng Việt');
+  });
+
+  it('keeps a screen in view after Yes for both languages under only unanswered, until the person moves', () => {
+    render(<Page report={make()} />);
+    fireEvent.click(screen.getByLabelText('Only unanswered'));
+
+    fireEvent.click(button(/^Yes for both languages/));
+
+    expect(items()).toContain('#admin-setup-1-sign-in');
+  });
+
+  it('drops a screen answered in view from the list once the address moves the person on', () => {
+    render(<Page report={make()} />);
+    fireEvent.click(screen.getByLabelText('Only unanswered'));
+    key('y');
+    key('l');
+    key('y');
+    expect(items()).toContain('#admin-setup-1-sign-in');
+
+    hashTo('#admin-setup-2-sign-in-refused');
+
+    expect(number()).toBe('2');
+    expect(items()).not.toContain('#admin-setup-1-sign-in');
+  });
+
+  it('answers only the walk in view from a walk’s Yes to the unanswered', () => {
+    render(<Page report={make({}, WALKS)} />);
+    expect(number()).toBe('1');
+    expect(document.querySelector('.w-walk')!.id).toBe('admin-setup');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Yes to 18 unanswered in this walk' }));
+
+    expect(document.querySelector('.w-note')!.textContent).toBe('18 answered Yes · Undo');
+    expect(screen.getByRole('button', { name: 'Yes to 8 unanswered on the page' })).toBeTruthy();
+  });
+});
