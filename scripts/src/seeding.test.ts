@@ -1,10 +1,7 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SeededClient } from './generator';
-import { createSeeding, logToFile } from './seeding';
+import { createSeeding, logToStderr } from './seeding';
 
 const client: SeededClient = {
   code: 'walk-1',
@@ -68,20 +65,33 @@ describe('the door to more clients', () => {
     expect(logged).toEqual([new Error('the generator answered 400')]);
   });
 
-  it('writes a failure to a log file as one line with the error’s message', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'credo-seeding-test-'));
+  it('answers first, and a log that throws changes nothing: the door answers the next call too', async () => {
+    let calls = 0;
+    const url = await door(
+      () => Promise.reject(new Error('down')),
+      () => {
+        calls++;
+        throw new Error('the log is full');
+      },
+    );
+
+    expect((await fetch(`${url}/seed`, { method: 'POST' })).status).toBe(500);
+    expect((await fetch(`${url}/seed`, { method: 'POST' })).status).toBe(500);
+
+    expect(calls).toBe(2);
+  });
+
+  it('writes a failure to the stack’s stderr as one line with the error', () => {
+    const written: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+      written.push(String(chunk));
+      return true;
+    });
     try {
-      const path = join(dir, 'stack.log');
-      logToFile(path)(new Error('the generator answered 400'));
-      logToFile(path)('plain text');
-      const lines = (await readFile(path, 'utf8')).trimEnd().split('\n');
-      expect(lines).toHaveLength(2);
-      expect(lines[0]).toMatch(
-        /^\d{4}-\d\d-\d\dT[\d:.]+Z seed failed: Error: the generator answered 400$/,
-      );
-      expect(lines[1]).toMatch(/seed failed: plain text$/);
+      logToStderr(new Error('the generator answered 400'));
     } finally {
-      await rm(dir, { recursive: true, force: true });
+      spy.mockRestore();
     }
+    expect(written).toEqual(['seed failed: Error: the generator answered 400\n']);
   });
 });

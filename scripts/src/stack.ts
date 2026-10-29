@@ -13,7 +13,7 @@ import { createFront } from './front';
 import { newOperatorPassword, ROOT_NAME, seedClient, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
-import { createSeeding, logToFile } from './seeding';
+import { createSeeding, logToStderr } from './seeding';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const UI_DIR = join(ROOT, 'ui');
@@ -93,6 +93,8 @@ export function bffEnvironment(settings: {
 export async function withStack<T>(
   artifacts: Artifacts,
   use: (stack: RunningStack) => Promise<T>,
+  /** `seed` stands in for the generator's client, for a test of the door's failure. */
+  options: { seed?: typeof seedClient } = {},
 ): Promise<T> {
   const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-'));
   const stops: (() => Promise<unknown>)[] = [];
@@ -125,8 +127,8 @@ export async function withStack<T>(
     const { rootPassword, people } = await seedDemo(storage, { operatorPassword });
     let seeded = 0;
     const seeding = createSeeding(
-      () => seedClient(storage, `walk-${++seeded}`),
-      logToFile(join(dataDir, 'stack.log')),
+      () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
+      logToStderr,
     );
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
     const { port: seedPort } = await listening(seeding);

@@ -1,11 +1,10 @@
-import { appendFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import type { SeededClient } from './generator';
 
-/** Where a failure goes: a line in the stack's own log, with the error's name and message. The
- * answer to the caller stays "could not seed", and the BFF's and c-storage's logs name no more. */
-export const logToFile = (path: string) => (error: unknown) => {
-  appendFileSync(path, `${new Date().toISOString()} seed failed: ${String(error)}\n`);
+/** Where a failure goes: the stack's own stderr, which the run's log keeps when the stack's data
+ * folder is gone. The answer to the caller stays "could not seed". */
+export const logToStderr = (error: unknown) => {
+  process.stderr.write(`seed failed: ${String(error)}\n`);
 };
 
 /**
@@ -13,7 +12,8 @@ export const logToFile = (path: string) => (error: unknown) => {
  * set and answers its code and first passwords. A walk that adds or archives someone cannot be
  * undone, so each screen of the full run opens on a client no earlier screen touched. The stack
  * serves it on loopback alone, for as long as it stands; nothing else is routed, and a refusal
- * names no more than "could not seed"; the reason goes to `log`, for whoever reads the stack's own log.
+ * names no more than "could not seed"; the answer goes first, then the reason to `log`, whose own
+ * failure never reaches the caller.
  */
 export function createSeeding(
   seed: () => Promise<SeededClient>,
@@ -31,8 +31,12 @@ export function createSeeding(
     seed().then(
       (client) => reply(201, client),
       (error: unknown) => {
-        log(error);
         reply(500, { error: 'could not seed' });
+        try {
+          log(error);
+        } catch {
+          // A log that fails has nothing left to tell: the caller has its answer.
+        }
       },
     );
   });

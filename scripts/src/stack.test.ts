@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CLIENT_HEADER } from '@credo/shared';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { commandOf, runStack } from './cli';
 import { BFF_ENV_KEYS } from '@credo/bff/env';
 import { type Artifacts, bffEnvironment, buildArtifacts, listening, withStack } from './stack';
@@ -100,6 +100,33 @@ describe('pnpm stack', () => {
       expect(await on(two.code, 'EMP-0005', one.people['EMP-0005'])).toBe(401);
       expect(await on(stack.clientCode, 'root', one.rootPassword)).toBe(401);
     });
+  });
+
+  it('A failed seed answers 500 and its reason reaches the stack’s stderr, which outlives the stack’s data folder', async () => {
+    const written: string[] = [];
+    const spy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk) => {
+      written.push(String(chunk));
+      return true;
+    });
+    let dataDir = '';
+    try {
+      await withStack(
+        artifacts,
+        async (stack) => {
+          dataDir = stack.dataDir;
+          const reply = await fetch(stack.seedUrl, { method: 'POST' });
+          expect(reply.status).toBe(500);
+          expect(await reply.json()).toEqual({ error: 'could not seed' });
+        },
+        { seed: () => Promise.reject(new Error('the generator answered 503')) },
+      );
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(written.join('')).toContain('seed failed: Error: the generator answered 503');
+    expect(dataDir).not.toBe('');
+    await expect(readdir(dataDir)).rejects.toThrow();
   });
 
   it('The operator signs in through the front with the first password the stack made, and a wrong one is refused', async () => {
