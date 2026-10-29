@@ -140,6 +140,8 @@ describe('the app’s own screens, drawn', () => {
 /** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
 const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
+  // the field just added has no key yet; the saved ones show theirs
+  'admin-staff-setup:setup-2-fields': (w) => `textbox "${w.setup.ownKey}"`,
   'admin-staff:staff-1-list': (w) => `heading: ${w.staff.title}`,
   'admin-staff:staff-2-add': (w) => `textbox "${w.addPerson.name}" = "Mai Linh"`,
   'admin-staff:staff-3-added': (w) => `textbox "${w.addPerson.firstPassword}" = "Fake-password-1!"`,
@@ -152,10 +154,18 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-9-code-taken': (w) => `alert: ${w.addPerson.taken}`,
   'admin-staff:staff-10-save-conflict': (w) => `alert: ${w.person.conflict}`,
   'admin-staff:staff-11-save-failed': (w) => `alert: ${w.person.saveFailed}`,
+  'admin-staff:staff-12-own-fields': (w) =>
+    `textbox "${w.addPerson.personalPhone}" = "0909 555 666"`,
+  'admin-staff:staff-13-photo': () => 'img: Lê Minh Châu',
+  'admin-staff:staff-14-search': (w) =>
+    `textbox "${w.staff.search}" = "phong" placeholder "${w.staff.searchPlaceholder}"`,
+  'admin-staff:staff-15-code-changed': () => 'main: NV-12',
+  'admin-staff:staff-16-field-refused': (w) => `form: ${w.fields.invalidNumber}`,
   'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
   'office-staff:office-2-add': (w) => `main: ${w.person.signInNotYet}`,
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,
   'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
+  'office-staff:office-5-settings': (w) => `link: ${w.nav.settings}`,
 };
 
 describe('the app’s own scenes, drawn', () => {
@@ -165,7 +175,10 @@ describe('the app’s own scenes, drawn', () => {
 
     for (const [key, what] of drawn) {
       for (const language of LANGUAGES) {
-        const navigation = key === 'office-staff:office-1-menu';
+        const navigation = [
+          'office-staff:office-1-menu',
+          'office-staff:office-5-settings',
+        ].includes(key);
         const words = await readWords(what, language, navigation);
         expect(words, `${key} ${language}`).toContain(PROOF[key](DICTIONARIES[language]));
         expect(

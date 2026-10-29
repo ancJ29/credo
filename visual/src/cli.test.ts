@@ -18,7 +18,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(58);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(72);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;
@@ -33,9 +33,9 @@ describe('pnpm report', () => {
     expect(failedSave.languages['en'].words).toContain(
       'alert: The settings were not saved. What you typed is still here: try again.',
     );
-    // Group A of piece 2: its sixteen screens drawn as scenes, none from the mock, a state for each of
-    // the thirty-two (screen, language) pairs whatever the answers file holds now, and the typing and
-    // pressing done on the page as a person does them.
+    // Groups A and B of piece 2: their twenty-three screens drawn as scenes, none from the mock, a
+    // state for each of the forty-six (screen, language) pairs whatever the answers file holds now,
+    // and the typing and pressing done on the page as a person does them.
     const piece2 = walks.walks.slice(2);
     const screens = piece2.flatMap((walk) => walk.screens);
     expect(piece2.map((walk) => walk.id)).toEqual([
@@ -43,11 +43,11 @@ describe('pnpm report', () => {
       'admin-staff',
       'office-staff',
     ]);
-    expect(screens).toHaveLength(16);
+    expect(screens).toHaveLength(23);
     expect(screens.filter((screen) => 'mock' in screen)).toEqual([]);
     expect(screens.filter((screen) => !('scene' in screen))).toEqual([]);
     const asked = screens.flatMap((screen) => Object.values(screen.languages));
-    expect(asked).toHaveLength(32);
+    expect(asked).toHaveLength(46);
     const added = piece2[1].screens.find((screen) => screen.id === 'staff-3-added')!;
     expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
     expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');

@@ -99,14 +99,27 @@ const FILLED_ADD: Step[] = [
 /** The same for someone allowed to add people, who has no department, position or sign-in to give. */
 const FILLED_ADD_BY_OFFICE: Step[] = FILLED_ADD.filter((step) => !('choose' in step));
 
+/** The add form with the company's own fields and the second phone filled, the code left to be
+ * numbered. */
+const FILLED_OWN: Step[] = [
+  { fill: 'addPerson.name', text: 'Mai Linh' },
+  { fill: 'addPerson.phone', text: '0909 123 456' },
+  { fill: 'addPerson.personalPhone', text: '0909 555 666' },
+  { fill: 'field.plate', text: '51C-999.99' },
+  { fill: 'field.dependants', text: '1' },
+  { fill: 'field.started', text: '2026-10-01' },
+  { choose: 'addPerson.department', option: 'Kho' },
+  { choose: 'addPerson.position', option: 'Nhân viên' },
+];
+
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
  * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
- * then piece 2's group A (the staff setup, the staff, the office's), each screen a scene of the
- * app on the fake. Group C adds the phone's walk, whose screens are all C's.
+ * then piece 2's groups A and B (the staff setup, the staff, the office's), each screen a scene of
+ * the app on the fake. Group C adds the phone's walk, whose screens are all C's.
  */
 export const WALKS: Walk[] = [
   {
@@ -287,6 +300,17 @@ export const WALKS: Walk[] = [
         },
         question: 'Is this how the admin would say who does what?',
       },
+      {
+        id: 'setup-2-fields',
+        number: 2,
+        path: 'main',
+        scene: { path: '/staff-setup', steps: [{ press: 'setup.ownAdd' }] },
+        sentence: {
+          en: 'The person’s fields: the switches, the company’s own fields, the code numbering',
+          vi: 'Các mục của một người: công tắc, mục riêng của công ty, cách đánh mã',
+        },
+        question: 'Are these the choices a company makes about its staff records?',
+      },
     ],
   },
   {
@@ -427,6 +451,74 @@ export const WALKS: Walk[] = [
         },
         question: 'Would the admin know the save did not happen, and that nothing typed is lost?',
       },
+      {
+        id: 'staff-12-own-fields',
+        number: 12,
+        path: 'main',
+        scene: { path: '/staff/new', steps: FILLED_OWN },
+        sentence: {
+          en: 'Adding a person with the company’s own fields and a second phone; the code numbered',
+          vi: 'Thêm một người với các mục riêng của công ty và điện thoại thứ hai; mã tự đánh số',
+        },
+        question: 'Does the form hold what this company keeps?',
+      },
+      {
+        id: 'staff-13-photo',
+        number: 13,
+        path: 'main',
+        scene: { path: personAt('EMP-0003') },
+        sentence: { en: 'A person’s photo', vi: 'Ảnh của một người' },
+        question: 'Is the photo where the admin would look for it?',
+      },
+      {
+        id: 'staff-14-search',
+        number: 14,
+        path: 'main',
+        scene: {
+          path: '/staff',
+          steps: [
+            { fill: 'staff.search', text: 'phong' },
+            { choose: 'staff.filterPosition', option: 'Quản lý' },
+          ],
+        },
+        sentence: {
+          en: 'The list searched and filtered; the address keeps them',
+          vi: 'Danh sách đã tìm và lọc; địa chỉ giữ lại các lựa chọn',
+        },
+        question: 'Would the admin find a person this way?',
+      },
+      {
+        id: 'staff-15-code-changed',
+        number: 15,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0004'),
+          steps: [{ fill: 'person.codeNew', text: 'nv-12' }, { press: 'person.codeSet' }],
+        },
+        sentence: {
+          en: 'A code changed: the person signs in with the new one',
+          vi: 'Đã đổi mã: người đó đăng nhập bằng mã mới',
+        },
+        question: 'Is it clear the old code no longer signs in?',
+      },
+      {
+        id: 'staff-16-field-refused',
+        number: 16,
+        path: 'wrong',
+        scene: {
+          path: '/staff/new',
+          steps: [
+            { fill: 'addPerson.name', text: 'Mai Linh' },
+            { fill: 'field.dependants', text: 'two' },
+            { press: 'addPerson.submit' },
+          ],
+        },
+        sentence: {
+          en: 'A value the company’s own field refuses',
+          vi: 'Giá trị mà mục riêng của công ty không nhận',
+        },
+        question: 'Does this say what to fix?',
+      },
     ],
   },
   {
@@ -486,6 +578,18 @@ export const WALKS: Walk[] = [
           vi: 'Người chưa được phép làm gì: chưa có việc nào',
         },
         question: 'Would the person know to ask their admin?',
+      },
+      {
+        id: 'office-5-settings',
+        number: 5,
+        path: 'main',
+        scene: { path: '/settings', as: 'EMP-0003' },
+        navigation: true,
+        sentence: {
+          en: 'Allowed to change the settings: Settings in the menu',
+          vi: 'Được đổi thiết lập: có mục Thiết lập trong menu',
+        },
+        question: 'Is it clear this person may change the company’s settings?',
       },
     ],
   },

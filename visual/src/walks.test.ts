@@ -3,7 +3,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
-import { DICTIONARIES } from '@credo/ui/words';
 import {
   allKeys,
   answerKey,
@@ -15,6 +14,7 @@ import {
   type Walk,
   WALKS,
 } from './walks';
+import { stepWords } from './scene';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
@@ -23,7 +23,7 @@ describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(29);
+    expect(states.size).toBe(36);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -80,9 +80,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, fifty-eight for the twenty-nine screens', () => {
+  it('keys an answer by walk, screen and language, seventy-two for the thirty-six screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(58);
+    expect(allKeys(WALKS)).toHaveLength(72);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -152,35 +152,49 @@ describe('the walks', () => {
     }
   });
 
-  it('puts piece 2’s group A in three walks, sixteen screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A and B in three walks, twenty-three screens in all, each a scene and none from the mock', () => {
     const piece2 = WALKS.slice(2);
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
-      ['admin-staff-setup', 'admin', 'setup', 1],
-      ['admin-staff', 'admin', 'staff', 11],
-      ['office-staff', 'office', 'staff', 4],
+      ['admin-staff-setup', 'admin', 'setup', 2],
+      ['admin-staff', 'admin', 'staff', 16],
+      ['office-staff', 'office', 'staff', 5],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(16);
+    expect(screens).toHaveLength(23);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(16);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(23);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
-      [1],
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-      [1, 2, 3, 4],
+      [1, 2],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      [1, 2, 3, 4, 5],
     ]);
     expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
-      9, 10, 11,
+      9, 10, 11, 16,
     ]);
     expect(piece2[2].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
       3, 4,
     ]);
-    expect(piece2[2].screens.filter((s) => s.navigation).map((s) => s.number)).toEqual([1]);
+    expect(piece2[2].screens.filter((s) => s.navigation).map((s) => s.number)).toEqual([1, 5]);
     for (const walk of piece2) {
       expect(PEOPLE.map((person) => person.id)).toContain(walk.person);
       expect(PARTS.map((part) => part.id)).toContain(walk.part);
     }
+  });
+
+  it('puts B’s seven screens after A’s sixteen, the screens the plan names', () => {
+    const [setup, staff, office] = WALKS.slice(2).map((walk) => walk.screens.map((s) => s.id));
+
+    expect(setup?.slice(1)).toEqual(['setup-2-fields']);
+    expect(staff?.slice(11)).toEqual([
+      'staff-12-own-fields',
+      'staff-13-photo',
+      'staff-14-search',
+      'staff-15-code-changed',
+      'staff-16-field-refused',
+    ]);
+    expect(office?.slice(4)).toEqual(['office-5-settings']);
   });
 
   it('names each step of a scene by words both languages’ dictionaries hold', () => {
@@ -189,7 +203,7 @@ describe('the walks', () => {
         .split('.')
         .reduce<unknown>(
           (at, part) => (at as Record<string, unknown>)?.[part],
-          DICTIONARIES[language],
+          stepWords(language),
         );
     const keys = (step: Step) =>
       'press' in step
@@ -199,7 +213,7 @@ describe('the walks', () => {
       .flatMap((screen) => screen.scene?.steps ?? [])
       .flatMap(keys);
 
-    expect(used.length).toBeGreaterThan(15);
+    expect(used.length).toBeGreaterThan(25);
     for (const key of used) {
       expect(typeof words('en', key), key).toBe('string');
       expect(typeof words('vi', key), key).toBe('string');
@@ -210,7 +224,7 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(16);
+    expect(scenes).toHaveLength(23);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
@@ -220,6 +234,7 @@ describe('the walks', () => {
       'EMP-0001',
       'EMP-0001',
       'EMP-0005',
+      'EMP-0003',
     ]);
   });
 

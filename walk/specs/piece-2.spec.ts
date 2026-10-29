@@ -1,13 +1,13 @@
 import { type Language } from '@credo/shared';
-import { DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 2's group A, three walks in one run: the staff setup and the staff list, the person's pages
- * and the office's, sixteen screens, each in Vietnamese and in English at the three widths
- * (16 × 2 × 3 = 96). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * Piece 2's groups A and B, three walks in one run: the staff setup and the staff list, the person's
+ * pages and the office's, twenty-three screens (A's sixteen and B's seven), each in Vietnamese and
+ * in English at the three widths (23 × 2 × 3 = 138). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -97,6 +97,10 @@ async function someoneSavesFirst(page: Page, client: Seeded, code: string) {
   expect(theirs.ok()).toBe(true);
 }
 
+/** The name of one of the data set's own fields, in the language shown. */
+const fieldName = (key: string, language: Language) =>
+  DEMO_CUSTOM_FIELDS.find((field) => field.key === key)!.label[language];
+
 /** A person of the data set, by name, from the list. */
 const personNamed = (page: Page, name: string) => page.getByRole('link', { name }).click();
 
@@ -114,6 +118,14 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, { path: '/staff-setup' });
   await expect(title(words.setup.title)).toBeVisible();
   await at('setup-1-departments-positions');
+
+  // B2. The person's fields, the company's own fields and the numbering: one more field added.
+  await open(page, language, { path: '/staff-setup' });
+  await expect(title(words.setup.title)).toBeVisible();
+  await press(words.setup.ownAdd);
+  await expect(page.getByLabel(words.setup.ownKey)).toHaveCount(DEMO_CUSTOM_FIELDS.length + 1);
+  await unfocus();
+  await at('setup-2-fields');
 
   await open(page, language, { path: '/staff' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -213,6 +225,53 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('textbox', { name: words.person.name })).toHaveValue('Trần Hùng');
   await at('staff-11-save-failed');
 
+  // 12. Adding a person with the company's own fields and a second phone; the code left empty.
+  await open(page, language, { path: '/staff/new' });
+  await typed(words.addPerson.name, 'Mai Linh');
+  await typed(words.addPerson.phone, '0909 123 456');
+  await typed(words.addPerson.personalPhone, '0909 555 666');
+  await page.getByLabel(fieldName('plate', language)).fill('51C-999.99');
+  await page.getByLabel(fieldName('dependants', language)).fill('1');
+  await page.getByLabel(fieldName('started', language)).fill('2026-10-01');
+  await page.getByLabel(words.addPerson.department).selectOption({ label: 'Kho' });
+  await page.getByLabel(words.addPerson.position).selectOption({ label: 'Nhân viên' });
+  await unfocus();
+  await at('staff-12-own-fields');
+
+  // 13. A person's photo.
+  await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Lê Minh Châu');
+  await expect(title('Lê Minh Châu')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Lê Minh Châu' })).toBeVisible();
+  await at('staff-13-photo');
+
+  // 14. The list searched and filtered.
+  await open(page, language, { path: '/staff' });
+  await typed(words.staff.search, 'phong');
+  await page.getByLabel(words.staff.filterPosition).selectOption({ label: 'Quản lý' });
+  await expect(page.getByRole('link', { name: 'Nguyễn Thị Lan' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Trần Văn Hùng' })).toHaveCount(0);
+  await unfocus();
+  await at('staff-14-search');
+
+  // 15. A code changed: the page says the person signs in with the new one.
+  await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Phạm Quốc Bảo');
+  await typed(words.person.codeNew, 'nv-12');
+  await press(words.person.codeSet);
+  await expect(page.getByRole('alert')).toHaveText(
+    words.person.codeChanged.replace('{{code}}', 'NV-12'),
+  );
+  await at('staff-15-code-changed');
+
+  // 16. A value the company's own field refuses.
+  await open(page, language, { path: '/staff/new' });
+  await typed(words.addPerson.name, 'Mai Linh');
+  await page.getByLabel(fieldName('dependants', language)).fill('two');
+  await press(words.addPerson.submit);
+  await expect(page.getByText(words.fields.invalidNumber)).toBeVisible();
+  await at('staff-16-field-refused');
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -236,17 +295,27 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, { path: '/staff', as: 'EMP-0005' });
   await expect(title(words.nothing.title)).toBeVisible();
   await at('office-4-nothing');
+
+  // Allowed to change the settings: Settings is in the menu.
+  await open(page, language, { path: '/settings', as: 'EMP-0003' });
+  await expect(title(words.settings.title)).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: words.nav.menu }).getByRole('link', {
+      name: words.nav.settings,
+    }),
+  ).toBeVisible();
+  await at('office-5-settings');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
-  test.describe(`piece 2, group A: the staff setup and the staff, on a ${device} (${width})`, () => {
+  test.describe(`piece 2, groups A and B: the staff setup and the staff, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
     for (const [language, name] of [
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all sixteen screens in ${name}`, async ({ page }) => {
+      test(`walks all twenty-three screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }
