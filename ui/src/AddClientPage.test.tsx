@@ -48,6 +48,22 @@ describe('AddClientPage', () => {
     expect(document.body.innerHTML).not.toContain(made.password);
   });
 
+  it('After Add another client the operator makes a second client, the button ready again', async () => {
+    const makeClient = vi.fn<Api['makeClient']>(() =>
+      Promise.resolve({ kind: 'made', client: made }),
+    );
+    page(makeClient);
+    await fillAndMake();
+    await screen.findByRole('heading', { level: 2, name: 'Client made' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
+
+    await fillAndMake('hoa-moc', 'Hoa Mộc');
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(makeClient).toHaveBeenCalledTimes(2);
+    expect(makeClient).toHaveBeenLastCalledWith('hoa-moc', 'Hoa Mộc');
+  });
+
   it('A code already taken is refused, says so, and what was typed stays', async () => {
     page(() => Promise.resolve({ kind: 'taken' }));
     await fillAndMake();

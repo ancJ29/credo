@@ -141,6 +141,17 @@ describe('what the ops scripts ask of ridge', () => {
     expect(JSON.stringify([...records.values()])).not.toContain(result.out[0]);
   });
 
+  it('stamps the client it makes with the time it was made, so ridge’s list is newest first', async () => {
+    const { records, call } = memoryCStorage();
+    const before = Date.now();
+
+    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+
+    const { madeAt } = storedClientSchema.parse(records.get(recordKeys.client('check-acme')));
+    expect(madeAt).toBeGreaterThanOrEqual(before);
+    expect(madeAt).toBeLessThanOrEqual(Date.now());
+  });
+
   it('refuses a taken code, a bad code and a missing name', async () => {
     const { call } = memoryCStorage();
     await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);

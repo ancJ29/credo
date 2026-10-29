@@ -588,6 +588,43 @@ describe('The operator is shown every client on the stack, newest first, from th
     }
   });
 
+  it('logs each of those 500s by its kind, holding neither the key nor a value', async () => {
+    const broken = {
+      'the client list is longer than c-storage returns': { records: [], more: true },
+      'a client index record does not parse': {
+        records: [
+          { key: 'client.secret-co', data: { id: 'not an id', name: 'Secret Name' }, tag: 'x' },
+        ],
+        more: false,
+      },
+      'a client index key holds no client code': {
+        records: [
+          {
+            key: 'client.NOT A CODE',
+            data: { id: '3f2a91bc-0000-4000-8000-000000000001', name: 'X' },
+            tag: 'x',
+          },
+        ],
+        more: false,
+      },
+    };
+    for (const [kind, reply] of Object.entries(broken)) {
+      const lines: string[] = [];
+      const t = await signedInOperator({
+        wrap: (client) => ({ ...client, listRecords: () => Promise.resolve(reply) }),
+        logger: { stream: { write: (line: string) => void lines.push(line) } },
+      });
+      const answer = await list(t);
+      const log = lines.join('\n');
+
+      expect(answer.statusCode, kind).toBe(500);
+      expect(log, kind).toContain(kind);
+      for (const held of ['secret-co', 'Secret Name', 'NOT A CODE']) {
+        expect(log, `${kind}: ${held}`).not.toContain(held);
+      }
+    }
+  });
+
   it('answers 503 when c-storage does not answer, never a signed-out 401', async () => {
     const t = await signedInOperator({
       wrap: (client) => ({
