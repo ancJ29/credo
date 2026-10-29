@@ -76,14 +76,14 @@ red first; the plan records no finding rejected or deferred.
 
 - **Step 13, onto `main`.** After piece 2 merges, this branch is rebased onto that `main`; the shell,
   the words, the fake, the walks and `visual/answers.json` meet piece 2's lines
-  ([the hazard](../plans/2026-10-29-operator-dashboard.md#L556)). Then the human runs the full run
+  ([the hazard](../plans/2026-10-29-operator-dashboard.md#L560)). Then the human runs the full run
   again, about 20 minutes.
 - **Step 14, the merge,** on the human's word.
 - **Step 15, ridge.** After the push, the human signs in at `/operator`, adds a client, sees it lead
   the list, and opens its copied link; one question: is this the console to run clients from?
 - **Unverified:** a stack's start time (the script's 15 to 25 minutes is a guess), and copying
   from the page, which jsdom cannot test
-  ([the plan](../plans/2026-10-29-operator-dashboard.md#L523)).
+  ([the plan](../plans/2026-10-29-operator-dashboard.md#L527)).
 
 **Hazard, repeated: never revert past this piece on ridge.** Every client made after it carries a
 `madeAt`; the old strict client schema refuses it, so each such client would answer 500
