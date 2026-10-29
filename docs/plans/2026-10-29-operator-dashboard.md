@@ -499,9 +499,9 @@ worktree; B to D will touch more of the same:
   files and nothing else, so no byte of piece 1's or piece 2's bases moved. The 24 old bases (4
   screens x 6, all `-chromium-darwin`, line 310) are removed in `178bef4` with the 54 new: the
   `chromium` project ignores `operator.spec.ts` (`walk/playwright.config.ts#L33`), the other four
-  projects name a suffix of their own, and `git grep` finds no other reader of the folder. The walks
-  page was last read at step 7 (0 waiting, 0 no, 68 yes); no screen's words changed since, as the 0
-  differing pictures show. **Then stop.**
+  projects name a suffix of their own, and `git grep` finds no other reader of the folder. `pnpm report` at `8016373`, 05:48 +07,
+  exit 0, no warning, built the walks page in `2026-10-30-054835-801637369`: `0 waiting, 0 asked
+  again, 0 no, 68 yes`. **Then stop.**
 - [ ] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
   the review's findings tagged, and the hazard of reverting past this piece on ridge repeated.
 - [ ] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
