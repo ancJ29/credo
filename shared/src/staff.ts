@@ -168,3 +168,16 @@ export const saveStaffSetupRequestSchema = z.strictObject({
   version: tagSchema.or(z.literal('')),
 });
 export type SaveStaffSetupRequest = z.infer<typeof saveStaffSetupRequestSchema>;
+
+/** The setup's optional parts after a save: each one sent replaces the stored one, and one left out
+ * is the stored one, so a caller that predates a part erases nothing. */
+export function keptSetupParts(sent: SaveStaffSetupRequest['setup'], stored: StaffSetup) {
+  const fields = sent.fields ?? stored.fields;
+  const customFields = sent.customFields ?? stored.customFields;
+  const numbering = sent.numbering ?? stored.numbering;
+  return {
+    ...(fields ? { fields } : {}),
+    ...(customFields ? { customFields } : {}),
+    ...(numbering ? { numbering } : {}),
+  };
+}

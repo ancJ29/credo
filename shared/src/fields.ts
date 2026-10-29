@@ -79,6 +79,13 @@ export function nextCode({ prefix, digits }: Numbering, codes: Iterable<string>)
   return `${prefix}${String(highest + 1).padStart(digits, '0')}`;
 }
 
+/** The last number given under each prefix, kept so that a number freed by a code change is never
+ * given again. */
+export const storedNumberingSchema = z.strictObject({
+  given: z.record(z.string(), z.number().int().min(0)),
+});
+export type StoredNumbering = z.output<typeof storedNumberingSchema>;
+
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const NUMBER = /^-?\d+([.,]\d+)?$/;
 const MAX_TEXT = 500;

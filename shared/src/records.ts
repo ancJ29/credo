@@ -19,6 +19,9 @@ export const recordKeys = {
     /** What the staff list reads: every person's key starts with it. */
     employeePrefix: `tenant.${id}.employee.`,
     staffSetup: `tenant.${id}.staff-setup`,
+    /** The last number given under each numbering prefix: its own record, so an add raises it
+     * without moving the setup the root is editing. */
+    staffNumbering: `tenant.${id}.staff-numbering`,
     /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
      * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
     employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,

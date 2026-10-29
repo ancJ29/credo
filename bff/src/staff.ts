@@ -10,6 +10,7 @@ import {
   type EmployeeDoc,
   employeeRoutes,
   employeeSchema,
+  keptSetupParts,
   normaliseEmployeeCode,
   nextCode,
   type Numbering,
@@ -22,11 +23,11 @@ import {
   saveEmployeeRequestSchema,
   savePhotoRequestSchema,
   saveStaffSetupRequestSchema,
-  type SaveStaffSetupRequest,
   setPasswordRequestSchema,
   staffConfig,
   type StaffSetup,
   type StoredPhoto,
+  storedNumberingSchema,
   storedPhotoSchema,
   type StoredUser,
 } from '@credo/shared';
@@ -67,19 +68,6 @@ function idOf(request: FastifyRequest) {
   const id = z.uuid().safeParse((request.params as { id: string }).id);
   if (!id.success) throw new HttpError(404, 'Not found');
   return id.data;
-}
-
-/** The parts of the setup a save may leave out: each one sent replaces the stored one, and one left
- * out is the stored one. */
-function kept(sent: SaveStaffSetupRequest['setup'], stored: StaffSetup) {
-  const fields = sent.fields ?? stored.fields;
-  const customFields = sent.customFields ?? stored.customFields;
-  const numbering = sent.numbering ?? stored.numbering;
-  return {
-    ...(fields ? { fields } : {}),
-    ...(customFields ? { customFields } : {}),
-    ...(numbering ? { numbering } : {}),
-  };
 }
 
 /** The staff routes: each checks who may call it on the server, with the permissions the app
@@ -140,7 +128,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       departments: mint(body.setup.departments, current.setup.departments),
       positions: mint(body.setup.positions, current.setup.positions),
       // A part the request leaves out stays as it was, so a caller that predates it erases nothing.
-      ...kept(body.setup, current.setup),
+      ...keptSetupParts(body.setup, current.setup),
       extra: body.setup.extra,
     };
     const key = recordKeys.tenant(request.tenantId).staffSetup;
@@ -206,14 +194,39 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     throw new HttpError(409, 'That code is taken');
   }
 
-  /** The code after every code given, claimed as a sign-in name: a number lost to a race takes the
-   * next one, up to `ATTEMPTS` times, and then the save fails (503). */
-  async function claimNumbered(tenantId: string, numbering: Numbering, record: StoredUser) {
+  /** The last number given under a prefix, with the tag of the record that holds it. */
+  async function numberingOf(tenantId: string) {
+    const found = await storage.getRecord(recordKeys.tenant(tenantId).staffNumbering);
+    if (!found) return { given: {} as Record<string, number>, tag: null };
+    const parsed = storedNumberingSchema.safeParse(found.data);
+    if (!parsed.success) throw new Error('the numbering record does not parse');
+    return { given: parsed.data.given, tag: found.tag };
+  }
+
+  /** The code after every code ever given, claimed as a sign-in name. A number is raised in the
+   * numbering record, over the tag it was read at, before it is claimed: a number freed by a code
+   * change, or lost to a claim that is taken or may be a running add's, is never given again. A
+   * record that moved is read again; after `ATTEMPTS` tries the save fails (503). */
+  async function claimNumbered(
+    tenantId: string,
+    numbering: Numbering,
+    record: StoredUser,
+    personWith: (code: string) => Employee,
+  ) {
+    const key = recordKeys.tenant(tenantId).staffNumbering;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const code = nextCode(
-        numbering,
-        (await everyone(tenantId)).map((person) => person.code),
-      );
+      const held = await numberingOf(tenantId);
+      const last = held.given[numbering.prefix] ?? 0;
+      const code = nextCode(numbering, [
+        ...(await everyone(tenantId)).map((person) => person.code),
+        `${numbering.prefix}${last}`,
+      ]);
+      personWith(code);
+      const given = {
+        ...held.given,
+        [numbering.prefix]: Number(code.slice(numbering.prefix.length)),
+      };
+      if ((await storage.putRecord(key, { given }, held.tag)) === 'moved') continue;
       try {
         await claimSignIn(tenantId, normaliseSignInName(code), record);
         return code;
@@ -246,23 +259,36 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       passwordAt: now(),
       generation: randomUUID(),
     };
-    let code: string;
+    /** The person as it will be stored, read by the schema every reader uses before any write, so
+     * no record the list cannot read is ever stored. */
+    const personWith = (code: string): Employee => {
+      const person = employeeSchema.safeParse({
+        id,
+        code,
+        name: body.name,
+        department,
+        position,
+        permissions: {},
+        archived: false,
+        extra: body.extra,
+      });
+      if (!person.success) throw new HttpError(400, 'Bad request', { details: 'code' });
+      return person.data;
+    };
+    let person: Employee;
     if (body.code === undefined) {
-      code = await claimNumbered(request.tenantId, staffConfig(read.setup).numbering, claim);
+      const code = await claimNumbered(
+        request.tenantId,
+        staffConfig(read.setup).numbering,
+        claim,
+        personWith,
+      );
+      person = personWith(code);
     } else {
-      code = normaliseEmployeeCode(body.code);
+      const code = normaliseEmployeeCode(body.code);
+      person = personWith(code);
       await claimSignIn(request.tenantId, normaliseSignInName(code), claim);
     }
-    const person: Employee = {
-      id,
-      code,
-      name: body.name,
-      department,
-      position,
-      permissions: {},
-      archived: false,
-      extra: body.extra,
-    };
     // The person is written last: the list finds them as soon as they are there.
     if (
       (await storage.putRecord(recordKeys.tenant(request.tenantId).employee(id), person, null)) ===
@@ -370,8 +396,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   /** A new code: a sign-in record under the new name, holding the password the person has, is
    * claimed first; the person is written with it last, the moment it takes effect; the old record
    * is removed after, so the old code is free again. A person written between the read and the write
-   * gives the new name back. A password given in the instant before the old record is removed is
-   * lost with it: the root, shown the new one, sees it fail and gives another. */
+   * gives the new name back. A password given before the old record is removed is carried onto
+   * the new one. */
   app.put(employeeRoutes.code(':id'), forClient, async (request) => {
     mustBeRoot(await signedIn(request));
     const found = await mustFind(request.tenantId, idOf(request));
@@ -406,8 +432,35 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       }
       throw conflict(await newest(request.tenantId, found.employee.id));
     }
-    await storage.removeRecord(keys.user(oldName), old.tag);
-    return await newest(request.tenantId, found.employee.id);
+    // The old record is removed over the tag it was read at. If it moved, a password may have been
+    // given in between: carry its hash onto the new record under a fresh generation, then try the
+    // removal again over the tag just read, a few times at most.
+    let seen = old;
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if ((await storage.removeRecord(keys.user(oldName), seen.tag)) === 'removed') {
+        return await newest(request.tenantId, found.employee.id);
+      }
+      const again = await readSignIn(storage, request.tenantId, oldName);
+      // Gone, or taken over by another person: nothing of this person's is left to free.
+      if (!again || again.user.employeeId !== found.employee.id) {
+        return await newest(request.tenantId, found.employee.id);
+      }
+      const mine = await readSignIn(storage, request.tenantId, name);
+      if (mine?.user.employeeId === found.employee.id) {
+        await storage.putRecord(
+          keys.user(name),
+          {
+            ...mine.user,
+            passwordHash: again.user.passwordHash,
+            passwordAt: now(),
+            generation: randomUUID(),
+          },
+          mine.tag,
+        );
+      }
+      seen = again;
+    }
+    throw new CStorageError(412, 'the old sign-in moved on every attempt to be removed');
   });
 
   /** A person's photo as stored, with the version it is at; none yet is `null` and `''`. A record
