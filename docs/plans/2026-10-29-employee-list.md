@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 15:32 +07:** group A is done (steps 2 to 11); group B's steps 12 to 15 are done, and step 16's run is read and its bases committed: the human's full run was green at threshold 0, one screen (`staff-15` in Vietnamese at 390) differed from the fake's on the app's fixed top bar alone (open item 25), and its answer is removed so it is asked again. **Next:** the human answers that screen on the walks page, then step 16 is ticked.
+**Where it stands — 2026-10-29 15:39 +07:** group A is done (steps 2 to 11) and group B is done (steps 12 to 16): the human's full run was green at threshold 0, its one differing screen (`staff-15` in Vietnamese at 390, the fixed top bar alone, open item 25) is answered yes, and the walks page reads 0 waiting, 0 asked again, 0 no, 72 yes. **Next:** groups C and D side by side (steps 17 to 25), each in its own worktree from this commit.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1050,7 +1050,7 @@ itself:
     the end:* equal in both languages (46 scene dumps and the 38 mock states), after the code
     box's value was caught as the one difference (the form no longer redraws on a code change) and
     emptied on success. No screen changed; the walk spec was not run.
-- [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
+- [x] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
   *Evidence so far, 2026-10-29 15:32 +07:* the human's full run at `66eb3c3` (checks clean), its log
   `logs/20261029-1314-full-run-employee-list-b.log` (528 lines, 15:20 to 15:27) read whole by a subagent and
@@ -1065,8 +1065,13 @@ itself:
   list now draws search, filters, avatars and two more columns; the person, add, password and other pages
   moved with it), nothing else changed. Row 55: `admin-staff:staff-15-code-changed:vi` has its answer
   removed in `visual/answers.json` (the three widths share it), so it is asked again.
-  *Left:* the human's answer on that screen, beside the full run's picture and its difference; the step
-  stays unticked until the page shows none waiting and no open "no".
+  *Answer, 2026-10-29 15:39 +07:* the human, on the build `f5139cbac`, pasted one line,
+  `admin-staff:staff-15-code-changed:vi | yes | 9e5573ec85e8`. `pnpm answers` wrote 1 and refused 0 (the
+  line matched the screen of HEAD); `visual/answers.json` holds it; `pnpm report` reads 0 waiting, 0
+  asked again, 0 no, 72 yes. *Gates, lightly* (only `visual/answers.json` and this plan changed): the
+  `visual` package's tests alone (218 of 219 passed; the one, a scene's 20 s wait in `page.test.tsx`,
+  timed out while two other gates held the machine, and that file alone then read 47 of 47) and
+  `prettier --check` on this plan, clean; not the whole `pnpm check`. Group B is done.
 
 **Group C, the ways to sign in.** Each step as its group A step, for rows 25 to 28, 46 and 47.
 
