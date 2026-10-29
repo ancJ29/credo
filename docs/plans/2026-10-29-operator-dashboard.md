@@ -1,10 +1,9 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-29 13:25 +07:** the human's read (step 3), the pages (step 5) and the walk on
-the fake (step 6) are done, and the human's preview answered all 16 new answers yes (screens 2 to 9,
-both languages), so the walks page reads 0 waiting, 0 asked again, 0 no. Step 7 stays open for one
-act: the human's fake run of the script written in step 6. **Next:** the human runs it
-([steps](#steps)).
+**Where it stands — 2026-10-29 14:17 +07:** the UI is fixed on the fake: the human's read (step 3), the
+pages (step 5), the walk on the fake (step 6) and the preview with its fake run (step 7) are done; all
+68 answers are yes and the fake run's 54 pictures are the reference for the full walk. **Next:** step
+8, the BFF ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -399,15 +398,23 @@ worktree; B to D will touch more of the same:
   wait. The 24 old bases in `walk/specs/operator.spec.ts-snapshots` are not read by any project now;
   the full walk (step 11) writes the 54 new ones. The fake run's script is written, not run.
 
-- [ ] **7. The human's preview.** Who: 👤, after step 6, about 30 minutes, and a round for each "no".
+- [x] **7. The human's preview.** Who: 👤, after step 6, about 30 minutes, and a round for each "no".
   The human answers each screen on the newest walks page and pastes the block; the machine runs
   `pnpm answers`. A "no" becomes a row here, fixed on the fake and asked again. Last, the fake run's
   script. Done when: none of the operator's screens waiting and no open "no"; the fake run's log read
   whole, its 54 pictures counted. **Then stop:** the UI is fixed here.
-  *Progress, 13:25 +07:* the human's block of the preview, 16 lines (screens 2 to 9, Vietnamese and
-  English), every one yes, written by `pnpm answers` (16 written, 0 refused) into
-  `visual/answers.json`; `pnpm report` then reads 0 waiting, 0 asked again, 0 no, 68 yes. Not ticked:
-  the fake run's log and its 54 pictures are still to come.
+  *Evidence:* the human's block of the preview, 16 lines (screens 2 to 9, Vietnamese and English), every
+  one yes, written by `pnpm answers` (16 written, 0 refused); `pnpm report` then read 0 waiting, 0 asked
+  again, 0 no, 68 yes. The human's fake run, 2026-10-29 13:38:45 to 13:38:57 +07, of
+  `one-off/20261029-1310-fake-run-operator-dashboard.sh` on `63ae46b`, its log read whole by another
+  agent (38 lines): `operator-dashboard` at `63ae46b`, clean; 54 of 54 pictures expected, the smallest
+  11450 bytes; Playwright "6 passed (8.6s)", `[operator-fake]` on PC, tablet and phone in Vietnamese and
+  English, 1.2 to 1.5 s each; no warning, error, retry, flaky, timeout or skip; the folder holds 54
+  `.png`, 6 for each of the 9 screens, every name to pattern; no secret, and no address but
+  `127.0.0.1`. The whole `pnpm check`, 14:17 +07 on a quieter Mac, exit 0: shared 65 tests, ui 219, bff
+  152, scripts 75, visual 220, every package at 100 %, no warning (two earlier runs under a load
+  of about 40 failed on the machine, a worker that did not start and a timing test, none on a case).
+  **Then stop:** the UI is fixed here.
 
 - [ ] **8. The BFF.** Who: 🤖, after step 7, about half a day: `GET /api/operator/clients`, `madeAt`
   written by the create, the link's one function used by the create, the route list, the generator's
