@@ -200,10 +200,17 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      stays as it is; make a new copy under a new code.
    - **<code>: <n> days behind, more than 30, left:** the schedule stopped for a month; the run ends red.
      Run it again after reading why.
+   - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
+     <S>**, for the scenario): the copy was filled for another client or trade than the mapping now
+     maps to that code. It is refused and left, never switched; make a new copy under a new code.
    - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's, and not an earlier
      one that differs from it in no path `ci.yml` deploys on (a push touching none deploys nothing, so
      the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green; the
      next morning catches the day up.
+   - **ci.yml's push trigger holds a line this script cannot read:** the seed reads the paths a push
+     deploys on from `ci.yml`, and only as `      - "<path>"` or `      - "<path>/**"`; the line
+     named is quoted another way, commented or a deeper glob. Nothing was written; write the entry in
+     that form, or teach `push_paths` in `ops/lib.sh` the new one.
    - **the BFF's function names <sha>, /health <sha>:** a deploy shipped c-storage and stopped before
      the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.

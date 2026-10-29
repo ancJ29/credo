@@ -1,7 +1,8 @@
 # The demo copies on ridge get a day each morning: 06:00 in Vietnam (23:00 UTC), and by hand. The job
 # runs ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy
-# up to yesterday, through the BFF's own code over the tunnel. It refuses unless /health names this
-# commit. A red here is a defect to fix, never a run to repeat: the next morning catches the day up.
+# up to yesterday, through the BFF's own code over the tunnel. It writes nothing unless /health
+# names this commit, or an earlier one that differs from it in no path ci.yml deploys on, and the
+# BFF's function names the same. A red here is a defect to fix, never a run to repeat: the next morning catches the day up.
 # It runs under the deploy role, so a change here or to ops/seed.sh acts on ridge the next morning;
 # ops/test.sh reads this file as it reads the deploy job. Why: docs/plans/2026-10-29-demo-seed.md.
 name: seed

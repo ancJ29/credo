@@ -798,6 +798,35 @@ refuses "a seed in another Region than lib.sh's is refused" "aws-region is lib.s
 awk '/^      - name: pnpm 12.10.1$/ {skip = 1} skip && /^      # The same exchange/ {skip = 0} !skip' "$SEED_WORKFLOW" >"$WORK/seed-noinstall.yml"
 refuses "a seed that installs nothing before the role is refused" "the install, then the role" seed_guards "$WORK/seed-noinstall.yml"
 
+echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
+CI_YML=$REPO_DIR/.github/workflows/ci.yml
+check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 c-storage walk .github/workflows/seed.yml" \
+  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
+# push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
+push_variant() {
+  awk -v from="$2" -v to="$3" '/^  push:$/ {p = 1} /^  pull_request:$/ {p = 0} p && $0 == "      - \"" from "\"" && !d {d = 1; print to; next} 1' "$CI_YML" >"$WORK/ci-$1.yml"
+}
+push_variant unquoted 'ui/**' '      - ui/**'
+refuses "an unquoted entry stops the read, naming the line" "      - ui/**" push_paths "$WORK/ci-unquoted.yml"
+push_variant single 'ui/**' "      - 'ui/**'"
+refuses "a single-quoted entry stops the read, naming the line" "      - 'ui/**'" push_paths "$WORK/ci-single.yml"
+push_variant comment 'ui/**' '      # - "ui/**"'
+refuses "a commented entry stops the read, naming the line" '      # - "ui/**"' push_paths "$WORK/ci-comment.yml"
+push_variant deep 'ui/**' '      - "ui/**/*.ts"'
+refuses "a deeper glob stops the read, naming the line" '      - "ui/**/*.ts"' push_paths "$WORK/ci-deep.yml"
+push_variant trailing 'ui/**' '      - "ui/**" # the app'
+refuses "an entry with a trailing comment stops the read, naming the line" '# the app' push_paths "$WORK/ci-trailing.yml"
+push_variant negated 'ui/**' '      - "!ui/**"'
+refuses "a negated entry stops the read, naming the line" '      - "!ui/**"' push_paths "$WORK/ci-negated.yml"
+push_variant indent 'ui/**' '        - "ui/**"'
+refuses "an entry indented deeper stops the read, naming the line" '        - "ui/**"' push_paths "$WORK/ci-indent.yml"
+sed 's/^    paths:$/    paths: [ "ui\/**" ]/' "$CI_YML" >"$WORK/ci-flow.yml"
+refuses "a flow-style list stops the read, naming the line" 'paths: [ "ui/**" ]' push_paths "$WORK/ci-flow.yml"
+sed 's/$/\r/' "$CI_YML" >"$WORK/ci-crlf.yml"
+refuses "a file with Windows line ends stops the read" "nothing was written" push_paths "$WORK/ci-crlf.yml"
+printf 'on:\n  push:\n    branches: [main]\n' >"$WORK/ci-nopaths.yml"
+refuses "a push trigger with no paths stops the read" "found no paths" push_paths "$WORK/ci-nopaths.yml"
+
 echo "== the checks of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }
 STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/c-storage/Makefile")
@@ -1838,6 +1867,18 @@ git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
 e2e_run seed.sh ridge
 check "a main one commit past ridge's that changes a path ci.yml deploys on is refused before the seed" "1 1 0" \
   "$RC $(seed_lines "^error: /health names $e2e_sha, not") $(seed_lines '^seed: ')"
+git -C "$E2E/repo" reset -q --hard "$e2e_sha"
+git -C "$E2E/repo" push -qf origin HEAD:refs/heads/main
+# ...and a ci.yml whose push list this script cannot read stops the run before the comparison, nothing written.
+export OPS_LOG_DIR=$E2E/logs-seed-ci-unread
+sed -i.bak 's/^      - "ui\/\*\*"$/      - ui\/**/' "$E2E/repo/.github/workflows/ci.yml"
+rm -f "$E2E/repo/.github/workflows/ci.yml.bak"
+git -C "$E2E/repo" add .github/workflows/ci.yml
+git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m 'ci: an entry unquoted'
+git -C "$E2E/repo" push -q origin HEAD:refs/heads/main
+e2e_run seed.sh ridge
+check "a ci.yml whose push list holds an unreadable line stops the seed, naming it, before any comparison or write" "1 1 0 0 0" \
+  "$RC $(seed_lines '^error: ci.yml.s push trigger holds a line this script cannot read.*      - ui/\*\*') $(seed_lines '^error: /health names') $(seed_lines '^seed: ') $(seed_lines '^seeded')"
 git -C "$E2E/repo" reset -q --hard "$e2e_sha"
 git -C "$E2E/repo" push -qf origin HEAD:refs/heads/main
 # c-storage is on this commit, the BFF's function a deploy behind (a half-failed deploy): nothing is written.

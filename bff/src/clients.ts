@@ -20,6 +20,19 @@ async function createRecord(storage: CStorageClient, key: string, data: unknown)
   }
 }
 
+/** The settings a new client starts with: `settings` laid over the defaults. One home, so a caller
+ * that asks whether a client still holds them cannot drift from what `createClient` writes. */
+export function startingConfig(name: string, settings: Partial<TenantConfig> = {}): TenantConfig {
+  return {
+    name,
+    logo: null,
+    colour: CREDO_COLOUR,
+    languages: ['vi', 'en'],
+    defaultLanguage: 'vi',
+    ...settings,
+  };
+}
+
 /**
  * Makes a client: its settings and its root under a freshly minted id, then the code's index. The
  * index is written last, and with `If-None-Match: *`, so it alone makes the client: a failure
@@ -37,14 +50,7 @@ export async function createClient(
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
   const password = newPassword();
-  const config: TenantConfig = {
-    name,
-    logo: null,
-    colour: CREDO_COLOUR,
-    languages: ['vi', 'en'],
-    defaultLanguage: 'vi',
-    ...settings,
-  };
+  const config = startingConfig(name, settings);
   const root: StoredUser = {
     passwordHash: await hashPassword(password),
     root: true,

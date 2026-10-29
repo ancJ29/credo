@@ -151,6 +151,41 @@ describe('the scenarios', () => {
     }
   });
 
+  it('row 3: standing staff stay within a quarter of the size, every week for three years', () => {
+    for (const [client, scenario] of [
+      ['A', 'S1'],
+      ['B', 'S2'],
+    ] as const) {
+      const size = SCENARIOS[scenario].staff.headcount;
+      for (let day = 0; day <= 3 * 365; day += 7) {
+        const standing = staffAsOf(client, scenario, addDays(ANCHOR, day)).filter(
+          (p) => !p.archived,
+        ).length;
+        expect(standing, `${client} on day ${day}`).toBeGreaterThanOrEqual(size * 0.75);
+        expect(standing, `${client} on day ${day}`).toBeLessThanOrEqual(size * 1.25);
+      }
+    }
+  });
+
+  it('row 2: the fill as of the next morning is the fill as of this one with this day applied, every day for two years', () => {
+    for (const [client, scenario] of [
+      ['A', 'S1'],
+      ['B', 'S2'],
+    ] as const) {
+      const state = new Map(staffAsOf(client, scenario, ANCHOR).map((p) => [p.code, p.archived]));
+      for (const day of daysBetween(ANCHOR, addDays(ANCHOR, 730))) {
+        for (const event of dayEvents(client, scenario, day)) {
+          if (event.kind === 'hire') state.set(event.person.code, false);
+          else state.set(event.code, true);
+        }
+        const fill = new Map(
+          staffAsOf(client, scenario, addDays(day, 1)).map((p) => [p.code, p.archived]),
+        );
+        expect(fill, `${client} after ${day}`).toEqual(state);
+      }
+    }
+  });
+
   it('row 3: a hire leaves at most once, on a working day, after its tenure, and is archived in a fill made after', () => {
     const days = daysBetween(ANCHOR, addDays(ANCHOR, 900));
     const hires = new Map<string, string>();
@@ -166,7 +201,7 @@ describe('the scenarios', () => {
     expect(leaves.size).toBeGreaterThan(0);
     for (const [code, day] of leaves) {
       expect(isSunday(day)).toBe(false);
-      expect(day > addDays(hires.get(code)!, 89)).toBe(true);
+      expect(day > addDays(hires.get(code)!, 269)).toBe(true);
       const before = staffAsOf('B', 'S2', day).find((p) => p.code === code)!;
       const after = staffAsOf('B', 'S2', addDays(day, 1)).find((p) => p.code === code)!;
       expect([before.archived, after.archived]).toEqual([false, true]);

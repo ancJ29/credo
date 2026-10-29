@@ -603,18 +603,24 @@ describe('which clients are touched', () => {
     expect((await applyCopy(storage, A1, addDays(TODAY, 9))).status).toBe('ok');
   });
 
-  it('row 8: a copy whose name, logo or colour its users changed before the first fill is refused, never overwritten', async () => {
+  it('row 8: a copy whose name, logo, colour, languages or default language its users changed before the first fill is refused, never overwritten', async () => {
     const changes = {
       name: 'Tên khách tự đặt',
       logo: companyConfig('B', B1.company).logo,
       colour: '#112233',
+      languages: ['vi'],
+      defaultLanguage: 'en',
     };
     for (const [field, value] of Object.entries(changes)) {
       const storage = await fresh();
       const made = await make(storage, B1);
       const root = await asRoot(storage, B1.code, made.password);
       const doc = (await root('GET', ROUTES.config)).json<{ config: object; version: string }>();
-      const changed = { ...doc.config, [field]: value };
+      const changed = {
+        ...doc.config,
+        [field]: value,
+        ...(field === 'languages' ? { defaultLanguage: 'vi' } : {}),
+      };
       expect(
         (await root('PUT', ROUTES.config, { config: changed, version: doc.version })).statusCode,
       ).toBe(200);
@@ -627,7 +633,7 @@ describe('which clients are touched', () => {
       const config = tenantConfigSchema.parse(
         (await storage.getRecord(recordKeys.tenant(id).config))!.data,
       );
-      expect(config[field as 'name' | 'logo' | 'colour']).toBe(value);
+      expect(config[field as keyof typeof config]).toEqual(value);
     }
   });
 

@@ -8,10 +8,11 @@ import { type Stream, streamOf } from './stream';
 export const ANCHOR = '2026-10-01';
 /** Leavers of the base staff fall in this many days after the anchor. */
 const LEAVE_WINDOW = 365;
-/** A hire stays at least this many days, and up to `TENURE_SPREAD` more, so leavers go on after
- * the base staff's year: each hire has a leave day of its own, drawn apart from the hire's draws. */
-const MIN_TENURE = 90;
-const TENURE_SPREAD = LEAVE_WINDOW;
+/** A hire stays 270 to 459 days, about a year, so leavers go on after the base staff's year and
+ * standing staff stay within a quarter of the size: each hire has a leave day of its own, drawn
+ * apart from the hire's draws. */
+const MIN_TENURE = 270;
+const TENURE_SPREAD = 190;
 /** A working day's hours, in minutes after midnight: 07:30 to 17:30. */
 const FIRST_MINUTE = 7 * 60 + 30;
 const WORKING_MINUTES = 10 * 60;

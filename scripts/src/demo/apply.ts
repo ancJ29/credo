@@ -1,12 +1,12 @@
+import { isDeepStrictEqual } from 'node:util';
 import { buildApp } from '@credo/bff';
-import { createClient, ROOT_NAME } from '@credo/bff/clients';
+import { createClient, ROOT_NAME, startingConfig } from '@credo/bff/clients';
 import { createSessions } from '@credo/bff/sessions';
 import {
   type AddEmployeeReply,
   AUTH_HEADER,
   CLIENT_HEADER,
   type ConfigDoc,
-  CREDO_COLOUR,
   type CStorageClient,
   DEVICE_HEADER,
   type EmployeeDoc,
@@ -93,19 +93,14 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
 type Driver = ReturnType<typeof driverFor>;
 
 /** Whether a client holds what the operator's create leaves and nothing else: its root, its
- * settings as `createClient` writes them (the index's name, no logo, the product's colour), and
+ * settings as `createClient` writes them (`startingConfig` under the index's name, whole), and
  * sessions, which a root signing in leaves and nothing sweeps. */
 async function isFresh(storage: CStorageClient, tenantId: string, name: string) {
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
   const asMade = (data: unknown) => {
     const config = tenantConfigSchema.safeParse(data);
-    return (
-      config.success &&
-      config.data.name === name &&
-      config.data.logo === null &&
-      config.data.colour === CREDO_COLOUR
-    );
+    return config.success && isDeepStrictEqual(config.data, startingConfig(name));
   };
   return (
     !listed.more &&

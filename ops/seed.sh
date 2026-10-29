@@ -61,11 +61,8 @@ if [ "$running" != "$sha" ]; then
   # A push that touches none of ci.yml's paths deploys nothing, so ridge may still run the commit
   # before it. The list is ci.yml's own, read here: one home. A path ending /** is its directory.
   deploy_paths=()
-  while IFS= read -r path; do deploy_paths+=("$path"); done < <(
-    awk '/^  push:$/ {on = 1; next} on && /^  [a-z_]+:$/ {exit} on && /^      - / {gsub(/^      - "|"$/, ""); sub(/\/\*\*$/, ""); print}' \
-      "$REPO_DIR/.github/workflows/ci.yml"
-  )
-  [ "${#deploy_paths[@]}" -gt 0 ] || die "found no paths under ci.yml's push trigger: nothing was written"
+  paths=$(push_paths "$REPO_DIR/.github/workflows/ci.yml") || exit 1
+  while IFS= read -r path; do deploy_paths+=("$path"); done <<<"$paths"
   held=no
   if git -C "$REPO_DIR" merge-base --is-ancestor "$running" "$sha" 2>/dev/null &&
     git -C "$REPO_DIR" diff --quiet "$running" "$sha" -- "${deploy_paths[@]}"; then

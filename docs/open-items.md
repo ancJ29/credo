@@ -144,3 +144,12 @@ it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package
 99.68 % and fails. Run alone, the package reads 100 % each time. The test passes either way; the gate
 fails. Make the test wait for the child's log line before it starts the clock (a longer timeout would
 only hide the cause).
+
+## 24. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
+
+`ops/app.sh` writes the BFF function's description (the commit `ops/seed.sh` compares with
+`/health`) before it writes the function's code. A deploy that stops between the two leaves a
+description naming the new commit on the old code, so the seed's check passes and it runs against a
+BFF that is a commit behind. It needs a deploy that is already red to bite, and the next one is
+red anyway. Fix: write the description after the code, in `ops/app.sh`, and a stand-in `aws` test in
+`ops/test.sh` that stops the code's write and reads the description unchanged.
