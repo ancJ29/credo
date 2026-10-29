@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 15:39 +07:** group A is done (steps 2 to 11) and group B is done (steps 12 to 16): the human's full run was green at threshold 0, its one differing screen (`staff-15` in Vietnamese at 390, the fixed top bar alone, open item 25) is answered yes, and the walks page reads 0 waiting, 0 asked again, 0 no, 72 yes. **Next:** groups C and D side by side (steps 17 to 25), each in its own worktree from this commit.
+**Where it stands — 2026-10-29 16:56 +07:** groups A and B are done (steps 2 to 16). Group C's step 17 is done on the fake (the email, the QR code drawn by `qrcode.react`, the phone's landing, one's own password, 6 screens); the walks page reads 12 waiting, 4 asked again (the staff setup page, which gained two switch rows), 0 no, 68 yes. **Next:** step 18, the human's fake walk of all 29 screens, where the setup page is re-answered; group D runs side by side in its own worktree.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1075,9 +1075,34 @@ itself:
 
 **Group C, the ways to sign in.** Each step as its group A step, for rows 25 to 28, 46 and 47.
 
-- [ ] **17. C's pages and walk, on the fake.** Who: 🤖, about a day: the email on a person, the QR
+- [x] **17. C's pages and walk, on the fake.** Who: 🤖, about a day: the email on a person, the QR
   code and its page, the phone's QR landing, one's own password, and C's 6 screens. Done when: as
   step 12, for C's rows.
+  *Evidence, 2026-10-29 16:56 +07:* the shared, fake, pages, walks and spec of C came in the WIP
+  commit `d21cfa6` (shared `signins.ts`, the fake's and the API's `setEmail`, `issueQr`, `signInQr`
+  and `changePassword`, the email and QR panels, the QR landing, the own-password page, six scenes);
+  its tests' red-first was that session's and is not re-read here. Seen red and green in this
+  session: `QrCode` drawing `value` as an SVG of modules (red against the placeholder icon),
+  `qrcode.react` 4.2.0 pinned in the catalog and `@credo/ui` (the human's install, lockfile
+  committed), loaded by `ui/src/QrCode.tsx` alone, which only the person page's QR panel imports; the
+  BFF route test that refused `fields: { email: true }` as an unknown key (red once `email` became a
+  known switch, now refuses `fax`); the words test, red on `{{email}}` of `staff-17` (its domain read
+  as a dictionary key, `phat.example`; emails are now taken out of a line before that check). *QR
+  switch (Decide 14c):* off in `staffConfig`'s default, in the data set and in the fake unless a
+  scene asks for it; the tests of those three stand, so nothing changed. *Replay:* the six new steps
+  played in jsdom on the real router (`ui/src/SignIns.test.tsx`, and the walks page's scene run in
+  `visual/src/words.test.tsx`, each in both languages); the walk spec is typechecked and linted,
+  not run. *Dumps:* the 23 screens of A and B (words and DOM, Mantine's ids, UUIDs and React's ids
+  masked, both languages, the 38 mock states included) at `7b1c1f5` (a copy of its tree) and now:
+  equal but for 4 of the 46 files, those of `setup-1` and `setup-2`, one page
+  (`admin-staff-setup:2`) and gain a heading, a line and two unchecked switch rows (the email, the QR
+  code) in Vietnamese and in English, nothing else. **That change is the human's to re-answer at
+  C's preview** (Decide 14b). *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every
+  package (shared 81 tests, bff 202, ui 286, scripts 76, visual 220; knip silent); the scripts tests
+  now build under `NODE_ENV=production` (their `vitest.config.ts`), since under `test` the
+  UI bundle, with `qrcode.react`, shipped React's development build past 1000 kB and warned.
+  `pnpm report` reads 12 waiting (C's 6 screens in two languages), 4 asked again (the setup page's
+  `setup-1` and `setup-2`, both languages), 0 no, 68 yes.
 - [ ] **18. C's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 29
   screens. **Then stop.**
 - [ ] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR

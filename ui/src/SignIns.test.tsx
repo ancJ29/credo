@@ -31,7 +31,7 @@ describe('an email on a person', () => {
         'Signs in with the code EMP-0002 or the email hung@minh-phat.example, and a password.',
       ),
     ).toBeTruthy();
-    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Email').value).toBe('');
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove the email' }));
     expect(await screen.findByText('The email is removed. The person signs in with the code.'));
@@ -296,7 +296,7 @@ describe('one’s own password', () => {
     );
     expect(api.changePassword).toHaveBeenCalledWith(OLD, NEW);
     expect(device.authId()).toBe(`fake.session.${person('EMP-0001').id}`);
-    expect((screen.getByLabelText('Current password') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Current password').value).toBe('');
   });
 
   it('C: The root changes their own password too, and takes the session that replaces theirs', async () => {
@@ -343,10 +343,10 @@ describe('one’s own password', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'The current password is wrong. Nothing was changed.',
     );
-    expect((screen.getByLabelText('Current password') as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>('Current password').value).toBe(
       'Wrong-password-1!',
     );
-    expect((screen.getByLabelText('New password') as HTMLInputElement).value).toBe(NEW);
+    expect(screen.getByLabelText<HTMLInputElement>('New password').value).toBe(NEW);
     expect(device.authId()).toBe(`fake.session.${person('EMP-0001').id}`);
   });
 
@@ -387,7 +387,7 @@ describe('one’s own password', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(
       'The password was not changed: try again.',
     );
-    expect((screen.getByLabelText('New password') as HTMLInputElement).value).toBe(NEW);
+    expect(screen.getByLabelText<HTMLInputElement>('New password').value).toBe(NEW);
 
     await submit();
     expect(

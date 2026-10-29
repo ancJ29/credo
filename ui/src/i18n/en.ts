@@ -297,8 +297,7 @@ export const en = {
     busyTitle: 'Signing you in',
     busyText: 'One moment.',
     refusedTitle: 'This code cannot sign you in',
-    refusedText:
-      'It was used already, or its 15 minutes are over. Ask your admin for a new one.',
+    refusedText: 'It was used already, or its 15 minutes are over. Ask your admin for a new one.',
     password: 'Sign in with a password',
   },
   fields: {

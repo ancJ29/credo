@@ -178,7 +178,7 @@ describe('the fake Api', () => {
 
   it('C: A person given an email signs in with it or with the code, in any case, until it is taken back, and a second person’s same email is refused', async () => {
     const api = fake('', { client: 'fake.session' }, true);
-    const [lan, hung] = [DEMO_EMPLOYEES[0]!, DEMO_EMPLOYEES[1]!];
+    const [lan, hung] = [DEMO_EMPLOYEES[0], DEMO_EMPLOYEES[1]];
     const read = await api.getEmployee(hung.id);
 
     const given = await api.setEmail(hung.id, {

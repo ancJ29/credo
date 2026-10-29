@@ -188,8 +188,10 @@ describe('the app’s own scenes, drawn', () => {
         ].includes(key);
         const words = await readWords(what, language, navigation);
         expect(words, `${key} ${language}`).toContain(PROOF[key](DICTIONARIES[language]));
+        // A leaked dictionary key reads `word.Word`; an email's domain reads the same, so emails are
+        // taken out of a line before it is looked at.
         expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line.replace(/\S+@\S+/g, ''))),
           key,
         ).toEqual([]);
       }

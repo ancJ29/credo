@@ -264,7 +264,8 @@ export const vi: Dictionary = {
     emailSet: 'Cấp email này',
     emailRemove: 'Bỏ email',
     emailInvalid: 'Đây không phải địa chỉ email.',
-    emailTaken: 'Email này đã dùng để đăng nhập cho một người, và chưa có gì thay đổi. Hãy chọn email khác.',
+    emailTaken:
+      'Email này đã dùng để đăng nhập cho một người, và chưa có gì thay đổi. Hãy chọn email khác.',
     emailFailed: 'Chưa đổi được email: hãy thử lại.',
     emailChanged:
       'Email bây giờ là {{email}}. Người này đăng nhập bằng email hoặc bằng mã. Chưa có thư nào được gửi.',

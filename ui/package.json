@@ -16,6 +16,7 @@
     "@mantine/hooks": "catalog:",
     "@tabler/icons-react": "catalog:",
     "i18next": "catalog:",
+    "qrcode.react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-i18next": "catalog:",

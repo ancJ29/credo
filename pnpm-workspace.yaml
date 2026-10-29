@@ -43,6 +43,8 @@ catalog:
   jsdom: 30.1.1
   knip: ^6.0.0
   prettier: ^3.9.0
+  # The QR image on the sign-in panel; drawn as SVG, no canvas.
+  qrcode.react: 4.2.0
   react: ^19.3.0
   react-dom: ^19.3.0
   react-i18next: 17.0.15
