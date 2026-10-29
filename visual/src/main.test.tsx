@@ -64,7 +64,8 @@ it('the mounted page: a label typed, two answers chosen, Share’s message equal
   fireEvent.change(screen.getByLabelText('Your label'), { target: { value: 'p1' } });
   const first = document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]');
   fireEvent.click(first[0]);
-  fireEvent.click(document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]')[2]);
+  fireEvent.click(screen.getByRole('button', { name: 'Next ›' }));
+  fireEvent.click(document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]')[0]);
   const press = (name: string) =>
     act(() => {
       fireEvent.click(screen.getByRole('button', { name }));

@@ -37,6 +37,8 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
     observe() {}
     disconnect() {}
   } as unknown as typeof ResizeObserver;
+  // jsdom lays nothing out and has no scrolling.
+  window.Element.prototype.scrollIntoView = () => {};
   window.eval(script);
   const { document } = window;
   // React draws the page, and writes the clipboard, in tasks of their own.
@@ -47,6 +49,9 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
     expect(done()).toBe(true);
   };
   await until(() => document.querySelector('input[aria-label="Your label"]') !== null);
+  // One screen is open, and one frame drawn.
+  expect(document.querySelectorAll('.w-screen')).toHaveLength(1);
+  expect(document.querySelectorAll('iframe')).toHaveLength(1);
   const press = async (name: string, writes: number) => {
     [...document.querySelectorAll('button')].find((button) => button.textContent === name)!.click();
     await until(() => written.length === writes);
@@ -57,7 +62,11 @@ it('The built page’s own script, run in jsdom: a label typed, two answers chos
   input.dispatchEvent(new window.Event('input', { bubbles: true }));
   const yes = document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]');
   yes[0].click();
-  document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]')[2].click();
+  [...document.querySelectorAll('button')]
+    .find((button) => button.textContent === 'Next ›')!
+    .click();
+  await until(() => document.querySelector('.w-number')!.textContent === '2');
+  document.querySelectorAll<HTMLInputElement>('.w-yesno input[type="radio"]')[0].click();
   await press('Share', 1);
   const shown = document.querySelector<HTMLTextAreaElement>(
     'textarea[aria-label="The text to paste"]',

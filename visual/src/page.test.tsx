@@ -41,8 +41,13 @@ const answer = (kind: 'yes' | 'no', language: 'vi' | 'en', number: string, words
     },
   ] as const;
 
-/** The section of one walk screen. */
-const card = (id: string) => document.querySelector<HTMLElement>(`#admin-setup-${id}`)!;
+/** The section of one walk screen, opened through the list when it is not the one in view. */
+const card = (id: string) => {
+  if (!document.querySelector(`#admin-setup-${id}`)) {
+    fireEvent.click(document.querySelector(`a.w-rail-item[href="#admin-setup-${id}"]`)!);
+  }
+  return document.querySelector<HTMLElement>(`#admin-setup-${id}`)!;
+};
 /** Picks a language or the widths for the whole page. */
 const pick = (legend: 'Language' | 'Show', label: string) =>
   fireEvent.click(within(screen.getByRole('group', { name: legend })).getByLabelText(label));
@@ -50,40 +55,6 @@ const pick = (legend: 'Language' | 'Show', label: string) =>
 const panel = (id: string, language = 'Tiếng Việt') =>
   within(within(card(id)).getByRole('group', { name: `Your answer in ${language}` }));
 const stateOf = (id: string) => card(id).querySelector('.w-state > span')!.textContent;
-
-/** The browser's report of the sections in a band near the top of the window. */
-function watchBand() {
-  const band = {
-    callback: undefined as IntersectionObserverCallback | undefined,
-    watched: [] as Element[],
-    disconnect: vi.fn(),
-    report: (entries: [string, boolean][]) =>
-      act(() =>
-        band.callback!(
-          entries.map(([id, isIntersecting]) => ({
-            target: card(id),
-            isIntersecting,
-          })) as unknown as IntersectionObserverEntry[],
-          {} as IntersectionObserver,
-        ),
-      ),
-  };
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class {
-      constructor(callback: IntersectionObserverCallback) {
-        band.callback = callback;
-      }
-      observe(element: Element) {
-        band.watched.push(element);
-      }
-      disconnect() {
-        band.disconnect();
-      }
-    },
-  );
-  return band;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -128,18 +99,23 @@ describe('the walks page: the map', () => {
     expect(within(map).getByText('The operator').parentElement!.textContent).toContain('PC');
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(18);
 
+    fireEvent.click(operator);
     const walk = document.querySelector('#operator-setup')!;
-    expect([...walk.querySelectorAll('.w-number')].map((n) => n.textContent)).toEqual([
-      '1',
-      '2',
-      '3',
-      '4',
-    ]);
-    expect(walk.textContent).toContain('Would you know this is our own door, not a client’s?');
-    expect(walk.textContent).toContain('Does this say what to do?');
-    expect(document.querySelector('#admin-setup')!.textContent).toContain(
-      'Would the person know to ask whoever sent the link?',
-    );
+    const items = [
+      ...document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item[href^="#operator-setup-"]'),
+    ];
+    const seen = items.map((item) => {
+      fireEvent.click(item);
+      return [walk.querySelector('.w-number')!.textContent, walk.textContent] as const;
+    });
+    expect(seen.map(([number]) => number)).toEqual(['1', '2', '3', '4']);
+    const text = seen.map(([, content]) => content).join(' ');
+    expect(text).toContain('Would you know this is our own door, not a client’s?');
+    expect(text).toContain('Does this say what to do?');
+    fireEvent.click(admin);
+    expect(document.querySelector('#admin-setup')!.textContent).toContain('Sign in');
+    const question = [...document.querySelectorAll<HTMLElement>('#admin-setup .w-question')];
+    expect(question).toHaveLength(1);
   });
 
   it('counts one screen in the singular', () => {
@@ -163,25 +139,32 @@ describe('the walks page: a walk', () => {
     const walk = screen.getByRole('region', {
       name: 'Set up the company: its name, colour and languages',
     });
-    const numbers = [...walk.querySelectorAll('.w-number')].map((n) => n.textContent);
-    expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
-    // The tag sits right before the screen that goes wrong, never before one on the main path.
-    const tagged = [...walk.querySelectorAll('.w-path')].map((tag) => [
-      tag.textContent,
-      tag.nextElementSibling!.id,
+    const items = [...document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item')];
+    const seen = items.map((item) => {
+      fireEvent.click(item);
+      return [
+        walk.querySelector('.w-number')!.textContent,
+        walk.querySelector('.w-path')?.textContent ?? null,
+      ];
+    });
+    expect(seen.map(([number]) => number)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+    expect(seen.map(([, tag]) => tag)).toEqual([
+      null,
+      'Goes wrong',
+      null,
+      null,
+      null,
+      'Goes wrong',
+      'Goes wrong',
+      'Goes wrong',
+      'Goes wrong',
     ]);
-    expect(tagged.map(([, id]) => id)).toEqual([
-      'admin-setup-2-sign-in-refused',
-      'admin-setup-6-service-down',
-      'admin-setup-7-save-failed',
-      'admin-setup-8-save-conflict',
-      'admin-setup-9-unknown-company',
-    ]);
-    expect(new Set(tagged.map(([text]) => text))).toEqual(new Set(['Goes wrong']));
-    const last = walk.querySelector('#admin-setup-7-save-failed')!;
-    expect(last.textContent).toContain('A save that failed, what was typed kept');
-    expect(last.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
-    expect(last.textContent).toContain(
+    const last = walk.querySelector('#admin-setup-9-unknown-company')!;
+    expect(last).toBeTruthy();
+    const seventh = card('7-save-failed');
+    expect(seventh.textContent).toContain('A save that failed, what was typed kept');
+    expect(seventh.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
+    expect(seventh.textContent).toContain(
       'Would the admin know the save did not happen, and that nothing typed is lost?',
     );
   });
@@ -192,7 +175,10 @@ describe('the walks page: a walk', () => {
 
     render(<Page report={report} />);
 
-    expect(screen.queryByText('Goes wrong')).toBeNull();
+    for (const item of document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item')) {
+      fireEvent.click(item);
+      expect(screen.queryByText('Goes wrong')).toBeNull();
+    }
     expect(screen.queryByText('goes wrong')).toBeNull();
   });
 
@@ -216,20 +202,23 @@ describe('the walks page: the drawn screens', () => {
     return frame.contentDocument!;
   };
 
-  it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', () => {
+  it('Each walk screen is drawn at PC 1280 alone to start, and at tablet 768 and phone 390 on request, in Vietnamese and in English, from the app’s own components', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(27);
+    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(1);
+    expect(screen.getByTitle('Screen 1 in Tiếng Việt, PC 1280').getAttribute('width')).toBe('1280');
+    pick('Show', 'All three');
     for (const [device, width] of [
       ['PC', '1280'],
       ['Tablet', '768'],
       ['Phone', '390'],
     ]) {
       const frames = screen.getAllByTitle(new RegExp(`, ${device} ${width}$`));
-      expect(frames).toHaveLength(9);
-      expect(frames.every((frame) => frame.getAttribute('width') === width)).toBe(true);
+      expect(frames).toHaveLength(1);
+      expect(frames[0].getAttribute('width')).toBe(width);
     }
     // Screen 7 is the mock's failed save: the settings with the error and what was typed.
+    card('7-save-failed');
     const vi = inFrame('Screen 7 in Tiếng Việt, PC 1280');
     expect(vi.body.textContent).toContain('Chưa lưu được cài đặt.');
     expect(vi.documentElement.lang).toBe('vi');
@@ -237,27 +226,29 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(screen.queryAllByTitle(/ in Tiếng Việt, /)).toHaveLength(0);
-    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(27);
+    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(3);
     const en = inFrame('Screen 7 in English, Tablet 768');
     expect(en.body.textContent).toContain('The settings were not saved.');
     expect((en.querySelector('input') as HTMLInputElement).value).toBe('Minh Phát Sài Gòn');
     expect(en.documentElement.lang).toBe('en');
     // Screen 8 is the mock's conflict: someone else saved first.
+    card('8-save-conflict');
     expect(inFrame('Screen 8 in English, Phone 390').body.textContent).toContain(
       'Someone saved newer settings first.',
     );
     // Screen 1 is the sign-in in the company's name.
+    card('1-sign-in');
     expect(inFrame('Screen 1 in English, Phone 390').body.textContent).toContain('Minh Phát');
   });
 
-  it('A switch shows every screen in one language, Tiếng Việt first, at one width or all three, so each width in each language is one press away', () => {
+  it('A switch shows the screen in one language, Tiếng Việt first, at PC to start, at one width or all three, so each width in each language is one press away', () => {
     render(<Page report={reportWith()} />);
     const language = within(screen.getByRole('group', { name: 'Language' }));
     const show = within(screen.getByRole('group', { name: 'Show' }));
     const frames = () => [...document.querySelectorAll('iframe')];
 
     expect(language.getByLabelText<HTMLInputElement>('Tiếng Việt').checked).toBe(true);
-    expect(show.getByLabelText<HTMLInputElement>('All three').checked).toBe(true);
+    expect(show.getByLabelText<HTMLInputElement>('PC').checked).toBe(true);
     expect(show.getAllByRole('radio').map((radio) => radio.closest('label')!.textContent)).toEqual([
       'PC',
       'Tablet',
@@ -270,9 +261,9 @@ describe('the walks page: the drawn screens', () => {
       ['Phone', '390'],
     ]) {
       pick('Show', device);
-      expect(frames()).toHaveLength(9);
+      expect(frames()).toHaveLength(1);
       expect(frames().every((frame) => frame.getAttribute('width') === width)).toBe(true);
-      expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe(
+      expect(card('1-sign-in').querySelector('.w-frames')!.getAttribute('data-show')).toBe(
         device.toLowerCase(),
       );
     }
@@ -280,15 +271,16 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(language.getByLabelText<HTMLInputElement>('English').checked).toBe(true);
-    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(9);
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(9);
+    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(1);
     pick('Show', 'All three');
-    expect(frames()).toHaveLength(27);
-    expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
+    expect(frames()).toHaveLength(3);
+    expect(card('1-sign-in').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
   });
 
   it('Shown together, a screen’s three widths sit widest first, each captioned with its device and width and no wider than it', () => {
     render(<Page report={reportWith()} />);
+    pick('Show', 'All three');
 
     const figures = [...card('3-settings').querySelectorAll<HTMLElement>('figure')];
 
@@ -301,24 +293,22 @@ describe('the walks page: the drawn screens', () => {
     expect(figures.map((figure) => figure.style.maxWidth)).toEqual(['1280px', '768px', '390px']);
   });
 
-  it('A change of language or width brings back the screen that was in view', () => {
-    const band = watchBand();
+  it('A move brings the screen it opens to the top of the window, and a change of language or width does not move it', () => {
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView');
     render(<Page report={reportWith()} />);
 
-    // Nothing reported in view yet: a change scrolls nowhere.
-    pick('Show', 'PC');
-    expect(scroll).not.toHaveBeenCalled();
-
-    band.report([['5-language-menu', true]]);
-    pick('Language', 'English');
-
-    expect(scroll).toHaveBeenCalledTimes(1);
-    expect(scroll.mock.contexts[0]).toBe(card('5-language-menu'));
-    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    const toTop = () =>
+      scroll.mock.calls.filter(([where]) => typeof where === 'object' && where.block === 'start');
     pick('Show', 'All three');
-    expect(scroll).toHaveBeenCalledTimes(2);
-    expect(scroll.mock.contexts[1]).toBe(card('5-language-menu'));
+    pick('Language', 'English');
+    expect(toTop()).toHaveLength(0);
+
+    card('5-language-menu');
+
+    expect(toTop()).toHaveLength(1);
+    expect(scroll.mock.contexts[scroll.mock.calls.indexOf(toTop()[0])]).toBe(
+      document.querySelector('#admin-setup-5-language-menu'),
+    );
   });
 
   it('scales a screen down to the room it has, and its box to the same', () => {
@@ -354,7 +344,7 @@ describe('the walks page: the drawn screens', () => {
     expect(box().firstElementChild!.getAttribute('style')).toContain('scale(1)');
   });
 
-  it('stops watching a size, and the band, when it leaves', () => {
+  it('stops watching a size when it leaves', () => {
     const disconnect = vi.fn();
     vi.stubGlobal(
       'ResizeObserver',
@@ -363,19 +353,16 @@ describe('the walks page: the drawn screens', () => {
         disconnect = disconnect;
       },
     );
-    const band = watchBand();
     const { unmount } = render(<Page report={reportWith()} />);
 
     unmount();
 
     expect(disconnect).toHaveBeenCalled();
-    expect(band.disconnect).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('the walks page: the rail', () => {
   it('A rail lists each walk’s screens in number order, one that goes wrong tagged, each with a mark for each language, and marks the screen in view', () => {
-    const band = watchBand();
     render(
       <Page
         report={reportWith(
@@ -433,29 +420,16 @@ describe('the walks page: the rail', () => {
     // A choice made on the page marks its screen at once, in the rail and on the screen.
     fireEvent.click(panel('3-settings').getByLabelText('No'));
     expect(marks(2)[0]).toEqual(['no', 'Tiếng Việt: no']);
-    expect(card('3-settings').querySelector('summary .w-mark')!.getAttribute('data-mark')).toBe(
-      'no',
-    );
+    expect(
+      card('3-settings').querySelector('.w-screen-head .w-mark')!.getAttribute('data-mark'),
+    ).toBe('no');
 
-    // The screen in view, as the browser reports it.
-    expect(band.watched).toHaveLength(9);
-    expect(nav.querySelector('[aria-current]')).toBeNull();
-    band.report([['4-saved', true]]);
-    expect(items[3].getAttribute('aria-current')).toBe('location');
-    // Two in the band: the first in the page's order.
-    band.report([
-      ['4-saved', false],
-      ['2-sign-in-refused', true],
-      ['5-language-menu', true],
-    ]);
-    expect(items[1].getAttribute('aria-current')).toBe('location');
+    // The screen in view is marked, one at a time; a line opens its screen and takes the mark.
     expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1);
-    // None in the band, between two sections: the last stays.
-    band.report([
-      ['5-language-menu', false],
-      ['2-sign-in-refused', false],
-    ]);
-    expect(items[1].getAttribute('aria-current')).toBe('location');
+    expect(items[2].getAttribute('aria-current')).toBe('location');
+    fireEvent.click(items[4]);
+    expect(items[4].getAttribute('aria-current')).toBe('location');
+    expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1);
   });
 });
 
@@ -514,22 +488,17 @@ describe('the walks page: the answers', () => {
     expect(words().querySelector('pre')!.textContent).toBe('text: save-failed en');
   });
 
-  it('Approved screens fold away', () => {
-    render(
-      <Page
-        report={reportWith(
-          Object.fromEntries([
-            answer('yes', 'vi', '1-sign-in', ['text: empty vi']),
-            answer('yes', 'en', '1-sign-in', ['text: empty en']),
-            answer('yes', 'vi', '3-settings', ['text: filled vi']),
-          ]),
-        )}
-      />,
-    );
+  it('The list says on each walk what is left in it, and done when nothing is', () => {
+    const both = (id: string, now: string) => [
+      answer('yes', 'vi', id, [`text: ${now} vi`]),
+      answer('yes', 'en', id, [`text: ${now} en`]),
+    ];
+    render(<Page report={reportWith(Object.fromEntries(both('1-sign-in', 'empty')))} />);
 
-    expect((card('1-sign-in') as HTMLDetailsElement).open).toBe(false);
-    expect((card('3-settings') as HTMLDetailsElement).open).toBe(true);
-    expect((card('2-sign-in-refused') as HTMLDetailsElement).open).toBe(true);
+    expect(document.querySelector('.w-rail-title')!.textContent).toBe(
+      'Set up the company: its name, colour and languages8 left',
+    );
+    expect(document.querySelector('#admin-setup-2-sign-in-refused')).toBeTruthy();
   });
 
   it('lists an answer whose screen left the walks, and counts its no', () => {
@@ -575,10 +544,9 @@ describe('the walks page: the answers', () => {
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
     expect(screen.getByRole('banner').textContent).toContain('18 waiting');
     expect(screen.getByRole('banner').textContent).not.toMatch(/\d+ (no|yes)\b/);
-    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
   });
 
-  it('A screen every partner answered yes, in both languages, still waits for the human: its card stays open and unmarked', () => {
+  it('A screen every partner answered yes, in both languages, still waits for the human: its marks stay open', () => {
     const yes = (language: string): Answers => ({
       [`admin-setup:1-sign-in:${language}@p1`]: {
         answer: 'yes',
@@ -589,7 +557,6 @@ describe('the walks page: the answers', () => {
     });
     render(<Page report={reportWith({ ...yes('vi'), ...yes('en') })} />);
 
-    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
     expect(
       [...card('1-sign-in').querySelectorAll('.w-mark')].map((mark) =>
         mark.getAttribute('data-mark'),
@@ -635,10 +602,12 @@ describe('the walks page: its layout', () => {
     }
     expect(rule('.w-main')).toContain('grid-template-columns: minmax(0, 1fr)');
     expect(rule('.w-desk')).toContain('grid-template-columns: minmax(0, 1fr)');
-    expect(rule('.w-rail')).toContain('position: sticky');
+    expect(rule('.w-rail')).toContain('display: none');
     expect(css).toMatch(
-      /@media \(min-width: 1000px\) \{\s*\.w-desk \{[^}]*grid-template-columns: 252px minmax\(0, 1fr\)/,
+      /@media \(min-width: 1000px\) \{\s*\.w-desk \{[^}]*grid-template-columns: 320px minmax\(0, 1fr\)/,
     );
+    expect(css).toMatch(/@media \(min-width: 1000px\) \{\s*\.w-rail,[^}]*position: sticky/);
+    expect(rule(".w-rail[data-open='true']")).toContain('position: fixed');
     expect(css).toMatch(
       /@media \(max-width: 480px\) \{\s*\.w-map \{\s*grid-template-columns: minmax\(0, 1fr\);/,
     );
@@ -733,12 +702,12 @@ describe('the walks page: answering', () => {
   it('Each screen, in each language, has Yes and No, and a reason box that a No brings', () => {
     render(<Page report={reportWith()} />);
 
-    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(9);
-    expect(screen.getAllByLabelText('Yes')).toHaveLength(9);
-    expect(screen.getAllByLabelText('No')).toHaveLength(9);
+    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(1);
+    expect(screen.getAllByLabelText('Yes')).toHaveLength(1);
+    expect(screen.getAllByLabelText('No')).toHaveLength(1);
     expect(screen.queryAllByLabelText('Reason for the No')).toHaveLength(0);
     pick('Language', 'English');
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(9);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(1);
     const yes = panel('3-settings', 'English').getByLabelText<HTMLInputElement>('Yes');
     expect(yes.type).toBe('radio');
     expect(yes.name).toBe('admin-setup:3-settings:en');

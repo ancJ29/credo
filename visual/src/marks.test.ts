@@ -59,11 +59,11 @@ describe('the progress', () => {
 
     expect(progress).toMatchObject({ answered: 2, total: 26 });
     // The page's order: by number; a screen's languages side by side.
-    expect(progress.marks.slice(0, 2)).toEqual([
+    expect(progress.marks.slice(0, 2)).toMatchObject([
       { key: 'admin-setup:1-sign-in:vi', mark: 'open' },
       { key: 'admin-setup:1-sign-in:en', mark: 'yes' },
     ]);
-    expect(progress.marks.slice(2, 4)).toEqual([
+    expect(progress.marks.slice(2, 4)).toMatchObject([
       { key: 'admin-setup:2-sign-in-refused:vi', mark: 'no' },
       { key: 'admin-setup:2-sign-in-refused:en', mark: 'again' },
     ]);

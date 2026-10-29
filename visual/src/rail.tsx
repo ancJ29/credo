@@ -1,7 +1,8 @@
 import { LANGUAGES } from '@credo/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Choices } from './choices';
-import { inPageOrder, LANGUAGE_LABEL, screenId } from './marks';
+import { LANGUAGE_LABEL, type Whose } from './marks';
+import { leftIn, type Place } from './nav';
 import type { Report } from './report';
 import { capital, Marks, type View } from './screen';
 
@@ -41,53 +42,47 @@ function Segmented<T extends string>({
 }
 
 /**
- * The section in a band near the top of the window, among the ids given, the first of them in
- * the page's order; none until the browser reports one. jsdom has no IntersectionObserver.
- */
-export function useCurrent(ids: readonly string[]) {
-  const [current, setCurrent] = useState<string>();
-  const list = ids.join(' ');
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const order = list.split(' ');
-    const inBand = new Set<string>();
-    const watcher = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) inBand.add(entry.target.id);
-          else inBand.delete(entry.target.id);
-        }
-        const first = order.find((id) => inBand.has(id));
-        if (first) setCurrent(first);
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    for (const id of order) watcher.observe(document.getElementById(id)!);
-    return () => watcher.disconnect();
-  }, [list]);
-  return current;
-}
-
-/**
- * The page's view and its place: the language and the widths every screen is drawn in, then each
- * walk's screens with their marks, the one in view marked as the current. A side rail on a PC and
- * a strip across the top on a phone, in view while the page scrolls.
+ * The list: the language and the widths, the toggle for the unanswered, then each walk with what is
+ * left in it, the walk in view open and the others folded, and each of its screens on one line in
+ * number order with its marks; the screen in view marked and kept in view. A side list on a PC; on
+ * a phone it opens over the page from the line atop.
  */
 export function Rail({
   report,
+  places,
   view,
   onView,
   choices,
+  whose,
   current,
+  only,
+  onOnly,
+  shown,
+  open,
+  onGo,
+  onClose,
 }: {
   report: Report;
+  places: readonly Place[];
   view: View;
   onView: (view: View) => void;
   choices: Choices;
-  current: string | undefined;
+  whose: Whose;
+  current: string;
+  only: boolean;
+  onOnly: (only: boolean) => void;
+  shown: readonly Place[];
+  open: boolean;
+  onGo: (id: string) => void;
+  onClose: () => void;
 }) {
+  const list = useRef<HTMLElement>(null);
+  useEffect(() => {
+    list.current!.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
+  }, [current]);
+  const here = places.find(({ id }) => id === current)!.walk.id;
   return (
-    <aside className="w-rail" aria-label="The view and the screens">
+    <aside ref={list} className="w-rail" aria-label="The view and the screens" data-open={open}>
       <div className="w-view">
         <Segmented
           legend="Language"
@@ -109,38 +104,63 @@ export function Rail({
           value={view.show}
           onChange={(show) => onView({ ...view, show })}
         />
+        <label className="w-only">
+          <input
+            type="checkbox"
+            checked={only}
+            onChange={(event) => onOnly(event.target.checked)}
+          />
+          Only unanswered
+        </label>
+        <button type="button" className="w-rail-close" onClick={onClose}>
+          Close the list
+        </button>
       </div>
       <nav className="w-rail-nav" aria-label="The walks’ screens">
-        {report.walks.map((walk) => (
-          <div key={walk.id} className="w-rail-walk">
-            <a className="w-rail-title" href={`#${walk.id}`}>
-              {walk.title.en}
-            </a>
-            <ul>
-              {inPageOrder(walk).map((screen) => {
-                const id = screenId(walk, screen);
-                return (
-                  <li key={screen.id}>
-                    <a
-                      className="w-rail-item"
-                      href={`#${id}`}
-                      aria-current={current === id ? 'location' : undefined}
-                    >
-                      <span className="w-rail-number">{screen.number}</span>
-                      <span className="w-rail-sentence">
-                        {screen.sentence.en}
-                        {screen.path === 'wrong' && (
-                          <span className="w-rail-wrong">goes wrong</span>
-                        )}
-                      </span>
-                      <Marks walk={walk} screen={screen} choices={choices} />
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {report.walks.map((walk) => {
+          const { id } = walk;
+          const mine = places.filter((place) => place.walk.id === id);
+          const left = mine.filter((place) => leftIn(place, choices, whose).length > 0).length;
+          return (
+            <details key={id} className="w-rail-walk" open={id === here}>
+              <summary className="w-rail-title">
+                <span>{walk.title.en}</span>
+                <span className="w-rail-left">{left === 0 ? 'done' : `${left} left`}</span>
+              </summary>
+              <ul>
+                {mine
+                  .filter((place) => shown.includes(place))
+                  .map((place) => (
+                    <li key={place.id}>
+                      <a
+                        className="w-rail-item"
+                        href={`#${place.id}`}
+                        aria-current={current === place.id ? 'location' : undefined}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onGo(place.id);
+                        }}
+                      >
+                        <span className="w-rail-number">{place.screen.number}</span>
+                        <span className="w-rail-sentence">
+                          {place.screen.sentence.en}
+                          {place.screen.path === 'wrong' && (
+                            <span className="w-rail-wrong">goes wrong</span>
+                          )}
+                        </span>
+                        <Marks
+                          walk={place.walk}
+                          screen={place.screen}
+                          choices={choices}
+                          whose={whose}
+                        />
+                      </a>
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          );
+        })}
       </nav>
     </aside>
   );

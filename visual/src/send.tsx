@@ -1,7 +1,8 @@
+import type { Language } from '@credo/shared';
 import { useEffect, useRef, useState } from 'react';
 import { LABEL } from './block';
-import { blockOf, type Choices, loadLabel, saveLabel, shareOf } from './choices';
-import { labelsOf, plural, progressOf } from './marks';
+import { blockOf, type Choices, saveLabel, shareOf } from './choices';
+import { labelsOf, plural, progressOf, type Whose } from './marks';
 import type { Report } from './report';
 import { normalizeLabel } from './share';
 
@@ -12,13 +13,28 @@ import { normalizeLabel } from './share';
  * once and kept in the browser. Its height is kept on the page as `--bar`, so an answer docked at
  * the foot rests above it.
  */
-export function Send({ report, choices }: { report: Report; choices: Choices }) {
+export function Send({
+  report,
+  choices,
+  whose,
+  label,
+  onLabel,
+  only,
+  onGo,
+}: {
+  report: Report;
+  choices: Choices;
+  whose: Whose;
+  label: string;
+  onLabel: (label: string) => void;
+  only: boolean;
+  onGo: (id: string, language: Language) => void;
+}) {
   const bar = useRef<HTMLElement>(null);
   const [block, setBlock] = useState('');
   const [note, setNote] = useState('');
-  const [label, setLabel] = useState(loadLabel);
   const { answered: chosen } = blockOf(report, choices);
-  const progress = progressOf(report, choices);
+  const progress = progressOf(report, choices, whose);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -61,9 +77,23 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
       </span>
       <div className="w-send-row">
         <span className="w-ledger" aria-hidden="true">
-          {progress.marks.map(({ key, mark }) => (
-            <span key={key} className="w-tick" data-mark={mark} />
-          ))}
+          {progress.marks.map(({ key, id, language, mark }) =>
+            only && (mark === 'yes' || mark === 'no') ? (
+              <span key={key} className="w-tick" data-mark={mark} />
+            ) : (
+              <a
+                key={key}
+                className="w-tick"
+                data-mark={mark}
+                href={`#${id}`}
+                tabIndex={-1}
+                onClick={(event) => {
+                  event.preventDefault();
+                  onGo(id, language);
+                }}
+              />
+            ),
+          )}
         </span>
         <span className="w-count">
           <span className="w-progress">{`${progress.answered} of ${progress.total} answered`}</span>
@@ -79,7 +109,7 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
           value={label}
           onChange={(event) => {
             const typed = event.target.value.toLowerCase();
-            setLabel(typed);
+            onLabel(typed);
             saveLabel(typed);
           }}
         />

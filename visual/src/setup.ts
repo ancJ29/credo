@@ -50,5 +50,7 @@ console.error = (...args: unknown[]) => {
 };
 afterEach(() => {
   cleanup();
+  // A page names its screen in the address; the next test starts with none.
+  if (typeof window !== 'undefined') window.history.replaceState(null, '', '/');
   expect(outsideAct.splice(0)).toEqual([]);
 });

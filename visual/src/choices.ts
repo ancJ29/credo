@@ -174,3 +174,22 @@ export function saveLabel(label: string) {
     // The page works without it.
   }
 }
+
+const ONLY_KEY = 'credo-walks-only-unanswered';
+
+/** Whether the person asked to see only the unanswered; the page works without storage. */
+export function loadOnly() {
+  try {
+    return localStorage.getItem(ONLY_KEY) === 'yes';
+  } catch {
+    return false;
+  }
+}
+
+export function saveOnly(only: boolean) {
+  try {
+    localStorage.setItem(ONLY_KEY, only ? 'yes' : 'no');
+  } catch {
+    // The page works without it.
+  }
+}
