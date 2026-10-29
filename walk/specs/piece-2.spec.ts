@@ -101,6 +101,11 @@ async function someoneSavesFirst(page: Page, client: Seeded, code: string) {
 const fieldName = (key: string, language: Language) =>
   DEMO_CUSTOM_FIELDS.find((field) => field.key === key)!.label[language];
 
+/** A label as a whole, the star of a required one allowed: a bare string matches any label that
+ * holds it (`Phone` also names `Personal phone`, `Key` also `Option key` and `Remove Key`). */
+const exactly = (label: string) =>
+  new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`);
+
 /** A person of the data set, by name, from the list. */
 const personNamed = (page: Page, name: string) => page.getByRole('link', { name }).click();
 
@@ -109,7 +114,7 @@ async function walk(page: Page, language: Language, width: number) {
   const words = DICTIONARIES[language];
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const typed = (label: string, text: string) =>
-    page.getByRole('textbox', { name: label }).fill(text);
+    page.getByRole('textbox', { name: exactly(label) }).fill(text);
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
   /** A form's heading is clicked, so no field is left focused for the picture. */
   const unfocus = () => page.getByRole('heading', { level: 2 }).click();
@@ -123,7 +128,9 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, { path: '/staff-setup' });
   await expect(title(words.setup.title)).toBeVisible();
   await press(words.setup.ownAdd);
-  await expect(page.getByLabel(words.setup.ownKey)).toHaveCount(DEMO_CUSTOM_FIELDS.length + 1);
+  await expect(page.getByLabel(exactly(words.setup.ownKey))).toHaveCount(
+    DEMO_CUSTOM_FIELDS.length + 1,
+  );
   await unfocus();
   await at('setup-2-fields');
 

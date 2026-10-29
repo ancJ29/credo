@@ -893,6 +893,20 @@ itself:
   `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes; the whole `pnpm check` exit 0, no
   warning (shared 71 tests, ui 236, bff 152, scripts 75, visual 219). *Left:* the fake run's
   pictures, the human's last act of this step, so the step stays unticked.
+  *Fix pass, 2026-10-29 12:25 +07, after the human's red fake run (all 6 tests failed alike at the
+  second screen, 6 pictures of 138):* the walk spec was wrong, the page and the fake were not.
+  `getByLabel('Key')` counted 8, not the 5 the spec expected: a bare string matches any label that
+  holds it, so besides the 5 key fields it found the new field's "Remove Key" button and the 2 "Option
+  key" fields of the licence choice (in Vietnamese the same with "Khóa"). The same slip waited in
+  every `typed` call: "Phone" also names "Personal phone", so the add form's phone would have met
+  two fields at screen 2 of the add walk (`staff-2`, `staff-12`, `office-2`). The spec now matches a
+  label as a whole, the required star allowed (`exactly` in `walk/specs/piece-2.spec.ts`); the count
+  still derives from `DEMO_CUSTOM_FIELDS`. No screen changed. *Checked without a browser:* every step
+  of the spec, A's and B's, was replayed on the same scenes in jsdom with Playwright's rules (a
+  string matches as a substring without case, one element for an action, the role's accessible name
+  or the label's text) in both languages: all 23 screens' locators and actions resolved, and the two
+  slips above were seen red there before the fix and green after. *Not checkable there:* widths
+  (CSS), real focus and the pictures.
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
