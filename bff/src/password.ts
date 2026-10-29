@@ -12,11 +12,15 @@ const derive = promisify(scrypt) as (
   options: ScryptOptions,
 ) => Promise<Buffer>;
 
+/** A password as it is hashed and checked: in Unicode's composed form, so the same word typed on a
+ * keyboard that composes and on one that does not is one password. The one place that is done. */
+const composed = (password: string) => password.normalize('NFC');
+
 /** `scrypt$N$r$p$salt$hash`: its own random salt, and the cost it was made at, so raising the cost
  * later still verifies the hashes already stored. */
 export async function hashPassword(password: string) {
   const salt = randomBytes(16);
-  const key = await derive(password, salt, KEY_BYTES, COST);
+  const key = await derive(composed(password), salt, KEY_BYTES, COST);
   return [
     'scrypt',
     COST.N,
@@ -41,7 +45,7 @@ export async function verifyPassword(password: string, stored: string) {
     string,
   ];
   const expected = Buffer.from(hash, 'base64url');
-  const actual = await derive(password, Buffer.from(salt, 'base64url'), expected.length, {
+  const actual = await derive(composed(password), Buffer.from(salt, 'base64url'), expected.length, {
     N: Number(n),
     r: Number(r),
     p: Number(p),

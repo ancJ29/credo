@@ -15,6 +15,15 @@ describe('A password is scrypt with its own salt, compared in constant time', ()
     expect(stored).not.toContain('s3cret');
   });
 
+  it('checks a password in its composed form, so the decomposed one of the same word is the same password', async () => {
+    const word = 'Mật khẩu 1!';
+    const stored = await hashPassword(word.normalize('NFD'));
+
+    expect(await verifyPassword(word.normalize('NFC'), stored)).toBe(true);
+    expect(await verifyPassword(word.normalize('NFD'), stored)).toBe(true);
+    expect(await verifyPassword('Mat khau 1!', stored)).toBe(false);
+  });
+
   it('gives the same password a different salt and so a different hash each time', async () => {
     const [one, two] = await Promise.all([hashPassword('same'), hashPassword('same')]);
     expect(one).not.toBe(two);

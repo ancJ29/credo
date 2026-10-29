@@ -48,7 +48,19 @@ describe('staff', () => {
     for (const good of ['Another-1!', 'Two words 1!', 'Mật khẩu 1!', `Aa1!${'x'.repeat(124)}`]) {
       expect(passwordIsValid(good), good).toBe(true);
     }
-    for (const bad of ['Abcdef1!\n', 'Abc\tdef1!', 'Abcdef1!\u0000', `Aa1!${'x'.repeat(125)}`]) {
+    for (const bad of [
+      'Abcdef1!\n',
+      'Abc\tdef1!',
+      'Abcdef1!\u0000',
+      `Aa1!${'x'.repeat(125)}`,
+      // a format character is not printable either: zero width, and the byte order mark
+      'Abc\u200Bdef1!',
+      '\uFEFFAbcdef1!',
+      // a space at either end is invisible where the password is shown
+      ' Abcdef1!',
+      'Abcdef1! ',
+      'Abcdef1!\u00A0',
+    ]) {
       expect(passwordIsValid(bad), JSON.stringify(bad)).toBe(false);
     }
     expect(setPasswordRequestSchema.safeParse({ password: 'Abcdef1!' }).success).toBe(true);

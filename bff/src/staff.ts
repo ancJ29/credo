@@ -150,9 +150,9 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   /** Claims the sign-in name for a person, before the person is written. A record already under
-   * the name that its person names back is a taken code, and so is one a running add made: its
-   * claim time, `passwordAt`, is younger than the longest an add runs. An older one its person does
-   * not name back is a failed add's, and is taken over with the tag it was read at. */
+   * the name that its person names back is a taken code. One its person does not name back is
+   * answered 503 while its claim time, `passwordAt`, is younger than the longest an add runs (it may
+   * be a running add's), and is a failed add's after that, taken over with the tag it was read at. */
   async function claimSignIn(tenantId: string, name: string, record: StoredUser) {
     const key = recordKeys.tenant(tenantId).user(name);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -161,13 +161,16 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const raw = found ? null : await storage.getRecord(key);
       if (raw) throw new HttpError(409, 'That code is taken');
       if (found) {
-        // The root's record names no person and is never a failed add's.
-        if (
-          found.user.root ||
-          now() - found.user.passwordAt <= ADD_MAX_MS ||
-          (await namesBack(storage, tenantId, name, found.user))
-        ) {
+        // The root's record names no person and is never a failed add's; nor is a person's who is
+        // there.
+        if (found.user.root || (await namesBack(storage, tenantId, name, found.user))) {
           throw new HttpError(409, 'That code is taken');
+        }
+        // A claim no one is named by yet, inside the longest an add runs, may be an add still
+        // writing its person: not taken, not free either. The UI says the save failed and keeps
+        // what was typed, and the retry meets the person, or the free code.
+        if (now() - found.user.passwordAt <= ADD_MAX_MS) {
+          throw new HttpError(503, 'Service unavailable');
         }
         if ((await storage.putRecord(key, record, found.tag)) === 'saved') return;
       }

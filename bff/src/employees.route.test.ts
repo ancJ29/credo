@@ -327,6 +327,41 @@ describe('The root gives a person a password, typed twice or made by the app, of
     ).toBe(401);
   });
 
+  it('takes a password in either Unicode form: set composed and signed in with the decomposed one, and the reverse', async () => {
+    const t = await staffTenant(cs);
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const url = `/api/employees/${reply.employee.employee.id}/password`;
+    const word = 'Mật khẩu 1!';
+    const [composed, decomposed] = [word.normalize('NFC'), word.normalize('NFD')];
+    expect(composed).not.toBe(decomposed);
+
+    expect((await t.rootCall.send('PUT', url, { password: composed })).statusCode).toBe(200);
+    expect((await signIn(t.app, { name: 'EMP-1', password: decomposed })).response.statusCode).toBe(
+      200,
+    );
+    expect((await t.rootCall.send('PUT', url, { password: decomposed })).statusCode).toBe(200);
+    expect((await signIn(t.app, { name: 'EMP-1', password: composed })).response.statusCode).toBe(
+      200,
+    );
+  });
+
+  it('refuses a password with a space at either end, 400, which a made one never has', async () => {
+    const t = await staffTenant(cs);
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const url = `/api/employees/${reply.employee.employee.id}/password`;
+
+    for (const password of [' TypedPass1!', 'TypedPass1! ']) {
+      expect((await t.rootCall.send('PUT', url, { password })).statusCode, password).toBe(400);
+    }
+    expect((await t.rootCall.send('PUT', url, { password: 'Typed Pass 1!' })).statusCode).toBe(200);
+    for (let made = 0; made < 20; made++) {
+      const { password } = (await t.rootCall.send('PUT', url, { password: null })).json<{
+        password: string;
+      }>();
+      expect(password).toBe(password.trim());
+    }
+  });
+
   it('makes a password when asked to, shown once, and gives a person added without one a sign-in', async () => {
     const t = await staffTenant(cs);
     const clerk = await t.staff('CLERK', { own: { 'staff.canCreate': true } });
@@ -891,7 +926,7 @@ describe('A permission layer that cannot be read answers 503, never a partial se
   });
 });
 
-describe('Each person is one record under a minted id; their sign-in record names that id; a sign-in record its person does not name back signs no one in, and the next add or new code of that code takes it over with its tag', () => {
+describe('Each person is one record under a minted id; their sign-in record names that id; a sign-in record its person does not name back signs no one in, and the next add or new code of that code takes it over with its tag once the claim is older than an add can run (a minute), a younger one answering 503', () => {
   it('leaves a sign-in that signs no one in when the person’s write fails, and the next add of that code takes it over', async () => {
     let failPerson = true;
     const t = await staffTenant(cs, {
@@ -908,8 +943,9 @@ describe('Each person is one record under a minted id; their sign-in record name
     ).toBe(401);
 
     failPerson = false;
-    // Within the longest an add runs its claim may still be a running add's: taken.
-    expect((await add(t.rootCall, { code: 'emp-1' })).statusCode).toBe(409);
+    // Within the longest an add runs its claim may still be a running add's: neither taken nor
+    // free, so the retry is told the save failed (503), never that the code is taken.
+    expect((await add(t.rootCall, { code: 'emp-1' })).statusCode).toBe(503);
     t.time.advance(ADD_MAX_MS + 1);
     const retried = await added(t.rootCall, { code: 'emp-1' });
     expect(await codes(t.rootCall)).toEqual(['EMP-1']);
@@ -935,7 +971,7 @@ describe('Each person is one record under a minted id; their sign-in record name
     ).toBe(200);
   });
 
-  it('lets one of two adds of a code, racing, win it: the other is a 409 and the first password still signs in', async () => {
+  it('lets one of two adds of a code, racing, win it: the other is told to retry (503) and then meets the 409, and the first password still signs in', async () => {
     let held = false;
     let release = () => {};
     let atWrite = () => {};
@@ -958,16 +994,34 @@ describe('Each person is one record under a minted id; their sign-in record name
     const first = add(t.rootCall, { code: 'EMP-1', name: 'First' });
     await reached;
     const second = await add(t.rootCall, { code: 'EMP-1', name: 'Second' });
-    expect(second.statusCode).toBe(409);
+    expect(second.statusCode).toBe(503);
     release();
     const won = await first;
     expect(won.statusCode).toBe(201);
     const reply = addEmployeeReplySchema.parse(won.json());
+    // the loser retries and meets the winner's person: a code taken
+    expect((await add(t.rootCall, { code: 'EMP-1', name: 'Second' })).statusCode).toBe(409);
     expect((await list(t.rootCall)).map((employee) => employee.name)).toEqual(['First']);
     expect(
       (await signIn(t.app, { name: 'EMP-1', password: reply.password as string })).response
         .statusCode,
     ).toBe(200);
+  });
+
+  it('answers a retry right after a failed add 503, never "taken", and the code is free once the claim is older than an add can run', async () => {
+    let failPerson = true;
+    const t = await staffTenant(cs, {
+      wrap: failing((call, key) => failPerson && call === 'put' && key.includes('.employee.')),
+    });
+    expect((await add(t.rootCall, { code: 'EMP-1' })).statusCode).toBe(503);
+    failPerson = false;
+
+    const retry = await add(t.rootCall, { code: 'EMP-1' });
+
+    expect(retry.statusCode).toBe(503);
+    expect(retry.json()).toEqual({ error: 'Service unavailable' });
+    t.time.advance(ADD_MAX_MS + 1);
+    expect((await add(t.rootCall, { code: 'EMP-1' })).statusCode).toBe(201);
   });
 
   it('signs no one in by a sign-in record whose person names another code, and refuses one that does not parse, 409', async () => {

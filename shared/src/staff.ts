@@ -12,9 +12,10 @@ export const normaliseEmployeeCode = (raw: string) => raw.trim().toUpperCase();
 export const byCode = (a: { code: string }, b: { code: string }) => (a.code < b.code ? -1 : 1);
 export const employeeCodeIsValid = (raw: string) => EMPLOYEE_CODE.test(normaliseEmployeeCode(raw));
 
-/** 8 to 128 printable characters (spaces and any script, no control or format character) with a
- * capital, a small letter, a digit and one of `@$!%*?&`. */
-const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[^\p{C}]{8,128}$/u;
+/** 8 to 128 printable characters (spaces inside, any script, no control or format character) with a
+ * capital, a small letter, a digit and one of `@$!%*?&`, and no space at either end: it would not
+ * show on the screen the password is shown once on. */
+const PASSWORD = /^(?!\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[^\p{C}]{8,128}(?<!\s)$/u;
 export const passwordIsValid = (password: string) => PASSWORD.test(password);
 
 const nameSchema = z.string().trim().min(1).max(200);
