@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 07:10 +07:** steps 2 to 6 are ticked: the human's 32 of 32 yes and the fake run's 96 pictures are in step 6's evidence, and group A's UI is fixed. **Next:** step 7, c-storage's list, then step 8, group A's BFF.
+**Where it stands — 2026-10-29 07:14 +07:** steps 2 to 7 are ticked: group A's UI is fixed and walked on the fake (step 6), and c-storage lists records under a prefix (step 7), with its client method and Bruno requests. **Next:** step 8, group A's BFF, which reads the list for the staff.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -621,13 +621,37 @@ itself:
   the walk also covers the setup and office screens; it now says "the staff setup and the staff",
   and no picture's name changes.
 
-- [ ] **7. c-storage's list.** Who: 🤖, the first free slot after step 2, since it takes nothing from
+- [x] **7. c-storage's list.** Who: 🤖, the first free slot after step 2, since it takes nothing from
   the UI (while the human previews, for one), about three hours. Done when: row 39 seen red once (the
   prefix ignored, the bound removed, "more" dropped, a key gate skipped); `make check` green at 100 %,
   no warning; the route in `everyRoute` and one Bruno request with its test; the shared client's
   method and its Bruno parity green; the memo's line on the list and its bound. *Not run here:*
   `e2e.sh`, which is GitHub's run at the push. *Model files:* `getRecord` in
   `c-storage/internal/server/handlers.go`, `Get` in `c-storage/internal/store/store.go`.
+  *Evidence:* row 39 seen red once per rule, from its assertion, by changing the rule's line and
+  putting it back: the prefix ignored (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`), its upper
+  bound dropped (the same), the prefix read as a pattern (`TestAListHoldsTheRecordsUnderThePrefixInKeyOrder`),
+  the service not scoped (the same), the bound removed and the trim removed
+  (`TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore`), `more` dropped (the same), an empty prefix
+  accepted (`TestAListNeedsOneNonEmptyPrefix`), the access-key gate skipped
+  (`TestEveryRecordRouteRefusesAMissingOrWrongAccessKeyOrAnUnknownService`), the route with no Bruno
+  request (`TestTheCollectionHoldsARequestPerRouteAndATestPerRequest`), and the two edges of the text's
+  order (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`). The shared client's list is red with the
+  prefix unencoded, a status other than 200 accepted, `more` defaulted and a wrong query name
+  (`shared/src/c-storage.test.ts`, `c-storage.bruno.test.ts`). `make check` in `c-storage/` green at
+  100 % of statements, the box's cross-compile included. Six Bruno requests (18 to 23) cover the list,
+  its empty answer, the missing prefix and the wrong key; `e2e.sh` is GitHub's run at the push. The
+  memo's section "A list reads one prefix" holds the route and its bound. *Read, from the plan's
+  "Unverified":* SQLite plans the prefix as `SEARCH records USING INDEX sqlite_autoindex_records_1
+  (service_code=? AND key>? AND key<?)`, no sort, no schema change. *Choices:* the prefix is a range
+  over the key (the prefix up to itself with its last character raised), never `LIKE`, so `%`, `_` and
+  case are exact; a prefix that is not UTF-8 is a 400; no caller reads the list until step 8 (the
+  client's method is on its type, so knip is silent).
+  *Gates:* the whole `pnpm check` green once at the end (shared 57 tests, ui 183, bff 86, scripts 61,
+  visual 217, each at 100 %, no warning line). Found on its first run: the visual build test
+  (`visual/src/cli.test.ts`) counted answers still waiting, so group A's 32 yeses turned it red;
+  it now counts the sixteen scenes' thirty-two states whatever the answers hold, and the generator's
+  in-memory storage gained the list method the type now needs.
 - [ ] **8. A's BFF.** Who: 🤖, after step 6 (the contract as the preview fixed it) and step 7 (the
   list), about a day and a half. The staff setup's, employees' and password's routes, the permission
   check on every route, the sessions. Done when: rows 36 to 38, 40, 41, 43 and 44 and the BFF half of
@@ -717,7 +741,6 @@ merged.
 - **Steps played on jsdom and in the page** type into Mantine's inputs as a person does; to be seen
   red and green at step 5.
 - **Five reads a staff call** on Lambda: unmeasured; about $0.02 a client a month is an estimate.
-- **c-storage's prefix read uses the records table's key** with no schema change; read at step 7.
 - **A face at 256 pixels in 50 KB** reads well enough on a person's page; seen at group B's walk.
 - **The import library and the QR library** are chosen at their steps; that the old import's library
   carries published advisories is the reader's note, not checked here.
