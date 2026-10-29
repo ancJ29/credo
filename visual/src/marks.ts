@@ -34,11 +34,9 @@ export function markOf(shown: Shown, choice: Choice | undefined): Mark {
   }
 }
 
-/** A walk's screens in the page's order: the main path, then what can go wrong. */
-export const inPageOrder = (walk: ReportWalk): ReportScreen[] => [
-  ...walk.screens.filter((screen) => screen.path === 'main'),
-  ...walk.screens.filter((screen) => screen.path === 'wrong'),
-];
+/** A walk's screens in the page's order: by number, a screen that goes wrong among the rest. */
+export const inPageOrder = (walk: ReportWalk): ReportScreen[] =>
+  [...walk.screens].sort((a, b) => a.number - b.number);
 
 /** The id of a screen's section on the page, which the rail links to. */
 export const screenId = (walk: ReportWalk, screen: ReportScreen) => `${walk.id}-${screen.id}`;

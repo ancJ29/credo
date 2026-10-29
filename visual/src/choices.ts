@@ -24,42 +24,87 @@ export function fingerprintsOf(report: Report) {
   return prints;
 }
 
+/** A choice is kept this long without being touched. */
+const KEEP_DAYS = 14;
+const DAY = 24 * 60 * 60 * 1000;
+
+/** What the browser holds for one choice: the answer and reason, the words they were given on, the day. */
+type Kept = { answer: Choice['answer']; reason: string; fingerprint: string; at?: number };
+
+const isKept = (one: unknown): one is Kept => {
+  const kept = one as Record<string, unknown> | null;
+  return (
+    typeof kept === 'object' &&
+    kept !== null &&
+    typeof kept['fingerprint'] === 'string' &&
+    (kept['answer'] === 'yes' || kept['answer'] === 'no' || kept['answer'] === '') &&
+    typeof kept['reason'] === 'string' &&
+    (kept['at'] === undefined || typeof kept['at'] === 'number')
+  );
+};
+
 /**
- * The unsent choices kept in the browser, less any given on words that have since changed. The
- * page works without storage: a browser that refuses it, or holds something else under the key,
- * gives no choices.
+ * What the browser holds, by a choice's key and the fingerprint it was given on, so the choices of
+ * one build's page sit beside another's. A form without the fingerprint in its name (the key
+ * alone) reads too. Storage that refuses, or holds something else under the key, gives nothing.
  */
-export function loadChoices(report: Report): Choices {
+function keptChoices(): Map<string, Kept & { key: string }> {
+  const kept = new Map<string, Kept & { key: string }>();
   try {
-    const kept: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
-    const prints = fingerprintsOf(report);
-    const choices: Choices = {};
-    for (const [key, one] of Object.entries(kept as Record<string, Record<string, unknown>>)) {
-      if (
-        prints.get(key) === one['fingerprint'] &&
-        (one['answer'] === 'yes' || one['answer'] === 'no' || one['answer'] === '') &&
-        typeof one['reason'] === 'string'
-      ) {
-        choices[key] = { answer: one['answer'], reason: one['reason'] };
-      }
+    const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}');
+    for (const [name, one] of Object.entries(stored as object)) {
+      const key = name.split('@')[0];
+      if (isKept(one)) kept.set(`${key}@${one.fingerprint}`, { ...one, key });
     }
-    return choices;
   } catch {
-    return {};
+    // The page works without it.
   }
+  return kept;
 }
 
-/** Keeps the choices, each with the fingerprint it was given on; a browser that refuses is ignored. */
-export function saveChoices(report: Report, choices: Choices) {
+/**
+ * The unsent choices kept in the browser for these words, less any given on words that have since
+ * changed. The page works without storage: a browser that refuses it, or holds something else
+ * under the key, gives no choices.
+ */
+export function loadChoices(report: Report): Choices {
+  const prints = fingerprintsOf(report);
+  const choices: Choices = {};
+  for (const one of keptChoices().values()) {
+    if (prints.get(one.key) === one.fingerprint) {
+      choices[one.key] = { answer: one.answer, reason: one.reason };
+    }
+  }
+  return choices;
+}
+
+/**
+ * Keeps the choices, each with the fingerprint it was given on and the day it was made or last
+ * changed. What another build's page kept stays, and what is older than a fortnight goes; this
+ * page's own are rewritten whole, so a cleared choice is gone. A browser that refuses is ignored.
+ */
+export function saveChoices(report: Report, choices: Choices, now = Date.now()) {
   try {
     const prints = fingerprintsOf(report);
-    const kept = Object.fromEntries(
-      Object.entries(choices).map(([key, choice]) => [
-        key,
-        { ...choice, fingerprint: prints.get(key) },
-      ]),
-    );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+    const before = keptChoices();
+    const next: Record<string, Kept> = {};
+    for (const [id, one] of before) {
+      const at = one.at ?? now;
+      const mine = prints.get(one.key) === one.fingerprint;
+      if (mine || now - at > KEEP_DAYS * DAY) continue;
+      next[id] = { answer: one.answer, reason: one.reason, fingerprint: one.fingerprint, at };
+    }
+    for (const [key, choice] of Object.entries(choices)) {
+      const fingerprint = prints.get(key)!;
+      const same = before.get(`${key}@${fingerprint}`);
+      const unchanged = same?.answer === choice.answer && same.reason === choice.reason;
+      next[`${key}@${fingerprint}`] = {
+        ...choice,
+        fingerprint,
+        at: unchanged ? (same.at ?? now) : now,
+      };
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
     // The page works without it.
   }

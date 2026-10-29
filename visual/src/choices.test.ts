@@ -73,6 +73,111 @@ describe('the unsent choices', () => {
     expect(loadChoices(report)).toEqual({ [VI]: { answer: '', reason: 'half' } });
   });
 
+  it('keeps what another build’s page left, and adds this page’s choices beside it', () => {
+    const other = structuredClone(report);
+    other.walks[0].screens[0].languages.vi.fingerprint = 'ffffffffffff';
+    const third = 'admin-setup:3-settings:vi';
+
+    saveChoices(other, { [VI]: { answer: 'no', reason: 'their reason' } });
+    saveChoices(report, {
+      [EN]: { answer: 'yes', reason: '' },
+      [third]: { answer: 'yes', reason: '' },
+    });
+
+    expect(loadChoices(report)).toEqual({
+      [EN]: { answer: 'yes', reason: '' },
+      [third]: { answer: 'yes', reason: '' },
+    });
+    // A screen whose words did not change is the same screen on both pages.
+    expect(loadChoices(other)).toEqual({
+      [VI]: { answer: 'no', reason: 'their reason' },
+      [EN]: { answer: 'yes', reason: '' },
+      [third]: { answer: 'yes', reason: '' },
+    });
+  });
+
+  it('forgets a choice the page took back, and keeps one it did not touch', () => {
+    saveChoices(report, {
+      [VI]: { answer: 'yes', reason: '' },
+      [EN]: { answer: 'no', reason: 'x' },
+    });
+    saveChoices(report, { [EN]: { answer: 'no', reason: 'x' } });
+
+    expect(loadChoices(report)).toEqual({ [EN]: { answer: 'no', reason: 'x' } });
+  });
+
+  it('drops a choice older than 14 days at the next save, and keeps one of 14', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const start = Date.parse('2026-10-01T00:00:00Z');
+    const other = structuredClone(report);
+    other.walks[0].screens[0].languages.vi.fingerprint = 'ffffffffffff';
+    saveChoices(other, { [VI]: { answer: 'yes', reason: '' } }, start);
+    saveChoices(report, { [EN]: { answer: 'yes', reason: '' } }, start + 14 * day);
+    expect(loadChoices(other)[VI]).toEqual({ answer: 'yes', reason: '' });
+
+    saveChoices(report, { [EN]: { answer: 'yes', reason: '' } }, start + 14 * day + 1);
+
+    expect(loadChoices(other)[VI]).toBeUndefined();
+    expect(loadChoices(report)).toEqual({ [EN]: { answer: 'yes', reason: '' } });
+  });
+
+  it('dates a choice when it is made or changed, not each time the page saves', () => {
+    const day = 24 * 60 * 60 * 1000;
+    const start = Date.parse('2026-10-01T00:00:00Z');
+    saveChoices(report, { [VI]: { answer: 'yes', reason: '' } }, start);
+    saveChoices(report, { [VI]: { answer: 'yes', reason: '' } }, start + 10 * day);
+    const at = () =>
+      Object.values(
+        JSON.parse(localStorage.getItem('credo-walks-choices')!) as { at: number }[],
+      ).map((one) => one.at);
+    expect(at()).toEqual([start]);
+
+    saveChoices(report, { [VI]: { answer: 'no', reason: 'x' } }, start + 11 * day);
+
+    expect(at()).toEqual([start + 11 * day]);
+  });
+
+  it('reads today’s stored form, a key with its fingerprint and no date, and dates it at the next save', () => {
+    const prints = fingerprintsOf(report);
+    const old = (key: string, answer: string) => ({
+      [key]: { answer, reason: '', fingerprint: prints.get(key) },
+    });
+    const third = 'admin-setup:3-settings:vi';
+    localStorage.setItem(
+      'credo-walks-choices',
+      JSON.stringify({
+        ...old(VI, 'yes'),
+        [third]: { answer: 'no', reason: 'old', fingerprint: 'ffffffffffff' },
+      }),
+    );
+    expect(loadChoices(report)).toEqual({ [VI]: { answer: 'yes', reason: '' } });
+
+    const other = structuredClone(report);
+    other.walks[0].screens[0].languages.en.fingerprint = 'ffffffffffff';
+    saveChoices(other, { ...loadChoices(other), [EN]: { answer: 'no', reason: 'y' } }, 5);
+
+    expect(loadChoices(report)).toEqual({ [VI]: { answer: 'yes', reason: '' } });
+    expect(loadChoices(other)).toEqual({
+      [VI]: { answer: 'yes', reason: '' },
+      [EN]: { answer: 'no', reason: 'y' },
+    });
+    expect(
+      Object.values(
+        JSON.parse(localStorage.getItem('credo-walks-choices')!) as { at: number }[],
+      ).map((one) => one.at),
+    ).toEqual([5, 5, 5]);
+  });
+
+  it('drops an entry whose date is not a number', () => {
+    const fingerprint = fingerprintsOf(report).get(VI);
+    localStorage.setItem(
+      'credo-walks-choices',
+      JSON.stringify({ [VI]: { answer: 'yes', reason: '', fingerprint, at: 'today' } }),
+    );
+
+    expect(loadChoices(report)).toEqual({});
+  });
+
   it('works without the browser’s storage: nothing kept, nothing thrown', () => {
     vi.stubGlobal('localStorage', {
       getItem: () => {

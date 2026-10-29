@@ -1,9 +1,9 @@
 import { LANGUAGES } from '@credo/shared';
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { loadChoices, saveChoices, type Choices } from './choices';
 import { inPageOrder, plural, screenId } from './marks';
 import { Rail, useCurrent } from './rail';
-import type { Report, ReportScreen, ReportWalk } from './report';
+import type { Report, ReportWalk } from './report';
 import { type Choose, ScreenCard, type View } from './screen';
 import { Send } from './send';
 import type { Tally } from './states';
@@ -39,27 +39,6 @@ function WalkSection({
   choose: Choose;
 }) {
   const person = report.people.find((candidate) => candidate.id === walk.person)!;
-  const group = (path: ReportScreen['path'], heading: string) => {
-    const screens = walk.screens.filter((screen) => screen.path === path);
-    return (
-      screens.length > 0 && (
-        <>
-          <h3 className="w-path">{heading}</h3>
-          {screens.map((screen) => (
-            <ScreenCard
-              key={screen.id}
-              report={report}
-              walk={walk}
-              screen={screen}
-              view={view}
-              choices={choices}
-              choose={choose}
-            />
-          ))}
-        </>
-      )
-    );
-  };
   return (
     <section id={walk.id} className="w-walk" aria-labelledby={`${walk.id}-title`}>
       <div className="w-walk-head">
@@ -71,8 +50,19 @@ function WalkSection({
         </p>
         <TallyPills tally={walk.tally} />
       </div>
-      {group('main', 'The main path')}
-      {group('wrong', 'What can go wrong')}
+      {inPageOrder(walk).map((screen) => (
+        <Fragment key={screen.id}>
+          {screen.path === 'wrong' && <p className="w-path">Goes wrong</p>}
+          <ScreenCard
+            report={report}
+            walk={walk}
+            screen={screen}
+            view={view}
+            choices={choices}
+            choose={choose}
+          />
+        </Fragment>
+      ))}
     </section>
   );
 }

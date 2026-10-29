@@ -157,19 +157,27 @@ describe('the walks page: the map', () => {
 });
 
 describe('the walks page: a walk', () => {
-  it('Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question', () => {
+  it('Each walk shows its screens in number order, a screen that goes wrong tagged in place: each with its sentence in both languages and its one question', () => {
     render(<Page report={reportWith()} />);
 
     const walk = screen.getByRole('region', {
       name: 'Set up the company: its name, colour and languages',
     });
-    const headings = within(walk).getAllByRole('heading', { level: 3 });
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      'The main path',
-      'What can go wrong',
-    ]);
     const numbers = [...walk.querySelectorAll('.w-number')].map((n) => n.textContent);
-    expect(numbers).toEqual(['1', '3', '4', '5', '2', '6', '7', '8', '9']);
+    expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+    // The tag sits right before the screen that goes wrong, never before one on the main path.
+    const tagged = [...walk.querySelectorAll('.w-path')].map((tag) => [
+      tag.textContent,
+      tag.nextElementSibling!.id,
+    ]);
+    expect(tagged.map(([, id]) => id)).toEqual([
+      'admin-setup-2-sign-in-refused',
+      'admin-setup-6-service-down',
+      'admin-setup-7-save-failed',
+      'admin-setup-8-save-conflict',
+      'admin-setup-9-unknown-company',
+    ]);
+    expect(new Set(tagged.map(([text]) => text))).toEqual(new Set(['Goes wrong']));
     const last = walk.querySelector('#admin-setup-7-save-failed')!;
     expect(last.textContent).toContain('A save that failed, what was typed kept');
     expect(last.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
@@ -178,14 +186,14 @@ describe('the walks page: a walk', () => {
     );
   });
 
-  it('leaves out a heading whose path holds no screen, in the walk and in the rail', () => {
+  it('tags nothing when no screen of the walk goes wrong, in the walk and in the rail', () => {
     const report = reportWith();
     report.walks[0].screens = report.walks[0].screens.filter((s) => s.path === 'main');
 
     render(<Page report={report} />);
 
-    expect(screen.queryByText('What can go wrong')).toBeNull();
-    expect(screen.getAllByText('The main path')).toHaveLength(2);
+    expect(screen.queryByText('Goes wrong')).toBeNull();
+    expect(screen.queryByText('goes wrong')).toBeNull();
   });
 
   it('says the person and the width the walk is drawn at', () => {
@@ -366,7 +374,7 @@ describe('the walks page: the drawn screens', () => {
 });
 
 describe('the walks page: the rail', () => {
-  it('A rail lists each walk’s screens, the main path first, each with a mark for each language, and marks the screen in view', () => {
+  it('A rail lists each walk’s screens in number order, one that goes wrong tagged, each with a mark for each language, and marks the screen in view', () => {
     const band = watchBand();
     render(
       <Page
@@ -392,10 +400,10 @@ describe('the walks page: the rail', () => {
     ).toBeTruthy();
     expect(items.map((item) => item.getAttribute('href'))).toEqual([
       '#admin-setup-1-sign-in',
+      '#admin-setup-2-sign-in-refused',
       '#admin-setup-3-settings',
       '#admin-setup-4-saved',
       '#admin-setup-5-language-menu',
-      '#admin-setup-2-sign-in-refused',
       '#admin-setup-6-service-down',
       '#admin-setup-7-save-failed',
       '#admin-setup-8-save-conflict',
@@ -406,14 +414,25 @@ describe('the walks page: the rail', () => {
       ['yes', 'Tiếng Việt: yes'],
       ['open', 'English: not answered'],
     ]);
-    expect(marks(4)).toEqual([
+    expect(marks(1)).toEqual([
       ['open', 'Tiếng Việt: not answered'],
       ['no', 'English: no'],
+    ]);
+    expect(items.map((item) => !!item.querySelector('.w-rail-wrong'))).toEqual([
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
     ]);
     expect(marks(5)[1]).toEqual(['again', 'English: asked again']);
     // A choice made on the page marks its screen at once, in the rail and on the screen.
     fireEvent.click(panel('3-settings').getByLabelText('No'));
-    expect(marks(1)[0]).toEqual(['no', 'Tiếng Việt: no']);
+    expect(marks(2)[0]).toEqual(['no', 'Tiếng Việt: no']);
     expect(card('3-settings').querySelector('summary .w-mark')!.getAttribute('data-mark')).toBe(
       'no',
     );
@@ -422,21 +441,21 @@ describe('the walks page: the rail', () => {
     expect(band.watched).toHaveLength(9);
     expect(nav.querySelector('[aria-current]')).toBeNull();
     band.report([['4-saved', true]]);
-    expect(items[2].getAttribute('aria-current')).toBe('location');
+    expect(items[3].getAttribute('aria-current')).toBe('location');
     // Two in the band: the first in the page's order.
     band.report([
       ['4-saved', false],
       ['2-sign-in-refused', true],
       ['5-language-menu', true],
     ]);
-    expect(items[3].getAttribute('aria-current')).toBe('location');
+    expect(items[1].getAttribute('aria-current')).toBe('location');
     expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1);
     // None in the band, between two sections: the last stays.
     band.report([
       ['5-language-menu', false],
       ['2-sign-in-refused', false],
     ]);
-    expect(items[3].getAttribute('aria-current')).toBe('location');
+    expect(items[1].getAttribute('aria-current')).toBe('location');
   });
 });
 
@@ -973,7 +992,7 @@ describe('the walks page: answering', () => {
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
     expect(screen.getByText('1 answer to copy')).toBeTruthy();
     expect(ticks()).toHaveLength(18);
-    expect(ticks().slice(0, 4)).toEqual(['yes', 'open', 'yes', 'open']);
+    expect(ticks().slice(0, 6)).toEqual(['yes', 'open', 'open', 'open', 'yes', 'open']);
   });
 
   it('The bar keeps its height on the page, so an answer at the foot of the window rests above it', () => {

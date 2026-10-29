@@ -6,8 +6,8 @@ import type { Report } from './report';
 import { normalizeLabel } from './share';
 
 /**
- * The bar at the foot, always in view: every screen in every language as a ledger, how many are
- * answered, and the two buttons that turn the choices into text: "Copy my answers", the human's
+ * The bar at the foot, always in view: the note above, then one row: every screen in every
+ * language as a ledger, how many are answered, and the two buttons that turn the choices into text: "Copy my answers", the human's
  * block for the chat, and Share, a Slack message under the partner's label, which is asked for
  * once and kept in the browser. Its height is kept on the page as `--bar`, so an answer docked at
  * the foot rests above it.
@@ -56,6 +56,9 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
 
   return (
     <section ref={bar} className="w-send" aria-label="Your answers">
+      <span role="status" className="w-note">
+        {note}
+      </span>
       <div className="w-send-row">
         <span className="w-ledger" aria-hidden="true">
           {progress.marks.map(({ key, mark }) => (
@@ -65,9 +68,6 @@ export function Send({ report, choices }: { report: Report; choices: Choices }) 
         <span className="w-count">
           <span className="w-progress">{`${progress.answered} of ${progress.total} answered`}</span>
           <span className="w-tocopy">{plural(chosen, 'answer')} to copy</span>
-        </span>
-        <span role="status" className="w-note">
-          {note}
         </span>
         <input
           className="w-label"

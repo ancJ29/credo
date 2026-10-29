@@ -1,8 +1,8 @@
 import { LANGUAGES } from '@credo/shared';
 import { useEffect, useState } from 'react';
 import type { Choices } from './choices';
-import { LANGUAGE_LABEL, screenId } from './marks';
-import type { Report, ReportScreen } from './report';
+import { inPageOrder, LANGUAGE_LABEL, screenId } from './marks';
+import type { Report } from './report';
 import { capital, Marks, type View } from './screen';
 
 /** One of a few, as a row of buttons: radios under their legend, so the keys and a reader know it. */
@@ -68,11 +68,6 @@ export function useCurrent(ids: readonly string[]) {
   return current;
 }
 
-const PATHS: [ReportScreen['path'], string][] = [
-  ['main', 'The main path'],
-  ['wrong', 'What can go wrong'],
-];
-
 /**
  * The page's view and its place: the language and the widths every screen is drawn in, then each
  * walk's screens with their marks, the one in view marked as the current. A side rail on a PC and
@@ -121,34 +116,29 @@ export function Rail({
             <a className="w-rail-title" href={`#${walk.id}`}>
               {walk.title.en}
             </a>
-            {PATHS.map(([path, heading]) => {
-              const on = walk.screens.filter((screen) => screen.path === path);
-              return (
-                on.length > 0 && (
-                  <div key={path} className="w-rail-group">
-                    <p className="w-rail-path">{heading}</p>
-                    <ul>
-                      {on.map((screen) => {
-                        const id = screenId(walk, screen);
-                        return (
-                          <li key={screen.id}>
-                            <a
-                              className="w-rail-item"
-                              href={`#${id}`}
-                              aria-current={current === id ? 'location' : undefined}
-                            >
-                              <span className="w-rail-number">{screen.number}</span>
-                              <span className="w-rail-sentence">{screen.sentence.en}</span>
-                              <Marks walk={walk} screen={screen} choices={choices} />
-                            </a>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )
-              );
-            })}
+            <ul>
+              {inPageOrder(walk).map((screen) => {
+                const id = screenId(walk, screen);
+                return (
+                  <li key={screen.id}>
+                    <a
+                      className="w-rail-item"
+                      href={`#${id}`}
+                      aria-current={current === id ? 'location' : undefined}
+                    >
+                      <span className="w-rail-number">{screen.number}</span>
+                      <span className="w-rail-sentence">
+                        {screen.sentence.en}
+                        {screen.path === 'wrong' && (
+                          <span className="w-rail-wrong">goes wrong</span>
+                        )}
+                      </span>
+                      <Marks walk={walk} screen={screen} choices={choices} />
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ))}
       </nav>
