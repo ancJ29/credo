@@ -54,7 +54,7 @@ box_floor
 step "/health names this commit"
 body=$(curl -fsS -m 5 "http://127.0.0.1:$LOCAL_PORT/health" || true)
 running=$(build_of "$body")
-[ -n "$running" ] || die "/health names no commit (answered: ${body:-nothing}): nothing was written"
+[ -n "$running" ] && [ "$running" != dev ] || die "/health names no commit (answered: ${body:-nothing}): nothing was written"
 [ "$running" = "$sha" ] || die "/health names $running, not $sha: nothing was written; the seed runs when ridge runs this commit"
 ok "/health names $sha"
 
