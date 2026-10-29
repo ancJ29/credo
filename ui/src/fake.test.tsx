@@ -4,6 +4,7 @@ import {
   createClientReplySchema,
   employeeDocSchema,
   employeeListReplySchema,
+  issueQrReplySchema,
   meReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
@@ -17,6 +18,7 @@ import {
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
+  DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -39,10 +41,11 @@ const memory = (initial: Record<string, string> = {}) => {
 };
 
 /** A fake whose device holds the handles `held` names. */
-const fake = (cue = '', held: { client?: string; operator?: string } = {}) =>
+const fake = (cue = '', held: { client?: string; operator?: string } = {}, signIns = false) =>
   createFakeApi({
     device: { authId: () => held.client ?? null, operatorAuthId: () => held.operator ?? null },
     cue: parseCue(cue || null),
+    signIns,
   });
 
 const DEMO_PHOTO = Object.values(DEMO_PHOTOS)[0];
@@ -119,6 +122,23 @@ describe('the fake Api', () => {
       code: 'moi-1',
     });
     parses('changeCode', employeeDocSchema, coded.kind === 'changed' ? coded.doc : null);
+    // the company has turned on the email and the QR code
+    const on = fake('', { client: 'fake.session' }, true);
+    const onDoc = await on.getEmployee(id);
+    const emailed = await on.setEmail(id, {
+      version: onDoc.version,
+      email: 'Hung@Minh-Phat.Example',
+    });
+    parses('setEmail', employeeDocSchema, emailed.kind === 'set' ? emailed.doc : null);
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+    parses('signInQr', sessionReplySchema, await on.signInQr(bao.id, DEMO_QR_SECRET));
+    parses('issueQr', issueQrReplySchema, await on.issueQr(id));
+    const changed = await on.changePassword('Old-password-1!', 'New-password-2@');
+    parses(
+      'changePassword',
+      sessionReplySchema,
+      changed.kind === 'changed' ? changed.session : null,
+    );
     const savedConfig = await api.saveConfig(DEMO_CONFIG, 'v1');
     parses('saveConfig', configDocSchema, savedConfig.kind === 'saved' ? savedConfig.doc : null);
     const made = await api.makeClient('another-one', 'Another One');
@@ -141,6 +161,10 @@ describe('the fake Api', () => {
         'saveEmployee',
         'setPassword',
         'changeCode',
+        'setEmail',
+        'issueQr',
+        'signInQr',
+        'changePassword',
         'getPhoto',
         'savePhoto',
         'archiveEmployee',
@@ -150,6 +174,126 @@ describe('the fake Api', () => {
         'operatorSignOut',
       ].sort(),
     );
+  });
+
+  it('C: A person given an email signs in with it or with the code, in any case, until it is taken back, and a second person’s same email is refused', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const [lan, hung] = [DEMO_EMPLOYEES[0]!, DEMO_EMPLOYEES[1]!];
+    const read = await api.getEmployee(hung.id);
+
+    const given = await api.setEmail(hung.id, {
+      version: read.version,
+      email: ' Hung@Minh-Phat.Example ',
+    });
+    expect(given.kind === 'set' && given.doc.employee.email).toBe('hung@minh-phat.example');
+    expect((await api.signIn('HUNG@minh-phat.example', 'pw')).user.name).toBe(hung.name);
+    expect((await api.signIn(hung.code, 'pw')).user.name).toBe(hung.name);
+
+    // a second person's same email is a taken email; the version moved is a conflict
+    const lanRead = await api.getEmployee(lan.id);
+    expect(
+      await api.setEmail(lan.id, { version: lanRead.version, email: 'hung@minh-phat.example' }),
+    ).toEqual({ kind: 'taken' });
+    expect(await api.setEmail(lan.id, { version: 'e99', email: 'lan@minh-phat.example' })).toEqual({
+      kind: 'conflict',
+    });
+    expect(await status(api.setEmail('missing', { version: 'e1', email: null }))).toBe(404);
+    // the cue makes the save a conflict once
+    const cued = fake('setEmail:409', { client: 'fake.session' }, true);
+    expect(await cued.setEmail(lan.id, { version: lanRead.version, email: null })).toEqual({
+      kind: 'conflict',
+    });
+
+    // the person's own email is not taken against themselves; taking it back signs it out
+    const same = given.kind === 'set' ? given.doc : null;
+    const again = await api.setEmail(hung.id, {
+      version: same!.version,
+      email: 'hung@minh-phat.example',
+    });
+    expect(again.kind).toBe('set');
+    const removed = await api.setEmail(hung.id, {
+      version: again.kind === 'set' ? again.doc.version : '',
+      email: null,
+    });
+    expect(removed.kind === 'set' && removed.doc.employee.email).toBeUndefined();
+    expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
+
+    // someone who left, or who was given no password yet, does not sign in by email either
+    const noPassword = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0007')!;
+    const noRead = await api.getEmployee(noPassword.id);
+    await api.setEmail(noPassword.id, { version: noRead.version, email: 'anh@minh-phat.example' });
+    expect(await status(api.signIn('anh@minh-phat.example', 'pw'))).toBe(401);
+    const left = DEMO_EMPLOYEES.find((person) => person.archived)!;
+    const leftRead = await api.getEmployee(left.id);
+    await api.setEmail(left.id, { version: leftRead.version, email: 'huy@minh-phat.example' });
+    expect(await status(api.signIn('huy@minh-phat.example', 'pw'))).toBe(401);
+  });
+
+  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company with the QR sign-in off shows and accepts none', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+
+    // the data set holds one for the phone's walk, and spending it uses it up
+    expect((await api.signInQr(bao.id, DEMO_QR_SECRET)).user.name).toBe(bao.name);
+    expect(await status(api.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+
+    const first = await api.issueQr(bao.id);
+    const second = await api.issueQr(bao.id);
+    const secretOf = (link: string) => link.split('.').pop()!;
+    expect(first.link).toBe(`/login?client-code=${DEMO_CODE}&qr=${bao.id}.${secretOf(first.link)}`);
+    expect(second.expiresAt - Date.now()).toBeGreaterThan(14 * 60_000);
+    expect(second.expiresAt - Date.now()).toBeLessThanOrEqual(15 * 60_000);
+    expect(await status(api.signInQr(bao.id, secretOf(first.link)))).toBe(401);
+    expect((await api.signInQr(bao.id, secretOf(second.link))).authId).toBe(
+      `fake.session.${bao.id}`,
+    );
+    expect(await status(api.signInQr(bao.id, secretOf(second.link)))).toBe(401);
+    expect(await status(api.signInQr('missing', secretOf(second.link)))).toBe(401);
+    expect(await status(api.issueQr('missing'))).toBe(404);
+
+    // someone who left is refused whatever the code says
+    const left = DEMO_EMPLOYEES.find((person) => person.archived)!;
+    const issued = await api.issueQr(left.id);
+    const archivedRead = await api.getEmployee(left.id);
+    expect(archivedRead.employee.archived).toBe(true);
+    expect(await status(api.signInQr(left.id, secretOf(issued.link)))).toBe(401);
+
+    // the data set turns the QR sign-in off: nothing is shown, and nothing signs in
+    const off = fake('', { client: 'fake.session' });
+    expect(await status(off.issueQr(bao.id))).toBe(403);
+    expect(await status(off.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+  });
+
+  it('C: Anyone signed in changes their own password, a wrong current one is said and not an error, and a password off the rule is a 400', async () => {
+    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    const changed = await staff.changePassword('Old-password-1!', 'New-password-2@');
+
+    expect(changed.kind === 'changed' && changed.session.user.name).toBe(DEMO_EMPLOYEES[0]?.name);
+    expect(changed.kind === 'changed' && changed.session.authId).toBe(
+      `fake.session.${DEMO_EMPLOYEES[0]?.id}`,
+    );
+    const root = fake('', { client: 'fake.session' });
+    const rootChanged = await root.changePassword('Old-password-1!', 'New-password-2@');
+    expect(rootChanged.kind === 'changed' && rootChanged.session.user.root).toBe(true);
+    expect(await status(root.changePassword('Old-password-1!', 'weak'))).toBe(400);
+    expect(await status(fake().changePassword('Old-password-1!', 'New-password-2@'))).toBe(401);
+
+    // the cue makes the current password wrong, once
+    const cued = fake('changePassword:403', { client: 'fake.session' });
+    expect(await cued.changePassword('x', 'New-password-2@')).toEqual({ kind: 'wrong' });
+    expect((await cued.changePassword('x', 'New-password-2@')).kind).toBe('changed');
+  });
+
+  it('C: `&sign-ins` on the address has the company use the email and the QR sign-ins', async () => {
+    const { api } = fakeParts('?fake&sign-ins', memory())!;
+    const { setup } = await api.getStaffSetup();
+    expect(setup.fields).toMatchObject({ email: true, qr: true });
+
+    const { api: plain } = fakeParts('?fake', memory())!;
+    expect((await plain.getStaffSetup()).setup.fields).toEqual({
+      personalPhone: true,
+      photo: true,
+    });
   });
 
   it('The demo company answers as its data set holds it, and a save moves its version', async () => {

@@ -56,6 +56,10 @@ export const customFieldsSchema = z
 export const staffFieldsSchema = z.strictObject({
   personalPhone: z.boolean().default(false),
   photo: z.boolean().default(false),
+  /** The email is a second sign-in name; the QR switch lets the root show a person a QR code.
+   * Both are absent from a setup saved before they existed, and read as off. */
+  email: z.boolean().optional(),
+  qr: z.boolean().optional(),
 });
 export type StaffFields = z.output<typeof staffFieldsSchema>;
 

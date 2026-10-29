@@ -47,6 +47,9 @@ export type StoredOperator = z.infer<typeof storedOperatorSchema>;
  * spaces around it is one user. */
 export const normaliseSignInName = (raw: string) => raw.normalize('NFC').trim().toLowerCase();
 
+/** An email, a second sign-in name, kept as `normaliseSignInName` keeps a name. */
+export const emailSchema = z.string().transform(normaliseSignInName).pipe(z.email().max(200));
+
 /** The UI mints a device id once and keeps it; it names the session record, so it holds no dot,
  * which splits it from the secret in the handle. */
 export const deviceIdSchema = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/);

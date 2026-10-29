@@ -1,5 +1,5 @@
 import { LANGUAGES, type Language } from '@credo/shared';
-import { DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
 import type { MockScreen } from '@credo/ui/mock';
 
 /** A text in each language the report draws. */
@@ -33,7 +33,16 @@ export type Step =
  * as the data-set person with this code (the root when none), with one call's failure cued, then
  * the steps.
  */
-export type Scene = { path: string; as?: string; cue?: string; steps?: Step[] };
+export type Scene = {
+  path: string;
+  as?: string;
+  cue?: string;
+  /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
+  signIns?: true;
+  /** Nobody is signed in: a phone opening a QR code's link. */
+  out?: true;
+  steps?: Step[];
+};
 
 export type Person = { id: string; name: Bilingual; device: Device };
 export type Part = { id: string; name: Bilingual };
@@ -112,14 +121,26 @@ const FILLED_OWN: Step[] = [
   { choose: 'addPerson.position', option: 'Nhân viên' },
 ];
 
+/** The link a QR code opens, for a warehouse member of the data set and the secret given. */
+const qrLinkWith = (secret: string) =>
+  `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === 'EMP-0004')!.id}.${secret}`;
+
+/** One's own password typed: the current one, the new one, and the new one again. */
+const NEW_PASSWORD: Step[] = [
+  { fill: 'ownPassword.current', text: 'Old-password-1!' },
+  { fill: 'ownPassword.new', text: 'New-password-2@' },
+  { fill: 'ownPassword.again', text: 'New-password-2@' },
+  { press: 'ownPassword.submit' },
+];
+
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
  * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
- * then piece 2's groups A and B (the staff setup, the staff, the office's), each screen a scene of
- * the app on the fake. Group C adds the phone's walk, whose screens are all C's.
+ * then piece 2's groups A, B and C (the staff setup, the staff, the office's, the phone's), each
+ * screen a scene of the app on the fake.
  */
 export const WALKS: Walk[] = [
   {
@@ -519,6 +540,35 @@ export const WALKS: Walk[] = [
         },
         question: 'Does this say what to fix?',
       },
+      {
+        id: 'staff-17-email',
+        number: 17,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0002'),
+          signIns: true,
+          steps: [
+            { fill: 'person.emailNew', text: 'hung@minh-phat.example' },
+            { press: 'person.emailSet' },
+          ],
+        },
+        sentence: {
+          en: 'An email given: the person may sign in with it',
+          vi: 'Đã cấp email: người đó có thể đăng nhập bằng email',
+        },
+        question: 'Is it clear the email is a second way to sign in, and that no mail is sent?',
+      },
+      {
+        id: 'staff-18-qr',
+        number: 18,
+        path: 'main',
+        scene: { path: personAt('EMP-0004'), signIns: true, steps: [{ press: 'person.qrShow' }] },
+        sentence: {
+          en: 'A QR code and its link, for one sign-in within 15 minutes',
+          vi: 'Mã QR và đường dẫn của nó, để đăng nhập một lần trong 15 phút',
+        },
+        question: 'Would the admin know to show it, and that it works once?',
+      },
     ],
   },
   {
@@ -590,6 +640,63 @@ export const WALKS: Walk[] = [
           vi: 'Được đổi thiết lập: có mục Thiết lập trong menu',
         },
         question: 'Is it clear this person may change the company’s settings?',
+      },
+      {
+        id: 'office-6-password',
+        number: 6,
+        path: 'main',
+        scene: { path: '/password', as: 'EMP-0001', steps: NEW_PASSWORD },
+        sentence: {
+          en: 'Changing one’s own password',
+          vi: 'Tự đổi mật khẩu của mình',
+        },
+        question: 'Would a person find this, and know what to type?',
+      },
+      {
+        id: 'office-7-password-wrong',
+        number: 7,
+        path: 'wrong',
+        scene: {
+          path: '/password',
+          as: 'EMP-0001',
+          cue: 'changePassword:403',
+          steps: NEW_PASSWORD,
+        },
+        sentence: {
+          en: 'The current password wrong',
+          vi: 'Mật khẩu hiện tại không đúng',
+        },
+        question: 'Does this say what to fix?',
+      },
+    ],
+  },
+  {
+    id: 'phone-sign-in',
+    person: 'driver',
+    part: 'staff',
+    title: { en: 'Sign in by a QR code', vi: 'Đăng nhập bằng mã QR' },
+    screens: [
+      {
+        id: 'phone-1-signed-in',
+        number: 1,
+        path: 'main',
+        scene: { path: qrLinkWith(DEMO_QR_SECRET), signIns: true, out: true },
+        sentence: {
+          en: 'Signed in on a phone by the code, on the person’s first page',
+          vi: 'Đăng nhập trên điện thoại bằng mã, vào trang đầu tiên của người đó',
+        },
+        question: 'Would the person know they are in, and where?',
+      },
+      {
+        id: 'phone-2-code-used',
+        number: 2,
+        path: 'wrong',
+        scene: { path: qrLinkWith('used-before-qr-code'), signIns: true, out: true },
+        sentence: {
+          en: 'A code used before, or past its 15 minutes',
+          vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
+        },
+        question: 'Would the person know to ask for a new one?',
       },
     ],
   },

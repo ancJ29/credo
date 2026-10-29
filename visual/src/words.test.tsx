@@ -166,6 +166,13 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,
   'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
   'office-staff:office-5-settings': (w) => `link: ${w.nav.settings}`,
+  'admin-staff:staff-17-email': (w) =>
+    `alert: ${w.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example')}`,
+  'admin-staff:staff-18-qr': (w) => `img: ${w.person.qrImage}`,
+  'office-staff:office-6-password': (w) => `alert: ${w.ownPassword.changed}`,
+  'office-staff:office-7-password-wrong': (w) => `alert: ${w.ownPassword.wrong}`,
+  'phone-sign-in:phone-1-signed-in': (w) => `heading: ${w.staff.title}`,
+  'phone-sign-in:phone-2-code-used': (w) => `heading: ${w.qrSignIn.refusedTitle}`,
 };
 
 describe('the app’s own scenes, drawn', () => {

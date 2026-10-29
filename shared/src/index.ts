@@ -6,5 +6,6 @@ export * from './hash';
 export * from './permissions';
 export * from './photo';
 export * from './records';
+export * from './signins';
 export * from './staff';
 export * from './wire';

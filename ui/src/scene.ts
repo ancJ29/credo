@@ -20,23 +20,27 @@ type SceneOptions = {
   as?: string;
   /** One call and the status it answers once, as the address's `cue` names it. */
   cue?: string;
+  /** The company has turned on sign-in by email and by QR code. */
+  signIns?: boolean;
+  /** Nobody is signed in yet: a phone opening a QR code's link. */
+  out?: boolean;
   language: Language;
 };
 
 /**
  * The fake `Api` and the device it answers for, on the demo company, already signed in as the
- * root or as a data-set person and speaking `language`: what one scene, or one test of a page, is
- * drawn from. Each call makes a fake of its own, seeded afresh.
+ * root or as a data-set person (or not signed in at all) and speaking `language`: what one scene,
+ * or one test of a page, is drawn from. Each call makes a fake of its own, seeded afresh.
  */
-export function sceneParts({ as, cue, language }: SceneOptions) {
+export function sceneParts({ as, cue, signIns, out, language }: SceneOptions) {
   const found = as === undefined ? null : DEMO_EMPLOYEES.find((person) => person.code === as);
   if (found === undefined) throw new Error(`no ${as} in the data set`);
   const device = createDeviceStore(
     memory({
       'credo.client': DEMO_CODE,
       'credo.language': language,
-      'credo.session': found ? `fake.session.${found.id}` : 'fake.session',
+      ...(out ? {} : { 'credo.session': found ? `fake.session.${found.id}` : 'fake.session' }),
     }),
   );
-  return { api: createFakeApi({ device, cue: parseCue(cue ?? null) }), device };
+  return { api: createFakeApi({ device, cue: parseCue(cue ?? null), signIns }), device };
 }

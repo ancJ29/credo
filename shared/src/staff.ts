@@ -10,6 +10,7 @@ import {
   staffFieldsSchema,
 } from './fields';
 import { permissionLayerSchema } from './permissions';
+import { emailSchema } from './records';
 import { tagSchema } from './wire';
 
 /** A code is 2 to 20 of the letters A to Z, digits and hyphens, unique in any case: a code is
@@ -42,6 +43,8 @@ export const employeeSchema = z.strictObject({
   name: nameSchema,
   department: unitLinkSchema.nullable(),
   position: unitLinkSchema.nullable(),
+  /** The second sign-in name, the root's to give; absent until one is. */
+  email: emailSchema.nullable().optional(),
   /** Only what differs from the position's, and the department's. */
   permissions: permissionLayerSchema.default({}),
   archived: z.boolean().default(false),
@@ -134,12 +137,12 @@ export type StaffSetup = z.infer<typeof staffSetupSchema>;
 /** What the setup says about a person's fields and codes, whole: off, none and `EMP-0001` style
  * where it says nothing. The one place those defaults are written. */
 export function staffConfig(setup: Partial<StaffSetup>): {
-  fields: StaffFields;
+  fields: Required<StaffFields>;
   customFields: CustomField[];
   numbering: Numbering;
 } {
   return {
-    fields: { personalPhone: false, photo: false, ...setup.fields },
+    fields: { personalPhone: false, photo: false, email: false, qr: false, ...setup.fields },
     customFields: setup.customFields ?? [],
     numbering: setup.numbering ?? DEFAULT_NUMBERING,
   };

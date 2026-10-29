@@ -22,7 +22,7 @@ export const en = {
     staff: 'Staff',
     staffSetup: 'Departments and positions',
   },
-  user: { language: 'Language', signOut: 'Sign out' },
+  user: { language: 'Language', signOut: 'Sign out', password: 'Change password' },
   settings: {
     title: 'Settings',
     basics: 'Basic Information',
@@ -115,6 +115,11 @@ export const en = {
       'A field turned off is hidden everywhere, and what was stored in it stays. The name, the code, the department, the position, the phone and the note are always kept.',
     fieldPersonalPhone: 'A second phone',
     fieldPhoto: 'A photo',
+    signInsTitle: 'Ways to sign in',
+    signInsIntro:
+      'The code and a password always work. These add to them: nothing a person already has is taken away.',
+    fieldEmail: 'An email, a second name to sign in with. No mail is ever sent to it.',
+    fieldQr: 'A QR code that signs one phone in, once, within 15 minutes.',
     ownTitle: 'The company’s own fields',
     ownIntro:
       'Add what this company also keeps about its people. A field’s key is fixed once it is saved.',
@@ -251,6 +256,50 @@ export const en = {
     codeFailed: 'The code was not changed: try again.',
     codeChanged:
       'The code is now {{code}}. The person signs in with it, and was signed out everywhere. The old code no longer signs in.',
+    signInReadyEmail: 'Signs in with the code {{code}} or the email {{email}}, and a password.',
+    emailTitle: 'Email',
+    emailText:
+      'A second name to sign in with, beside the code. No mail is ever sent to it, so it is not checked.',
+    emailNone: 'No email yet.',
+    emailNew: 'Email',
+    emailSet: 'Give this email',
+    emailRemove: 'Remove the email',
+    emailInvalid: 'That is not an email address.',
+    emailTaken: 'That email already signs someone in, and nothing was changed. Choose another.',
+    emailFailed: 'The email was not changed: try again.',
+    emailChanged:
+      'The email is now {{email}}. The person signs in with it or with the code. No mail was sent.',
+    emailRemoved: 'The email is removed. The person signs in with the code.',
+    qrTitle: 'Sign in by QR code',
+    qrText:
+      'Show the code to the person on their phone. It signs one phone in, once, within 15 minutes. A new code cancels the last.',
+    qrShow: 'Show a QR code',
+    qrNew: 'Show a new code',
+    qrImage: 'QR code',
+    qrLink: 'The link in the code',
+    qrOnce: 'It works once, for 15 minutes. Showing a new code cancels this one.',
+    qrFailed: 'No code was made: try again.',
+  },
+  ownPassword: {
+    title: 'Change your password',
+    text: 'Give the one you use now, then the new one. Every other device you are signed in on is signed out.',
+    current: 'Current password',
+    new: 'New password',
+    again: 'The new password again',
+    submit: 'Change password',
+    changed: 'Your password is changed. Every other device was signed out.',
+    wrong: 'The current password is wrong. Nothing was changed.',
+    invalid: 'That password does not meet the rule.',
+    mismatch: 'The two new passwords differ.',
+    failed: 'The password was not changed: try again.',
+  },
+  qrSignIn: {
+    busyTitle: 'Signing you in',
+    busyText: 'One moment.',
+    refusedTitle: 'This code cannot sign you in',
+    refusedText:
+      'It was used already, or its 15 minutes are over. Ask your admin for a new one.',
+    password: 'Sign in with a password',
   },
   fields: {
     noneChosen: 'None',

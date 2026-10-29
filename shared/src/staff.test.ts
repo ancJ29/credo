@@ -172,7 +172,7 @@ describe('staff', () => {
     // a setup saved before these existed has none, and reads as the defaults
     expect(staffSetupSchema.safeParse(bare).success).toBe(true);
     expect(staffConfig(bare)).toEqual({
-      fields: { personalPhone: false, photo: false },
+      fields: { personalPhone: false, photo: false, email: false, qr: false },
       customFields: [],
       numbering: { prefix: 'EMP-', digits: 4 },
     });
@@ -185,7 +185,7 @@ describe('staff', () => {
     };
     expect(staffSetupSchema.safeParse(set).success).toBe(true);
     expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
-      fields: { personalPhone: false, photo: true },
+      fields: { personalPhone: false, photo: true, email: false, qr: false },
       customFields: [{ ...own, options: [], inList: false }],
       numbering: { prefix: 'NV', digits: 3 },
     });
@@ -258,5 +258,25 @@ describe('staff', () => {
       customFields: [],
       numbering: { prefix: 'X-', digits: 2 },
     });
+  });
+
+  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switches for the email and the QR code are off until turned on', () => {
+    expect(employeeSchema.parse(person).email).toBeUndefined();
+    expect(employeeSchema.parse({ ...person, email: null }).email).toBeNull();
+    expect(employeeSchema.parse({ ...person, email: '  Lan@Minh-Phat.Example ' }).email).toBe(
+      'lan@minh-phat.example',
+    );
+    expect(employeeSchema.safeParse({ ...person, email: 'not an email' }).success).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({
+        departments: [],
+        positions: [],
+        fields: { email: true, qr: true },
+        extra: {},
+      }).success,
+    ).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
+      { personalPhone: true, photo: false, email: false, qr: true },
+    );
   });
 });

@@ -17,6 +17,8 @@ import {
   employeeRoutes,
   meReplySchema,
   type MeReply,
+  type IssueQrReply,
+  issueQrReplySchema,
   type PhotoReply,
   photoReplySchema,
   type OperatorMeReply,
@@ -29,6 +31,8 @@ import {
   type SaveStaffSetupRequest,
   type SessionReply,
   sessionReplySchema,
+  type SetEmailRequest,
+  signInRoutes,
   type SetPasswordReply,
   setPasswordReplySchema,
   type StaffSetupDoc,
@@ -62,6 +66,13 @@ export type NewPerson = Omit<AddEmployeeRequest, 'code'> & { code?: string };
 /** A new code given, or one already taken, or the version moved: none is an error to the form. */
 export type ChangeCodeResult =
   { kind: 'changed'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** An email given or removed, or one already signing someone in, or the version moved. */
+export type SetEmailResult =
+  { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** One's own password changed, with the session that replaces every other; or the current one wrong. */
+export type ChangePasswordResult = { kind: 'changed'; session: SessionReply } | { kind: 'wrong' };
 
 /** A photo saved, or the version moved. */
 /** A conflict carries the photo as it is now, when the answer held one the shared schema reads. */
@@ -239,6 +250,41 @@ export function createApi({
       }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'changed', doc: await read(response, employeeDocSchema) };
+    },
+
+    /** The root's. A 409 that carries the newer person is a moved version, any other is an email
+     * already signing someone in. No mail is sent whatever the answer. */
+    async setEmail(id: string, request: SetEmailRequest): Promise<SetEmailResult> {
+      const response = await send('PUT', signInRoutes.email(id), request);
+      if (response.status === 409) {
+        const body = (await response.json().catch(() => null)) as object | null;
+        return body !== null && 'current' in body ? { kind: 'conflict' } : { kind: 'taken' };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'set', doc: await read(response, employeeDocSchema) };
+    },
+
+    /** The root's: a QR code for one sign-in, which cancels the last. */
+    async issueQr(id: string): Promise<IssueQrReply> {
+      const response = await send('POST', signInRoutes.issueQr(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, issueQrReplySchema);
+    },
+
+    /** A phone opening a QR code's link: a 401 is a code used before, or past its time. */
+    async signInQr(id: string, secret: string): Promise<SessionReply> {
+      const response = await send('POST', signInRoutes.qr, { id, secret });
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, sessionReplySchema);
+    },
+
+    /** One's own: the current password first. A 403 is a current one that is wrong; the answer
+     * holds the session that replaces the one held, since every other is signed out. */
+    async changePassword(current: string, password: string): Promise<ChangePasswordResult> {
+      const response = await send('PUT', signInRoutes.password, { current, password });
+      if (response.status === 403) return { kind: 'wrong' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'changed', session: await read(response, sessionReplySchema) };
     },
 
     async getPhoto(id: string): Promise<PhotoReply> {

@@ -1,21 +1,29 @@
 import { type Language } from '@credo/shared';
-import { DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_CODE, DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 2's groups A and B, three walks in one run: the staff setup and the staff list, the person's
- * pages and the office's, twenty-three screens (A's sixteen and B's seven), each in Vietnamese and
- * in English at the three widths (23 × 2 × 3 = 138). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * Piece 2's groups A, B and C, four walks in one run: the staff setup and the staff list, the person's
+ * pages, the office's and the phone's, twenty-nine screens (A's sixteen, B's seven and C's six), each
+ * in Vietnamese and in English at the three widths (29 × 2 × 3 = 174). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
  */
 
-/** Where a screen opens: the address, the data-set person signed in (the root when none) and the
- * failure the fake answers once, which the full run provokes in its own way. */
-type Opening = { path: string; as?: string; cue?: string };
+/** Where a screen opens: the address, the data-set person signed in (the root when none, or nobody
+ * for a phone that opens a QR code's link) and the failure the fake answers once, which the full run
+ * provokes in its own way. `signIns` has the company use sign-in by email and by QR code. The address
+ * of a QR code's link is made once the client is, since the full run issues its own. */
+type Opening = {
+  path: string | ((client: Seeded | null) => Promise<string>);
+  as?: string;
+  cue?: string;
+  signIns?: true;
+  out?: true;
+};
 
 /** What the stack's seed door answers: a client made from the data set, with its first passwords. */
 type Seeded = { code: string; rootPassword: string; people: Record<string, string> };
@@ -49,33 +57,80 @@ async function signedIn(page: Page, client: Seeded, as?: string) {
   return ((await reply.json()) as { authId: string }).authId;
 }
 
-/** Opens a screen. On the fake: the address with `?fake`, and the cue. On the stack: a client of
- * its own, the language and the person's handle kept on the device, and the address as it is. */
-async function open(page: Page, language: Language, { path, as, cue }: Opening) {
+/** Opens a screen. On the fake: the address with `?fake`, the cue and the sign-in switches. On the
+ * stack: a client of its own with those switches saved through the real API, the language and the
+ * person's handle kept on the device (none for a phone that is signed out), and the address as it is. */
+async function open(page: Page, language: Language, opening: Opening) {
+  const { as, cue, signIns, out } = opening;
   if (!FULL()) {
     await page.addInitScript(
       ([chosen, handle]) => {
         sessionStorage.setItem('credo.language', chosen);
-        sessionStorage.setItem('credo.session', handle);
+        if (handle) sessionStorage.setItem('credo.session', handle);
       },
-      [language, handleOf(as)],
+      [language, out ? '' : handleOf(as)],
     );
-    await page.goto(`${path}?fake${cue ? `&cue=${cue}` : ''}`);
+    const path = typeof opening.path === 'string' ? opening.path : await opening.path(null);
+    const glue = path.includes('?') ? '&' : '?';
+    await page.goto(`${path}${glue}fake${cue ? `&cue=${cue}` : ''}${signIns ? '&sign-ins' : ''}`);
     return null;
   }
   const client = await seed();
-  const handle = await signedIn(page, client, as);
+  if (signIns) await switchSignInsOn(page, client);
+  const handle = out ? '' : await signedIn(page, client, as);
   await page.addInitScript(
     ([chosen, code, kept]) => {
       localStorage.setItem('credo.language', chosen);
       localStorage.setItem('credo.client', code);
-      localStorage.setItem('credo.session', kept);
+      if (kept) localStorage.setItem('credo.session', kept);
     },
     [language, client.code, handle],
   );
-  await page.goto(path);
+  await page.goto(typeof opening.path === 'string' ? opening.path : await opening.path(client));
   return client;
 }
+
+/** The company turns on the email and the QR sign-in, through the real API as the root does. */
+async function switchSignInsOn(page: Page, client: Seeded) {
+  const root = await signedIn(page, client);
+  const headers = { 'x-client-code': client.code, 'x-auth-id': root };
+  const { setup, version } = (await (
+    await page.request.get('/api/staff-setup', { headers })
+  ).json()) as { setup: { fields?: object }; version: string };
+  const saved = await page.request.put('/api/staff-setup', {
+    headers,
+    data: { setup: { ...setup, fields: { ...setup.fields, email: true, qr: true } }, version },
+  });
+  expect(saved.ok(), 'the sign-in switches are saved').toBe(true);
+}
+
+/** The address of a QR code's link for a warehouse member of the data set: on the fake its stand-in
+ * (or a secret no one holds, for a code used before); on the stack one issued by the root, and for a
+ * code used before, opened once by a phone that is not the page's. */
+const qrAddress = (page: Page, used: boolean) => async (client: Seeded | null) => {
+  const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+  if (!client) {
+    return `/login?client-code=${DEMO_CODE}&qr=${bao.id}.${used ? 'used-before-qr-code' : DEMO_QR_SECRET}`;
+  }
+  const headers = { 'x-client-code': client.code, 'x-auth-id': await signedIn(page, client) };
+  const listed = (await (await page.request.get('/api/employees', { headers })).json()) as {
+    employees: { id: string; code: string }[];
+  };
+  const id = listed.employees.find((person) => person.code === 'EMP-0004')!.id;
+  const issued = (await (
+    await page.request.post(`/api/employees/${id}/qr`, { headers })
+  ).json()) as {
+    link: string;
+  };
+  if (used) {
+    const secret = new URL(issued.link, 'http://x').searchParams.get('qr')!.split('.')[1];
+    await page.request.post('/api/auth/sign-in-qr', {
+      headers: { 'x-client-code': client.code },
+      data: { id, secret },
+    });
+  }
+  return issued.link;
+};
 
 /** Someone else saves a data-set person first, through the real API, so the page's own save meets
  * the BFF's 409: no stub, the refusal and its wording are the product's. The fake answers the same
@@ -289,6 +344,25 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByText(words.fields.invalidNumber)).toBeVisible();
   await at('staff-16-field-refused');
 
+  // 17. An email given: the person may sign in with it, and no mail is sent.
+  await open(page, language, { path: '/staff', signIns: true });
+  await personNamed(page, 'Trần Văn Hùng');
+  await typed(words.person.emailNew, 'hung@minh-phat.example');
+  await press(words.person.emailSet);
+  await expect(page.getByRole('alert')).toHaveText(
+    words.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example'),
+  );
+  await at('staff-17-email');
+
+  // 18. A QR code and its link, for one sign-in within 15 minutes; both are minted, so both are
+  // masked.
+  await open(page, language, { path: '/staff', signIns: true });
+  await personNamed(page, 'Phạm Quốc Bảo');
+  await press(words.person.qrShow);
+  const code = page.getByRole('img', { name: words.person.qrImage });
+  await expect(code).toBeVisible();
+  await at('staff-18-qr', [code, page.getByLabel(words.person.qrLink)]);
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -322,17 +396,53 @@ async function walk(page: Page, language: Language, width: number) {
     }),
   ).toBeVisible();
   await at('office-5-settings');
+
+  // Changing one's own password: from the user's menu, the current one first. The full run types
+  // the person's real one.
+  const lan = await open(page, language, { path: '/staff', as: 'EMP-0001' });
+  await page.getByRole('button', { name: 'Nguyễn Thị Lan' }).click();
+  await page.getByRole('menuitem', { name: words.user.password, exact: true }).click();
+  await expect(title(words.ownPassword.title)).toBeVisible();
+  await page
+    .getByLabel(exactly(words.ownPassword.current))
+    .fill(lan?.people['EMP-0001'] ?? 'Old-password-1!');
+  await page.getByLabel(exactly(words.ownPassword.new)).fill('New-password-2@');
+  await page.getByLabel(exactly(words.ownPassword.again)).fill('New-password-2@');
+  await press(words.ownPassword.submit);
+  await expect(page.getByRole('alert')).toHaveText(words.ownPassword.changed);
+  await unfocus();
+  await at('office-6-password');
+
+  // The current password wrong: the fake answers the change with a 403 once; the full run types a
+  // password the person does not have.
+  await open(page, language, { path: '/password', as: 'EMP-0001', cue: 'changePassword:403' });
+  await page.getByLabel(exactly(words.ownPassword.current)).fill('Old-password-1!');
+  await page.getByLabel(exactly(words.ownPassword.new)).fill('New-password-2@');
+  await page.getByLabel(exactly(words.ownPassword.again)).fill('New-password-2@');
+  await press(words.ownPassword.submit);
+  await expect(page.getByRole('alert')).toHaveText(words.ownPassword.wrong);
+  await unfocus();
+  await at('office-7-password-wrong');
+
+  // The phone's walk: a QR code opened on a phone that is signed out.
+  await open(page, language, { path: qrAddress(page, false), out: true, signIns: true });
+  await expect(title(words.staff.title)).toBeVisible();
+  await at('phone-1-signed-in');
+
+  await open(page, language, { path: qrAddress(page, true), out: true, signIns: true });
+  await expect(title(words.qrSignIn.refusedTitle)).toBeVisible();
+  await at('phone-2-code-used');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
-  test.describe(`piece 2, groups A and B: the staff setup and the staff, on a ${device} (${width})`, () => {
+  test.describe(`piece 2, groups A, B and C: the staff setup, the staff and the phone, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
     for (const [language, name] of [
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all twenty-three screens in ${name}`, async ({ page }) => {
+      test(`walks all twenty-nine screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

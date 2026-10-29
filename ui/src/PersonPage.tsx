@@ -41,6 +41,7 @@ import {
 import { type PageProps, refusal, useLoad } from './page';
 import { PermissionEditor } from './PermissionEditor';
 import { PhotoPanel } from './PhotoPanel';
+import { EmailPanel, QrPanel } from './SignInPanels';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from './staffNames';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -272,6 +273,7 @@ type FormProps = {
   /** The code the person was just given, or null. */
   codeChanged: string | null;
   onCodeChanged: (doc: EmployeeDoc) => void;
+  onEmailChanged: (doc: EmployeeDoc) => void;
   onConflict: () => void;
   onSave: (request: Omit<SaveEmployeeRequest, 'version'>) => void;
   onReload: () => void;
@@ -498,7 +500,11 @@ function PersonForm({
         <Stack gap="xs">
           <Title order={3}>{t('person.signIn')}</Title>
           <Text>
-            {ready ? t('person.signInReady', { code: employee.code }) : t('person.signInNotYet')}
+            {!ready
+              ? t('person.signInNotYet')
+              : employee.email
+                ? t('person.signInReadyEmail', { code: employee.code, email: employee.email })
+                : t('person.signInReady', { code: employee.code })}
           </Text>
         </Stack>
       </Paper>
@@ -515,6 +521,17 @@ function PersonForm({
           onConflict={actions.onConflict}
         />
       )}
+      {user.root && !employee.archived && fields.email && (
+        <EmailPanel
+          page={page}
+          id={employee.id}
+          version={doc.version}
+          email={employee.email ?? null}
+          onChanged={actions.onEmailChanged}
+          onConflict={actions.onConflict}
+        />
+      )}
+      {user.root && !employee.archived && fields.qr && <QrPanel page={page} id={employee.id} />}
       {can(user, 'staff.canDelete') && !employee.archived && (
         <ArchivePanel name={employee.name} onArchive={actions.onArchive} failed={archiveFailed} />
       )}
@@ -614,6 +631,10 @@ export function PersonPage(page: PageProps) {
             setCurrent(next);
             setOutcome(null);
             setCodeChanged(next.employee.code);
+          }}
+          onEmailChanged={(next) => {
+            setCurrent(next);
+            setOutcome(null);
           }}
           onConflict={() => setOutcome('conflict')}
           onSave={(request) => void save(request, (current ?? data.doc).version)}

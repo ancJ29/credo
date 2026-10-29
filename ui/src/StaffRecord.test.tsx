@@ -43,6 +43,8 @@ describe('the company’s optional fields', () => {
       expect((await api.getStaffSetup()).setup.fields).toEqual({
         personalPhone: false,
         photo: false,
+        email: false,
+        qr: false,
       });
 
       // hidden everywhere: the person's page, the add form, the list's initials
@@ -135,7 +137,7 @@ describe('the company’s optional fields', () => {
 
     await screen.findByText('Saved.');
     const saved = (await api.getStaffSetup()).setup;
-    expect(saved.fields).toEqual(DEMO_STAFF_SETUP.fields);
+    expect(saved.fields).toEqual({ ...DEMO_STAFF_SETUP.fields, email: false, qr: false });
     expect(saved.customFields).toEqual(DEMO_STAFF_SETUP.customFields);
     expect(saved.numbering).toEqual(DEMO_STAFF_SETUP.numbering);
   });

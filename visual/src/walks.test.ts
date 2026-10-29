@@ -23,7 +23,7 @@ describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(36);
+    expect(states.size).toBe(42);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -80,9 +80,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, seventy-two for the thirty-six screens', () => {
+  it('keys an answer by walk, screen and language, eighty-four for the forty-two screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(72);
+    expect(allKeys(WALKS)).toHaveLength(84);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -149,33 +149,40 @@ describe('the walks', () => {
         [...steps.matchAll(new RegExp(`\\b${key}: '([^']+)'`, 'g'))].map((found) => found[1]);
       expect(named('as'), `${screen.id}: as`).toEqual(as === undefined ? [] : [as]);
       expect(named('cue'), `${screen.id}: cue`).toEqual(cue === undefined ? [] : [cue]);
+      // the switches and a phone that is signed out are flags: set on both sides, or on neither
+      const { signIns, out } = screen.scene!;
+      expect(/\bsignIns: true/.test(steps), `${screen.id}: signIns`).toBe(signIns === true);
+      expect(/\bout: true/.test(steps), `${screen.id}: out`).toBe(out === true);
     }
   });
 
-  it('puts piece 2’s groups A and B in three walks, twenty-three screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B and C in four walks, twenty-nine screens in all, each a scene and none from the mock', () => {
     const piece2 = WALKS.slice(2);
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
-      ['admin-staff', 'admin', 'staff', 16],
-      ['office-staff', 'office', 'staff', 5],
+      ['admin-staff', 'admin', 'staff', 18],
+      ['office-staff', 'office', 'staff', 7],
+      ['phone-sign-in', 'driver', 'staff', 2],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(23);
+    expect(screens).toHaveLength(29);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(23);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(29);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-      [1, 2, 3, 4, 5],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+      [1, 2, 3, 4, 5, 6, 7],
+      [1, 2],
     ]);
     expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
       9, 10, 11, 16,
     ]);
     expect(piece2[2].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
-      3, 4,
+      3, 4, 7,
     ]);
+    expect(piece2[3].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([2]);
     expect(piece2[2].screens.filter((s) => s.navigation).map((s) => s.number)).toEqual([1, 5]);
     for (const walk of piece2) {
       expect(PEOPLE.map((person) => person.id)).toContain(walk.person);
@@ -187,14 +194,30 @@ describe('the walks', () => {
     const [setup, staff, office] = WALKS.slice(2).map((walk) => walk.screens.map((s) => s.id));
 
     expect(setup?.slice(1)).toEqual(['setup-2-fields']);
-    expect(staff?.slice(11)).toEqual([
+    expect(staff?.slice(11, 16)).toEqual([
       'staff-12-own-fields',
       'staff-13-photo',
       'staff-14-search',
       'staff-15-code-changed',
       'staff-16-field-refused',
     ]);
-    expect(office?.slice(4)).toEqual(['office-5-settings']);
+    expect(office?.slice(4, 5)).toEqual(['office-5-settings']);
+  });
+
+  it('puts C’s six screens after B’s, the screens the plan names, the phone’s walk being all C’s', () => {
+    const [, staff, office, phone] = WALKS.slice(2).map((walk) => walk.screens.map((s) => s.id));
+
+    expect(staff?.slice(16)).toEqual(['staff-17-email', 'staff-18-qr']);
+    expect(office?.slice(5)).toEqual(['office-6-password', 'office-7-password-wrong']);
+    expect(phone).toEqual(['phone-1-signed-in', 'phone-2-code-used']);
+    // the email and the QR code are shown on a company that uses them; the phone is signed out
+    const scenes = new Map(WALKS.flatMap((walk) => walk.screens).map((s) => [s.id, s.scene]));
+    expect(scenes.get('staff-17-email')?.signIns).toBe(true);
+    expect(scenes.get('staff-18-qr')?.signIns).toBe(true);
+    expect(scenes.get('phone-1-signed-in')).toMatchObject({ signIns: true, out: true });
+    expect(scenes.get('phone-2-code-used')).toMatchObject({ signIns: true, out: true });
+    expect(scenes.get('phone-1-signed-in')?.path).toMatch(/^\/login\?client-code=demo&qr=/);
+    expect(scenes.get('office-7-password-wrong')?.cue).toBe('changePassword:403');
   });
 
   it('names each step of a scene by words both languages’ dictionaries hold', () => {
@@ -224,7 +247,7 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(23);
+    expect(scenes).toHaveLength(29);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
@@ -235,6 +258,8 @@ describe('the walks', () => {
       'EMP-0001',
       'EMP-0005',
       'EMP-0003',
+      'EMP-0001',
+      'EMP-0001',
     ]);
   });
 

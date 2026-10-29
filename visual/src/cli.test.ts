@@ -18,7 +18,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(72);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(84);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;
@@ -33,8 +33,8 @@ describe('pnpm report', () => {
     expect(failedSave.languages['en'].words).toContain(
       'alert: The settings were not saved. What you typed is still here: try again.',
     );
-    // Groups A and B of piece 2: their twenty-three screens drawn as scenes, none from the mock, a
-    // state for each of the forty-six (screen, language) pairs whatever the answers file holds now,
+    // Groups A, B and C of piece 2: their twenty-nine screens drawn as scenes, none from the mock, a
+    // state for each of the fifty-eight (screen, language) pairs whatever the answers file holds now,
     // and the typing and pressing done on the page as a person does them.
     const piece2 = walks.walks.slice(2);
     const screens = piece2.flatMap((walk) => walk.screens);
@@ -42,12 +42,13 @@ describe('pnpm report', () => {
       'admin-staff-setup',
       'admin-staff',
       'office-staff',
+      'phone-sign-in',
     ]);
-    expect(screens).toHaveLength(23);
+    expect(screens).toHaveLength(29);
     expect(screens.filter((screen) => 'mock' in screen)).toEqual([]);
     expect(screens.filter((screen) => !('scene' in screen))).toEqual([]);
     const asked = screens.flatMap((screen) => Object.values(screen.languages));
-    expect(asked).toHaveLength(46);
+    expect(asked).toHaveLength(58);
     const added = piece2[1].screens.find((screen) => screen.id === 'staff-3-added')!;
     expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
     expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');

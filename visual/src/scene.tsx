@@ -35,7 +35,14 @@ export function SceneView({
   limits?: Limits;
 }) {
   const parts = useMemo(
-    () => sceneParts({ as: scene.as, cue: scene.cue, language }),
+    () =>
+      sceneParts({
+        as: scene.as,
+        cue: scene.cue,
+        signIns: scene.signIns,
+        out: scene.out,
+        language,
+      }),
     [scene, language],
   );
   /** The wrapper once it stands in its page, which may be a frame's: the app and the steps wait for it. */

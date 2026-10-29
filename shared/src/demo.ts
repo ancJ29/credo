@@ -21,6 +21,9 @@ export const DEMO_CODE = 'demo';
 export const DEMO_ROOT_NAME = 'root';
 export const OPERATOR_NAME = 'operator';
 
+/** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
+export const DEMO_QR_SECRET = 'fake-qr-secret-0001';
+
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const DEPARTMENTS = { warehouse: id(1), office: id(2), delivery: id(3) };
