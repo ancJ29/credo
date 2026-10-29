@@ -97,6 +97,31 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(title(words.operator.signIn)).toBeVisible();
   await at('op-1-sign-in');
 
+  // Screens 5, 6 and 7 are shot before the walk makes a client (screen 3), or the dashboard on a
+  // stack lists the new client beside the data set's three, where the fake lists three.
+  // 5. The dashboard: the five sections, who is signed in, the clients newest first.
+  await open(page, language, { path: '/operator/clients', operator: true });
+  await expect(title(words.nav.clients)).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Bình An', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: words.nav.menu })).toBeVisible();
+  await at('op-5-dashboard');
+
+  // 6. A section coming soon: the four unbuilt ones are one page.
+  await open(page, language, { path: '/operator/usage', operator: true });
+  await expect(title(words.nav.usage)).toBeVisible();
+  await expect(page.getByText(words.operator.soon, { exact: true })).toBeVisible();
+  await at('op-6-coming-soon');
+
+  // 7. The list could not be loaded: the fake answers the list with a 503 once; on the stack the
+  // list is stubbed to a 503.
+  await open(page, language, {
+    path: '/operator/clients',
+    operator: true,
+    cue: 'listClients:503',
+  });
+  await expect(page.getByRole('alert')).toHaveText(words.common.loadFailed);
+  await at('op-7-list-failed');
+
   // 2. A new client: its code and the company's name, in the frame.
   await open(page, language, { path: '/operator/clients/new', operator: true });
   await expect(title(words.operator.newTitle)).toBeVisible();
@@ -121,29 +146,6 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toHaveText(words.operator.taken);
   await unfocus();
   await at('op-4-code-taken');
-
-  // 5. The dashboard: the five sections, who is signed in, the clients newest first.
-  await open(page, language, { path: '/operator/clients', operator: true });
-  await expect(title(words.nav.clients)).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Bình An', exact: true })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: words.nav.menu })).toBeVisible();
-  await at('op-5-dashboard');
-
-  // 6. A section coming soon: the four unbuilt ones are one page.
-  await open(page, language, { path: '/operator/usage', operator: true });
-  await expect(title(words.nav.usage)).toBeVisible();
-  await expect(page.getByText(words.operator.soon, { exact: true })).toBeVisible();
-  await at('op-6-coming-soon');
-
-  // 7. The list could not be loaded: the fake answers the list with a 503 once; on the stack the
-  // list is stubbed to a 503.
-  await open(page, language, {
-    path: '/operator/clients',
-    operator: true,
-    cue: 'listClients:503',
-  });
-  await expect(page.getByRole('alert')).toHaveText(words.common.loadFailed);
-  await at('op-7-list-failed');
 
   // 8. A code not in the form, said on its field before anything is sent.
   await open(page, language, { path: '/operator/clients/new', operator: true });

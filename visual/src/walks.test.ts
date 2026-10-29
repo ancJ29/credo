@@ -76,6 +76,19 @@ describe('the walks', () => {
     expect(PEOPLE[0].device).toBe('pc');
   });
 
+  it('shoots the dashboard, the coming-soon page and the failed list before the walk makes a client, or a stack’s dashboard lists a fourth', () => {
+    const spec = read('specs/operator.spec.ts');
+    const body = spec.slice(spec.indexOf('async function walk('));
+    const firstMake = body.indexOf('press(words.operator.make)');
+
+    expect(firstMake).toBeGreaterThan(0);
+    for (const id of ['op-5-dashboard', 'op-6-coming-soon', 'op-7-list-failed']) {
+      const at = body.indexOf(`await at('${id}'`);
+      expect(at, id).toBeGreaterThan(0);
+      expect(at, id).toBeLessThan(firstMake);
+    }
+  });
+
   it('opens each operator scene signed in as the operator, but the sign-in, as the operator’s spec opens it', () => {
     const spec = read('specs/operator.spec.ts');
     const body = spec.slice(spec.indexOf('async function walk('));
@@ -86,7 +99,9 @@ describe('the walks', () => {
     }
     const screens = WALKS[1].screens;
 
-    expect([...openings.keys()]).toEqual(screens.map((screen) => screen.id));
+    // the spec shoots screens 5 to 7 before the walk makes a client, so the ids are compared
+    // without their order
+    expect([...openings.keys()].sort()).toEqual(screens.map((screen) => screen.id).sort());
     for (const screen of screens) {
       const steps = openings.get(screen.id)!;
       const { path, operator, cue, as } = screen.scene!;
@@ -261,7 +276,10 @@ describe('the walks', () => {
     const piece2 = WALKS.slice(2).flatMap((walk) => walk.screens.map((screen) => screen.id));
 
     expect(shot('piece-2.spec.ts')).toEqual(piece2);
-    expect(shot('operator.spec.ts')).toEqual(WALKS[1].screens.map((screen) => screen.id));
+    // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
+    expect(shot('operator.spec.ts').sort()).toEqual(
+      WALKS[1].screens.map((screen) => screen.id).sort(),
+    );
     const config = read('playwright.config.ts');
     expect(config).toContain("name: 'fake'");
     expect(config).toContain("name: 'full'");

@@ -15,6 +15,8 @@ export const person = (code: string) => {
 type Options = {
   as?: string;
   cue?: string;
+  /** Signed in as the operator, not as a person. */
+  operator?: boolean;
   language?: 'en' | 'vi';
   /** Changes a call before the app draws, given the fake as it was before the spies. */
   override?: (api: Spied, original: Api) => void;
@@ -25,8 +27,11 @@ export type Spied = { [K in keyof Api]: Mock<Api[K]> };
 
 /** The app on the fake, at `path`, already signed in as the root or as a data-set person (by
  * code); each call of the fake is a spy. */
-export function openApp(path: string, { as, cue, language = 'en', override }: Options = {}) {
-  const { api, device } = sceneParts({ as, cue, language });
+export function openApp(
+  path: string,
+  { as, cue, operator, language = 'en', override }: Options = {},
+) {
+  const { api, device } = sceneParts({ as, cue, operator, language });
   const original = { ...api };
   for (const name of Object.keys(api) as (keyof Api)[]) vi.spyOn(api, name);
   const spied = api as unknown as Spied;
