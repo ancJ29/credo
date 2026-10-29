@@ -24,6 +24,7 @@ export function Send({
   whose,
   label,
   onLabel,
+  onLabelDone,
   onOpenWalk,
   onGo,
   note,
@@ -36,6 +37,8 @@ export function Send({
   whose: Whose;
   label: string;
   onLabel: (label: string) => void;
+  /** The label is left or sent: judge it, and give the choices as they stand after. */
+  onLabelDone: () => Choices;
   onOpenWalk: (walkId: string) => void;
   onGo: (id: string, language: Language) => void;
   note: Notice;
@@ -72,7 +75,8 @@ export function Send({
       setEditing(true);
       return;
     }
-    const made = share ? shareOf(report, choices, normalizeLabel(label)) : blockOf(report, choices);
+    const now = share ? onLabelDone() : choices;
+    const made = share ? shareOf(report, now, normalizeLabel(label)) : blockOf(report, now);
     if (made.missing.length > 0) {
       const labels = labelsOf(report);
       const [first] = made.missing;
@@ -83,7 +87,7 @@ export function Send({
       });
       return;
     }
-    setCopied({ choices, count: made.answered, text: made.text });
+    setCopied({ choices: now, count: made.answered, text: made.text });
     setOpen(true);
     await write(made.text);
   };
@@ -192,7 +196,10 @@ export function Send({
               spellCheck={false}
               value={label}
               onChange={(event) => onLabel(event.target.value.toLowerCase())}
-              onBlur={() => setEditing(!LABEL.test(normalizeLabel(label)))}
+              onBlur={() => {
+                setEditing(!LABEL.test(normalizeLabel(label)));
+                onLabelDone();
+              }}
             />
           ) : (
             <span className="w-label-kept">

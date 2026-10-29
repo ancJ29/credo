@@ -108,7 +108,34 @@ describe('the guide opens', () => {
   });
 });
 
+describe('the guide says whose page it is', () => {
+  it('a partner’s page, on a partner’s', () => {
+    render(<Page report={report()} partner />);
+    key('?');
+
+    expect(guide().textContent).toContain('This is a partner’s page.');
+    expect(guide().textContent).not.toContain('your own page');
+  });
+
+  it('your own page, opened from disk, on the human’s', () => {
+    render(<Page report={report()} />);
+    key('?');
+
+    expect(guide().textContent).toContain('This is your own page, opened from disk.');
+    expect(guide().textContent).not.toContain('partner’s page');
+  });
+});
+
 describe('the guide is a modal dialog', () => {
+  it('opens at its top: the title takes the focus, not Close at its foot', () => {
+    render(<Page report={report()} />);
+    key('?');
+
+    expect(document.activeElement).toBe(
+      within(guide() as HTMLElement).getByRole('heading', { name: 'How this page works' }),
+    );
+  });
+
   it('moves the focus in, shuts on Escape, and gives the focus back where it was', () => {
     render(<Page report={report()} />);
     const opener = screen.getByRole('button', { name: 'How this page works' });

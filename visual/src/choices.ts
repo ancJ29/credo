@@ -156,6 +156,36 @@ export function shareOf(report: Report, choices: Choices, label: string) {
   return { text: shareText(report.build, label, items), answered: items.length, missing };
 }
 
+const MADE_KEY = 'credo-walks-made';
+
+/**
+ * The keys a bulk action or a paste answered, each with the label a paste filled it under (none
+ * for a bulk action), kept beside the choices so a label changed after a reload still judges them.
+ * The page works without storage.
+ */
+export type Made = ReadonlyMap<string, string | null>;
+
+export function loadMade(): Made {
+  try {
+    const stored = JSON.parse(localStorage.getItem(MADE_KEY) ?? '{}') as Record<string, unknown>;
+    return new Map(
+      Object.entries(stored).filter(
+        (one): one is [string, string | null] => one[1] === null || typeof one[1] === 'string',
+      ),
+    );
+  } catch {
+    return new Map();
+  }
+}
+
+export function saveMade(made: Made) {
+  try {
+    localStorage.setItem(MADE_KEY, JSON.stringify(Object.fromEntries(made)));
+  } catch {
+    // The page works without it.
+  }
+}
+
 const LABEL_KEY = 'credo-walks-label';
 
 /** The partner's label kept in the browser, or none: the page works without storage. */

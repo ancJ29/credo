@@ -45,11 +45,14 @@ export function Guide({
         <h3>Where your answers go</h3>
         {partner ? (
           <p>
-            Type the label from your invite (a label, never a name), press “Share”, then post the
-            message in Slack.
+            This is a partner’s page. Type the label from your invite (a label, never a name), press
+            “Share”, then post the message in Slack.
           </p>
         ) : (
-          <p>Press “Copy my answers”, then paste the text into the chat.</p>
+          <p>
+            This is your own page, opened from disk. Press “Copy my answers”, then paste the text
+            into the chat.
+          </p>
         )}
         <div className="w-moves">
           <button type="button" className="w-next" onClick={onClose}>

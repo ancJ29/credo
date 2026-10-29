@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Answers } from './answers';
 import { blockText } from './block';
@@ -67,6 +67,29 @@ const paste = (text: string) => {
     target: { value: text },
   });
 };
+
+const shared = async () => {
+  const written: string[] = [];
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: (text: string) => (written.push(text), Promise.resolve()) },
+  });
+  await act(() => {
+    fireEvent.click(document.querySelector('.w-send .w-share')!);
+    return Promise.resolve();
+  });
+  Reflect.deleteProperty(navigator, 'clipboard');
+  return written.join('\n');
+};
+const tocopy = () => document.querySelector('.w-tocopy')!.textContent;
+const post = (label: string, ...entries: ReturnType<typeof entryOf>[]) =>
+  shareText(
+    build,
+    label,
+    entries.map((one) => ({ ...one, number: 1, sentence: 'x', language: 'Tiếng Việt' })),
+  );
+const labelBox = () => screen.getByLabelText('Label from the invite');
+const BULK = /^Yes to \d+ unanswered on the page$/;
 
 afterEach(() => localStorage.clear());
 
@@ -475,6 +498,7 @@ describe('the label judged again', () => {
     fireEvent.change(label, { target: { value: 'p' } });
     fireEvent.click(rail().getByRole('button', { name: /^Yes to \d+ unanswered on the page$/ }));
     fireEvent.change(label, { target: { value: 'p1' } });
+    fireEvent.blur(label);
 
     expect(note()).toBe('1 answer taken back: p1 had answered them already');
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
@@ -494,8 +518,162 @@ describe('the label judged again', () => {
     yes();
     fireEvent.click(button(/^Yes for both languages/));
     fireEvent.change(label, { target: { value: 'p2' } });
+    fireEvent.blur(label);
 
     expect(note()).toBe('1 answered Yes · Undo');
+  });
+
+  it('judges the label once it is left, never while it is typed through another partner’s', () => {
+    localStorage.setItem('credo-walks-label', 'p2');
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.click(rail().getByRole('button', { name: BULK }));
+    expect(tocopy()).toBe('18 ready to copy');
+    fireEvent.click(button('change'));
+    for (const typed of ['', 'p', 'p1', 'p12'])
+      fireEvent.change(labelBox(), { target: { value: typed } });
+    fireEvent.blur(labelBox());
+
+    expect(tocopy()).toBe('18 ready to copy');
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
+  it('judges the label when Share is pressed with the box still open', async () => {
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.change(labelBox(), { target: { value: 'p' } });
+    fireEvent.click(rail().getByRole('button', { name: BULK }));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+
+    const text = await shared();
+
+    expect(text).not.toContain('admin-setup:1-sign-in:vi | yes');
+    expect(text).toContain('admin-setup:2-sign-in-refused:vi | yes');
+    expect(note()).toBe('1 answer taken back: p1 had answered them already');
+  });
+
+  it('judges nothing by a label that is not one yet', () => {
+    render(<Page report={make()} partner />);
+    paste(post('p1', entryOf('1-sign-in', 'vi')));
+    fireEvent.click(button('Fill'));
+    fireEvent.change(labelBox(), { target: { value: '' } });
+    fireEvent.blur(labelBox());
+
+    expect(tocopy()).toBe('1 ready to copy');
+  });
+
+  it('does not share a paste’s answers under another label than the one they were filled under', async () => {
+    render(<Page report={make()} partner />);
+    paste(post('p1', entryOf('1-sign-in', 'vi')));
+    fireEvent.click(button('Fill'));
+    fireEvent.change(labelBox(), { target: { value: 'p2' } });
+
+    expect(await shared()).not.toContain('admin-setup:1-sign-in:vi | yes');
+    expect(note()).toBe('1 answer taken back: p2 had answered them already');
+  });
+
+  it('keeps a paste’s answers when the label is left as the paste had it', () => {
+    render(<Page report={make()} partner />);
+    paste(post('p1', entryOf('1-sign-in', 'vi')));
+    fireEvent.click(button('Fill'));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(tocopy()).toBe('1 ready to copy');
+  });
+
+  it('judges a bulk answer made before a reload when the label changes after it', async () => {
+    localStorage.setItem('credo-walks-label', 'p');
+    const report = make(Object.fromEntries([yesOnNoRecord()]));
+    const { unmount } = render(<Page report={report} partner />);
+    fireEvent.click(rail().getByRole('button', { name: BULK }));
+    unmount();
+
+    render(<Page report={report} partner />);
+    fireEvent.click(button('change'));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+
+    expect(await shared()).not.toContain('admin-setup:1-sign-in:vi | yes');
+  });
+
+  it('forgets the kept keys of choices that are gone', () => {
+    localStorage.setItem('credo-walks-label', 'p');
+    localStorage.setItem('credo-walks-made', JSON.stringify({ 'admin-setup:1-sign-in:vi': null }));
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.click(button('change'));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(note()).toBe('');
+  });
+
+  it('reads only a label or none from what the browser kept, and works when it holds nonsense', () => {
+    localStorage.setItem('credo-walks-label', 'p');
+    const report = make(Object.fromEntries([yesOnNoRecord()]));
+    const { unmount } = render(<Page report={report} partner />);
+    fireEvent.click(rail().getByRole('button', { name: BULK }));
+    unmount();
+    const kept = JSON.parse(localStorage.getItem('credo-walks-made')!) as Record<string, unknown>;
+    localStorage.setItem(
+      'credo-walks-made',
+      JSON.stringify({ ...kept, 'admin-setup:2-sign-in-refused:vi': 7 }),
+    );
+    render(<Page report={report} partner />);
+    fireEvent.click(button('change'));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(note()).toBe('1 answer taken back: p1 had answered them already');
+    cleanup();
+    localStorage.setItem('credo-walks-made', '{not json');
+    render(<Page report={report} partner />);
+    expect(tocopy()).toMatch(/ready to copy$/);
+  });
+
+  it('leaves a screen answered by hand when a bulk action passed over it and the new label has answered it', () => {
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.change(labelBox(), { target: { value: 'p' } });
+    yes();
+    fireEvent.click(button(/^Yes for both languages/));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(tocopy()).toBe('2 ready to copy');
+  });
+});
+
+describe('what the keys do in the label box', () => {
+  it('answers nothing and moves nothing for a key typed there', () => {
+    render(<Page report={make()} partner />);
+    for (const typed of ['n', 'y', 'j', 'l']) fireEvent.keyDown(labelBox(), { key: typed });
+
+    expect(tocopy()).toBe('none chosen yet');
+    expect(document.querySelector('.w-screen .w-number')?.textContent).toBe('1');
+  });
+});
+
+describe('Undo of a bulk action and the label', () => {
+  it('after Undo, a new label takes nothing back and says nothing', () => {
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.change(labelBox(), { target: { value: 'p' } });
+    fireEvent.click(rail().getByRole('button', { name: BULK }));
+    fireEvent.click(button('Undo'));
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(note()).toBe('');
+  });
+
+  it('after a bulk Yes is changed by hand, a new label that had answered that screen leaves the hand’s No', () => {
+    render(<Page report={make(Object.fromEntries([yesOnNoRecord()]))} partner />);
+    fireEvent.change(labelBox(), { target: { value: 'p' } });
+    fireEvent.click(button(/^Yes for both languages/));
+    fireEvent.click(screen.getByLabelText('No'));
+    fireEvent.change(screen.getByLabelText('Reason for the No'), {
+      target: { value: 'too small' },
+    });
+    fireEvent.change(labelBox(), { target: { value: 'p1' } });
+    fireEvent.blur(labelBox());
+
+    expect(tocopy()).toBe('2 ready to copy');
   });
 });
 

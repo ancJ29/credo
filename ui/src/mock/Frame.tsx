@@ -53,9 +53,23 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
     inner.documentElement.lang = language;
     setBody(inner.body);
     // The screen is measured when something inside it changes, never because the frame's own
-    // height did: the app's shell fills the frame, so a measure taken after every resize grows by
-    // whatever sits under the shell each time, and never settles.
-    const fit = () => setHeight(Math.max(FLOOR, inner.documentElement.scrollHeight));
+    // height did. The app's shell is never shorter than the frame (min-height: 100dvh), so it is
+    // read with the frame at its floor and put back: read at its present height, whatever sits
+    // under the shell would be added each time, and the frame would never come down.
+    const fit = () => {
+      const page = frame.ownerDocument.documentElement;
+      const [was, kept, keptInside] = [
+        frame.height,
+        page.scrollTop,
+        inner.documentElement.scrollTop,
+      ];
+      frame.height = String(FLOOR);
+      const tall = inner.documentElement.scrollHeight;
+      frame.height = was;
+      page.scrollTop = kept;
+      inner.documentElement.scrollTop = keptInside;
+      setHeight(Math.max(FLOOR, tall));
+    };
     watcher.current = new MutationObserver(fit);
     watcher.current.observe(inner.documentElement, {
       childList: true,
@@ -65,7 +79,9 @@ export function Frame({ title, colour, language, scheme, width, children }: Prop
     });
     // An image or a font that arrives later changes the height without changing a node.
     inner.addEventListener('load', fit, true);
-    void (inner as Document & { fonts?: FontFaceSet }).fonts?.ready.then(fit);
+    const fonts = (inner as Document & { fonts?: FontFaceSet }).fonts;
+    void fonts?.ready.then(fit);
+    fonts?.addEventListener('loadingdone', fit);
   };
 
   return (

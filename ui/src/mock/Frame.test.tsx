@@ -121,6 +121,12 @@ describe('Frame', () => {
     vi.unstubAllGlobals();
   });
 
+  /** Lets the inner page's own load event, which jsdom fires after the frame's, pass first. */
+  const later = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
   it('measures again when the fonts are ready', async () => {
     watchNodes();
     frame();
@@ -128,11 +134,14 @@ describe('Frame', () => {
     let ready!: () => void;
     Object.defineProperty(iframe.contentDocument!, 'fonts', {
       configurable: true,
-      value: { ready: new Promise<void>((resolve) => (ready = resolve)) },
+      value: Object.assign(new EventTarget(), {
+        ready: new Promise<void>((resolve) => (ready = resolve)),
+      }),
     });
     act(() => {
       fireEvent.load(iframe);
     });
+    await later();
     tall(iframe.contentDocument!, 900);
 
     await act(async () => {
@@ -142,6 +151,104 @@ describe('Frame', () => {
 
     expect(iframe.getAttribute('height')).toBe('900');
     vi.unstubAllGlobals();
+  });
+
+  it('measures again when a font arrives after the fonts were ready', async () => {
+    watchNodes();
+    frame();
+    const iframe = screen.getByTitle<HTMLIFrameElement>('a frame');
+    const fonts = Object.assign(new EventTarget(), { ready: Promise.resolve() });
+    Object.defineProperty(iframe.contentDocument!, 'fonts', { configurable: true, value: fonts });
+    act(() => {
+      fireEvent.load(iframe);
+    });
+    await later();
+    tall(iframe.contentDocument!, 900);
+
+    act(() => {
+      fonts.dispatchEvent(new Event('loadingdone'));
+    });
+
+    expect(iframe.getAttribute('height')).toBe('900');
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps the scroll of the page and of the screen across the read at the floor', () => {
+    watchNodes();
+    frame();
+    const iframe = screen.getByTitle<HTMLIFrameElement>('a frame');
+    const sets: Record<string, number[]> = { page: [], screen: [] };
+    const scrolled = (document: Document, at: number, name: string) =>
+      Object.defineProperty(document.documentElement, 'scrollTop', {
+        configurable: true,
+        get: () => at,
+        set: (to: number) => void sets[name].push(to),
+      });
+    act(() => {
+      fireEvent.load(iframe);
+    });
+    scrolled(iframe.ownerDocument, 120, 'page');
+    scrolled(iframe.contentDocument!, 40, 'screen');
+
+    act(() => {
+      iframe.contentDocument!.dispatchEvent(new Event('load'));
+    });
+
+    expect(sets).toEqual({ page: [120], screen: [40] });
+    vi.unstubAllGlobals();
+  });
+
+  describe('with a shell that is never shorter than the frame (min-height: 100dvh)', () => {
+    const settle = async () => {
+      for (let i = 0; i < 10; i++) {
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+        });
+      }
+    };
+    const heightOf = (iframe: HTMLIFrameElement) => Number(iframe.getAttribute('height'));
+    const change = async (inner: Document) => {
+      act(() => {
+        inner.body.appendChild(inner.createElement('i'));
+      });
+      await settle();
+    };
+    const open = (content: () => number, under: number) => {
+      frame();
+      const iframe = screen.getByTitle<HTMLIFrameElement>('a frame');
+      act(() => {
+        fireEvent.load(iframe);
+      });
+      const inner = iframe.contentDocument!;
+      Object.defineProperty(inner.documentElement, 'scrollHeight', {
+        configurable: true,
+        get: () => Math.max(content(), heightOf(iframe)) + under,
+      });
+      return { iframe, inner };
+    };
+
+    it('takes what sits under the shell once, then stops growing', async () => {
+      const { iframe, inner } = open(() => 400, 50);
+      await change(inner);
+      const first = heightOf(iframe);
+      await change(inner);
+      await change(inner);
+
+      expect(heightOf(iframe)).toBe(first);
+      expect(first).toBe(450);
+    });
+
+    it('comes down when the screen grows shorter', async () => {
+      let content = 900;
+      const { iframe, inner } = open(() => content, 0);
+      await change(inner);
+      expect(heightOf(iframe)).toBe(900);
+
+      content = 500;
+      await change(inner);
+
+      expect(heightOf(iframe)).toBe(500);
+    });
   });
 
   it('stops watching when it leaves', () => {

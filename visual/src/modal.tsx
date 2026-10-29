@@ -25,7 +25,10 @@ export function Modal({
     if (open) {
       before.current = document.activeElement as HTMLElement;
       node.showModal();
-      node.querySelector<HTMLElement>('textarea, button, input')!.focus();
+      // A dialog that asks for text takes the focus into its field; one that asks for none opens
+      // at its title, so a tall one shows its top, not its foot.
+      (node.querySelector<HTMLElement>('textarea, input') ??
+        node.querySelector<HTMLElement>('h2'))!.focus();
     } else if (node.open) {
       node.close();
       before.current!.focus();
@@ -47,7 +50,9 @@ export function Modal({
     >
       {open && (
         <>
-          <h2 id={id}>{title}</h2>
+          <h2 id={id} tabIndex={-1}>
+            {title}
+          </h2>
           {children}
         </>
       )}

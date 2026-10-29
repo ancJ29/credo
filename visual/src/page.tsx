@@ -8,10 +8,13 @@ import {
   loadChoices,
   loadGuideSeen,
   loadLabel,
+  loadMade,
   loadOnly,
+  type Made,
   saveChoices,
   saveGuideSeen,
   saveLabel,
+  saveMade,
   saveOnly,
 } from './choices';
 import type { Fill } from './fill';
@@ -257,10 +260,16 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   const [undo, setUndo] = useState<{
     before: Choices;
     label?: string;
-    made: ReadonlySet<string>;
+    made: Made;
   }>();
-  /** The keys a bulk action or a paste answered, which a change of label re-judges. */
-  const [made, setMade] = useState<ReadonlySet<string>>(new Set());
+  /**
+   * The keys a bulk action or a paste answered, which a change of label re-judges; a paste's
+   * carry the label it filled them under. Kept in the browser, as the choices are.
+   */
+  const [made, setMade] = useState<Made>(
+    () => new Map([...loadMade()].filter(([at]) => at in choices)),
+  );
+  useEffect(() => saveMade(made), [made]);
   const [guideOpen, setGuideOpen] = useState(() => !loadGuideSeen());
   useEffect(() => {
     if (guideOpen) saveGuideSeen();
@@ -295,7 +304,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
 
   const choose: Choose = (at, choice) => {
     setChoices((before) => ({ ...before, [at]: choice }));
-    setMade((before) => new Set([...before].filter((one) => one !== at)));
+    setMade((before) => new Map([...before].filter(([one]) => one !== at)));
     setStay(current);
     if (undo) {
       setUndo(undefined);
@@ -303,40 +312,61 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
     }
   };
   /** A bulk action or a paste: it acts at once, says what it did, and can be undone until a choice changes. */
-  const apply = (bulk: Bulk, said: string, label?: string) => {
+  const apply = (bulk: Bulk, said: string, label?: string, pastedUnder: string | null = null) => {
     setChoices(bulk.next);
     setUndo({ before: bulk.undo, label, made });
     setMade(
-      new Set([
-        ...[...made].filter((one) => one in bulk.next),
-        ...Object.keys(bulk.next).filter((one) => bulk.next[one] !== bulk.undo[one]),
+      new Map([
+        ...[...made].filter(([one]) => one in bulk.next),
+        ...Object.keys(bulk.next)
+          .filter((one) => bulk.next[one] !== bulk.undo[one])
+          .map((one) => [one, pastedUnder] as const),
       ]),
     );
     setNote(said);
     setStay(current);
   };
   const fillFrom = (fill: Fill) => {
-    apply(fillIn(fill.fills, choices), `${fill.filled} filled`, fill.label ? label : undefined);
+    apply(
+      fillIn(fill.fills, choices),
+      `${fill.filled} filled`,
+      fill.label ? label : undefined,
+      fill.label ?? normalizeLabel(label),
+    );
     if (fill.label) {
       setLabel(fill.label);
       saveLabel(fill.label);
     }
   };
-  /** A new label: what a bulk action answered is judged again, as that partner's own record. */
+  /** A label typed is kept as it is typed; it is judged once it is left, and when Share is pressed. */
   const changeLabel = (typed: string) => {
     setLabel(typed);
     saveLabel(typed);
-    const reading: Whose = { partner: true, label: normalizeLabel(typed) };
-    const taken = [...made].filter((at) => !openToBulk(entries.get(at)!, undefined, reading));
-    if (taken.length === 0) return;
-    setChoices((before) =>
-      Object.fromEntries(Object.entries(before).filter(([at]) => !taken.includes(at))),
-    );
-    setMade(new Set([...made].filter((at) => !taken.includes(at))));
+  };
+  /**
+   * What a bulk action answered is judged again, as the label's own record: an answer its record
+   * already holds, or a paste's answers filled under another label, are taken back. Returns the
+   * choices as they stand after it.
+   */
+  const judgeLabel = (): Choices => {
+    const reading: Whose = { partner: true, label: normalizeLabel(label) };
+    if (!LABEL.test(reading.label)) return choices;
+    const taken = [...made]
+      .filter(
+        ([at, under]) =>
+          !openToBulk(entries.get(at)!, undefined, reading) ||
+          (under !== null && under !== reading.label),
+      )
+      .map(([at]) => at);
+    if (taken.length === 0) return choices;
+    const after = Object.fromEntries(Object.entries(choices).filter(([at]) => !taken.includes(at)));
+    setChoices(after);
+    setMade(new Map([...made].filter(([at]) => !taken.includes(at))));
     setUndo(undefined);
     setNote(
       `${plural(taken.length, 'answer')} taken back: ${reading.label} had answered them already`,
     );
+    return after;
   };
   const bothCount = yesTo([place], choices, whose).count;
   const go = (id: string, language?: Language) => {
@@ -548,6 +578,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         whose={whose}
         label={label}
         onLabel={changeLabel}
+        onLabelDone={judgeLabel}
         onOpenWalk={openWalk}
         onGo={go}
         note={notice}

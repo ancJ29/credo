@@ -292,6 +292,16 @@ describe('the dialog of a copy is modal', () => {
     fireEvent.keyDown(document.body, { key: 'j' });
     expect(number()).toBe('2');
   });
+
+  it('takes the focus into its text, the one thing it asks for', async () => {
+    clipboard(() => Promise.resolve());
+    render(<Page report={make()} />);
+    yes();
+
+    await press('Copy my answers');
+
+    expect(document.activeElement).toBe(document.querySelector('dialog[open] textarea'));
+  });
 });
 
 describe('the notice above the footer', () => {
