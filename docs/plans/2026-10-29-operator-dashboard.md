@@ -1,6 +1,6 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 05:58 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+**Where it stands — 2026-10-30 05:52 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
 built (step 8), the full run's script is written (step 9), the review's six findings are fixed
 (step 10), the full walk is green with the operator's 54 bases committed (step 11) and the recap is
 written (step 12). **Next:** step 13, after piece 2's merge into `main` ([steps](#steps)).
@@ -484,7 +484,7 @@ worktree; B to D will touch more of the same:
   when: the log read whole; each screen that differs from the fake's named with its cause and asked
   again; the second pass green at threshold 0, no warning; the operator's 54 bases committed, piece 1's
   and piece 2's read unchanged; the walks page shows nothing waiting and no open "no".
-  *Evidence:* 05:50 +07. The human's full run, 2026-10-30 05:40:25 to 05:44:38 +07, of
+  *Evidence:* 05:47 +07. The human's full run, 2026-10-30 05:40:25 to 05:44:38 +07, of
   `20261030-0040-full-run-operator-dashboard.sh` on `29e949f`, clean (log lines 1 to 441, read whole
   by another agent): 54 pictures expected, 9 screens x 2 languages x 3 widths (line 4); 18 stacks,
   every exit 0; pass 1 against the fake run's pictures 6 passed, `0 pictures differ, 0 have no
@@ -504,7 +504,7 @@ worktree; B to D will touch more of the same:
   again, 0 no, 68 yes`. **Then stop.**
 - [x] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
   the review's findings tagged, and the hazard of reverting past this piece on ridge repeated.
-  *Evidence:* 05:58 +07. [The recap](../recaps/2026-10-30-operator-dashboard.md) holds step 10's six
+  *Evidence:* 05:52 +07. [The recap](../recaps/2026-10-30-operator-dashboard.md) holds step 10's six
   findings and its two gaps, each tagged `[FIXED]` (none rejected or deferred in the record), the
   four rejected options with their prices, what remains (steps 13 to 15), and the revert hazard
   repeated in its last paragraph. Prettier clean; no local path or name in either file.
