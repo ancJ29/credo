@@ -355,7 +355,9 @@ describe('the API client', () => {
         json({ photo, version: 'p1' }),
         json({ photo: null, version: '' }),
         json({ photo, version: 'p2' }),
+        json({ current: { photo, version: 'p3' } }, 409),
         json({}, 409),
+        new Response('not json', { status: 409 }),
         json({}, 413),
         json({ photo: 'not an image', version: 'p3' }),
         json({}, 404),
@@ -367,7 +369,17 @@ describe('the API client', () => {
         kind: 'saved',
         reply: { photo, version: 'p2' },
       });
-      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({ kind: 'conflict' });
+      // a 409 carries the photo as it is now; one with none leaves the page to read it again
+      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+        kind: 'conflict',
+        current: { photo, version: 'p3' },
+      });
+      for (let answer = 0; answer < 2; answer++) {
+        expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+          kind: 'conflict',
+          current: null,
+        });
+      }
       await expect(api.savePhoto(id, { photo, version: 'p1' })).rejects.toMatchObject({
         status: 413,
       });

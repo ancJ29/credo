@@ -7,8 +7,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['tests/setup.ts'],
-    // A page's story types, saves and reads again on jsdom: several worktrees' gates run at once.
-    testTimeout: 20_000,
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

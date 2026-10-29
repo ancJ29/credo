@@ -9,11 +9,13 @@ type Props = {
   /** The settings now stored, after a save or a reload: the whole app draws from them. */
   onDoc: (doc: ConfigDoc) => void;
   onSignedOut: () => void;
+  /** A 403 means what the person may do changed: the app reads who they are again. */
+  onForbidden: () => void;
 };
 
 /** Settings wired to the BFF: a save sends the version it was read at, and an outcome that is
  * not "saved" keeps what was typed. */
-export function SettingsPage({ api, doc, onDoc, onSignedOut }: Props) {
+export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Props) {
   const [status, setStatus] = useState<'loading' | 'failed' | 'ready'>('ready');
   const [outcome, setOutcome] = useState<'saved' | 'failed' | 'refused' | 'conflict' | null>(null);
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,12 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut }: Props) {
       setOutcome(result.kind === 'saved' ? 'saved' : 'conflict');
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) onSignedOut();
+      else if (error instanceof ApiError && error.status === 403) {
+        // No longer theirs to change: the app reads who they are again, and the redraw replaces
+        // this page if the right is gone.
+        onForbidden();
+        setOutcome('failed');
+      }
       // A 400 is the BFF refusing these settings: trying again as they are can never succeed.
       else setOutcome(error instanceof ApiError && error.status === 400 ? 'refused' : 'failed');
     } finally {

@@ -135,6 +135,28 @@ describe('a 403 or a 401 on a page', () => {
     expect(api.me).toHaveBeenCalledTimes(2);
   });
 
+  it('A 403 on the settings save reads `me` again, and a person who may no longer change them is shown the page that says so', async () => {
+    const { api } = openApp('/settings', {
+      as: 'EMP-0003',
+      override: (spied, original) => {
+        spied.saveConfig.mockRejectedValue(new ApiError(403));
+        let reads = 0;
+        spied.me.mockImplementation(async () => {
+          const answer = await original.me();
+          return ++reads === 1 ? answer : { user: { ...answer.user, permissions: {} } };
+        });
+      },
+    });
+    await userEvent.type(await screen.findByLabelText(/^Company name/), 'x');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
+    ).toBeTruthy();
+    expect(api.me).toHaveBeenCalledTimes(2);
+  });
+
   it('A 403 that `me` cannot be read after leaves the page as it was, and a 401 there signs out', async () => {
     const unavailable = openApp('/staff', {
       as: 'EMP-0004',
@@ -263,6 +285,21 @@ describe('a person added', () => {
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Mai Linh');
     expect(person('EMP-0008').name).toBe('Hoàng Gia Huy');
     expect((await api.getEmployee(person('EMP-0008').id)).employee.name).toBe('Hoàng Gia Huy');
+  });
+
+  it('A code of spaces alone is no code: the add is sent without one, to be numbered', async () => {
+    const { api } = openApp('/staff/new');
+    await fill('Mai Linh', '   ');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(vi.mocked(api.addEmployee).mock.calls[0]?.[0]).toEqual({
+      name: 'Mai Linh',
+      extra: {},
+      departmentId: null,
+      positionId: null,
+    });
   });
 
   it('A save that fails says so and keeps what was typed (an add)', async () => {

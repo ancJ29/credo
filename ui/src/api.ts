@@ -64,7 +64,9 @@ export type ChangeCodeResult =
   { kind: 'changed'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
 
 /** A photo saved, or the version moved. */
-export type SavePhotoResult = { kind: 'saved'; reply: PhotoReply } | { kind: 'conflict' };
+/** A conflict carries the photo as it is now, when the answer held one the shared schema reads. */
+export type SavePhotoResult =
+  { kind: 'saved'; reply: PhotoReply } | { kind: 'conflict'; current: PhotoReply | null };
 
 /** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
@@ -247,7 +249,11 @@ export function createApi({
 
     async savePhoto(id: string, request: SavePhotoRequest): Promise<SavePhotoResult> {
       const response = await send('PUT', employeeRoutes.photo(id), request);
-      if (response.status === 409) return { kind: 'conflict' };
+      if (response.status === 409) {
+        const body = (await response.json().catch(() => null)) as { current?: unknown } | null;
+        const current = photoReplySchema.safeParse(body?.current);
+        return { kind: 'conflict', current: current.success ? current.data : null };
+      }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'saved', reply: await read(response, photoReplySchema) };
     },

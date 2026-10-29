@@ -27,7 +27,7 @@ import {
 } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { ApiError } from './api';
 import { Loaded } from './Loaded';
 import {
@@ -166,8 +166,11 @@ function CodePanel({
     setProblem(null);
     try {
       const result = await page.api.changeCode(id, { version, code: typed });
-      if (result.kind === 'changed') onChanged(result.doc);
-      else if (result.kind === 'conflict') onConflict();
+      if (result.kind === 'changed') {
+        // The new code is said above the form; the box starts again, as a redrawn form's did.
+        setTyped('');
+        onChanged(result.doc);
+      } else if (result.kind === 'conflict') onConflict();
       else setProblem('taken');
     } catch (error) {
       refusal(error, page);
@@ -265,6 +268,7 @@ type FormProps = {
   ready: boolean;
   archiveFailed: boolean;
   photo: PhotoReply | null;
+  onPhoto: (photo: PhotoReply) => void;
   /** The code the person was just given, or null. */
   codeChanged: string | null;
   onCodeChanged: (doc: EmployeeDoc) => void;
@@ -284,22 +288,26 @@ function PersonForm({
   ready,
   archiveFailed,
   photo,
+  onPhoto,
   codeChanged,
   ...actions
 }: FormProps) {
   const { t } = useTranslation();
   const { user } = page;
   const { employee } = doc;
+  // The list as it was left, narrowed and searched, when the person was opened from it.
+  const listed = (useLocation().state as { list?: unknown } | null)?.list;
   const editable = can(user, 'staff.canEdit') && !employee.archived;
   const [name, setName] = useState(employee.name);
   const { fields, customFields } = staffConfig(setup);
   const [phone, setPhone] = useState(phoneOf(employee));
   const [personalPhone, setPersonalPhone] = useState(personalPhoneOf(employee));
   const [note, setNote] = useState(noteOf(employee));
-  const [values, setValues] = useState<OwnTexts>(() => ownTextsOf(customFields, employee.extra));
+  const stored = ownTextsOf(customFields, employee.extra);
+  const [values, setValues] = useState<OwnTexts>(stored);
   const [tried, setTried] = useState(false);
   // A value refused after a try is said at its field until it fits.
-  const refused = tried ? refusedFields(customFields, values) : [];
+  const refused = tried ? refusedFields(customFields, values, stored) : [];
   const [department, setDepartment] = useState(employee.department?.id ?? '');
   const [position, setPosition] = useState(employee.position?.id ?? '');
   const [own, setOwn] = useState<PermissionLayer>(employee.permissions);
@@ -310,7 +318,7 @@ function PersonForm({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setTried(true);
-    if (refusedFields(customFields, values).length > 0) return;
+    if (refusedFields(customFields, values, stored).length > 0) return;
     // The form starts from the stored bag: a key it does not show survives, and an emptied field
     // removes its own.
     actions.onSave({
@@ -319,7 +327,7 @@ function PersonForm({
         phone: phone.trim() || undefined,
         ...(fields.personalPhone ? { personalPhone: personalPhone.trim() || undefined } : {}),
         note: note.trim() || undefined,
-        ...ownStored(customFields, values),
+        ...ownStored(customFields, values, { was: stored, extra: employee.extra }),
       }),
       ...(user.root
         ? {
@@ -358,7 +366,12 @@ function PersonForm({
         </Stack>
         {employee.archived && <Badge color="gray">{t('staff.left')}</Badge>}
       </Group>
-      <Button component={Link} to="/staff" variant="subtle" style={{ alignSelf: 'flex-start' }}>
+      <Button
+        component={Link}
+        to={`/staff${typeof listed === 'string' ? listed : ''}`}
+        variant="subtle"
+        style={{ alignSelf: 'flex-start' }}
+      >
         {t('staff.back')}
       </Button>
       {employee.archived && (
@@ -476,7 +489,8 @@ function PersonForm({
           page={page}
           id={employee.id}
           name={employee.name}
-          read={photo}
+          held={photo}
+          onHeld={onPhoto}
           editable={editable}
         />
       )}
@@ -529,6 +543,12 @@ export function PersonPage(page: PageProps) {
   const [gavePassword, setGavePassword] = useState(false);
   const [archiveFailed, setArchiveFailed] = useState(false);
   const [codeChanged, setCodeChanged] = useState<string | null>(null);
+  // The photo as last saved or taken from a conflict, held here and not in the form: a save of the
+  // details redraws the form, and its photo would go back to the one first read.
+  const [photoNow, setPhotoNow] = useState<PhotoReply | null>(null);
+  // The form starts afresh from the stored person when this changes: after a save or an archive,
+  // not after a new code, so what was typed in the details survives it.
+  const [formKey, setFormKey] = useState(0);
   const data = loaded.data;
 
   async function act<T extends { kind: string }>(
@@ -553,6 +573,7 @@ export function PersonPage(page: PageProps) {
       () => api.saveEmployee(id, { ...request, version }),
       (result) => {
         setCurrent(result.doc);
+        setFormKey((n) => n + 1);
         setOutcome('saved');
       },
       (error) =>
@@ -566,7 +587,10 @@ export function PersonPage(page: PageProps) {
     setOutcome(null);
     await act(
       () => api.archiveEmployee(id, version),
-      (result) => setCurrent(result.doc),
+      (result) => {
+        setCurrent(result.doc);
+        setFormKey((n) => n + 1);
+      },
       () => setArchiveFailed(true),
     );
   }
@@ -575,7 +599,7 @@ export function PersonPage(page: PageProps) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {data && (
         <PersonForm
-          key={(current ?? data.doc).version}
+          key={formKey}
           page={page}
           doc={current ?? data.doc}
           setup={data.setup}
@@ -583,7 +607,8 @@ export function PersonPage(page: PageProps) {
           saving={saving}
           ready={(current ?? data.doc).signIn.ready || gavePassword}
           archiveFailed={archiveFailed}
-          photo={data.photo}
+          photo={photoNow ?? data.photo}
+          onPhoto={setPhotoNow}
           codeChanged={codeChanged}
           onCodeChanged={(next) => {
             setCurrent(next);
@@ -594,6 +619,8 @@ export function PersonPage(page: PageProps) {
           onSave={(request) => void save(request, (current ?? data.doc).version)}
           onReload={() => {
             setCurrent(null);
+            setPhotoNow(null);
+            setFormKey((n) => n + 1);
             setOutcome(null);
             setCodeChanged(null);
             loaded.reload();

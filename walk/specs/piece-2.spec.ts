@@ -264,6 +264,10 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByLabel(words.staff.filterPosition).selectOption({ label: 'Quản lý' });
   await expect(page.getByRole('link', { name: 'Nguyễn Thị Lan' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Trần Văn Hùng' })).toHaveCount(0);
+  // The position chosen after the search keeps the search: Châu is a manager too, and does not
+  // match "phong", so she shows only if the search was lost.
+  await expect(page.getByRole('link', { name: 'Lê Minh Châu' })).toHaveCount(0);
+  await expect(page).toHaveURL(/q=phong/);
   await unfocus();
   await at('staff-14-search');
 

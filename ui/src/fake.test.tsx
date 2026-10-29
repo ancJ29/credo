@@ -378,8 +378,10 @@ describe('the fake Api’s record and list', () => {
     // the data set holds one photo, the others have none yet
     expect(await api.getPhoto(chau?.id ?? '')).toEqual({ photo, version: 'p1' });
     expect(await api.getPhoto(hung?.id ?? '')).toEqual({ photo: null, version: '' });
+    // a conflict carries the photo as it is now, for the page to take
     expect(await api.savePhoto(hung?.id ?? '', { photo, version: 'p1' })).toEqual({
       kind: 'conflict',
+      current: { photo: null, version: '' },
     });
     expect(await api.savePhoto(hung?.id ?? '', { photo, version: '' })).toEqual({
       kind: 'saved',
@@ -393,7 +395,7 @@ describe('the fake Api’s record and list', () => {
     expect(await status(api.savePhoto('missing', { photo, version: '' }))).toBe(404);
   });
 
-  it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them has none', async () => {
+  it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them keeps the stored ones, as the BFF does', async () => {
     const api = fake();
     const { setup, version } = await api.getStaffSetup();
     expect(setup.fields).toEqual({ personalPhone: true, photo: true });
@@ -415,6 +417,9 @@ describe('the fake Api’s record and list', () => {
     expect(bare.kind === 'saved' && bare.doc.setup).toEqual({
       departments: [],
       positions: [],
+      fields: changed.fields,
+      customFields: changed.customFields,
+      numbering: changed.numbering,
       extra: {},
     });
   });

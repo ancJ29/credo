@@ -199,7 +199,13 @@ export function ClientApp({ api, device, test, look }: Props) {
                 element={guarded(
                   user,
                   'settings',
-                  <SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />,
+                  <SettingsPage
+                    api={api}
+                    doc={doc}
+                    onDoc={setDoc}
+                    onSignedOut={signedOut}
+                    onForbidden={() => void readAgain()}
+                  />,
                 )}
               />
               <Route

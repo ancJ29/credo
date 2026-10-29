@@ -2,8 +2,10 @@ import {
   byCode,
   type Employee,
   type EmployeeDoc,
+  keptSetupParts,
   layersOf,
   nextCode,
+  type PhotoReply,
   normaliseEmployeeCode,
   normaliseSignInName,
   resolvePermissions,
@@ -130,6 +132,12 @@ export function createFakeApi({ device, cue }: Options): Api {
     return unit ? { id: unit.id, name: unit.name } : null;
   };
 
+  /** A person's photo as the fake holds it now, with its version. */
+  const photoNow = (id: string): PhotoReply => {
+    const held = photos.get(id);
+    return held ? { photo: held.photo, version: `p${held.version}` } : { photo: null, version: '' };
+  };
+
   return {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
@@ -208,9 +216,8 @@ export function createFakeApi({ device, cue }: Options): Api {
           setup = structuredClone({
             departments: mint(next.departments),
             positions: mint(next.positions),
-            ...(next.fields ? { fields: next.fields } : {}),
-            ...(next.customFields ? { customFields: next.customFields } : {}),
-            ...(next.numbering ? { numbering: next.numbering } : {}),
+            // A part the save leaves out stays as it was, as the BFF keeps it.
+            ...keptSetupParts(next, setup),
             extra: next.extra,
           });
           setupVersion += 1;
@@ -309,10 +316,7 @@ export function createFakeApi({ device, cue }: Options): Api {
     getPhoto: (id) =>
       call('getPhoto', () => {
         person(id);
-        const held = photos.get(id);
-        return held
-          ? { photo: held.photo, version: `p${held.version}` }
-          : { photo: null, version: '' };
+        return photoNow(id);
       }),
 
     savePhoto: (id, request) =>
@@ -322,7 +326,7 @@ export function createFakeApi({ device, cue }: Options): Api {
           person(id);
           const held = photos.get(id);
           if (request.version !== (held ? `p${held.version}` : '')) {
-            return { kind: 'conflict' as const };
+            return { kind: 'conflict' as const, current: photoNow(id) };
           }
           const version = (held?.version ?? 0) + 1;
           photos.set(id, { photo: request.photo, version });
@@ -331,7 +335,7 @@ export function createFakeApi({ device, cue }: Options): Api {
             reply: { photo: request.photo, version: `p${version}` },
           };
         },
-        () => ({ kind: 'conflict' as const }),
+        () => ({ kind: 'conflict' as const, current: photoNow(id) }),
       ),
 
     archiveEmployee: (id, readAt) =>
