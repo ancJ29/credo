@@ -16,6 +16,9 @@ describe('the record keys', () => {
     expect(tenant.config).toBe(`tenant.${id}.config`);
     expect(tenant.user('root')).toBe(`tenant.${id}.user.root`);
     expect(tenant.session('device-0001')).toBe(`tenant.${id}.session.device-0001`);
+    expect(tenant.employee('p1')).toBe(`tenant.${id}.employee.p1`);
+    expect(tenant.employee('p1').startsWith(tenant.employeePrefix)).toBe(true);
+    expect(tenant.staffSetup).toBe(`tenant.${id}.staff-setup`);
     expect(recordKeys.client('acme')).toBe('client.acme');
     const other = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000002');
     expect(other.config).not.toBe(tenant.config);

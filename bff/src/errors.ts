@@ -1,4 +1,5 @@
 import { CStorageError } from '@credo/shared';
+import type { z } from 'zod';
 
 /** An answer the route chose, with the body a caller reads. */
 export class HttpError extends Error {
@@ -28,4 +29,14 @@ export function replyFor(error: unknown) {
     return { status, body: { error: 'Bad request' } };
   }
   return { status: 500, body: { error: 'Internal error' } };
+}
+
+/** A body or value read under its schema, or a 400 naming where it failed. */
+export function parse<T>(schema: z.ZodType<T>, value: unknown): T {
+  const result = schema.safeParse(value);
+  if (result.success) return result.data;
+  const details = result.error.issues
+    .map((issue) => `${issue.path.join('.') || 'body'}: ${issue.message}`)
+    .join('; ');
+  throw new HttpError(400, 'Bad request', { details });
 }

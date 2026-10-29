@@ -2,6 +2,7 @@ import {
   type CStorageClient,
   createCStorageClient,
   meReplySchema,
+  resolvePermissions,
   sessionReplySchema,
   sha256Hex,
   storedSessionSchema,
@@ -13,6 +14,7 @@ import {
   DEVICE,
   OTHER_DEVICE,
   ROOT,
+  seedEmployee,
   seedUser,
   signIn,
   tenantWithRoot,
@@ -30,11 +32,15 @@ afterAll(async () => {
 const me = (app: Awaited<ReturnType<typeof tenantWithRoot>>['app'], authId: string) =>
   app.inject({ method: 'GET', url: '/api/auth/me', headers: withAuth(authId) });
 
+/** The key a handle's session is stored under: its id, the part before the dot. */
+const keyOfHandle = (keys: { session: (id: string) => string }, authId: string) =>
+  keys.session(authId.split('.')[0]);
+
 const sessionRecord = async (
-  tenant: { client: CStorageClient; keys: { session: (device: string) => string } },
-  device = DEVICE,
+  tenant: { client: CStorageClient; keys: { session: (id: string) => string } },
+  authId: string,
 ) => {
-  const found = await tenant.client.getRecord(tenant.keys.session(device));
+  const found = await tenant.client.getRecord(keyOfHandle(tenant.keys, authId));
   return { tag: found?.tag, session: storedSessionSchema.parse(found?.data) };
 };
 
@@ -51,7 +57,7 @@ function movesAfterRead(
     ...client,
     async getRecord(requested) {
       const found = await client.getRecord(requested);
-      if (requested.endsWith(suffix) && left > 0) {
+      if (requested.includes(suffix) && left > 0) {
         left--;
         await move();
       }
@@ -68,14 +74,14 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
     expect(sessionReplySchema.parse(body).user).toEqual({
       name: 'root',
       root: true,
-      permissions: {},
+      permissions: resolvePermissions([], true),
     });
 
     const who = await me(app, body.authId);
     expect(meReplySchema.parse(who.json()).user).toEqual({
       name: 'root',
       root: true,
-      permissions: {},
+      permissions: resolvePermissions([], true),
     });
 
     const saved = await app.inject({
@@ -99,7 +105,7 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
 
   it('a user who is not the root may not save the settings', async () => {
     const { app, client, keys, id } = await tenantWithRoot(cs);
-    await seedUser(client, id, { name: 'clerk', password: 'clerk-password', root: false });
+    await seedEmployee(client, id, { code: 'CLERK', password: 'clerk-password' });
     const { body } = await signIn(app, { name: 'clerk', password: 'clerk-password' });
     const saved = await app.inject({
       method: 'PUT',
@@ -121,6 +127,28 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
   });
 });
 
+describe('A sign-in record that names no person, or a session that cannot be minted, signs no one in', () => {
+  it('refuses a user who is not the root and has no person, 401, at sign-in and at the next step', async () => {
+    const { app, client, id } = await tenantWithRoot(cs);
+    await seedUser(client, id, { name: 'ghost', password: 'Ghost-pass-1', root: false });
+    const { response } = await signIn(app, { name: 'ghost', password: 'Ghost-pass-1' });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it('answers 503 when a record already sits under a fresh session id, and opens nothing', async () => {
+    const t = await tenantWithRoot(cs, {
+      wrap: (client) => ({
+        ...client,
+        putRecord: async (key, data, ifTag) =>
+          key.includes('.session.') ? 'moved' : await client.putRecord(key, data, ifTag),
+      }),
+    });
+    const { response } = await signIn(t.app);
+    expect(response.statusCode).toBe(503);
+    expect((await t.client.listRecords(t.keys.session(''))).records).toEqual([]);
+  });
+});
+
 describe('A wrong name or password gets one message that does not say which', () => {
   it('answers an unknown name and a wrong password with the same 401 and body', async () => {
     const { app } = await tenantWithRoot(cs);
@@ -136,7 +164,7 @@ describe('A wrong name or password gets one message that does not say which', ()
     const { app, client, keys } = await tenantWithRoot(cs);
     const { response } = await signIn(app, { name: ROOT.name, password: 'not it' });
     expect(response.statusCode).toBe(401);
-    expect(await client.getRecord(keys.session(DEVICE))).toBeNull();
+    expect((await client.listRecords(keys.session(''))).records).toEqual([]);
   });
 
   it('takes the name in any case and with spaces around it as the same user', async () => {
@@ -167,24 +195,49 @@ describe('A wrong name or password gets one message that does not say which', ()
   });
 });
 
-describe("A session's secret is stored hashed, one session per device", () => {
+describe("A session's secret is stored hashed, under a minted id with its device beside it", () => {
   it('stores the hash of the secret and never the secret', async () => {
     const { app, client, keys } = await tenantWithRoot(cs);
     const { body } = await signIn(app);
     const secret = body.authId.slice(body.authId.indexOf('.') + 1);
-    const { session } = await sessionRecord({ client, keys });
+    const { session } = await sessionRecord({ client, keys }, body.authId);
     expect(session.secretHash).toBe(await sha256Hex(secret));
     expect(JSON.stringify(session)).not.toContain(secret);
     expect(session.user).toBe('root');
+    expect(session.device).toBe(DEVICE);
+    expect(session.issuedAt).toBe(session.expiresAt - 7 * DAY_MS);
   });
 
-  it('keeps one session per device: a new sign-in on it ends the old handle', async () => {
+  it('ends the session a sign-in sends the kept handle of, and no other', async () => {
     const { app } = await tenantWithRoot(cs);
     const first = await signIn(app);
-    const second = await signIn(app);
-    expect(first.body.authId).not.toBe(second.body.authId);
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in',
+      headers: { 'x-device-id': DEVICE, ...withAuth(first.body.authId) },
+      payload: ROOT,
+    });
+    expect(first.body.authId).not.toBe(second.json<{ authId: string }>().authId);
     expect((await me(app, first.body.authId)).statusCode).toBe(401);
-    expect((await me(app, second.body.authId)).statusCode).toBe(200);
+    expect((await me(app, second.json<{ authId: string }>().authId)).statusCode).toBe(200);
+  });
+
+  it('lets a sign-in that names a device end nothing: another person’s session, or a handle that is not theirs, stays', async () => {
+    const t = await tenantWithRoot(cs);
+    await seedEmployee(t.client, t.id, { code: 'CLERK', password: 'Clerk-pass-1!' });
+    const root = await signIn(t.app, ROOT, DEVICE);
+    const clerk = await signIn(t.app, { name: 'clerk', password: 'Clerk-pass-1!' }, DEVICE);
+    expect((await me(t.app, root.body.authId)).statusCode).toBe(200);
+    expect((await me(t.app, clerk.body.authId)).statusCode).toBe(200);
+    const [id] = root.body.authId.split('.');
+    const guess = await t.app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in',
+      headers: { 'x-device-id': DEVICE, ...withAuth(`${id}.not-the-secret`) },
+      payload: { name: 'clerk', password: 'Clerk-pass-1!' },
+    });
+    expect(guess.statusCode).toBe(200);
+    expect((await me(t.app, root.body.authId)).statusCode).toBe(200);
   });
 
   it('keeps a session for each device', async () => {
@@ -233,11 +286,11 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
     });
     expect(out.statusCode).toBe(204);
     expect((await me(app, pc.body.authId)).statusCode).toBe(401);
-    expect(await client.getRecord(keys.session(DEVICE))).toBeNull();
+    expect(await client.getRecord(keyOfHandle(keys, pc.body.authId))).toBeNull();
     expect((await me(app, phone.body.authId)).statusCode).toBe(200);
   });
 
-  it('answers a sign-out of no session, or of a handle a later sign-in replaced, with 204 and ends nothing', async () => {
+  it('answers a sign-out of no session, or of a handle already ended, with 204 and ends nothing', async () => {
     const { app } = await tenantWithRoot(cs);
     const old = await signIn(app);
     const current = await signIn(app);
@@ -276,13 +329,13 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
       const { response } = await signIn(app, credentials);
       expect(response.statusCode).toBe(400);
     }
-    expect(await client.getRecord(keys.session(DEVICE))).toBeNull();
+    expect((await client.listRecords(keys.session(''))).records).toEqual([]);
   });
 
   it('refuses a session whose record cannot be read as a session, and a user no longer there', async () => {
     const { app, client, keys } = await tenantWithRoot(cs);
     const { body } = await signIn(app);
-    await client.putRecord(keys.session(DEVICE), { nonsense: true });
+    await client.putRecord(keyOfHandle(keys, body.authId), { nonsense: true });
     expect((await me(app, body.authId)).statusCode).toBe(401);
 
     const again = await signIn(app);
@@ -295,7 +348,9 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
     const { body } = await signIn(app);
     time.advance(5 * DAY_MS);
     expect((await me(app, body.authId)).statusCode).toBe(200);
-    expect((await sessionRecord({ client, keys })).session.expiresAt).toBe(time.now() + 7 * DAY_MS);
+    expect((await sessionRecord({ client, keys }, body.authId)).session.expiresAt).toBe(
+      time.now() + 7 * DAY_MS,
+    );
     expect((await me(app, body.authId)).statusCode).toBe(200);
     time.advance(6 * DAY_MS);
     expect((await me(app, body.authId)).statusCode).toBe(200);
@@ -304,10 +359,10 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
   it('leaves a session with more than three days left unwritten', async () => {
     const { app, client, keys, time } = await tenantWithRoot(cs);
     const { body } = await signIn(app);
-    const before = await sessionRecord({ client, keys });
+    const before = await sessionRecord({ client, keys }, body.authId);
     time.advance(3 * DAY_MS);
     expect((await me(app, body.authId)).statusCode).toBe(200);
-    expect((await sessionRecord({ client, keys })).tag).toBe(before.tag);
+    expect((await sessionRecord({ client, keys }, body.authId)).tag).toBe(before.tag);
   });
 });
 
@@ -319,17 +374,18 @@ describe('Renewing a session writes with its tag, never blind', () => {
     const tenant = await tenantWithRoot(cs, { wrap: (client) => wrap(client, () => move()) });
     const { body } = await signIn(tenant.app);
     tenant.time.advance(5 * DAY_MS);
-    const was = await sessionRecord(tenant);
+    const was = await sessionRecord(tenant, body.authId);
     return {
       ...tenant,
       authId: body.authId,
       was,
+      sessionKey: keyOfHandle(tenant.keys, body.authId),
       onMove: (next: () => Promise<unknown>) => {
         move = next;
       },
     };
   };
-  const suffix = `.session.${DEVICE}`;
+  const suffix = '.session.';
 
   it('does not overwrite a sign-in that landed between its read and its write', async () => {
     const t = await soonDue((client, move) => movesAfterRead(client, suffix, 1, move));
@@ -338,42 +394,38 @@ describe('Renewing a session writes with its tag, never blind', () => {
       secretHash: await sha256Hex('another sign-in'),
       expiresAt: t.time.now() + 7 * DAY_MS,
     };
-    t.onMove(() => t.client.putRecord(t.keys.session(DEVICE), other));
+    t.onMove(() => t.client.putRecord(t.sessionKey, other));
     expect((await me(t.app, t.authId)).statusCode).toBe(401);
-    expect((await sessionRecord(t)).session).toEqual(other);
+    expect((await sessionRecord(t, t.authId)).session).toEqual(other);
   });
 
   it('re-reads after a renewal that landed first and writes nothing over it', async () => {
     const t = await soonDue((client, move) => movesAfterRead(client, suffix, 1, move));
     const renewedElsewhere = { ...t.was.session, expiresAt: t.time.now() + 7 * DAY_MS + 1000 };
-    t.onMove(() => t.client.putRecord(t.keys.session(DEVICE), renewedElsewhere));
+    t.onMove(() => t.client.putRecord(t.sessionKey, renewedElsewhere));
     expect((await me(t.app, t.authId)).statusCode).toBe(200);
-    expect((await sessionRecord(t)).session).toEqual(renewedElsewhere);
+    expect((await sessionRecord(t, t.authId)).session).toEqual(renewedElsewhere);
   });
 
   it('gives up after a few moved reads, answers the session as it was and writes nothing blind', async () => {
     const t = await soonDue((client, move) => movesAfterRead(client, suffix, 3, move));
     let bumped = t.was.session.expiresAt;
-    t.onMove(() =>
-      t.client.putRecord(t.keys.session(DEVICE), { ...t.was.session, expiresAt: ++bumped }),
-    );
+    t.onMove(() => t.client.putRecord(t.sessionKey, { ...t.was.session, expiresAt: ++bumped }));
     expect((await me(t.app, t.authId)).statusCode).toBe(200);
-    expect((await sessionRecord(t)).session.expiresAt).toBe(t.was.session.expiresAt + 3);
+    expect((await sessionRecord(t, t.authId)).session.expiresAt).toBe(t.was.session.expiresAt + 3);
   });
 
   it('does not report a sign-out done while its session keeps moving', async () => {
     const t = await soonDue((client, move) => movesAfterRead(client, suffix, 3, move));
     let bumped = t.was.session.expiresAt;
-    t.onMove(() =>
-      t.client.putRecord(t.keys.session(DEVICE), { ...t.was.session, expiresAt: ++bumped }),
-    );
+    t.onMove(() => t.client.putRecord(t.sessionKey, { ...t.was.session, expiresAt: ++bumped }));
     const out = await t.app.inject({
       method: 'POST',
       url: '/api/auth/sign-out',
       headers: withAuth(t.authId),
     });
     expect(out.statusCode).toBe(503);
-    expect(await t.client.getRecord(t.keys.session(DEVICE))).not.toBeNull();
+    expect(await t.client.getRecord(t.sessionKey)).not.toBeNull();
   });
 });
 

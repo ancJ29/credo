@@ -1,5 +1,6 @@
 import {
   CREDO_COLOUR,
+  resolvePermissions,
   type CStorageClient,
   CStorageError,
   configDocSchema,
@@ -78,7 +79,9 @@ describe('The operator signs in at /operator with a name and password of its own
       headers: withAuth(session.authId),
     });
     expect(operatorMeReplySchema.parse(me.json())).toEqual({ operator: { name: 'operator' } });
-    expect(await t.client.getRecord(recordKeys.operatorSession(DEVICE))).not.toBeNull();
+    expect(
+      await t.client.getRecord(recordKeys.operatorSession(session.authId.split('.')[0])),
+    ).not.toBeNull();
   });
 
   it('answers an unknown name and a wrong password with the same 401 and opens nothing', async () => {
@@ -88,7 +91,7 @@ describe('The operator signs in at /operator with a name and password of its own
     expect(unknown.statusCode).toBe(401);
     expect(unknown.body).toBe(wrong.body);
     expect(wrong.statusCode).toBe(401);
-    expect(await t.client.getRecord(recordKeys.operatorSession(DEVICE))).toBeNull();
+    expect((await t.client.listRecords('operator.session.')).records).toEqual([]);
   });
 
   it('refuses a sign-in with no device id, and a body that is not a name and password', async () => {
@@ -139,7 +142,7 @@ describe('The operator signs in at /operator with a name and password of its own
       headers: withAuth(t.authId),
     });
     expect(out.statusCode).toBe(204);
-    expect(await t.client.getRecord(recordKeys.operatorSession(DEVICE))).toBeNull();
+    expect(await t.client.getRecord(recordKeys.operatorSession(t.authId.split('.')[0]))).toBeNull();
     const again = await t.app.inject({ method: 'POST', url: '/api/operator/sign-out' });
     expect(again.statusCode).toBe(204);
   });
@@ -184,7 +187,7 @@ describe('The operator makes a client from a code and the company’s name, and 
     expect(sessionReplySchema.parse(signedIn.body).user).toEqual({
       name: 'root',
       root: true,
-      permissions: {},
+      permissions: resolvePermissions([], true),
     });
     const index = storedClientSchema.parse((await t.client.getRecord('client.acme'))?.data);
     expect(index.name).toBe('Acme Trading');
@@ -375,7 +378,7 @@ describe('A root’s first password is random per client, stored only as its scr
     const user = storedUserSchema.parse((await t.client.getRecord(keys.user('root')))?.data);
     expect(user.root).toBe(true);
     expect(user.passwordHash).toMatch(/^scrypt\$/);
-    expect(await verifyPassword(reply.password, user.passwordHash)).toBe(true);
+    expect(await verifyPassword(reply.password, user.passwordHash as string)).toBe(true);
     for (const key of [keys.config, keys.user('root'), recordKeys.client('acme')]) {
       expect(JSON.stringify((await t.client.getRecord(key))?.data)).not.toContain(reply.password);
     }
@@ -415,7 +418,12 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/operator/sign-in (POST)',
         '├── /api/operator/sign-out (POST)',
         '├── /api/operator/me (GET, HEAD)',
-        '└── /api/operator/clients (POST)',
+        '├── /api/operator/clients (POST)',
+        '├── /api/staff-setup (GET, HEAD, PUT)',
+        '└── /api/employees (GET, HEAD, POST)',
+        '    └── /:id (GET, HEAD, PUT)',
+        '        ├── /archive (POST)',
+        '        └── /password (PUT)',
       ].join('\n')}\n`,
     );
   });

@@ -1,4 +1,4 @@
-import { randomBytes, scrypt, type ScryptOptions } from 'node:crypto';
+import { randomBytes, randomInt, scrypt, type ScryptOptions } from 'node:crypto';
 import { promisify } from 'node:util';
 import { constantTimeEqual } from './constant-time';
 
@@ -59,3 +59,19 @@ export async function verifyAgainstNobody(password: string) {
 
 /** A first password: random, 96 bits, shown once and stored only as its hash. */
 export const newPassword = () => randomBytes(12).toString('base64url');
+
+const CLASSES = ['abcdefghijkmnopqrstuvwxyz', 'ABCDEFGHJKLMNPQRSTUVWXYZ', '23456789', '@$!%*?&'];
+
+/** A password the app makes for a person: 12 characters holding a capital, a small letter, a digit
+ * and one of `@$!%*?&`, which is the rule of a password typed (`passwordIsValid` in `shared/`).
+ * Look-alike characters are left out, since it is read off a screen and handed over. */
+export function madePassword() {
+  const pick = (from: string) => from[randomInt(from.length)];
+  const all = CLASSES.join('');
+  const chars = [...CLASSES.map(pick), ...Array.from({ length: 8 }, () => pick(all))];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}

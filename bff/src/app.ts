@@ -9,25 +9,29 @@ import {
   deviceIdSchema,
   DEVICE_HEADER,
   type MeReplyBody,
+  type PermissionId,
   normaliseSignInName,
   type OperatorMeReply,
   type OperatorSessionReply,
   recordKeys,
+  resolvePermissions,
   ROUTES,
   saveConfigRequestSchema,
   type SessionReplyBody,
   signInRequestSchema,
   storedClientSchema,
   storedOperatorSchema,
-  storedUserSchema,
+  type StoredUser,
   tenantConfigSchema,
+  type UserView,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest } from 'fastify';
-import type { z } from 'zod';
 import { createClient, ROOT_NAME } from './clients';
-import { HttpError, replyFor } from './errors';
+import { HttpError, parse, replyFor } from './errors';
 import { verifyAgainstNobody, verifyPassword } from './password';
 import { createSessions } from './sessions';
+import { layersOf, namesBack, readEmployee, readSetup, readSignIn } from './staff-records';
+import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -43,15 +47,6 @@ export type AppDeps = {
   /** On or off, or on into a stream a test reads. */
   logger: boolean | { stream: { write: (line: string) => void } };
 };
-
-function parse<T>(schema: z.ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (result.success) return result.data;
-  const details = result.error.issues
-    .map((issue) => `${issue.path.join('.') || 'body'}: ${issue.message}`)
-    .join('; ');
-  throw new HttpError(400, 'Bad request', { details });
-}
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
 
@@ -87,10 +82,25 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return (await verifyPassword(password, account.passwordHash)) ? account : null;
   }
 
-  async function readUser(tenantId: string, name: string) {
-    const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
-    const parsed = found ? storedUserSchema.safeParse(found.data) : null;
-    return parsed?.success ? parsed.data : null;
+  /** Who a sign-in record names, as the app shows and checks them: the root, or a person who is
+   * there, not archived and still holding this code, with what their layers allow. Anything less
+   * is no one. The layers are read here, at every call, so the root's change holds at the person's
+   * next step; one that cannot be read throws and answers 503, never a partial set. */
+  async function viewOf(tenantId: string, name: string, user: StoredUser) {
+    if (user.root) {
+      return { name, root: true, permissions: resolvePermissions([], true), employeeId: null };
+    }
+    const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
+    if (!person || person.employee.archived || !(await namesBack(storage, tenantId, name, user))) {
+      return null;
+    }
+    const { setup } = await readSetup(storage, tenantId);
+    return {
+      name: person.employee.name,
+      root: false,
+      permissions: resolvePermissions(layersOf(setup, person.employee)),
+      employeeId: person.employee.id,
+    };
   }
 
   async function readOperator(name: string) {
@@ -99,16 +109,42 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return parsed?.success ? parsed.data : null;
   }
 
-  /** Who the handle names in this tenant. Only a handle that names no live session, or a user no
-   * longer there, is a 401; a store that cannot answer throws, and answers 503. */
+  /** Who the handle names in this tenant. A handle that names no live session, a sign-in record
+   * no longer there or given a password since the session was issued, or a person who left, is a
+   * 401; a store that cannot answer throws, and answers 503. */
   async function signedIn(request: FastifyRequest) {
     const handle = request.headers[AUTH_HEADER];
     const session =
       typeof handle === 'string' ? await sessionsOf(request.tenantId).resolve(handle) : null;
-    const user = session ? await readUser(request.tenantId, session.user) : null;
-    if (!session || !user) throw unauthorized();
-    return { name: session.user, root: user.root };
+    const found = session ? await readSignIn(storage, request.tenantId, session.user) : null;
+    if (!session || !found || session.issuedAt < found.user.passwordAt) throw unauthorized();
+    const view = await viewOf(request.tenantId, session.user, found.user);
+    if (!view) throw unauthorized();
+    return view;
   }
+
+  /** The answer for a person's own view: no more than the app shows. */
+  const userViewOf = ({
+    name,
+    root,
+    permissions,
+  }: Awaited<ReturnType<typeof signedIn>>): UserView => ({
+    name,
+    root,
+    permissions,
+  });
+
+  const forbidden = () => new HttpError(403, 'Forbidden');
+  /** The checks every route makes, on the server: the UI's display is never the guard. */
+  const mustBeRoot = (who: { root: boolean }) => {
+    if (!who.root) throw forbidden();
+  };
+  const mustCan = (
+    who: { root: boolean; permissions: Record<PermissionId, boolean> },
+    id: PermissionId,
+  ) => {
+    if (!who.root && !who.permissions[id]) throw forbidden();
+  };
 
   /** Who the handle names among the operators; a client's handle names no one here. */
   async function operatorSignedIn(request: FastifyRequest) {
@@ -125,6 +161,13 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return found ? { config: tenantConfigSchema.parse(found.data), version: found.tag } : null;
   }
 
+  /** A sign-in ends the session the device's kept handle still names, which the app sends on
+   * every call. Only whoever holds the handle's secret ends it: naming a device ends nothing. */
+  async function endKept(request: FastifyRequest, sessions: ReturnType<typeof createSessions>) {
+    const kept = request.headers[AUTH_HEADER];
+    if (typeof kept === 'string') await sessions.end(kept);
+  }
+
   function deviceOf(request: FastifyRequest) {
     const device = deviceIdSchema.safeParse(request.headers[DEVICE_HEADER]);
     if (!device.success) throw new HttpError(400, 'Bad request', { details: DEVICE_HEADER });
@@ -138,8 +181,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   });
 
   app.put(ROUTES.config, forClient, async (request, reply) => {
-    const who = await signedIn(request);
-    if (!who.root) throw new HttpError(403, 'Forbidden');
+    mustBeRoot(await signedIn(request));
     const body = parse(saveConfigRequestSchema, request.body);
     const key = recordKeys.tenant(request.tenantId).config;
     const result = await storage.putRecord(key, body.config, body.version);
@@ -155,11 +197,20 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
     const name = normaliseSignInName(body.name);
-    const user = await checked(await readUser(request.tenantId, name), body.password);
-    // One answer for an unknown name and a wrong password: which part was wrong is not said.
-    if (!user) throw new HttpError(401, 'Wrong name or password');
-    const { authId, expiresAt } = await sessionsOf(request.tenantId).issue(device, name);
-    return { authId, expiresAt, user: { name, root: user.root } };
+    const found = await readSignIn(storage, request.tenantId, name);
+    // A person the root has not given a password yet has no sign-in to check against.
+    const account = found?.user.passwordHash
+      ? { ...found.user, passwordHash: found.user.passwordHash }
+      : null;
+    const user = await checked(account, body.password);
+    // One answer for an unknown name, a wrong password and a person who left: which part was
+    // wrong is not said.
+    const view = user ? await viewOf(request.tenantId, name, user) : null;
+    if (!view) throw new HttpError(401, 'Wrong name or password');
+    const sessions = sessionsOf(request.tenantId);
+    await endKept(request, sessions);
+    const { authId, expiresAt } = await sessions.issue(device, name);
+    return { authId, expiresAt, user: userViewOf(view) };
   });
 
   app.post(ROUTES.signOut, forClient, async (request, reply) => {
@@ -169,7 +220,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   });
 
   app.get(ROUTES.me, forClient, async (request): Promise<MeReplyBody> => ({
-    user: await signedIn(request),
+    user: userViewOf(await signedIn(request)),
   }));
 
   app.post(ROUTES.operatorSignIn, async (request): Promise<OperatorSessionReply> => {
@@ -178,6 +229,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const name = normaliseSignInName(body.name);
     const operator = await checked(await readOperator(name), body.password);
     if (!operator) throw new HttpError(401, 'Wrong name or password');
+    await endKept(request, operatorSessions);
     const { authId, expiresAt } = await operatorSessions.issue(device, name);
     return { authId, expiresAt, operator: { name } };
   });
@@ -203,6 +255,8 @@ export function buildApp({ storage, now, logger }: AppDeps) {
       password: made.password,
     });
   });
+
+  registerStaffRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
 
   return app;
 }

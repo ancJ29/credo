@@ -74,14 +74,6 @@ the child: `waitUntilUp` also needs the child's own log to say it is listening
 (`scripts/src/processes.ts`). The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
 
-## 10. A session is keyed by a client-chosen device id — the machine; *parked* until piece 2 (the app frame plan, step 7, 2026-10-28)
-
-`x-device-id` names the session record (`session.<device>`), and sign-in replaces what is there. A
-user who can sign in can therefore replace another device's session by naming its id. Harmless
-with one root; with staff sign-ins (piece 2) it is not. Piece 2's plan decides: a session record
-keyed by a minted id with the device id beside it, or a sign-in refused over another user's
-session on that device.
-
 ## 11. Two places inline a Vite build into one HTML file — the machine; *parked* until a third caller (the visual report plan, step 4, 2026-10-28)
 
 `ui/vite.mock.config.ts` (a plugin, for `pnpm mock`) and `visual/src/build.ts` (`onePage`, for

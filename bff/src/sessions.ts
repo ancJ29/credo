@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   CStorageError,
   type CStorageClient,
@@ -17,17 +17,17 @@ const RENEW_WINDOW_MS = 3 * DAY_MS;
 /** How often a write on a moved session is re-read and tried again before giving up. */
 const ATTEMPTS = 3;
 
-/** A handle is `<device id>.<secret>`: the device id locates the record, and the 32 random bytes
+/** A handle is `<session id>.<secret>`: the minted id locates the record, and the 32 random bytes
  * of the secret are the proof. */
 function parseHandle(authId: string) {
-  const [device, secret, ...rest] = authId.split('.');
-  if (!secret || rest.length > 0 || !deviceIdSchema.safeParse(device).success) return null;
-  return { device, secret };
+  const [id, secret, ...rest] = authId.split('.');
+  if (!secret || rest.length > 0 || !deviceIdSchema.safeParse(id).success) return null;
+  return { id, secret };
 }
 
 const sameHash = (a: string, b: string) => constantTimeEqual(Buffer.from(a), Buffer.from(b));
 
-/** The sessions of one realm, under the keys `keyOf` builds from a device: a tenant's, or the
+/** The sessions of one realm, under the keys `keyOf` builds from a session id: a tenant's, or the
  * operator's. A handle minted in one realm names no record in another, so it resolves to nothing
  * there. */
 export function createSessions({
@@ -37,27 +37,33 @@ export function createSessions({
 }: {
   storage: CStorageClient;
   now: () => number;
-  keyOf: (device: string) => string;
+  keyOf: (sessionId: string) => string;
 }) {
-  /** A record that does not parse is no session: the next sign-in on that device replaces it. */
-  async function read(device: string) {
-    const found = await storage.getRecord(keyOf(device));
+  /** A record that does not parse is no session: it stops resolving, and is left for the sweep nothing calls yet. */
+  async function read(id: string) {
+    const found = await storage.getRecord(keyOf(id));
     const parsed = found ? storedSessionSchema.safeParse(found.data) : null;
     return found && parsed?.success ? { session: parsed.data, tag: found.tag } : null;
   }
 
   return {
-    /** Signing in again on a device replaces its session, whatever it held: the old handle stops
-     * resolving. The one deliberate blind write; every other write names the tag it read. */
+    /** A new session under a fresh id, which no other session holds: naming a device replaces
+     * nothing. The write names no record, so a record found under the fresh id is a fault of the
+     * store. */
     async issue(device: string, user: string) {
+      const id = randomUUID();
       const secret = randomBytes(32).toString('base64url');
       const session: StoredSession = {
         secretHash: await sha256Hex(secret),
         user,
         expiresAt: now() + SESSION_MS,
+        device,
+        issuedAt: now(),
       };
-      await storage.putRecord(keyOf(device), session);
-      return { authId: `${device}.${secret}`, expiresAt: session.expiresAt };
+      if ((await storage.putRecord(keyOf(id), session, null)) === 'moved') {
+        throw new CStorageError(412, 'a record already sat under a fresh session id');
+      }
+      return { authId: `${id}.${secret}`, expiresAt: session.expiresAt };
     },
 
     /** The session a handle names, or null. A session in its last three days is renewed with the
@@ -69,28 +75,28 @@ export function createSessions({
       const secretHash = await sha256Hex(handle.secret);
       let latest: StoredSession | null = null;
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-        const found = await read(handle.device);
+        const found = await read(handle.id);
         if (!found || !sameHash(found.session.secretHash, secretHash)) return null;
         if (found.session.expiresAt <= now()) return null;
         latest = found.session;
         if (found.session.expiresAt - now() > RENEW_WINDOW_MS) return latest;
         const renewed = { ...found.session, expiresAt: now() + SESSION_MS };
-        const saved = await storage.putRecord(keyOf(handle.device), renewed, found.tag);
+        const saved = await storage.putRecord(keyOf(handle.id), renewed, found.tag);
         if (saved === 'saved') return renewed;
       }
       return latest;
     },
 
-    /** Ends the session this handle names, on its device only. A handle that names none, or was
-     * replaced by a later sign-in, ends nothing. */
+    /** Ends the session this handle names, and no other. A handle that names none, or one a
+     * sign-in already ended, ends nothing. */
     async end(authId: string) {
       const handle = parseHandle(authId);
       if (!handle) return;
       const secretHash = await sha256Hex(handle.secret);
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-        const found = await read(handle.device);
+        const found = await read(handle.id);
         if (!found || !sameHash(found.session.secretHash, secretHash)) return;
-        const removed = await storage.removeRecord(keyOf(handle.device), found.tag);
+        const removed = await storage.removeRecord(keyOf(handle.id), found.tag);
         if (removed === 'removed') return;
       }
       throw new CStorageError(412, 'the session moved on every attempt to end it');

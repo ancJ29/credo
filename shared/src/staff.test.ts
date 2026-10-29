@@ -78,14 +78,17 @@ describe('staff', () => {
       extra: {},
     });
     // a unit saved with no id is new; one with a blank name is refused
-    const save = (departments: unknown[]) =>
+    const save = (departments: unknown[], version = '') =>
       saveStaffSetupRequestSchema.safeParse({
         setup: { departments, positions: [], extra: {} },
-        version: 'v1',
+        version,
       }).success;
     expect(save([{ name: 'Mới' }])).toBe(true);
     expect(save([{ name: ' ' }])).toBe(false);
     expect(save([{ id: 'not-an-id', name: 'x' }])).toBe(false);
+    // the version is a tag c-storage sent, or '' for a company that never saved a setup
+    expect(save([], 'a'.repeat(64))).toBe(true);
+    expect(save([], 'v1')).toBe(false);
     // a person's link holds the id and the name as saved
     expect(
       employeeSchema.safeParse({ ...person, department: { id: ID, name: 'Kho cũ' } }).data

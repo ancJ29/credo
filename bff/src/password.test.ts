@@ -1,6 +1,7 @@
 import { scryptSync, timingSafeEqual } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
+import { passwordIsValid } from '@credo/shared';
+import { hashPassword, madePassword, verifyAgainstNobody, verifyPassword } from './password';
 
 vi.mock('node:crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -52,5 +53,16 @@ describe('A password is scrypt with its own salt, compared in constant time', ()
     vi.mocked(timingSafeEqual).mockClear();
     expect(await verifyAgainstNobody('anything')).toBeNull();
     expect(timingSafeEqual).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('A password the app makes follows the rule of one typed', () => {
+  it('holds a capital, a small letter, a digit and one of @$!%*?& in 12 characters, and differs each time', () => {
+    const made = Array.from({ length: 300 }, madePassword);
+    for (const password of made) {
+      expect(password).toHaveLength(12);
+      expect(passwordIsValid(password), password).toBe(true);
+    }
+    expect(new Set(made).size).toBe(300);
   });
 });

@@ -3,9 +3,11 @@ import type { InjectOptions } from 'fastify';
 import {
   CLIENT_HEADER,
   type CStorageClient,
+  type Employee,
   normaliseSignInName,
   recordKeys,
   type StoredOperator,
+  type StoredUser,
 } from '@credo/shared';
 import { buildApp } from '../src/app';
 import { hashPassword } from '../src/password';
@@ -36,10 +38,42 @@ export async function seedUser(
   tenantId: string,
   user: { name: string; password: string; root: boolean },
 ) {
-  await storage.putRecord(recordKeys.tenant(tenantId).user(normaliseSignInName(user.name)), {
+  const stored: StoredUser = {
     passwordHash: await hashPassword(user.password),
     root: user.root,
-  });
+    employeeId: null,
+    passwordAt: 0,
+  };
+  await storage.putRecord(recordKeys.tenant(tenantId).user(normaliseSignInName(user.name)), stored);
+}
+
+/** A person and their sign-in, written as the root's add leaves them, with the test's password. */
+export async function seedEmployee(
+  storage: CStorageClient,
+  tenantId: string,
+  person: Partial<Employee> & { code: string; password?: string | null },
+) {
+  const { password = 'Staff-pass-1!', ...given } = person;
+  const employee: Employee = {
+    id: randomUUID(),
+    name: 'A person',
+    department: null,
+    position: null,
+    permissions: {},
+    archived: false,
+    extra: {},
+    ...given,
+  };
+  const keys = recordKeys.tenant(tenantId);
+  const stored: StoredUser = {
+    passwordHash: password === null ? null : await hashPassword(password),
+    root: false,
+    employeeId: employee.id,
+    passwordAt: 0,
+  };
+  await storage.putRecord(keys.user(normaliseSignInName(employee.code)), stored);
+  await storage.putRecord(keys.employee(employee.id), employee);
+  return { employee, password };
 }
 
 export async function seedOperator(

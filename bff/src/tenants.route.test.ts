@@ -129,7 +129,9 @@ describe('A handle minted under one client names no session under another: 401',
       headers: withAuth(body.authId),
     });
     expect(other.statusCode).toBe(401);
-    expect(await t.client.getRecord(recordKeys.tenant(t.ids.beta).session(DEVICE))).toBeNull();
+    expect(
+      await t.client.getRecord(recordKeys.tenant(t.ids.beta).session(body.authId.split('.')[0])),
+    ).toBeNull();
   });
 });
 

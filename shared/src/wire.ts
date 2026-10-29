@@ -78,11 +78,12 @@ export type ConfigDoc = z.infer<typeof configDocSchema>;
 /** c-storage's tag as it sends it back in `If-Match`: 64 lowercase hex digits. Anything else can
  * never match, so it is refused here as a 400 and not left to c-storage's. */
 const TAG = /^[0-9a-f]{64}$/;
+export const tagSchema = z.string().regex(TAG);
 
 /** `version` is null only for the first save, when no settings exist yet. */
 export const saveConfigRequestSchema = z.strictObject({
   config: tenantConfigSchema,
-  version: z.string().regex(TAG).nullable(),
+  version: tagSchema.nullable(),
 });
 export type SaveConfigRequest = z.infer<typeof saveConfigRequestSchema>;
 

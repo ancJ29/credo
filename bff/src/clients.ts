@@ -45,7 +45,12 @@ export async function createClient(
     defaultLanguage: 'vi',
     ...settings,
   };
-  const root: StoredUser = { passwordHash: await hashPassword(password), root: true };
+  const root: StoredUser = {
+    passwordHash: await hashPassword(password),
+    root: true,
+    employeeId: null,
+    passwordAt: 0,
+  };
   await createRecord(storage, keys.config, config);
   await createRecord(storage, keys.user(ROOT_NAME), root);
   const index: StoredClient = { id, name };

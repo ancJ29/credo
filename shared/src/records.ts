@@ -7,12 +7,18 @@ export const recordKeys = {
   /** The index: a client's code to its id. Written last, when the client is made. */
   client: (code: string) => `client.${code}`,
   operatorUser: (name: string) => `operator.user.${name}`,
-  operatorSession: (deviceId: string) => `operator.session.${deviceId}`,
+  operatorSession: (sessionId: string) => `operator.session.${sessionId}`,
   /** Every record of one tenant, by its minted id. */
   tenant: (id: string) => ({
     config: `tenant.${id}.config`,
     user: (name: string) => `tenant.${id}.user.${name}`,
-    session: (deviceId: string) => `tenant.${id}.session.${deviceId}`,
+    /** By the session's minted id; the device it was issued to is beside it in the record. */
+    session: (sessionId: string) => `tenant.${id}.session.${sessionId}`,
+    /** A person, by their minted id. */
+    employee: (employeeId: string) => `tenant.${id}.employee.${employeeId}`,
+    /** What the staff list reads: every person's key starts with it. */
+    employeePrefix: `tenant.${id}.employee.`,
+    staffSetup: `tenant.${id}.staff-setup`,
   }),
 } as const;
 
@@ -39,11 +45,17 @@ export const normaliseSignInName = (raw: string) => raw.normalize('NFC').trim().
  * which splits it from the secret in the handle. */
 export const deviceIdSchema = z.string().regex(/^[A-Za-z0-9_-]{8,64}$/);
 
+/** A sign-in record, keyed by the sign-in name: the root's, or a person's code. */
 export const storedUserSchema = z.strictObject({
-  /** `scrypt$N$r$p$salt$hash`, see the BFF's `password.ts`. */
-  passwordHash: z.string(),
+  /** `scrypt$N$r$p$salt$hash`, see the BFF's `password.ts`; null until the root gives one. */
+  passwordHash: z.string().nullable(),
   /** The tenant's first user: it may do everything and has no employee row. */
   root: z.boolean(),
+  /** The person this sign-in belongs to: null for the root. A sign-in is live only while that
+   * person's record names it back. */
+  employeeId: z.uuid().nullable().default(null),
+  /** When the password last changed: a session issued before it is refused. */
+  passwordAt: z.number().default(0),
 });
 export type StoredUser = z.infer<typeof storedUserSchema>;
 
@@ -53,5 +65,9 @@ export const storedSessionSchema = z.strictObject({
   /** The user record's name, normalised. */
   user: z.string(),
   expiresAt: z.number(),
+  /** The device it was issued to. */
+  device: z.string(),
+  /** When it was issued, against the sign-in record's last password. */
+  issuedAt: z.number(),
 });
 export type StoredSession = z.infer<typeof storedSessionSchema>;

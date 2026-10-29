@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { extraSchema } from './extra';
 import { permissionLayerSchema } from './permissions';
+import { tagSchema } from './wire';
 
 /** A code is 2 to 20 of the letters A to Z, digits and hyphens, unique in any case: a code is
  * typed in any case and kept in capitals. */
@@ -67,7 +68,7 @@ export type AddEmployeeReply = z.infer<typeof addEmployeeReplySchema>;
 /** Saving a person over the version read. The name and `extra` are for whoever may change a person;
  * the rest only for the root, and an absent one is unchanged. */
 export const saveEmployeeRequestSchema = z.strictObject({
-  version: z.string(),
+  version: tagSchema,
   name: nameSchema,
   extra: extraSchema,
   departmentId: z.uuid().nullable().optional(),
@@ -84,7 +85,7 @@ export type SetPasswordRequest = z.infer<typeof setPasswordRequestSchema>;
 export const setPasswordReplySchema = z.strictObject({ password: z.string() });
 export type SetPasswordReply = z.infer<typeof setPasswordReplySchema>;
 
-export const archiveEmployeeRequestSchema = z.strictObject({ version: z.string() });
+export const archiveEmployeeRequestSchema = z.strictObject({ version: tagSchema });
 
 /** A department or a position: a minted id, a name, what its staff may do, and `extra`. */
 export const staffUnitSchema = z.strictObject({
@@ -114,6 +115,7 @@ export const saveStaffSetupRequestSchema = z.strictObject({
     positions: z.array(staffUnitInputSchema),
     extra: extraSchema,
   }),
-  version: z.string(),
+  /** The tag the setup was read at; `''` names a company that has never saved one. */
+  version: tagSchema.or(z.literal('')),
 });
 export type SaveStaffSetupRequest = z.infer<typeof saveStaffSetupRequestSchema>;
