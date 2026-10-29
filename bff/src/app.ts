@@ -8,6 +8,7 @@ import {
   type CStorageClient,
   deviceIdSchema,
   DEVICE_HEADER,
+  layersOf,
   type MeReplyBody,
   type PermissionId,
   normaliseSignInName,
@@ -30,7 +31,7 @@ import { createClient, ROOT_NAME } from './clients';
 import { HttpError, parse, replyFor } from './errors';
 import { verifyAgainstNobody, verifyPassword } from './password';
 import { createSessions } from './sessions';
-import { layersOf, namesBack, readEmployee, readSetup, readSignIn } from './staff-records';
+import { namesPerson, readEmployee, readSetup, readSignIn } from './staff-records';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -85,21 +86,27 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   /** Who a sign-in record names, as the app shows and checks them: the root, or a person who is
    * there, not archived and still holding this code, with what their layers allow. Anything less
    * is no one. The layers are read here, at every call, so the root's change holds at the person's
-   * next step; one that cannot be read throws and answers 503, never a partial set. */
+   * next step; one that cannot be read throws and answers 503, never a partial set. The setup read
+   * for them is handed on, so a route does not read it again: a staff call reads five records. */
   async function viewOf(tenantId: string, name: string, user: StoredUser) {
     if (user.root) {
       return { name, root: true, permissions: resolvePermissions([], true), employeeId: null };
     }
     const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
-    if (!person || person.employee.archived || !(await namesBack(storage, tenantId, name, user))) {
-      return null;
-    }
-    const { setup } = await readSetup(storage, tenantId);
+    if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
+    const read = await readSetup(storage, tenantId);
     return {
       name: person.employee.name,
       root: false,
-      permissions: resolvePermissions(layersOf(setup, person.employee)),
+      permissions: resolvePermissions(
+        layersOf(read.setup, {
+          departmentId: person.employee.department?.id,
+          positionId: person.employee.position?.id,
+          own: person.employee.permissions,
+        }),
+      ),
       employeeId: person.employee.id,
+      setup: read,
     };
   }
 
@@ -110,14 +117,14 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   }
 
   /** Who the handle names in this tenant. A handle that names no live session, a sign-in record
-   * no longer there or given a password since the session was issued, or a person who left, is a
-   * 401; a store that cannot answer throws, and answers 503. */
+   * no longer there or given a password since the session was issued (its generation no longer
+   * equal to the record's), or a person who left, is a 401; a store that cannot answer throws, and answers 503. */
   async function signedIn(request: FastifyRequest) {
     const handle = request.headers[AUTH_HEADER];
     const session =
       typeof handle === 'string' ? await sessionsOf(request.tenantId).resolve(handle) : null;
     const found = session ? await readSignIn(storage, request.tenantId, session.user) : null;
-    if (!session || !found || session.issuedAt < found.user.passwordAt) throw unauthorized();
+    if (!session || !found || session.passwordAt !== found.user.passwordAt) throw unauthorized();
     const view = await viewOf(request.tenantId, session.user, found.user);
     if (!view) throw unauthorized();
     return view;
@@ -206,10 +213,10 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     // One answer for an unknown name, a wrong password and a person who left: which part was
     // wrong is not said.
     const view = user ? await viewOf(request.tenantId, name, user) : null;
-    if (!view) throw new HttpError(401, 'Wrong name or password');
+    if (!user || !view) throw new HttpError(401, 'Wrong name or password');
     const sessions = sessionsOf(request.tenantId);
     await endKept(request, sessions);
-    const { authId, expiresAt } = await sessions.issue(device, name);
+    const { authId, expiresAt } = await sessions.issue(device, name, user.passwordAt);
     return { authId, expiresAt, user: userViewOf(view) };
   });
 
@@ -230,7 +237,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const operator = await checked(await readOperator(name), body.password);
     if (!operator) throw new HttpError(401, 'Wrong name or password');
     await endKept(request, operatorSessions);
-    const { authId, expiresAt } = await operatorSessions.issue(device, name);
+    const { authId, expiresAt } = await operatorSessions.issue(device, name, 0);
     return { authId, expiresAt, operator: { name } };
   });
 

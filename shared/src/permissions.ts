@@ -20,6 +20,21 @@ export const permissionLayerSchema = z.strictObject(
 );
 export type PermissionLayer = Partial<Record<PermissionId, boolean>>;
 
+type Unit = { id: string; permissions: PermissionLayer };
+
+/** A person's layers in the order they apply, the one place that order is written: the
+ * department's, the position's, then the person's own. A unit that is not in the setup (none, or
+ * since removed) adds nothing. The BFF resolves with it, the fake as the BFF does, and the person's
+ * page to show what a permission left alone would give. */
+export function layersOf(
+  setup: { departments: readonly Unit[]; positions: readonly Unit[] },
+  held: { departmentId?: string | null; positionId?: string | null; own: PermissionLayer },
+): PermissionLayer[] {
+  const of = (units: readonly Unit[], id: string | null | undefined) =>
+    units.find((unit) => unit.id === id)?.permissions ?? {};
+  return [of(setup.departments, held.departmentId), of(setup.positions, held.positionId), held.own];
+}
+
 /** What a person may do, whole: the base allows nothing, then each layer in turn (department,
  * position, person), the later one winning where it names a permission. The root may do everything
  * and holds no layer. */

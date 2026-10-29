@@ -12,6 +12,7 @@ import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { staffTenant } from '../tests/staff';
 import { seedEmployee, signIn, withAuth } from '../tests/tenant';
 import { verifyPassword } from './password';
+import { ADD_MAX_MS } from './staff';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -31,10 +32,17 @@ const added = async (call: Call, over: object = {}) => {
   expect(reply.statusCode).toBe(201);
   return addEmployeeReplySchema.parse(reply.json());
 };
-const doc = async (call: Call, id: string) =>
-  employeeDocSchema.parse((await call.get(`/api/employees/${id}`)).json());
-const list = async (call: Call) =>
-  employeeListReplySchema.parse((await call.get('/api/employees')).json()).employees;
+/** A read that is not a 200 fails on its status, not on the schema parse of its error body. */
+const doc = async (call: Call, id: string) => {
+  const reply = await call.get(`/api/employees/${id}`);
+  expect(reply.statusCode).toBe(200);
+  return employeeDocSchema.parse(reply.json());
+};
+const list = async (call: Call) => {
+  const reply = await call.get('/api/employees');
+  expect(reply.statusCode).toBe(200);
+  return employeeListReplySchema.parse(reply.json()).employees;
+};
 const codes = async (call: Call) => (await list(call)).map((employee) => employee.code);
 const me = (t: Tenant, authId: string) =>
   t.app.inject({ method: 'GET', url: '/api/auth/me', headers: withAuth(authId) });
@@ -291,6 +299,20 @@ describe('The root gives a person a password, typed twice or made by the app, of
         password,
       ).toBe(400);
     }
+    const printable = await t.rootCall.send('PUT', `/api/employees/${id}/password`, {
+      password: 'Mật khẩu 1!',
+    });
+    expect(printable.statusCode).toBe(200);
+    expect(
+      (await signIn(t.app, { name: 'EMP-1', password: 'Mật khẩu 1!' })).response.statusCode,
+    ).toBe(200);
+    expect(
+      (
+        await t.rootCall.send('PUT', `/api/employees/${id}/password`, {
+          password: 'Control\u0007chars1!',
+        })
+      ).statusCode,
+    ).toBe(400);
     const set = await t.rootCall.send('PUT', `/api/employees/${id}/password`, {
       password: 'TypedPass1!',
     });
@@ -328,7 +350,6 @@ describe('The root gives a person a password, typed twice or made by the app, of
       'device-bbbb-0002',
     );
     expect((await me(t, pc.body.authId)).statusCode).toBe(200);
-    t.time.advance(1000);
     await t.rootCall.send('PUT', `/api/employees/${reply.employee.employee.id}/password`, {
       password: 'TypedPass1!',
     });
@@ -336,6 +357,29 @@ describe('The root gives a person a password, typed twice or made by the app, of
     expect((await me(t, phone.body.authId)).statusCode).toBe(401);
     const again = await signIn(t.app, { name: 'EMP-1', password: 'TypedPass1!' });
     expect((await me(t, again.body.authId)).statusCode).toBe(200);
+  });
+
+  it('refuses a session issued in the very millisecond of the new password, the clock not moved, and one issued at an earlier generation', async () => {
+    const t = await staffTenant(cs);
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const id = reply.employee.employee.id;
+    const generation = async () =>
+      storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data).passwordAt;
+    const first = await signIn(t.app, { name: 'EMP-1', password: reply.password as string });
+    // The session holds the sign-in record's generation, a copy and not a time of its own.
+    const held = await t.client.getRecord(t.keys.session(first.body.authId.split('.')[0]));
+    expect(held?.data).toMatchObject({ passwordAt: await generation() });
+
+    const before = await generation();
+    await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass1!' });
+    expect(await generation()).toBeGreaterThan(before);
+    expect((await me(t, first.body.authId)).statusCode).toBe(401);
+
+    // Each new password is a new generation, the clock still where it was.
+    const second = await signIn(t.app, { name: 'EMP-1', password: 'TypedPass1!' });
+    expect((await me(t, second.body.authId)).statusCode).toBe(200);
+    await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass2!' });
+    expect((await me(t, second.body.authId)).statusCode).toBe(401);
   });
 
   it('is the root’s alone: someone with every permission is refused, 403, and nothing changes', async () => {
@@ -649,19 +693,18 @@ describe('Only the root gives a sign-in or a password, issues a QR code, changes
         ...over,
       });
     const kept = await put({ departmentId: sales.id });
+    expect(kept.statusCode).toBe(200);
     expect(employeeDocSchema.parse(kept.json()).employee.department).toEqual({
       id: sales.id,
       name: 'Sales',
     });
-    const moved = employeeDocSchema.parse(
-      (
-        await put({
-          departmentId: shops.id,
-          positionId: clerk.id,
-          permissions: { 'staff.canView': true },
-        })
-      ).json(),
-    );
+    const movedReply = await put({
+      departmentId: shops.id,
+      positionId: clerk.id,
+      permissions: { 'staff.canView': true },
+    });
+    expect(movedReply.statusCode).toBe(200);
+    const moved = employeeDocSchema.parse(movedReply.json());
     expect(moved.employee).toMatchObject({
       department: { id: shops.id, name: 'Shops' },
       position: { id: clerk.id, name: 'Clerk' },
@@ -685,6 +728,26 @@ describe('The BFF checks the same permissions on every call, whatever the screen
       ['POST', `/api/employees/${id}/archive`],
       ['PUT', `/api/employees/${id}/password`],
     ] as const;
+
+  it('reads five records for a staff call, and no record twice: the client, the session, the sign-in, the person and the setup', async () => {
+    const reads: string[] = [];
+    const t = await staffTenant(cs, {
+      wrap: (client) => ({
+        ...client,
+        async getRecord(key) {
+          reads.push(key);
+          return await client.getRecord(key);
+        },
+      }),
+    });
+    const clerk = await t.staff('CLERK', { own: { 'staff.canView': true } });
+    for (const url of ['/api/staff-setup', '/api/employees']) {
+      reads.length = 0;
+      expect((await clerk.call.get(url)).statusCode).toBe(200);
+      expect(reads, url).toHaveLength(5);
+      expect(new Set(reads).size, url).toBe(5);
+    }
+  });
 
   it('answers 401 to every staff route without a session and 403 to someone holding no permission', async () => {
     const t = await staffTenant(cs);
@@ -734,7 +797,26 @@ describe('Every record a client’s UI shows carries `extra`: a JSON object of a
       name: 'Mai Linh',
       extra: { only: 1 },
     });
+    expect(saved.statusCode).toBe(200);
     expect(employeeDocSchema.parse(saved.json()).employee.extra).toEqual({ only: 1 });
+  });
+
+  it('refuses a write that leaves `extra` out, 400, so a stored one is never erased', async () => {
+    const t = await staffTenant(cs);
+    const extra = { phone: '0901' };
+    const reply = await added(t.rootCall, { extra });
+    const id = reply.employee.employee.id;
+    const save = await t.rootCall.send('PUT', `/api/employees/${id}`, {
+      version: reply.employee.version,
+      name: 'Mai Linh',
+    });
+    expect(save.statusCode).toBe(400);
+    expect(
+      (await t.rootCall.send('POST', '/api/employees', { name: 'No Extra', code: 'EMP-2' }))
+        .statusCode,
+    ).toBe(400);
+    expect((await doc(t.rootCall, id)).employee.extra).toEqual(extra);
+    expect(await codes(t.rootCall)).toEqual(['EMP-1']);
   });
 
   it('refuses `extra` over 8 KB, past five levels, with a forbidden key, or not an object, 400, and stores nothing', async () => {
@@ -826,12 +908,64 @@ describe('Each person is one record under a minted id; their sign-in record name
     ).toBe(401);
 
     failPerson = false;
+    // Within the longest an add runs its claim may still be a running add's: taken.
+    expect((await add(t.rootCall, { code: 'emp-1' })).statusCode).toBe(409);
+    t.time.advance(ADD_MAX_MS + 1);
     const retried = await added(t.rootCall, { code: 'emp-1' });
     expect(await codes(t.rootCall)).toEqual(['EMP-1']);
     const taken = storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data);
     expect(taken.employeeId).toBe(retried.employee.employee.id);
     expect(
       (await signIn(t.app, { name: 'EMP-1', password: retried.password as string })).response
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it('keeps a code taken by a person who is there, whatever the age of its sign-in', async () => {
+    const t = await staffTenant(cs);
+    const first = await added(t.rootCall, { code: 'EMP-1', name: 'First' });
+    t.time.advance(ADD_MAX_MS + 1);
+
+    expect((await add(t.rootCall, { code: 'emp-1', name: 'Second' })).statusCode).toBe(409);
+
+    expect((await list(t.rootCall)).map((employee) => employee.name)).toEqual(['First']);
+    expect(
+      (await signIn(t.app, { name: 'EMP-1', password: first.password as string })).response
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it('lets one of two adds of a code, racing, win it: the other is a 409 and the first password still signs in', async () => {
+    let held = false;
+    let release = () => {};
+    let atWrite = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const reached = new Promise<void>((resolve) => (atWrite = resolve));
+    const t = await staffTenant(cs, {
+      wrap: (client) => ({
+        ...client,
+        // The first add's person write waits, as a slow add's would, after its claim.
+        async putRecord(key, data, ifTag) {
+          if (key.includes('.employee.') && !held) {
+            held = true;
+            atWrite();
+            await gate;
+          }
+          return await client.putRecord(key, data, ifTag);
+        },
+      }),
+    });
+    const first = add(t.rootCall, { code: 'EMP-1', name: 'First' });
+    await reached;
+    const second = await add(t.rootCall, { code: 'EMP-1', name: 'Second' });
+    expect(second.statusCode).toBe(409);
+    release();
+    const won = await first;
+    expect(won.statusCode).toBe(201);
+    const reply = addEmployeeReplySchema.parse(won.json());
+    expect((await list(t.rootCall)).map((employee) => employee.name)).toEqual(['First']);
+    expect(
+      (await signIn(t.app, { name: 'EMP-1', password: reply.password as string })).response
         .statusCode,
     ).toBe(200);
   });

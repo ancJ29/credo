@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   can,
   differences,
+  layersOf,
   PERMISSIONS,
   permissionLayerSchema,
   resolvePermissions,
@@ -30,6 +31,22 @@ describe('permissions', () => {
     expect(resolvePermissions([department, {}, { 'staff.canView': false }])['staff.canView']).toBe(
       false,
     );
+  });
+
+  it('gives a person’s layers in the order they apply, department then position then their own, a unit not in the setup adding nothing', () => {
+    const department = { id: 'd1', permissions: { 'staff.canView': true } };
+    const position = { id: 'p1', permissions: { 'staff.canView': false } };
+    const setup = { departments: [department], positions: [position] };
+    const own = { 'staff.canEdit': true };
+
+    expect(layersOf(setup, { departmentId: 'd1', positionId: 'p1', own })).toEqual([
+      department.permissions,
+      position.permissions,
+      own,
+    ]);
+    // none, and one since removed, add an empty layer in their place
+    expect(layersOf(setup, { departmentId: null, positionId: 'gone', own })).toEqual([{}, {}, own]);
+    expect(layersOf(setup, { own })).toEqual([{}, {}, own]);
   });
 
   it('Piece 2’s permissions are to see the staff list, to add a person, to change a person’s name and details, and to archive a person; the root sets them at any of the three levels', () => {

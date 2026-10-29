@@ -67,7 +67,8 @@ export const storedSessionSchema = z.strictObject({
   expiresAt: z.number(),
   /** The device it was issued to. */
   device: z.string(),
-  /** When it was issued, against the sign-in record's last password. */
-  issuedAt: z.number(),
+  /** The sign-in record's `passwordAt` when this session was issued: a generation, equal to the
+   * record's while no password has been given since. The operator's, which has no such record, is 0. */
+  passwordAt: z.number(),
 });
 export type StoredSession = z.infer<typeof storedSessionSchema>;

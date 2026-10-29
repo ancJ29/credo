@@ -3,7 +3,6 @@ import {
   type Employee,
   employeeSchema,
   normaliseSignInName,
-  type PermissionLayer,
   recordKeys,
   type StaffSetup,
   staffSetupSchema,
@@ -49,6 +48,10 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
 }
 
+/** Whether a person holds the code a sign-in record is keyed under. */
+export const namesPerson = (name: string, person: Employee) =>
+  normaliseSignInName(person.code) === name;
+
 /** A sign-in record is live only while its person names it back: by id, and by the code it is
  * keyed under. */
 export async function namesBack(
@@ -58,17 +61,5 @@ export async function namesBack(
   user: StoredUser,
 ) {
   const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
-  return person !== null && normaliseSignInName(person.employee.code) === name;
-}
-
-/** What each layer allows, in the order they apply: department, position, person. A unit since
- * removed adds nothing. */
-export function layersOf(setup: StaffSetup, person: Employee): PermissionLayer[] {
-  const unit = (units: StaffSetup['departments'], link: Employee['department']) =>
-    units.find((candidate) => candidate.id === link?.id)?.permissions ?? {};
-  return [
-    unit(setup.departments, person.department),
-    unit(setup.positions, person.position),
-    person.permissions,
-  ];
+  return person !== null && namesPerson(name, person.employee);
 }

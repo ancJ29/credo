@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXTRA_MAX_BYTES, extraSchema } from './extra';
+import { EXTRA_MAX_BYTES, extraInputSchema, extraSchema } from './extra';
 
 const ok = (value: unknown) => extraSchema.safeParse(value).success;
 
@@ -31,8 +31,9 @@ describe('extra', () => {
 
     // at most 8 KB as JSON, counted in bytes
     const fill = (bytes: number) => ({ k: 'x'.repeat(bytes - '{"k":""}'.length) });
-    expect(ok(fill(EXTRA_MAX_BYTES))).toBe(true);
-    expect(ok(fill(EXTRA_MAX_BYTES + 1))).toBe(false);
+    expect(EXTRA_MAX_BYTES).toBe(8192);
+    expect(ok(fill(8192))).toBe(true);
+    expect(ok(fill(8193))).toBe(false);
     expect(ok({ k: 'ạ'.repeat(EXTRA_MAX_BYTES / 3) })).toBe(false);
 
     // the three keys, at any level, as the input names them
@@ -48,6 +49,8 @@ describe('extra', () => {
 
     // each reader defaults it, and the value comes out as it went in
     expect(extraSchema.safeParse(undefined).data).toEqual({});
+    // a write request takes none by default: absent is refused
+    expect(extraInputSchema.safeParse(undefined).success).toBe(false);
     const given = { phone: '0901' };
     expect(extraSchema.safeParse(given).data).toEqual(given);
   });

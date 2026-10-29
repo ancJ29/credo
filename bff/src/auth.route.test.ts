@@ -205,7 +205,8 @@ describe("A session's secret is stored hashed, under a minted id with its device
     expect(JSON.stringify(session)).not.toContain(secret);
     expect(session.user).toBe('root');
     expect(session.device).toBe(DEVICE);
-    expect(session.issuedAt).toBe(session.expiresAt - 7 * DAY_MS);
+    // A generation: the sign-in record's, the root's seeded at 0, and no time of its own.
+    expect(session.passwordAt).toBe(0);
   });
 
   it('ends the session a sign-in sends the kept handle of, and no other', async () => {
@@ -330,6 +331,17 @@ describe('A session lasts a week; a reload keeps it; signing out ends it on that
       expect(response.statusCode).toBe(400);
     }
     expect((await client.listRecords(keys.session(''))).records).toEqual([]);
+  });
+
+  it('refuses the handle of a session in piece 1’s shape, which names no device and no generation, 401', async () => {
+    const { app, client, keys } = await tenantWithRoot(cs);
+    const secret = 'a-secret-piece-1-made';
+    await client.putRecord(keys.session(DEVICE), {
+      secretHash: await sha256Hex(secret),
+      user: 'root',
+      expiresAt: Date.UTC(2026, 9, 29),
+    });
+    expect((await me(app, `${DEVICE}.${secret}`)).statusCode).toBe(401);
   });
 
   it('refuses a session whose record cannot be read as a session, and a user no longer there', async () => {

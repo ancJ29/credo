@@ -3,6 +3,7 @@ import {
   addEmployeeRequestSchema,
   archiveEmployeeRequestSchema,
   CStorageError,
+  byCode,
   type CStorageClient,
   type Employee,
   type EmployeeDoc,
@@ -29,7 +30,17 @@ import { namesBack, NO_SETUP_VERSION, readEmployee, readSetup, readSignIn } from
 /** How often a write on a record that moved without cause is re-read and tried again. */
 const ATTEMPTS = 3;
 
-type Who = { root: boolean; permissions: Record<PermissionId, boolean> };
+/** The longest an add can run: the BFF's or Lambda's timeout. A sign-in claim its person does not
+ * name back is a failed add's, to be taken over, only once it is older than this; before that
+ * its add may still be about to write the person. */
+export const ADD_MAX_MS = 60_000;
+
+/** Who is calling, with the setup the check read when it had to (never for the root). */
+type Who = {
+  root: boolean;
+  permissions: Record<PermissionId, boolean>;
+  setup?: { setup: StaffSetup; version: string };
+};
 
 type Deps = {
   storage: CStorageClient;
@@ -84,8 +95,9 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   app.get(ROUTES.staffSetup, forClient, async (request) => {
-    mustCan(await signedIn(request), 'staff.canView');
-    return await setupDoc(request.tenantId);
+    const who = await signedIn(request);
+    mustCan(who, 'staff.canView');
+    return who.setup ?? (await setupDoc(request.tenantId));
   });
 
   app.put(ROUTES.staffSetup, forClient, async (request) => {
@@ -128,7 +140,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       if (!parsed.success) throw new Error('an employee record does not parse');
       return parsed.data;
     });
-    employees.sort((a, b) => (a.code < b.code ? -1 : 1));
+    employees.sort(byCode);
     return { employees };
   });
 
@@ -138,8 +150,9 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   /** Claims the sign-in name for a person, before the person is written. A record already under
-   * the name that its person names back is a taken code; one its person does not name back is a
-   * failed add's, and is taken over with the tag it was read at. */
+   * the name that its person names back is a taken code, and so is one a running add made: its
+   * claim time, `passwordAt`, is younger than the longest an add runs. An older one its person does
+   * not name back is a failed add's, and is taken over with the tag it was read at. */
   async function claimSignIn(tenantId: string, name: string, record: StoredUser) {
     const key = recordKeys.tenant(tenantId).user(name);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -149,7 +162,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       if (raw) throw new HttpError(409, 'That code is taken');
       if (found) {
         // The root's record names no person and is never a failed add's.
-        if (found.user.root || (await namesBack(storage, tenantId, name, found.user))) {
+        if (
+          found.user.root ||
+          now() - found.user.passwordAt <= ADD_MAX_MS ||
+          (await namesBack(storage, tenantId, name, found.user))
+        ) {
           throw new HttpError(409, 'That code is taken');
         }
         if ((await storage.putRecord(key, record, found.tag)) === 'saved') return;
@@ -273,14 +290,17 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const passwordHash = await hashPassword(password);
     const name = normaliseSignInName(found.employee.code);
     const key = recordKeys.tenant(request.tenantId).user(name);
-    // The sign-in record is the root's and nobody else writes it, so a moved tag is false: read it
-    // again and write over what it now holds, a few times at most.
+    // A claim's takeover writes this record too, so a moved tag may be a real change of owner: read
+    // it again, a few times at most. The person check then answers 409 for another's record, and a
+    // record still this person's is written over.
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const signIn = await readSignIn(storage, request.tenantId, name);
       if (!signIn || signIn.user.employeeId !== found.employee.id) {
         throw new HttpError(409, 'Conflict');
       }
-      const changed: StoredUser = { ...signIn.user, passwordHash, passwordAt: now() };
+      // Strictly after the last, so a session issued at the last is refused whatever the clock reads.
+      const passwordAt = Math.max(now(), signIn.user.passwordAt + 1);
+      const changed: StoredUser = { ...signIn.user, passwordHash, passwordAt };
       if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') return { password };
     }
     throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');

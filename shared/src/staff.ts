@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { extraSchema } from './extra';
+import { extraInputSchema, extraSchema } from './extra';
 import { permissionLayerSchema } from './permissions';
 import { tagSchema } from './wire';
 
@@ -7,10 +7,14 @@ import { tagSchema } from './wire';
  * typed in any case and kept in capitals. */
 const EMPLOYEE_CODE = /^[A-Z0-9-]{2,20}$/;
 export const normaliseEmployeeCode = (raw: string) => raw.trim().toUpperCase();
+/** The list's order, code order: the one comparison the BFF's list and the fake's both sort by, so
+ * the page shows the list as it is answered. */
+export const byCode = (a: { code: string }, b: { code: string }) => (a.code < b.code ? -1 : 1);
 export const employeeCodeIsValid = (raw: string) => EMPLOYEE_CODE.test(normaliseEmployeeCode(raw));
 
-/** At least 8 characters with a capital, a small letter, a digit and one of `@$!%*?&`. */
-const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$/;
+/** 8 to 128 printable characters (spaces and any script, no control or format character) with a
+ * capital, a small letter, a digit and one of `@$!%*?&`. */
+const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[^\p{C}]{8,128}$/u;
 export const passwordIsValid = (password: string) => PASSWORD.test(password);
 
 const nameSchema = z.string().trim().min(1).max(200);
@@ -52,7 +56,7 @@ export type EmployeeListReply = z.infer<typeof employeeListReplySchema>;
 export const addEmployeeRequestSchema = z.strictObject({
   name: nameSchema,
   code: z.string().refine(employeeCodeIsValid, 'a code'),
-  extra: extraSchema,
+  extra: extraInputSchema,
   departmentId: z.uuid().nullable().optional(),
   positionId: z.uuid().nullable().optional(),
 });
@@ -65,12 +69,13 @@ export const addEmployeeReplySchema = z.strictObject({
 });
 export type AddEmployeeReply = z.infer<typeof addEmployeeReplySchema>;
 
-/** Saving a person over the version read. The name and `extra` are for whoever may change a person;
- * the rest only for the root, and an absent one is unchanged. */
+/** Saving a person over the version read. The name and `extra` are for whoever may change a person,
+ * and each is required, since a save replaces `extra` whole; the rest only for the root, and an
+ * absent one is unchanged. */
 export const saveEmployeeRequestSchema = z.strictObject({
   version: tagSchema,
   name: nameSchema,
-  extra: extraSchema,
+  extra: extraInputSchema,
   departmentId: z.uuid().nullable().optional(),
   positionId: z.uuid().nullable().optional(),
   permissions: permissionLayerSchema.optional(),
@@ -107,13 +112,18 @@ export type StaffSetup = z.infer<typeof staffSetupSchema>;
 export const staffSetupDocSchema = z.strictObject({ setup: staffSetupSchema, version: z.string() });
 export type StaffSetupDoc = z.infer<typeof staffSetupDocSchema>;
 
-/** A unit sent without an id is new: the BFF mints it. */
-const staffUnitInputSchema = staffUnitSchema.extend({ id: z.uuid().optional() });
+/** A unit sent without an id is new: the BFF mints it. A save replaces a unit whole, so its
+ * permissions and `extra` are required: an absent one would erase what is stored. */
+const staffUnitInputSchema = staffUnitSchema.extend({
+  id: z.uuid().optional(),
+  permissions: permissionLayerSchema,
+  extra: extraInputSchema,
+});
 export const saveStaffSetupRequestSchema = z.strictObject({
   setup: z.strictObject({
     departments: z.array(staffUnitInputSchema),
     positions: z.array(staffUnitInputSchema),
-    extra: extraSchema,
+    extra: extraInputSchema,
   }),
   /** The tag the setup was read at; `''` names a company that has never saved one. */
   version: tagSchema.or(z.literal('')),

@@ -28,10 +28,15 @@ export const extraIsValid = (value: unknown) =>
   isBoundedJson(value, EXTRA_MAX_DEPTH) &&
   new TextEncoder().encode(JSON.stringify(value)).length <= EXTRA_MAX_BYTES;
 
-/** `extra` as every reader takes it: a bounded JSON object, `{}` when the record or the answer
- * was written before the field existed. The input is checked as it came, since a parse that
- * copied it would drop a key named `__proto__` instead of refusing it. */
-export const extraSchema = z
-  .custom<Record<string, unknown>>(extraIsValid, 'a JSON object of at most 8 KB and 5 levels')
-  .default({});
+/** `extra` as a write request carries it: a bounded JSON object, required, so a request that leaves
+ * it out is refused and never erases the stored one. The input is checked as it came, since a parse
+ * that copied it would drop a key named `__proto__` instead of refusing it. */
+export const extraInputSchema = z.custom<Record<string, unknown>>(
+  extraIsValid,
+  'a JSON object of at most 8 KB and 5 levels',
+);
+
+/** `extra` as every reader takes it: the same object, `{}` when the record or the answer was
+ * written before the field existed. */
+export const extraSchema = extraInputSchema.default({});
 export type Extra = z.output<typeof extraSchema>;

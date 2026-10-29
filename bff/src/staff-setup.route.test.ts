@@ -78,6 +78,45 @@ describe('The staff setup saves with its tag; a department or position sent with
     expect(again.statusCode).toBe(409);
   });
 
+  it('answers 409 with the current setup, not 400, for a stale save that names a unit since removed', async () => {
+    const t = await staffTenant(cs);
+    const first = await t.setup({ departments: [unit('Sales'), unit('Shops')] });
+    const [sales, shops] = first.setup.departments;
+    // Save 1 removes Shops; save 2, made over the old version, still names it.
+    const second = await t.setup({ departments: [sales] });
+    const stale = await t.rootCall.send('PUT', '/api/staff-setup', {
+      setup: { departments: [sales, shops], positions: [], extra: {} },
+      version: first.version,
+    });
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json<{ current: unknown }>().current).toEqual(second);
+  });
+
+  it('refuses a unit or a setup that leaves out its permissions or `extra`, 400, and stores nothing', async () => {
+    const t = await staffTenant(cs);
+    const saved = await t.setup({
+      departments: [unit('Sales', { colour: 'red' })],
+      extra: { note: 'kept' },
+    });
+    const sales = saved.setup.departments[0];
+    const { permissions: _p, ...noPermissions } = sales;
+    const { extra: _e, ...noExtra } = sales;
+    const { extra: _s, ...setupNoExtra } = saved.setup;
+    for (const setup of [
+      { ...saved.setup, departments: [noPermissions] },
+      { ...saved.setup, departments: [noExtra] },
+      { ...saved.setup, positions: [{ name: 'New', extra: {} }] },
+      setupNoExtra,
+    ]) {
+      const refused = await t.rootCall.send('PUT', '/api/staff-setup', {
+        setup,
+        version: saved.version,
+      });
+      expect(refused.statusCode, JSON.stringify(setup)).toBe(400);
+    }
+    expect((await t.rootCall.get('/api/staff-setup')).json()).toEqual(saved);
+  });
+
   it('refuses a permission the catalogue lacks, a version that is no tag, and an id repeated or never saved, 400, and stores nothing', async () => {
     const t = await staffTenant(cs);
     const saved = await t.setup({ departments: [unit('Sales')] });

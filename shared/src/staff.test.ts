@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   addEmployeeRequestSchema,
+  byCode,
   employeeCodeIsValid,
   employeeSchema,
   normaliseEmployeeCode,
   passwordIsValid,
+  saveEmployeeRequestSchema,
   saveStaffSetupRequestSchema,
   setPasswordRequestSchema,
   staffSetupSchema,
@@ -29,8 +31,12 @@ describe('staff', () => {
     }
     // in any case is one code, kept in capitals
     expect(normaliseEmployeeCode(' emp-0001 ')).toBe('EMP-0001');
-    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: 'emp-1' }).success).toBe(true);
-    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: 'e' }).success).toBe(false);
+    expect(
+      addEmployeeRequestSchema.safeParse({ name: 'x', code: 'emp-1', extra: {} }).success,
+    ).toBe(true);
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: 'e', extra: {} }).success).toBe(
+      false,
+    );
   });
 
   it('The root gives a person a password, typed twice or made by the app, of at least 8 characters with a capital, a small letter, a digit and one of `@$!%*?&`', () => {
@@ -38,9 +44,26 @@ describe('staff', () => {
     for (const bad of ['Abcde1!', 'abcdef1!', 'ABCDEF1!', 'Abcdefg!', 'Abcdefg1', 'Abcdef1#']) {
       expect(passwordIsValid(bad), bad).toBe(false);
     }
+    // any printable character is allowed beside the four it needs, up to 128; no control character
+    for (const good of ['Another-1!', 'Two words 1!', 'Mật khẩu 1!', `Aa1!${'x'.repeat(124)}`]) {
+      expect(passwordIsValid(good), good).toBe(true);
+    }
+    for (const bad of ['Abcdef1!\n', 'Abc\tdef1!', 'Abcdef1!\u0000', `Aa1!${'x'.repeat(125)}`]) {
+      expect(passwordIsValid(bad), JSON.stringify(bad)).toBe(false);
+    }
     expect(setPasswordRequestSchema.safeParse({ password: 'Abcdef1!' }).success).toBe(true);
     expect(setPasswordRequestSchema.safeParse({ password: null }).success).toBe(true);
     expect(setPasswordRequestSchema.safeParse({ password: 'weak' }).success).toBe(false);
+  });
+
+  it('The staff list is in code order, by one comparison the BFF and the fake share', () => {
+    const codes = ['EMP-0010', 'A-1', 'EMP-0002', '10', 'EMP-0001'];
+    expect(
+      codes
+        .map((code) => ({ code }))
+        .sort(byCode)
+        .map((person) => person.code),
+    ).toEqual(['10', 'A-1', 'EMP-0001', 'EMP-0002', 'EMP-0010']);
   });
 
   it('A person’s id, code, name, email, department and position links, permissions and archive are typed; their phone, second phone, note and the company’s own fields are in `extra`', () => {
@@ -78,14 +101,33 @@ describe('staff', () => {
       extra: {},
     });
     // a unit saved with no id is new; one with a blank name is refused
+    const own = { permissions: {}, extra: {} };
     const save = (departments: unknown[], version = '') =>
       saveStaffSetupRequestSchema.safeParse({
         setup: { departments, positions: [], extra: {} },
         version,
       }).success;
-    expect(save([{ name: 'Mới' }])).toBe(true);
-    expect(save([{ name: ' ' }])).toBe(false);
-    expect(save([{ id: 'not-an-id', name: 'x' }])).toBe(false);
+    expect(save([{ name: 'Mới', ...own }])).toBe(true);
+    expect(save([{ name: ' ', ...own }])).toBe(false);
+    expect(save([{ id: 'not-an-id', name: 'x', ...own }])).toBe(false);
+    // a write names what it replaces: a unit with no permissions or `extra`, or a setup with no
+    // `extra`, is refused and never erases what is stored
+    expect(save([{ name: 'Mới', permissions: {} }])).toBe(false);
+    expect(save([{ name: 'Mới', extra: {} }])).toBe(false);
+    expect(
+      saveStaffSetupRequestSchema.safeParse({
+        setup: { departments: [], positions: [] },
+        version: '',
+      }).success,
+    ).toBe(false);
+    expect(
+      saveEmployeeRequestSchema.safeParse({ version: 'a'.repeat(64), name: 'x' }).success,
+    ).toBe(false);
+    expect(
+      saveEmployeeRequestSchema.safeParse({ version: 'a'.repeat(64), name: 'x', extra: {} })
+        .success,
+    ).toBe(true);
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: 'emp-1' }).success).toBe(false);
     // the version is a tag c-storage sent, or '' for a company that never saved a setup
     expect(save([], 'a'.repeat(64))).toBe(true);
     expect(save([], 'v1')).toBe(false);
