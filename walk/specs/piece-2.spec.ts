@@ -167,7 +167,7 @@ async function walk(page: Page, language: Language, width: number) {
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
-  test.describe(`piece 2, group A: the staff, on a ${device} (${width})`, () => {
+  test.describe(`piece 2, group A: the staff setup and the staff, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
     for (const [language, name] of [

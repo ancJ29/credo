@@ -1,9 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 06:53 +07:** steps 2 to 5 are ticked. The human answered group A's fake walk at
-06:53: 32 of 32 yes, no reasons, taken into `visual/answers.json` (`8a347ca`); the walks page shows none
-of A's screens waiting and no open "no". Step 6 is not ticked yet: the fake run's script waits for
-the human's terminal. **Next:** the human runs it on `8a347ca` or a later commit that changes no screen.
+**Where it stands — 2026-10-29 07:10 +07:** steps 2 to 6 are ticked: the human's 32 of 32 yes and the fake run's 96 pictures are in step 6's evidence, and group A's UI is fixed. **Next:** step 7, c-storage's list, then step 8, group A's BFF.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -605,17 +602,24 @@ itself:
   window's. *Not run here:* the walk spec itself and the script `one-off/20261029-0305-fake-run-employee-list.sh`,
   which need a browser.
 
-- [ ] **6. A's fake walk, the human's preview.** Who: 👤, after step 5, about 45 minutes, and a round
+- [x] **6. A's fake walk, the human's preview.** Who: 👤, after step 5, about 45 minutes, and a round
   for each "no". The human opens the newest walks page (and, if wanted, `pnpm fake` in a browser),
   answers each screen in each language, and pastes the block; the machine runs `pnpm answers`. A "no"
   becomes a case here, is fixed on the fake, and its screen is asked again. Last, on the commit whose
   answers are all yes, the human runs the fake run's script: its pictures are the full run's
   reference. Done when: the page shows none of A's screens waiting and no open "no"; the fake run's
   log read whole, green, its 96 pictures named. **Then stop:** A's UI is fixed here.
-  *Evidence so far:* the human, 2026-10-29 06:53 +07, "32 of 32 yes" on the page built at `920132e`,
-  no reasons; `pnpm answers` wrote 32 and refused 0; `pnpm report` read back 0 waiting, 0 asked
-  again, 0 no, 58 yes in all (the 26 earlier yeses kept). *Stopped at:* the fake run's script
-  (`one-off/20261029-0305-fake-run-employee-list.sh`), the human's, not yet run.
+  *Evidence:* the human, 2026-10-29 06:53 +07, "32 of 32 yes" on the page built at `920132e`, no
+  reasons; `pnpm answers` wrote 32 and refused 0; `pnpm report` read back 0 waiting, 0 asked again,
+  0 no, 58 yes in all (the 26 earlier yeses kept). The fake run, the human's, on `dc8aabb`,
+  2026-10-29 07:06:32 to 07:06:50 +07: `one-off/20261029-0305-fake-run-employee-list.sh`, its log
+  (`logs/fake-run-employee-list.log`, 35 lines) read whole: verdict green; Playwright ran 6 tests in
+  project `fake` (3 widths by 2 languages), 6 passed in 16.0s, none failed, skipped, flaky or
+  retried, no warning line. The 96 pictures, 6 for each of the 16 screens, the smallest 19,096
+  bytes, are in the credo root's `walks/fake-run-2026-10-29-070633-dc8aabb/`, counted on disk: the
+  reference for the full run, never bases. The spec's test title said "group A: the staff" though
+  the walk also covers the setup and office screens; it now says "the staff setup and the staff",
+  and no picture's name changes.
 
 - [ ] **7. c-storage's list.** Who: 🤖, the first free slot after step 2, since it takes nothing from
   the UI (while the human previews, for one), about three hours. Done when: row 39 seen red once (the
