@@ -14,7 +14,9 @@ export const required = (name: string) => {
 /** The pointer is parked in the corner first: a button under it is drawn hovered, and which one
  * depends on where the last click left it. `mask` paints over what differs on every run, such as
  * a password made for the walk. The `fake` project only takes the picture, into `CREDO_FAKE_DIR`:
- * its pictures are what the full run is compared with, never bases, so nothing is compared. */
+ * its pictures are what the full run is compared with, never bases, so nothing is compared. With
+ * `CREDO_REFERENCE_DIR` set (the config then points the base images at that folder) a screen that
+ * differs is a soft failure, so one walk names every screen that differs, not only the first. */
 export async function shot(
   page: Page,
   screen: string,
@@ -32,6 +34,10 @@ export async function shot(
       animations: 'disabled',
       caret: 'hide',
     });
+    return;
+  }
+  if (process.env['CREDO_REFERENCE_DIR']) {
+    await expect.soft(page).toHaveScreenshot(name, { fullPage: true, mask });
     return;
   }
   await expect(page).toHaveScreenshot(name, { fullPage: true, mask });

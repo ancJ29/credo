@@ -5,11 +5,15 @@ import { defineConfig, devices } from '@playwright/test';
  * specs name. They run against the local stack and need a browser, so they run in the human's
  * terminal: `pnpm stack -- …` brings the stack up, runs this, and takes it down. Piece 2's spec has
  * two projects of its own: `fake` runs it on `pnpm fake -- …` and takes pictures only, `full` runs
- * it on the stack and compares them. The base images
+ * it on the stack and compares them with its bases, or, with `CREDO_REFERENCE_DIR` set, with the
+ * pictures the fake run took, which is the first comparison of a full run. The base images
  * beside the specs carry the platform in their names, so they are the machine they were made on; `retries` stays 0 (QA rule 6).
  * `threshold: 0` beside `maxDiffPixels: 0`: the default tolerates a colour shift a pixel at a time,
  * so a small shift in a brand colour would pass; here it is a red.
  */
+/** The fake run's folder, when the full run is to be compared with it and not with its bases. */
+const reference = process.env['CREDO_REFERENCE_DIR'];
+
 export default defineConfig({
   testDir: 'specs',
   fullyParallel: false,
@@ -28,6 +32,13 @@ export default defineConfig({
   projects: [
     { name: 'chromium', testIgnore: 'piece-2.spec.ts' },
     { name: 'fake', testMatch: 'piece-2.spec.ts' },
-    { name: 'full', testMatch: 'piece-2.spec.ts' },
+    {
+      name: 'full',
+      testMatch: 'piece-2.spec.ts',
+      // A walk opens each of its screens on a client of its own, which the stack makes first: 17
+      // openings, beyond the default budget of 30 seconds.
+      timeout: 120_000,
+      ...(reference ? { snapshotPathTemplate: `${reference}/{arg}{ext}` } : {}),
+    },
   ],
 });

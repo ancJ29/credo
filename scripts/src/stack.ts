@@ -10,9 +10,10 @@ import { createCStorageClient } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './front';
-import { newOperatorPassword, ROOT_NAME, seedDemo } from './generator';
+import { newOperatorPassword, ROOT_NAME, seedClient, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
+import { createSeeding } from './seeding';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const UI_DIR = join(ROOT, 'ui');
@@ -44,6 +45,12 @@ export type RunningStack = {
   operatorName: string;
   /** Known to this process and to whoever it hands it to; stored nowhere readable. */
   operatorPassword: string;
+  /** The data set's people with a sign-in, each with the first password the generator made, by
+   * code. Known to this process and to whoever it hands it to; stored nowhere readable. */
+  people: Record<string, string>;
+  /** `POST` here makes another client from the data set and answers its code and passwords:
+   * the full run opens each screen on one. Loopback only, up while the stack is. */
+  seedUrl: string;
   /** The folder the stack keeps its database and logs in, removed when the stack goes down. */
   dataDir: string;
 };
@@ -108,15 +115,17 @@ export async function withStack<T>(
 
     await ensureService({ baseUrl: cStorageUrl, internalAccessKey, superAdminKey }, service);
     const operatorPassword = newOperatorPassword();
-    const { rootPassword } = await seedDemo(
-      createCStorageClient({
-        baseUrl: cStorageUrl,
-        internalAccessKey,
-        serviceCode: service.code,
-        accessKey: service.accessKey,
-      }),
-      { operatorPassword },
-    );
+    const storage = createCStorageClient({
+      baseUrl: cStorageUrl,
+      internalAccessKey,
+      serviceCode: service.code,
+      accessKey: service.accessKey,
+    });
+    const { rootPassword, people } = await seedDemo(storage, { operatorPassword });
+    let seeded = 0;
+    const seeding = createSeeding(() => seedClient(storage, `walk-${++seeded}`));
+    stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
+    const seedPort = await listening(seeding);
 
     const bffPort = await freePort();
     const bffUrl = `http://127.0.0.1:${bffPort}`;
@@ -144,6 +153,8 @@ export async function withStack<T>(
       rootPassword,
       operatorName: OPERATOR_NAME,
       operatorPassword,
+      people,
+      seedUrl: `http://127.0.0.1:${seedPort}/seed`,
       dataDir,
     });
   } finally {

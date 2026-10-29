@@ -48,6 +48,59 @@ describe('pnpm stack', () => {
     });
   });
 
+  it('The data set’s office person signs in on the demo client with the password the stack made, and is refused what their unit and position do not allow', async () => {
+    await withStack(artifacts, async (stack) => {
+      const office = await signIn(stack.url, 'EMP-0001', stack.people['EMP-0001']);
+      expect(office.status).toBe(200);
+      const { authId } = (await office.json()) as { authId: string };
+      const headers = { [CLIENT_HEADER]: stack.clientCode, 'x-auth-id': authId };
+      const list = await fetch(`${stack.url}/api/employees`, { headers });
+      expect(((await list.json()) as { employees: unknown[] }).employees).toHaveLength(8);
+      const setup = await fetch(`${stack.url}/api/staff-setup`, {
+        method: 'PUT',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'x-device-id': 'device-aaaa-0001',
+        },
+        body: json({ setup: { departments: [], positions: [], extra: {} }, version: '' }),
+      });
+      expect(setup.status).toBe(403);
+      expect((await signIn(stack.url, 'EMP-0001', 'not the password')).status).toBe(401);
+    });
+  });
+
+  it('Each POST to the stack’s seed door makes a client of its own from the data set, whose root and people sign in on it and nowhere else', async () => {
+    await withStack(artifacts, async (stack) => {
+      const seed = async () =>
+        (await (await fetch(stack.seedUrl, { method: 'POST' })).json()) as {
+          code: string;
+          rootPassword: string;
+          people: Record<string, string>;
+        };
+      const [one, two] = [await seed(), await seed()];
+
+      expect(one.code).not.toBe(two.code);
+      expect(one.code).not.toBe(stack.clientCode);
+      const on = async (code: string, name: string, password: string) =>
+        (
+          await fetch(`${stack.url}/api/auth/sign-in`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-device-id': 'device-aaaa-0001',
+              [CLIENT_HEADER]: code,
+            },
+            body: json({ name, password }),
+          })
+        ).status;
+      expect(await on(one.code, 'root', one.rootPassword)).toBe(200);
+      expect(await on(one.code, 'EMP-0005', one.people['EMP-0005'])).toBe(200);
+      expect(await on(two.code, 'EMP-0005', one.people['EMP-0005'])).toBe(401);
+      expect(await on(stack.clientCode, 'root', one.rootPassword)).toBe(401);
+    });
+  });
+
   it('The operator signs in through the front with the first password the stack made, and a wrong one is refused', async () => {
     await withStack(artifacts, async (stack) => {
       const operatorSignIn = async (password: string) => {
@@ -215,8 +268,10 @@ describe('pnpm stack -- <command>', () => {
         'CREDO_CLIENT_CODE',
         'CREDO_OPERATOR_NAME',
         'CREDO_OPERATOR_PASSWORD',
+        'CREDO_PEOPLE',
         'CREDO_ROOT_NAME',
         'CREDO_ROOT_PASSWORD',
+        'CREDO_SEED_URL',
         'CREDO_URL',
       ].join(','),
     );

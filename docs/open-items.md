@@ -130,3 +130,11 @@ misattributed; it waits for the same copy.
 with its button still loading, so a second sign-in cannot be sent. Found by the fake's cue
 (`?fake&cue=signIn:503`), which reproduces it; the fake's test stops at the unavailable page, so it
 does not hold the fix. Fix: reset the status on the retry, with a test that signs in after a retry.
+
+## 18. The stack's seed door answers any process on the machine — the machine; *parked* until a stack runs on a machine others log into (the employee list plan, step 9, 2026-10-29)
+
+`scripts/src/seeding.ts` serves `POST /seed` on loopback for as long as a stack stands, so the full
+run can open each screen on a client of its own. It asks for no key: any local process that learns
+its port can make clients on that throwaway stack, which holds only invented data and goes down with
+its command. On a shared machine, hand the command a random key in its environment and have the door
+require it, with a test that refuses a call without it.

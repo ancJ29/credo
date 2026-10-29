@@ -43,8 +43,8 @@ function watchSignals() {
   };
 }
 
-/** Runs `command` with the stack's address, the demo client's code, its root's sign-in and the
- * operator's in its environment; a signal this
+/** Runs `command` with the stack's address, the demo client's code, its root's sign-in, its
+ * people's and the operator's in its environment, and the door to more clients; a signal this
  * process catches is passed on to it. Resolves with its exit status, or 128 + the signal's number
  * when a signal ended it. */
 function runCommand(
@@ -133,6 +133,8 @@ export const runStack = (
         CREDO_ROOT_PASSWORD: stack.rootPassword,
         CREDO_OPERATOR_NAME: stack.operatorName,
         CREDO_OPERATOR_PASSWORD: stack.operatorPassword,
+        CREDO_PEOPLE: JSON.stringify(stack.people),
+        CREDO_SEED_URL: stack.seedUrl,
       }),
       waiting: (stack) => [
         `the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`,

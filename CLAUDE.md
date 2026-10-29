@@ -32,8 +32,10 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-stack)).
 - **`pnpm stack -- <command>` is one invocation: up, the command, down.** The sandbox cannot signal a
   process an earlier command started. The command gets `CREDO_URL`, `CREDO_CLIENT_CODE` (the demo
-  client's), `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME` and
-  `CREDO_OPERATOR_PASSWORD`; the stack, never the BFF, holds c-storage's super-admin key and registers
+  client's), `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME`,
+  `CREDO_OPERATOR_PASSWORD`, `CREDO_PEOPLE` (JSON: each data-set person's code to a first password) and
+  `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client
+  of its own); the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
 - **A client's own data goes in `extra`, never in a new typed field,** unless the BFF or c-storage must

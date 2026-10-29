@@ -2,14 +2,14 @@ import { type Language } from '@credo/shared';
 import { DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { shot, WIDTHS } from '../support';
+import { required, shot, WIDTHS } from '../support';
 
 /**
  * Piece 2's group A, three walks in one run: the staff setup and the staff list, the person's pages
  * and the office's, sixteen screens, each in Vietnamese and in English at the three widths
  * (16 × 2 × 3 = 96). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
- * and keeps the pictures as the full run's reference; the `full` project runs it on the stack and
- * compares them with the bases. Each screen opens at an address of its own, so a screen never meets
+ * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
+ * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
  */
 
@@ -17,21 +17,84 @@ import { shot, WIDTHS } from '../support';
  * failure the fake answers once, which the full run provokes in its own way. */
 type Opening = { path: string; as?: string; cue?: string };
 
+/** What the stack's seed door answers: a client made from the data set, with its first passwords. */
+type Seeded = { code: string; rootPassword: string; people: Record<string, string> };
+
+const FULL = () => test.info().project.name === 'full';
+
 /** The fake's handle for a data-set person, and the root's; a device keeps it in the tab. */
 const handleOf = (code?: string) =>
   code === undefined
     ? 'fake.session'
     : `fake.session.${DEMO_EMPLOYEES.find((person) => person.code === code)!.id}`;
 
+/** A client of its own, made by the stack from the data set: an add or an archive cannot be undone,
+ * so no screen opens on a client an earlier one changed. */
+async function seed(): Promise<Seeded> {
+  const reply = await fetch(required('CREDO_SEED_URL'), { method: 'POST' });
+  if (!reply.ok) throw new Error(`the stack's seed door answered ${reply.status}`);
+  return (await reply.json()) as Seeded;
+}
+
+/** The session handle the BFF gives a data-set person (the root when none), on a device of the
+ * walk's own, so a screen opens signed in without typing the sign-in. */
+async function signedIn(page: Page, client: Seeded, as?: string) {
+  const [name, password] =
+    as === undefined ? ['root', client.rootPassword] : [as, client.people[as]];
+  const reply = await page.request.post('/api/auth/sign-in', {
+    headers: { 'x-client-code': client.code, 'x-device-id': 'device-walk-seed' },
+    data: { name, password },
+  });
+  expect(reply.ok(), `${name} signs in on ${client.code}`).toBe(true);
+  return ((await reply.json()) as { authId: string }).authId;
+}
+
+/** Opens a screen. On the fake: the address with `?fake`, and the cue. On the stack: a client of
+ * its own, the language and the person's handle kept on the device, and the address as it is. */
 async function open(page: Page, language: Language, { path, as, cue }: Opening) {
+  if (!FULL()) {
+    await page.addInitScript(
+      ([chosen, handle]) => {
+        sessionStorage.setItem('credo.language', chosen);
+        sessionStorage.setItem('credo.session', handle);
+      },
+      [language, handleOf(as)],
+    );
+    await page.goto(`${path}?fake${cue ? `&cue=${cue}` : ''}`);
+    return null;
+  }
+  const client = await seed();
+  const handle = await signedIn(page, client, as);
   await page.addInitScript(
-    ([chosen, handle]) => {
-      sessionStorage.setItem('credo.language', chosen);
-      sessionStorage.setItem('credo.session', handle);
+    ([chosen, code, kept]) => {
+      localStorage.setItem('credo.language', chosen);
+      localStorage.setItem('credo.client', code);
+      localStorage.setItem('credo.session', kept);
     },
-    [language, handleOf(as)],
+    [language, client.code, handle],
   );
-  await page.goto(`${path}?fake${cue ? `&cue=${cue}` : ''}`);
+  await page.goto(path);
+  return client;
+}
+
+/** Someone else saves a data-set person first, through the real API, so the page's own save meets
+ * the BFF's 409: no stub, the refusal and its wording are the product's. The fake answers the same
+ * save with a cue. */
+async function someoneSavesFirst(page: Page, client: Seeded, code: string) {
+  const root = await signedIn(page, client);
+  const headers = { 'x-client-code': client.code, 'x-auth-id': root };
+  const listed = (await (await page.request.get('/api/employees', { headers })).json()) as {
+    employees: { id: string; code: string }[];
+  };
+  const id = listed.employees.find((person) => person.code === code)!.id;
+  const { employee, version } = (await (
+    await page.request.get(`/api/employees/${id}`, { headers })
+  ).json()) as { employee: { name: string; extra: object }; version: string };
+  const theirs = await page.request.put(`/api/employees/${id}`, {
+    headers,
+    data: { version, name: employee.name, extra: { ...employee.extra, phone: '0903 111 999' } },
+  });
+  expect(theirs.ok()).toBe(true);
 }
 
 /** A person of the data set, by name, from the list. */
@@ -125,17 +188,26 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-9-code-taken');
 
   // 10. Someone else saved first: the fake answers the save with a conflict once.
-  await open(page, language, { path: '/staff', cue: 'saveEmployee:409' });
+  const client = await open(page, language, { path: '/staff', cue: 'saveEmployee:409' });
   await personNamed(page, 'Trần Văn Hùng');
   await typed(words.person.name, 'Trần Hùng');
+  if (client) await someoneSavesFirst(page, client, 'EMP-0002');
   await press(words.person.save);
   await expect(page.getByRole('alert')).toContainText(words.person.conflict);
   await at('staff-10-save-conflict');
 
-  // 11. A save that failed: the fake answers it with a 503 once.
+  // 11. A save that failed: the fake answers it with a 503 once; on the stack the save is stubbed
+  // to a 503, as piece 1's screen 7 is.
   await open(page, language, { path: '/staff', cue: 'saveEmployee:503' });
   await personNamed(page, 'Trần Văn Hùng');
   await typed(words.person.name, 'Trần Hùng');
+  if (FULL()) {
+    await page.route('**/api/employees/*', (route) =>
+      route.request().method() === 'PUT'
+        ? route.fulfill({ status: 503, json: { error: 'Service unavailable' } })
+        : route.fallback(),
+    );
+  }
   await press(words.person.save);
   await expect(page.getByRole('alert')).toHaveText(words.person.saveFailed);
   await expect(page.getByRole('textbox', { name: words.person.name })).toHaveValue('Trần Hùng');
@@ -175,10 +247,6 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['en', 'English'],
     ] as const) {
       test(`walks all sixteen screens in ${name}`, async ({ page }) => {
-        test.skip(
-          test.info().project.name === 'full',
-          'the full run waits for the BFF and the generator (steps 8 and 9): its sign-ins and failures are theirs',
-        );
         await walk(page, language, width);
       });
     }
