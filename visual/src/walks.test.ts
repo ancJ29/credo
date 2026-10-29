@@ -119,11 +119,34 @@ describe('the walks', () => {
   it('parks the pointer before each shot and compares with no tolerance in pixels or in colour', () => {
     const support = read('support.ts');
 
-    expect(support.indexOf('await page.mouse.move(0, 0);')).toBeGreaterThan(-1);
-    expect(support.indexOf('await page.mouse.move(0, 0);')).toBeLessThan(
-      support.indexOf('await expect(page).toHaveScreenshot'),
+    // the first statement of `shot`, so the fake run's picture, the soft comparison and the hard
+    // one are each taken after it
+    expect(support).toMatch(
+      /export async function shot\([^)]*\) \{\n {2}await page\.mouse\.move\(0, 0\);\n/,
     );
     expect(read('playwright.config.ts')).toContain('maxDiffPixels: 0, threshold: 0');
+    // a missing folder for the fake run's pictures names itself and who gives it, not the stack
+    expect(support).toContain("required('CREDO_FAKE_DIR', 'the fake run’s script gives it");
+  });
+
+  it('Each piece-2 scene’s person and cue are the ones its screen opens with in the walk spec', () => {
+    const spec = read('specs/piece-2.spec.ts');
+    const body = spec.slice(spec.indexOf('async function walk('));
+    // each screen's steps, from the shot before it to its own: `await at('<id>'`
+    const parts = body.split(/await at\('([^']+)'/);
+    const openings = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2) {
+      openings.set(parts[index], parts[index - 1]);
+    }
+    const screens = WALKS.slice(2).flatMap((walk) => walk.screens);
+
+    expect([...openings.keys()]).toEqual(screens.map((screen) => screen.id));
+    for (const screen of screens) {
+      const steps = openings.get(screen.id)!;
+      const { as, cue } = screen.scene!;
+      expect(steps.includes(`as: '${as}'`), `${screen.id}: as`).toBe(as !== undefined);
+      expect(steps.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
+    }
   });
 
   it('puts piece 2’s group A in three walks, sixteen screens in all, each a scene and none from the mock', () => {

@@ -106,6 +106,8 @@ export function ClientApp({ api, device, test, look }: Props) {
   }, [api, device, linked, attempt]);
 
   const retry = () => {
+    // A sign-in that failed on the service left its status busy: the form it returns to is idle.
+    setSignIn('idle');
     setDoc(null);
     setPhase('loading');
     setAttempt((n) => n + 1);

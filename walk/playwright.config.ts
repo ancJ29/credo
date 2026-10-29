@@ -35,7 +35,7 @@ export default defineConfig({
     {
       name: 'full',
       testMatch: 'piece-2.spec.ts',
-      // A walk opens each of its screens on a client of its own, which the stack makes first: 17
+      // A walk opens each of its screens on a client of its own, which the stack makes first: 15
       // openings, beyond the default budget of 30 seconds.
       timeout: 120_000,
       ...(reference ? { snapshotPathTemplate: `${reference}/{arg}{ext}` } : {}),

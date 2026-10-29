@@ -1,6 +1,8 @@
 import {
+  byCode,
   type Employee,
   type EmployeeDoc,
+  layersOf,
   normaliseEmployeeCode,
   normaliseSignInName,
   resolvePermissions,
@@ -83,16 +85,16 @@ export function createFakeApi({ device, cue }: Options): Api {
 
   /** What a staff member may do, resolved as the BFF resolves it: department, position, person. */
   const staffUser = (person: Employee): UserView => {
-    const layer = (units: StaffSetup['departments'], link: Employee['department']) =>
-      units.find((unit) => unit.id === link?.id)?.permissions ?? {};
     return {
       name: person.name,
       root: false,
-      permissions: resolvePermissions([
-        layer(setup.departments, person.department),
-        layer(setup.positions, person.position),
-        person.permissions,
-      ]),
+      permissions: resolvePermissions(
+        layersOf(setup, {
+          departmentId: person.department?.id,
+          positionId: person.position?.id,
+          own: person.permissions,
+        }),
+      ),
     };
   };
   /** Who the device's handle names, the root when it names none of the data set's people. */
@@ -211,7 +213,9 @@ export function createFakeApi({ device, cue }: Options): Api {
       ),
 
     listEmployees: () =>
-      call('listEmployees', () => [...people.values()].map((found) => structuredClone(found))),
+      call('listEmployees', () =>
+        [...people.values()].map((found) => structuredClone(found)).sort(byCode),
+      ),
 
     getEmployee: (id) => call('getEmployee', () => docOf(person(id))),
 

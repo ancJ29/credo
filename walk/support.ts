@@ -5,9 +5,9 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 /** The widths the visual report draws a screen at; every walk shoots the same three. */
 export const WIDTHS = { pc: 1280, tablet: 768, phone: 390 } as const;
 
-export const required = (name: string) => {
+export const required = (name: string, how = 'run this through `pnpm stack -- …`') => {
   const value = process.env[name];
-  if (!value) throw new Error(`${name} is not set: run this through \`pnpm stack -- …\``);
+  if (!value) throw new Error(`${name} is not set: ${how}`);
   return value;
 };
 
@@ -28,7 +28,10 @@ export async function shot(
   const name = `${screen}-${language}-${width}.png`;
   if (test.info().project.name === 'fake') {
     await page.screenshot({
-      path: join(required('CREDO_FAKE_DIR'), name),
+      path: join(
+        required('CREDO_FAKE_DIR', 'the fake run’s script gives it the folder for the pictures'),
+        name,
+      ),
       fullPage: true,
       mask,
       animations: 'disabled',

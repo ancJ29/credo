@@ -1,6 +1,7 @@
 import {
   can,
   differences,
+  layersOf,
   type EmployeeDoc,
   type PermissionLayer,
   passwordIsValid,
@@ -199,9 +200,9 @@ function PersonForm({
   const [department, setDepartment] = useState(employee.department?.id ?? '');
   const [position, setPosition] = useState(employee.position?.id ?? '');
   const [own, setOwn] = useState<PermissionLayer>(employee.permissions);
-  const layerOf = (units: StaffSetup['departments'], id: string) =>
-    units.find((unit) => unit.id === id)?.permissions ?? {};
-  const below = [layerOf(setup.departments, department), layerOf(setup.positions, position)];
+  // What a permission left alone would give: the layers as chosen on the form, with no layer of
+  // their own (an empty one adds nothing).
+  const below = layersOf(setup, { departmentId: department, positionId: position, own: {} });
 
   const submit = (event: FormEvent) => {
     event.preventDefault();

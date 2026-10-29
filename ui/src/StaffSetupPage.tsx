@@ -20,7 +20,8 @@ type Outcome = 'saved' | 'failed' | 'refused' | 'conflict' | null;
 const draftOf = (units: StaffSetup['departments'], from: number): Draft[] =>
   units.map((unit, index) => ({ ...unit, key: from + index }));
 
-/** A department stores what it allows, so a permission left unchecked is not stored at all. */
+/** A department stores what it allows, so a permission left unchecked, or loaded as `false`, is not
+ * stored at all: the one place that is done. */
 const stored = (draft: Draft, kind: 'departments' | 'positions') => ({
   ...(draft.id ? { id: draft.id } : {}),
   name: draft.name,

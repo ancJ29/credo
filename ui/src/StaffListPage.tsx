@@ -13,7 +13,7 @@ const NOTHING_YET: { setup: StaffSetup; people: Employee[] } = {
   people: [],
 };
 
-/** The staff, in code order, with who left hidden until the filter shows them. Names come from the
+/** The staff, as the BFF lists them, in code order, with who left hidden until the filter shows them. Names come from the
  * staff setup as it stands, so a rename follows each person. */
 export function StaffListPage(page: PageProps) {
   const { api, user } = page;
@@ -26,9 +26,8 @@ export function StaffListPage(page: PageProps) {
   const [showLeft, setShowLeft] = useState(false);
 
   const { setup, people: everyone } = loaded.data ?? NOTHING_YET;
-  const people = everyone
-    .filter((person) => showLeft || !person.archived)
-    .sort((a, b) => a.code.localeCompare(b.code));
+  // In the order the BFF answers, which is code order.
+  const people = everyone.filter((person) => showLeft || !person.archived);
 
   return (
     <Stack gap="lg">

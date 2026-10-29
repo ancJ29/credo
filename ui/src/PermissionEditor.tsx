@@ -11,7 +11,8 @@ import { PERMISSION_LABEL } from './permissionLabels';
 type Props = {
   layer: PermissionLayer;
   onChange: (layer: PermissionLayer) => void;
-  /** `allow`: a department stores what it allows. `each`: a position or a person may also refuse,
+  /** `allow`: a department stores what it allows (the setup page drops an unchecked one when it
+   * saves, whatever it was loaded or edited as). `each`: a position or a person may also refuse,
    * and what they leave alone follows the level above. */
   mode: 'allow' | 'each';
   /** The layers beneath this one, to say what leaving a permission alone gives. */
@@ -38,9 +39,7 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
             key={id}
             label={t(PERMISSION_LABEL[id])}
             checked={layer[id] === true}
-            onChange={(event) =>
-              onChange(withValue(layer, id, event.currentTarget.checked || undefined))
-            }
+            onChange={(event) => onChange(withValue(layer, id, event.currentTarget.checked))}
           />
         ) : (
           <Group key={id} justify="space-between" wrap="wrap">

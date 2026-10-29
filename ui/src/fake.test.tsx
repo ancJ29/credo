@@ -240,6 +240,17 @@ describe('the fake Api’s staff', () => {
     expect((await stranger.me()).user.root).toBe(true);
   });
 
+  it('The fake lists the staff in code order, as the BFF does, a person added later among the rest', async () => {
+    const api = fake('', { client: 'fake.session' });
+    await api.addEmployee({ name: 'Đầu', code: 'a-1', extra: {} });
+    await api.addEmployee({ name: 'Giữa', code: 'emp-00005', extra: {} });
+
+    const codes = (await api.listEmployees()).map((person) => person.code);
+
+    expect(codes.slice(0, 3)).toEqual(['A-1', 'EMP-00005', 'EMP-0001']);
+    expect(codes).toEqual([...codes].sort((a, b) => (a < b ? -1 : 1)));
+  });
+
   it('Only the root’s add gives a department, a position and a first password; a code is taken in any case, those who left too', async () => {
     const held = { client: `fake.session.${lan?.id}` };
     const api = fake('', held);
@@ -298,21 +309,23 @@ describe('the cue', () => {
       });
     }
 
+    // Each 409 is awaited under `resolves`, so a call that throws instead fails on the assertion.
     const api = fake('saveConfig:409');
-    expect(await api.saveConfig(DEMO_CONFIG, 'v1')).toEqual({ kind: 'conflict' });
-    expect((await api.saveConfig(DEMO_CONFIG, 'v1')).kind).toBe('saved');
+    await expect(api.saveConfig(DEMO_CONFIG, 'v1')).resolves.toEqual({ kind: 'conflict' });
+    await expect(api.saveConfig(DEMO_CONFIG, 'v1')).resolves.toMatchObject({ kind: 'saved' });
 
     const clients = fake('makeClient:409');
-    expect(await clients.makeClient('another-one', 'x')).toEqual({ kind: 'taken' });
-    expect((await clients.makeClient('another-one', 'x')).kind).toBe('made');
+    await expect(clients.makeClient('another-one', 'x')).resolves.toEqual({ kind: 'taken' });
+    await expect(clients.makeClient('another-one', 'x')).resolves.toMatchObject({ kind: 'made' });
 
     for (const call of ['saveStaffSetup', 'addEmployee', 'saveEmployee', 'archiveEmployee']) {
       const cued = fake(`${call}:409`) as unknown as Record<
         string,
         (...args: unknown[]) => Promise<unknown>
       >;
-      const answer = (await cued[call]?.('x', 'x')) as { kind: string };
-      expect(answer.kind, call).toBe(call === 'addEmployee' ? 'taken' : 'conflict');
+      await expect(cued[call]?.('x', 'x'), call).resolves.toMatchObject({
+        kind: call === 'addEmployee' ? 'taken' : 'conflict',
+      });
     }
 
     const other = fake('signIn:409');
@@ -374,5 +387,19 @@ describe('?fake', () => {
       DICTIONARIES.en.common.unavailable,
     );
     expect(device.authId()).toBeNull();
+  });
+
+  it('A sign-in that failed on the service can be sent again after "Try again", and signs in', async () => {
+    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }));
+    drawApp(<App api={api} device={device} test />);
+
+    await signInAs();
+    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const button = await screen.findByRole('button', { name: 'Sign In' });
+    expect(button.hasAttribute('disabled')).toBe(false);
+    await signInAs();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Settings' })).toBeTruthy();
+    expect(device.authId()).toBe('fake.session');
   });
 });

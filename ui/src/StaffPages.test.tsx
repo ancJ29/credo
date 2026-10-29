@@ -374,8 +374,34 @@ describe('a person’s page', () => {
     expect((await api.getEmployee(person('EMP-0004').id)).employee.permissions).toEqual({
       'staff.canDelete': true,
     });
-    // what is theirs shows as theirs, and the position's refusal beats the department's allowance
+    // what is theirs shows as theirs: archiving only, the one that differs from the levels above
     expect(screen.getAllByText('Custom')).toHaveLength(1);
+  });
+
+  it('A position’s refusal beats its department’s allowance on the person’s page, and the root’s Allow over it is stored as the person’s own', async () => {
+    const { api } = open('EMP-0007');
+    await screen.findByRole('heading', { level: 2, name: 'Bùi Ngọc Anh' });
+
+    // the office allows changing a person's details and the trainee position refuses it
+    await userEvent.selectOptions(screen.getByLabelText('Department'), 'Văn phòng');
+    await userEvent.selectOptions(screen.getByLabelText('Position'), 'Thực tập');
+
+    const label = 'Change a person’s name and details';
+    const row = screen.getByText(label).parentElement as HTMLElement;
+    expect(within(row).getByText('As the level above: Refused')).toBeTruthy();
+    expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(2);
+    await userEvent.click(
+      within(screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` })).getByText(
+        'Allow',
+      ),
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    // what the levels above refuse, the person's Allow differs from, so it is stored
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect((await api.getEmployee(person('EMP-0007').id)).employee.permissions).toEqual({
+      'staff.canEdit': true,
+    });
   });
 
   it('The root moves a person to another department and position and changes their note, and the change is theirs on the list', async () => {

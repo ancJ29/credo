@@ -142,6 +142,40 @@ describe('the staff setup page', () => {
     ]);
   });
 
+  it('A department loaded holding a stored `false` is saved without it, and a position keeps its refusals', async () => {
+    const { api } = openApp('/staff-setup', {
+      override: (spied, original) => {
+        spied.getStaffSetup.mockImplementation(async () => {
+          const doc = await original.getStaffSetup();
+          const [first, ...rest] = doc.setup.departments;
+          if (!first) throw new Error('the data set holds a department');
+          return {
+            ...doc,
+            setup: {
+              ...doc.setup,
+              departments: [
+                { ...first, permissions: { 'staff.canView': true, 'staff.canDelete': false } },
+                ...rest,
+              ],
+            },
+          };
+        });
+      },
+    });
+    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    const saved = vi.mocked(api.saveStaffSetup).mock.calls[0]?.[0];
+    expect(saved?.departments[0]?.permissions).toEqual({ 'staff.canView': true });
+    expect(saved?.positions.map((unit) => unit.permissions)).toEqual([
+      { 'staff.canDelete': true },
+      {},
+      { 'staff.canEdit': false },
+    ]);
+  });
+
   it('A save the BFF refuses as it is says so and keeps what was typed; with every position removed the page says none yet', async () => {
     openApp('/staff-setup', {
       override: (api) => {
