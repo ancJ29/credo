@@ -134,3 +134,13 @@ door's `Host` header is never checked, so a name that resolves to 127.0.0.1 reac
 shared machine, hand the command a random key in its environment and have the door require it, and
 refuse a `Host` that is not the loopback address and its port, with a test for each that refuses
 a call without it.
+
+## 23. A scripts test depends on how fast a child starts, and the gate's coverage goes red under load — the machine; *parked* until the scripts package is next touched (the employee list plan, step 14, 2026-10-29)
+
+`scripts/src/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
+gives `waitUntilUp` 200 ms, and the child must log "listening" inside them. In a whole `pnpm check`,
+where every package's tests run at once, the child sometimes starts later: the loop then ends before
+it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package's coverage reads
+99.68 % and fails. Run alone, the package reads 100 % each time. The test passes either way; the gate
+fails. Make the test wait for the child's log line before it starts the clock (a longer timeout would
+only hide the cause).

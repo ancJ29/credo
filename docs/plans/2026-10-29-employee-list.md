@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 12:48 +07:** group A is done (steps 2 to 11); group B's steps 12 and 13 are done: its pages are on the fake, the human's fake walk answered all 40 asked screens yes (0 waiting, 0 asked again, 0 no, 72 yes) and the fake run's 138 pictures of all 23 screens are taken. **Next:** step 14, B's back end.
+**Where it stands — 2026-10-29 13:12 +07:** group A is done (steps 2 to 11); group B's steps 12 to 14 are done: its pages on the fake, the human's fake walk (all yes) and the fake run's 138 pictures, and now its back end (the numbering, the code change, the photo, `settings.canEdit`, T4's random generation, the generator's B data). **Next:** step 15, B's review by another model.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -115,7 +115,7 @@ Every key is built by `recordKeys` in `shared/src/records.ts`, under the tenant'
 | Record | Holds | Written by |
 | --- | --- | --- |
 | `tenant.<id>.employee.<employee id>` | the code, the name, the email, the department and the position as `{id, name}`, the person's own permissions, whether archived, `extra` | an add, last, `If-None-Match: *`; a change, an archive, a new code or email, each with its tag |
-| `tenant.<id>.user.<sign-in name>` | piece 1's sign-in record: the password's hash (none until one is given), the person's id, the time of the last password | an add or a new code, first, `If-None-Match: *` (or over a stale one with its tag); a password, with its tag |
+| `tenant.<id>.user.<sign-in name>` | piece 1's sign-in record: the password's hash (none until one is given), the person's id, the time of the last password | an add or a new code, first, `If-None-Match: *` (or over a stale one with its tag); a password, with its tag. It also holds when it was claimed or last given a password (a failed add's age) and a random generation, minted at each, which a session copies |
 | `tenant.<id>.staff-setup` | the departments and positions (each an id, a name, permissions and `extra`), the field switches, the company's own fields, the numbering, the QR switch, `extra` | the staff setup page's save, with its tag |
 | `tenant.<id>.session.<session id>` | piece 1's session, plus the device id and when it was issued | a sign-in, `If-None-Match: *` on a fresh id; a renewal, with its tag |
 | `tenant.<id>.employee-photo.<employee id>` (group B) | one square image of at most 50 KB | a photo saved, with its tag |
@@ -928,7 +928,7 @@ itself:
   The folder `walks/fake-run-2026-10-29-124630-6f370cf/` holds 138 `.png`, 6 for each of the 23
   screens, every name `<screen>-<vi|en>-<1280|768|390>.png`: the reference for the full run, never
   bases. The two red runs before it (12:15, 12:36) are the two fix passes above.
-- [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
+- [x] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
   writes `passwordAt: now()`, and a session's equality with it could match an old session once a code
@@ -941,6 +941,45 @@ itself:
   `GET` of a photo answers `{photo, version}` with `null` and `''` for none, never a 404, and `PUT`
   answers the same, a 409 for a moved version; a staff setup save carries `fields`, `customFields` and
   `numbering`, which the BFF drops today.
+  *Evidence, 2026-10-29 13:11 +07 (commit `d9d01b9`):* the BFF half of rows 18, 20, 21, 22, 24 and 45,
+  and T4's fix, each seen red once from its assertion, by changing the rule's line and putting it back
+  (30 changes, all red): the add's code optional; a setup save dropping what it leaves out or what it
+  sends; the number counted from nothing, one try only, a store failure swallowed as a lost race, a
+  short list counted; the code route open to others, a person who left allowed, the version unchecked,
+  the old sign-in kept, the password not carried, the new name not given back when the person moves
+  (and a claim another took over not left alone), a sign-in record not the person's; the photo's two
+  checks swapped, a save for no one, a save over no version, a conflict with no current, a bad record
+  served; `PUT /api/config` unchecked and root-only; a password keeping the generation, an add's or a
+  code change's claim with no random generation. Two changes were green and got a test: a sign-in
+  record not the person's in the code route, and a bad stored photo (it threw by accident). T4 first:
+  the test (a code freed by a code change, claimed again in the same instant, the old session must be a
+  401) was red at the clock's `passwordAt` and green once the generation is random. Tests:
+  `bff/src/employee-code.route.test.ts`, `employee-photo.route.test.ts`, and additions to
+  `staff-setup.route.test.ts`, `config.route.test.ts`, `employees.route.test.ts`; in `shared`, `staff`,
+  `photo` and `records` tests; `scripts/src/generator.test.ts` (the setup's three parts and the photo
+  on its person). The whole `pnpm check` exit 0 at 100 % in every package, no warning (shared 74 tests,
+  ui 236, bff 185, scripts 76, visual 219; knip silent); the first whole run failed on open item 23,
+  a scripts test that depends on a child's start-up time and passes alone at 100 %, and the second was
+  green. c-storage did not change, so `make check` was not run. `pnpm report` reads 0 waiting, 0 asked
+  again, 0 no, 72 yes. *The 23 scenes dumped (words and DOM, Mantine's ids and UUIDs masked) at
+  `6f370cf` and at the end:* equal in both languages, bar the same transient attribute Mantine sets
+  while its shell resizes (`data-resizing`, on 3 of 46): `ui/` was not touched.
+  *Choices:* the shared add request's `code` is optional (a request, so no default at a wire boundary
+  was owed); a save that leaves out `fields`, `customFields` or `numbering` keeps the stored ones, so
+  a caller that predates them erases nothing; a numbered code is counted by the BFF past every person
+  in the list (a list longer than c-storage returns is a 500), claimed as a sign-in, and a lost number
+  takes the next, three times, then 503; a code change claims the new sign-in name carrying the
+  password's hash, writes the person with their tag, then removes the old record, answering 409 with
+  the person for a moved version or a person who left and 409 with none for a taken code; a person who
+  moves in between gives the claim back; the photo is `employee-photo.<id>` (`{photo}`, its tag the
+  version), read with `staff.canView` and saved with `staff.canEdit`, a 409 carrying the photo as it
+  is; `PUT /api/config` takes `settings.canEdit` (the root holds it); the sign-in record gained a
+  random `generation` and the session copies it in place of `passwordAt` (kept as the claim's age), so
+  a session of the older shape stops resolving once, as step 8 priced; the generator sends the
+  setup's three parts and the data set's photo. *Accepted:* a password given in the instant before a
+  code change removes the old sign-in record is lost with it (the root sees it fail and gives another).
+  *Logged:* open item 23. The step's own run on the stack was not made, since the generator's test and
+  the route tests meet the real c-storage.
 - [ ] **15. B's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
