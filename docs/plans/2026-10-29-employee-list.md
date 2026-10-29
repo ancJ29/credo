@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 12:11 +07:** group A is done (steps 2 to 11); group B's steps 12 and 13 are done: its pages are on the fake (with a fix pass for open items 19 to 22), and the human's fake walk answered all 40 asked screens yes, so the walks page reads 0 waiting, 0 asked again, 0 no, 72 yes. **Next:** the human's fake run of B (the pictures of all 23 screens, as step 6), then step 14, B's back end.
+**Where it stands — 2026-10-29 12:48 +07:** group A is done (steps 2 to 11); group B's steps 12 and 13 are done: its pages are on the fake, the human's fake walk answered all 40 asked screens yes (0 waiting, 0 asked again, 0 no, 72 yes) and the fake run's 138 pictures of all 23 screens are taken. **Next:** step 14, B's back end.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -884,7 +884,7 @@ itself:
   The whole `pnpm check` exit 0, no warning, 100 % in every package (shared 71 tests, ui 236, bff
   152, scripts 75, visual 219). No walk screen shows a right granted without seeing, so none shows
   the new line; the walk spec was not run (it needs a browser).
-- [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
+- [x] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
   *Answers, 2026-10-29 12:11:* the human previewed the walks page built at `a218234` and pasted 41 lines, every one
   "yes": B's 14 answers and A's 26 asked again, plus `admin-setup:1-sign-in:vi`, a screen of piece 1
@@ -919,6 +919,15 @@ itself:
   Hùng; the search box still holds the text); every other action is followed by an assertion that
   waits, except the link to a person's page, which now waits for that person's heading (5 people, both
   languages seen). No screen changed.
+  *The fake run, the human's third, on `6f370cf`, 2026-10-29 12:46:30 to 12:47:01 +07:*
+  `one-off/20261029-1205-fake-run-employee-list-b.sh`, its log
+  (`logs/20261029-1205-fake-run-employee-list-b.log`, 38 lines) read whole by another agent: the
+  check "employee-list at 6f370cf, clean"; "138 pictures, 138 expected", the smallest 19,096 bytes;
+  Playwright 6 passed in 28.8s, [fake] pc, tablet and phone by Vietnamese and English, 4.4 to 5.0 s
+  each; no warning, error, retry, flaky, timeout or skip; no secret and no address but `127.0.0.1`.
+  The folder `walks/fake-run-2026-10-29-124630-6f370cf/` holds 138 `.png`, 6 for each of the 23
+  screens, every name `<screen>-<vi|en>-<1280|768|390>.png`: the reference for the full run, never
+  bases. The two red runs before it (12:15, 12:36) are the two fix passes above.
 - [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
