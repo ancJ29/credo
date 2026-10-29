@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 07:14 +07:** steps 2 to 7 are ticked: group A's UI is fixed and walked on the fake (step 6), and c-storage lists records under a prefix (step 7), with its client method and Bruno requests. **Next:** step 8, group A's BFF, which reads the list for the staff.
+**Where it stands — 2026-10-29 07:47 +07:** steps 2 to 8 are ticked: group A's UI is fixed and walked on the fake, c-storage lists records under a prefix, and the BFF serves group A's staff setup, people, passwords, archive and sessions with every permission checked on the server. **Next:** step 9, the generator, the stack and the full run's script.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -652,7 +652,7 @@ itself:
   (`visual/src/cli.test.ts`) counted answers still waiting, so group A's 32 yeses turned it red;
   it now counts the sixteen scenes' thirty-two states whatever the answers hold, and the generator's
   in-memory storage gained the list method the type now needs.
-- [ ] **8. A's BFF.** Who: 🤖, after step 6 (the contract as the preview fixed it) and step 7 (the
+- [x] **8. A's BFF.** Who: 🤖, after step 6 (the contract as the preview fixed it) and step 7 (the
   list), about a day and a half. The staff setup's, employees' and password's routes, the permission
   check on every route, the sessions. Done when: rows 36 to 38, 40, 41, 43 and 44 and the BFF half of
   rows 1 to 16 each seen red once; `pnpm check` green at 100 %; seen live on the stack,
@@ -661,6 +661,36 @@ itself:
   a 401; open item 10 deleted. *Model files:* `bff/src/app.ts` (the tenant, the session check),
   `bff/src/clients.ts` (writes that must find nothing, the index last), `bff/src/sessions.ts`,
   `bff/src/config.route.test.ts` and `bff/tests/tenant.ts`.
+  *Evidence:* the BFF half of rows 1 to 4, 6 to 12, 14 to 16, 32, 36 to 38, 40, 41, 43 and 44 each seen
+  red once, from its assertion, by changing the rule's line and putting it back (27 changes in all,
+  26 red): the session refused after a new password, a person who left or a sign-in their person does
+  not name back; a sign-in ending the kept handle; the layers' order; the root's answer; each route's
+  permission check removed (list, add, change, archive) and each root-only rule (the setup, the
+  password, a unit on an add, a unit or permissions on a change); the list's `more` ignored and its
+  sort; the root's own sign-in taken over as a failed add's; a save, an archive or a password written
+  without its tag; an id the setup never held accepted; a typed password ignored; a password made for
+  someone who may not give one; a made password with no symbol. The one change left green: the staff
+  setup's early version check, which the tag on the write already holds, so it only orders a 409 before
+  a 400. Tests: `bff/src/staff-setup.route.test.ts`, `employees.route.test.ts`, `auth.route.test.ts`,
+  `operator.route.test.ts` (the route list held exact, now with the staff routes), `password.test.ts`.
+  *Found by the tests, fixed:* an add of the code `root` took over the root's sign-in as a failed add's,
+  and a position's id passed as a department's. *Live,* `pnpm stack -- node <script>`: the root saved a
+  department allowing the list, added a person in it, the person signed in, read the list, was refused
+  an add and the setup's save (403), the root archived them, and their next call and a new sign-in were
+  401; open item 10 is deleted. The whole `pnpm check` green once, at 100 %, no warning.
+  *Choices:* sessions are keyed by a minted id, the handle is `<session id>.<secret>`, and the record
+  holds the device and the time it was issued; a sign-in ends only the handle the app sends with it
+  (naming a device ends nothing), and operator sessions follow the same module; a session issued before
+  the sign-in record's last password time is refused (`passwordAt`, strictly before: a session in the
+  same millisecond stands), and a record in the old shape stops resolving once, as the plan priced; the
+  sign-in record gained `employeeId` and `passwordAt` and a null password, defaulted when read, and holds
+  no password until the root gives one; a company with no saved setup reads as an empty one at version
+  `''`, which the first save names (`If-None-Match: *`), so no tenant needs a record written; a 409 on a
+  person, an archive or the setup carries the current one (`null` if gone); the staff list answers every
+  person, those who left too, in code order, and the UI filters; the root's `permissions` answer is the
+  resolver's, all true, where piece 1's was `{}`; a field turned in a wire contract: none (the request
+  schemas' `version` is now a tag, `''` for a first setup), so no default at a wire boundary was owed.
+  The UI's code-change, email and QR routes, the generator and the full walk are later steps.
 - [ ] **9. The generator, the stack and the full run's script.** Who: 🤖, after step 8, about three
   hours. The generator writes the data set through the BFF's functions, and a client for each full
   run; the full run's one script in `one-off/` runs piece 1's spec, the operator's and piece 2's:
