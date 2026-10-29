@@ -394,23 +394,24 @@ describe('The root gives a person a password, typed twice or made by the app, of
     expect((await me(t, again.body.authId)).statusCode).toBe(200);
   });
 
-  it('refuses a session issued in the very millisecond of the new password, the clock not moved, and one issued at an earlier generation', async () => {
+  it('refuses a session issued at an earlier generation, whatever the clock reads: each new password is a new random generation', async () => {
     const t = await staffTenant(cs);
     const reply = await added(t.rootCall, { code: 'EMP-1' });
     const id = reply.employee.employee.id;
     const generation = async () =>
-      storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data).passwordAt;
+      storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data).generation;
     const first = await signIn(t.app, { name: 'EMP-1', password: reply.password as string });
-    // The session holds the sign-in record's generation, a copy and not a time of its own.
+    // The session holds a copy of the sign-in record's generation, and no time of its own.
     const held = await t.client.getRecord(t.keys.session(first.body.authId.split('.')[0]));
-    expect(held?.data).toMatchObject({ passwordAt: await generation() });
+    expect(held?.data).toMatchObject({ generation: await generation() });
 
     const before = await generation();
     await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass1!' });
-    expect(await generation()).toBeGreaterThan(before);
+    expect(await generation()).not.toBe(before);
+    expect(await generation()).toMatch(/^[0-9a-f-]{36}$/);
     expect((await me(t, first.body.authId)).statusCode).toBe(401);
 
-    // Each new password is a new generation, the clock still where it was.
+    // The clock has not moved: each new password is still a new generation.
     const second = await signIn(t.app, { name: 'EMP-1', password: 'TypedPass1!' });
     expect((await me(t, second.body.authId)).statusCode).toBe(200);
     await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass2!' });

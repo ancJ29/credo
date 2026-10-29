@@ -7,6 +7,8 @@ import {
   recordKeys,
   storedClientSchema,
   storedOperatorSchema,
+  storedSessionSchema,
+  storedUserSchema,
 } from './records';
 
 describe('the record keys', () => {
@@ -19,6 +21,9 @@ describe('the record keys', () => {
     expect(tenant.employee('p1')).toBe(`tenant.${id}.employee.p1`);
     expect(tenant.employee('p1').startsWith(tenant.employeePrefix)).toBe(true);
     expect(tenant.staffSetup).toBe(`tenant.${id}.staff-setup`);
+    expect(tenant.employeePhoto('p1')).toBe(`tenant.${id}.employee-photo.p1`);
+    // a photo is never found by the staff list
+    expect(tenant.employeePhoto('p1').startsWith(tenant.employeePrefix)).toBe(false);
     expect(recordKeys.client('acme')).toBe('client.acme');
     const other = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000002');
     expect(other.config).not.toBe(tenant.config);
@@ -54,6 +59,18 @@ describe('the index and the operator’s account', () => {
     expect(storedClientSchema.safeParse({ id: 'acme', name: 'Acme' }).success).toBe(false);
     expect(storedOperatorSchema.safeParse({ passwordHash: 'h' }).success).toBe(true);
     expect(storedOperatorSchema.safeParse({ passwordHash: 'h', root: true }).success).toBe(false);
+  });
+});
+
+describe('a sign-in record and a session', () => {
+  it('A session is refused once its generation differs from the sign-in record’s: a record that predates the generation reads as none, and a session holds one', () => {
+    const user = { passwordHash: null, root: false };
+    expect(storedUserSchema.parse(user)).toMatchObject({ generation: '', passwordAt: 0 });
+    expect(storedUserSchema.parse({ ...user, generation: 'g1' }).generation).toBe('g1');
+    const session = { secretHash: 'h', user: 'root', expiresAt: 1, device: 'device-0001' };
+    expect(storedSessionSchema.safeParse({ ...session, generation: '' }).success).toBe(true);
+    // a session of the old shape, which held a time and no generation, stops resolving
+    expect(storedSessionSchema.safeParse({ ...session, passwordAt: 0 }).success).toBe(false);
   });
 });
 

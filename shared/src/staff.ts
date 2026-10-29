@@ -62,10 +62,10 @@ export const employeeListReplySchema = z.strictObject({ employees: z.array(emplo
 export type EmployeeListReply = z.infer<typeof employeeListReplySchema>;
 
 /** Adding a person. Only the root's add carries a department and a position, and gets a first
- * password back. */
+ * password back. A code left out is numbered by the BFF. */
 export const addEmployeeRequestSchema = z.strictObject({
   name: nameSchema,
-  code: z.string().refine(employeeCodeIsValid, 'a code'),
+  code: z.string().refine(employeeCodeIsValid, 'a code').optional(),
   extra: extraInputSchema,
   departmentId: z.uuid().nullable().optional(),
   positionId: z.uuid().nullable().optional(),

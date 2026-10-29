@@ -50,6 +50,7 @@ export async function createClient(
     root: true,
     employeeId: null,
     passwordAt: 0,
+    generation: '',
   };
   await createRecord(storage, keys.config, config);
   await createRecord(storage, keys.user(ROOT_NAME), root);

@@ -31,3 +31,7 @@ export const savePhotoRequestSchema = z.strictObject({
   version: tagSchema.or(z.literal('')),
 });
 export type SavePhotoRequest = z.infer<typeof savePhotoRequestSchema>;
+
+/** What the record of a person's photo holds. */
+export const storedPhotoSchema = z.strictObject({ photo: photoSchema });
+export type StoredPhoto = z.infer<typeof storedPhotoSchema>;

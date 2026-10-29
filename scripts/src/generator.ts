@@ -21,6 +21,7 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -86,6 +87,9 @@ export async function seedClient(storage: CStorageClient, code: string): Promise
     setup: {
       departments: DEMO_STAFF_SETUP.departments.map(withoutIds),
       positions: DEMO_STAFF_SETUP.positions.map(withoutIds),
+      fields: DEMO_STAFF_SETUP.fields,
+      customFields: DEMO_STAFF_SETUP.customFields,
+      numbering: DEMO_STAFF_SETUP.numbering,
       extra: DEMO_STAFF_SETUP.extra,
     },
     version: read.version,
@@ -117,6 +121,10 @@ export async function seedClient(storage: CStorageClient, code: string): Promise
         extra: person.extra,
         permissions: person.permissions,
       });
+    }
+    const photo = DEMO_PHOTOS[person.id];
+    if (photo) {
+      await call('PUT', employeeRoutes.photo(doc.employee.id), root, { photo, version: '' });
     }
     if (person.archived) {
       await call<EmployeeDoc>('POST', employeeRoutes.archive(doc.employee.id), root, {

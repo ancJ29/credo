@@ -423,7 +423,9 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '└── /api/employees (GET, HEAD, POST)',
         '    └── /:id (GET, HEAD, PUT)',
         '        ├── /archive (POST)',
-        '        └── /password (PUT)',
+        '        ├── /password (PUT)',
+        '        ├── /photo (GET, HEAD, PUT)',
+        '        └── /code (PUT)',
       ].join('\n')}\n`,
     );
   });

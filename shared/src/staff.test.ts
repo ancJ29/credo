@@ -41,6 +41,14 @@ describe('staff', () => {
     );
   });
 
+  it('A code left empty is the next number: an add may leave the code out, and a code sent is still checked', () => {
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', extra: {} }).success).toBe(true);
+    expect(addEmployeeRequestSchema.parse({ name: 'x', extra: {} })).not.toHaveProperty('code');
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: '', extra: {} }).success).toBe(
+      false,
+    );
+  });
+
   it('The root gives a person a password, typed twice or made by the app, of at least 8 characters with a capital, a small letter, a digit and one of `@$!%*?&`', () => {
     expect(passwordIsValid('Abcdef1!')).toBe(true);
     for (const bad of ['Abcde1!', 'abcdef1!', 'ABCDEF1!', 'Abcdefg!', 'Abcdefg1', 'Abcdef1#']) {

@@ -19,6 +19,9 @@ export const recordKeys = {
     /** What the staff list reads: every person's key starts with it. */
     employeePrefix: `tenant.${id}.employee.`,
     staffSetup: `tenant.${id}.staff-setup`,
+    /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
+     * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
+    employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,
   }),
 } as const;
 
@@ -54,8 +57,13 @@ export const storedUserSchema = z.strictObject({
   /** The person this sign-in belongs to: null for the root. A sign-in is live only while that
    * person's record names it back. */
   employeeId: z.uuid().nullable().default(null),
-  /** When the password last changed: a session issued before it is refused. */
+  /** When the record was claimed or its password last changed: the age of a claim, which a failed
+   * add's takeover waits for. Never compared with a session. */
   passwordAt: z.number().default(0),
+  /** A random value minted at every claim and every password: a session holds a copy, and is
+   * refused once it differs. No clock is in it, so a freed code claimed again never matches an
+   * old session; `''` for a record that predates it. */
+  generation: z.string().default(''),
 });
 export type StoredUser = z.infer<typeof storedUserSchema>;
 
@@ -67,8 +75,8 @@ export const storedSessionSchema = z.strictObject({
   expiresAt: z.number(),
   /** The device it was issued to. */
   device: z.string(),
-  /** The sign-in record's `passwordAt` when this session was issued: a generation, equal to the
-   * record's while no password has been given since. The operator's, which has no such record, is 0. */
-  passwordAt: z.number(),
+  /** The sign-in record's `generation` when this session was issued, equal to the record's while no
+   * claim or password has come since. The operator's, which has no such record, is `''`. */
+  generation: z.string(),
 });
 export type StoredSession = z.infer<typeof storedSessionSchema>;

@@ -124,7 +124,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const session =
       typeof handle === 'string' ? await sessionsOf(request.tenantId).resolve(handle) : null;
     const found = session ? await readSignIn(storage, request.tenantId, session.user) : null;
-    if (!session || !found || session.passwordAt !== found.user.passwordAt) throw unauthorized();
+    if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
     const view = await viewOf(request.tenantId, session.user, found.user);
     if (!view) throw unauthorized();
     return view;
@@ -188,7 +188,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   });
 
   app.put(ROUTES.config, forClient, async (request, reply) => {
-    mustBeRoot(await signedIn(request));
+    mustCan(await signedIn(request), 'settings.canEdit');
     const body = parse(saveConfigRequestSchema, request.body);
     const key = recordKeys.tenant(request.tenantId).config;
     const result = await storage.putRecord(key, body.config, body.version);
@@ -216,7 +216,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     if (!user || !view) throw new HttpError(401, 'Wrong name or password');
     const sessions = sessionsOf(request.tenantId);
     await endKept(request, sessions);
-    const { authId, expiresAt } = await sessions.issue(device, name, user.passwordAt);
+    const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
     return { authId, expiresAt, user: userViewOf(view) };
   });
 
@@ -237,7 +237,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const operator = await checked(await readOperator(name), body.password);
     if (!operator) throw new HttpError(401, 'Wrong name or password');
     await endKept(request, operatorSessions);
-    const { authId, expiresAt } = await operatorSessions.issue(device, name, 0);
+    const { authId, expiresAt } = await operatorSessions.issue(device, name, '');
     return { authId, expiresAt, operator: { name } };
   });
 
