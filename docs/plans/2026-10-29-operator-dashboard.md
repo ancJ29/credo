@@ -1,9 +1,9 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 05:50 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+**Where it stands — 2026-10-30 05:58 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
 built (step 8), the full run's script is written (step 9), the review's six findings are fixed
-(step 10) and the full walk is green with the operator's 54 bases committed (step 11). **Next:**
-step 12, the recap ([steps](#steps)).
+(step 10), the full walk is green with the operator's 54 bases committed (step 11) and the recap is
+written (step 12). **Next:** step 13, after piece 2's merge into `main` ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -502,8 +502,12 @@ worktree; B to D will touch more of the same:
   projects name a suffix of their own, and `git grep` finds no other reader of the folder. `pnpm report` at `8016373`, 05:48 +07,
   exit 0, no warning, built the walks page in `2026-10-30-054835-801637369`: `0 waiting, 0 asked
   again, 0 no, 68 yes`. **Then stop.**
-- [ ] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
+- [x] **12. The recap.** Who: 🤖, after step 11, about an hour. Done when: the recap written, with
   the review's findings tagged, and the hazard of reverting past this piece on ridge repeated.
+  *Evidence:* 05:58 +07. [The recap](../recaps/2026-10-30-operator-dashboard.md) holds step 10's six
+  findings and its two gaps, each tagged `[FIXED]` (none rejected or deferred in the record), the
+  four rejected options with their prices, what remains (steps 13 to 15), and the revert hazard
+  repeated in its last paragraph. Prettier clean; no local path or name in either file.
 - [ ] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
   the full run's script, about 20 minutes. Done when: this branch rebased onto that `main`, each
   conflict kept both sides; `pnpm check` green at 100 %, no act warning (`f8c85e6`'s rule); the full
