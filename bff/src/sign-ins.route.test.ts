@@ -734,6 +734,21 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     expect(await t.client.getRecord(t.keys.signInQr(orphan.id))).not.toBeNull();
   });
 
+  it('C: A code is refused when the sign-in record under its person’s code names another person who holds that code too, and stays unspent', async () => {
+    const t = await qrTenant();
+    const lan = await person(t, { code: 'EMP-0002', name: 'Lan' });
+    const code = await issued(t, lan.id);
+    // The root gave Lan's old code to Bao while the code was being opened; written directly, the
+    // record under the code names Bao, who holds it.
+    await seedEmployee(t.client, t.id, { code: 'EMP-0002', name: 'Bao' });
+
+    const opened = await openQr(t, lan.id, code.secret);
+
+    expect(opened.statusCode).toBe(401);
+    expect(opened.json()).not.toHaveProperty('authId');
+    expect(await t.client.getRecord(t.keys.signInQr(lan.id))).not.toBeNull();
+  });
+
   it('C: A person with no password yet is signed in by a QR code all the same', async () => {
     const t = await qrTenant();
     const fresh = await seedEmployee(t.client, t.id, { code: 'NEW-1', password: null });

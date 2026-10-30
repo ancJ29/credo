@@ -295,7 +295,9 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const name = normaliseSignInName(person.employee.code);
     const found = await readSignIn(storage, tenantId, name);
     const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
-    if (!found || !view) throw unauthorized();
+    // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
+    // one, now another's.
+    if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
     if (
       (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
       'moved'

@@ -285,6 +285,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       } catch (error) {
         // Taken (409) or maybe a running add's (503): the next number may be free.
         if (!(error instanceof HttpError)) throw error;
+        // A code taken meanwhile is one the call's list does not hold: the next try lists again.
+        if (error.status === 409 && listed) listed.codes = null;
       }
     }
     throw new HttpError(503, 'Service unavailable');
@@ -350,9 +352,16 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       await claimSignIn(tenantId, normaliseSignInName(code), claim);
     }
     // The person is written last: the list finds them as soon as they are there.
-    if (
-      (await storage.putRecord(recordKeys.tenant(tenantId).employee(id), person, null)) === 'moved'
-    ) {
+    let written: 'saved' | 'moved';
+    try {
+      written = await storage.putRecord(recordKeys.tenant(tenantId).employee(id), person, null);
+    } catch (error) {
+      // The write may have landed while its answer was lost or came late: the person is there, or
+      // the failure stands. Adding again would add a second person.
+      if (!(await readEmployee(storage, tenantId, id))) throw error;
+      written = 'saved';
+    }
+    if (written === 'moved') {
       throw new CStorageError(412, 'a record already sat under a fresh id');
     }
     listed?.codes?.push(person.code);
