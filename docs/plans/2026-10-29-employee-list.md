@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 11:40 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape outside the reviewed commit; the fix pass, with the human's two decisions (18a, the email switch gates the sign-in by email; 19a, a row the system was busy on is its own result), is done at `02d2f64`: `pnpm check` exit 0 at 100 %, `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Next:** the reviewer re-checks the fix pass, and only then is step 20 ticked; step 25, the review of D, follows in a fresh session. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack.
+**Where it stands — 2026-10-30 13:04 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape; its fix pass (`02d2f64`) was re-checked, and the re-check's N1, N2 and two Info items are fixed (`60bf2d5`, `0d67295`). Step 25's review of D found D1 to D7, all fixed in the same commits, plus a race in the template test (`b0a1150`). The whole `pnpm check` is exit 0 at 100 % (shared 86, bff 265, ui 325, scripts 76, visual 223); `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. The human kept D1's and D4's words (Decide 23 a). **Next:** a re-check of the two fix passes (the reviewers), and only then are steps 20 and 25 ticked; step 21, C's full walk, follows. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1226,6 +1226,21 @@ itself:
     start; `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. c-storage did not change, so
     `make check` was not run. The first whole run failed on lint alone (two unused names and a needless
     assertion), fixed in `02d2f64`.
+  - *Re-check, read 11:5x, then its fix pass, 2026-10-30 13:04 +07 (commits `60bf2d5`, `0d67295`, `b0a1150`);
+    each item seen red from its assertion, then green:*
+  - N1 `[FIXED]` (`60bf2d5`) the R1 interference in `bff/src/sign-ins.route.test.ts` runs right after the
+    person write, not inside the removal; red under a fresh `readEmailClaim` before `dropEmail`:
+    `AssertionError: expected null not to be null`, 1 of 46.
+  - N2 `[FIXED]` (`60bf2d5`) the removal loop in `bff/src/staff.ts` leaves the record when
+    `again.user.passwordHash === mine.user.passwordHash` (a claim copies the hash; a password given
+    writes a fresh salted one). New test in `bff/src/employee-code.route.test.ts`, "leaves the old record
+    alone when the change back has claimed it but not yet written the person, as the first change removes
+    it"; red on the old code `expected null not to be null`; sign-ins plus employee-code 83/83 after.
+  - Info 1 `[FIXED]` (`0d67295`) the fake's `setEmail` answers 403 while the email switch is off; red
+    `expected 'answered' to be 403`.
+  - Info 2 `[FIXED]` (`60bf2d5`) the QR opening reads the setup and the person once and hands them to
+    `viewOf`; test "A QR code opened reads the client, the code, the person, the setup and the sign-in, and
+    no record twice"; red at 7 reads `expected … to have a length of 5 but got 7`.
 - [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
 
@@ -1332,6 +1347,52 @@ itself:
   *Seen on the way:* the take-over hazard in the risks (a later writer of people that
   skips the add) is not met: the import is the add.
 - [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
+  *Review of D read 2026-10-30 (Opus, on `1a48a6a`): D1 to D7. Fix pass 2026-10-30 13:04 +07, each seen red
+  from its assertion or its mutation; not ticked until the re-check of this fix pass:*
+  - D1 `[FIXED]` (`0d67295`) `ImportPage` keeps the answered results across calls, shows the done view for
+    them, offers only "Add the rest (N)", and a call-level failure shows `failedPart`; red under `held.map`
+    for `held.slice(answered.length)`: "Unable to find … 150 people were added."; with the `setAnswered` line
+    removed, 7 tests red.
+  - D2 `[FIXED]` (`0d67295`) a refused row before the busy one, and a busy row in the second call of 150;
+    red under `rows![at]` and under `held[at % IMPORT_CALL_ROWS]`, each "Unable to find … Người 105".
+  - D3 `[FIXED]` (`60bf2d5`) the staff list is read once a call, at the first numbered row (a hand add still
+    re-lists on every try); test "lists the people once for a call…"; red under `=` for `??=`:
+    `expected 3 to be 1`. Measured on 100 numbered rows over 500 people (a temporary test, deleted); compare
+    the call count first, since the load differed between runs:
+
+    | | c-storage calls | wall (two runs) | CPU (two runs) |
+    | --- | --- | --- | --- |
+    | before (`1a48a6a`) | 704 | 2059 ms, 804 ms | 726 ms, 544 ms |
+    | after | 405 | 184 ms, 246 ms | 162 ms, 188 ms |
+
+  - D4 `[FIXED]` (`0d67295`) `doneInvalid` has its own words; the preview parses each row with
+    `addEmployeeRequestSchema`, a new problem kind `row`; red when invalid rows count as taken, and
+    when `problems.push({ kind: 'row' })` is dropped: "Unable to find … 1 of 2 rows will be added".
+  - D5 `[FIXED]` (`60bf2d5`) the import answers `added` with the person `addPerson` wrote; the add route
+    alone keeps its read-back; test: the store failing a read after the write; red with an added `mustFind`:
+    `expected [ 'refused', 'refused' ] to deeply equal [ 'added', 'added' ]`.
+  - D6 `[FIXED]` (`60bf2d5`) a test frees EMP-0001 by a code change, imports two rows with no code and
+    expects 0002 and 0003 (the old test now holds only a typed code earlier in the same call); red with
+    `given` removed from `nextCode`: `expected [ 'EMP-0001', 'EMP-0002' ] to deeply equal [ 'EMP-0002', 'EMP-0003' ]`.
+  - D7 `[FIXED]` (`60bf2d5`) `importEmployeesRequestSchema`, its type and its two tests deleted.
+  - *Finding, a flaky red:* the whole check at 12:38 (load 6.99) failed in `ui` on `ImportPage.test.tsx`,
+    "The app gives a template in Vietnamese or English…", `expected [] to have a length of 1 but got +0`.
+    The test asserted the saved file right after the click, before the lazily loaded libraries had loaded:
+    a defect of the test, not load. Fixed in `b0a1150` by `await waitFor(() => expect(saved).toHaveLength(1))`;
+    held by a mutation: a 300 ms delay after the lazy `import()` in `writeWorkbook` turns the old assertion
+    red with that message and leaves the new one green; the delay was removed, and the file ran green three
+    times. A second whole run, at 12:42 (`logs/20261030-1242-employee-list-fix-pass-check.log`), failed on
+    `StaffRecord.test.tsx` "The editor refuses fields it cannot take…", `Test timed out in 5000ms`, at a load
+    of 15.55 with another agent testing beside it; logged under open item 27.
+  - *Screens:* `pnpm report` before the fix pass (`walks/2026-10-30-123313-60bf2d518`) and after the UI
+    change (`walks/2026-10-30-123726-60bf2d518-changes`): all 92 screen-language entries (46 screens in en
+    and vi) equal in words and fingerprints; 0 waiting, 0 asked again, 0 no, 92 yes. The new words show on
+    no walked screen; `walk/` is untouched.
+  - *Words:* the human answered Decide 23 (a), 2026-10-30 12:4x: D1's and D4's words (`import.failed`,
+    `failedPart`, `addRest`, `doneInvalid`, `refusedRow`) kept as written in en and vi.
+  - *Gates:* the whole `pnpm check` exit 0 (`logs/20261030-1258-employee-list-fix-pass-check-2.log`, load
+    4.85 at its start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 265,
+    ui 325, scripts 76, visual 223; knip silent). c-storage did not change, so `make check` was not run.
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.

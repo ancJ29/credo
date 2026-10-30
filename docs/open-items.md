@@ -172,6 +172,14 @@ To look into: why `window is not defined` appears after a timeout, and whether a
 render still running once the environment is torn down). qa.md rule 6 reads these as defects; a longer timeout or a retry is no fix,
 and no test is changed here.
 
+Seen again in the fix pass of step 20 (2026-10-30), two more reds. At 12:38 the whole check's `ui` run failed on `ImportPage.test.tsx`,
+"The app gives a template in Vietnamese or English…", `expected [] to have a length of 1 but got +0`: not load but a real defect of the
+test, which asserted the saved file before the lazily loaded libraries had loaded; fixed in `b0a1150` (it waits), seen red under a
+300 ms delay in the load. At 12:42 the whole check (`logs/20261030-1242-employee-list-fix-pass-check.log`) failed again on
+`ui/src/StaffRecord.test.tsx#L301`, "The editor refuses fields it cannot take and says so…", `Test timed out in 5000ms` (5139 ms; the
+file took 32079 ms): the load was 4.58 at the start and 15.55 at the end, with a second agent testing in another worktree, and the
+`scripts` package was killed by that first failure. This is the same test as in run 2 above; it is load, and still unexplained.
+
 ## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
 
 Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
