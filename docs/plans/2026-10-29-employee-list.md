@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 09:48 +07:** groups A, B, C and D are all in `employee-list` on the fake: steps 2 to 17 and 22 are done, and group D's branch is merged beside C's (the staff list holds C's screens 17 and 18 and D's 19 to 22, 33 screens in all, 66 pairs). `pnpm check` exits 0 with every package at 100 % and no warning; the chunk-size limit stays 1000 because C's `NODE_ENV=production` in the scripts' tests already keeps the build under it. `pnpm report` reads 20 waiting (C's 6 screens and D's 4, in two languages), 10 asked again (the setup page's 2 screens and the staff list's 3, in two languages), 0 no, 62 yes. **Next:** steps 18 and 23, the human's fake walk of the merged page, then stop; the back ends (19, 24) wait on it.
+**Where it stands — 2026-10-30 10:11 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2. The human's preview answered 30 of 30 yes; 28 are recorded, and `staff-18-qr` (vi, en) was refused as stale because its QR link carried a random secret (fixed in `22b61e7`, the fake now counts its secrets and a test draws each scene twice). `pnpm report` reads 2 waiting (`staff-18-qr`), 0 asked again, 0 no, 90 yes. **Next:** the human answers `staff-18-qr` again on the rebuilt page, then ticks 18 and 23; the back ends (19, 24) follow.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1105,6 +1105,17 @@ itself:
   `setup-1` and `setup-2`, both languages), 0 no, 68 yes.
 - [ ] **18. C's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 29
   screens. **Then stop.**
+  *Evidence so far, 2026-10-30 10:11 +07 (steps 18 and 23 are one preview of the merged page, 33
+  screens in two languages):* the human answered yes to all 30 waiting and asked-again lines, at
+  09:5x on `walks/2026-10-30-094934-378e5d2fb`, plain mode. `pnpm answers` wrote 28 and refused 2:
+  `admin-staff:staff-18-qr` in vi and en, as stale, since the QR link in its words carried a secret
+  the fake minted at random on every build. Fixed in `22b61e7` (the fake counts its secrets; a test
+  draws every scene twice and compares its words); `staff-18-qr` is asked again, and no other screen's
+  fingerprint moved between the two builds. By group, written: C's `setup-1-departments-positions`,
+  `setup-2-fields` (vi, en), `staff-17-email`, `office-6-password`, `office-7-password-wrong`,
+  `phone-1-signed-in`, `phone-2-code-used`; D's `staff-1-list`, `staff-8-left`, `staff-14-search`,
+  `staff-19-import`, `staff-20-preview`, `staff-21-imported`, `staff-22-no-name`. The page now reads
+  2 waiting, 0 asked again, 0 no, 90 yes. Step 18's "all 29" is stale; the merged page holds 33.
 - [ ] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR
   code's issue and spend, one's own password, the QR switch. Done when: as step 14, for C's rows.
 - [ ] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
@@ -1171,6 +1182,8 @@ itself:
   later one on `bff`'s bundle test at its 5 s; each passed alone and in the next whole run, at the same code, and neither is read as a verdict.
 - [ ] **23. D's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 33
   screens. **Then stop.**
+  *Evidence so far, 2026-10-30 10:11 +07:* as step 18's, which holds the one preview of both groups:
+  D's 4 screens and the 3 staff-list screens are answered yes; nothing of D waits.
 - [ ] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
   Done when: as step 14, for D's rows.
 - [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
