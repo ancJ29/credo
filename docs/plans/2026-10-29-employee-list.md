@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 10:52 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`: the email's record and the sign-in by it, the QR code's issue and spend, one's own password; c-storage did not change. `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Next:** step 20, C's review by another model, and step 24, D's back end, each in a fresh session.
+**Where it stands — 2026-10-30 11:08 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`: the import route, each row through the add, without a sign-in; c-storage did not change. `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Open for the human:** what a call that fails on a row should answer (step 24's *Choice*). **Next:** steps 20 and 25, the reviews of C and D by another model, each in a fresh session.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1221,8 +1221,35 @@ itself:
   screens. **Then stop.**
   *Evidence, 2026-10-30 10:17 +07:* as step 18's, which holds the one preview of both groups:
   D's 4 screens and the 3 staff-list screens are answered yes; nothing of D waits.
-- [ ] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
+- [x] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
   Done when: as step 14, for D's rows.
+  *Evidence, 2026-10-30 11:08 +07 (commit `e5e33ff`):* the BFF half of rows 30, 31 and 48, each seen red
+  once from its assertion, by changing the rule's line and putting it back (12 changes, all red): the
+  root check made the add's permission (a person who may add got 200); a first password given to an
+  imported person; a taken code and an invalid row with their reasons swapped; a 400 of the add not
+  kept as a result; every failure kept as a result (the 503 tests); a bad row failing the whole call;
+  a setup with no units; the results out of order; the call's body not read (5 answers 200); in `shared`,
+  the call's bound and its element type. Model: `bff/src/employee-code.route.test.ts` and the add in
+  `bff/src/staff.ts`, whose body is now `addPerson`, called by the add (with a password for the root)
+  and by the import (without). Tests: `bff/src/employee-import.route.test.ts` (new, 10), a line in
+  `operator.route.test.ts`'s route list (red first on `/import`), one in `shared/src/import.test.ts`.
+  The new route answers `{results}` as the fake does: `added` with the person, `refused` `taken` for a
+  409 (a code taken in the company, or by an earlier row of the call) and `invalid` for a 400 (a unit the
+  setup lacks, a code or name that is no good, a row that is no add); only the root, checked on the
+  server (403 to a person who may add, 401 unsigned); rows go one after another, so a row with no code
+  is numbered past the row before it and never a freed number. `pnpm check` exit 0, no warning, 100 % in
+  every package (shared 87 tests, bff 254, ui 317, scripts 76, visual 223; knip silent), the load 3.9
+  at its start. c-storage and the UI did not change; no screen's words changed.
+  *Choice, for the human's word:* a call is not one transaction. A row that fails other than by
+  409 or 400 (a claim that may be a running add's, 503; the store down) ends the call with that
+  answer: the rows before it stay added, none after is tried, and no result is sent, so the page says
+  the send failed. A retry of the same file then meets the added rows with a code as `taken`, and
+  adds a second person for each row with no code. *Recommended:* a new reason `busy` in
+  `importResultSchema`, a row that failed that way answered as that result and the call carried on,
+  so one answer always holds one result per row (the page counts it as refused already, so no screen
+  changes); the page's wording for it is the human's. Held now by two tests (503 by a claim, 503 by
+  the store). *Seen on the way:* the take-over hazard in the risks (a later writer of people that
+  skips the add) is not met: the import is the add.
 - [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
