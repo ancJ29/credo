@@ -254,7 +254,6 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   useEffect(() => saveOnly(only), [only]);
   const [view, setView] = useState<View>({ language: LANGUAGES[0], show: 'pc' });
   const [listOpen, setListOpen] = useState(false);
-  const [asked, setAsked] = useState(0);
   const [notice, setNotice] = useState<Notice>({ text: '' });
   const setNote = (text: string) => setNotice({ text });
   const [undo, setUndo] = useState<{
@@ -296,11 +295,6 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
   /** A partner's bulk answers wait for a label, as Share does: their record is read by it. */
   const bulkOff = partner && !LABEL.test(normalizeLabel(label));
   const key = answerKey(place.walk.id, place.screen.id, view.language);
-  const reason = useRef('');
-  reason.current = `${key}:reason`;
-  useEffect(() => {
-    if (asked > 0) document.getElementById(reason.current)?.focus();
-  }, [asked]);
 
   const choose: Choose = (at, choice) => {
     setChoices((before) => ({ ...before, [at]: choice }));
@@ -418,10 +412,7 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
         j: () => step(1),
         k: () => step(-1),
         y: () => choose(key, { ...mine, answer: 'yes' }),
-        n: () => {
-          choose(key, { ...mine, answer: 'no' });
-          setAsked((count) => count + 1);
-        },
+        n: () => choose(key, { ...mine, answer: 'no' }),
         l: () => setView((before) => ({ ...before, language: otherLanguage(before.language) })),
         u: goNext,
       };
@@ -554,7 +545,6 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
                   choices={choices}
                   choose={choose}
                   whose={whose}
-                  onNo={() => setAsked((count) => count + 1)}
                   onBoth={() => apply(yesTo([place], choices, whose), `${bothCount} answered Yes`)}
                   bothCount={bothCount}
                   bothOff={bulkOff}

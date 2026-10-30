@@ -153,7 +153,6 @@ function Panel({
   otherMark,
   both,
   onChange,
-  onNo,
   onShow,
 }: {
   screen: ReportScreen;
@@ -166,7 +165,6 @@ function Panel({
   /** "Yes for both languages": how many it would answer, and the press. */
   both: { count: number; onBoth: () => void; off: boolean };
   onChange: (choice: Choice) => void;
-  onNo: () => void;
   onShow: (language: Language) => void;
 }) {
   const other = LANGUAGES.find((one) => one !== language)!;
@@ -186,10 +184,7 @@ function Panel({
                 className="w-hide"
                 name={name}
                 checked={choice.answer === value}
-                onChange={() => {
-                  onChange({ ...choice, answer: value });
-                  if (value === 'no') onNo();
-                }}
+                onChange={() => onChange({ ...choice, answer: value })}
               />
               <span className="w-face">
                 {value === 'yes' ? <Check /> : <Cross />}
@@ -198,6 +193,10 @@ function Panel({
             </label>
           ))}
         </div>
+        {/* The box opens without taking the focus; this tells a screen reader it is there. */}
+        <p className="w-sr" aria-live="polite">
+          {lacksReason ? 'A reason for the No is needed: the box is below.' : ''}
+        </p>
         {choice.answer === 'no' && (
           <div className="w-reason">
             <label htmlFor={`${name}:reason`}>Reason for the No</label>
@@ -301,7 +300,6 @@ export function ScreenCard({
   choices,
   choose,
   whose = HUMAN,
-  onNo,
   onBoth,
   bothCount,
   bothOff,
@@ -314,7 +312,6 @@ export function ScreenCard({
   choices: Choices;
   choose: Choose;
   whose?: Whose;
-  onNo: () => void;
   onBoth: () => void;
   bothCount: number;
   bothOff: boolean;
@@ -362,7 +359,6 @@ export function ScreenCard({
             )}
             both={{ count: bothCount, onBoth, off: bothOff }}
             onChange={(choice) => choose(key, choice)}
-            onNo={onNo}
             onShow={onShow}
           />
           <div className="w-stage">

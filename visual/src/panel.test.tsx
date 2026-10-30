@@ -130,7 +130,7 @@ describe('one action stands out', () => {
     render(<Page report={await make()} />);
 
     expect(action()).toBe('answer');
-    expect(css).toMatch(/\.w-walk\[data-action='answer'\] \.w-big \.w-face \{[^}]*var\(--teal\)/);
+    expect(css).toMatch(/\.w-walk\[data-action='answer'\] \.w-big \.w-face \{[^}]*var\(--blue\)/);
   });
 
   it('is the reason box after a No, until a reason is typed, and then Next unanswered', async () => {
@@ -138,13 +138,35 @@ describe('one action stands out', () => {
 
     fireEvent.click(screen.getByLabelText('No'));
     expect(action()).toBe('reason');
-    expect(document.activeElement).toBe(screen.getByLabelText('Reason for the No'));
+    expect(screen.getByLabelText('Reason for the No')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Reason for the No'), {
       target: { value: 'too small' },
     });
 
     expect(action()).toBe('next');
     expect(css).toMatch(/\.w-walk\[data-action='next'\] \.w-moves \.w-next:not\(:disabled\)/);
+  });
+
+  it('opens the reason box after a No, by a click or by N, and leaves the focus where it was', async () => {
+    render(<Page report={await make()} />);
+    const reason = () => screen.queryByLabelText('Reason for the No');
+    expect(reason()).toBeNull();
+
+    screen.getByLabelText('Yes').focus();
+    fireEvent.click(screen.getByLabelText('No'));
+    expect(reason()).toBeTruthy();
+    expect(document.activeElement).not.toBe(reason());
+    expect(screen.getByText('A reason for the No is needed: the box is below.')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Yes'));
+    expect(reason()).toBeNull();
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.keyDown(document.body, { key: 'n' });
+    expect(reason()).toBeTruthy();
+    expect(document.activeElement).not.toBe(reason());
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document.body, { key: 'y' });
+    expect(reason()).toBeNull();
   });
 
   it('is Next unanswered, naming where it goes, once answered', async () => {
