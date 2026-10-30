@@ -285,7 +285,7 @@ describe('the import page', () => {
     await screen.findByText('2 people were added.');
   });
 
-  it('A send that ends after the root pressed Choose another file is read against the rows it sent: the busy row is named by its place in the file sent', async () => {
+  it('A press on Choose another file while a send runs leaves the file held on screen, and the results are read against the rows sent', async () => {
     const send = pendingSend((row) => row.name === 'Hai');
     openApp('/staff/import', { override: send.override });
     await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }]));
@@ -294,8 +294,10 @@ describe('the import page', () => {
 
     // A disabled button takes no click; the click is sent so that an enabled one would be pressed.
     fireEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
-    send.answer(0);
 
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(4);
+    expect(screen.queryByLabelText(/^Excel file/)).toBeNull();
+    send.answer(0);
     expect(await screen.findByText('2 people were added.')).toBeTruthy();
     const busy = within(screen.getByRole('table'));
     expect(busy.getByText('Hai')).toBeTruthy();
