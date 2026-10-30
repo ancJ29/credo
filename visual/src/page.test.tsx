@@ -780,7 +780,9 @@ describe('the walks page: its layout', () => {
     const dark = rule(":root[data-theme='dark']");
     for (const block of [rule(':root'), dark]) {
       expect(ratio(value(block, '--on-blue'), value(block, '--blue'))).toBeGreaterThanOrEqual(4.5);
-      expect(ratio(value(block, '--blue'), value(block, '--blue-soft'))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(value(block, '--blue'), value(block, '--blue-soft'))).toBeGreaterThanOrEqual(
+        4.5,
+      );
       expect(ratio(value(block, '--blue'), value(block, '--sheet'))).toBeGreaterThanOrEqual(4.5);
     }
     expect(rule('.w-seg input:checked + .w-face')).toContain('background: var(--blue)');
