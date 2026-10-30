@@ -16,7 +16,7 @@ describe.each(['en', 'vi'] as const)('the operator’s screens 5 to 7, in %s', (
     open('/operator/clients');
 
     expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
-    expect(screen.getByRole('cell', { name: 'Bình An' })).toBeTruthy();
+    expect(await screen.findByRole('cell', { name: 'Bình An' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: words.nav.menu })).toBeTruthy();
     expect(screen.queryByText('minh-phat')).toBeNull();
     expect(screen.getAllByRole('row')).toHaveLength(1 + 3);
