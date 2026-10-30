@@ -171,3 +171,12 @@ sign-in on…" and `StaffRecord.test.tsx` "The editor refuses fields it cannot t
 To look into: why `window is not defined` appears after a timeout, and whether a test outlives its jsdom (a timer, a fetch or a
 render still running once the environment is torn down). qa.md rule 6 reads these as defects; a longer timeout or a retry is no fix,
 and no test is changed here.
+
+## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
+
+Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
+one's own password route answer every try, and each wrong one costs the guesser one hashing. On ridge the stage's throttle
+(10 a second) is the only brake. The review accepted that for ridge. A client's own stack has no such stage. The fix is one piece
+for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
+after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
+the first client's own stack.
