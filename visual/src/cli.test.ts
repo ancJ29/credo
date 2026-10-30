@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { makeRoot } from '../tests/repo';
+import { yesTo } from './bulk';
+import { blockOf, shareOf } from './choices';
 import { answer, parseArgs, report } from './cli';
+import { HUMAN } from './marks';
+import { placesOf } from './nav';
+import type { Report } from './report';
 
 describe('pnpm report', () => {
   it('builds the page from the repository it runs in, with the screens drawn on a DOM of its own, and says where and what waits', async () => {
@@ -200,6 +205,40 @@ describe('pnpm answers', () => {
     expect(await answer(paste, (line) => plain.push(line), { file: mine, now: NOW })).toBe(1);
     expect(readFileSync(mine, 'utf8')).toBe('{}');
     expect(plain.at(-1)).toBe('0 written to answers.json, 1 refused');
+  });
+
+  it('takes a block made by “Yes to all” with plain pnpm answers, and a Share message made by it with --partners', async () => {
+    const { worktree } = makeRoot();
+    const folder = await report(worktree, () => {});
+    const built = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report;
+    for (const walk of built.walks) {
+      for (const screen of walk.screens) {
+        for (const language of ['vi', 'en'] as const) {
+          screen.languages[language].shown = { kind: 'waiting' };
+        }
+      }
+    }
+    const { next, count } = yesTo(placesOf(built), {}, HUMAN);
+    expect(count).toBe(92);
+    const mine = FILE();
+    writeFileSync(mine, '{}');
+    const theirs = FILE();
+    writeFileSync(theirs, '{}');
+
+    expect(await answer(blockOf(built, next).text, () => {}, { file: mine, now: NOW })).toBe(0);
+    expect(
+      await answer(shareOf(built, next, 'p1').text, () => {}, {
+        file: theirs,
+        now: NOW,
+        partners: true,
+      }),
+    ).toBe(0);
+
+    const human = Object.keys(JSON.parse(readFileSync(mine, 'utf8')) as object);
+    expect(human).toHaveLength(92);
+    expect(Object.keys(JSON.parse(readFileSync(theirs, 'utf8')) as object)).toEqual(
+      human.map((key) => `${key}@p1`),
+    );
   });
 
   it('stops on an answers file that does not parse, and puts the process back', async () => {
