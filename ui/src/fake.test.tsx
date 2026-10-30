@@ -525,6 +525,28 @@ describe('the fake Api’s import', () => {
   });
 });
 
+describe('the fake Api’s import, a row the system is busy on', () => {
+  it('A row whose add fails with a 503 is its own result, busy, and the call goes on to the next row; any other failure fails the call', async () => {
+    const api = fake('addEmployee:503', { client: 'fake.session' });
+    const reply = await api.importEmployees([
+      { name: 'Một', code: 'nv-1', extra: {} },
+      { name: 'Hai', code: 'nv-2', extra: {} },
+    ]);
+
+    expect(reply.results.map((result) => (result.kind === 'added' ? 'added' : result.reason))).toEqual([
+      'busy',
+      'added',
+    ]);
+    expect((await api.listEmployees()).map((person) => person.code)).toEqual(
+      expect.arrayContaining(['NV-2']),
+    );
+    expect((await api.listEmployees()).map((person) => person.code)).not.toContain('NV-1');
+
+    const forbidden = fake('addEmployee:403', { client: 'fake.session' });
+    expect(await status(forbidden.importEmployees([{ name: 'Một', extra: {} }]))).toBe(403);
+  });
+});
+
 describe('the fake Api’s record and list', () => {
   const [, hung, chau, , , , , left] = DEMO_EMPLOYEES;
 

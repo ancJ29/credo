@@ -103,7 +103,11 @@ function ImportForm({
   const [problem, setProblem] = useState<FileProblem | null>(null);
   const [rows, setRows] = useState<ReadRow[] | null>(null);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
-  const [done, setDone] = useState<{ added: number; refused: number } | null>(null);
+  const [done, setDone] = useState<{
+    added: number;
+    refused: number;
+    busy: ReadRow[];
+  } | null>(null);
 
   const held = rows?.filter((row) => row.request !== null) ?? [];
 
@@ -142,8 +146,12 @@ function ImportForm({
       return setStatus('failed');
     }
     setStatus('idle');
+    // One result for each row sent, in the order sent: a row's place is its place among those held.
+    const busy = results.flatMap((result, at) =>
+      result.kind === 'refused' && result.reason === 'busy' ? [held[at]!] : [],
+    );
     const added = results.filter((result) => result.kind === 'added').length;
-    setDone({ added, refused: results.length - added });
+    setDone({ added, refused: results.length - added - busy.length, busy });
   }
 
   const chooseAgain = () => {
@@ -164,6 +172,28 @@ function ImportForm({
           <Alert color="orange" role="alert">
             {t('import.doneRefused', { count: done.refused })}
           </Alert>
+        )}
+        {done.busy.length > 0 && (
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>{t('import.colRow')}</Table.Th>
+                <Table.Th>{t('staff.colName')}</Table.Th>
+                <Table.Th>{t('import.colResult')}</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {done.busy.map((row) => (
+                <Table.Tr key={row.line}>
+                  <Table.Td>{row.line}</Table.Td>
+                  <Table.Td>{row.name}</Table.Td>
+                  <Table.Td>
+                    <Text c="red">{t('import.busy')}</Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
         )}
         <Text>{t('import.doneSignIn')}</Text>
         <Group>

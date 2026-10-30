@@ -369,6 +369,7 @@ export const vi: Dictionary = {
     doneTitle: 'Đã thêm người',
     doneAdded: 'Đã thêm {{count}} người.',
     doneRefused: '{{count}} dòng chưa được thêm: mã của họ đã bị dùng trong lúc đó.',
+    busy: 'Chưa thêm: hệ thống đang bận. Hãy thử lại dòng này.',
     doneSignIn:
       'Chưa ai trong số họ đăng nhập được. Hãy mở trang của từng người để cấp tên đăng nhập và mật khẩu đầu tiên.',
   },

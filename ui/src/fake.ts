@@ -298,7 +298,15 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
       call('importEmployees', async () => {
         const results: ImportResult[] = [];
         for (const row of rows) {
-          const added = await fake.addEmployee(row);
+          // A row the system was busy on is its own result and the call goes on, as the BFF's does.
+          const added = await fake.addEmployee(row).catch((error: unknown) => {
+            if (error instanceof ApiError && error.status === 503) return null;
+            throw error;
+          });
+          if (!added) {
+            results.push({ kind: 'refused', reason: 'busy' });
+            continue;
+          }
           if (added.kind === 'taken') {
             results.push({ kind: 'refused', reason: 'taken' });
             continue;

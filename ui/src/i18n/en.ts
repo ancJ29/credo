@@ -369,6 +369,7 @@ export const en = {
     doneTitle: 'People added',
     doneAdded: '{{count}} people were added.',
     doneRefused: '{{count}} rows were not added: their codes were taken meanwhile.',
+    busy: 'Not added: the system was busy. Try this row again.',
     doneSignIn:
       'None of them can sign in yet. Open each person’s page to give them a sign-in and a first password.',
   },

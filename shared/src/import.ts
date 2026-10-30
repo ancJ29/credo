@@ -23,11 +23,13 @@ export const importCallSchema = z.strictObject({
   rows: z.array(z.unknown()).min(1).max(IMPORT_CALL_ROWS),
 });
 
-/** What became of a row: the person added, without a sign-in, or the reason it was refused (its
- * code was taken meanwhile, or the add would have refused it). */
+/** What became of a row: the person added, without a sign-in, or the reason it was not: refused
+ * (its code was taken meanwhile, or the add would have refused it), or `busy` (the system could
+ * not answer for the row: it is to be tried again, and the call went on to the next row). A row's
+ * place in the reply is its place in the call, so no result carries a row number. */
 export const importResultSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('added'), employee: employeeSchema }),
-  z.strictObject({ kind: z.literal('refused'), reason: z.enum(['taken', 'invalid']) }),
+  z.strictObject({ kind: z.literal('refused'), reason: z.enum(['taken', 'invalid', 'busy']) }),
 ]);
 export type ImportResult = z.infer<typeof importResultSchema>;
 

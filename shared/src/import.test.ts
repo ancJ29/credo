@@ -42,12 +42,13 @@ describe('the import’s contract', () => {
     expect(request({ ...row, password: 'x' }).success).toBe(false);
   });
 
-  it('An answer holds one result for each row: the person added, or why it was refused', () => {
+  it('An answer holds one result for each row: the person added, or why it was not (refused, or the system was busy)', () => {
     const reply = {
       results: [
         { kind: 'added', employee: DEMO_EMPLOYEES[0] },
         { kind: 'refused', reason: 'taken' },
         { kind: 'refused', reason: 'invalid' },
+        { kind: 'refused', reason: 'busy' },
       ],
     };
 

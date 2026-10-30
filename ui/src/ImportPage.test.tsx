@@ -166,6 +166,39 @@ describe('the import page', () => {
     ]);
   });
 
+  it('says which rows the system was busy on, by their row in the file, with what to do, and counts them apart from the rows refused', async () => {
+    openApp('/staff/import', {
+      override: (spied) => {
+        spied.importEmployees.mockImplementation((rows) =>
+          Promise.resolve({
+            results: rows.map((row, at) =>
+              at === 1
+                ? { kind: 'refused' as const, reason: 'busy' as const }
+                : at === 2
+                  ? { kind: 'refused' as const, reason: 'taken' as const }
+                  : { kind: 'added' as const, employee: employee(row.name) },
+            ),
+          }),
+        );
+      },
+    });
+    await chooseAndRead(
+      await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }, { name: 'Bốn' }]),
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (4)' }));
+
+    expect(await screen.findByText('2 people were added.')).toBeTruthy();
+    expect(
+      screen.getByText('1 rows were not added: their codes were taken meanwhile.'),
+    ).toBeTruthy();
+    const busy = within(screen.getByRole('table'));
+    expect(busy.getByText('Hai')).toBeTruthy();
+    expect(busy.getByText('3')).toBeTruthy();
+    expect(busy.getByText('Not added: the system was busy. Try this row again.')).toBeTruthy();
+    expect(busy.queryByText('Một')).toBeNull();
+    expect(busy.queryByText('Ba')).toBeNull();
+  });
+
   it('A save that fails says the people may not all have been added, and offers the file again', async () => {
     openApp('/staff/import', {
       override: (spied) => {

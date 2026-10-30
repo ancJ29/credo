@@ -200,8 +200,8 @@ describe('The rows that hold are added as people without a sign-in, each through
   });
 });
 
-describe('A call that fails on a row stops there: the rows added before it stay added, no later row is tried, and the call answers the failure, not a partial list', () => {
-  it('answers 503 when a row’s code may be a running add’s, keeps the rows before it and tries none after', async () => {
+describe('A row that fails other than by a refusal is its own result, busy, and the call goes on: each call answers one result per row', () => {
+  it('answers a row whose code may be a running add’s as busy, and adds the rows before and after it', async () => {
     const t = await staffTenant(cs);
     // A claim no person names back, younger than the longest an add runs.
     await t.client.putRecord(t.keys.user('nv-2'), {
@@ -212,16 +212,17 @@ describe('A call that fails on a row stops there: the rows added before it stay 
       generation: randomUUID(),
     });
 
-    const reply = await t.rootCall.send('POST', IMPORT_ROUTE, {
-      rows: [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })],
-    });
+    const results = await imported(t, [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })]);
 
-    expect(reply.statusCode).toBe(503);
-    expect(await codes(t.rootCall)).toEqual(['NV-1']);
-    expect(await t.client.getRecord(t.keys.user('nv-3'))).toBeNull();
+    expect(results.map((result) => result.kind === 'added' || result.reason)).toEqual([
+      true,
+      'busy',
+      true,
+    ]);
+    expect(await codes(t.rootCall)).toEqual(['NV-1', 'NV-3']);
   });
 
-  it('answers 503 when the store fails on a row, with the rows before it added and the rest not tried', async () => {
+  it('answers a row the store fails on as busy, and adds the rows before and after it', async () => {
     let failOn: string | null = null;
     const t = await staffTenant(cs, {
       wrap: (client): CStorageClient => ({
@@ -236,13 +237,26 @@ describe('A call that fails on a row stops there: the rows added before it stay 
     });
     failOn = 'NV-2';
 
-    const reply = await t.rootCall.send('POST', IMPORT_ROUTE, {
-      rows: [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })],
-    });
+    const results = await imported(t, [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })]);
     failOn = null;
 
-    expect(reply.statusCode).toBe(503);
+    expect(results.map((result) => result.kind === 'added' || result.reason)).toEqual([
+      true,
+      'busy',
+      true,
+    ]);
+    expect(await codes(t.rootCall)).toEqual(['NV-1', 'NV-3']);
+  });
+
+  it('ends the call as a 500, with the rows before it kept, on a failure that is no outage and no refusal', async () => {
+    const t = await staffTenant(cs);
+    await t.client.putRecord(t.keys.staffNumbering, { given: 'not a record' });
+
+    const reply = await t.rootCall.send('POST', IMPORT_ROUTE, {
+      rows: [row({ code: 'NV-1' }), row(), row({ code: 'NV-3' })],
+    });
+
+    expect(reply.statusCode).toBe(500);
     expect(await codes(t.rootCall)).toEqual(['NV-1']);
-    expect(await t.client.getRecord(t.keys.user('nv-3'))).toBeNull();
   });
 });

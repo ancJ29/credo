@@ -44,7 +44,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { HttpError, parse } from './errors';
+import { HttpError, parse, replyFor } from './errors';
 import { hashPassword, madePassword } from './password';
 import {
   namesBack,
@@ -63,6 +63,13 @@ const ATTEMPTS = 3;
  * name back is a failed add's, to be taken over, only once it is older than this; before that
  * its add may still be about to write the person. */
 export const ADD_MAX_MS = 60_000;
+
+/** The reason an import row is not added, by the status its add failed with; any other is a fault. */
+const IMPORT_REASONS: Partial<Record<number, Exclude<ImportResult, { kind: 'added' }>['reason']>> = {
+  400: 'invalid',
+  409: 'taken',
+  503: 'busy',
+};
 
 /** Who is calling, with the setup the check read when it had to (never for the root). */
 type Who = {
@@ -350,9 +357,10 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   });
 
   /** The root's import: each row is one add by hand, without a sign-in, one after another so the
-   * numbering counts past the row before. A row the add refuses is its result (409 taken, 400
-   * invalid). Any other failure ends the call as that failure: the rows before it stay added, none
-   * after it is tried. */
+   * numbering counts past the row before. A call answers one result per row: a row the add refuses
+   * is its result (409 taken, 400 invalid), and a row the system could not answer for (503: a claim
+   * that may be a running add's, the store down) is `busy`, to be sent again, and the call goes on.
+   * Any other failure is a fault and ends the call as it would any route: the rows before it stay. */
   app.post(IMPORT_ROUTE, forClient, async (request) => {
     const who = await signedIn(request);
     mustBeRoot(who);
@@ -369,10 +377,10 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         const { employee } = await addPerson(request.tenantId, read, who, row.data, false);
         results.push({ kind: 'added', employee: employee.employee });
       } catch (error) {
-        if (!(error instanceof HttpError) || (error.status !== 409 && error.status !== 400)) {
-          throw error;
-        }
-        results.push({ kind: 'refused', reason: error.status === 409 ? 'taken' : 'invalid' });
+        const { status } = replyFor(error);
+        const reason = IMPORT_REASONS[status];
+        if (!reason) throw error;
+        results.push({ kind: 'refused', reason });
       }
     }
     return { results };
