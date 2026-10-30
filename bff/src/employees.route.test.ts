@@ -1252,6 +1252,37 @@ describe('Every write names the tag it read: a write that finds the record gone 
     expect((await add(t.rootCall, { code: 'EMP-1' })).statusCode).toBe(503);
   });
 
+  it('answers 201 with the first password, and lists the person once, when the person write’s answer is lost, for a typed code and a numbered one', async () => {
+    let lose = false;
+    const t = await staffTenant(cs, {
+      wrap: (client) => ({
+        ...client,
+        async putRecord(key, data, ifTag) {
+          const saved = await client.putRecord(key, data, ifTag);
+          if (lose && key.includes('.employee.')) {
+            throw new CStorageError(null, 'c-storage did not answer a put');
+          }
+          return saved;
+        },
+      }),
+    });
+    lose = true;
+
+    const typed = await added(t.rootCall, { code: 'NV-1' });
+    const numbered = await added(t.rootCall, { code: undefined });
+    lose = false;
+
+    expect(await codes(t.rootCall)).toEqual(['EMP-0001', 'NV-1']);
+    expect(numbered.employee.employee.code).toBe('EMP-0001');
+    for (const reply of [typed, numbered]) {
+      const signedIn = await signIn(t.app, {
+        name: reply.employee.employee.code,
+        password: reply.password as string,
+      });
+      expect(signedIn.response.statusCode).toBe(200);
+    }
+  });
+
   it('lets someone allowed to change a person send no unit at all, or the unit and permissions they hold', async () => {
     const t = await staffTenant(cs);
     const editor = await t.staff('EDITOR', { own: { 'staff.canEdit': true } });
