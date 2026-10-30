@@ -1,11 +1,12 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 18:08 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+**Where it stands — 2026-10-30 20:44 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
 built (step 8), the full run's script is written (step 9), the review's six findings are fixed
 (step 10), the full walk is green with the operator's 54 bases committed (step 11) and the recap is
-written (step 12). Step 13's first half is done: `main` is merged in twice, with piece 2 and with the
-demo seed, and `pnpm check` is green at 100 %. **Next:** step 13's second half, the human's full run
-of the script, after another model has read it ([steps](#steps)).
+written (step 12). Step 13 is done: `main` is merged in twice, `pnpm check` is green at 100 %, and the
+human's full run of 18:41 came back red on six card corners, diagnosed and accepted on Decide 33 (a);
+the fix goes to the pixel piece. **Next:** step 14, the merge into `main`, the orchestrator's on the
+human's word ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -510,13 +511,12 @@ worktree; B to D will touch more of the same:
   findings and its two gaps, each tagged `[FIXED]` (none rejected or deferred in the record), the
   four rejected options with their prices, what remains (steps 13 to 15), and the revert hazard
   repeated in its last paragraph. Prettier clean; no local path or name in either file.
-- [ ] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
+- [x] **13. Onto `main`.** Who: 🤖, after piece 2's merge into `main`, about two hours; then 👤 runs
   the full run's script, about 20 minutes. Done when: this branch rebased onto that `main`, each
   conflict kept both sides; `pnpm check` green at 100 %, no act warning (`f8c85e6`'s rule); the full
   run's log read whole, each screen that moved named with its cause, its bases rewritten only for
   those and the human's answer asked again only where words changed. The piece is done here.
-  *Evidence, the first half (the merge and the check), 18:08 +07; the full run is the human's and
-  stays unticked.* Taken in by merge, not rebase: `f3bd090` took `main` at `02e16f3` (piece 2, the
+  *Evidence, the first half (the merge and the check), 18:08 +07.* Taken in by merge, not rebase: `f3bd090` took `main` at `02e16f3` (piece 2, the
   employee list; 16 conflicts, both sides kept, `main`'s settled fake capture in `walk/` whole) and
   `e829323` took `main` at `1349fc2` (the demo seed, 34 files; no conflict, `docs/open-items.md`
   identical to `main`'s, nothing renumbered). Six reds the first merge left in `visual`, each a
@@ -534,6 +534,37 @@ worktree; B to D will touch more of the same:
   `fake`, `full`, `operator-fake`, `operator-full`). `pnpm report`: `0 waiting, 0 asked again, 0
   no, 102 yes`. The full run's script reads nothing the second merge touched (`walk/`, `ui/` and
   `shared/src/demo.ts` unchanged by it).
+  *Evidence, the second half (the full run), 20:44 +07.* The human's full run of
+  `20261030-1722-full-run-operator-dashboard.sh`, reviewed by another model before the hand-off, on
+  `66fa27c`: 2026-10-30 18:41:55 to 18:46:55 (5m01s); the log `20261030-1722-full-run-operator-dashboard.log`
+  in the credo root's `logs/` (507 lines, this run lines 11 to 507) and the results
+  `walks/full-run-operator-2026-10-30-184201-66fa27c`. **The verdict was red, for two reasons.** (1) Pass 2
+  rewrote six of the operator's committed bases byte-different: `op-3-made` in en and vi at 1280 and 768,
+  `op-4-code-taken-vi-1280` and `op-9-make-failed-en-1280`, each `-operator-full-darwin.png` (the verdict line
+  named five, the script's `head -5`; the log's step 7 holds six). (2) A vitest run of another repo's session
+  on the same Mac, about 18:43:57 to 18:44:29; all six were written before it began, so it explains no
+  difference. **Every claim read 0 differ** at Playwright's threshold 0 (log lines): the fake against the
+  committed bases (`#L102`); the full stack against the fake (`#L429-L430`); the bases against the fake
+  (`#L432`); pass 2 and pass 3, 6 passed each (`#L433`); piece 1's bases unmoved (`#L455`), piece 2's
+  unmoved (`#L496`). **The diagnosis** (a fresh Opus, raw RGBA compares): each of the six differs from its
+  committed base in exactly 10 pixels, with a channel delta of 1, the lower arc of the two top rounded
+  corners of the bordered card, Mantine `Paper withBorder` (`ui/src/ClientMade.tsx#L41` on screen 3,
+  `ui/src/NewClient.tsx#L52` on screens 4 and 9); borders, text and the bottom corners are identical.
+  Playwright's threshold 0 calls them equal because it skips anti-aliased pixels (`includeAA: false`), and pass
+  2's `--update-snapshots=all` rewrites a base on any byte difference without asking the comparator. Only
+  screens 3, 4 and 9 flip, at 1280 and 768: where a press sends a request and the button goes busy (Mantine's
+  loader transition and blur overlay); screen 2 is always one state, screen 8 always the other, 390 never
+  flipped. The likely mechanism is the browser's partial raster, which depends on frame timing; it is not a
+  date, code, link, data order or font, and not `madeAt`. It is inferred, not proven: no browser runs in the
+  agent's sandbox. **It predates the merges:** the fake run of 10-29 13:38
+  (`walks/fake-run-operator-2026-10-29-133846-63ae46b`, `63ae46b`) is byte-equal to the committed bases on 48
+  pictures, and the same 10 pixels differ on the other 6; the 05:40 green could not see it, since every
+  operator base was written new then. The six were copied to the results' `moved-bases/` and the snapshot
+  folders restored, so the committed bases stand. **Decide 33 (a), the human, 2026-10-30 19:1x ("yes,
+  accept"):** this run is accepted for the delivery; the committed bases stand and the dashboard goes to
+  `main`. The fix goes into the pixel piece ([open item 32](../open-items.md)),
+  under the human's Decide 30 ("a moved pixel is a raw pixel"); it comes after the push and is proved by two
+  full runs back to back, the second leaving git clean.
 - [ ] **14. The merge.** Who: the orchestrator, on the human's word, after step 13. Done when:
   `operator-dashboard` merged into `main`, the recap's last line naming the merge.
 - [ ] **15. ridge.** Who: 👤, after the push of the `main` that holds it, about 10 minutes. The deploy

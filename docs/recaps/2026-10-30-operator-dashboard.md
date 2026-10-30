@@ -2,7 +2,7 @@
 
 ## At a glance
 
-[The plan](../plans/2026-10-29-operator-dashboard.md), steps 1 to 11, is done. The operator signs in
+[The plan](../plans/2026-10-29-operator-dashboard.md), steps 1 to 13, is done. The operator signs in
 at `/operator` and meets the same frame as a client's staff: a menu of five sections, a header with
 an "Operator" badge, and a phone layout. The Clients section lists every client with the name it was
 made under, its code, the day it was made, and a button that copies its sign-in link; the list is
@@ -14,8 +14,10 @@ the BFF was built, then the human's full run on a real stack came back green: 54
 differing from the fake's, the 54 bases written and read back at threshold 0, piece 1's and piece
 2's bases unmoved. A model other than the author's reviewed it: six findings, all fixed.
 
-What stays the human's, in short: step 13's second full run after piece 2 merges, the merge itself,
-and the first look on ridge ([What remains](#what-remains)).
+The full run after piece 2 and the demo seed merged in came back red on six card corners (10 pixels
+each, one channel value), a raster flip that predates this piece; the human accepted it for the
+delivery and the fix is [open item 32](../open-items.md). What stays the human's, in short: the merge
+itself and the first look on ridge ([What remains](#what-remains)).
 
 ## What shipped
 
@@ -74,10 +76,10 @@ red first; the plan records no finding rejected or deferred.
 
 ## What remains
 
-- **Step 13, onto `main`.** After piece 2 merges, this branch is rebased onto that `main`; the shell,
-  the words, the fake, the walks and `visual/answers.json` meet piece 2's lines
-  ([the hazard](../plans/2026-10-29-operator-dashboard.md#L560)). Then the human runs the full run
-  again, about 20 minutes.
+- **Step 13, onto `main`: done.** `main` is merged in, `pnpm check` is green, and the human's full run
+  was accepted on Decide 33 (a) despite six card corners moved by one channel value
+  ([the plan](../plans/2026-10-29-operator-dashboard.md#L513)). The fix is
+  [open item 32](../open-items.md), in the pixel piece after the push.
 - **Step 14, the merge,** on the human's word.
 - **Step 15, ridge.** After the push, the human signs in at `/operator`, adds a client, sees it lead
   the list, and opens its copied link; one question: is this the console to run clients from?
