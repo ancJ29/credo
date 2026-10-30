@@ -12,6 +12,7 @@ import {
   photoReplySchema,
   sessionReplySchema,
   setPasswordReplySchema,
+  staffConfig,
   staffSetupDocSchema,
 } from '@credo/shared';
 import {
@@ -182,6 +183,28 @@ describe('the fake Api', () => {
         'operatorSignOut',
       ].sort(),
     );
+  });
+
+  it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const hung = DEMO_EMPLOYEES[1];
+    const read = await api.getEmployee(hung.id);
+    await api.setEmail(hung.id, { version: read.version, email: 'hung@minh-phat.example' });
+    const switchEmail = async (email: boolean) => {
+      const held = await api.getStaffSetup();
+      const saved = await api.saveStaffSetup(
+        { ...held.setup, fields: { ...staffConfig(held.setup).fields, email } },
+        held.version,
+      );
+      expect(saved.kind).toBe('saved');
+    };
+
+    await switchEmail(false);
+    expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
+    expect((await api.signIn(hung.code, 'pw')).user.name).toBe(hung.name);
+    expect((await api.getEmployee(hung.id)).employee.email).toBe('hung@minh-phat.example');
+    await switchEmail(true);
+    expect((await api.signIn('hung@minh-phat.example', 'pw')).user.name).toBe(hung.name);
   });
 
   it('C: A person given an email signs in with it or with the code, in any case, until it is taken back, and a second person’s same email is refused', async () => {

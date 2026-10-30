@@ -502,7 +502,7 @@ function PersonForm({
           <Text>
             {!ready
               ? t('person.signInNotYet')
-              : employee.email
+              : employee.email && fields.email
                 ? t('person.signInReadyEmail', { code: employee.code, email: employee.email })
                 : t('person.signInReady', { code: employee.code })}
           </Text>

@@ -1,3 +1,4 @@
+import { type EmployeeDoc } from '@credo/shared';
 import { DEMO_QR_SECRET } from '@credo/shared/demo';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -42,6 +43,29 @@ describe('an email on a person', () => {
     expect(screen.getByText('Signs in with the code EMP-0002 and a password.')).toBeTruthy();
     expect(screen.getByText('No email yet.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Remove the email' })).toBeNull();
+  });
+
+  it('C: A person’s page says it signs in with the email only while the company has the email sign-in on', async () => {
+    const withEmail = (api: { getEmployee: (id: string) => Promise<EmployeeDoc> }) => async (id: string) => {
+      const held = await api.getEmployee(id);
+      return { ...held, employee: { ...held.employee, email: 'hung@minh-phat.example' } };
+    };
+    const off = openApp(at('EMP-0002'), {
+      override: (spied, original) => spied.getEmployee.mockImplementation(withEmail(original)),
+    });
+    expect(await screen.findByText('Signs in with the code EMP-0002 and a password.')).toBeTruthy();
+    expect(off.api.getEmployee).toHaveBeenCalled();
+    off.unmount();
+
+    openApp(at('EMP-0002'), {
+      signIns: true,
+      override: (spied, original) => spied.getEmployee.mockImplementation(withEmail(original)),
+    });
+    expect(
+      await screen.findByText(
+        'Signs in with the code EMP-0002 or the email hung@minh-phat.example, and a password.',
+      ),
+    ).toBeTruthy();
   });
 
   it('C: An email that is no address is said at the panel and sent to no one; one that already signs someone in, a version that moved and a failed save each say so', async () => {

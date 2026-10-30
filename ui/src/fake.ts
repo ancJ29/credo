@@ -170,7 +170,8 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
         }
         const staff = [...people.values()].find(
           (candidate) =>
-            (normaliseSignInName(candidate.code) === entered || candidate.email === entered) &&
+            (normaliseSignInName(candidate.code) === entered ||
+              (staffConfig(setup).fields.email && candidate.email === entered)) &&
             !candidate.archived &&
             ready.has(candidate.id),
         );

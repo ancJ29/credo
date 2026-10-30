@@ -56,6 +56,8 @@ declare module 'fastify' {
   }
 }
 
+type SetupRead = Awaited<ReturnType<typeof readSetup>>;
+
 export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
   storage: CStorageClient;
@@ -107,7 +109,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     tenantId: string,
     name: string,
     user: StoredUser,
-    handed: { person?: ReadEmployee | null } = {},
+    handed: { person?: ReadEmployee | null; setup?: SetupRead } = {},
   ) {
     if (user.root) {
       return { name, root: true, permissions: resolvePermissions([], true), employeeId: null };
@@ -120,7 +122,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
           ? await readEmployee(storage, tenantId, user.employeeId)
           : null;
     if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
-    const read = await readSetup(storage, tenantId);
+    const read = handed.setup ?? (await readSetup(storage, tenantId));
     return {
       name: person.employee.name,
       root: false,
@@ -231,24 +233,28 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   });
 
   /** The sign-in record a typed name opens: the code's own, or, for an email, the record of the code
-   * of the person the email names. An email names no one unless that person's record holds it. No
-   * mail is ever sent to it, so it proves nothing but that the root gave it. */
+   * of the person the email names. An email names no one unless that person's record holds it and
+   * the company has the email sign-in on (the setup is read first and handed on). No mail is ever
+   * sent to it, so it proves nothing but that the root gave it. */
   async function accountOf(tenantId: string, typed: string) {
     if (!typed.includes('@')) {
-      return { name: typed, found: await readSignIn(storage, tenantId, typed), person: null };
+      return { name: typed, found: await readSignIn(storage, tenantId, typed), handed: {} };
     }
+    const setup = await readSetup(storage, tenantId);
+    const none = { name: typed, found: null, handed: { setup } };
+    if (!staffConfig(setup.setup).fields.email) return none;
     const claim = await readEmailClaim(storage, tenantId, typed);
     const person = claim ? await readEmployee(storage, tenantId, claim.claim.employeeId) : null;
-    if (!person || person.employee.email !== typed) return { name: typed, found: null, person };
+    if (!person || person.employee.email !== typed) return none;
     const name = normaliseSignInName(person.employee.code);
-    return { name, found: await readSignIn(storage, tenantId, name), person };
+    return { name, found: await readSignIn(storage, tenantId, name), handed: { setup, person } };
   }
 
   app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
     const typed = normaliseSignInName(body.name);
-    const { name, found, person } = await accountOf(request.tenantId, typed);
+    const { name, found, handed } = await accountOf(request.tenantId, typed);
     // A person the root has not given a password yet has no sign-in to check against.
     const account = found?.user.passwordHash
       ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -256,7 +262,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const user = await checked(account, body.password);
     // One answer for an unknown name, a wrong password and a person who left: which part was
     // wrong is not said.
-    const view = user ? await viewOf(request.tenantId, name, user, { person }) : null;
+    const view = user ? await viewOf(request.tenantId, name, user, handed) : null;
     if (!user || !view) throw new HttpError(401, 'Wrong name or password');
     const sessions = sessionsOf(request.tenantId);
     await endKept(request, sessions);

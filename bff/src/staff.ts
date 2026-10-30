@@ -610,13 +610,17 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     }
   }
 
-  /** An email given, changed or taken back: the root's alone. The new email is claimed first, the
+  /** An email given, changed or taken back: the root's alone, and only while the company has the
+   * email sign-in on (403 otherwise). The new email is claimed first, the
    * person is written with it over the tag they were read at, and the old record is removed after, so
    * the old email is free again. A version that moved gives the claim back and answers 409 with the
    * person. No mail is sent whatever the answer. */
   app.put(signInRoutes.email(':id'), forClient, async (request) => {
     mustBeRoot(await signedIn(request));
     const found = await mustFind(request.tenantId, idOf(request));
+    if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.email) {
+      throw new HttpError(403, 'Forbidden');
+    }
     const body = parse(setEmailRequestSchema, request.body);
     if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
     const before = found.employee.email ?? null;

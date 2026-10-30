@@ -97,8 +97,15 @@ function interfering(hook: {
 }
 
 describe('C: An email names the person by id in its own record', () => {
+  /** A tenant whose company has the email sign-in on, as the sign-in by email needs. */
+  const emailTenant = async (options: Parameters<typeof staffTenant>[1] = {}) => {
+    const t = await staffTenant(cs, options);
+    await t.setup({ fields: { email: true } });
+    return t;
+  };
+
   it('C: An email set by the root names the person by id in its own record, and the person signs in with it or with their code', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0004', name: 'Lan' });
 
     const reply = await setEmail(t, lan.id, lan.version, ' Lan@Minh-Phat.Example ');
@@ -119,7 +126,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A second person’s same email, in any case, is a 409 with no current, and the first keeps it', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const first = await person(t, { code: 'EMP-0001' });
     const second = await person(t, { code: 'EMP-0002' });
     await withEmail(t, first, 'same@x.example');
@@ -137,7 +144,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: Changing the email removes the old record, so the old one signs no one in and is free again', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const other = await person(t, { code: 'EMP-0002' });
     const version = await withEmail(t, lan, 'old@x.example');
@@ -154,7 +161,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: A change back to the old email, made while the first change frees it, keeps the record of the email the person holds', async () => {
     let between: (() => Promise<unknown>) | null = null;
-    const t = await staffTenant(cs, {
+    const t = await emailTenant({
       wrap: (client): CStorageClient => ({
         ...client,
         async removeRecord(key, ifTag) {
@@ -191,7 +198,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: Taking the email back removes its record, and the email signs no one in', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const version = await withEmail(t, lan, 'lan@x.example');
 
@@ -204,7 +211,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: The same email again, or none again, writes nothing and answers the person', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
 
     const none = await setEmail(t, lan.id, lan.version, null);
@@ -217,7 +224,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A version that moved is a 409 carrying the person, and the email claimed for it is given back', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001', name: 'Lan' });
     await t.rootCall.send('PUT', `/api/employees/${lan.id}`, {
       version: lan.version,
@@ -236,7 +243,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: A person moved between the read and the write gives the claimed email back and answers 409 with the person', async () => {
     const hook: Parameters<typeof interfering>[0] = { current: null };
-    const t = await staffTenant(cs, { wrap: interfering(hook) });
+    const t = await emailTenant({ wrap: interfering(hook) });
     const lan = await person(t, { code: 'EMP-0001', name: 'Lan' });
     hook.current = async (key, client) => {
       if (!key.includes('.employee.')) return;
@@ -256,7 +263,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: A person moved between the read and the write while their email is taken back keeps it, and the answer is a 409 with the person', async () => {
     const hook: Parameters<typeof interfering>[0] = { current: null };
-    const t = await staffTenant(cs, { wrap: interfering(hook) });
+    const t = await emailTenant({ wrap: interfering(hook) });
     const lan = await person(t, { code: 'EMP-0001', name: 'Lan' });
     const version = await withEmail(t, lan, 'lan@x.example');
     hook.current = async (key, client) => {
@@ -274,7 +281,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: Only the root sets an email; a person who is not there is a 404; a body that is no email is a 400', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const everything = {
       'staff.canView': true,
@@ -295,8 +302,38 @@ describe('C: An email names the person by id in its own record', () => {
     expect(await t.client.getRecord(t.keys.signInEmail('lan@x.example'))).toBeNull();
   });
 
-  it('C: A wrong password, an unknown email and an email no one holds are the same 401 as a wrong code', async () => {
+  it('C: While the company has the email sign-in off, an email signs no one in, the same 401 as a wrong code, and stays on the person; turned on again, it signs them in', async () => {
+    const t = await emailTenant();
+    const lan = await person(t, { code: 'EMP-0001' });
+    await withEmail(t, lan, 'lan@x.example');
+    await t.setup({ fields: { email: false } });
+
+    const off = await signIn(t.app, { name: 'lan@x.example', password: lan.password });
+    const wrong = await signIn(t.app, { name: 'emp-0001', password: 'Wrong-pass-9!' });
+
+    expect(off.response.statusCode).toBe(401);
+    expect(off.response.body).toBe(wrong.response.body);
+    expect((await doc(t.rootCall, lan.id)).employee.email).toBe('lan@x.example');
+    expect(await t.client.getRecord(t.keys.signInEmail('lan@x.example'))).not.toBeNull();
+    expect(await status(t, 'emp-0001', lan.password)).toBe(200);
+    await t.setup({ fields: { email: true } });
+    expect(await status(t, 'lan@x.example', lan.password)).toBe(200);
+  });
+
+  it('C: A person’s email is set only while the company has the email sign-in on: a 403 when it is off', async () => {
     const t = await staffTenant(cs);
+    const lan = await person(t, { code: 'EMP-0001' });
+
+    const off = await setEmail(t, lan.id, lan.version, 'lan@x.example');
+    const nobody = await setEmail(t, randomUUID(), lan.version, 'lan@x.example');
+
+    expect([off.statusCode, nobody.statusCode]).toEqual([403, 404]);
+    expect(await t.client.getRecord(t.keys.signInEmail('lan@x.example'))).toBeNull();
+    expect((await doc(t.rootCall, lan.id)).employee.email).toBeUndefined();
+  });
+
+  it('C: A wrong password, an unknown email and an email no one holds are the same 401 as a wrong code', async () => {
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     await withEmail(t, lan, 'lan@x.example');
 
@@ -311,7 +348,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A code change leaves the email signing the person in, with their new code', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001', name: 'Lan' });
     const version = await withEmail(t, lan, 'lan@x.example');
     const moved = await t.rootCall.send('PUT', `/api/employees/${lan.id}/code`, {
@@ -328,7 +365,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A person who left cannot sign in with their email, and keeps it taken', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const other = await person(t, { code: 'EMP-0002' });
     const version = await withEmail(t, lan, 'lan@x.example');
@@ -340,7 +377,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: An email record whose person does not hold the email, or is not there, signs no one in', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     await t.client.putRecord(t.keys.signInEmail('lan@x.example'), {
       employeeId: lan.id,
@@ -356,7 +393,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A person whose sign-in record is not there is not signed in by their email', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const version = await withEmail(t, lan, 'lan@x.example');
     expect(version).toBeTruthy();
@@ -367,7 +404,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: A claim a failed set left answers 503 while younger than a minute, and is taken over after', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     await t.client.putRecord(t.keys.signInEmail('lan@x.example'), {
       employeeId: randomUUID(),
@@ -386,7 +423,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: A claim that disappears between two tries is claimed on the next', async () => {
     let first = true;
-    const t = await staffTenant(cs, {
+    const t = await emailTenant({
       wrap: (client): CStorageClient => ({
         ...client,
         async putRecord(key, data, ifTag) {
@@ -405,7 +442,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: The email record moves on every try to take a stale claim over: 503, and the email stays free', async () => {
     const hook: Parameters<typeof interfering>[0] = { current: null };
-    const t = await staffTenant(cs, { wrap: interfering(hook) });
+    const t = await emailTenant({ wrap: interfering(hook) });
     const lan = await person(t, { code: 'EMP-0001' });
     const key = t.keys.signInEmail('lan@x.example');
     await t.client.putRecord(key, { employeeId: randomUUID(), at: 0 });
@@ -424,7 +461,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: An old email record that is gone or another person’s is left alone when the email changes', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const gone = await seedEmployee(t.client, t.id, { code: 'GONE', email: 'gone@x.example' });
     const taken = await seedEmployee(t.client, t.id, { code: 'TAKEN', email: 'taken@x.example' });
     const other = randomUUID();
@@ -444,7 +481,7 @@ describe('C: An email names the person by id in its own record', () => {
 
   it('C: A sign-in by email reads one record more than by code, and no record twice', async () => {
     const reads: string[] = [];
-    const t = await staffTenant(cs, {
+    const t = await emailTenant({
       wrap: (client): CStorageClient => ({
         ...client,
         async getRecord(key) {
@@ -468,7 +505,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: An email whose person’s sign-in record names another person signs no one in', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     const third = await person(t, { code: 'EMP-0002' });
     await withEmail(t, lan, 'lan@x.example');
@@ -483,7 +520,7 @@ describe('C: An email names the person by id in its own record', () => {
   });
 
   it('C: An email record that does not parse is a 500, never a person signed in', async () => {
-    const t = await staffTenant(cs);
+    const t = await emailTenant();
     const lan = await person(t, { code: 'EMP-0001' });
     await t.client.putRecord(t.keys.signInEmail('lan@x.example'), { employeeId: 'x' });
 
