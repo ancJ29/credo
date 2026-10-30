@@ -45,8 +45,13 @@ const answer = (kind: 'yes' | 'no', language: 'vi' | 'en', number: string, words
     },
   ] as const;
 
-/** The section of one walk screen. */
-const card = (id: string) => document.querySelector<HTMLElement>(`#admin-setup-${id}`)!;
+/** The section of one walk screen, opened through the list when it is not the one in view. */
+const card = (id: string) => {
+  if (!document.querySelector(`#admin-setup-${id}`)) {
+    fireEvent.click(document.querySelector(`a.w-rail-item[href="#admin-setup-${id}"]`)!);
+  }
+  return document.querySelector<HTMLElement>(`#admin-setup-${id}`)!;
+};
 /** Picks a language or the widths for the whole page. */
 const pick = (legend: 'Language' | 'Show', label: string) =>
   fireEvent.click(within(screen.getByRole('group', { name: legend })).getByLabelText(label));
@@ -54,40 +59,6 @@ const pick = (legend: 'Language' | 'Show', label: string) =>
 const panel = (id: string, language = 'Tiếng Việt') =>
   within(within(card(id)).getByRole('group', { name: `Your answer in ${language}` }));
 const stateOf = (id: string) => card(id).querySelector('.w-state > span')!.textContent;
-
-/** The browser's report of the sections in a band near the top of the window. */
-function watchBand() {
-  const band = {
-    callback: undefined as IntersectionObserverCallback | undefined,
-    watched: [] as Element[],
-    disconnect: vi.fn(),
-    report: (entries: [string, boolean][]) =>
-      act(() =>
-        band.callback!(
-          entries.map(([id, isIntersecting]) => ({
-            target: card(id),
-            isIntersecting,
-          })) as unknown as IntersectionObserverEntry[],
-          {} as IntersectionObserver,
-        ),
-      ),
-  };
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class {
-      constructor(callback: IntersectionObserverCallback) {
-        band.callback = callback;
-      }
-      observe(element: Element) {
-        band.watched.push(element);
-      }
-      disconnect() {
-        band.disconnect();
-      }
-    },
-  );
-  return band;
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -132,23 +103,23 @@ describe('the walks page: the map', () => {
     expect(within(map).getByText('The operator').parentElement!.textContent).toContain('PC');
     expect(within(map).getAllByTitle('Not built yet')).toHaveLength(18);
 
+    fireEvent.click(operator);
     const walk = document.querySelector('#operator-setup')!;
-    expect([...walk.querySelectorAll('.w-number')].map((n) => n.textContent)).toEqual([
-      '1',
-      '2',
-      '3',
-      '5',
-      '6',
-      '4',
-      '7',
-      '8',
-      '9',
-    ]);
-    expect(walk.textContent).toContain('Would you know this is our own door, not a client’s?');
-    expect(walk.textContent).toContain('Does this say what to do?');
-    expect(document.querySelector('#admin-setup')!.textContent).toContain(
-      'Would the person know to ask whoever sent the link?',
-    );
+    const items = [
+      ...document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item[href^="#operator-setup-"]'),
+    ];
+    const seen = items.map((item) => {
+      fireEvent.click(item);
+      return [walk.querySelector('.w-number')!.textContent, walk.textContent] as const;
+    });
+    expect(seen.map(([number]) => number)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+    const text = seen.map(([, content]) => content).join(' ');
+    expect(text).toContain('Would you know this is our own door, not a client’s?');
+    expect(text).toContain('Does this say what to do?');
+    fireEvent.click(admin);
+    expect(document.querySelector('#admin-setup')!.textContent).toContain('Sign in');
+    const question = [...document.querySelectorAll<HTMLElement>('#admin-setup .w-question')];
+    expect(question).toHaveLength(1);
   });
 
   it('counts one screen in the singular', async () => {
@@ -166,35 +137,53 @@ describe('the walks page: the map', () => {
 });
 
 describe('the walks page: a walk', () => {
-  it('Each walk shows its main path, then what can go wrong: each screen with its sentence in both languages and its one question', async () => {
+  it('Each walk shows its screens in number order, a screen that goes wrong tagged in place: each with its sentence in both languages and its one question', async () => {
     render(<Page report={await reportWith()} />);
 
     const walk = screen.getByRole('region', {
       name: 'Set up the company: its name, colour and languages',
     });
-    const headings = within(walk).getAllByRole('heading', { level: 3 });
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      'The main path',
-      'What can go wrong',
+    const items = [...document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item')];
+    const seen = items.map((item) => {
+      fireEvent.click(item);
+      return [
+        walk.querySelector('.w-number')!.textContent,
+        walk.querySelector('.w-path')?.textContent ?? null,
+      ];
+    });
+    expect(seen.map(([number]) => number)).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+    expect(seen.map(([, tag]) => tag)).toEqual([
+      null,
+      'Goes wrong',
+      null,
+      null,
+      null,
+      'Goes wrong',
+      'Goes wrong',
+      'Goes wrong',
+      'Goes wrong',
     ]);
-    const numbers = [...walk.querySelectorAll('.w-number')].map((n) => n.textContent);
-    expect(numbers).toEqual(['1', '3', '4', '5', '2', '6', '7', '8', '9']);
-    const last = walk.querySelector('#admin-setup-7-save-failed')!;
-    expect(last.textContent).toContain('A save that failed, what was typed kept');
-    expect(last.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
-    expect(last.textContent).toContain(
+    const last = walk.querySelector('#admin-setup-9-unknown-company')!;
+    expect(last).toBeTruthy();
+    const seventh = card('7-save-failed');
+    expect(seventh.textContent).toContain('A save that failed, what was typed kept');
+    expect(seventh.textContent).toContain('Lưu không thành công, nội dung đã nhập vẫn còn');
+    expect(seventh.textContent).toContain(
       'Would the admin know the save did not happen, and that nothing typed is lost?',
     );
   });
 
-  it('leaves out a heading whose path holds no screen, in the walk and in the rail', async () => {
+  it('tags nothing when no screen of the walk goes wrong, in the walk and in the rail', async () => {
     const report = await reportWith();
     report.walks[0].screens = report.walks[0].screens.filter((s) => s.path === 'main');
 
     render(<Page report={report} />);
 
-    expect(screen.queryByText('What can go wrong')).toBeNull();
-    expect(screen.getAllByText('The main path')).toHaveLength(2);
+    for (const item of document.querySelectorAll<HTMLAnchorElement>('a.w-rail-item')) {
+      fireEvent.click(item);
+      expect(screen.queryByText('Goes wrong')).toBeNull();
+    }
+    expect(screen.queryByText('goes wrong')).toBeNull();
   });
 
   it('says the person and the width the walk is drawn at', async () => {
@@ -212,6 +201,8 @@ describe('the walks page: the drawn screens', () => {
   it('Each piece-2 screen is drawn as a scene: the whole app on the fake at its address, inside its frame, with its steps done there', async () => {
     render(<Page report={await reportWith({}, false, WALKS.slice(3, 4))} />);
 
+    // The page opens at the walk's first screen; the list moves to the second.
+    fireEvent.click(document.querySelector('a.w-rail-item[href="#admin-staff-staff-2-add"]')!);
     const frame = screen.getByTitle<HTMLIFrameElement>('Screen 2 in Tiếng Việt, PC 1280');
     act(() => {
       fireEvent.load(frame);
@@ -241,20 +232,23 @@ describe('the walks page: the drawn screens', () => {
     return frame.contentDocument!;
   };
 
-  it('Each walk screen is drawn at three widths, PC 1280, tablet 768 and phone 390, in Vietnamese and in English, from the app’s own components', async () => {
+  it('Each walk screen is drawn at PC 1280 alone to start, and at tablet 768 and phone 390 on request, in Vietnamese and in English, from the app’s own components', async () => {
     render(<Page report={await reportWith()} />);
 
-    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(27);
+    expect(screen.getAllByTitle(/^Screen \d in Tiếng Việt, /)).toHaveLength(1);
+    expect(screen.getByTitle('Screen 1 in Tiếng Việt, PC 1280').getAttribute('width')).toBe('1280');
+    pick('Show', 'All three');
     for (const [device, width] of [
       ['PC', '1280'],
       ['Tablet', '768'],
       ['Phone', '390'],
     ]) {
       const frames = screen.getAllByTitle(new RegExp(`, ${device} ${width}$`));
-      expect(frames).toHaveLength(9);
-      expect(frames.every((frame) => frame.getAttribute('width') === width)).toBe(true);
+      expect(frames).toHaveLength(1);
+      expect(frames[0].getAttribute('width')).toBe(width);
     }
     // Screen 7 is the mock's failed save: the settings with the error and what was typed.
+    card('7-save-failed');
     const vi = inFrame('Screen 7 in Tiếng Việt, PC 1280');
     expect(vi.body.textContent).toContain('Chưa lưu được cài đặt.');
     expect(vi.documentElement.lang).toBe('vi');
@@ -262,27 +256,29 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(screen.queryAllByTitle(/ in Tiếng Việt, /)).toHaveLength(0);
-    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(27);
+    expect(screen.getAllByTitle(/^Screen \d in English, /)).toHaveLength(3);
     const en = inFrame('Screen 7 in English, Tablet 768');
     expect(en.body.textContent).toContain('The settings were not saved.');
     expect((en.querySelector('input') as HTMLInputElement).value).toBe('Minh Phát Sài Gòn');
     expect(en.documentElement.lang).toBe('en');
     // Screen 8 is the mock's conflict: someone else saved first.
+    card('8-save-conflict');
     expect(inFrame('Screen 8 in English, Phone 390').body.textContent).toContain(
       'Someone saved newer settings first.',
     );
     // Screen 1 is the sign-in in the company's name.
+    card('1-sign-in');
     expect(inFrame('Screen 1 in English, Phone 390').body.textContent).toContain('Minh Phát');
   });
 
-  it('A switch shows every screen in one language, Tiếng Việt first, at one width or all three, so each width in each language is one press away', async () => {
+  it('A switch shows the screen in one language, Tiếng Việt first, at PC to start, at one width or all three, so each width in each language is one press away', async () => {
     render(<Page report={await reportWith()} />);
     const language = within(screen.getByRole('group', { name: 'Language' }));
     const show = within(screen.getByRole('group', { name: 'Show' }));
     const frames = () => [...document.querySelectorAll('iframe')];
 
     expect(language.getByLabelText<HTMLInputElement>('Tiếng Việt').checked).toBe(true);
-    expect(show.getByLabelText<HTMLInputElement>('All three').checked).toBe(true);
+    expect(show.getByLabelText<HTMLInputElement>('PC').checked).toBe(true);
     expect(show.getAllByRole('radio').map((radio) => radio.closest('label')!.textContent)).toEqual([
       'PC',
       'Tablet',
@@ -295,9 +291,9 @@ describe('the walks page: the drawn screens', () => {
       ['Phone', '390'],
     ]) {
       pick('Show', device);
-      expect(frames()).toHaveLength(9);
+      expect(frames()).toHaveLength(1);
       expect(frames().every((frame) => frame.getAttribute('width') === width)).toBe(true);
-      expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe(
+      expect(card('1-sign-in').querySelector('.w-frames')!.getAttribute('data-show')).toBe(
         device.toLowerCase(),
       );
     }
@@ -305,15 +301,16 @@ describe('the walks page: the drawn screens', () => {
     pick('Language', 'English');
 
     expect(language.getByLabelText<HTMLInputElement>('English').checked).toBe(true);
-    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(9);
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(9);
+    expect(screen.getAllByTitle(/^Screen \d in English, Phone 390$/)).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(1);
     pick('Show', 'All three');
-    expect(frames()).toHaveLength(27);
-    expect(card('3-settings').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
+    expect(frames()).toHaveLength(3);
+    expect(card('1-sign-in').querySelector('.w-frames')!.getAttribute('data-show')).toBe('all');
   });
 
   it('Shown together, a screen’s three widths sit widest first, each captioned with its device and width and no wider than it', async () => {
     render(<Page report={await reportWith()} />);
+    pick('Show', 'All three');
 
     const figures = [...card('3-settings').querySelectorAll<HTMLElement>('figure')];
 
@@ -326,24 +323,22 @@ describe('the walks page: the drawn screens', () => {
     expect(figures.map((figure) => figure.style.maxWidth)).toEqual(['1280px', '768px', '390px']);
   });
 
-  it('A change of language or width brings back the screen that was in view', async () => {
-    const band = watchBand();
+  it('A move brings the screen it opens to the top of the window, and a change of language or width does not move it', async () => {
     const scroll = vi.spyOn(Element.prototype, 'scrollIntoView');
     render(<Page report={await reportWith()} />);
 
-    // Nothing reported in view yet: a change scrolls nowhere.
-    pick('Show', 'PC');
-    expect(scroll).not.toHaveBeenCalled();
-
-    band.report([['5-language-menu', true]]);
-    pick('Language', 'English');
-
-    expect(scroll).toHaveBeenCalledTimes(1);
-    expect(scroll.mock.contexts[0]).toBe(card('5-language-menu'));
-    expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    const toTop = () =>
+      scroll.mock.calls.filter(([where]) => typeof where === 'object' && where.block === 'start');
     pick('Show', 'All three');
-    expect(scroll).toHaveBeenCalledTimes(2);
-    expect(scroll.mock.contexts[1]).toBe(card('5-language-menu'));
+    pick('Language', 'English');
+    expect(toTop()).toHaveLength(0);
+
+    card('5-language-menu');
+
+    expect(toTop()).toHaveLength(1);
+    expect(scroll.mock.contexts[scroll.mock.calls.indexOf(toTop()[0])]).toBe(
+      document.querySelector('#admin-setup-5-language-menu'),
+    );
   });
 
   it('scales a screen down to the room it has, and its box to the same', async () => {
@@ -379,7 +374,7 @@ describe('the walks page: the drawn screens', () => {
     expect(box().firstElementChild!.getAttribute('style')).toContain('scale(1)');
   });
 
-  it('stops watching a size, and the band, when it leaves', async () => {
+  it('stops watching a size when it leaves', async () => {
     const disconnect = vi.fn();
     vi.stubGlobal(
       'ResizeObserver',
@@ -388,19 +383,16 @@ describe('the walks page: the drawn screens', () => {
         disconnect = disconnect;
       },
     );
-    const band = watchBand();
     const { unmount } = render(<Page report={await reportWith()} />);
 
     unmount();
 
     expect(disconnect).toHaveBeenCalled();
-    expect(band.disconnect).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('the walks page: the rail', () => {
-  it('A rail lists each walk’s screens, the main path first, each with a mark for each language, and marks the screen in view', async () => {
-    const band = watchBand();
+  it('A rail lists each walk’s screens in number order, one that goes wrong tagged, each with a mark for each language, and marks the screen in view', async () => {
     render(
       <Page
         report={await reportWith(
@@ -425,10 +417,10 @@ describe('the walks page: the rail', () => {
     ).toBeTruthy();
     expect(items.map((item) => item.getAttribute('href'))).toEqual([
       '#admin-setup-1-sign-in',
+      '#admin-setup-2-sign-in-refused',
       '#admin-setup-3-settings',
       '#admin-setup-4-saved',
       '#admin-setup-5-language-menu',
-      '#admin-setup-2-sign-in-refused',
       '#admin-setup-6-service-down',
       '#admin-setup-7-save-failed',
       '#admin-setup-8-save-conflict',
@@ -439,37 +431,35 @@ describe('the walks page: the rail', () => {
       ['yes', 'Tiếng Việt: yes'],
       ['open', 'English: not answered'],
     ]);
-    expect(marks(4)).toEqual([
+    expect(marks(1)).toEqual([
       ['open', 'Tiếng Việt: not answered'],
       ['no', 'English: no'],
+    ]);
+    expect(items.map((item) => !!item.querySelector('.w-rail-wrong'))).toEqual([
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
     ]);
     expect(marks(5)[1]).toEqual(['again', 'English: asked again']);
     // A choice made on the page marks its screen at once, in the rail and on the screen.
     fireEvent.click(panel('3-settings').getByLabelText('No'));
-    expect(marks(1)[0]).toEqual(['no', 'Tiếng Việt: no']);
-    expect(card('3-settings').querySelector('summary .w-mark')!.getAttribute('data-mark')).toBe(
-      'no',
-    );
+    expect(marks(2)[0]).toEqual(['no', 'Tiếng Việt: no']);
+    expect(
+      card('3-settings').querySelector('.w-screen-head .w-mark')!.getAttribute('data-mark'),
+    ).toBe('no');
 
-    // The screen in view, as the browser reports it.
-    expect(band.watched).toHaveLength(9);
-    expect(nav.querySelector('[aria-current]')).toBeNull();
-    band.report([['4-saved', true]]);
-    expect(items[2].getAttribute('aria-current')).toBe('location');
-    // Two in the band: the first in the page's order.
-    band.report([
-      ['4-saved', false],
-      ['2-sign-in-refused', true],
-      ['5-language-menu', true],
-    ]);
-    expect(items[3].getAttribute('aria-current')).toBe('location');
+    // The screen in view is marked, one at a time; a line opens its screen and takes the mark.
     expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1);
-    // None in the band, between two sections: the last stays.
-    band.report([
-      ['5-language-menu', false],
-      ['2-sign-in-refused', false],
-    ]);
-    expect(items[3].getAttribute('aria-current')).toBe('location');
+    expect(items[2].getAttribute('aria-current')).toBe('location');
+    fireEvent.click(items[4]);
+    expect(items[4].getAttribute('aria-current')).toBe('location');
+    expect(nav.querySelectorAll('[aria-current]')).toHaveLength(1);
   });
 });
 
@@ -530,22 +520,19 @@ describe('the walks page: the answers', () => {
     expect(words().querySelector('pre')!.textContent).toBe('text: save-failed en');
   });
 
-  it('Approved screens fold away', async () => {
-    render(
-      <Page
-        report={await reportWith(
-          Object.fromEntries([
-            answer('yes', 'vi', '1-sign-in', ['text: empty vi']),
-            answer('yes', 'en', '1-sign-in', ['text: empty en']),
-            answer('yes', 'vi', '3-settings', ['text: filled vi']),
-          ]),
-        )}
-      />,
-    );
+  it('The list says on each walk what is left in it, and done when nothing is', async () => {
+    const both = (id: string, now: string) => [
+      answer('yes', 'vi', id, [`text: ${now} vi`]),
+      answer('yes', 'en', id, [`text: ${now} en`]),
+    ];
+    render(<Page report={await reportWith(Object.fromEntries(both('1-sign-in', 'empty')))} />);
 
-    expect((card('1-sign-in') as HTMLDetailsElement).open).toBe(false);
-    expect((card('3-settings') as HTMLDetailsElement).open).toBe(true);
-    expect((card('2-sign-in-refused') as HTMLDetailsElement).open).toBe(true);
+    expect(
+      [...document.querySelectorAll('.w-rail-title > span')]
+        .slice(0, 2)
+        .map((one) => one.textContent),
+    ).toEqual(['Set up the company: its name, colour and languages', '8 left']);
+    expect(document.querySelector('#admin-setup-2-sign-in-refused')).toBeTruthy();
   });
 
   it('lists an answer whose screen left the walks, and counts its no', async () => {
@@ -591,10 +578,9 @@ describe('the walks page: the answers', () => {
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
     expect(screen.getByRole('banner').textContent).toContain('18 waiting');
     expect(screen.getByRole('banner').textContent).not.toMatch(/\d+ (no|yes)\b/);
-    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
   });
 
-  it('A screen every partner answered yes, in both languages, still waits for the human: its card stays open and unmarked', async () => {
+  it('A screen every partner answered yes, in both languages, still waits for the human: its marks stay open', async () => {
     const yes = (language: string): Answers => ({
       [`admin-setup:1-sign-in:${language}@p1`]: {
         answer: 'yes',
@@ -605,9 +591,8 @@ describe('the walks page: the answers', () => {
     });
     render(<Page report={await reportWith({ ...yes('vi'), ...yes('en') })} />);
 
-    expect(card('1-sign-in').hasAttribute('open')).toBe(true);
     expect(
-      [...card('1-sign-in').querySelectorAll('.w-mark')].map((mark) =>
+      [...card('1-sign-in').querySelectorAll('.w-screen-head .w-mark')].map((mark) =>
         mark.getAttribute('data-mark'),
       ),
     ).toEqual(['open', 'open']);
@@ -651,10 +636,12 @@ describe('the walks page: its layout', () => {
     }
     expect(rule('.w-main')).toContain('grid-template-columns: minmax(0, 1fr)');
     expect(rule('.w-desk')).toContain('grid-template-columns: minmax(0, 1fr)');
-    expect(rule('.w-rail')).toContain('position: sticky');
+    expect(rule('.w-rail')).toContain('display: none');
     expect(css).toMatch(
-      /@media \(min-width: 1000px\) \{\s*\.w-desk \{[^}]*grid-template-columns: 252px minmax\(0, 1fr\)/,
+      /@media \(min-width: 1000px\) \{\s*\.w-desk \{[^}]*grid-template-columns: 320px minmax\(0, 1fr\)/,
     );
+    expect(css).toMatch(/@media \(min-width: 1000px\) \{\s*\.w-rail,[^}]*position: sticky/);
+    expect(rule(".w-rail[data-open='true']")).toContain('position: fixed');
     expect(css).toMatch(
       /@media \(max-width: 480px\) \{\s*\.w-map \{\s*grid-template-columns: minmax\(0, 1fr\);/,
     );
@@ -666,8 +653,8 @@ describe('the walks page: its layout', () => {
     const ask = within(grid.querySelector<HTMLElement>('.w-panel')!);
 
     expect([...grid.children].map((child) => child.className)).toEqual([
-      'w-stage',
       'w-panel',
+      'w-stage',
       'w-words',
     ]);
     expect(ask.getByText('Is this what an admin sets up first?')).toBeTruthy();
@@ -735,26 +722,23 @@ describe('the walks page: answering', () => {
     Reflect.deleteProperty(navigator, 'clipboard');
   });
 
-  it('The page says at its top how to answer: a partner shares under their label, “Copy my answers” is not for partners', async () => {
+  it('The page says at its top, in one line, how to answer and where to read more', async () => {
     render(<Page report={await reportWith()} />);
 
-    const line = document.querySelector('.w-howto')!.textContent;
-
-    expect(line).toContain('Yes or No, in Tiếng Việt and in English, with a reason for any No');
-    expect(line).toContain('A partner types their label and presses “Share”');
-    expect(line).toContain('“Copy my answers” is not for partners');
-    expect(line).toContain('sends nothing');
+    expect(document.querySelector('.w-howto')!.textContent).toBe(
+      'Answer Yes or No for each screen; How this page works.',
+    );
   });
 
   it('Each screen, in each language, has Yes and No, and a reason box that a No brings', async () => {
     render(<Page report={await reportWith()} />);
 
-    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(9);
-    expect(screen.getAllByLabelText('Yes')).toHaveLength(9);
-    expect(screen.getAllByLabelText('No')).toHaveLength(9);
+    expect(screen.getAllByRole('group', { name: 'Your answer in Tiếng Việt' })).toHaveLength(1);
+    expect(screen.getAllByLabelText('Yes')).toHaveLength(1);
+    expect(screen.getAllByLabelText('No')).toHaveLength(1);
     expect(screen.queryAllByLabelText('Reason for the No')).toHaveLength(0);
     pick('Language', 'English');
-    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(9);
+    expect(screen.getAllByRole('group', { name: 'Your answer in English' })).toHaveLength(1);
     const yes = panel('3-settings', 'English').getByLabelText<HTMLInputElement>('Yes');
     expect(yes.type).toBe('radio');
     expect(yes.name).toBe('admin-setup:3-settings:en');
@@ -849,38 +833,39 @@ describe('the walks page: answering', () => {
     ].join('\n');
     expect(write).toHaveBeenCalledWith(expected);
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
-    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into the chat.');
+    expect(screen.getByRole('heading', { name: 'Copied: 2 answers' })).toBeTruthy();
+    expect(screen.getByText('Paste it into the chat.')).toBeTruthy();
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('2 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('2 copied');
   });
 
-  it('shows the block to select when the clipboard refuses, until it is hidden', async () => {
+  it('shows the block to select when the clipboard refuses, until it is done', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
     render(<Page report={await reportWith()} />);
     choose('1-sign-in', 'Yes');
 
     await press();
 
-    expect(screen.getByRole('status').textContent).toContain('Select the text below');
+    expect(screen.getByText(/Select the text and copy it\./)).toBeTruthy();
     const area = screen.getByLabelText<HTMLTextAreaElement>('The text to paste');
     expect(area.value).toContain('admin-setup:1-sign-in:vi | yes | ');
     fireEvent.focus(area);
     expect(area.selectionEnd - area.selectionStart).toBe(area.value.length);
-    fireEvent.click(screen.getByRole('button', { name: 'Hide the text' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
   });
 
-  it('gives no block, and says so, when nothing is answered', async () => {
+  it('gives no block, and the button is off, when nothing is answered', async () => {
     render(<Page report={await reportWith()} />);
 
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Copy my answers' }).disabled,
+    ).toBe(true);
     await press();
 
-    expect(screen.getByRole('status').textContent).toBe(
-      'Nothing chosen yet: answer a screen first.',
-    );
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(screen.getByText('0 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('0 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
   });
 
   it('gives no block while a No lacks its reason, naming the screens', async () => {
@@ -899,7 +884,7 @@ describe('the walks page: answering', () => {
     );
     expect(screen.queryByLabelText('The text to paste')).toBeNull();
     expect(write).not.toHaveBeenCalled();
-    expect(screen.getByText('3 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('3 ready to copy');
   });
 
   const shareButton = async () => {
@@ -909,15 +894,15 @@ describe('the walks page: answering', () => {
     });
   };
   const label = (text: string) =>
-    fireEvent.change(screen.getByLabelText('Your label'), { target: { value: text } });
+    fireEvent.change(screen.getByLabelText('Label from the invite'), { target: { value: text } });
 
-  it('Beside "Copy my answers", Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
+  it('On a partner’s page, Share copies the answers chosen as one Slack message: each screen’s number, sentence and language, Yes or No, a No’s reason, and the machine’s lines in a code block at its end', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
     const report = await reportWith();
-    render(<Page report={report} />);
+    render(<Page report={report} partner />);
     label('P1');
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p1');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p1');
     choose('1-sign-in', 'Yes');
     pick('Language', 'English');
     choose('3-settings', 'No', 'English');
@@ -942,40 +927,41 @@ describe('the walks page: answering', () => {
     ].join('\n');
     expect(write).toHaveBeenCalledWith(expected);
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toBe(expected);
-    expect(screen.getByRole('status').textContent).toBe('Copied. Paste it into Slack.');
+    expect(screen.getByText('Post it in Slack.')).toBeTruthy();
   });
 
   it('Share asks once for the partner’s label, keeps it in the browser, and gives no message without one, saying so', async () => {
     const write = vi.fn(() => Promise.resolve());
     clipboard(write);
-    const { unmount } = render(<Page report={await reportWith()} />);
+    const { unmount } = render(<Page report={await reportWith()} partner />);
     choose('1-sign-in', 'Yes');
 
     await shareButton();
 
     expect(write).not.toHaveBeenCalled();
-    expect(screen.getByRole('status').textContent).toContain('Type your label first');
+    expect(screen.getByRole('status').textContent).toContain(
+      'Type the label from your invite first',
+    );
     label('Not A Label!');
     await shareButton();
     expect(write).not.toHaveBeenCalled();
     label('p-1');
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    expect(screen.getByLabelText<HTMLInputElement>('Label from the invite').value).toBe('p-1');
     unmount();
 
-    render(<Page report={await reportWith()} />);
-    expect(screen.getByLabelText<HTMLInputElement>('Your label').value).toBe('p-1');
+    render(<Page report={await reportWith()} partner />);
+    expect(document.querySelector('.w-label-kept')!.textContent).toBe('as p-1, change');
     choose('1-sign-in', 'Yes');
     await shareButton();
     expect(write).toHaveBeenCalledTimes(1);
   });
 
-  it('Share says so when nothing is chosen, and when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
+  it('Share is off when nothing is chosen, says so when a No lacks its reason, and shows the message to select when the clipboard refuses', async () => {
     clipboard(() => Promise.reject(new Error('denied')));
-    render(<Page report={await reportWith()} />);
+    render(<Page report={await reportWith()} partner />);
     label('p1');
 
-    await shareButton();
-    expect(screen.getByRole('status').textContent).toContain('Nothing chosen yet');
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Share' }).disabled).toBe(true);
 
     choose('3-settings', 'No');
     await shareButton();
@@ -983,13 +969,13 @@ describe('the walks page: answering', () => {
 
     reason('3-settings', 'too small');
     await shareButton();
-    expect(screen.getByRole('status').textContent).toContain('paste it into Slack');
+    expect(screen.getByText(/Select the text and copy it\./)).toBeTruthy();
     expect(screen.getByLabelText<HTMLTextAreaElement>('The text to paste').value).toContain(
       'By: p1',
     );
   });
 
-  it('The bar counts the answers on record with those chosen here, of all there are, and the ones to copy', async () => {
+  it('The footer counts the answers on record with those chosen here, of all there are, and the ones ready to copy, with a bar a walk', async () => {
     render(
       <Page
         report={await reportWith(
@@ -997,18 +983,15 @@ describe('the walks page: answering', () => {
         )}
       />,
     );
-    const ticks = () =>
-      [...document.querySelectorAll('.w-ledger .w-tick')].map((tick) =>
-        tick.getAttribute('data-mark'),
-      );
+    const fill = () => document.querySelector<HTMLElement>('.w-walkfill')!.style.width;
 
     expect(screen.getByText('1 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('0 answers to copy')).toBeTruthy();
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
     choose('3-settings', 'Yes');
     expect(screen.getByText('2 of 18 answered')).toBeTruthy();
-    expect(screen.getByText('1 answer to copy')).toBeTruthy();
-    expect(ticks()).toHaveLength(18);
-    expect(ticks().slice(0, 4)).toEqual(['yes', 'open', 'yes', 'open']);
+    expect(document.querySelector('.w-tocopy')!.textContent).toBe('1 ready to copy');
+    expect(document.querySelectorAll('.w-walkbar')).toHaveLength(1);
+    expect(fill()).toBe(`${(2 / 18) * 100}%`);
   });
 
   it('The bar keeps its height on the page, so an answer at the foot of the window rests above it', async () => {

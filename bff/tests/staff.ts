@@ -1,5 +1,13 @@
-import type { Employee, PermissionLayer, StaffSetup } from '@credo/shared';
-import { recordKeys } from '@credo/shared';
+import {
+  addEmployeeReplySchema,
+  employeeDocSchema,
+  employeeListReplySchema,
+  type Employee,
+  type PermissionLayer,
+  recordKeys,
+  type StaffSetup,
+} from '@credo/shared';
+import { expect } from 'vitest';
 import { type RunningCStorage } from './c-storage';
 import { ROOT, seedEmployee, signIn, tenantWithRoot, withAuth } from './tenant';
 
@@ -15,7 +23,14 @@ export async function staffTenant(cs: RunningCStorage, options: TenantOptions = 
       t.app.inject({ method, url, headers: withAuth(authId), payload: payload as object }),
   });
   /** The root saves a setup over the one stored, and answers the stored one back. */
-  const setup = async (next: { departments?: object[]; positions?: object[]; extra?: object }) => {
+  const setup = async (next: {
+    departments?: object[];
+    positions?: object[];
+    extra?: object;
+    fields?: object;
+    customFields?: object[];
+    numbering?: object;
+  }) => {
     const read = (await as(root).get('/api/staff-setup')).json<{ version: string }>();
     const saved = await as(root).send('PUT', '/api/staff-setup', {
       setup: { departments: [], positions: [], extra: {}, ...next },
@@ -59,3 +74,31 @@ export async function staffTenant(cs: RunningCStorage, options: TenantOptions = 
   };
   return { ...t, root, rootCall: as(root), as, setup, staff, ROOT, keys: recordKeys.tenant(t.id) };
 }
+
+type Tenant = Awaited<ReturnType<typeof staffTenant>>;
+type Call = Tenant['rootCall'];
+
+/** The calls a staff test makes on a person, as the app's routes answer them. */
+export const personCalls = {
+  body: (over: object = {}) => ({ name: 'Mai Linh', code: 'EMP-1', extra: {}, ...over }),
+  add: (call: Call, over: object = {}) =>
+    call.send('POST', '/api/employees', personCalls.body(over)),
+  /** A person added; an add that is not a 201 fails on its status. */
+  added: async (call: Call, over: object = {}) => {
+    const reply = await personCalls.add(call, over);
+    expect(reply.statusCode).toBe(201);
+    return addEmployeeReplySchema.parse(reply.json());
+  },
+  doc: async (call: Call, id: string) => {
+    const reply = await call.get(`/api/employees/${id}`);
+    expect(reply.statusCode).toBe(200);
+    return employeeDocSchema.parse(reply.json());
+  },
+  codes: async (call: Call) => {
+    const reply = await call.get('/api/employees');
+    expect(reply.statusCode).toBe(200);
+    return employeeListReplySchema.parse(reply.json()).employees.map((person) => person.code);
+  },
+  me: (t: Tenant, authId: string) =>
+    t.app.inject({ method: 'GET', url: '/api/auth/me', headers: withAuth(authId) }),
+};

@@ -205,8 +205,8 @@ describe("A session's secret is stored hashed, under a minted id with its device
     expect(JSON.stringify(session)).not.toContain(secret);
     expect(session.user).toBe('root');
     expect(session.device).toBe(DEVICE);
-    // A generation: the sign-in record's, the root's seeded at 0, and no time of its own.
-    expect(session.passwordAt).toBe(0);
+    // A generation: a copy of the sign-in record's, the root's seeded with none, and no time of its own.
+    expect(session.generation).toBe('');
   });
 
   it('ends the session a sign-in sends the kept handle of, and no other', async () => {

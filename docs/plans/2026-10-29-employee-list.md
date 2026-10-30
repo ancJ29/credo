@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 10:46 +07:** group A is done: steps 2 to 11 are ticked, its 16 screens walked on the fake and on the full stack with 0 differences, its bases committed and no answer open. **Next:** step 12, group B's pages and walk on the fake, alone; then C and D in parallel worktrees from B's end, as the human decided.
+**Where it stands — 2026-10-30 17:00 +07:** piece 2 is built and walked: groups A, B, C and D are in `employee-list`, 33 screens at three widths in two languages, and the human accepted the full walk of 16:39 (step 26, Decide 31 (a)); all 198 of piece 2's bases are committed (`47ba1c6`). The recap is written ([step 27](../recaps/2026-10-30-employee-list.md)). **Next:** the merge into `main` on the human's word, then the push, then step 28 (ridge). Decide 29 (a) is parked as open item 31 (nothing shows on a phone that a wide table scrolls sideways). Decide 30, the human's rule that a moved pixel is a raw count, is not in force: its cause (the 14 raw pixels at the 390 logo) is to be found and the walk's script changed first, as a small piece of its own after this one; `qa.md` is not changed.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -115,11 +115,12 @@ Every key is built by `recordKeys` in `shared/src/records.ts`, under the tenant'
 | Record | Holds | Written by |
 | --- | --- | --- |
 | `tenant.<id>.employee.<employee id>` | the code, the name, the email, the department and the position as `{id, name}`, the person's own permissions, whether archived, `extra` | an add, last, `If-None-Match: *`; a change, an archive, a new code or email, each with its tag |
-| `tenant.<id>.user.<sign-in name>` | piece 1's sign-in record: the password's hash (none until one is given), the person's id, the time of the last password | an add or a new code, first, `If-None-Match: *` (or over a stale one with its tag); a password, with its tag |
+| `tenant.<id>.user.<sign-in name>` | piece 1's sign-in record: the password's hash (none until one is given), the person's id, the time of the last password | an add or a new code, first, `If-None-Match: *` (or over a stale one with its tag); a password, with its tag. It also holds when it was claimed or last given a password (a failed add's age) and a random generation, minted at each, which a session copies |
 | `tenant.<id>.staff-setup` | the departments and positions (each an id, a name, permissions and `extra`), the field switches, the company's own fields, the numbering, the QR switch, `extra` | the staff setup page's save, with its tag |
 | `tenant.<id>.session.<session id>` | piece 1's session, plus the device id and when it was issued | a sign-in, `If-None-Match: *` on a fresh id; a renewal, with its tag |
+| `tenant.<id>.staff-numbering` (group B) | the last number given under each numbering prefix | a numbered add raises it, with its tag, before it claims the code; a record that moved is read again, three times at most |
 | `tenant.<id>.employee-photo.<employee id>` (group B) | one square image of at most 50 KB | a photo saved, with its tag |
-| `tenant.<id>.signin-email.<email>` (group C) | the person's id | an email set, `If-None-Match: *`; removed with its tag when it changes |
+| `tenant.<id>.signin-email.<email>` (group C) | the person's id and when it was claimed (the age a failed set's claim waits for, as a sign-in claim's) | an email set, `If-None-Match: *` (or over a stale claim with its tag); removed with its tag when it changes |
 | `tenant.<id>.signin-qr.<employee id>` (group C) | the hash of a QR code's secret and when it ends | a code issued, replacing the last; removed with its tag when spent |
 
 - **A record per person, read through a new c-storage list** (row 39). *Rejected:* the old app's
@@ -432,7 +433,7 @@ the group whose walk holds it.
 | 22 | 👤 | B: Someone allowed to change a person crops and saves a square photo, made small by the app, shown on the person's page; the list shows initials | unit, ui; BFF route; the walk |
 | 23 | 👤 | B: Search finds a person by any word the list shows, the company's own fields included; filters choose by department, position, whether they left, and the company's choice fields; the address keeps both, so a copied link opens the same list | unit, ui; the walk |
 | 24 | 👤 | B: A department, a position or a person may be allowed to change the company's settings | unit, shared; BFF route; the walk |
-| 25 | 👤 | C: The root gives a person an email, unique among the company's sign-ins, and they then sign in with the email or the code; no mail is ever sent to it | BFF route; the walk |
+| 25 | 👤 | C: The root gives a person an email, unique among the company's sign-ins, and they then sign in with the email or the code while the company has the email sign-in on; no mail is ever sent to it | BFF route; the walk |
 | 26 | 👤 | C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last; the company may turn the QR sign-in off | BFF route; unit, ui; the walk |
 | 27 | 👤 | C: A QR code opened on a phone signs that phone in, on the person's first page; opened a second time, or after its 15 minutes, it is refused and says to ask for a new one | BFF route; unit, ui; the walk |
 | 28 | 👤 | C: Each person, the root included, changes their own password from their menu, giving the current one first; the new one follows row 14's rule and signs them out on every other device | BFF route; unit, ui; the walk |
@@ -771,7 +772,7 @@ itself:
     config; the missing-variable message names `CREDO_FAKE_DIR` and who sets it. C12 `[FIXED]` the
     coverage reason names `scripts/src/fake.test.ts`.
   - The reviewer's observations, logged and not fixed: open items 19, 20 and 21 (21's mechanism read
-    and confirmed by the re-review).
+    and confirmed by the re-review); fixed at step 12's fix pass.
   - *Re-review, T1 to T5 and D1, D2.* T1 `[FIXED]` a password is hashed and checked in its composed
     form (NFC) in `hashPassword` and `verifyPassword`, `bff/src/password.ts`, and one with a space at
     either end is refused (`shared/src/staff.ts`); red with each normalisation removed (unit and
@@ -819,7 +820,7 @@ itself:
 
 **Group B, the record and the list.** Each step as its group A step, for rows 18 to 24, 34 and 45.
 
-- [ ] **12. B's pages and walk, on the fake.** Who: 🤖, after step 11, about a day and a half: the
+- [x] **12. B's pages and walk, on the fake.** Who: 🤖, after step 11, about a day and a half: the
   staff setup's fields and numbering, the company's own fields on the form, page and list, the photo,
   search and filters with their address, a code changed, Settings by permission, and B's 7 screens on
   the walks page. Done when: the UI and shared halves of B's rows each seen red once; `walks.json`
@@ -828,50 +829,685 @@ itself:
   `staff.canView` are the only ways in. The first page group B gives to someone who is not the root
   (Settings by permission) makes it real, so a guard per route, from the same `can` the menu uses,
   comes in this step.
-- [ ] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
+  *Evidence:* the UI and shared halves of rows 17 to 24, 34 and 45, row 49's new answers and rows 53
+  and 54 for B's screens, and C4's guard, each seen red once from its assertion by changing the rule's
+  line and putting it back: a reserved key let through, a date of 30 February, the next number from a
+  count and not the highest, a photo of exactly 50 KB, the fifth permission left out of the catalogue
+  (`shared`); the guard removed from the route and from Settings' route, Settings in the menu for the
+  root alone, search without accents, any word and not every word, a person who left shown without the
+  filter, the address written with nothing set, the address written mid-syllable, initials without the
+  photo switch, a second phone and a photo panel shown with their switch off, the own fields' keys
+  merged away or kept empty, a code sent when left empty, the photo saved over no version, the code
+  panel open to others, a numbering and own fields the BFF would refuse sent anyway, a key unfixed
+  after saving, the fake's number, its taken code and its photo version, and the API's 409 told apart
+  (`ui`); a walk screen renamed, a step naming a field the data set lacks, an office screen opened as
+  another person and a search that finds nothing (`visual`). One slip caught on the way: a date of
+  month 13 threw instead of being refused. The whole `pnpm check` exit 0, no warning, 100 % in every
+  package (shared 71 tests, ui 232, bff 152, scripts 75, visual 219; knip silent). `pnpm report` reads
+  14 waiting (B's 7 screens in two languages), 26 asked again, 0 no, 32 yes; `walks.json` lists B's 7
+  screens, each a scene and none from the mock. *Not run here:* the walk spec, which needs a browser;
+  `pnpm check` typechecks and lints it.
+  *The 16 screens of A, dumped (words and DOM, Mantine's ids and UUIDs masked) at `35ce945` and at the
+  end of this step:* 3 are equal (3 added, 3 forbidden, 4 nothing) and 13 differ in both languages.
+  Every difference is an addition B's text asks for, and the only lines removed are the code field's
+  required mark and its old hint and the list's row text: the staff setup and the list gain the fields,
+  the search and the filters; the add form gains the hint for an empty code, the second phone and the
+  company's own fields; a person's page gains the same, the photo and the code change; every
+  permissions editor gains the fifth permission. Each changed screen's words changed, so the walks page
+  asks it again (26 answers), and its bases move at B's full walk (step 16), as piece 1's did at A's.
+  *Choices:* the data set holds B's config for all screens (rule 55's one data set), and a scene's step
+  names a company's own field by `field.<key>` in the walks' words; the email switch waits for C's
+  email field, since a switch that changes nothing would mislead the preview; an empty code is the UI's
+  and the fake's alone, and the shared request still requires a code until step 14; the photo is the
+  middle square, shrunk to 256 px as a JPEG within 50 KB by `ui/src/photo.ts` (untested on jsdom, the
+  page's tests put a stand-in for it); a search finds every typed word among the words the list shows;
+  the address holds `q`, `department`, `position`, `left` and `f.<key>`, written only when set;
+  `bff/src/employees.route.test.ts` is the one BFF file touched, two expected answers that now carry
+  the fifth permission; `ui` and `visual` raise their test timeouts, as the walks page draws 23 scenes
+  twice. *Model files:* `ui/src/StaffSetupPage.tsx`, `PersonPage.tsx`, `AddPersonPage.tsx` and
+  `StaffListPage.tsx` as they were; `Settings.tsx` for the photo chooser. *Logged:* open item 22. The
+  fake run's script in the credo root's `one-off/` counts 96 pictures and six sets of 16 screens, and
+  is to count 138 and six sets of 23 at step 13.
+  *Fix pass, 2026-10-29, for open items 19 to 22 (deleted from the log; `ui` only, no BFF or c-storage
+  change), after step 12 and before the human's fake walk:* 19 and 22 are one gap, a right to add,
+  change or archive without "See the staff list" gives no page, so `PermissionEditor` now says under
+  such a right, while seeing is refused, that it needs seeing (`NEEDS_SEEING` in
+  `permissionLabels.ts`; a position's page, which cannot know its department, says it only for an
+  explicit refusal; the add that lands on the guard's page stays, held by `StaffRecord.test.tsx`).
+  20, a 403 on a save, now reads "you may no longer change this person" and keeps what was typed
+  shown for reading (`PersonPage.tsx`, `person.saveForbidden`). 21, the tab keeps the `?fake` switch
+  in its own storage once read, so a reload or a page the app navigates to is still the fake
+  (`fakeParts` answers null for neither, `main.tsx`). Each new test was seen red from its assertion
+  before the code: the line under a right at a department and a position, and on a person; the 403's
+  words; and the reload. The 23 scenes dumped (words and DOM, Mantine's ids and UUIDs masked) before
+  and after are equal in both languages, bar one transient attribute Mantine sets while its shell
+  resizes: no screen changed, so the walks page still reads 14 waiting, 26 asked again, 0 no, 32 yes.
+  The whole `pnpm check` exit 0, no warning, 100 % in every package (shared 71 tests, ui 236, bff
+  152, scripts 75, visual 219). No walk screen shows a right granted without seeing, so none shows
+  the new line; the walk spec was not run (it needs a browser).
+- [x] **13. B's fake walk.** Who: 👤, about 30 minutes. Done when: as step 6, for B's screens; the
   fake run's pictures of all 23 screens so far taken last. **Then stop.**
-- [ ] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
+  *Answers, 2026-10-29 12:11:* the human previewed the walks page built at `a218234` and pasted 41 lines, every one
+  "yes": B's 14 answers and A's 26 asked again, plus `admin-setup:1-sign-in:vi`, a screen of piece 1
+  that was already yes (10-28) and is yes again (10-29). `pnpm answers` wrote 41 and refused 0 (the
+  match is by the screen's words, and the fix pass changed none); `visual/answers.json` holds them;
+  `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes; the whole `pnpm check` exit 0, no
+  warning (shared 71 tests, ui 236, bff 152, scripts 75, visual 219). *Left:* the fake run's
+  pictures, the human's last act of this step, so the step stays unticked.
+  *Fix pass, 2026-10-29 12:25 +07, after the human's red fake run (all 6 tests failed alike at the
+  second screen, 6 pictures of 138):* the walk spec was wrong, the page and the fake were not.
+  `getByLabel('Key')` counted 8, not the 5 the spec expected: a bare string matches any label that
+  holds it, so besides the 5 key fields it found the new field's "Remove Key" button and the 2 "Option
+  key" fields of the licence choice (in Vietnamese the same with "Khóa"). The same slip waited in
+  every `typed` call: "Phone" also names "Personal phone", so the add form's phone would have met
+  two fields at screen 2 of the add walk (`staff-2`, `staff-12`, `office-2`). The spec now matches a
+  label as a whole, the required star allowed (`exactly` in `walk/specs/piece-2.spec.ts`); the count
+  still derives from `DEMO_CUSTOM_FIELDS`. No screen changed. *Checked without a browser:* every step
+  of the spec, A's and B's, was replayed on the same scenes in jsdom with Playwright's rules (a
+  string matches as a substring without case, one element for an action, the role's accessible name
+  or the label's text) in both languages: all 23 screens' locators and actions resolved, and the two
+  slips above were seen red there before the fix and green after. *Not checkable there:* widths
+  (CSS), real focus and the pictures.
+  *Second fix pass, 2026-10-29 12:50 +07, after the second red run (54 of 138 pictures, all 6 tests
+  alike at screen 8):* Playwright's `check()` clicks and reads the box at once. The "show people who
+  left" box takes its state from the address (`StaffListPage.tsx`, `criteriaOf` and `narrow`), and
+  the router writes the address in a transition, so the box ticks a moment after the click. Seen in
+  jsdom with the real router and a real click: unchecked right after the click, checked a moment
+  later, the same element, in both languages; unchecking the same. The page is right (a person sees
+  it tick), so the spec changed: `click()`, then `toBeChecked()` (`walk/specs/piece-2.spec.ts`).
+  Sweep of the other actions: `check()` was the only one that reads state back; a search typed
+  and then a position chosen with no wait between kept both (the list shows the manager Lan, not
+  Hùng; the search box still holds the text); every other action is followed by an assertion that
+  waits, except the link to a person's page, which now waits for that person's heading (5 people, both
+  languages seen). No screen changed.
+  *The fake run, the human's third, on `6f370cf`, 2026-10-29 12:46:30 to 12:47:01 +07:*
+  `one-off/20261029-1205-fake-run-employee-list-b.sh`, its log
+  (`logs/20261029-1205-fake-run-employee-list-b.log`, 38 lines) read whole by another agent: the
+  check "employee-list at 6f370cf, clean"; "138 pictures, 138 expected", the smallest 19,096 bytes;
+  Playwright 6 passed in 28.8s, [fake] pc, tablet and phone by Vietnamese and English, 4.4 to 5.0 s
+  each; no warning, error, retry, flaky, timeout or skip; no secret and no address but `127.0.0.1`.
+  The folder `walks/fake-run-2026-10-29-124630-6f370cf/` holds 138 `.png`, 6 for each of the 23
+  screens, every name `<screen>-<vi|en>-<1280|768|390>.png`: the reference for the full run, never
+  bases. The two red runs before it (12:15, 12:36) are the two fix passes above.
+- [x] **14. B's back end.** Who: 🤖, about a day: the numbering, the code change, the photo's routes,
   `settings.canEdit` on `PUT /api/config`, the generator's B data. Done when: the BFF half of B's rows
   each seen red once; `pnpm check` green. *Also, from step 10's re-review (T4 `[DEFERRED]`):* a claim
   writes `passwordAt: now()`, and a session's equality with it could match an old session once a code
   is freed, which only a code change (this step) or an archive that frees a code can do. The fix: a
   random generation minted at every claim and every password, copied into the session, with no clock
   in it.
-- [ ] **15. B's review.** Who: 🤖, another model. Done when: as step 10.
-- [ ] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
+  *Consumed from step 12, the UI's side of B's contract as the fake fixed it:* an add without `code`
+  asks for the next number (the shared request requires a code until then); `PUT` of a code answers
+  the person, a 409 carrying `current` for a moved version and a 409 without it for a taken code;
+  `GET` of a photo answers `{photo, version}` with `null` and `''` for none, never a 404, and `PUT`
+  answers the same, a 409 for a moved version; a staff setup save carries `fields`, `customFields` and
+  `numbering`, which the BFF drops today.
+  *Evidence, 2026-10-29 13:11 +07 (commit `d9d01b9`):* the BFF half of rows 18, 20, 21, 22, 24 and 45,
+  and T4's fix, each seen red once from its assertion, by changing the rule's line and putting it back
+  (30 changes, all red): the add's code optional; a setup save dropping what it leaves out or what it
+  sends; the number counted from nothing, one try only, a store failure swallowed as a lost race, a
+  short list counted; the code route open to others, a person who left allowed, the version unchecked,
+  the old sign-in kept, the password not carried, the new name not given back when the person moves
+  (and a claim another took over not left alone), a sign-in record not the person's; the photo's two
+  checks swapped, a save for no one, a save over no version, a conflict with no current, a bad record
+  served; `PUT /api/config` unchecked and root-only; a password keeping the generation, an add's or a
+  code change's claim with no random generation. Two changes were green and got a test: a sign-in
+  record not the person's in the code route, and a bad stored photo (it threw by accident). T4 first:
+  the test (a code freed by a code change, claimed again in the same instant, the old session must be a
+  401) was red at the clock's `passwordAt` and green once the generation is random. Tests:
+  `bff/src/employee-code.route.test.ts`, `employee-photo.route.test.ts`, and additions to
+  `staff-setup.route.test.ts`, `config.route.test.ts`, `employees.route.test.ts`; in `shared`, `staff`,
+  `photo` and `records` tests; `scripts/src/generator.test.ts` (the setup's three parts and the photo
+  on its person). The whole `pnpm check` exit 0 at 100 % in every package, no warning (shared 74 tests,
+  ui 236, bff 185, scripts 76, visual 219; knip silent); the first whole run failed on open item 23,
+  a scripts test that depends on a child's start-up time and passes alone at 100 %, and the second was
+  green. c-storage did not change, so `make check` was not run. `pnpm report` reads 0 waiting, 0 asked
+  again, 0 no, 72 yes. *The 23 scenes dumped (words and DOM, Mantine's ids and UUIDs masked) at
+  `6f370cf` and at the end:* equal in both languages, bar the same transient attribute Mantine sets
+  while its shell resizes (`data-resizing`, on 3 of 46): `ui/` was not touched.
+  *Choices:* the shared add request's `code` is optional (a request, so no default at a wire boundary
+  was owed); a save that leaves out `fields`, `customFields` or `numbering` keeps the stored ones, so
+  a caller that predates them erases nothing; a numbered code is counted by the BFF past every person
+  in the list (a list longer than c-storage returns is a 500), claimed as a sign-in, and a lost number
+  takes the next, three times, then 503; a code change claims the new sign-in name carrying the
+  password's hash, writes the person with their tag, then removes the old record, answering 409 with
+  the person for a moved version or a person who left and 409 with none for a taken code; a person who
+  moves in between gives the claim back; the photo is `employee-photo.<id>` (`{photo}`, its tag the
+  version), read with `staff.canView` and saved with `staff.canEdit`, a 409 carrying the photo as it
+  is; `PUT /api/config` takes `settings.canEdit` (the root holds it); the sign-in record gained a
+  random `generation` and the session copies it in place of `passwordAt` (kept as the claim's age), so
+  a session of the older shape stops resolving once, as step 8 priced; the generator sends the
+  setup's three parts and the data set's photo. *Accepted:* a password given in the instant before a
+  code change removes the old sign-in record is lost with it (the root sees it fail and gives another).
+  *Logged:* open item 23. The step's own run on the stack was not made, since the generator's test and
+  the route tests meet the real c-storage.
+- [x] **15. B's review.** Who: 🤖, another model. Done when: as step 10. *Fix pass, 2026-10-29 14:55 +07
+  (`make check` not run: `c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
+  group B, S1 to S4 and R1 to R7 on the server, C1 to C9 and mutations M1 to M36 on the client, each
+  with a proof test red on `caa52d7`. The human's two answers: R5, a number freed by a code change is
+  never given again ("no, 8 count past"), and S1/C8, no BigInt and no special 409, only the add's
+  person checked against `employeeSchema` before any write ("EMP-9999999999999999 never happen").
+  Each is `[FIXED]` unless said, and each new or changed test was seen red from its assertion under
+  a mutation of the rule's line.*
+  - S1 `[FIXED]` (trimmed) the add builds the person and parses it with `employeeSchema` before the
+    first write, numbered or not, a 400 if it does not parse; `nextCode` is untouched. Red: with the
+    check removed the list reads 500 after the add of `EMP-10000000000000000`. R5 `[FIXED]` a record
+    `tenant.<id>.staff-numbering` (the last number given under each prefix) is raised, over the tag it
+    was read at, before the code is claimed; `nextCode` counts the list and that number, so row 20
+    holds as written. A moved record is read again, three times, then 503; a tag is never bypassed.
+    Red: with the last number ignored (3 tests), not raised, or raised with no tag (the race test).
+    S2 `[FIXED]` folded into R5: a try that fails on a young claim has already raised the number, so a
+    retry goes on and does not recount the same one; red with the number ignored (the row 38 test, a
+    retry after a 503 gets `EMP-0004`, not `EMP-0001`). S3 `[FIXED]` chosen: carry, not 409. On
+    the removal's `moved` the old record is read again; if it still names this person its hash is
+    written onto the new record under a fresh generation and its own tag, then the old record is
+    removed over the tag just read, three times at most, then 503 (the person stays on the new code);
+    a new record that is another person's is left alone, as is an old one another took over. The
+    hazard in step 14's *Accepted* line is gone. Red: the hash not carried (2 tests); the 503 turned
+    into a success. The fresh generation is asserted but its removal stays green: nothing can hold a
+    session on the new name before the person is written, so the test pins the rule and does not
+    prove it. S4 `[FIXED]` R4 (a code changed away and back keeps no session), R6 (a failed change's
+    new code held a minute from the change) and R7 (the old record left to the add that took it over)
+    are tests of `employee-code.route.test.ts`; M1, M3, M4 are the reviewer's, held by them, and M2 by
+    S2's test.
+  - C1 `[FIXED]` the photo is held by the person's page, outside the form's key, and a 409 carries
+    the photo as it is (`SavePhotoResult` has `current`, the real client reads it, the fake sends it); the form is keyed by a
+    counter that a save, an archive and a reload bump and a code change does not, so what was typed
+    survives a code change (the box for the new code is emptied, as the redrawn form's was). Red:
+    the photo not held (2 tests), the newer photo not taken, the form keyed by version. C2 `[FIXED]`
+    `SettingsPage` takes `onForbidden` and the app passes its re-read of `me`; red with it not called.
+    C3 `[FIXED]` a stored value kept on a person is listed as its own option and is refused only if
+    changed (`refusedFields` takes what was stored; `ownStored` keeps the stored value of an unchanged
+    field, a `NaN` would have replaced a number that no longer parses); red with each of the three
+    off. C4 `[FIXED]` the walk spec checks the search survived (Lê Minh Châu absent and `q=phong` in
+    the address, in `staff-14`; the browser is not run here), and `narrow` builds on the last address
+    written and not yet seen back; red with the base the address (the two-narrowings test).
+    C5 `[FIXED]` the search box follows an address another page set, the menu or the history; red with
+    the follow removed. C6 `[FIXED]` a department, position, field or option the page cannot show
+    narrows nothing and is dropped at the next write; red with it kept. C7 `[FIXED]` a person opened
+    from the list carries the list's address, and the Back link returns to it (a bare list otherwise);
+    red with the state dropped. C9 `[FIXED]` the fake keeps the setup's parts a save leaves out, by
+    the same `keptSetupParts` the BFF uses (moved to `shared`, with a test of its own), and its test
+    says so; red with the parts dropped (2 tests). C8 is S1, trimmed. M4 `[FIXED]` red with the list's
+    narrowings pushed (a history-back test); M6 with every choice field filtered (a choice not in the
+    list has no filter); M10 with the code panel's stale problem kept; M17: the page shows no
+    chooser for a person who left, and the BFF's photo route, like its details route, checks the
+    permission and not the archive (decided: left as the BFF has it, since nothing there is
+    reachable from the UI); M19 with the new-code words kept past a reload; M21 with a department
+    that never said anything about seeing; M22 with a code of spaces sent. Each seen red. The
+    timeout in `ui/vitest.config.ts` is back at the default (rule 6 of QA): all 253 tests pass at
+    5 s under the whole gate; `visual`'s and `scripts`' are older and named in their configs.
+  - *Last pass, 15:13 +07, after both reviewers re-checked this pass:* N1 `[FIXED]` count past covers a
+    typed code too: the code route raises the last number given under the current prefix to the
+    number of the code it frees, over the tag it read, three tries then 503, before it claims the new
+    code (a number burned is harmless); red with the raise off (the typed `EMP-0002` changed to `BOSS`
+    gave `EMP-0002` again, and the 503 test). C10 `[FIXED]` `findLastIndex` for the address written and
+    seen back; red with `findIndex` ("a", "", "a" in one update leaves the box at "a" after the
+    menu's link). C8's remainder `[DEFERRED]` to open item 24 on the human's word.
+  - *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every package (shared 75 tests, ui 254, bff 202, scripts 76, visual 219; knip
+    silent). `pnpm report` reads 0 waiting, 0 asked again, 0 no, 72 yes. *The 23 scenes dumped (words and DOM, Mantine's ids, UUIDs
+    and React's `useId` ids masked) at `caa52d7` (a copy of its tree, built from `git archive`) and at
+    the end:* equal in both languages (46 scene dumps and the 38 mock states), after the code
+    box's value was caught as the one difference (the form no longer redraws on a code change) and
+    emptied on success. No screen changed; the walk spec was not run.
+- [x] **16. B's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 23
   screens so far; B's 42 bases committed.
+  *Evidence so far, 2026-10-29 15:32 +07:* the human's full run at `66eb3c3` (checks clean), its log
+  `logs/20261029-1314-full-run-employee-list-b.log` (528 lines, 15:20 to 15:27) read whole by a subagent and
+  its folder `walks/full-run-2026-10-29-152028-66eb3c3/` read: 138 pictures in 6 tests, pass 1 "1 failed"
+  and "5 passed" (the one a picture against the fake run's), pass 2 and pass 3 each "6 passed", the 138
+  bases of 138 read back at threshold 0, piece 1's and the operator's walks "12 passed" written and "12
+  passed" compared; no warning, timeout, retry, flaky, skip or secret. `differs.txt`: 1 differs
+  (`staff-15-code-changed-vi-390`, 3597 pixels, ratio 0.01), 0 without a reference, 0 other errors. Its cause,
+  read in `vs-fake/staff-15-code-changed-vi-390-diff.png`: the only red is the fixed top bar drawn mid-page,
+  at a scroll position that differed slightly from the fake run's; the fields, words and layout are the
+  same (open item 25, the walk's to fix). Committed: B's 42 new bases and 81 moved ones of group A (the
+  list now draws search, filters, avatars and two more columns; the person, add, password and other pages
+  moved with it), nothing else changed. Row 55: `admin-staff:staff-15-code-changed:vi` has its answer
+  removed in `visual/answers.json` (the three widths share it), so it is asked again.
+  *Answer, 2026-10-29 15:39 +07:* the human, on the build `f5139cbac`, pasted one line,
+  `admin-staff:staff-15-code-changed:vi | yes | 9e5573ec85e8`. `pnpm answers` wrote 1 and refused 0 (the
+  line matched the screen of HEAD); `visual/answers.json` holds it; `pnpm report` reads 0 waiting, 0
+  asked again, 0 no, 72 yes. *Gates, lightly* (only `visual/answers.json` and this plan changed): the
+  `visual` package's tests alone (218 of 219 passed; the one, a scene's 20 s wait in `page.test.tsx`,
+  timed out while two other gates held the machine, and that file alone then read 47 of 47) and
+  `prettier --check` on this plan, clean; not the whole `pnpm check`. Group B is done.
 
 **Group C, the ways to sign in.** Each step as its group A step, for rows 25 to 28, 46 and 47.
 
-- [ ] **17. C's pages and walk, on the fake.** Who: 🤖, about a day: the email on a person, the QR
+- [x] **17. C's pages and walk, on the fake.** Who: 🤖, about a day: the email on a person, the QR
   code and its page, the phone's QR landing, one's own password, and C's 6 screens. Done when: as
   step 12, for C's rows.
-- [ ] **18. C's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 29
+  *Evidence, 2026-10-29 16:56 +07:* the shared, fake, pages, walks and spec of C came in the WIP
+  commit `d21cfa6` (shared `signins.ts`, the fake's and the API's `setEmail`, `issueQr`, `signInQr`
+  and `changePassword`, the email and QR panels, the QR landing, the own-password page, six scenes);
+  its tests' red-first was that session's and is not re-read here. Seen red and green in this
+  session: `QrCode` drawing `value` as an SVG of modules (red against the placeholder icon),
+  `qrcode.react` 4.2.0 pinned in the catalog and `@credo/ui` (the human's install, lockfile
+  committed), loaded by `ui/src/QrCode.tsx` alone, which only the person page's QR panel imports; the
+  BFF route test that refused `fields: { email: true }` as an unknown key (red once `email` became a
+  known switch, now refuses `fax`); the words test, red on `{{email}}` of `staff-17` (its domain read
+  as a dictionary key, `phat.example`; emails are now taken out of a line before that check). *QR
+  switch (Decide 14c):* off in `staffConfig`'s default, in the data set and in the fake unless a
+  scene asks for it; the tests of those three stand, so nothing changed. *Replay:* the six new steps
+  played in jsdom on the real router (`ui/src/SignIns.test.tsx`, and the walks page's scene run in
+  `visual/src/words.test.tsx`, each in both languages); the walk spec is typechecked and linted,
+  not run. *Dumps:* the 23 screens of A and B (words and DOM, Mantine's ids, UUIDs and React's ids
+  masked, both languages, the 38 mock states included) at `7b1c1f5` (a copy of its tree) and now:
+  equal but for 4 of the 46 files, those of `setup-1` and `setup-2`, one page
+  (`admin-staff-setup:2`) and gain a heading, a line and two unchecked switch rows (the email, the QR
+  code) in Vietnamese and in English, nothing else. **That change is the human's to re-answer at
+  C's preview** (Decide 14b). *Gates:* the whole `pnpm check` exit 0, no warning, 100 % in every
+  package (shared 81 tests, bff 202, ui 286, scripts 76, visual 220; knip silent); the scripts tests
+  now build under `NODE_ENV=production` (their `vitest.config.ts`), since under `test` the
+  UI bundle, with `qrcode.react`, shipped React's development build past 1000 kB and warned.
+  `pnpm report` reads 12 waiting (C's 6 screens in two languages), 4 asked again (the setup page's
+  `setup-1` and `setup-2`, both languages), 0 no, 68 yes.
+- [x] **18. C's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 29
   screens. **Then stop.**
-- [ ] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR
+  *Evidence, 2026-10-30 10:17 +07 (steps 18 and 23 are one preview of the merged page, 33
+  screens in two languages):* the human answered yes to all 30 waiting and asked-again lines, at
+  09:5x on `walks/2026-10-30-094934-378e5d2fb`, plain mode. `pnpm answers` wrote 28 and refused 2:
+  `admin-staff:staff-18-qr` in vi and en, as stale, since the QR link in its words carried a secret
+  the fake minted at random on every build. Fixed in `22b61e7` (the fake counts its secrets; a test
+  draws every scene twice and compares its words); `staff-18-qr` is asked again, and no other screen's
+  fingerprint moved between the two builds. By group, written: C's `setup-1-departments-positions`,
+  `setup-2-fields` (vi, en), `staff-17-email`, `office-6-password`, `office-7-password-wrong`,
+  `phone-1-signed-in`, `phone-2-code-used`; D's `staff-1-list`, `staff-8-left`, `staff-14-search`,
+  `staff-19-import`, `staff-20-preview`, `staff-21-imported`, `staff-22-no-name`. The page now reads
+  2 waiting, 0 asked again, 0 no, 90 yes. Then the human answered `staff-18-qr` again on the rebuilt
+  page `walks/2026-10-30-101121-a81862a78`, whose fingerprints were equal across two builds: both yes,
+  and `pnpm answers` wrote 2, refused 0. The page now reads 0 waiting, 0 asked again, 0 no, 92 yes.
+  Step 18's "all 29" is stale; the merged page holds 33.
+- [x] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR
   code's issue and spend, one's own password, the QR switch. Done when: as step 14, for C's rows.
-- [ ] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
-- [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
+  *Evidence, 2026-10-30 10:52 +07 (commit `9b26f71`):* the BFF half of rows 25 to 28, 46 and 47, each
+  seen red once from its assertion, by changing the rule's line and putting it back (33 changes in
+  `bff`, 5 in `shared`, all red; one was green first and got its test: the held session's record left
+  behind by one's own password). Model: `bff/src/employee-code.route.test.ts`
+  and the code route in `bff/src/staff.ts` (claim first, person with its tag, old record removed after,
+  three tries, then 503). Tests: `bff/src/sign-ins.route.test.ts` (new, 42), a line each in `shared`'s
+  `records.test.ts` and `signins.test.ts`, and the route list in `operator.route.test.ts`. Red, by what
+  was changed: the 409 for a held email, the old email's record not removed, the claim not given back
+  for a moved version, the version unchecked, the route open to others, the same email written again,
+  sign-in by email not asking the person to hold it, a young claim taken over, the age's boundary, a
+  takeover and a removal without their tags; the secret of 16 bytes, a new code written over nothing,
+  the QR switch ignored at issue and at opening, the issue open to others, the 15 minutes' unit and its
+  boundary, the hash not compared, a spend without its tag or none, the person's check dropped, the
+  device's held session kept; the current password unchecked, the generation kept, the write without a
+  tag, the record not read again, a record with no password accepting any current one; in `shared`, the
+  two keys and the two schemas. *Choices:* the BFF's email route claims the email (`{employeeId, at}`:
+  `at` is new and the age a failed set's claim waits for, as a sign-in claim's, `ADD_MAX_MS`), writes the
+  person with its tag, then removes the old record; a sign-in by a name with an `@` reads the email's
+  record, the person it names and the code's sign-in record, and the session is the code's, so a code
+  change or a password reaches it as for any session; sign-in by email was not gated by the email switch
+  at this commit (it is now: 18a, below); the QR switch is checked at issue (403)
+  and at opening (401); the QR record is `{hash, expiresAt}`, SHA-256 of 32 random bytes in base64url,
+  and every refusal of an opening is the same 401; one's own password answers 403 for a wrong current
+  one (a person who came in by a QR code with no password cannot give one), signs out every other
+  device by a new generation, and answers the session that replaces the held one. *Walk spec:* the
+  second phone's raw opening of a QR code now sends `x-device-id`, as the app does; without it the BFF's
+  400 spared the code and the "used before" screen would have signed in. Not run here (no browser).
+  c-storage did not change (its keys are free strings), so `make check` was not run. The whole
+  `pnpm check` exit 0 at 100 % in every package, no warning (shared 86 tests, bff 244, ui 317, scripts
+  76, visual 223; knip silent). *Seen on the way:* the first two whole runs, at load 12 to 30 from other
+  gates, failed on `visual`'s `cli.test.ts` (a 120 s timeout in `pnpm answers`) and on two `ui` tests at
+  their 5 s (`SignIns.test.tsx`, `StaffRecord.test.tsx`); the third, at the same code with the load
+  falling, was green. They are not read as passes (qa.md rule 6): load-bound tests, to be fixed or logged
+  with the other load-bound ones.
+  *18a, the human's decision 2026-10-30 10:5x +07, made in the fix pass after step 20 (commit `19b0d22`):*
+  sign-in by email is gated by the setup's email switch, as the QR switch gates the QR code. Off means
+  nobody signs in by email, the same 401 as a wrong code with the dummy check still spent, and the
+  stored emails stay; `PUT …/email` answers 403 while it is off (after the 404 for no such person, as
+  the QR issue). A sign-in by email reads the setup first and hands it, and the person it read, on to
+  the view, so it still reads five records. Seen red first from its assertion: `expected 200 to be 401`
+  (an email signing in with the switch off) and `expected [ 200, 404 ] to deeply equal [ 403, 404 ]`
+  (the email set with it off) in `bff/src/sign-ins.route.test.ts`; `expected 'answered' to be 401`
+  in `ui/src/fake.test.tsx` (the fake); the person's page said "or the email" with the switch off, red
+  in `ui/src/SignIns.test.tsx`. The BFF's email tests run on a tenant with the switch on
+  (`emailTenant`). No walked screen's words changed: `pnpm report` reads 0 asked again.
+- [x] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
+  *Ticked 2026-10-30 17:00 +07: the re-check and its fix pass are below, the last whole gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`), and the human's full walk (step 26) read the result.*
+  *Review, 2026-10-30, by Opus on `9b26f71`, probes red or green as run; not ticked until the
+  re-check of the fix pass below.*
+  *Fix pass, 2026-10-30 11:40 +07, of the six items R1 to R6, one the same shape outside the reviewed
+  commit (E), and the human's decisions 18a and 19a (under steps 19 and 24); each seen red from its
+  assertion before its fix, or, for a test that only needed to hold more, red under the reviewer's
+  mutation:*
+  - R1 `[FIXED]` (commit `eb97bce`) a change of the email freed the old one from a fresh read, so
+    a change back to it, made while the first change freed it, lost its record to the first change: the
+    person held the email with no record and a second person could be given it. The old email's record
+    is read before the new one is claimed and removed once over that tag after the person write; a
+    `moved` is a new claim and is left. Test `C: A change back to the old email, made while the first
+    change frees it, keeps the record of the email the person holds`; red `expected null not to be null`
+    (the held record), and the 409 for a second person given the email. The 503 test of a removal that
+    moves on every try is gone: only a claim moves that record.
+  - E `[FIXED]`, outside the reviewed commit (B's code route, the same shape as R1; commit `eb97bce`)
+    on `moved` the route read the old sign-in record again and removed it if it still named the person,
+    so a change back to the old code, made while the first change freed it, left the person on
+    `EMP-1` with no sign-in record and the next add could be given the code. After the read, a person
+    who no longer holds the new code has changed again and the old record is left. Test (`bff/src/
+    employee-code.route.test.ts`) `leaves the old record alone when a change back to the old code, made
+    while the first change frees it, has claimed it for the person`; red `expected null not to be null`
+    (the sign-in record of `emp-1`). A password given in between (the carried hash) keeps its tests. A
+    window remains, between the claim of the change back and its person write, and N2 narrows it
+    without closing it (see H under the re-check below): nothing then tells a claim from a password
+    given, since both mint a generation and name the person.
+  - R2 `[FIXED]` (`882e22f`) the two tests of row 47's 409 are run past `ADD_MAX_MS` before the second
+    person's set, so a held email is refused for being held and not for being young; red under the 409
+    applied only while the claim is under a minute old: `expected 200 to be 409`, in both.
+  - R3 `[FIXED]` (`a9137f3`) the QR order (everything checked, the removal over its tag, then the
+    session) is held: "spent by another phone" opens with a held session and asserts that `me` on it
+    still answers 200 and the session records are as many as before; red with `endKept` and `issue`
+    moved before the removal: `expected 401 to be 200`.
+  - R4 `[FIXED]` (`aa56d21`, with the missing-record case kept in `79c295e`) the QR test of a sign-in record
+    that is not the person's now writes the second person's record naming a third, who is there and
+    holds another code, and keeps a fourth whose record is gone; red with the code check taken out of
+    the view: `expected 200 to be 401`.
+  - R5 `[FIXED]` (`79c295e`) every write of a sign-in record mints a generation, so a record that moved
+    under one's own password has already ended the calling session: it answers 401, where the loop
+    checked the current password against what someone else wrote and answered 403 to a person who typed
+    it right. The loop is one attempt now, and its second `ATTEMPTS` constant (`app.ts`) is gone, so
+    the Info item is met: one constant, in `staff.ts`. The interferer is the root's set-password route,
+    a write a real route makes. Test `C: A password the root gave in between signs the caller out: a
+    401, never a wrong current password, and the root's password stands`; red `expected 403 to be 401`.
+    The 503-on-every-try test went with the loop: no route writes without a generation.
+  - R6 `[FIXED]` (`588c0e6`) the person `accountOf` read is handed to the view when the sign-in record
+    names that person, so a sign-in by email reads 5 records, one more than by code (4), none twice
+    (18a then put the setup read first and handed it on too, still 5). Tests `C: A sign-in by email
+    reads one record more than by code, and no record twice`, red `expected [ …(6) ] to have a length
+    of 5`; and `C: An email whose person's sign-in record names another person signs no one in`, red
+    `expected 200 to be 401` with the id check removed.
+  - *Judged and accepted as they are:* a QR code issued for an archived person (its opening is refused);
+    403 for a wrong current password; no brute-force limit, logged as open item 28 (a per-name limit on
+    the sign-in route and on the current password together, for the human to place before the first
+    client's own stack; ridge's stage throttles at 10 a second), `283c003`.
+  - *Gates:* the whole `pnpm check` exit 0 after the fixes (`02d2f64`) at 100 % in each package, no
+    warning (shared 87 tests, bff 260, ui 321, scripts 76, visual 223; knip silent), the load 3.4 at its
+    start; `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. c-storage did not change, so
+    `make check` was not run. The first whole run failed on lint alone (two unused names and a needless
+    assertion), fixed in `02d2f64`.
+  - *Re-check, read 11:5x, then its fix pass, 2026-10-30 13:04 +07 (commits `60bf2d5`, `0d67295`, `b0a1150`);
+    each item seen red from its assertion, then green:*
+  - N1 `[FIXED]` (`60bf2d5`) the R1 interference in `bff/src/sign-ins.route.test.ts` runs right after the
+    person write, not inside the removal; red under a fresh `readEmailClaim` before `dropEmail`:
+    `AssertionError: expected null not to be null`, 1 of 47.
+  - N2 `[FIXED]` (`60bf2d5`) the removal loop in `bff/src/staff.ts` leaves the record when
+    `again.user.passwordHash === mine.user.passwordHash` (a claim copies the hash; a password given
+    writes a fresh salted one). New test in `bff/src/employee-code.route.test.ts`, "leaves the old record
+    alone when the change back has claimed it but not yet written the person, as the first change removes
+    it"; red on the old code `expected null not to be null`; sign-ins plus employee-code 84/84 after.
+    This narrows the window E describes and does not close it: H, below, is the case that remains.
+  - Info 1 `[FIXED]` (`0d67295`) the fake's `setEmail` answers 403 while the email switch is off; red
+    `expected 'answered' to be 403`.
+  - Info 2 `[FIXED]` (`60bf2d5`) the QR opening reads the setup and the person once and hands them to
+    `viewOf`; test "A QR code opened reads the client, the code, the person, the setup and the sign-in, and
+    no record twice"; red at 7 reads `expected … to have a length of 5 but got 7`. The person is read
+    before the setup and the sign-in record, so an archive landing inside the opening answers 200, then
+    401 at the phone's next step (at `1a48a6a`: 401 and the code left); see Q2 below.
+  - *Re-check 2026-10-30 13:24/13:26 +0700 (Opus, `78c018b`), then its fix pass; C's half is ready, one
+    older Low and two notes. The gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`, below):*
+  - Q `[FIXED]` (`15e4732`; older than the last pass) the QR opening builds the sign-in name from the person read, then
+    reads the sign-in record, and `viewOf` reads whoever that record names: the root changing Lan's code and
+    adding Bao under Lan's old code between the two reads gave Lan's code holder Bao's session. After the
+    read, a record that does not name the person the code was made for is the same 401. Test `C: A code is
+    refused when the sign-in record under its person's code names another person who holds that code too,
+    and stays unspent`, written directly (a third person holding `EMP-0002`). The email sign-in has the
+    same shape and gains nothing (the typed password meets the other's hash): not changed. Red with
+    `found.user.employeeId !== person.employee.id` removed: `expected 200 to be 401`.
+  - H `[ACCEPTED]`, no code: three acts on one person within one c-storage round trip (a first code change
+    A to B; a change back B to A; a password given on B after the change back read B and before the first
+    change's loop reads it) make the first change copy the change back's hash over the password just given,
+    then remove A, the change back's claim: the person holds A with no sign-in record, and A can be given to
+    a second person. It needs the three acts inside one round trip, and one
+    root in two tabs, plus the person's own password change, is enough today. Revisit when a company has
+    a second root, or when people change their own codes. The closing alternative, not taken: never remove a
+    record that moved (the old code would then be held up to a minute).
+  - Q2 `[ACCEPTED]`, no code: the hand-off to the view uses the person read before the setup and sign-in
+    reads, so an archive landing inside the opening answers 200, then 401 at the phone's next step. Row 15
+    holds (the person is stopped at their next step), and R6 accepted the same shape for email. Reading the
+    person fresh again costs a sixth read. Revisit if row 15 is ever read to need the opening itself refused.
+  - *Counts:* N1's "1 of 46" is 47 and N2's "83/83" is 84 at `60bf2d5`, corrected above.
+- [x] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
+  *Evidence:* folded into step 26, the one full walk of everything. The human's yes of 2026-10-30, 11:5x, to leave C's own walk for it; C's 36 bases are among the 198 committed at `47ba1c6`.
 
 **Group D, staff from Excel.** Each step as its group A step, for rows 29 to 31 and 48.
 
-- [ ] **22. D's pages and walk, on the fake.** Who: 🤖, about a day: the template, the read in the
+- [x] **22. D's pages and walk, on the fake.** Who: 🤖, about a day: the template, the read in the
   browser with its pinned library (the newest release at least two weeks old), the preview, the rows
   sent, and D's 4 screens. Done when: as step 12, for D's rows.
-- [ ] **23. D's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 33
+  *Evidence, 2026-10-29 17:11 +07:* the UI halves of rows 29, 30 and 48, each seen red once from its
+  assertion by changing the rule's line and putting it back: the name required, a code taken in the company, a code given twice in the file, 500 rows,
+  an empty code sent as no code, the second phone column shown with its switch off, a department the
+  company lacks, a file with no row (`importSheet.test.ts`); the 2 MB limit and the 100 rows a call
+  (`ImportPage.test.tsx`); the template's cells in Text format; the button shown to everyone and
+  shown to no one; and a second column headed alike taking the first. `pnpm check` exit 0, no
+  warning, 100 % in every package (shared 78 tests, ui 284, bff 202, scripts 76, visual 222; knip
+  silent). *Written and green, not broken one by one here:* row 17's pairing of the two dictionaries,
+  rows 49 and 50 for the fake's import (`fake.test.tsx`), rows 53 and 54 for D's four screens
+  (`walks.test.ts`, `words.test.tsx`). `walks.json` lists D's 4 screens, each a scene and none from the mock. *Not run here:* the
+  walk spec, which needs a browser; `pnpm check` typechecks and lints it, and every step of D's four
+  screens was replayed on the real router in jsdom by the whole labels the spec uses, in both
+  languages (`ImportPage.test.tsx`), the `attach` step and its default tested apart
+  (`visual/src/steps.test.tsx`), and the demo file made in Node as the spec makes it
+  (`visual/src/import-file.test.ts`).
+  *Decide 13, the human's yes "but only for root user", 2026-10-29 16:12 +07:* the staff list shows a
+  button "Import from Excel" (Vietnamese "Nhập từ Excel") that leads to `/staff/import`, to the root
+  alone, by the same `user.root` the import route's guard reads; for anyone else the list's DOM is as it
+  was. It changes B's three staff-list screens in both languages (`staff-1-list`, `staff-8-left`,
+  `staff-14-search`: 18 bases): the walks page asks their 6 answers again, and the human re-answers
+  them at step 23's preview. The 23 screens of A and B, dumped (words and DOM, Mantine's ids and
+  UUIDs masked) at `7b1c1f5` and at this step: 20 are equal in both languages bar one transient
+  attribute Mantine sets while its shell resizes (`data-resizing` on `staff-6-password` in English),
+  and those 3 differ by the button and its wrapper alone; the office's `office-1-menu`, which draws
+  the same list for someone who is not the root, is equal.
+  *The proof line's role:* "Chosen: import.xlsx" sits under `main` in the words dump, as the page's
+  other text does (`visual/src/words.test.tsx`, `staff-19-import`). The walks page's key-left-showing
+  check ignores a file name (`import.xlsx`), which has a dot as a key has.
+  *The libraries, read in the built chunks* (`vite build`, the app's and the fake's, and the walks
+  page's): `read-excel-file` 9.3.12 and `write-excel-file` 4.1.1 are loaded by `import()` inside
+  `importFile.ts`, so the app's main bundle (761 kB) holds neither: its only trace is the three small
+  wrappers. They come as three chunks, loaded when the root presses "Read the file" or "Download the
+  template", not when the page opens: `browser-f` (58 kB, the reader with `worker-f`'s inline worker),
+  `browser-BGd` (60 kB, the writer) and `browser-AF5` (15 kB, `fflate`, shared by both, with its own
+  inline worker). The workers are strings made into a Blob URL in the chunk, so no worker file is
+  served. `unzipper-esm` is not in any of them: the `/browser` entries never import its Node-stream
+  files, and no chunk names a `node:` module. The walks page (one inlined script) holds the same
+  code, since its scenes attach the demo file; that page is not served.
+  *The template's column note, against `write-excel-file`'s own README:* a `String` cell in the default
+  "General" format may be shown by Excel as a number or a date unless its `format` is `@`, and a
+  column's format cannot be set, only a cell's (`columns` takes a width). So the samples are now
+  written with `format: '@'`, and the phone columns' note says that a number typed in the cells below
+  loses a leading 0 unless the cell is formatted as Text first or typed with an apostrophe. The old
+  comment, that every cell being text kept a phone's zero, was true of the samples alone.
+  *Choices:* the page draws once its data is read (an inner form), so no handler guards a state the
+  screen cannot reach; `saveAs` is its own file, since the walk's typecheck has no DOM library and
+  imports the demo file; the walks page's built script is run in the test with `import.meta` given,
+  the on-demand loader being the only reader of it; the ui build's size warning limit rises from 1,000
+  to 1,100 kB, above the 1,006 kB that the scripts' tests build with React's development build, which
+  the page's growth had tipped over (the shipped bundle is 761 kB). *Seen on the way:* the first
+  whole gate run failed once on `scripts`' coverage (open item 23, a child's start under load) and
+  once on `visual`'s scene test timing out at 20 s while the machine's load stood above 12, and a
+  later one on `bff`'s bundle test at its 5 s; each passed alone and in the next whole run, at the same code, and neither is read as a verdict.
+- [x] **23. D's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 33
   screens. **Then stop.**
-- [ ] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
+  *Evidence, 2026-10-30 10:17 +07:* as step 18's, which holds the one preview of both groups:
+  D's 4 screens and the 3 staff-list screens are answered yes; nothing of D waits.
+- [x] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
   Done when: as step 14, for D's rows.
-- [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
-- [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
+  *Evidence, 2026-10-30 11:08 +07 (commit `e5e33ff`):* the BFF half of rows 30, 31 and 48, each seen red
+  once from its assertion, by changing the rule's line and putting it back (12 changes, all red): the
+  root check made the add's permission (a person who may add got 200); a first password given to an
+  imported person; a taken code and an invalid row with their reasons swapped; a 400 of the add not
+  kept as a result; every failure kept as a result (the 503 tests); a bad row failing the whole call;
+  a setup with no units; the results out of order; the call's body not read (5 answers 200); in `shared`,
+  the call's bound and its element type. Model: `bff/src/employee-code.route.test.ts` and the add in
+  `bff/src/staff.ts`, whose body is now `addPerson`, called by the add (with a password for the root)
+  and by the import (without). Tests: `bff/src/employee-import.route.test.ts` (new, 10), a line in
+  `operator.route.test.ts`'s route list (red first on `/import`), one in `shared/src/import.test.ts`.
+  The new route answers `{results}` as the fake does: `added` with the person, `refused` `taken` for a
+  409 (a code taken in the company, or by an earlier row of the call) and `invalid` for a 400 (a unit the
+  setup lacks, a code or name that is no good, a row that is no add); only the root, checked on the
+  server (403 to a person who may add, 401 unsigned); rows go one after another, so a row with no code
+  is numbered past the row before it and never a freed number. `pnpm check` exit 0, no warning, 100 % in
+  every package (shared 87 tests, bff 254, ui 317, scripts 76, visual 223; knip silent), the load 3.9
+  at its start. c-storage and the UI did not change; no screen's words changed.
+  *Choice, for the human's word:* a call is not one transaction. A row that fails other than by
+  409 or 400 (a claim that may be a running add's, 503; the store down) ended the call with that
+  answer at this commit: the rows before it stayed added, none after was tried, and no result was
+  sent. A retry of the same file then met the added rows with a code as `taken`, and added a second
+  person for each row with no code. Held by two tests (503 by a claim, 503 by the store).
+  *19a, the human's decision 2026-10-30 11:1x +07, made in the fix pass after step 20 (commit
+  `237f5bd`):* a new reason `busy` in `importResultSchema`; a row that fails with a 503 is answered as
+  that result and the call goes on to the next row, so each call always answers one result per row. Any
+  other failure (a 500: a record that does not parse) is a fault and still ends the call, rows before it
+  kept. The result carries no row number: its place in the reply is its row's place in the call, and the
+  page, which holds the rows it sent, names the row of the file (`line`, as the preview's table does).
+  The done screen counts the busy rows apart from the refused ones and lists each by its row, its name
+  and "Not added: the system was busy. Try this row again." (Vietnamese "Chưa thêm: hệ thống đang bận.
+  Hãy thử lại dòng này."). The fake does the same: a row whose add fails with a 503 (the cue
+  `addEmployee:503`) is `busy`. The two partial-call tests became tests of the new behaviour, seen red
+  first (`expected 503 to be 200`, twice, in `bff/src/employee-import.route.test.ts`; `ApiError:
+  answered 503` and the missing "1 rows were not added" in the fake's and the page's); a third holds
+  the 500 (red with every failure made busy: `expected 200 to be 500`). No walked screen's words
+  changed: `pnpm report` reads 0 asked again.
+  *Seen on the way:* the take-over hazard in the risks (a later writer of people that
+  skips the add) is not met: the import is the add.
+- [x] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
+  *Ticked 2026-10-30 17:00 +07: the re-check and its fix pass are below, the last whole gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`), and the human's full walk (step 26) read the result.*
+  *Review of D read 2026-10-30 (Opus, on `1a48a6a`): D1 to D7. Fix pass 2026-10-30 13:04 +07, each seen red
+  from its assertion or its mutation; not ticked until the re-check of this fix pass:*
+  - D1 `[FIXED]` (`0d67295`) `ImportPage` keeps the answered results across calls, shows the done view for
+    them, offers only "Add the rest (N)", and a call-level failure shows `failedPart`; red under `held.map`
+    for `held.slice(answered.length)`: "Unable to find … 150 people were added."; with the `setAnswered` line
+    removed, 7 tests red.
+  - D2 `[FIXED]` (`0d67295`) a refused row before the busy one, and a busy row in the second call of 150;
+    red under `rows![at]` and under `held[at % IMPORT_CALL_ROWS]`, each "Unable to find … Người 105".
+  - D3 `[FIXED]` (`60bf2d5`) the staff list is read once a call, at the first numbered row (a hand add still
+    re-lists on every try); test "lists the people once for a call…"; red under `=` for `??=`:
+    `expected 3 to be 1`. Measured on 100 numbered rows over 500 people (a temporary test, deleted); compare
+    the call count first, since the load differed between runs:
+
+    | | c-storage calls | wall (two runs) | CPU (two runs) |
+    | --- | --- | --- | --- |
+    | before (`1a48a6a`) | 704 | 2059 ms, 804 ms | 726 ms, 544 ms |
+    | after | 405 | 184 ms, 246 ms | 162 ms, 188 ms |
+
+  - D4 `[FIXED]` (`0d67295`) `doneInvalid` has its own words; the preview parses each row with
+    `addEmployeeRequestSchema`, a new problem kind `row`; red when invalid rows count as taken, and
+    when `problems.push({ kind: 'row' })` is dropped: "Unable to find … 1 of 2 rows will be added".
+  - D5 `[FIXED]` (`60bf2d5`) the import answers `added` with the person `addPerson` wrote; the add route
+    alone keeps its read-back; test: the store failing a read after the write; red with an added `mustFind`:
+    `expected [ 'refused', 'refused' ] to deeply equal [ 'added', 'added' ]`.
+  - D6 `[FIXED]` (`60bf2d5`) a test frees EMP-0001 by a code change, imports two rows with no code and
+    expects 0002 and 0003 (the old test now holds only a typed code earlier in the same call); red with
+    `given` removed from `nextCode`: `expected [ 'EMP-0001', 'EMP-0002' ] to deeply equal [ 'EMP-0002', 'EMP-0003' ]`.
+  - D7 `[FIXED]` (`60bf2d5`) `importEmployeesRequestSchema`, its type and its two tests deleted.
+  - *Finding, a flaky red:* the whole check at 12:38 (load 6.99) failed in `ui` on `ImportPage.test.tsx`,
+    "The app gives a template in Vietnamese or English…", `expected [] to have a length of 1 but got +0`.
+    The test asserted the saved file right after the click, before the lazily loaded libraries had loaded:
+    a defect of the test, not load. Fixed in `b0a1150` by `await waitFor(() => expect(saved).toHaveLength(1))`;
+    held by a mutation: a 300 ms delay after the lazy `import()` in `writeWorkbook` turns the old assertion
+    red with that message and leaves the new one green; the delay was removed, and the file ran green three
+    times. A second whole run, at 12:42 (`logs/20261030-1242-employee-list-fix-pass-check.log`), failed on
+    `StaffRecord.test.tsx` "The editor refuses fields it cannot take…", `Test timed out in 5000ms`, at a load
+    of 15.55 with another agent testing beside it; logged under open item 27.
+  - *Screens:* `pnpm report` before the fix pass (`walks/2026-10-30-123313-60bf2d518`) and after the UI
+    change (`walks/2026-10-30-123726-60bf2d518-changes`): all 92 screen-language entries (46 screens in en
+    and vi) equal in words and fingerprints; 0 waiting, 0 asked again, 0 no, 92 yes. The new words show on
+    no walked screen; `walk/` is untouched.
+  - *Words:* the human answered Decide 23 (a), 2026-10-30 12:4x: D1's and D4's words (`import.failed`,
+    `failedPart`, `addRest`, `doneInvalid`, `refusedRow`) kept as written in en and vi.
+  - *Gates:* the whole `pnpm check` exit 0 (`logs/20261030-1258-employee-list-fix-pass-check-2.log`, load
+    4.85 at its start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 265,
+    ui 325, scripts 76, visual 223; knip silent). c-storage did not change, so `make check` was not run.
+  - *Re-check 2026-10-30 13:24/13:26 +0700 (Opus, `78c018b`), then its fix pass; D's half was not ready: one
+    Medium and four Lows. The gate is green (below):*
+  - D-1 `[FIXED]` (`cbbf0e1`; Medium, new in `0d67295`) "Choose another file" stayed enabled while a send ran, and the
+    results were read against whichever file was held when they landed: the page named a row never sent,
+    offered "Add the rest" for rows never sent, or, with no file read in between, crashed on a busy row
+    (`TypeError … reading 'line'`, a blank app); the same file read again sent its rows twice. The button
+    is disabled while a send runs, and `answered` holds `{ row, result }` pairs, so the busy rows are read
+    against the rows sent. The rest is still counted from the file held, so with the button enabled it
+    would offer the new file's rows: the disabled button is the guard. Tests `Choose another file is disabled while a send runs`, and `A
+    press on Choose another file while a send runs leaves the file held on screen…`. The
+    pairs alone cannot be reached from the page once the button is disabled (the file is held until the
+    send ends), so the second test (reshaped after the third review to assert that a press leaves the file held on
+    screen until the send ends) is red from that assertion with the button enabled, and holds the pairs
+    in no way alone. Reds:
+    the button enabled, `AssertionError: expected false to be true`; `ImportPage.tsx` as at `78c018b`,
+    `Unable to find an element with the text: 2 people were added.` with the uncaught `TypeError: Cannot
+    read properties of undefined (reading 'line')`.
+  - D-2 `[FIXED]` (`cbbf0e1`) the walk replay's template step waits for the file as `b0a1150` made the other
+    test wait; with 300 ms after the lazy `import()` in `writeWorkbook`, the old assertion is red
+    `AssertionError: expected undefined to be 'staff-vi.xlsx'` and the new one green.
+  - D-3 `[FIXED]` (`15e4732`, `cbbf0e1`) two guards held by no test: the call's list taking each code written
+    (`listed?.codes?.push`), now held by a call that numbers, types a code, then numbers; and `loading` on
+    "Add the rest", now held by a double click that sends once. Reds: `listed?.codes?.push` removed, received
+    `[EMP-0002, EMP-0005, EMP-0003, EMP-0004]` for `[…, EMP-0006, EMP-0007]`; `loading` removed, `expected [ 100,
+    50, 50, 50 ] to deeply equal [ 100, 50, 50 ]`.
+  - D-4 `[FIXED]` (`15e4732`) a code taken in a numbered try (409) while the call runs sets the call's list to be read
+    again, so codes typed by hand meanwhile cost one extra list and not the three tries; test `numbers a row
+    past codes typed by hand while the call runs…`; red with the reset removed `expected [ 'busy' ] to
+    deeply equal [ 'EMP-0004' ]`.
+  - D-5 `[FIXED]` (`15e4732`; older than this pass) when the write of the person fails with a c-storage failure, the
+    person is read once by the minted id and the row is `added` if found; otherwise the failure stands.
+    Test `answers a row as added, once, when the store wrote the person and its answer was lost…`; red with
+    the read-back removed `expected [ 'refused', 'refused' ] to deeply equal [ 'added', 'added' ]` (the test
+    compares each result's kind, so it reads `refused` where the rows' reason is `busy`). The add by hand
+    shares the read-back (`staff.ts`), so a lost answer there is a 201 with its first password, no longer a
+    503; test `answers 201 with the first password, and lists the person once, when the person write’s
+    answer is lost…` (typed and numbered code), red with the read-back removed `expected 503 to be 201`.
+    The accepted window: if c-storage lands the write after the read-back (past the 5 s timeout), the row
+    stays `busy` ("Not added… Try this row again") with the person there, and a retry of a row without a
+    code adds a second person; no change, named in the code comment.
+  - D-6 `[FIXED]` (`cbbf0e1`) the root's own sign-in name is in the page's taken set, so it is refused in the preview
+    as a code already given, and not as "taken meanwhile" after the send (test `refuses in the preview a
+    code that is the root's own sign-in name…`; red without the entry: the table lacks `The code “ROOT”
+    already belongs to someone in the company.`). The two cosmetic guards are both kept and tested, since
+    each guards something: `answered.length === 0` before resetting `ended` keeps the results on screen
+    while the rest is sent (test `The results stay on screen while the rest is sent`; red: no heading "People added"), and `status ===
+    'failed'` in the `failedPart` condition keeps the warning off while it is sent (test `The warning that
+    the system stopped partway is not shown while the rest is sent`; red: `expected <div …(2)></div> to be
+    null`). A re-send after a call-level failure
+    can still add a row without a code twice: as approved in Decide 23 (a), no change.
+  - *Gates:* the first whole `pnpm check` at `78c018b` plus the fix pass was red at eslint, found and fixed:
+    `ui/src/ImportPage.tsx` 152:76 `@typescript-eslint/no-unnecessary-type-assertion` (a `!` on `part[i]`;
+    `logs/20261030-1341-employee-list-fix-pass-3-check.log`, exit 1, load 5.08). After dropping it, the
+    whole `pnpm check` is exit 0 (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`, load 6.05 at its
+    start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 268, ui 331, scripts
+    76, visual 223; knip silent). `pnpm report` (`walks/2026-10-30-134031-78c018b5f-changes`): 0 waiting, 0
+    asked again, 0 no, 92 yes. c-storage did not change.
+  - *Words:* the human answered Decide 26 (a), 2026-10-30 14:3x: leaving the import page while a send runs (the nav
+    link or the back button) is recorded, not fixed. The send goes on and all the rows go in, but nothing says so;
+    reading the same file again refuses typed codes and adds every row without a code a second time. This is the
+    shape the approved `failed`/`failedPart` words already explain, so there are no new words and no new screen.
+    It is older than the third fix pass (`ui/src/ImportPage.tsx#L141-L162`: `send` has no guard for the page being
+    left).
+- [x] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
+  - *Walk defect, 2026-10-30 16:0x +0700:* found by the human's fake pass at 15:50 (all 6 tests red at the used QR code's refused title): `open` in `walk/specs/piece-2.spec.ts` never cleared a session and kept every earlier init script, so the phone opened signed in as Lan; fixed at `ec1a880` (the session cleared, only the latest init script kept, phone 1 expects the signed-in name).
+  - *Picture defect, 2026-10-30 16:3x +0700:* the human's full walk at 16:02 went red on six pictures (`staff-20-preview-{en,vi}-{390,768}`, `staff-8-left-{en,vi}-1280`): the fake took one shot at once, while a base is written once two equal shots 100 ms apart agree, and the table's hover scrollbar (staff-20) and the checkbox's 100 ms border transition (staff-8) differ between the two moments. Fixed at `7450420`: the fake project writes its pictures with `toHaveScreenshot` like the bases, and staff-20's "Read the file" is pressed by Enter so the pointer stays parked.
+  - *Decide 27 (a), taken 2026-10-30 16:31 +0700 on the human's ask:* a QR link opened on a phone that is already signed in: a good code switches the phone to the code's person (`bff/src/app.ts#L307-L309`), and a used or expired code is ignored silently (`ui/src/ClientApp.tsx#L223`). Recorded, not changed. *Trigger:* staff find the silence confusing.
+  - *Evidence, 2026-10-30 17:00 +07: the human's full walk of 16:39:13 to 16:50:18 at `949fdb4` (`logs/20261030-1438-full-run-employee-list.log`, from its line 753; the folder `walks/full-run-2026-10-30-163915-949fdb4/` in the credo root), accepted by Decide 31 (a).* Its readings:
+    - the full run against the fake: 0 of 198 differ, 198 screens reached, no picture without a reference;
+    - the bases written, against the fake: 0 differ; passes 2 and 3 each 6 of 6;
+    - the fake against the committed bases: only the five expected screens differ (staff-1-list, staff-8-left, staff-14-search, setup-1-departments-positions, setup-2-fields; 30 pictures), no other; 60 new pictures for C's and D's 10 screens;
+    - piece 1's 6 moved bases are all `5-language-menu` (C's "Change password" in the user menu); the operator's none; piece 1 and the operator 12 of 12 written and compared.
+    - The commit `47ba1c6` holds the 90 changed bases of piece 2 and the 6 of piece 1, each of piece 2's 198 byte equal (`cmp`) with the run's `bases-after/`.
+  - *The run's one red, and what it is:* the script's verdict is red because a gate ran before the stack for "others" (log `#L1301`, `#L1468`). Another repo's session ran `vitest` on this Mac during steps 8 and 9, after piece 2's bases were written and compared. A second process can make a run red, never wrongly green; the red is recorded as that and nothing in it is a picture.
+  - *Decide 31 (a), the human's, 2026-10-30 16:5x +07:* the 16:39 walk is accepted. The walks page was not rebuilt here: no screen's words have changed since `pnpm report` last read 0 waiting, 0 asked again, 0 no, 92 yes (step 25's third pass).
+  - *Decide 29 (a), the human's:* parked, as [open item 31](../open-items.md#L196). The import preview's and the staff list's `Table.ScrollContainer` (`ui/src/ImportPage.tsx#L261`, `ui/src/StaffListPage.tsx#L191`) show their scrollbar on hover only.
+  - *Decide 30, the human's rule, not in force:* a moved pixel is a raw pixel count; the same input gives the same output, so anything random (a date, a time) is fixed at its source or masked with a colour box. Today's walks were read by Playwright's comparator, which skips anti-aliasing pixels, and the fake and the full stack differ raw at the 390 logo (14 pixels, 38 pictures, every run). The raw rule needs that cause found and the script changed first: its own small piece after this one. `qa.md` is not changed here.
+  - *Decides 23 (a), 26 (a) and 27 (a)* are recorded above, under steps 25 and 26.
 
 **The close.**
 
-- [ ] **27. The recap and the merge.** Who: 🤖 the recap; the orchestrator merges on the human's
+- [x] **27. The recap and the merge.** Who: 🤖 the recap; the orchestrator merges on the human's
   word. Done when: the recap written, open items updated, `employee-list` ready to merge into `main`.
+  *Evidence, 2026-10-30 17:00 +07:* the recap is [`docs/recaps/2026-10-30-employee-list.md`](../recaps/2026-10-30-employee-list.md); open items 23, 24, 25, 27 and 28 stand and 31 is new. The merge into `main` stays the orchestrator's, on the human's word.
 - [ ] **28. ridge.** Who: 👤, after the push of the `main` that holds it, about 15 minutes. The deploy
   ships c-storage's list, the BFF and the UI. Every handle there stops resolving once (the sessions),
   so each person signs in again. On a client's link, the human signs in as its root, sets a

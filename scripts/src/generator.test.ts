@@ -18,6 +18,7 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
@@ -214,6 +215,10 @@ describe('the demo generator', () => {
       const nameless = ({ id: _id, ...unit }: { id: string }) => unit;
       expect(setup.departments.map(nameless)).toEqual(DEMO_STAFF_SETUP.departments.map(nameless));
       expect(setup.positions.map(nameless)).toEqual(DEMO_STAFF_SETUP.positions.map(nameless));
+      // The field switches, the company's own fields and the numbering are the data set's too.
+      expect(setup.fields).toEqual(DEMO_STAFF_SETUP.fields);
+      expect(setup.customFields).toEqual(DEMO_STAFF_SETUP.customFields);
+      expect(setup.numbering).toEqual(DEMO_STAFF_SETUP.numbering);
       const link = (unit: { name: string } | null) => unit?.name ?? null;
       const shape = (person: Employee) => ({
         code: person.code,
@@ -232,6 +237,35 @@ describe('the demo generator', () => {
         const held = setup.departments.find((unit) => unit.id === person.department?.id);
         expect(held?.name ?? null, person.code).toBe(link(person.department));
       }
+    });
+
+    it('Each photo the data set holds is on its person, and no one else has one', async () => {
+      const { storage } = memoryStorage();
+      const { code, rootPassword } = await seedClient(storage, 'walk-1');
+      const { call, signIn } = bff(storage, code);
+      const root = (await signIn(ROOT_NAME, rootPassword))!;
+      const listed = (await call('GET', '/api/employees', root)).json<{ employees: Employee[] }>();
+
+      const photoOf = async (person: Employee) =>
+        (await call('GET', `/api/employees/${person.id}/photo`, root)).json<{
+          photo: string | null;
+        }>().photo;
+      const held = Object.fromEntries(
+        await Promise.all(
+          listed.employees.map(async (person): Promise<[string, string | null]> => [
+            person.code,
+            await photoOf(person),
+          ]),
+        ),
+      );
+
+      const expected = Object.fromEntries(
+        DEMO_EMPLOYEES.map((person) => [person.code, DEMO_PHOTOS[person.id] ?? null]),
+      );
+      expect(Object.values(expected).filter((photo) => photo !== null)).toHaveLength(
+        Object.keys(DEMO_PHOTOS).length,
+      );
+      expect(held).toEqual(expected);
     });
 
     it('Each data-set person signs in with the first password the generator returns, except the one the data set gives no sign-in', async () => {

@@ -18,11 +18,12 @@ describe('the staff list', () => {
     openApp('/staff');
 
     const lan = await rowOf('Nguyễn Thị Lan');
+    // the avatar's initials come with the name, and the company's own fields shown in the list after
     expect(
       within(lan)
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
-    ).toEqual(['Nguyễn Thị Lan', 'EMP-0001', 'Văn phòng', 'Quản lý', '0903 111 001']);
+    ).toEqual(['NTNguyễn Thị Lan', 'EMP-0001', 'Văn phòng', 'Quản lý', '0903 111 001', '', '']);
     const codes = screen
       .getAllByRole('row')
       .slice(1)
@@ -97,6 +98,22 @@ describe('the staff list', () => {
     expect(menu().queryAllByRole('link')).toEqual([]);
   });
 
+  it('Only the root imports staff: the list shows it the button to the import page, and shows it to no one else, whatever staff rights they hold', async () => {
+    // the root: the button leads to the import page
+    const root = openApp('/staff');
+    await userEvent.click(await screen.findByRole('link', { name: 'Import from Excel' }));
+    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
+      'Add staff from Excel',
+    );
+    root.unmount();
+
+    // an office manager who may see and add people: the add button, and no import
+    const lan = openApp('/staff', { as: 'EMP-0001' });
+    expect(await screen.findByRole('link', { name: 'Add a person' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+    lan.unmount();
+  });
+
   it('A 403 makes the UI read `me` again and redraw', async () => {
     // the cue stands for what the root just changed: the list is refused once, and `me` is read
     const { api } = openApp('/staff', { as: 'EMP-0004', cue: 'listEmployees:403' });
@@ -127,6 +144,28 @@ describe('a 403 or a 401 on a page', () => {
         });
       },
     });
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
+    ).toBeTruthy();
+    expect(api.me).toHaveBeenCalledTimes(2);
+  });
+
+  it('A 403 on the settings save reads `me` again, and a person who may no longer change them is shown the page that says so', async () => {
+    const { api } = openApp('/settings', {
+      as: 'EMP-0003',
+      override: (spied, original) => {
+        spied.saveConfig.mockRejectedValue(new ApiError(403));
+        let reads = 0;
+        spied.me.mockImplementation(async () => {
+          const answer = await original.me();
+          return ++reads === 1 ? answer : { user: { ...answer.user, permissions: {} } };
+        });
+      },
+    });
+    await userEvent.type(await screen.findByLabelText(/^Company name/), 'x');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
@@ -264,6 +303,21 @@ describe('a person added', () => {
     expect((await api.getEmployee(person('EMP-0008').id)).employee.name).toBe('Hoàng Gia Huy');
   });
 
+  it('A code of spaces alone is no code: the add is sent without one, to be numbered', async () => {
+    const { api } = openApp('/staff/new');
+    await fill('Mai Linh', '   ');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(vi.mocked(api.addEmployee).mock.calls[0]?.[0]).toEqual({
+      name: 'Mai Linh',
+      extra: {},
+      departmentId: null,
+      positionId: null,
+    });
+  });
+
   it('A save that fails says so and keeps what was typed (an add)', async () => {
     openApp('/staff/new', { cue: 'addEmployee:503' });
     await fill('Mai Linh', 'EMP-0100');
@@ -351,6 +405,55 @@ describe('a person’s page', () => {
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Tên mới');
   });
 
+  it('On a person’s page, adding, changing or archiving says it needs seeing the staff list while that is refused to the person, whatever their department and position give', async () => {
+    open('EMP-0004');
+    await screen.findByRole('heading', { level: 2, name: 'Phạm Quốc Bảo' });
+    const group = (label: string) =>
+      screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` });
+    const needs = () => screen.queryAllByText('Needs “See the staff list”.');
+    // the warehouse allows seeing, so an added right has what it needs
+    await userEvent.click(within(group('Add a person')).getByText('Allow'));
+    expect(needs()).toHaveLength(0);
+
+    await userEvent.click(within(group('See the staff list')).getByText('Refuse'));
+    expect(needs()).toHaveLength(1);
+    await userEvent.click(within(group('Add a person')).getByText('As the level above'));
+    expect(needs()).toHaveLength(0);
+    await userEvent.click(within(group('Archive a person')).getByText('Allow'));
+    expect(needs()).toHaveLength(1);
+    await userEvent.click(within(group('See the staff list')).getByText('As the level above'));
+    expect(needs()).toHaveLength(0);
+  });
+
+  it('A save that a 403 refuses says the person may not change this, keeps what was typed to be read, and the Save button is gone when they may no longer', async () => {
+    open('EMP-0002', {
+      as: 'EMP-0001',
+      cue: 'saveEmployee:403',
+      override: (api, original) => {
+        let reads = 0;
+        api.me.mockImplementation(async () => {
+          const answer = await original.me();
+          return ++reads === 1
+            ? answer
+            : { user: { ...answer.user, permissions: { 'staff.canView': true } } };
+        });
+      },
+    });
+    const name = await screen.findByLabelText(/^Name/);
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Tên mới');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'The details were not saved: you may no longer change this person. What you typed is still shown.',
+    );
+    const kept = screen.getByLabelText<HTMLInputElement>(/^Name/);
+    expect(kept.value).toBe('Tên mới');
+    expect(kept.readOnly).toBe(true);
+  });
+
   it('Each department and each position carries what its staff may do, and each person may carry their own; the person’s beats the position’s, which beats the department’s, and what none of them allows is refused', async () => {
     const { api } = open('EMP-0004');
     await screen.findByRole('heading', { level: 2, name: 'Phạm Quốc Bảo' });
@@ -361,7 +464,7 @@ describe('a person’s page', () => {
       within(group('See the staff list')).getByRole('radio', { name: 'As the level above' }),
     ).toBeTruthy();
     expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(1);
-    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(3);
+    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(4);
 
     // the person's own: allow archiving, which nothing above allows; allow seeing, which the department already does
     await userEvent.click(within(group('Archive a person')).getByText('Allow'));

@@ -4,11 +4,19 @@ import {
   clientLinkPath,
   type Employee,
   type EmployeeDoc,
+  type ImportResult,
+  keptSetupParts,
   layersOf,
   newestFirst,
+  nextCode,
+  type PhotoReply,
   normaliseEmployeeCode,
   normaliseSignInName,
+  passwordIsValid,
+  QR_MINUTES,
+  qrLink,
   resolvePermissions,
+  staffConfig,
   type StaffSetup,
   type TenantConfig,
   type UserView,
@@ -17,12 +25,14 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_QR_SECRET,
   DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
-import { type Api, ApiError } from './api';
+import { type Api, ApiError, type ChangePasswordResult } from './api';
 import { createDeviceStore } from './device';
 
 /** The statuses the address may ask the fake to answer, once. */
@@ -50,6 +60,8 @@ type Options = {
   /** Where the fake finds out whether this device holds a handle. */
   device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'>;
   cue: Cue | null;
+  /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
+  signIns?: boolean;
 };
 
 /**
@@ -57,28 +69,46 @@ type Options = {
  * methods, the same answers' shapes, no network. Any password signs the data set's root in. A
  * cue makes the call it names answer one status once, then the fake goes on from the data set.
  */
-export function createFakeApi({ device, cue }: Options): Api {
+export function createFakeApi({ device, cue, signIns = false }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
   let pending = cue;
   let setup: StaffSetup = structuredClone(DEMO_STAFF_SETUP);
+  if (signIns) setup.fields = { ...staffConfig(setup).fields, email: true, qr: true };
   let setupVersion = 1;
   const people = new Map<string, Employee>(
     DEMO_EMPLOYEES.map((person) => [person.id, structuredClone(person)]),
   );
   const versions = new Map<string, number>(DEMO_EMPLOYEES.map((person) => [person.id, 1]));
+  /** Each person's photo and the version it is at; a person with none is not here. */
+  const photos = new Map(
+    Object.entries(DEMO_PHOTOS).map(([owner, photo]) => [owner, { photo, version: 1 }]),
+  );
   /** Who holds a password: the data set's people but one, and each one given a password since. */
   const ready = new Set(
     DEMO_EMPLOYEES.filter((person) => person.code !== 'EMP-0007').map((p) => p.id),
   );
+  /** How many QR codes have been minted: each one's secret is its number. */
+  let minted = 0;
+  /** The QR code each person was last shown, by the secret it signs in with; spending one removes it.
+   * The data set holds one, a warehouse member's, for the phone's walk. */
+  const qrs = new Map<string, string>([
+    [DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!.id, DEMO_QR_SECRET],
+  ]);
 
   /** Runs `answer`, unless the cue names `call` and has not fired: then its status instead, as
    * the real call's own answer for it, or as the error every other call raises. */
-  async function call<T>(name: string, answer: () => T | Promise<T>, onConflict?: () => T) {
+  async function call<T>(
+    name: string,
+    answer: () => T | Promise<T>,
+    onConflict?: () => T,
+    onForbidden?: () => T,
+  ) {
     if (pending?.call === name) {
       const { status } = pending;
       pending = null;
       if (status === 409 && onConflict) return onConflict();
+      if (status === 403 && onForbidden) return onForbidden();
       throw new ApiError(status);
     }
     return await answer();
@@ -132,7 +162,13 @@ export function createFakeApi({ device, cue }: Options): Api {
     return unit ? { id: unit.id, name: unit.name } : null;
   };
 
-  return {
+  /** A person's photo as the fake holds it now, with its version. */
+  const photoNow = (id: string): PhotoReply => {
+    const held = photos.get(id);
+    return held ? { photo: held.photo, version: `p${held.version}` } : { photo: null, version: '' };
+  };
+
+  const fake: Api = {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
     signIn: (name) =>
@@ -143,7 +179,8 @@ export function createFakeApi({ device, cue }: Options): Api {
         }
         const staff = [...people.values()].find(
           (candidate) =>
-            normaliseSignInName(candidate.code) === entered &&
+            (normaliseSignInName(candidate.code) === entered ||
+              (staffConfig(setup).fields.email && candidate.email === entered)) &&
             !candidate.archived &&
             ready.has(candidate.id),
         );
@@ -210,6 +247,8 @@ export function createFakeApi({ device, cue }: Options): Api {
           setup = structuredClone({
             departments: mint(next.departments),
             positions: mint(next.positions),
+            // A part the save leaves out stays as it was, as the BFF keeps it.
+            ...keptSetupParts(next, setup),
             extra: next.extra,
           });
           setupVersion += 1;
@@ -232,7 +271,12 @@ export function createFakeApi({ device, cue }: Options): Api {
       call(
         'addEmployee',
         () => {
-          const code = normaliseEmployeeCode(request.code);
+          const code = request.code
+            ? normaliseEmployeeCode(request.code)
+            : nextCode(
+                staffConfig(setup).numbering,
+                [...people.values()].map((existing) => existing.code),
+              );
           if ([...people.values()].some((existing) => existing.code === code)) {
             return { kind: 'taken' as const };
           }
@@ -257,6 +301,31 @@ export function createFakeApi({ device, cue }: Options): Api {
         },
         () => ({ kind: 'taken' as const }),
       ),
+
+    // Each row is added as one add by hand; the people come without a sign-in, which the root gives.
+    importEmployees: (rows) =>
+      call('importEmployees', async () => {
+        const results: ImportResult[] = [];
+        for (const row of rows) {
+          // A row the system was busy on is its own result and the call goes on, as the BFF's does.
+          const added = await fake.addEmployee(row).catch((error: unknown) => {
+            if (error instanceof ApiError && error.status === 503) return null;
+            throw error;
+          });
+          if (!added) {
+            results.push({ kind: 'refused', reason: 'busy' });
+            continue;
+          }
+          if (added.kind === 'taken') {
+            results.push({ kind: 'refused', reason: 'taken' });
+            continue;
+          }
+          const { employee } = added.reply.employee;
+          ready.delete(employee.id);
+          results.push({ kind: 'added', employee });
+        }
+        return { results };
+      }),
 
     saveEmployee: (id, request) =>
       call(
@@ -283,6 +352,107 @@ export function createFakeApi({ device, cue }: Options): Api {
         ready.add(person(id).id);
         return { password: password ?? MADE_PASSWORD };
       }),
+
+    changeCode: (id, request) =>
+      call(
+        'changeCode',
+        () => {
+          const found = person(id);
+          if (request.version !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          const code = normaliseEmployeeCode(request.code);
+          if ([...people.values()].some((other) => other.id !== id && other.code === code)) {
+            return { kind: 'taken' as const };
+          }
+          found.code = code;
+          return { kind: 'changed' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
+    setEmail: (id, request) =>
+      call(
+        'setEmail',
+        () => {
+          const found = person(id);
+          if (!staffConfig(setup).fields.email) throw new ApiError(403);
+          if (request.version !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          const email = request.email === null ? null : normaliseSignInName(request.email);
+          if ([...people.values()].some((other) => other.id !== id && other.email === email)) {
+            return { kind: 'taken' as const };
+          }
+          if (email === null) delete found.email;
+          else found.email = email;
+          return { kind: 'set' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
+    issueQr: (id) =>
+      call('issueQr', () => {
+        person(id);
+        if (!staffConfig(setup).fields.qr) throw new ApiError(403);
+        // Counted, not random: the same walk shows the same link on every build, so an answer
+        // given to the screen keeps holding.
+        const secret = `fake-qr-minted-${++minted}`;
+        qrs.set(id, secret);
+        return { link: qrLink(DEMO_CODE, id, secret), expiresAt: Date.now() + QR_MINUTES * 60_000 };
+      }),
+
+    signInQr: (id, secret) =>
+      call('signInQr', () => {
+        const staff = people.get(id);
+        if (!staffConfig(setup).fields.qr || !staff || staff.archived || qrs.get(id) !== secret) {
+          throw signedOut();
+        }
+        // Spent: a second opening finds nothing.
+        qrs.delete(id);
+        return {
+          authId: `${STAFF_HANDLE}${staff.id}`,
+          expiresAt: Date.now() + WEEK,
+          user: staffUser(staff),
+        };
+      }),
+
+    changePassword: (_current, password) =>
+      call<ChangePasswordResult>(
+        'changePassword',
+        () => {
+          const handle = device.authId();
+          if (!handle) throw signedOut();
+          if (!passwordIsValid(password)) throw new ApiError(400);
+          return {
+            kind: 'changed' as const,
+            session: { authId: handle, expiresAt: Date.now() + WEEK, user: signedInUser(handle) },
+          };
+        },
+        undefined,
+        () => ({ kind: 'wrong' as const }),
+      ),
+
+    getPhoto: (id) =>
+      call('getPhoto', () => {
+        person(id);
+        return photoNow(id);
+      }),
+
+    savePhoto: (id, request) =>
+      call(
+        'savePhoto',
+        () => {
+          person(id);
+          const held = photos.get(id);
+          if (request.version !== (held ? `p${held.version}` : '')) {
+            return { kind: 'conflict' as const, current: photoNow(id) };
+          }
+          const version = (held?.version ?? 0) + 1;
+          photos.set(id, { photo: request.photo, version });
+          return {
+            kind: 'saved' as const,
+            reply: { photo: request.photo, version: `p${version}` },
+          };
+        },
+        () => ({ kind: 'conflict' as const, current: photoNow(id) }),
+      ),
 
     archiveEmployee: (id, readAt) =>
       call(
@@ -320,15 +490,30 @@ export function createFakeApi({ device, cue }: Options): Api {
         () => ({ kind: 'taken' as const }),
       ),
   };
+  return fake;
 }
 
+/** The tab's own mark that it runs the fake: a reload, or a page the app navigates to, loses the
+ * address's search, and must not turn into the real app. */
+const FAKE_KEY = 'credo.fake';
+
 /** What the app is given on `?fake`: the fake, and a device kept in the tab's own storage, linked
- * to the demo company, so a fake sign-in never touches what the device keeps for the real app. */
+ * to the demo company, so a fake sign-in never touches what the device keeps for the real app.
+ * The tab remembers the switch once read, so a reload without `?fake` is still the fake; null when
+ * the address names no `?fake` and the tab never did. `&sign-ins` has the company use sign-in by
+ * email and by QR code. */
 export function fakeParts(search: string, storage: Parameters<typeof createDeviceStore>[0]) {
+  const params = new URLSearchParams(search);
+  if (!params.has('fake') && storage.getItem(FAKE_KEY) === null) return null;
+  storage.setItem(FAKE_KEY, '1');
   const device = createDeviceStore(storage);
   device.setClientCode(DEMO_CODE);
   return {
-    api: createFakeApi({ device, cue: parseCue(new URLSearchParams(search).get('cue')) }),
+    api: createFakeApi({
+      device,
+      cue: parseCue(params.get('cue')),
+      signIns: params.has('sign-ins'),
+    }),
     device,
   };
 }

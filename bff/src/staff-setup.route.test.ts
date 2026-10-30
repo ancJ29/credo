@@ -155,3 +155,95 @@ describe('The staff setup saves with its tag; a department or position sent with
     expect(saved.setup.extra).toEqual({ note: 'kept' });
   });
 });
+
+describe('The root chooses which optional fields the company keeps on a person, an email, a second phone, a photo, all off until turned on; a field turned off is hidden everywhere, and what was stored in it stays', () => {
+  const licence = {
+    key: 'licence',
+    label: { vi: 'Bằng lái', en: 'Licence' },
+    kind: 'choice',
+    options: [{ value: 'b2', label: { vi: 'B2', en: 'B2' } }],
+    inList: true,
+  };
+
+  it('stores the field switches, the company’s own fields and the numbering, and returns them as saved', async () => {
+    const t = await staffTenant(cs);
+    const sent = {
+      fields: { personalPhone: true, photo: false },
+      customFields: [licence],
+      numbering: { prefix: 'NV', digits: 3 },
+    };
+
+    const saved = await t.setup(sent);
+
+    expect(saved.setup).toMatchObject(sent);
+    const read = staffSetupDocSchema.parse((await t.rootCall.get('/api/staff-setup')).json());
+    expect(read).toEqual(saved);
+  });
+
+  it('keeps what a save leaves out, so a caller that predates a part erases nothing, and replaces what it sends', async () => {
+    const t = await staffTenant(cs);
+    const first = await t.setup({
+      fields: { personalPhone: true, photo: true },
+      customFields: [licence],
+      numbering: { prefix: 'NV', digits: 3 },
+    });
+
+    const renamed = await t.setup({ departments: [unit('Sales')] });
+    const replaced = await t.setup({
+      fields: { personalPhone: false, photo: true },
+      customFields: [],
+      numbering: { prefix: 'A', digits: 2 },
+    });
+
+    expect(renamed.setup).toMatchObject({
+      fields: first.setup.fields,
+      customFields: first.setup.customFields,
+      numbering: first.setup.numbering,
+    });
+    expect(replaced.setup).toMatchObject({
+      fields: { personalPhone: false, photo: true },
+      customFields: [],
+      numbering: { prefix: 'A', digits: 2 },
+    });
+  });
+
+  it('leaves a setup that never held them without them, as `staffConfig` reads it', async () => {
+    const t = await staffTenant(cs);
+
+    const saved = await t.setup({ departments: [unit('Sales')] });
+
+    expect(saved.setup).not.toHaveProperty('fields');
+    expect(saved.setup).not.toHaveProperty('customFields');
+    expect(saved.setup).not.toHaveProperty('numbering');
+  });
+
+  it('refuses a field of no known kind, a key a built-in field holds or one used twice, a choice with no options, and a numbering that makes no code, 400, and stores nothing', async () => {
+    const t = await staffTenant(cs);
+    const saved = await t.setup({ customFields: [licence] });
+    const send = (setup: object) =>
+      t.rootCall.send('PUT', '/api/staff-setup', {
+        setup: { departments: [], positions: [], extra: {}, ...setup },
+        version: saved.version,
+      });
+    const text = (key: string) => ({ ...licence, key, kind: 'text', options: [] });
+    const bad = [
+      { customFields: [{ ...licence, kind: 'photo' }] },
+      { customFields: [text('phone')] },
+      { customFields: [text('personalPhone')] },
+      { customFields: [text('note')] },
+      { customFields: [text('a'), text('a')] },
+      { customFields: [text('1a')] },
+      { customFields: [{ ...licence, options: [] }] },
+      { numbering: { prefix: 'nv', digits: 3 } },
+      { numbering: { prefix: '', digits: 1 } },
+      { numbering: { prefix: 'NV', digits: 9 } },
+      { fields: { fax: true } },
+    ];
+
+    for (const setup of bad) {
+      const refused = await send(setup);
+      expect(refused.statusCode, JSON.stringify(setup)).toBe(400);
+    }
+    expect((await t.rootCall.get('/api/staff-setup')).json()).toEqual(saved);
+  });
+});

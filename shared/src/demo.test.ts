@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { tenantConfigSchema } from './config';
-import { DEMO_CLIENTS, DEMO_CODE, DEMO_CONFIG, DEMO_EMPLOYEES, DEMO_STAFF_SETUP } from './demo';
+import {
+  DEMO_CLIENTS,
+  DEMO_CODE,
+  DEMO_CONFIG,
+  DEMO_EMPLOYEES,
+  DEMO_PHOTOS,
+  DEMO_STAFF_SETUP,
+} from './demo';
+import { fieldValueIsValid } from './fields';
+import { photoIsValid } from './photo';
 import { clientCodeSchema } from './records';
-import { employeeSchema, staffSetupSchema } from './staff';
+import { employeeSchema, staffConfig, staffSetupSchema } from './staff';
 
 describe('the demo data set', () => {
   it('The demo company is a company’s settings the BFF would take, logo included', () => {
@@ -23,7 +32,36 @@ describe('the demo data set', () => {
     expect(DEMO_EMPLOYEES.filter((person) => person.department === null)).toHaveLength(1);
     expect(
       DEMO_EMPLOYEES.filter((person) => Object.keys(person.permissions).length > 0),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
+  });
+
+  it('The demo setup switches the second phone and the photo on, holds one field of each kind and numbers codes as EMP- and 4 digits; every value a person holds is one its field takes, and the photos are ones the BFF would take', () => {
+    const { fields, customFields, numbering } = staffConfig(DEMO_STAFF_SETUP);
+
+    expect(fields).toEqual({ personalPhone: true, photo: true, email: false, qr: false });
+    expect(customFields.map((field) => field.kind).sort()).toEqual([
+      'choice',
+      'date',
+      'number',
+      'text',
+    ]);
+    expect(numbering).toEqual({ prefix: 'EMP-', digits: 4 });
+    for (const person of DEMO_EMPLOYEES) {
+      for (const field of customFields) {
+        const stored = person.extra[field.key];
+        if (stored === undefined) continue;
+        expect(
+          fieldValueIsValid(field, `${stored as string | number}`),
+          `${person.code} ${field.key}`,
+        ).toBe(true);
+      }
+    }
+    const photos = Object.entries(DEMO_PHOTOS);
+    expect(photos).toHaveLength(1);
+    for (const [owner, photo] of photos) {
+      expect(DEMO_EMPLOYEES.some((person) => person.id === owner)).toBe(true);
+      expect(photoIsValid(photo)).toBe(true);
+    }
   });
 });
 

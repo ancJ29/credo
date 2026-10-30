@@ -43,10 +43,13 @@ catalog:
   jsdom: 30.1.1
   knip: ^6.0.0
   prettier: ^3.9.0
+  # The QR image on the sign-in panel; drawn as SVG, no canvas.
+  qrcode.react: 4.2.0
   react: ^19.3.0
   react-dom: ^19.3.0
   react-i18next: 17.0.15
   react-router: 8.4.0
+  read-excel-file: 9.3.12
   tsx: 4.23.15
   # typescript-eslint supports < 6.1; move both together.
   typescript: ~6.0.2
@@ -55,4 +58,5 @@ catalog:
   # Exact, and moved together: under a caret the provider can resolve a later patch than the
   # runner, and vitest warns on the mismatch.
   vitest: 5.0.2
+  write-excel-file: 4.1.1
   zod: 4.6.7

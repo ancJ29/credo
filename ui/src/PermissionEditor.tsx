@@ -6,7 +6,7 @@ import {
 } from '@credo/shared';
 import { Badge, Checkbox, Group, SegmentedControl, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { PERMISSION_LABEL } from './permissionLabels';
+import { NEEDS_SEEING, PERMISSION_LABEL } from './permissionLabels';
 
 type Props = {
   layer: PermissionLayer;
@@ -31,6 +31,13 @@ const withValue = (layer: PermissionLayer, id: PermissionId, value: boolean | un
 export function PermissionEditor({ layer, onChange, mode, below, label }: Props) {
   const { t } = useTranslation();
   const inherited = below ? resolvePermissions(below) : null;
+  // What a permission comes to here: this layer's choice, else the level above's, and unknown when
+  // a position's page cannot say what the department above gives.
+  const given = (id: PermissionId) =>
+    mode === 'allow' ? layer[id] === true : (layer[id] ?? inherited?.[id]);
+  /** A line under a permission that is granted while seeing the staff list is refused. */
+  const needsSeeing = (id: PermissionId) =>
+    NEEDS_SEEING.includes(id) && given(id) === true && given('staff.canView') === false;
   return (
     <Stack gap="xs" role="group" aria-label={label}>
       {PERMISSIONS.map((id) =>
@@ -39,6 +46,7 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
             key={id}
             label={t(PERMISSION_LABEL[id])}
             checked={layer[id] === true}
+            description={needsSeeing(id) ? t('permissions.needsSeeing') : undefined}
             onChange={(event) => onChange(withValue(layer, id, event.currentTarget.checked))}
           />
         ) : (
@@ -49,6 +57,11 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
                 <Text size="xs" c="dimmed">
                   {t('permissions.inherit')}:{' '}
                   {t(inherited[id] ? 'permissions.allowed' : 'permissions.refused')}
+                </Text>
+              )}
+              {needsSeeing(id) && (
+                <Text size="xs" c="orange">
+                  {t('permissions.needsSeeing')}
                 </Text>
               )}
             </div>

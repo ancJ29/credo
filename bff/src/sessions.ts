@@ -50,7 +50,7 @@ export function createSessions({
     /** A new session under a fresh id, which no other session holds: naming a device replaces
      * nothing. The write names no record, so a record found under the fresh id is a fault of the
      * store. */
-    async issue(device: string, user: string, passwordAt: number) {
+    async issue(device: string, user: string, generation: string) {
       const id = randomUUID();
       const secret = randomBytes(32).toString('base64url');
       const session: StoredSession = {
@@ -58,7 +58,7 @@ export function createSessions({
         user,
         expiresAt: now() + SESSION_MS,
         device,
-        passwordAt,
+        generation,
       };
       if ((await storage.putRecord(keyOf(id), session, null)) === 'moved') {
         throw new CStorageError(412, 'a record already sat under a fresh session id');

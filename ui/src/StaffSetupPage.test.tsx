@@ -6,39 +6,53 @@ import { vi } from 'vitest';
 import { openApp } from '../tests/open';
 import { ApiError } from './api';
 
+/** The line under a permission that works only with seeing the staff list. */
+const NEEDS = 'Needs “See the staff list”.';
+
+/** Three long stories (dozens of keystrokes on Mantine's inputs, then a save and a re-read) take
+ * 1 to 1.4 s alone and over 5 s in a whole `pnpm check` with other worktrees' gates running: named
+ * slow here, one by one, while the default timeout stands for every other test. */
+const SLOW = { timeout: 20_000 };
+
 describe('the staff setup page', () => {
-  it('The root keeps the company’s departments and positions, adding, renaming and removing them; a person names theirs by its id, so a rename follows them, and a removed one shows on them as it was saved', async () => {
-    const { api } = openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+  it(
+    'The root keeps the company’s departments and positions, adding, renaming and removing them; a person names theirs by its id, so a rename follows them, and a removed one shows on them as it was saved',
+    SLOW,
+    async () => {
+      const { api } = openApp('/staff-setup');
+      await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
 
-    // add one, rename one, remove one
-    await userEvent.click(screen.getByRole('button', { name: 'Add a department' }));
-    const names = screen.getAllByRole('textbox', { name: /^Name/ });
-    await userEvent.type(names[3], 'Bếp');
-    const warehouse = screen.getByDisplayValue('Kho');
-    await userEvent.clear(warehouse);
-    await userEvent.type(warehouse, 'Kho hàng');
-    await userEvent.click(screen.getByRole('button', { name: 'Remove Giao hàng' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      // add one, rename one, remove one
+      await userEvent.click(screen.getByRole('button', { name: 'Add a department' }));
+      const names = screen.getAllByRole('textbox', { name: /^Name/ });
+      await userEvent.type(names[3], 'Bếp');
+      const warehouse = screen.getByDisplayValue('Kho');
+      await userEvent.clear(warehouse);
+      await userEvent.type(warehouse, 'Kho hàng');
+      await userEvent.click(screen.getByRole('button', { name: 'Remove Giao hàng' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect((await screen.findByText('Saved.')).textContent).toBe('Saved.');
-    const saved = await api.getStaffSetup();
-    expect(saved.setup.departments.map((unit) => unit.name)).toEqual([
-      'Kho hàng',
-      'Văn phòng',
-      'Bếp',
-    ]);
-    // the new one was given an id, the others kept theirs
-    expect(saved.setup.departments.every((unit) => unit.id.length > 0)).toBe(true);
-    expect(saved.setup.departments[0]?.id).toBe(DEMO_STAFF_SETUP.departments[0]?.id);
+      expect((await screen.findByText('Saved.')).textContent).toBe('Saved.');
+      const saved = await api.getStaffSetup();
+      expect(saved.setup.departments.map((unit) => unit.name)).toEqual([
+        'Kho hàng',
+        'Văn phòng',
+        'Bếp',
+      ]);
+      // the new one was given an id, the others kept theirs
+      expect(saved.setup.departments.every((unit) => unit.id.length > 0)).toBe(true);
+      expect(saved.setup.departments[0]?.id).toBe(DEMO_STAFF_SETUP.departments[0]?.id);
 
-    // on the list: the rename follows each person, the removed one stays as it was saved
-    await userEvent.click(screen.getByRole('link', { name: 'Staff' }));
-    const warehouseStaff = (await screen.findByText('Phạm Quốc Bảo')).closest('tr') as HTMLElement;
-    expect(within(warehouseStaff).getByText('Kho hàng')).toBeTruthy();
-    const delivery = screen.getByText('Võ Thanh Tùng').closest('tr') as HTMLElement;
-    expect(within(delivery).getByText('Giao hàng')).toBeTruthy();
-  });
+      // on the list: the rename follows each person, the removed one stays as it was saved
+      await userEvent.click(screen.getByRole('link', { name: 'Staff' }));
+      const warehouseStaff = (await screen.findByText('Phạm Quốc Bảo')).closest(
+        'tr',
+      ) as HTMLElement;
+      expect(within(warehouseStaff).getByText('Kho hàng')).toBeTruthy();
+      const delivery = screen.getByText('Võ Thanh Tùng').closest('tr') as HTMLElement;
+      expect(within(delivery).getByText('Giao hàng')).toBeTruthy();
+    },
+  );
 
   it('Piece 2’s permissions are to see the staff list, to add a person, to change a person’s name and details, and to archive a person; the root sets them at any of the three levels', async () => {
     openApp('/staff-setup');
@@ -49,6 +63,7 @@ describe('the staff setup page', () => {
       'Add a person',
       'Change a person’s name and details',
       'Archive a person',
+      'Change the company’s settings',
     ];
     // a department takes each as a choice, in the catalogue's order
     const office = screen
@@ -63,6 +78,7 @@ describe('the staff setup page', () => {
       true,
       true,
       false,
+      false,
     ]);
     // a position takes each as allow, refuse or as the level above
     const trainee = screen
@@ -74,7 +90,56 @@ describe('the staff setup page', () => {
     expect(within(edit).getByRole<HTMLInputElement>('radio', { name: 'Refuse' }).checked).toBe(
       true,
     );
-    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(4);
+    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(5);
+  });
+
+  it('A permission that works only with seeing the staff list says so under itself while seeing is refused, at a department and at a position', async () => {
+    openApp('/staff-setup');
+    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+    const paper = (name: string) =>
+      screen.getByDisplayValue(name).closest('.mantine-Paper-root') as HTMLElement;
+    const needs = (name: string) => within(paper(name)).queryAllByText(NEEDS);
+    expect(needs('Văn phòng')).toHaveLength(0);
+
+    // the office stops seeing: the two it still allows say so, the one it never allowed does not
+    const office = within(paper('Văn phòng')).getAllByRole('checkbox');
+    await userEvent.click(office[0]);
+    expect(needs('Văn phòng')).toHaveLength(2);
+    expect((office[1].closest('.mantine-Checkbox-root') as HTMLElement).textContent).toContain(
+      NEEDS,
+    );
+    expect((office[3].closest('.mantine-Checkbox-root') as HTMLElement).textContent).not.toContain(
+      NEEDS,
+    );
+    await userEvent.click(office[3]);
+    expect(needs('Văn phòng')).toHaveLength(3);
+    await userEvent.click(office[0]);
+    expect(needs('Văn phòng')).toHaveLength(0);
+
+    // a position that refuses seeing and allows adding says so; one that leaves seeing to the
+    // department above does not, since the page cannot know that department
+    const staff = (label: string) =>
+      within(paper('Nhân viên')).getByRole('radiogroup', { name: `Nhân viên: ${label}` });
+    await userEvent.click(within(staff('Add a person')).getByText('Allow'));
+    expect(needs('Nhân viên')).toHaveLength(0);
+    await userEvent.click(within(staff('See the staff list')).getByText('Refuse'));
+    expect(needs('Nhân viên')).toHaveLength(1);
+    await userEvent.click(within(staff('See the staff list')).getByText('As the level above'));
+    expect(needs('Nhân viên')).toHaveLength(0);
+  });
+
+  it('A department that never said anything about seeing, and allows changing, says it needs seeing', async () => {
+    openApp('/staff-setup');
+    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+    await userEvent.click(screen.getByRole('button', { name: 'Add a department' }));
+    const fresh = screen.getAllByRole('textbox', { name: /^Name/ })[3];
+    const paper = fresh.closest('.mantine-Paper-root') as HTMLElement;
+    const boxes = within(paper).getAllByRole('checkbox');
+    expect(within(paper).queryAllByText(NEEDS)).toHaveLength(0);
+
+    await userEvent.click(boxes[3]);
+
+    expect(within(paper).queryAllByText(NEEDS)).toHaveLength(1);
   });
 
   it('The root’s save over newer ones is refused and what was typed is kept, and a failed save says so and keeps it too', async () => {

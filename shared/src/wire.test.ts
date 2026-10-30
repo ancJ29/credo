@@ -40,6 +40,8 @@ describe('the wire contract', () => {
     expect(employeeRoutes.one('i')).toBe('/api/employees/i');
     expect(employeeRoutes.archive('i')).toBe('/api/employees/i/archive');
     expect(employeeRoutes.password('i')).toBe('/api/employees/i/password');
+    expect(employeeRoutes.code('i')).toBe('/api/employees/i/code');
+    expect(employeeRoutes.photo('i')).toBe('/api/employees/i/photo');
   });
 
   it('parses what the BFF sends and refuses what it never sends', () => {

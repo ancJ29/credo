@@ -19,6 +19,8 @@ type Props = {
   onSignOut: () => void;
   /** Starts with the user's menu open, for a mock of it. */
   userMenuOpen?: boolean;
+  /** Where a person changes their own password; the user's menu lists it only when this is set. */
+  passwordPath?: string;
   /** The pages this person's menu lists; every page, for a mock of the whole menu. */
   pages?: readonly MenuPage[];
   /** A word beside the brand, which says whose door this is; a client's app passes none. */
@@ -34,6 +36,7 @@ export function Shell({
   onLanguage,
   onSignOut,
   userMenuOpen,
+  passwordPath,
   pages = PAGES,
   badge,
   children,
@@ -92,6 +95,11 @@ export function Shell({
                   ))}
                   <Menu.Divider />
                 </>
+              )}
+              {passwordPath !== undefined && (
+                <Menu.Item component={Link} to={passwordPath}>
+                  {t('user.password')}
+                </Menu.Item>
               )}
               <Menu.Item onClick={onSignOut}>{t('user.signOut')}</Menu.Item>
             </Menu.Dropdown>

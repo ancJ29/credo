@@ -21,6 +21,8 @@ export const employeeRoutes = {
   one: (id: string) => `${ROUTES.employees}/${id}`,
   archive: (id: string) => `${ROUTES.employees}/${id}/archive`,
   password: (id: string) => `${ROUTES.employees}/${id}/password`,
+  code: (id: string) => `${ROUTES.employees}/${id}/code`,
+  photo: (id: string) => `${ROUTES.employees}/${id}/photo`,
 };
 
 /** The client's code, on every call of a client's: it scopes the call to a tenant and proves

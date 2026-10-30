@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import { extraInputSchema, extraSchema } from './extra';
+import {
+  type CustomField,
+  customFieldsSchema,
+  DEFAULT_NUMBERING,
+  type Numbering,
+  numberingSchema,
+  type StaffFields,
+  staffFieldsSchema,
+} from './fields';
 import { permissionLayerSchema } from './permissions';
+import { emailSchema } from './records';
 import { tagSchema } from './wire';
 
 /** A code is 2 to 20 of the letters A to Z, digits and hyphens, unique in any case: a code is
@@ -33,6 +43,8 @@ export const employeeSchema = z.strictObject({
   name: nameSchema,
   department: unitLinkSchema.nullable(),
   position: unitLinkSchema.nullable(),
+  /** The second sign-in name, the root's to give; absent until one is. */
+  email: emailSchema.nullable().optional(),
   /** Only what differs from the position's, and the department's. */
   permissions: permissionLayerSchema.default({}),
   archived: z.boolean().default(false),
@@ -53,10 +65,10 @@ export const employeeListReplySchema = z.strictObject({ employees: z.array(emplo
 export type EmployeeListReply = z.infer<typeof employeeListReplySchema>;
 
 /** Adding a person. Only the root's add carries a department and a position, and gets a first
- * password back. */
+ * password back. A code left out is numbered by the BFF. */
 export const addEmployeeRequestSchema = z.strictObject({
   name: nameSchema,
-  code: z.string().refine(employeeCodeIsValid, 'a code'),
+  code: z.string().refine(employeeCodeIsValid, 'a code').optional(),
   extra: extraInputSchema,
   departmentId: z.uuid().nullable().optional(),
   positionId: z.uuid().nullable().optional(),
@@ -83,6 +95,13 @@ export const saveEmployeeRequestSchema = z.strictObject({
 });
 export type SaveEmployeeRequest = z.infer<typeof saveEmployeeRequestSchema>;
 
+/** A new code for a person, over the version read. */
+export const changeCodeRequestSchema = z.strictObject({
+  version: tagSchema,
+  code: z.string().refine(employeeCodeIsValid, 'a code'),
+});
+export type ChangeCodeRequest = z.infer<typeof changeCodeRequestSchema>;
+
 /** `password` null asks the app to make one. */
 export const setPasswordRequestSchema = z.strictObject({
   password: z.string().refine(passwordIsValid, 'a password').nullable(),
@@ -102,13 +121,32 @@ export const staffUnitSchema = z.strictObject({
 });
 export type StaffUnit = z.infer<typeof staffUnitSchema>;
 
-/** The root's setup of the company's staff: its departments and positions. */
+/** The root's setup of the company's staff: its departments and positions, the person's optional
+ * fields, the company's own fields and how a code is numbered. A setup saved before the last three
+ * existed holds none of them, and `staffConfig` reads it as the defaults. */
 export const staffSetupSchema = z.strictObject({
   departments: z.array(staffUnitSchema),
   positions: z.array(staffUnitSchema),
+  fields: staffFieldsSchema.optional(),
+  customFields: customFieldsSchema.optional(),
+  numbering: numberingSchema.optional(),
   extra: extraSchema,
 });
 export type StaffSetup = z.infer<typeof staffSetupSchema>;
+
+/** What the setup says about a person's fields and codes, whole: off, none and `EMP-0001` style
+ * where it says nothing. The one place those defaults are written. */
+export function staffConfig(setup: Partial<StaffSetup>): {
+  fields: Required<StaffFields>;
+  customFields: CustomField[];
+  numbering: Numbering;
+} {
+  return {
+    fields: { personalPhone: false, photo: false, email: false, qr: false, ...setup.fields },
+    customFields: setup.customFields ?? [],
+    numbering: setup.numbering ?? DEFAULT_NUMBERING,
+  };
+}
 
 export const staffSetupDocSchema = z.strictObject({ setup: staffSetupSchema, version: z.string() });
 export type StaffSetupDoc = z.infer<typeof staffSetupDocSchema>;
@@ -124,9 +162,25 @@ export const saveStaffSetupRequestSchema = z.strictObject({
   setup: z.strictObject({
     departments: z.array(staffUnitInputSchema),
     positions: z.array(staffUnitInputSchema),
+    fields: staffFieldsSchema.optional(),
+    customFields: customFieldsSchema.optional(),
+    numbering: numberingSchema.optional(),
     extra: extraInputSchema,
   }),
   /** The tag the setup was read at; `''` names a company that has never saved one. */
   version: tagSchema.or(z.literal('')),
 });
 export type SaveStaffSetupRequest = z.infer<typeof saveStaffSetupRequestSchema>;
+
+/** The setup's optional parts after a save: each one sent replaces the stored one, and one left out
+ * is the stored one, so a caller that predates a part erases nothing. */
+export function keptSetupParts(sent: SaveStaffSetupRequest['setup'], stored: StaffSetup) {
+  const fields = sent.fields ?? stored.fields;
+  const customFields = sent.customFields ?? stored.customFields;
+  const numbering = sent.numbering ?? stored.numbering;
+  return {
+    ...(fields ? { fields } : {}),
+    ...(customFields ? { customFields } : {}),
+    ...(numbering ? { numbering } : {}),
+  };
+}

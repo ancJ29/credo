@@ -58,26 +58,26 @@ describe('the progress', () => {
     });
 
     expect(progress).toMatchObject({ answered: 2, total: 36 });
-    // The page's order: the main path, then what can go wrong; a screen's languages side by side.
-    expect(progress.marks.slice(0, 2)).toEqual([
+    // The page's order: by number; a screen's languages side by side.
+    expect(progress.marks.slice(0, 2)).toMatchObject([
       { key: 'admin-setup:1-sign-in:vi', mark: 'open' },
       { key: 'admin-setup:1-sign-in:en', mark: 'yes' },
     ]);
-    expect(progress.marks.slice(8, 10)).toEqual([
+    expect(progress.marks.slice(2, 4)).toMatchObject([
       { key: 'admin-setup:2-sign-in-refused:vi', mark: 'no' },
       { key: 'admin-setup:2-sign-in-refused:en', mark: 'again' },
     ]);
   });
 
-  it('puts a walk’s main path first, then what can go wrong, each screen under its section’s id', async () => {
+  it('puts a walk’s screens in number order, one that goes wrong among the rest, each under its section’s id', async () => {
     const walk = (await reportWith()).walks[0];
 
     expect(inPageOrder(walk).map((screen) => screenId(walk, screen))).toEqual([
       'admin-setup-1-sign-in',
+      'admin-setup-2-sign-in-refused',
       'admin-setup-3-settings',
       'admin-setup-4-saved',
       'admin-setup-5-language-menu',
-      'admin-setup-2-sign-in-refused',
       'admin-setup-6-service-down',
       'admin-setup-7-save-failed',
       'admin-setup-8-save-conflict',

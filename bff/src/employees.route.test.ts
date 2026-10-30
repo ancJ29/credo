@@ -394,23 +394,24 @@ describe('The root gives a person a password, typed twice or made by the app, of
     expect((await me(t, again.body.authId)).statusCode).toBe(200);
   });
 
-  it('refuses a session issued in the very millisecond of the new password, the clock not moved, and one issued at an earlier generation', async () => {
+  it('refuses a session issued at an earlier generation, whatever the clock reads: each new password is a new random generation', async () => {
     const t = await staffTenant(cs);
     const reply = await added(t.rootCall, { code: 'EMP-1' });
     const id = reply.employee.employee.id;
     const generation = async () =>
-      storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data).passwordAt;
+      storedUserSchema.parse((await t.client.getRecord(t.keys.user('emp-1')))?.data).generation;
     const first = await signIn(t.app, { name: 'EMP-1', password: reply.password as string });
-    // The session holds the sign-in record's generation, a copy and not a time of its own.
+    // The session holds a copy of the sign-in record's generation, and no time of its own.
     const held = await t.client.getRecord(t.keys.session(first.body.authId.split('.')[0]));
-    expect(held?.data).toMatchObject({ passwordAt: await generation() });
+    expect(held?.data).toMatchObject({ generation: await generation() });
 
     const before = await generation();
     await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass1!' });
-    expect(await generation()).toBeGreaterThan(before);
+    expect(await generation()).not.toBe(before);
+    expect(await generation()).toMatch(/^[0-9a-f-]{36}$/);
     expect((await me(t, first.body.authId)).statusCode).toBe(401);
 
-    // Each new password is a new generation, the clock still where it was.
+    // The clock has not moved: each new password is still a new generation.
     const second = await signIn(t.app, { name: 'EMP-1', password: 'TypedPass1!' });
     expect((await me(t, second.body.authId)).statusCode).toBe(200);
     await t.rootCall.send('PUT', `/api/employees/${id}/password`, { password: 'TypedPass2!' });
@@ -529,6 +530,7 @@ describe('A person signs in with their code and password on the company’s link
           'staff.canCreate': false,
           'staff.canEdit': false,
           'staff.canDelete': false,
+          'settings.canEdit': false,
         },
       });
     }
@@ -626,6 +628,7 @@ describe('Piece 2’s permissions are to see the staff list, to add a person, to
       'staff.canCreate': true,
       'staff.canEdit': true,
       'staff.canDelete': true,
+      'settings.canEdit': false,
     });
   });
 });
@@ -1247,6 +1250,37 @@ describe('Every write names the tag it read: a write that finds the record gone 
       }),
     });
     expect((await add(t.rootCall, { code: 'EMP-1' })).statusCode).toBe(503);
+  });
+
+  it('answers 201 with the first password, and lists the person once, when the person write’s answer is lost, for a typed code and a numbered one', async () => {
+    let lose = false;
+    const t = await staffTenant(cs, {
+      wrap: (client) => ({
+        ...client,
+        async putRecord(key, data, ifTag) {
+          const saved = await client.putRecord(key, data, ifTag);
+          if (lose && key.includes('.employee.')) {
+            throw new CStorageError(null, 'c-storage did not answer a put');
+          }
+          return saved;
+        },
+      }),
+    });
+    lose = true;
+
+    const typed = await added(t.rootCall, { code: 'NV-1' });
+    const numbered = await added(t.rootCall, { code: undefined });
+    lose = false;
+
+    expect(await codes(t.rootCall)).toEqual(['EMP-0001', 'NV-1']);
+    expect(numbered.employee.employee.code).toBe('EMP-0001');
+    for (const reply of [typed, numbered]) {
+      const signedIn = await signIn(t.app, {
+        name: reply.employee.employee.code,
+        password: reply.password as string,
+      });
+      expect(signedIn.response.statusCode).toBe(200);
+    }
   });
 
   it('lets someone allowed to change a person send no unit at all, or the unit and permissions they hold', async () => {

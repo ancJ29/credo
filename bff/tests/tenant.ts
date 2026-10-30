@@ -43,6 +43,7 @@ export async function seedUser(
     root: user.root,
     employeeId: null,
     passwordAt: 0,
+    generation: '',
   };
   await storage.putRecord(recordKeys.tenant(tenantId).user(normaliseSignInName(user.name)), stored);
 }
@@ -70,6 +71,7 @@ export async function seedEmployee(
     root: false,
     employeeId: employee.id,
     passwordAt: 0,
+    generation: '',
   };
   await storage.putRecord(keys.user(normaliseSignInName(employee.code)), stored);
   await storage.putRecord(keys.employee(employee.id), employee);

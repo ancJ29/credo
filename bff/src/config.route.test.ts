@@ -6,6 +6,7 @@ import {
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
+import { personCalls, staffTenant } from '../tests/staff';
 import { signIn, tenantWithRoot, withAuth } from '../tests/tenant';
 
 let cs: RunningCStorage;
@@ -168,5 +169,70 @@ describe('A save over a newer one is refused, 409, and the page offers the newer
     const gone = await t.save(company, first.version);
     expect(gone.statusCode).toBe(409);
     expect(conflictReplySchema.parse(gone.json()).current).toBeNull();
+  });
+});
+
+describe('A department, a position or a person may be allowed to change the company’s settings', () => {
+  const save = (
+    call: { send: (m: 'PUT', u: string, p: object) => unknown },
+    version: string | null,
+  ) =>
+    call.send('PUT', '/api/config', {
+      config: { ...company, name: 'Renamed' },
+      version,
+    }) as Promise<{
+      statusCode: number;
+    }>;
+
+  it('lets whoever the department, the position or the person allows save the settings, and refuses a person none of them allows, 403, writing nothing', async () => {
+    const t = await staffTenant(cs);
+    const first = await t.rootCall.send('PUT', '/api/config', { config: company, version: null });
+    const version = configDocSchema.parse(first.json()).version;
+    const byDepartment = await t.staff('BY-DEPT', { department: { 'settings.canEdit': true } });
+    const byPosition = await t.staff('BY-POS', { position: { 'settings.canEdit': true } });
+    const byPerson = await t.staff('BY-SELF', { own: { 'settings.canEdit': true } });
+    const refused = await t.staff('NOT-ALLOWED', {
+      own: {
+        'staff.canView': true,
+        'staff.canEdit': true,
+        'staff.canCreate': true,
+        'staff.canDelete': true,
+      },
+    });
+
+    expect((await save(refused.call, version)).statusCode).toBe(403);
+    expect(
+      configDocSchema.parse((await t.app.inject({ method: 'GET', url: '/api/config' })).json()),
+    ).toEqual({
+      config: company,
+      version,
+    });
+
+    let latest = version;
+    for (const allowed of [byDepartment, byPosition, byPerson]) {
+      const saved = await save(allowed.call, latest);
+      expect(saved.statusCode).toBe(200);
+      latest = configDocSchema.parse((saved as unknown as { json: () => unknown }).json()).version;
+    }
+    expect(
+      configDocSchema.parse((await t.app.inject({ method: 'GET', url: '/api/config' })).json())
+        .config.name,
+    ).toBe('Renamed');
+  });
+
+  it('takes a withdrawn right at the person’s next step, with no new sign-in', async () => {
+    const t = await staffTenant(cs);
+    const saved = await t.rootCall.send('PUT', '/api/config', { config: company, version: null });
+    const version = configDocSchema.parse(saved.json()).version;
+    const person = await t.staff('EDITOR', { own: { 'settings.canEdit': true } });
+    const doc = await personCalls.doc(t.rootCall, person.employee.id);
+    await t.rootCall.send('PUT', `/api/employees/${person.employee.id}`, {
+      version: doc.version,
+      name: doc.employee.name,
+      extra: {},
+      permissions: { 'settings.canEdit': false },
+    });
+
+    expect((await save(person.call, version)).statusCode).toBe(403);
   });
 });

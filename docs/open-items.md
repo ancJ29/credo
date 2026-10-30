@@ -102,15 +102,6 @@ then ridge's c-storage is reached through the tunnel from the human's Mac
 machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
 or tool outside AWS.
 
-## 15. The visual package's tests print 463 React act warnings — the machine; *parked* until the visual package is next touched (the ridge-app plan, step 12, 2026-10-28)
-
-`pnpm check`'s `visual` tests print 463 "An update to Frame … inside a test was not wrapped in
-act(...)" warnings, under act and on GitHub alike (GitHub's first is at
-`logs/ridge-app-gh-1.log#L1512`). The tests pass and the package is fully covered; the warning says a
-state update lands outside `act`, so a test may read the page before the update. Not this piece's
-step, so none was touched. Find which tests update `Frame` and wrap or await the update, then make a
-warning a red in that package's setup.
-
 ## 16. A partner's post that loses its title and `By:` outside a code fence joins the one above — the machine; *parked* until the real copy of Slack's text is read (the sharing plan, step 6, 2026-10-29)
 
 `pnpm answers --partners` ends a block at a title or a code fence's end. When a post's title and
@@ -135,25 +126,80 @@ shared machine, hand the command a random key in its environment and have the do
 refuse a `Host` that is not the loopback address and its port, with a test for each that refuses
 a call without it.
 
-## 19. A grant without "see the staff list" gives no page, and the editor does not say so — the machine; *parked* until group B gives a page to someone who is not the root (the employee list plan, step 10, 2026-10-29)
+## 23. A scripts test depends on how fast a child starts, and the gate's coverage goes red under load — the machine; *parked* until the scripts package is next touched (the employee list plan, step 14, 2026-10-29)
 
-A department, position or person allowed to add, change or archive but not to see the staff list has
-no staff page to use those on: the menu holds nothing for them and the editors show the permissions
-as if they worked. Fix when the editors are next touched: a line under the three that depend on
-"See the staff list" saying they need it, or the editors showing those three as unavailable while
-it is refused.
+`scripts/src/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
+gives `waitUntilUp` 200 ms, and the child must log "listening" inside them. In a whole `pnpm check`,
+where every package's tests run at once, the child sometimes starts later: the loop then ends before
+it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package's coverage reads
+99.68 % and fails. Run alone, the package reads 100 % each time. The test passes either way; the gate
+fails. Make the test wait for the child's log line before it starts the clock (a longer timeout would
+only hide the cause).
 
-## 20. After a 403 on save, the person's page says "not saved, try again" while Save is gone — the machine; *parked* until the page is next touched (the employee list plan, step 10, 2026-10-29)
+## 24. `nextCode` can still make a code of 21 characters, and the add page then says "try again" — the machine; *parked*, on the human's word that it never happens (the employee list plan, step 15, 2026-10-29)
 
-A save that a 403 refuses makes the app read `me` again, and the page then draws without a Save
-button (the person may no longer edit), under the message that the save failed and may be tried
-again. Fix: a 403 on save says the person may no longer change this, and keeps what was typed
-shown for reading.
+With a prefix of `EMP-` and a last number of 16 digits, `nextCode` makes a code longer than the 20 a code may be.
+The BFF now parses the person before any write and answers 400, so no record the list cannot read is stored.
+The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
+never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.
 
-## 21. A reload in `pnpm fake` drops `?fake` — the machine; *parked* until the fake is next used by hand (the employee list plan, step 10, 2026-10-29)
+## 25. The app's fixed top bar lands mid-page in a full-page picture, so a screen reached after scrolling can differ between two runs on the bar alone — the walk; *parked* until the walk is next changed, or a second such difference (the employee list plan, step 16, 2026-10-29)
 
-`?fake` is read only when the page loads (`ui/src/main.tsx`), and the sign-in's
-`<Navigate to={first.path} replace />` (`ui/src/ClientApp.tsx`) drops the address's search. A reload
-after signing in then builds the real `Api`, which shows the unknown-company page. The fake's session
-lives in the tab, so the walk and the tests are unaffected. Fix: keep the switch in the tab's own
-storage once read, and read it from there, or keep the search through the redirect.
+The walk scrolls to a panel before it takes the picture, and a full-page picture at phone width draws the
+fixed bar (company name, menu, avatar) at the scroll position the walk leaves. That position moved a little
+between the fake run and the full run, so `staff-15-code-changed-vi-390` differed (3597 pixels) on the bar
+alone; the fields, words and layout were the same. The fix belongs to the next change to the walk: scroll to
+the top, or capture with the bar unfixed, before each picture. It moves every such screen's base and its fake
+reference at once, so it is done once, not per screen.
+
+## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
+
+Step 19's whole `pnpm check` went red twice before a green third run, at the same code, with `ui` and `visual` untouched.
+Run 1, at a load of 12 to 20: `visual/src/cli.test.ts`, "With partners, takes a partner's Share post…", hit its 120 s timeout
+in `pnpm answers`, and "stops on an answers file that does not parse" failed with `window is not defined`, plus 3 unhandled
+errors. Run 2, at a load up to 30: two `ui` tests ran into their 5 s limit, `SignIns.test.tsx` "The root turns the email and the QR
+sign-in on…" and `StaffRecord.test.tsx` "The editor refuses fields it cannot take…", and the run ended with SIGKILL.
+To look into: why `window is not defined` appears after a timeout, and whether a test outlives its jsdom (a timer, a fetch or a
+render still running once the environment is torn down). qa.md rule 6 reads these as defects; a longer timeout or a retry is no fix,
+and no test is changed here.
+
+Seen again in the fix pass of step 20 (2026-10-30), two more reds. At 12:38 the whole check's `ui` run failed on `ImportPage.test.tsx`,
+"The app gives a template in Vietnamese or English…", `expected [] to have a length of 1 but got +0`: not load but a real defect of the
+test, which asserted the saved file before the lazily loaded libraries had loaded; fixed in `b0a1150` (it waits), seen red under a
+300 ms delay in the load. At 12:42 the whole check (`logs/20261030-1242-employee-list-fix-pass-check.log`) failed again on
+`ui/src/StaffRecord.test.tsx#L301`, "The editor refuses fields it cannot take and says so…", `Test timed out in 5000ms` (5139 ms; the
+file took 32079 ms): the load was 4.58 at the start and 15.55 at the end, with a second agent testing in another worktree, and the
+`scripts` package was killed by that first failure. This is the same test as in run 2 above; it is load, and still unexplained.
+
+Cause found for the `StaffRecord.test.tsx` reds (main merge, 2026-10-30). The first test typed 28 characters one key at a time with
+`userEvent.type`: each key draws the whole staff editor (30 to 45 ms a key at a load of 4) and waits a turn of the event loop, so the
+test took 1667 ms alone (`ui/src/StaffRecord.test.tsx#L310`) and a loaded machine stretched it past 5 s. The second test's "Saved."
+miss is not its own: a test that times out keeps running its remaining keystrokes, and they land in the next test's page (seen by
+running the file with `--testTimeout=1000`: the second test then read `['ĐBỏ2 cl', …]`, the first test's `Đ` among its own keys). A
+longer `findBy` would hide that; its default stands. The change: those two tests put text in with a helper `enter` (a click, then
+`user.paste`), one draw per field; their rules are unchanged, and each mutation of the rule they hold (no refusal of invalid
+fields, an option's English name saved as its Vietnamese one, an option's value lost, a removed field kept) is red from its
+assertion. Alone, at a load of 3 to 5: the first test 1667 ms to 937 ms, the second 838 ms to 552 ms. Left open: the 1.0 to 1.4 s stories
+named `SLOW` (a 20 s timeout, in this file and in `StaffSetupPage.test.tsx`) hold the same typing and the same hidden cause; a
+longer timeout is what qa.md rule 6 rejects, so they should be made cheap the same way and `SLOW` removed. The `SignIns.test.tsx`
+and `cli.test.ts` reds above were not looked at here, so the item stays open.
+
+## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
+
+Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
+one's own password route answer every try, and each wrong one costs the guesser one hashing. On ridge the stage's throttle
+(10 a second) is the only brake. The review accepted that for ridge. A client's own stack has no such stage. The fix is one piece
+for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
+after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
+the first client's own stack.
+
+## 31. Nothing on a phone shows that a wide table scrolls sideways — the machine; *parked* until the phone screens' own look (the employee list plan, step 26, 2026-10-30)
+
+On a phone, a wide table scrolls sideways inside its box, and nothing tells the person so: Mantine's
+`ScrollArea` draws its scrollbar on hover only, and a thumb has no hover. It touches the two
+`Table.ScrollContainer`s, the import preview's (`ui/src/ImportPage.tsx#L261`) and the staff list's
+(`ui/src/StaffListPage.tsx#L191`), so a field manager who opens the list on a phone sees the first
+columns and may not know that the rest is there. The fix, if taken: `scrollAreaProps={{ type: 'auto' }}`
+on both, which keeps the scrollbar on screen. It would move the pictures of staff-1, staff-8 and
+staff-14 at 390 and 768 wide, in both languages, and the human is asked about them again. *Trigger:* the
+human's look at the phone screens, or a partner who did not find the columns.

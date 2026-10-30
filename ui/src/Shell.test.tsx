@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
@@ -93,6 +93,7 @@ describe('Shell', () => {
   it('shows a badge beside the brand only when it is given one, as the operator’s frame does', () => {
     shell(['en']);
     expect(document.querySelector('header .mantine-Badge-root')).toBeNull();
+    cleanup();
 
     draw(
       <Shell
@@ -107,5 +108,39 @@ describe('Shell', () => {
       </Shell>,
     );
     expect(document.querySelector('header .mantine-Badge-root')?.textContent).toBe('Operator');
+  });
+
+  it('C: The user’s menu lists "Change password" only where the app gives the page, and it opens that page', async () => {
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        userMenuOpen
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    expect(screen.queryByRole('menuitem', { name: 'Change password' })).toBeNull();
+    cleanup();
+
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        passwordPath="/password"
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    expect(screen.getByRole('menuitem', { name: 'Change password' }).getAttribute('href')).toBe(
+      '/password',
+    );
   });
 });

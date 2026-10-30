@@ -17,6 +17,10 @@ type Options = {
   cue?: string;
   /** Signed in as the operator, not as a person. */
   operator?: boolean;
+  /** The company has turned on the email and QR sign-ins. */
+  signIns?: boolean;
+  /** Nobody is signed in: a phone that opens a QR code's link. */
+  out?: boolean;
   language?: 'en' | 'vi';
   /** Changes a call before the app draws, given the fake as it was before the spies. */
   override?: (api: Spied, original: Api) => void;
@@ -29,9 +33,9 @@ export type Spied = { [K in keyof Api]: Mock<Api[K]> };
  * code); each call of the fake is a spy. */
 export function openApp(
   path: string,
-  { as, cue, operator, language = 'en', override }: Options = {},
+  { as, cue, operator, signIns, out, language = 'en', override }: Options = {},
 ) {
-  const { api, device } = sceneParts({ as, cue, operator, language });
+  const { api, device } = sceneParts({ as, cue, operator, signIns, out, language });
   const original = { ...api };
   for (const name of Object.keys(api) as (keyof Api)[]) vi.spyOn(api, name);
   const spied = api as unknown as Spied;

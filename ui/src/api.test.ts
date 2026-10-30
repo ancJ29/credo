@@ -298,6 +298,25 @@ describe('the API client', () => {
       expect(JSON.parse(calls[0]?.init.body as string)).toEqual(request);
     });
 
+    it('sends the rows to the import and reads one result for each; a refused row is a result, a refused call an error', async () => {
+      const results = [
+        { kind: 'added', employee: personDoc.employee },
+        { kind: 'refused', reason: 'taken' },
+      ];
+      const { calls, api } = fake(json({ results }), json({}, 403), json({ results: 1 }));
+      const rows = [
+        { name: 'Lan', extra: {} },
+        { name: 'Hà', code: 'EMP-0002', extra: {} },
+      ];
+
+      expect(await api.importEmployees(rows)).toMatchObject({ results });
+      await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: 403 });
+      await expect(api.importEmployees(rows)).rejects.toMatchObject({ status: null });
+      expect(calls[0]?.init.method).toBe('POST');
+      expect(calls[0]?.path).toBe('/api/employees/import');
+      expect(JSON.parse(calls[0]?.init.body as string)).toEqual({ rows });
+    });
+
     it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
       const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
       const request = { version: 'e1', name: 'Lan', extra: {} };
@@ -341,6 +360,141 @@ describe('the API client', () => {
       await expect(api.archiveEmployee(id, 'e1')).rejects.toMatchObject({ status: 500 });
       expect(calls[0]?.init).toMatchObject({ method: 'POST', body: '{"version":"e1"}' });
       expect(calls[0]?.path).toBe(`/api/employees/${id}/archive`);
+    });
+
+    it('changes a person’s code over the version read, a 409 with the newer person being a moved version and any other 409 a code taken', async () => {
+      const { calls, api } = fake(
+        json(personDoc),
+        json({ current: personDoc }, 409),
+        json({ error: 'That code is taken' }, 409),
+        new Response('not json', { status: 409 }),
+        json({}, 403),
+      );
+      const request = { version: 'e1', code: 'NV-1' };
+
+      expect(await api.changeCode(id, request)).toMatchObject({
+        kind: 'changed',
+        doc: { version: 'e1' },
+      });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'conflict' });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'taken' });
+      expect(await api.changeCode(id, request)).toEqual({ kind: 'taken' });
+      await expect(api.changeCode(id, request)).rejects.toMatchObject({ status: 403 });
+      expect(calls[0]?.init).toMatchObject({ method: 'PUT', body: JSON.stringify(request) });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/code`);
+    });
+
+    it('C: gives a person an email over the version read, a 409 with the newer person being a moved version and any other 409 an email taken', async () => {
+      const { calls, api } = fake(
+        json({ ...personDoc, employee: { ...person, email: 'lan@minh-phat.example' } }),
+        json({ current: personDoc }, 409),
+        json({ error: 'That email is taken' }, 409),
+        new Response('not json', { status: 409 }),
+        json({}, 403),
+      );
+      const request = { version: 'e1', email: 'Lan@Minh-Phat.Example' };
+
+      expect(await api.setEmail(id, request)).toMatchObject({
+        kind: 'set',
+        doc: { employee: { email: 'lan@minh-phat.example' } },
+      });
+      expect(await api.setEmail(id, request)).toEqual({ kind: 'conflict' });
+      expect(await api.setEmail(id, request)).toEqual({ kind: 'taken' });
+      expect(await api.setEmail(id, request)).toEqual({ kind: 'taken' });
+      await expect(api.setEmail(id, request)).rejects.toMatchObject({ status: 403 });
+      expect(calls[0]?.init).toMatchObject({ method: 'PUT', body: JSON.stringify(request) });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/email`);
+    });
+
+    it('C: asks for a QR code for one person and reads its link and end; signs a phone in by it, a refusal being a 401 for the page to say', async () => {
+      const issued = {
+        link: `/login?client-code=minh-phat&qr=${id}.${'a'.repeat(32)}`,
+        expiresAt: 5,
+      };
+      const session = {
+        authId: 'device-0001.secret',
+        expiresAt: 9,
+        user: { name: 'Lan', root: false, permissions: {} },
+      };
+      const { calls, api } = fake(json(issued), json({}, 403), json(session), json({}, 401));
+
+      expect(await api.issueQr(id)).toEqual(issued);
+      await expect(api.issueQr(id)).rejects.toMatchObject({ status: 403 });
+      expect(await api.signInQr(id, 'a'.repeat(32))).toEqual(session);
+      await expect(api.signInQr(id, 'b'.repeat(32))).rejects.toMatchObject({ status: 401 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', `/api/employees/${id}/qr`],
+        ['POST', `/api/employees/${id}/qr`],
+        ['POST', '/api/auth/sign-in-qr'],
+        ['POST', '/api/auth/sign-in-qr'],
+      ]);
+      expect(calls[2]?.init.body).toBe(JSON.stringify({ id, secret: 'a'.repeat(32) }));
+    });
+
+    it('C: changes one’s own password giving the current one, a 403 being a current password that is wrong and any other failure an error', async () => {
+      const session = {
+        authId: 'device-0001.fresh',
+        expiresAt: 9,
+        user: { name: 'Lan', root: false, permissions: {} },
+      };
+      const { calls, api } = fake(json(session), json({}, 403), json({}, 400));
+
+      expect(await api.changePassword('Old-password-1!', 'New-password-2@')).toEqual({
+        kind: 'changed',
+        session,
+      });
+      expect(await api.changePassword('Wrong-1!', 'New-password-2@')).toEqual({ kind: 'wrong' });
+      await expect(api.changePassword('Old-password-1!', 'weak')).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(calls[0]?.init).toMatchObject({
+        method: 'PUT',
+        body: JSON.stringify({ current: 'Old-password-1!', password: 'New-password-2@' }),
+      });
+      expect(calls[0]?.path).toBe('/api/auth/password');
+    });
+
+    it('reads a person’s photo with its version and saves one over the version read, a moved version being a conflict', async () => {
+      const photo = 'data:image/png;base64,AAAA';
+      const { calls, api } = fake(
+        json({ photo, version: 'p1' }),
+        json({ photo: null, version: '' }),
+        json({ photo, version: 'p2' }),
+        json({ current: { photo, version: 'p3' } }, 409),
+        json({}, 409),
+        new Response('not json', { status: 409 }),
+        json({}, 413),
+        json({ photo: 'not an image', version: 'p3' }),
+        json({}, 404),
+      );
+
+      expect(await api.getPhoto(id)).toEqual({ photo, version: 'p1' });
+      expect(await api.getPhoto(id)).toEqual({ photo: null, version: '' });
+      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+        kind: 'saved',
+        reply: { photo, version: 'p2' },
+      });
+      // a 409 carries the photo as it is now; one with none leaves the page to read it again
+      expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+        kind: 'conflict',
+        current: { photo, version: 'p3' },
+      });
+      for (let answer = 0; answer < 2; answer++) {
+        expect(await api.savePhoto(id, { photo, version: 'p1' })).toEqual({
+          kind: 'conflict',
+          current: null,
+        });
+      }
+      await expect(api.savePhoto(id, { photo, version: 'p1' })).rejects.toMatchObject({
+        status: 413,
+      });
+      // a photo the schema refuses is no usable answer
+      await expect(api.savePhoto(id, { photo, version: 'p2' })).rejects.toMatchObject({
+        status: null,
+      });
+      await expect(api.getPhoto(id)).rejects.toMatchObject({ status: 404 });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/photo`);
+      expect(calls[2]?.init).toMatchObject({ method: 'PUT' });
     });
   });
 });

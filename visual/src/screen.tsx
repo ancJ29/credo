@@ -3,7 +3,16 @@ import { DEMO_CONFIG } from '@credo/shared/demo';
 import { Frame, SCREENS } from '@credo/ui/mock';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import type { Choice, Choices } from './choices';
-import { LANGUAGE_LABEL, MARK_TEXT, markOf, screenId } from './marks';
+import {
+  HUMAN,
+  LANGUAGE_LABEL,
+  MARK_TEXT,
+  type Mark,
+  markIn,
+  screenId,
+  shownIn,
+  type Whose,
+} from './marks';
 import type { Report, ReportScreen, ReportWalk } from './report';
 import { SceneView } from './scene';
 import type { Held, Shown } from './states';
@@ -42,17 +51,20 @@ export function Marks({
   walk,
   screen,
   choices,
+  whose = HUMAN,
 }: {
   walk: ReportWalk;
   screen: ReportScreen;
   choices: Choices;
+  whose?: Whose;
 }) {
   return (
     <span className="w-marks">
       {LANGUAGES.map((language) => {
-        const mark = markOf(
-          screen.languages[language].shown,
+        const mark = markIn(
+          screen.languages[language],
           choices[answerKey(walk.id, screen.id, language)],
+          whose,
         );
         return (
           <span key={language} className="w-mark" data-mark={mark}>
@@ -137,14 +149,27 @@ function Panel({
   language,
   name,
   choice,
+  shown,
+  otherMark,
+  both,
   onChange,
+  onNo,
+  onShow,
 }: {
   screen: ReportScreen;
   language: Language;
   name: string;
   choice: Choice;
+  shown: Shown;
+  /** Where the screen's other language stands. */
+  otherMark: Mark;
+  /** "Yes for both languages": how many it would answer, and the press. */
+  both: { count: number; onBoth: () => void; off: boolean };
   onChange: (choice: Choice) => void;
+  onNo: () => void;
+  onShow: (language: Language) => void;
 }) {
+  const other = LANGUAGES.find((one) => one !== language)!;
   const lacksReason = choice.answer === 'no' && choice.reason.trim() === '';
   return (
     <div className="w-panel">
@@ -161,7 +186,10 @@ function Panel({
                 className="w-hide"
                 name={name}
                 checked={choice.answer === value}
-                onChange={() => onChange({ ...choice, answer: value })}
+                onChange={() => {
+                  onChange({ ...choice, answer: value });
+                  if (value === 'no') onNo();
+                }}
               />
               <span className="w-face">
                 {value === 'yes' ? <Check /> : <Cross />}
@@ -185,8 +213,27 @@ function Panel({
           </div>
         )}
       </fieldset>
+      <button
+        type="button"
+        className="w-both"
+        disabled={both.count === 0 || both.off}
+        onClick={both.onBoth}
+      >
+        Yes for both languages ({both.count})
+      </button>
+      <div className="w-other">
+        <span className="w-mark" data-mark={otherMark}>
+          <span aria-hidden="true">{other.toUpperCase()}</span>
+          <span className="w-sr">
+            {LANGUAGE_LABEL[other]}: {MARK_TEXT[otherMark]}
+          </span>
+        </span>
+        <button type="button" className="w-show-other" onClick={() => onShow(other)}>
+          Show in {LANGUAGE_LABEL[other]}
+        </button>
+      </div>
       <p className="w-state">
-        <span>{stateLine(screen.languages[language].shown, choice)}</span>
+        <span>{stateLine(shown, choice)}</span>
         {choice.answer !== '' && (
           <button type="button" className="w-clear" onClick={() => onChange(NO_CHOICE)}>
             Clear
@@ -244,7 +291,7 @@ function Words({ shown, words }: { shown: Shown; words: readonly string[] }) {
 
 /**
  * One walk screen: its number and sentence, then the screen drawn at the shown widths in the
- * page's language beside its question and answer. A screen answered yes in both languages folds.
+ * page's language beside its question and answer. The drawn screens take no pointer and no Tab.
  */
 export function ScreenCard({
   report,
@@ -253,6 +300,12 @@ export function ScreenCard({
   view,
   choices,
   choose,
+  whose = HUMAN,
+  onNo,
+  onBoth,
+  bothCount,
+  bothOff,
+  onShow,
 }: {
   report: Report;
   walk: ReportWalk;
@@ -260,25 +313,52 @@ export function ScreenCard({
   view: View;
   choices: Choices;
   choose: Choose;
+  whose?: Whose;
+  onNo: () => void;
+  onBoth: () => void;
+  bothCount: number;
+  bothOff: boolean;
+  onShow: (language: Language) => void;
 }) {
   const { language, show } = view;
   const drawn = drawing(screen, language);
-  const settled = LANGUAGES.every((one) => screen.languages[one].shown.kind === 'yes');
   const key = answerKey(walk.id, screen.id, language);
   const here = screen.languages[language];
   const devices = report.devices.filter((device) => show === 'all' || device.id === show);
   return (
-    <details className="w-screen" open={!settled} id={screenId(walk, screen)}>
-      <summary>
+    <section className="w-screen" id={screenId(walk, screen)}>
+      <div className="w-screen-head">
         <span className="w-number">{screen.number}</span>
         <span className="w-sentence">
           <b lang="en">{screen.sentence.en}</b>
           <span lang="vi">{screen.sentence.vi}</span>
         </span>
-        <Marks walk={walk} screen={screen} choices={choices} />
-      </summary>
+        <Marks walk={walk} screen={screen} choices={choices} whose={whose} />
+      </div>
       <div className="w-screen-body">
         <div className="w-screen-grid">
+          <Panel
+            screen={screen}
+            language={language}
+            name={key}
+            choice={choices[key] ?? NO_CHOICE}
+            shown={shownIn(here, whose)}
+            otherMark={markIn(
+              screen.languages[LANGUAGES.find((one) => one !== language)!],
+              choices[
+                answerKey(
+                  walk.id,
+                  screen.id,
+                  LANGUAGES.find((one) => one !== language)!,
+                )
+              ],
+              whose,
+            )}
+            both={{ count: bothCount, onBoth, off: bothOff }}
+            onChange={(choice) => choose(key, choice)}
+            onNo={onNo}
+            onShow={onShow}
+          />
           <div className="w-stage">
             <div className="w-frames" data-show={show}>
               {devices.map((device) => (
@@ -308,15 +388,11 @@ export function ScreenCard({
               ))}
             </div>
           </div>
-          <Panel
-            screen={screen}
-            language={language}
-            name={key}
-            choice={choices[key] ?? NO_CHOICE}
-            onChange={(choice) => choose(key, choice)}
-          />
-          {here.partners.length > 0 && (
+          {(here.partners.length > 0 || (whose.partner && here.shown.kind !== 'waiting')) && (
             <ul className="w-partners" aria-label="Partners’ answers">
+              {whose.partner && here.shown.kind !== 'waiting' && (
+                <li>{partnerLine('Recorded', here.shown)}</li>
+              )}
               {here.partners.map(({ label, shown }) => (
                 <li key={label}>{partnerLine(label, shown)}</li>
               ))}
@@ -325,6 +401,6 @@ export function ScreenCard({
           <Words shown={here.shown} words={here.words} />
         </div>
       </div>
-    </details>
+    </section>
   );
 }

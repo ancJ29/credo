@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import {
   AUTH_HEADER,
+  changeOwnPasswordRequestSchema,
   CLIENT_HEADER,
   clientCodeSchema,
   clientLinkPath,
@@ -20,8 +22,12 @@ import {
   resolvePermissions,
   ROUTES,
   saveConfigRequestSchema,
+  sha256Hex,
   type SessionReplyBody,
+  signInQrRequestSchema,
   signInRequestSchema,
+  signInRoutes,
+  staffConfig,
   storedClientSchema,
   storedOperatorSchema,
   type StoredUser,
@@ -31,9 +37,18 @@ import {
 import Fastify, { type FastifyRequest } from 'fastify';
 import { createClient, listClients, ROOT_NAME } from './clients';
 import { HttpError, parse, replyFor } from './errors';
-import { verifyAgainstNobody, verifyPassword } from './password';
+import { constantTimeEqual } from './constant-time';
+import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
 import { createSessions } from './sessions';
-import { namesPerson, readEmployee, readSetup, readSignIn } from './staff-records';
+import {
+  namesPerson,
+  readEmailClaim,
+  readEmployee,
+  readQr,
+  readSetup,
+  type ReadEmployee,
+  readSignIn,
+} from './staff-records';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -42,6 +57,8 @@ declare module 'fastify' {
     tenantId: string;
   }
 }
+
+type SetupRead = Awaited<ReturnType<typeof readSetup>>;
 
 export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
@@ -90,13 +107,24 @@ export function buildApp({ storage, now, logger }: AppDeps) {
    * is no one. The layers are read here, at every call, so the root's change holds at the person's
    * next step; one that cannot be read throws and answers 503, never a partial set. The setup read
    * for them is handed on, so a route does not read it again: a staff call reads five records. */
-  async function viewOf(tenantId: string, name: string, user: StoredUser) {
+  async function viewOf(
+    tenantId: string,
+    name: string,
+    user: StoredUser,
+    handed: { person?: ReadEmployee | null; setup?: SetupRead } = {},
+  ) {
     if (user.root) {
       return { name, root: true, permissions: resolvePermissions([], true), employeeId: null };
     }
-    const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
+    // A person already read is used only if the sign-in record names them; any other is read.
+    const person =
+      handed.person && handed.person.employee.id === user.employeeId
+        ? handed.person
+        : user.employeeId
+          ? await readEmployee(storage, tenantId, user.employeeId)
+          : null;
     if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
-    const read = await readSetup(storage, tenantId);
+    const read = handed.setup ?? (await readSetup(storage, tenantId));
     return {
       name: person.employee.name,
       root: false,
@@ -126,10 +154,10 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const session =
       typeof handle === 'string' ? await sessionsOf(request.tenantId).resolve(handle) : null;
     const found = session ? await readSignIn(storage, request.tenantId, session.user) : null;
-    if (!session || !found || session.passwordAt !== found.user.passwordAt) throw unauthorized();
+    if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
     const view = await viewOf(request.tenantId, session.user, found.user);
     if (!view) throw unauthorized();
-    return view;
+    return { ...view, signInName: session.user, signIn: found };
   }
 
   /** The answer for a person's own view: no more than the app shows. */
@@ -137,7 +165,11 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     name,
     root,
     permissions,
-  }: Awaited<ReturnType<typeof signedIn>>): UserView => ({
+  }: {
+    name: string;
+    root: boolean;
+    permissions: Record<PermissionId, boolean>;
+  }): UserView => ({
     name,
     root,
     permissions,
@@ -190,7 +222,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   });
 
   app.put(ROUTES.config, forClient, async (request, reply) => {
-    mustBeRoot(await signedIn(request));
+    mustCan(await signedIn(request), 'settings.canEdit');
     const body = parse(saveConfigRequestSchema, request.body);
     const key = recordKeys.tenant(request.tenantId).config;
     const result = await storage.putRecord(key, body.config, body.version);
@@ -202,11 +234,29 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return await readConfig(request.tenantId);
   });
 
+  /** The sign-in record a typed name opens: the code's own, or, for an email, the record of the code
+   * of the person the email names. An email names no one unless that person's record holds it and
+   * the company has the email sign-in on (the setup is read first and handed on). No mail is ever
+   * sent to it, so it proves nothing but that the root gave it. */
+  async function accountOf(tenantId: string, typed: string) {
+    if (!typed.includes('@')) {
+      return { name: typed, found: await readSignIn(storage, tenantId, typed), handed: {} };
+    }
+    const setup = await readSetup(storage, tenantId);
+    const none = { name: typed, found: null, handed: { setup } };
+    if (!staffConfig(setup.setup).fields.email) return none;
+    const claim = await readEmailClaim(storage, tenantId, typed);
+    const person = claim ? await readEmployee(storage, tenantId, claim.claim.employeeId) : null;
+    if (!person || person.employee.email !== typed) return none;
+    const name = normaliseSignInName(person.employee.code);
+    return { name, found: await readSignIn(storage, tenantId, name), handed: { setup, person } };
+  }
+
   app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
-    const name = normaliseSignInName(body.name);
-    const found = await readSignIn(storage, request.tenantId, name);
+    const typed = normaliseSignInName(body.name);
+    const { name, found, handed } = await accountOf(request.tenantId, typed);
     // A person the root has not given a password yet has no sign-in to check against.
     const account = found?.user.passwordHash
       ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -214,12 +264,85 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const user = await checked(account, body.password);
     // One answer for an unknown name, a wrong password and a person who left: which part was
     // wrong is not said.
-    const view = user ? await viewOf(request.tenantId, name, user) : null;
+    const view = user ? await viewOf(request.tenantId, name, user, handed) : null;
     if (!user || !view) throw new HttpError(401, 'Wrong name or password');
     const sessions = sessionsOf(request.tenantId);
     await endKept(request, sessions);
-    const { authId, expiresAt } = await sessions.issue(device, name, user.passwordAt);
+    const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
     return { authId, expiresAt, user: userViewOf(view) };
+  });
+
+  /** A phone opening a QR code's link. Every refusal is the same 401, which says only that the code
+   * is not good: a wrong secret, one used before or past its time, a company that turned the QR
+   * sign-in off, a person who left. The record is removed over the tag it was read at before the
+   * session is issued, so two phones opening one code sign in one. */
+  app.post(signInRoutes.qr, forClient, async (request): Promise<SessionReplyBody> => {
+    const device = deviceOf(request);
+    const body = parse(signInQrRequestSchema, request.body);
+    const { tenantId } = request;
+    const held = await readQr(storage, tenantId, body.id);
+    const opened = held ? await sha256Hex(body.secret) : '';
+    const person = held ? await readEmployee(storage, tenantId, body.id) : null;
+    if (
+      !held ||
+      !person ||
+      held.qr.expiresAt <= now() ||
+      !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened))
+    ) {
+      throw unauthorized();
+    }
+    // The person and the setup are read once and handed on to the view.
+    const setup = await readSetup(storage, tenantId);
+    if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
+    const name = normaliseSignInName(person.employee.code);
+    const found = await readSignIn(storage, tenantId, name);
+    const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
+    // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
+    // one, now another's.
+    if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
+    if (
+      (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
+      'moved'
+    ) {
+      throw unauthorized();
+    }
+    const sessions = sessionsOf(tenantId);
+    await endKept(request, sessions);
+    const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
+    return { authId, expiresAt, user: userViewOf(view) };
+  });
+
+  /** Whether `password` is the one a sign-in record holds. A record with none (a person who has only
+   * come in by a QR code) still spends the check, so it takes as long as a wrong one. */
+  async function holdsPassword(user: StoredUser, password: string) {
+    if (!user.passwordHash) {
+      await verifyAgainstNobody(password);
+      return false;
+    }
+    return await verifyPassword(password, user.passwordHash);
+  }
+
+  /** One's own password, the current one first. A new generation signs the person out of every other
+   * device; this device gets the session that replaces the one it held. Every write of a sign-in
+   * record mints a generation, so a record that moved since the session read it has ended the
+   * session: a 401, never a check of the current password against what someone else wrote. */
+  app.put(signInRoutes.password, forClient, async (request): Promise<SessionReplyBody> => {
+    const who = await signedIn(request);
+    const device = deviceOf(request);
+    const body = parse(changeOwnPasswordRequestSchema, request.body);
+    if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
+    const changed: StoredUser = {
+      ...who.signIn.user,
+      passwordHash: await hashPassword(body.password),
+      passwordAt: now(),
+      generation: randomUUID(),
+    };
+    const key = recordKeys.tenant(request.tenantId).user(who.signInName);
+    if ((await storage.putRecord(key, changed, who.signIn.tag)) === 'moved') throw unauthorized();
+    const sessions = sessionsOf(request.tenantId);
+    await endKept(request, sessions);
+    const issued = await sessions.issue(device, who.signInName, changed.generation);
+    return { ...issued, user: userViewOf(who) };
   });
 
   app.post(ROUTES.signOut, forClient, async (request, reply) => {
@@ -239,7 +362,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const operator = await checked(await readOperator(name), body.password);
     if (!operator) throw new HttpError(401, 'Wrong name or password');
     await endKept(request, operatorSessions);
-    const { authId, expiresAt } = await operatorSessions.issue(device, name, 0);
+    const { authId, expiresAt } = await operatorSessions.issue(device, name, '');
     return { authId, expiresAt, operator: { name } };
   });
 

@@ -1,4 +1,5 @@
 import type { TenantConfig } from './config';
+import type { CustomField } from './fields';
 import type { Employee, StaffSetup, UnitLink } from './staff';
 
 const logo = `data:image/svg+xml;base64,${btoa(
@@ -29,12 +30,51 @@ export const DEMO_CLIENTS: { code: string; name: string; madeAt: number }[] = [
   { code: 'binh-an', name: 'Bình An', madeAt: Date.UTC(2026, 9, 21, 12) },
 ];
 
+/** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
+export const DEMO_QR_SECRET = 'fake-qr-secret-0001';
+
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const DEPARTMENTS = { warehouse: id(1), office: id(2), delivery: id(3) };
 const POSITIONS = { manager: id(11), staff: id(12), trainee: id(13) };
 
-/** The demo company's departments and positions, with what each may do. */
+/** The company's own fields: one of each kind, the choice and the date shown in the list. */
+export const DEMO_CUSTOM_FIELDS: CustomField[] = [
+  {
+    key: 'licence',
+    label: { vi: 'Bằng lái xe', en: 'Driving licence' },
+    kind: 'choice',
+    options: [
+      { value: 'b2', label: { vi: 'Hạng B2', en: 'Class B2' } },
+      { value: 'c', label: { vi: 'Hạng C', en: 'Class C' } },
+    ],
+    inList: true,
+  },
+  {
+    key: 'started',
+    label: { vi: 'Ngày vào làm', en: 'Start date' },
+    kind: 'date',
+    options: [],
+    inList: true,
+  },
+  {
+    key: 'plate',
+    label: { vi: 'Biển số xe', en: 'Vehicle plate' },
+    kind: 'text',
+    options: [],
+    inList: false,
+  },
+  {
+    key: 'dependants',
+    label: { vi: 'Số người phụ thuộc', en: 'Dependants' },
+    kind: 'number',
+    options: [],
+    inList: false,
+  },
+];
+
+/** The demo company's departments and positions, with what each may do, the second phone and the
+ * photo switched on, its own fields and its numbering. */
 export const DEMO_STAFF_SETUP: StaffSetup = {
   departments: [
     { id: DEPARTMENTS.warehouse, name: 'Kho', permissions: { 'staff.canView': true }, extra: {} },
@@ -56,8 +96,15 @@ export const DEMO_STAFF_SETUP: StaffSetup = {
       extra: {},
     },
   ],
+  fields: { personalPhone: true, photo: true },
+  customFields: DEMO_CUSTOM_FIELDS,
+  numbering: { prefix: 'EMP-', digits: 4 },
   extra: {},
 };
+
+/** A flat one-pixel image, the one invented photo: the data set's photos by person. */
+const PHOTO =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 const link = ({ id: unit, name }: { id: string; name: string }) => ({ id: unit, name });
 const [warehouse, office, delivery] = DEMO_STAFF_SETUP.departments.map(link) as [
@@ -71,8 +118,8 @@ const [manager, staff, trainee] = DEMO_STAFF_SETUP.positions.map(link) as [
   UnitLink,
 ];
 
-/** About eight invented people, with phones and notes: the office's manager, one with permissions
- * of their own, one who left, one in no department. */
+/** About eight invented people, with phones and notes: the office's manager, two with permissions
+ * of their own, one who left, one in no department; some with the company's own fields. */
 export const DEMO_EMPLOYEES: Employee[] = [
   {
     id: id(101),
@@ -100,9 +147,9 @@ export const DEMO_EMPLOYEES: Employee[] = [
     name: 'Lê Minh Châu',
     department: warehouse,
     position: manager,
-    permissions: {},
+    permissions: { 'settings.canEdit': true },
     archived: false,
-    extra: { phone: '0903 111 003' },
+    extra: { phone: '0903 111 003', started: '2024-03-04' },
   },
   {
     id: id(104),
@@ -122,7 +169,14 @@ export const DEMO_EMPLOYEES: Employee[] = [
     position: staff,
     permissions: {},
     archived: false,
-    extra: { phone: '0903 111 005', note: 'Lái xe tải nhỏ.' },
+    extra: {
+      phone: '0903 111 005',
+      note: 'Lái xe tải nhỏ.',
+      licence: 'c',
+      started: '2023-08-21',
+      plate: '51C-123.45',
+      dependants: 2,
+    },
   },
   {
     id: id(106),
@@ -132,7 +186,7 @@ export const DEMO_EMPLOYEES: Employee[] = [
     position: trainee,
     permissions: {},
     archived: false,
-    extra: { phone: '0903 111 006' },
+    extra: { phone: '0903 111 006', licence: 'b2', started: '2026-09-01' },
   },
   {
     id: id(107),
@@ -154,4 +208,63 @@ export const DEMO_EMPLOYEES: Employee[] = [
     archived: true,
     extra: { phone: '0903 111 008', note: 'Đã nghỉ việc.' },
   },
+];
+
+/** The one invented photo, Châu's. */
+export const DEMO_PHOTOS: Record<string, string> = { [id(103)]: PHOTO };
+
+/** One row of the import file the demo company's root chooses, by the key of the column it fills:
+ * a built-in column's name, or the key of one of the company's own fields. A column is left out
+ * of a row that gives nothing. */
+export type DemoImportRow = Partial<
+  Record<
+    | 'name'
+    | 'code'
+    | 'phone'
+    | 'personalPhone'
+    | 'department'
+    | 'position'
+    | 'note'
+    | 'licence'
+    | 'started'
+    | 'plate'
+    | 'dependants',
+    string
+  >
+>;
+
+/** The staff file the demo company's root chooses (group D): three rows that hold, with the code
+ * numbered, the code given and the company's own fields; five that do not, one for each reason, in
+ * the order the preview lists them: a code taken in the company, no name, a department the company
+ * lacks, a code an earlier row gave, a value a field refuses. */
+export const DEMO_IMPORT_ROWS: DemoImportRow[] = [
+  {
+    name: 'Mai Linh',
+    phone: '0909 123 456',
+    department: 'Kho',
+    position: 'Nhân viên',
+    note: 'Mới vào làm.',
+  },
+  {
+    name: 'Ngô Thu Hà',
+    code: 'EMP-0100',
+    phone: '0909 777 888',
+    department: 'Văn phòng',
+    position: 'Thực tập',
+    licence: 'b2',
+    started: '2026-10-01',
+  },
+  {
+    name: 'Lý Quang Minh',
+    code: 'EMP-0101',
+    department: 'Giao hàng',
+    position: 'Nhân viên',
+    plate: '51C-678.90',
+    dependants: '3',
+  },
+  { name: 'Hồ Bảo Trân', code: 'EMP-0002', department: 'Kho' },
+  { code: 'EMP-0102', phone: '0909 000 111' },
+  { name: 'Đinh Công Sơn', department: 'Kế toán' },
+  { name: 'Phan Thị Yến', code: 'EMP-0100' },
+  { name: 'Dương Văn Tài', dependants: 'two' },
 ];

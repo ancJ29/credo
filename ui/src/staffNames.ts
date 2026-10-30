@@ -11,3 +11,6 @@ export const phoneOf = (person: Pick<Employee, 'extra'>) =>
 
 export const noteOf = (person: Pick<Employee, 'extra'>) =>
   typeof person.extra.note === 'string' ? person.extra.note : '';
+
+export const personalPhoneOf = (person: Pick<Employee, 'extra'>) =>
+  typeof person.extra.personalPhone === 'string' ? person.extra.personalPhone : '';

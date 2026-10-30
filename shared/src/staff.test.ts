@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   addEmployeeRequestSchema,
+  changeCodeRequestSchema,
   byCode,
   employeeCodeIsValid,
   employeeSchema,
+  keptSetupParts,
   normaliseEmployeeCode,
   passwordIsValid,
   saveEmployeeRequestSchema,
   saveStaffSetupRequestSchema,
   setPasswordRequestSchema,
+  staffConfig,
   staffSetupSchema,
 } from './staff';
 
@@ -35,6 +38,14 @@ describe('staff', () => {
       addEmployeeRequestSchema.safeParse({ name: 'x', code: 'emp-1', extra: {} }).success,
     ).toBe(true);
     expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: 'e', extra: {} }).success).toBe(
+      false,
+    );
+  });
+
+  it('A code left empty is the next number: an add may leave the code out, and a code sent is still checked', () => {
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', extra: {} }).success).toBe(true);
+    expect(addEmployeeRequestSchema.parse({ name: 'x', extra: {} })).not.toHaveProperty('code');
+    expect(addEmployeeRequestSchema.safeParse({ name: 'x', code: '', extra: {} }).success).toBe(
       false,
     );
   });
@@ -151,5 +162,121 @@ describe('staff', () => {
       id: ID,
       name: 'Kho cũ',
     });
+  });
+
+  it('The root chooses which optional fields the company keeps on a person, all off until turned on, and the setup keeps the company’s own fields and its numbering', () => {
+    const label = { vi: 'Nhãn', en: 'Label' };
+    const own = { key: 'plate', label, kind: 'text' };
+    const bare = { departments: [], positions: [], extra: {} };
+
+    // a setup saved before these existed has none, and reads as the defaults
+    expect(staffSetupSchema.safeParse(bare).success).toBe(true);
+    expect(staffConfig(bare)).toEqual({
+      fields: { personalPhone: false, photo: false, email: false, qr: false },
+      customFields: [],
+      numbering: { prefix: 'EMP-', digits: 4 },
+    });
+    // a switch left out is off
+    const set = {
+      ...bare,
+      fields: { photo: true },
+      customFields: [own],
+      numbering: { prefix: 'NV', digits: 3 },
+    };
+    expect(staffSetupSchema.safeParse(set).success).toBe(true);
+    expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
+      fields: { personalPhone: false, photo: true, email: false, qr: false },
+      customFields: [{ ...own, options: [], inList: false }],
+      numbering: { prefix: 'NV', digits: 3 },
+    });
+    // a switch the app does not know, a field of no known kind and a repeated key are refused
+    expect(staffSetupSchema.safeParse({ ...bare, fields: { fax: true } }).success).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({ ...bare, customFields: [{ ...own, kind: 'file' }] }).success,
+    ).toBe(false);
+    expect(staffSetupSchema.safeParse({ ...bare, customFields: [own, own] }).success).toBe(false);
+    // a save carries them the same
+    const save = (setup: object) =>
+      saveStaffSetupRequestSchema.safeParse({ setup, version: '' }).success;
+    expect(save(set)).toBe(true);
+    expect(save({ ...set, numbering: { prefix: 'nv', digits: 3 } })).toBe(false);
+    expect(save({ ...set, customFields: [{ ...own, key: 'note' }] })).toBe(false);
+  });
+
+  it('The root changes a person’s code: a new code is a valid code over the version read', () => {
+    const version = 'a'.repeat(64);
+
+    expect(changeCodeRequestSchema.safeParse({ version, code: 'nv-12' }).success).toBe(true);
+    expect(changeCodeRequestSchema.safeParse({ version, code: 'x' }).success).toBe(false);
+    expect(changeCodeRequestSchema.safeParse({ version: 'v', code: 'NV-12' }).success).toBe(false);
+    expect(changeCodeRequestSchema.safeParse({ code: 'NV-12' }).success).toBe(false);
+  });
+
+  it('A setup save keeps each optional part it leaves out, and replaces each it sends', () => {
+    const bare = { departments: [], positions: [], extra: {} };
+    const stored = {
+      departments: [],
+      positions: [],
+      fields: { personalPhone: true, photo: false },
+      numbering: { prefix: 'NV', digits: 3 },
+      extra: {},
+    };
+
+    expect(keptSetupParts({ departments: [], positions: [], extra: {} }, stored)).toEqual({
+      fields: stored.fields,
+      numbering: stored.numbering,
+    });
+    // nothing sent and nothing stored is nothing; an own field stored is kept
+    expect(keptSetupParts({ departments: [], positions: [], extra: {} }, bare)).toEqual({});
+    const own = {
+      key: 'plate',
+      label: { vi: 'Biển', en: 'Plate' },
+      kind: 'text',
+      options: [],
+      inList: false,
+    };
+    expect(
+      keptSetupParts({ departments: [], positions: [], extra: {} }, {
+        ...bare,
+        customFields: [own],
+      } as never),
+    ).toEqual({ customFields: [own] });
+    expect(
+      keptSetupParts(
+        {
+          departments: [],
+          positions: [],
+          fields: { personalPhone: false, photo: true },
+          customFields: [],
+          numbering: { prefix: 'X-', digits: 2 },
+          extra: {},
+        },
+        stored,
+      ),
+    ).toEqual({
+      fields: { personalPhone: false, photo: true },
+      customFields: [],
+      numbering: { prefix: 'X-', digits: 2 },
+    });
+  });
+
+  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switches for the email and the QR code are off until turned on', () => {
+    expect(employeeSchema.parse(person).email).toBeUndefined();
+    expect(employeeSchema.parse({ ...person, email: null }).email).toBeNull();
+    expect(employeeSchema.parse({ ...person, email: '  Lan@Minh-Phat.Example ' }).email).toBe(
+      'lan@minh-phat.example',
+    );
+    expect(employeeSchema.safeParse({ ...person, email: 'not an email' }).success).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({
+        departments: [],
+        positions: [],
+        fields: { email: true, qr: true },
+        extra: {},
+      }).success,
+    ).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
+      { personalPhone: true, photo: false, email: false, qr: true },
+    );
   });
 });
