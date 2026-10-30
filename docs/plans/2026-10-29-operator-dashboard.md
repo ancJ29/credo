@@ -1,9 +1,11 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 05:52 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+**Where it stands — 2026-10-30 18:08 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
 built (step 8), the full run's script is written (step 9), the review's six findings are fixed
 (step 10), the full walk is green with the operator's 54 bases committed (step 11) and the recap is
-written (step 12). **Next:** step 13, after piece 2's merge into `main` ([steps](#steps)).
+written (step 12). Step 13's first half is done: `main` is merged in twice, with piece 2 and with the
+demo seed, and `pnpm check` is green at 100 %. **Next:** step 13's second half, the human's full run
+of the script, after another model has read it ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -513,6 +515,25 @@ worktree; B to D will touch more of the same:
   conflict kept both sides; `pnpm check` green at 100 %, no act warning (`f8c85e6`'s rule); the full
   run's log read whole, each screen that moved named with its cause, its bases rewritten only for
   those and the human's answer asked again only where words changed. The piece is done here.
+  *Evidence, the first half (the merge and the check), 18:08 +07; the full run is the human's and
+  stays unticked.* Taken in by merge, not rebase: `f3bd090` took `main` at `02e16f3` (piece 2, the
+  employee list; 16 conflicts, both sides kept, `main`'s settled fake capture in `walk/` whole) and
+  `e829323` took `main` at `1349fc2` (the demo seed, 34 files; no conflict, `docs/open-items.md`
+  identical to `main`'s, nothing renumbered). Six reds the first merge left in `visual`, each a
+  test that counted only the admin's walk and the old four-screen operator walk, now take their count
+  from `WALKS`: `nav.test.ts` (2), `bar.test.tsx` (2), `one-screen.test.tsx` (1; the walk's Yes
+  button is read in the open rail group, since the two walks now hold 18 each) and `cli.test.ts`
+  (1; its second `92` was hidden behind the first). The second merge broke the typecheck, not a
+  line of text: `createClient` here requires `madeAt` and the seed called it without, fixed in
+  `f09bfa1` (`Date.now()`, as `ridge.ts` does). One flaky red, `OperatorWalk.test.tsx` screen 5,
+  looked for the first row when only the heading was there, at load 14.6; it passed alone on a rerun
+  and is fixed in `e19182d` by awaiting the row, with no red forced on demand. The check:
+  `20261030-1759-operator-dashboard-main-merge-check.log`, exit 0, shared 93, bff 278, ui 377,
+  scripts 144, visual 379 tests, each package at 100 %; the earlier `20261030-1757` log, exit 1,
+  holds the flaky red and is not a pass. The five walk listings read 6 tests each (`chromium`,
+  `fake`, `full`, `operator-fake`, `operator-full`). `pnpm report`: `0 waiting, 0 asked again, 0
+  no, 102 yes`. The full run's script reads nothing the second merge touched (`walk/`, `ui/` and
+  `shared/src/demo.ts` unchanged by it).
 - [ ] **14. The merge.** Who: the orchestrator, on the human's word, after step 13. Done when:
   `operator-dashboard` merged into `main`, the recap's last line naming the merge.
 - [ ] **15. ridge.** Who: 👤, after the push of the `main` that holds it, about 10 minutes. The deploy
