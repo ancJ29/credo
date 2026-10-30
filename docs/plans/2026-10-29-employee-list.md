@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 14:14 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Steps 20 and 25 were reviewed three times (Opus, last at `9a5f7e2`, ready for the human's full walk); the third review's two Low test gaps and two notes are closed: the add by hand's lost-answer case is held by its own route test (D-5), D-1's second test asserts what the page guards, and D-5's accepted window and H's wording are written. The last whole `pnpm check` was exit 0 at 100 % (at `78c018b` plus its fix pass); this pass ran the touched files and the `bff` and `ui` package gates only. **Next:** step 21, C's full walk, follows a merge and a whole check. **Open for the human:** whether to warn when the root leaves the import page during a send (the orchestrator adds the answer); open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
+**Where it stands — 2026-10-30 15:24 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Steps 20 and 25 were reviewed three times (Opus, last at `9a5f7e2`, ready for the human's full walk); the third review's two Low test gaps and two notes are closed, and Decide 26 (a) is recorded: leaving the import page during a send is not fixed. `main` is merged in (`a9c4e9f`, the walks page's navigation and the act and swift-lsp changes); the whole `pnpm check` after it is exit 0 at 100 % (`logs/20261030-1517-employee-list-main-merge-check-2.log`), and `pnpm report` (`walks/2026-10-30-152414-4b3bbb3d8`) reads 0 waiting, 0 asked again, 0 no, 92 yes. The slow `StaffRecord.test.tsx` stories were made cheap (`4b3bbb3`, open item 27). **Next:** step 21, C's full walk. Open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) stays open for the `SLOW` stories and two other reds, parked to the next review.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1476,6 +1476,12 @@ itself:
     start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 268, ui 331, scripts
     76, visual 223; knip silent). `pnpm report` (`walks/2026-10-30-134031-78c018b5f-changes`): 0 waiting, 0
     asked again, 0 no, 92 yes. c-storage did not change.
+  - *Words:* the human answered Decide 26 (a), 2026-10-30 14:3x: leaving the import page while a send runs (the nav
+    link or the back button) is recorded, not fixed. The send goes on and all the rows go in, but nothing says so;
+    reading the same file again refuses typed codes and adds every row without a code a second time. This is the
+    shape the approved `failed`/`failedPart` words already explain, so there are no new words and no new screen.
+    It is older than the third fix pass (`ui/src/ImportPage.tsx#L141-L162`: `send` has no guard for the page being
+    left).
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
