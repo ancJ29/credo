@@ -361,14 +361,20 @@ export const vi: Dictionary = {
     refusedCodeTwice: 'Mã “{{code}}” đã được một dòng trước trong tệp này dùng.',
     refusedDepartment: 'Công ty không có phòng ban “{{name}}”.',
     refusedPosition: 'Công ty không có chức vụ “{{name}}”.',
+    refusedRow: 'Các thông tin của dòng này gộp lại quá dài để lưu.',
     refusedField: '“{{field}}” không hợp lệ: {{why}}',
     add: 'Thêm những người này ({{count}})',
     another: 'Chọn tệp khác',
     failed:
-      'Có thể chưa phải ai cũng được thêm. Hãy mở danh sách nhân viên để xem ai đã được thêm: thêm lại tệp này sẽ từ chối các mã đã dùng.',
+      'Có thể chưa phải ai cũng được thêm. Hãy mở danh sách nhân viên để xem ai đã được thêm. Thêm lại tệp này sẽ từ chối các mã đã dùng, nhưng sẽ thêm một người thứ hai cho mỗi dòng không có mã.',
+    failedPart:
+      'Hệ thống ngừng trả lời giữa chừng. Các dòng đã có kết quả ở trên được giữ lại và sẽ không được gửi lại. Những dòng còn lại có thể đã được thêm hoặc chưa: hãy mở danh sách nhân viên để xem ai đã được thêm. Thêm lại sẽ từ chối các mã đã dùng, nhưng sẽ thêm một người thứ hai cho mỗi dòng không có mã.',
+    addRest: 'Thêm phần còn lại ({{count}})',
     doneTitle: 'Đã thêm người',
     doneAdded: 'Đã thêm {{count}} người.',
     doneRefused: '{{count}} dòng chưa được thêm: mã của họ đã bị dùng trong lúc đó.',
+    doneInvalid:
+      '{{count}} dòng chưa được thêm: nội dung không còn khớp với thiết lập của công ty, ví dụ phòng ban đã bị xóa trong lúc đó.',
     busy: 'Chưa thêm: hệ thống đang bận. Hãy thử lại dòng này.',
     doneSignIn:
       'Chưa ai trong số họ đăng nhập được. Hãy mở trang của từng người để cấp tên đăng nhập và mật khẩu đầu tiên.',

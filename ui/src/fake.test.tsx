@@ -203,6 +203,10 @@ describe('the fake Api', () => {
     expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
     expect((await api.signIn(hung.code, 'pw')).user.name).toBe(hung.name);
     expect((await api.getEmployee(hung.id)).employee.email).toBe('hung@minh-phat.example');
+    // The email is set only while the company has the sign-in on, as the BFF has it: a 403.
+    const held = await api.getEmployee(hung.id);
+    expect(await status(api.setEmail(hung.id, { version: held.version, email: null }))).toBe(403);
+    expect((await api.getEmployee(hung.id)).employee.email).toBe('hung@minh-phat.example');
     await switchEmail(true);
     expect((await api.signIn('hung@minh-phat.example', 'pw')).user.name).toBe(hung.name);
   });

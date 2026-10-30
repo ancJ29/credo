@@ -1,5 +1,6 @@
 import {
   type AddEmployeeRequest,
+  addEmployeeRequestSchema,
   type CustomField,
   employeeCodeIsValid,
   fieldValueIsValid,
@@ -148,7 +149,9 @@ export type Problem =
   | { kind: 'code-twice'; code: string }
   | { kind: 'department'; name: string }
   | { kind: 'position'; name: string }
-  | { kind: 'field'; field: CustomField };
+  | { kind: 'field'; field: CustomField }
+  /** Every cell fits, but the row as a whole is no add (its details together are too long). */
+  | { kind: 'row' };
 
 /** A row of the file, read: what it says, why it is refused if it is, and the add it would be. */
 export type ReadRow = {
@@ -236,11 +239,13 @@ export function readStaff(table: Table, setup: StaffSetup, taken: ReadonlySet<st
       if (fieldValueIsValid(field, value)) keep(field.key, fieldValueToStore(field, value));
       else problems.push({ kind: 'field', field });
     }
+    const asked = { name, ...(code === '' ? {} : { code }), extra, departmentId, positionId };
+    // The row as the add reads it, so no row that the add would refuse is offered.
+    if (problems.length === 0 && !addEmployeeRequestSchema.safeParse(asked).success) {
+      problems.push({ kind: 'row' });
+    }
     if (problems.length === 0 && code !== '') given.add(code);
-    const request: AddEmployeeRequest | null =
-      problems.length > 0
-        ? null
-        : { name, ...(code === '' ? {} : { code }), extra, departmentId, positionId };
+    const request: AddEmployeeRequest | null = problems.length > 0 ? null : asked;
     return {
       line,
       name,

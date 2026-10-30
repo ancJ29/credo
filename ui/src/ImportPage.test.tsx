@@ -199,6 +199,105 @@ describe('the import page', () => {
     expect(busy.queryByText('Ba')).toBeNull();
   });
 
+  it('names a busy row by its place in the file when a refused row sits before it and it is answered by the second call', async () => {
+    openApp('/staff/import', {
+      override: (spied) => {
+        spied.importEmployees.mockImplementation((rows) =>
+          Promise.resolve({
+            results: rows.map((row) =>
+              row.name === 'Người 105'
+                ? { kind: 'refused' as const, reason: 'busy' as const }
+                : { kind: 'added' as const, employee: employee(row.name) },
+            ),
+          }),
+        );
+      },
+    });
+    // The first row never holds, so a row's place among those held is not its line in the file.
+    const rows = [
+      { name: 'Hỏng', code: 'a b' },
+      ...Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` })),
+    ];
+    await chooseAndRead(await staffFile(rows));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+
+    expect(await screen.findByText('149 people were added.')).toBeTruthy();
+    const busy = within(screen.getByRole('table'));
+    expect(busy.getByText('Người 105')).toBeTruthy();
+    expect(busy.getByText('108')).toBeTruthy();
+    expect(busy.getAllByRole('row')).toHaveLength(2);
+  });
+
+  it('keeps the results of the calls answered when a later call fails, and sends only the rows not answered when the root adds the rest', async () => {
+    let calls = 0;
+    const { api } = openApp('/staff/import', {
+      override: (spied) => {
+        spied.importEmployees.mockImplementation((rows) => {
+          if (++calls === 2) return Promise.reject(new ApiError(503));
+          return Promise.resolve({
+            results: rows.map((row) => ({ kind: 'added' as const, employee: employee(row.name) })),
+          });
+        });
+      },
+    });
+    await chooseAndRead(
+      await staffFile(Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` }))),
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+
+    expect(await screen.findByText('100 people were added.')).toBeTruthy();
+    expect(screen.getByText(/will not be sent again/).textContent).toMatch(
+      /adds a second person for each row that has no code/,
+    );
+    expect(screen.queryByRole('button', { name: /^Add the people/ })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+
+    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+    expect(screen.queryByText(/will not be sent again/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Add the rest/ })).toBeNull();
+    const sent = vi.mocked(api.importEmployees).mock.calls.map((call) => call[0]);
+    expect(sent.map((rows) => rows.length)).toEqual([100, 50, 50]);
+    expect(sent[2]?.[0]?.name).toBe('Người 100');
+  });
+
+  it('says a row the add refused as invalid apart from one whose code was taken', async () => {
+    openApp('/staff/import', {
+      override: (spied) => {
+        spied.importEmployees.mockImplementation((rows) =>
+          Promise.resolve({
+            results: rows.map((row, at) =>
+              at === 0
+                ? { kind: 'refused' as const, reason: 'invalid' as const }
+                : at === 1
+                  ? { kind: 'refused' as const, reason: 'taken' as const }
+                  : { kind: 'added' as const, employee: employee(row.name) },
+            ),
+          }),
+        );
+      },
+    });
+    await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
+
+    expect(await screen.findByText('1 people were added.')).toBeTruthy();
+    expect(
+      screen.getByText('1 rows were not added: their codes were taken meanwhile.'),
+    ).toBeTruthy();
+    expect(screen.getByText(/1 rows were not added: what they hold no longer fits/)).toBeTruthy();
+  });
+
+  it('refuses in the preview a row whose details together are too long, as the add would', async () => {
+    openApp('/staff/import');
+    await chooseAndRead(
+      await staffFile([{ name: 'Một', note: 'x'.repeat(9000) }, { name: 'Hai' }]),
+    );
+
+    expect(await screen.findByText(/1 of 2 rows will be added/)).toBeTruthy();
+    expect(screen.getByText('The details of this row together are too long to save.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add the people (1)' })).toBeTruthy();
+  });
+
   it('A save that fails says the people may not all have been added, and offers the file again', async () => {
     openApp('/staff/import', {
       override: (spied) => {
@@ -209,6 +308,9 @@ describe('the import page', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/may not all have been added/);
+    expect(screen.getByRole('alert').textContent).toMatch(
+      /adds a second person for each row that has no code/,
+    );
     expect(screen.getByRole('button', { name: 'Add the people (3)' })).toBeTruthy();
   });
 

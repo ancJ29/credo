@@ -361,14 +361,20 @@ export const en = {
     refusedCodeTwice: 'The code “{{code}}” is given by an earlier row of this file.',
     refusedDepartment: 'The company has no department “{{name}}”.',
     refusedPosition: 'The company has no position “{{name}}”.',
+    refusedRow: 'The details of this row together are too long to save.',
     refusedField: '“{{field}}” does not fit: {{why}}',
     add: 'Add the people ({{count}})',
     another: 'Choose another file',
     failed:
-      'The people may not all have been added. Open the staff list to see who was: adding the file again refuses the codes already given.',
+      'The people may not all have been added. Open the staff list to see who was. Adding the file again refuses the codes already given, but adds a second person for each row that has no code.',
+    failedPart:
+      'The system stopped answering partway. The rows answered above are kept and will not be sent again. The rest may or may not have been added: open the staff list to see who was. Adding them again refuses the codes already given, but adds a second person for each row that has no code.',
+    addRest: 'Add the rest ({{count}})',
     doneTitle: 'People added',
     doneAdded: '{{count}} people were added.',
     doneRefused: '{{count}} rows were not added: their codes were taken meanwhile.',
+    doneInvalid:
+      '{{count}} rows were not added: what they hold no longer fits the company’s setup, for example a department removed meanwhile.',
     busy: 'Not added: the system was busy. Try this row again.',
     doneSignIn:
       'None of them can sign in yet. Open each person’s page to give them a sign-in and a first password.',

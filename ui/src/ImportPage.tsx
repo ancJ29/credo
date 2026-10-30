@@ -50,6 +50,8 @@ function reasonOf(problem: Problem, t: TFunction, language: Language) {
       return t('import.refusedDepartment', { name: problem.name });
     case 'position':
       return t('import.refusedPosition', { name: problem.name });
+    case 'row':
+      return t('import.refusedRow');
     case 'field':
       return t('import.refusedField', {
         field: problem.field.label[language],
@@ -103,11 +105,11 @@ function ImportForm({
   const [problem, setProblem] = useState<FileProblem | null>(null);
   const [rows, setRows] = useState<ReadRow[] | null>(null);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
-  const [done, setDone] = useState<{
-    added: number;
-    refused: number;
-    busy: ReadRow[];
-  } | null>(null);
+  // The results of the rows answered so far, in the order of the rows held: a call that fails does
+  // not take back the calls answered before it.
+  const [answered, setAnswered] = useState<ImportResult[]>([]);
+  // Whether a send has ended: the results are shown once it has, not call by call as it runs.
+  const [ended, setEnded] = useState(false);
 
   const held = rows?.filter((row) => row.request !== null) ?? [];
 
@@ -132,48 +134,64 @@ function ImportForm({
     setRows(found.rows);
   }
 
+  /** Sends the rows not answered yet, a call's worth at a time, keeping each call's results. */
   async function send() {
+    if (answered.length === 0) setEnded(false);
     setStatus('busy');
-    const requests = held.map((row) => row.request!);
-    const results: ImportResult[] = [];
+    const requests = held.slice(answered.length).map((row) => row.request!);
+    let results = answered;
     try {
       for (let at = 0; at < requests.length; at += IMPORT_CALL_ROWS) {
         const reply = await api.importEmployees(requests.slice(at, at + IMPORT_CALL_ROWS));
-        results.push(...reply.results);
+        // One result for each row sent, in the order sent: a row's place is its place among those held.
+        results = [...results, ...reply.results];
+        setAnswered(results);
       }
     } catch (error) {
       refusal(error, page);
+      setEnded(true);
       return setStatus('failed');
     }
+    setEnded(true);
     setStatus('idle');
-    // One result for each row sent, in the order sent: a row's place is its place among those held.
-    const busy = results.flatMap((result, at) =>
-      result.kind === 'refused' && result.reason === 'busy' ? [held[at]] : [],
-    );
-    const added = results.filter((result) => result.kind === 'added').length;
-    setDone({ added, refused: results.length - added - busy.length, busy });
   }
 
   const chooseAgain = () => {
     setRows(null);
     setFile(null);
     setProblem(null);
+    setAnswered([]);
+    setEnded(false);
     setStatus('idle');
   };
 
-  if (done) {
+  if (answered.length > 0 && ended) {
+    const busy = answered.flatMap((result, at) =>
+      result.kind === 'refused' && result.reason === 'busy' ? [held[at]] : [],
+    );
+    const added = answered.filter((result) => result.kind === 'added').length;
+    const invalid = answered.filter(
+      (result) => result.kind === 'refused' && result.reason === 'invalid',
+    ).length;
+    const taken = answered.length - added - invalid - busy.length;
+    const rest = held.length - answered.length;
     return (
       <Stack gap="lg">
         <Title order={2}>{t('import.doneTitle')}</Title>
         <Alert color="green" role="alert">
-          {t('import.doneAdded', { count: done.added })}
+          {t('import.doneAdded', { count: added })}
         </Alert>
-        {done.refused > 0 && (
+        {taken > 0 && (
           <Alert color="orange" role="alert">
-            {t('import.doneRefused', { count: done.refused })}
+            {t('import.doneRefused', { count: taken })}
           </Alert>
         )}
-        {done.busy.length > 0 && (
+        {invalid > 0 && (
+          <Alert color="orange" role="alert">
+            {t('import.doneInvalid', { count: invalid })}
+          </Alert>
+        )}
+        {busy.length > 0 && (
           <Table>
             <Table.Thead>
               <Table.Tr>
@@ -183,7 +201,7 @@ function ImportForm({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {done.busy.map((row) => (
+              {busy.map((row) => (
                 <Table.Tr key={row.line}>
                   <Table.Td>{row.line}</Table.Td>
                   <Table.Td>{row.name}</Table.Td>
@@ -195,9 +213,19 @@ function ImportForm({
             </Table.Tbody>
           </Table>
         )}
+        {rest > 0 && status === 'failed' && (
+          <Alert color="red" role="alert">
+            {t('import.failedPart')}
+          </Alert>
+        )}
         <Text>{t('import.doneSignIn')}</Text>
         <Group>
-          <Button component={Link} to="/staff">
+          {rest > 0 && (
+            <Button loading={status === 'busy'} onClick={() => void send()}>
+              {t('import.addRest', { count: rest })}
+            </Button>
+          )}
+          <Button component={Link} to="/staff" variant={rest > 0 ? 'default' : 'filled'}>
             {t('staff.back')}
           </Button>
         </Group>

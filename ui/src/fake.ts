@@ -365,6 +365,7 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
         'setEmail',
         () => {
           const found = person(id);
+          if (!staffConfig(setup).fields.email) throw new ApiError(403);
           if (request.version !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
           const email = request.email === null ? null : normaliseSignInName(request.email);
           if ([...people.values()].some((other) => other.id !== id && other.email === email)) {
