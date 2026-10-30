@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 10:17 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done: steps 18 and 23 are ticked, all answers yes (`staff-18-qr` was asked again after its random QR secret was made a counted one, `22b61e7`). `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Next:** step 19, C's back end, and step 24, D's back end, each in a fresh session.
+**Where it stands — 2026-10-30 10:52 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`: the email's record and the sign-in by it, the QR code's issue and spend, one's own password; c-storage did not change. `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Next:** step 20, C's review by another model, and step 24, D's back end, each in a fresh session.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -120,7 +120,7 @@ Every key is built by `recordKeys` in `shared/src/records.ts`, under the tenant'
 | `tenant.<id>.session.<session id>` | piece 1's session, plus the device id and when it was issued | a sign-in, `If-None-Match: *` on a fresh id; a renewal, with its tag |
 | `tenant.<id>.staff-numbering` (group B) | the last number given under each numbering prefix | a numbered add raises it, with its tag, before it claims the code; a record that moved is read again, three times at most |
 | `tenant.<id>.employee-photo.<employee id>` (group B) | one square image of at most 50 KB | a photo saved, with its tag |
-| `tenant.<id>.signin-email.<email>` (group C) | the person's id | an email set, `If-None-Match: *`; removed with its tag when it changes |
+| `tenant.<id>.signin-email.<email>` (group C) | the person's id and when it was claimed (the age a failed set's claim waits for, as a sign-in claim's) | an email set, `If-None-Match: *` (or over a stale claim with its tag); removed with its tag when it changes |
 | `tenant.<id>.signin-qr.<employee id>` (group C) | the hash of a QR code's secret and when it ends | a code issued, replacing the last; removed with its tag when spent |
 
 - **A record per person, read through a new c-storage list** (row 39). *Rejected:* the old app's
@@ -1119,8 +1119,42 @@ itself:
   page `walks/2026-10-30-101121-a81862a78`, whose fingerprints were equal across two builds: both yes,
   and `pnpm answers` wrote 2, refused 0. The page now reads 0 waiting, 0 asked again, 0 no, 92 yes.
   Step 18's "all 29" is stale; the merged page holds 33.
-- [ ] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR
+- [x] **19. C's back end.** Who: 🤖, about a day: the email's record and the sign-in by it, the QR
   code's issue and spend, one's own password, the QR switch. Done when: as step 14, for C's rows.
+  *Evidence, 2026-10-30 10:52 +07 (commit `9b26f71`):* the BFF half of rows 25 to 28, 46 and 47, each
+  seen red once from its assertion, by changing the rule's line and putting it back (33 changes in
+  `bff`, 5 in `shared`, all red; one was green first and got its test: the held session's record left
+  behind by one's own password). Model: `bff/src/employee-code.route.test.ts`
+  and the code route in `bff/src/staff.ts` (claim first, person with its tag, old record removed after,
+  three tries, then 503). Tests: `bff/src/sign-ins.route.test.ts` (new, 42), a line each in `shared`'s
+  `records.test.ts` and `signins.test.ts`, and the route list in `operator.route.test.ts`. Red, by what
+  was changed: the 409 for a held email, the old email's record not removed, the claim not given back
+  for a moved version, the version unchecked, the route open to others, the same email written again,
+  sign-in by email not asking the person to hold it, a young claim taken over, the age's boundary, a
+  takeover and a removal without their tags; the secret of 16 bytes, a new code written over nothing,
+  the QR switch ignored at issue and at opening, the issue open to others, the 15 minutes' unit and its
+  boundary, the hash not compared, a spend without its tag or none, the person's check dropped, the
+  device's held session kept; the current password unchecked, the generation kept, the write without a
+  tag, the record not read again, a record with no password accepting any current one; in `shared`, the
+  two keys and the two schemas. *Choices:* the BFF's email route claims the email (`{employeeId, at}`:
+  `at` is new and the age a failed set's claim waits for, as a sign-in claim's, `ADD_MAX_MS`), writes the
+  person with its tag, then removes the old record; a sign-in by a name with an `@` reads the email's
+  record, the person it names and the code's sign-in record, and the session is the code's, so a code
+  change or a password reaches it as for any session; sign-in by email is not gated by the email switch
+  (the fake's is not either): the switch shows the person's field; the QR switch is checked at issue (403)
+  and at opening (401); the QR record is `{hash, expiresAt}`, SHA-256 of 32 random bytes in base64url,
+  and every refusal of an opening is the same 401; one's own password answers 403 for a wrong current
+  one (a person who came in by a QR code with no password cannot give one), signs out every other
+  device by a new generation, and answers the session that replaces the held one. *Walk spec:* the
+  second phone's raw opening of a QR code now sends `x-device-id`, as the app does; without it the BFF's
+  400 spared the code and the "used before" screen would have signed in. Not run here (no browser).
+  c-storage did not change (its keys are free strings), so `make check` was not run. The whole
+  `pnpm check` exit 0 at 100 % in every package, no warning (shared 86 tests, bff 244, ui 317, scripts
+  76, visual 223; knip silent). *Seen on the way:* the first two whole runs, at load 12 to 30 from other
+  gates, failed on `visual`'s `cli.test.ts` (a 120 s timeout in `pnpm answers`) and on two `ui` tests at
+  their 5 s (`SignIns.test.tsx`, `StaffRecord.test.tsx`); the third, at the same code with the load
+  falling, was green. They are not read as passes (qa.md rule 6): load-bound tests, to be fixed or logged
+  with the other load-bound ones.
 - [ ] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
