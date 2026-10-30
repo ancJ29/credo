@@ -539,12 +539,18 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     await t.setup({ fields: { qr: true } });
     const bao = await person(t, { code: 'EMP-0004' });
     const code = await issued(t, bao.id);
+    const held = (await signIn(t.app, { name: 'emp-0004', password: bao.password })).body.authId;
+    const sessions = async () => (await t.client.listRecords(t.keys.session(''))).records.length;
+    const before = await sessions();
     hook.armed = true;
 
-    const late = await openQr(t, bao.id, code.secret);
+    const late = await openQr(t, bao.id, code.secret, { 'x-device-id': DEVICE, ...withAuth(held) });
 
     expect(late.statusCode).toBe(401);
     expect(late.json()).not.toHaveProperty('authId');
+    // Everything is checked and the code spent before the held session ends or a new one is made.
+    expect((await me(t, held)).statusCode).toBe(200);
+    expect(await sessions()).toBe(before);
   });
 
   it('C: A QR code opened after its 15 minutes is refused, the last moment before it signs in', async () => {
