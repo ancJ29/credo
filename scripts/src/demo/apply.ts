@@ -348,7 +348,11 @@ export async function startDemo(
   if (chosen.length === 0) throw new Error('no copy in the mapping for that partner');
   return await Promise.all(
     chosen.map(async (copy) => {
-      const made = await createClient(storage, { code: copy.code, name: copy.company });
+      const made = await createClient(storage, {
+        code: copy.code,
+        name: copy.company,
+        madeAt: Date.now(),
+      });
       if (made === 'taken') throw new Error(`${copy.code}: the service already holds it`);
       for (const back of [3, 2, 1, 0]) {
         const report = await applyCopy(storage, copy, addDays(today, -back));

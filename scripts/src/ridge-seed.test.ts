@@ -60,6 +60,7 @@ const make = async (storage: CStorageClient, index: number) => {
   const made = await createClient(storage, {
     code: copies[index].code,
     name: copies[index].company,
+    madeAt: Date.now(),
   });
   if (made === 'taken') throw new Error('taken');
   return made.password;

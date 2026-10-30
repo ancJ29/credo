@@ -49,7 +49,11 @@ const B1 = copyOf('phan-phoi-loc-vuong-hai-1');
 /** A service of its own on the real c-storage, so no test meets another's records. */
 const fresh = async () => (await freshTenant(cs)).client;
 const make = async (storage: CStorageClient, copy: MappedCopy) => {
-  const made = await createClient(storage, { code: copy.code, name: copy.company });
+  const made = await createClient(storage, {
+    code: copy.code,
+    name: copy.company,
+    madeAt: Date.now(),
+  });
   if (made === 'taken') throw new Error('taken');
   return made;
 };
@@ -563,7 +567,11 @@ describe('the error a run ends with', () => {
 describe('which clients are touched', () => {
   it('row 8: a client with a code outside the mapping, one someone used first, and one not made are left', async () => {
     const storage = await fresh();
-    await createClient(storage, { code: 'check-1700000000', name: 'A deploy’s check' });
+    await createClient(storage, {
+      code: 'check-1700000000',
+      name: 'A deploy’s check',
+      madeAt: Date.now(),
+    });
     const used = await make(storage, A1);
     const root = await asRoot(storage, A1.code, used.password);
     expect(
