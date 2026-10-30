@@ -66,7 +66,8 @@ describe('the import page', () => {
       });
       await userEvent.click(button);
 
-      expect(saved).toHaveLength(1);
+      // The template is made after its two libraries load, so it is handed over a moment later.
+      await waitFor(() => expect(saved).toHaveLength(1));
       expect(saved[0]?.name).toBe(`staff-${language}.xlsx`);
       const table = await readFirstSheet(saved[0].blob);
       expect(table[0]).toEqual(columnsOf(DEMO_STAFF_SETUP).map((c) => headingOf(c, language)));
