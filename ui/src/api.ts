@@ -15,6 +15,9 @@ import {
   employeeDocSchema,
   employeeListReplySchema,
   employeeRoutes,
+  IMPORT_ROUTE,
+  type ImportEmployeesReply,
+  importEmployeesReplySchema,
   meReplySchema,
   type MeReply,
   type IssueQrReply,
@@ -224,6 +227,14 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'added', reply: await read(response, addEmployeeReplySchema) };
+    },
+
+    /** The root's: up to a call's rows, each added as one add by hand but without a sign-in. One
+     * result for each row, in order; a refused row is a result, not an error. */
+    async importEmployees(rows: AddEmployeeRequest[]): Promise<ImportEmployeesReply> {
+      const response = await send('POST', IMPORT_ROUTE, { rows });
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, importEmployeesReplySchema);
     },
 
     async saveEmployee(id: string, request: SaveEmployeeRequest): Promise<SaveEmployeeResult> {

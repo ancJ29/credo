@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 export type OwnTexts = Record<string, string>;
 
 /** The words each kind's refusal is said in. */
-const INVALID = {
+export const INVALID = {
   text: 'fields.invalidText',
   number: 'fields.invalidNumber',
   date: 'fields.invalidDate',

@@ -26,7 +26,10 @@ export type Step =
   /** Replaces what is typed in the field with these words by `text`. */
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
-  | { choose: string; option: string };
+  | { choose: string; option: string }
+  /** Puts the data set's staff file (`import`, or `import-no-name`) in the file field with these
+   * words, as a person's choosing it does. */
+  | { attach: string; file: 'import' | 'import-no-name' };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
@@ -133,13 +136,16 @@ const NEW_PASSWORD: Step[] = [
   { press: 'ownPassword.submit' },
 ];
 
+/** The staff file chosen on the import page. */
+const IMPORT_CHOSEN: Step[] = [{ attach: 'import.file', file: 'import' }];
+
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
  * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
- * then piece 2's groups A, B and C (the staff setup, the staff, the office's, the phone's), each
+ * then piece 2's groups A, B, C and D (the staff setup, the staff, the office's, the phone's), each
  * screen a scene of the app on the fake.
  */
 export const WALKS: Walk[] = [
@@ -568,6 +574,57 @@ export const WALKS: Walk[] = [
           vi: 'Mã QR và đường dẫn của nó, để đăng nhập một lần trong 15 phút',
         },
         question: 'Would the admin know to show it, and that it works once?',
+      },
+      {
+        id: 'staff-19-import',
+        number: 19,
+        path: 'main',
+        scene: { path: '/staff/import', steps: [{ attach: 'import.file', file: 'import' }] },
+        sentence: {
+          en: 'Import: the template, and the file chosen',
+          vi: 'Nhập từ Excel: tệp mẫu và tệp đã chọn',
+        },
+        question: 'Would the admin know to fill the template and choose it?',
+      },
+      {
+        id: 'staff-20-preview',
+        number: 20,
+        path: 'main',
+        scene: { path: '/staff/import', steps: [...IMPORT_CHOSEN, { press: 'import.read' }] },
+        sentence: {
+          en: 'Before saving: each row read, with the reasons for the refused',
+          vi: 'Trước khi lưu: từng dòng đã đọc, kèm lý do cho các dòng bị từ chối',
+        },
+        question: 'Would the admin know which rows will be added and why others are not?',
+      },
+      {
+        id: 'staff-21-imported',
+        number: 21,
+        path: 'main',
+        scene: {
+          path: '/staff/import',
+          steps: [
+            ...IMPORT_CHOSEN,
+            { press: 'import.read' },
+            { press: 'import.add', with: { count: '3' } },
+          ],
+        },
+        sentence: {
+          en: 'Imported: the people added, without sign-ins yet',
+          vi: 'Đã nhập: những người được thêm, chưa có tên đăng nhập',
+        },
+        question: 'Would the admin know each still needs a sign-in?',
+      },
+      {
+        id: 'staff-22-no-name',
+        number: 22,
+        path: 'wrong',
+        scene: {
+          path: '/staff/import',
+          steps: [{ attach: 'import.file', file: 'import-no-name' }, { press: 'import.read' }],
+        },
+        sentence: { en: 'A file without the name column', vi: 'Tệp không có cột tên' },
+        question: 'Does this say what to fix?',
       },
     ],
   },

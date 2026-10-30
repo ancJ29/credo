@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-29 16:56 +07:** groups A and B are done (steps 2 to 16). Group C's step 17 is done on the fake (the email, the QR code drawn by `qrcode.react`, the phone's landing, one's own password, 6 screens); the walks page reads 12 waiting, 4 asked again (the staff setup page, which gained two switch rows), 0 no, 68 yes. **Next:** step 18, the human's fake walk of all 29 screens, where the setup page is re-answered; group D runs side by side in its own worktree.
+**Where it stands — 2026-10-30 09:48 +07:** groups A, B, C and D are all in `employee-list` on the fake: steps 2 to 17 and 22 are done, and group D's branch is merged beside C's (the staff list holds C's screens 17 and 18 and D's 19 to 22, 33 screens in all, 66 pairs). `pnpm check` exits 0 with every package at 100 % and no warning; the chunk-size limit stays 1000 because C's `NODE_ENV=production` in the scripts' tests already keeps the build under it. `pnpm report` reads 20 waiting (C's 6 screens and D's 4, in two languages), 10 asked again (the setup page's 2 screens and the staff list's 3, in two languages), 0 no, 62 yes. **Next:** steps 18 and 23, the human's fake walk of the merged page, then stop; the back ends (19, 24) wait on it.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1113,9 +1113,62 @@ itself:
 
 **Group D, staff from Excel.** Each step as its group A step, for rows 29 to 31 and 48.
 
-- [ ] **22. D's pages and walk, on the fake.** Who: 🤖, about a day: the template, the read in the
+- [x] **22. D's pages and walk, on the fake.** Who: 🤖, about a day: the template, the read in the
   browser with its pinned library (the newest release at least two weeks old), the preview, the rows
   sent, and D's 4 screens. Done when: as step 12, for D's rows.
+  *Evidence, 2026-10-29 17:11 +07:* the UI halves of rows 29, 30 and 48, each seen red once from its
+  assertion by changing the rule's line and putting it back: the name required, a code taken in the company, a code given twice in the file, 500 rows,
+  an empty code sent as no code, the second phone column shown with its switch off, a department the
+  company lacks, a file with no row (`importSheet.test.ts`); the 2 MB limit and the 100 rows a call
+  (`ImportPage.test.tsx`); the template's cells in Text format; the button shown to everyone and
+  shown to no one; and a second column headed alike taking the first. `pnpm check` exit 0, no
+  warning, 100 % in every package (shared 78 tests, ui 284, bff 202, scripts 76, visual 222; knip
+  silent). *Written and green, not broken one by one here:* row 17's pairing of the two dictionaries,
+  rows 49 and 50 for the fake's import (`fake.test.tsx`), rows 53 and 54 for D's four screens
+  (`walks.test.ts`, `words.test.tsx`). `walks.json` lists D's 4 screens, each a scene and none from the mock. *Not run here:* the
+  walk spec, which needs a browser; `pnpm check` typechecks and lints it, and every step of D's four
+  screens was replayed on the real router in jsdom by the whole labels the spec uses, in both
+  languages (`ImportPage.test.tsx`), the `attach` step and its default tested apart
+  (`visual/src/steps.test.tsx`), and the demo file made in Node as the spec makes it
+  (`visual/src/import-file.test.ts`).
+  *Decide 13, the human's yes "but only for root user", 2026-10-29 16:12 +07:* the staff list shows a
+  button "Import from Excel" (Vietnamese "Nhập từ Excel") that leads to `/staff/import`, to the root
+  alone, by the same `user.root` the import route's guard reads; for anyone else the list's DOM is as it
+  was. It changes B's three staff-list screens in both languages (`staff-1-list`, `staff-8-left`,
+  `staff-14-search`: 18 bases): the walks page asks their 6 answers again, and the human re-answers
+  them at step 23's preview. The 23 screens of A and B, dumped (words and DOM, Mantine's ids and
+  UUIDs masked) at `7b1c1f5` and at this step: 20 are equal in both languages bar one transient
+  attribute Mantine sets while its shell resizes (`data-resizing` on `staff-6-password` in English),
+  and those 3 differ by the button and its wrapper alone; the office's `office-1-menu`, which draws
+  the same list for someone who is not the root, is equal.
+  *The proof line's role:* "Chosen: import.xlsx" sits under `main` in the words dump, as the page's
+  other text does (`visual/src/words.test.tsx`, `staff-19-import`). The walks page's key-left-showing
+  check ignores a file name (`import.xlsx`), which has a dot as a key has.
+  *The libraries, read in the built chunks* (`vite build`, the app's and the fake's, and the walks
+  page's): `read-excel-file` 9.3.12 and `write-excel-file` 4.1.1 are loaded by `import()` inside
+  `importFile.ts`, so the app's main bundle (761 kB) holds neither: its only trace is the three small
+  wrappers. They come as three chunks, loaded when the root presses "Read the file" or "Download the
+  template", not when the page opens: `browser-f` (58 kB, the reader with `worker-f`'s inline worker),
+  `browser-BGd` (60 kB, the writer) and `browser-AF5` (15 kB, `fflate`, shared by both, with its own
+  inline worker). The workers are strings made into a Blob URL in the chunk, so no worker file is
+  served. `unzipper-esm` is not in any of them: the `/browser` entries never import its Node-stream
+  files, and no chunk names a `node:` module. The walks page (one inlined script) holds the same
+  code, since its scenes attach the demo file; that page is not served.
+  *The template's column note, against `write-excel-file`'s own README:* a `String` cell in the default
+  "General" format may be shown by Excel as a number or a date unless its `format` is `@`, and a
+  column's format cannot be set, only a cell's (`columns` takes a width). So the samples are now
+  written with `format: '@'`, and the phone columns' note says that a number typed in the cells below
+  loses a leading 0 unless the cell is formatted as Text first or typed with an apostrophe. The old
+  comment, that every cell being text kept a phone's zero, was true of the samples alone.
+  *Choices:* the page draws once its data is read (an inner form), so no handler guards a state the
+  screen cannot reach; `saveAs` is its own file, since the walk's typecheck has no DOM library and
+  imports the demo file; the walks page's built script is run in the test with `import.meta` given,
+  the on-demand loader being the only reader of it; the ui build's size warning limit rises from 1,000
+  to 1,100 kB, above the 1,006 kB that the scripts' tests build with React's development build, which
+  the page's growth had tipped over (the shipped bundle is 761 kB). *Seen on the way:* the first
+  whole gate run failed once on `scripts`' coverage (open item 23, a child's start under load) and
+  once on `visual`'s scene test timing out at 20 s while the machine's load stood above 12, and a
+  later one on `bff`'s bundle test at its 5 s; each passed alone and in the next whole run, at the same code, and neither is read as a verdict.
 - [ ] **23. D's fake walk.** Who: 👤, about 30 minutes. Done when: as step 13, the pictures of all 33
   screens. **Then stop.**
 - [ ] **24. D's back end.** Who: 🤖, about half a day: the import route, each row through the add.
