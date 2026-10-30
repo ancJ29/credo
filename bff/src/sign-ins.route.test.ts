@@ -607,7 +607,7 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     expect(await t.client.getRecord(t.keys.signInQr(bao.id))).not.toBeNull();
   });
 
-  it('C: A person who left, or whose sign-in record is not theirs, is refused and the code stays unspent', async () => {
+  it('C: A person who left, or whose sign-in record is not theirs or not there, is refused and the code stays unspent', async () => {
     const t = await qrTenant();
     const left = await person(t, { code: 'EMP-0001' });
     const orphan = await person(t, { code: 'EMP-0002' });
@@ -615,6 +615,10 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     const lost = await issued(t, orphan.id);
     await t.rootCall.send('POST', `/api/employees/${left.id}/archive`, { version: left.version });
     const third = await person(t, { code: 'EMP-0003' });
+    const bare = await person(t, { code: 'EMP-0004' });
+    const none = await issued(t, bare.id);
+    const lone = await t.client.getRecord(t.keys.user('emp-0004'));
+    await t.client.removeRecord(t.keys.user('emp-0004'), lone!.tag);
     // The second person's sign-in record names the third, who is there and holds another code.
     const record = await t.client.getRecord(t.keys.user('emp-0002'));
     await t.client.putRecord(
@@ -625,6 +629,7 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
 
     expect((await openQr(t, left.id, gone.secret)).statusCode).toBe(401);
     expect((await openQr(t, orphan.id, lost.secret)).statusCode).toBe(401);
+    expect((await openQr(t, bare.id, none.secret)).statusCode).toBe(401);
     expect(await t.client.getRecord(t.keys.signInQr(left.id))).not.toBeNull();
     expect(await t.client.getRecord(t.keys.signInQr(orphan.id))).not.toBeNull();
   });
@@ -778,71 +783,45 @@ describe('C: One’s own password', () => {
     expect(refused.statusCode).toBe(403);
   });
 
-  it('C: A password the root gave in between is met by reading the record again: the current one is checked against it', async () => {
+  it('C: A password the root gave in between signs the caller out: a 401, never a wrong current password, and the root’s password stands', async () => {
     const hook: Parameters<typeof interfering>[0] = { current: null };
     const t = await staffTenant(cs, { wrap: interfering(hook) });
     const lan = await person(t, { code: 'EMP-0001' });
     const held = (await signIn(t.app, { name: 'emp-0001', password: lan.password })).body.authId;
     const key = t.keys.user('emp-0001');
-    const touch = async (written: string, client: CStorageClient) => {
-      hook.current = null;
+    let given = '';
+    hook.current = async (written) => {
       if (written !== key) return;
-      const found = await client.getRecord(key);
-      const stored = storedUserSchema.parse(found?.data);
-      await client.putRecord(key, { ...stored, passwordAt: 7 }, found!.tag);
+      hook.current = null;
+      given = (
+        await t.rootCall.send('PUT', `/api/employees/${lan.id}/password`, { password: null })
+      ).json<{ password: string }>().password;
     };
 
-    hook.current = touch;
-    const retried = await ownPassword(t, held, { current: lan.password, password: NEW_PASSWORD });
-    expect(retried.statusCode).toBe(200);
-    expect(await status(t, 'emp-0001', NEW_PASSWORD)).toBe(200);
+    const raced = await ownPassword(t, held, { current: lan.password, password: NEW_PASSWORD });
 
-    const given = (
-      await t.rootCall.send('PUT', `/api/employees/${await idOf(t, 'EMP-0001')}/password`, {
-        password: null,
-      })
-    ).json<{ password: string }>().password;
-    const second = (await signIn(t.app, { name: 'emp-0001', password: given })).body.authId;
-    hook.current = async (written, client) => {
-      hook.current = null;
-      if (written !== key) return;
-      const found = await client.getRecord(key);
-      const stored = storedUserSchema.parse(found?.data);
-      await client.putRecord(
-        key,
-        { ...stored, passwordHash: stored.passwordHash + 'x' },
-        found!.tag,
-      );
-    };
-    const refused = await ownPassword(t, second, { current: given, password: 'Other-pass-3$' });
-    expect(refused.statusCode).toBe(403);
+    expect(raced.statusCode).toBe(401);
+    expect(raced.json()).not.toHaveProperty('authId');
+    expect((await me(t, held)).statusCode).toBe(401);
+    expect(await status(t, 'emp-0001', NEW_PASSWORD)).toBe(401);
+    expect(await status(t, 'emp-0001', given)).toBe(200);
   });
 
-  it('C: A sign-in record that moves on every try answers 503, and one removed in between a 401', async () => {
+  it('C: A sign-in record removed in between is a 401', async () => {
     const hook: Parameters<typeof interfering>[0] = { current: null };
     const t = await staffTenant(cs, { wrap: interfering(hook) });
     const lan = await person(t, { code: 'EMP-0001' });
     const key = t.keys.user('emp-0001');
     const held = (await signIn(t.app, { name: 'emp-0001', password: lan.password })).body.authId;
-    let moves = 0;
-    hook.current = async (written, client) => {
-      if (written !== key) return;
-      const found = await client.getRecord(key);
-      const stored = storedUserSchema.parse(found?.data);
-      await client.putRecord(key, { ...stored, passwordAt: ++moves }, found!.tag);
-    };
-
-    const stuck = await ownPassword(t, held, { current: lan.password, password: NEW_PASSWORD });
-    expect(stuck.statusCode).toBe(503);
-    expect(moves).toBe(3);
-
     hook.current = async (written, client) => {
       hook.current = null;
       if (written !== key) return;
       const found = await client.getRecord(key);
       await client.removeRecord(key, found!.tag);
     };
+
     const removed = await ownPassword(t, held, { current: lan.password, password: NEW_PASSWORD });
+
     expect(removed.statusCode).toBe(401);
   });
 });

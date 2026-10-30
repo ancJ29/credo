@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import {
   AUTH_HEADER,
   changeOwnPasswordRequestSchema,
-  CStorageError,
   CLIENT_HEADER,
   clientCodeSchema,
   type ConfigDoc,
@@ -65,8 +64,6 @@ export type AppDeps = {
 };
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
-/** How often a write on a record that moved is re-read and tried again. */
-const ATTEMPTS = 3;
 
 export function buildApp({ storage, now, logger }: AppDeps) {
   const app = Fastify({ logger });
@@ -301,33 +298,26 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   }
 
   /** One's own password, the current one first. A new generation signs the person out of every other
-   * device; this device gets the session that replaces the one it held. A password the root gave in
-   * between is met by reading the record again and checking the current one against it. */
+   * device; this device gets the session that replaces the one it held. Every write of a sign-in
+   * record mints a generation, so a record that moved since the session read it has ended the
+   * session: a 401, never a check of the current password against what someone else wrote. */
   app.put(signInRoutes.password, forClient, async (request): Promise<SessionReplyBody> => {
     const who = await signedIn(request);
     const device = deviceOf(request);
     const body = parse(changeOwnPasswordRequestSchema, request.body);
+    if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
+    const changed: StoredUser = {
+      ...who.signIn.user,
+      passwordHash: await hashPassword(body.password),
+      passwordAt: now(),
+      generation: randomUUID(),
+    };
     const key = recordKeys.tenant(request.tenantId).user(who.signInName);
-    let passwordHash: string | undefined;
-    let signIn: typeof who.signIn | null = who.signIn;
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (!signIn) throw unauthorized();
-      if (!(await holdsPassword(signIn.user, body.current))) throw forbidden();
-      const changed: StoredUser = {
-        ...signIn.user,
-        passwordHash: (passwordHash ??= await hashPassword(body.password)),
-        passwordAt: now(),
-        generation: randomUUID(),
-      };
-      if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') {
-        const sessions = sessionsOf(request.tenantId);
-        await endKept(request, sessions);
-        const issued = await sessions.issue(device, who.signInName, changed.generation);
-        return { ...issued, user: userViewOf(who) };
-      }
-      signIn = await readSignIn(storage, request.tenantId, who.signInName);
-    }
-    throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
+    if ((await storage.putRecord(key, changed, who.signIn.tag)) === 'moved') throw unauthorized();
+    const sessions = sessionsOf(request.tenantId);
+    await endKept(request, sessions);
+    const issued = await sessions.issue(device, who.signInName, changed.generation);
+    return { ...issued, user: userViewOf(who) };
   });
 
   app.post(ROUTES.signOut, forClient, async (request, reply) => {
