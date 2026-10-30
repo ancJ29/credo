@@ -123,6 +123,8 @@ describe('C: An email names the person by id in its own record', () => {
     const first = await person(t, { code: 'EMP-0001' });
     const second = await person(t, { code: 'EMP-0002' });
     await withEmail(t, first, 'same@x.example');
+    // Past the longest an add runs: a held email is refused for being held, not for being young.
+    t.time.advance(ADD_MAX_MS + 1);
 
     const refused = await setEmail(t, second.id, second.version, 'SAME@x.example');
 
@@ -331,6 +333,7 @@ describe('C: An email names the person by id in its own record', () => {
     const other = await person(t, { code: 'EMP-0002' });
     const version = await withEmail(t, lan, 'lan@x.example');
     await t.rootCall.send('POST', `/api/employees/${lan.id}/archive`, { version });
+    t.time.advance(ADD_MAX_MS + 1);
 
     expect(await status(t, 'lan@x.example', lan.password)).toBe(401);
     expect((await setEmail(t, other.id, other.version, 'lan@x.example')).statusCode).toBe(409);
