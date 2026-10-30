@@ -356,8 +356,9 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     try {
       written = await storage.putRecord(recordKeys.tenant(tenantId).employee(id), person, null);
     } catch (error) {
-      // The write may have landed while its answer was lost or came late: the person is there, or
-      // the failure stands. Adding again would add a second person.
+      // The write may have landed while its answer was lost: the person is there, or the failure
+      // stands. A write that lands after this read leaves the row failed with the person there, and
+      // a retry of a row without a code then adds a second person: that window is accepted.
       if (!(await readEmployee(storage, tenantId, id))) throw error;
       written = 'saved';
     }

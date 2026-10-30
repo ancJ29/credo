@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 13:49 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape; its fix pass (`02d2f64`) was re-checked, and the re-check's N1, N2 and two Info items are fixed (`60bf2d5`, `0d67295`). Step 25's review of D found D1 to D7, all fixed in the same commits, plus a race in the template test (`b0a1150`). A second re-check (Opus, `78c018b`) found for C one older Low (Q, fixed `15e4732`) and two accepted notes (H, Q2), and for D one Medium (D-1) and four Lows, all fixed (`15e4732`, `cbbf0e1`). The whole `pnpm check` is exit 0 at 100 % (shared 86, bff 268, ui 331, scripts 76, visual 223); `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. The human kept D1's and D4's words (Decide 23 a). **Next:** the reviewers read this third pass; only then are steps 20 and 25 ticked; step 21, C's full walk, follows. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
+**Where it stands — 2026-10-30 14:14 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Steps 20 and 25 were reviewed three times (Opus, last at `9a5f7e2`, ready for the human's full walk); the third review's two Low test gaps and two notes are closed: the add by hand's lost-answer case is held by its own route test (D-5), D-1's second test asserts what the page guards, and D-5's accepted window and H's wording are written. The last whole `pnpm check` was exit 0 at 100 % (at `78c018b` plus its fix pass); this pass ran the touched files and the `bff` and `ui` package gates only. **Next:** step 21, C's full walk, follows a merge and a whole check. **Open for the human:** whether to warn when the root leaves the import page during a send (the orchestrator adds the answer); open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1258,8 +1258,8 @@ itself:
     A to B; a change back B to A; a password given on B after the change back read B and before the first
     change's loop reads it) make the first change copy the change back's hash over the password just given,
     then remove A, the change back's claim: the person holds A with no sign-in record, and A can be given to
-    a second person. It needs three tabs, or the person's own password change, inside one round trip; one
-    company's root cannot do it from one tab, and a company has one root today. Revisit when a company has
+    a second person. It needs the three acts inside one round trip, and one
+    root in two tabs, plus the person's own password change, is enough today. Revisit when a company has
     a second root, or when people change their own codes. The closing alternative, not taken: never remove a
     record that moved (the old code would then be held up to a minute).
   - Q2 `[ACCEPTED]`, no code: the hand-off to the view uses the person read before the setup and sign-in
@@ -1425,11 +1425,14 @@ itself:
     results were read against whichever file was held when they landed: the page named a row never sent,
     offered "Add the rest" for rows never sent, or, with no file read in between, crashed on a busy row
     (`TypeError … reading 'line'`, a blank app); the same file read again sent its rows twice. The button
-    is disabled while a send runs, and `answered` holds `{ row, result }` pairs, so the busy rows and the
-    rest never index the file held now. Tests `Choose another file is disabled while a send runs`, and `A
-    send that ends after the root pressed Choose another file is read against the rows it sent…`. The
+    is disabled while a send runs, and `answered` holds `{ row, result }` pairs, so the busy rows are read
+    against the rows sent. The rest is still counted from the file held, so with the button enabled it
+    would offer the new file's rows: the disabled button is the guard. Tests `Choose another file is disabled while a send runs`, and `A
+    press on Choose another file while a send runs leaves the file held on screen…`. The
     pairs alone cannot be reached from the page once the button is disabled (the file is held until the
-    send ends), so the second test is red at `78c018b` as a whole and not under the pairs alone. Reds:
+    send ends), so the second test (reshaped after the third review to assert that a press leaves the file held on
+    screen until the send ends) is red from that assertion with the button enabled, and holds the pairs
+    in no way alone. Reds:
     the button enabled, `AssertionError: expected false to be true`; `ImportPage.tsx` as at `78c018b`,
     `Unable to find an element with the text: 2 people were added.` with the uncaught `TypeError: Cannot
     read properties of undefined (reading 'line')`.
@@ -1449,7 +1452,13 @@ itself:
     person is read once by the minted id and the row is `added` if found; otherwise the failure stands.
     Test `answers a row as added, once, when the store wrote the person and its answer was lost…`; red with
     the read-back removed `expected [ 'refused', 'refused' ] to deeply equal [ 'added', 'added' ]` (the test
-    compares each result's kind, so it reads `refused` where the rows' reason is `busy`).
+    compares each result's kind, so it reads `refused` where the rows' reason is `busy`). The add by hand
+    shares the read-back (`staff.ts`), so a lost answer there is a 201 with its first password, no longer a
+    503; test `answers 201 with the first password, and lists the person once, when the person write’s
+    answer is lost…` (typed and numbered code), red with the read-back removed `expected 503 to be 201`.
+    The accepted window: if c-storage lands the write after the read-back (past the 5 s timeout), the row
+    stays `busy` ("Not added… Try this row again") with the person there, and a retry of a row without a
+    code adds a second person; no change, named in the code comment.
   - D-6 `[FIXED]` (`cbbf0e1`) the root's own sign-in name is in the page's taken set, so it is refused in the preview
     as a code already given, and not as "taken meanwhile" after the send (test `refuses in the preview a
     code that is the root's own sign-in name…`; red without the entry: the table lacks `The code “ROOT”
