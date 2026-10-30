@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 13:04 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape; its fix pass (`02d2f64`) was re-checked, and the re-check's N1, N2 and two Info items are fixed (`60bf2d5`, `0d67295`). Step 25's review of D found D1 to D7, all fixed in the same commits, plus a race in the template test (`b0a1150`). The whole `pnpm check` is exit 0 at 100 % (shared 86, bff 265, ui 325, scripts 76, visual 223); `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. The human kept D1's and D4's words (Decide 23 a). **Next:** a re-check of the two fix passes (the reviewers), and only then are steps 20 and 25 ticked; step 21, C's full walk, follows. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
+**Where it stands — 2026-10-30 13:49 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape; its fix pass (`02d2f64`) was re-checked, and the re-check's N1, N2 and two Info items are fixed (`60bf2d5`, `0d67295`). Step 25's review of D found D1 to D7, all fixed in the same commits, plus a race in the template test (`b0a1150`). A second re-check (Opus, `78c018b`) found for C one older Low (Q, fixed `15e4732`) and two accepted notes (H, Q2), and for D one Medium (D-1) and four Lows, all fixed (`15e4732`, `cbbf0e1`). The whole `pnpm check` is exit 0 at 100 % (shared 86, bff 268, ui 331, scripts 76, visual 223); `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. The human kept D1's and D4's words (Decide 23 a). **Next:** the reviewers read this third pass; only then are steps 20 and 25 ticked; step 21, C's full walk, follows. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) is parked to the next review.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1188,10 +1188,10 @@ itself:
     who no longer holds the new code has changed again and the old record is left. Test (`bff/src/
     employee-code.route.test.ts`) `leaves the old record alone when a change back to the old code, made
     while the first change frees it, has claimed it for the person`; red `expected null not to be null`
-    (the sign-in record of `emp-1`). A password given in between (the carried hash) keeps its tests. The
-    window that remains is between the claim of the change back and its person write: nothing then
-    tells a claim from a password given, since both mint a generation and name the person; it
-    needs the first change's removal to fall in that gap.
+    (the sign-in record of `emp-1`). A password given in between (the carried hash) keeps its tests. A
+    window remains, between the claim of the change back and its person write, and N2 narrows it
+    without closing it (see H under the re-check below): nothing then tells a claim from a password
+    given, since both mint a generation and name the person.
   - R2 `[FIXED]` (`882e22f`) the two tests of row 47's 409 are run past `ADD_MAX_MS` before the second
     person's set, so a held email is refused for being held and not for being young; red under the 409
     applied only while the claim is under a minute old: `expected 200 to be 409`, in both.
@@ -1230,17 +1230,43 @@ itself:
     each item seen red from its assertion, then green:*
   - N1 `[FIXED]` (`60bf2d5`) the R1 interference in `bff/src/sign-ins.route.test.ts` runs right after the
     person write, not inside the removal; red under a fresh `readEmailClaim` before `dropEmail`:
-    `AssertionError: expected null not to be null`, 1 of 46.
+    `AssertionError: expected null not to be null`, 1 of 47.
   - N2 `[FIXED]` (`60bf2d5`) the removal loop in `bff/src/staff.ts` leaves the record when
     `again.user.passwordHash === mine.user.passwordHash` (a claim copies the hash; a password given
     writes a fresh salted one). New test in `bff/src/employee-code.route.test.ts`, "leaves the old record
     alone when the change back has claimed it but not yet written the person, as the first change removes
-    it"; red on the old code `expected null not to be null`; sign-ins plus employee-code 83/83 after.
+    it"; red on the old code `expected null not to be null`; sign-ins plus employee-code 84/84 after.
+    This narrows the window E describes and does not close it: H, below, is the case that remains.
   - Info 1 `[FIXED]` (`0d67295`) the fake's `setEmail` answers 403 while the email switch is off; red
     `expected 'answered' to be 403`.
   - Info 2 `[FIXED]` (`60bf2d5`) the QR opening reads the setup and the person once and hands them to
     `viewOf`; test "A QR code opened reads the client, the code, the person, the setup and the sign-in, and
-    no record twice"; red at 7 reads `expected … to have a length of 5 but got 7`.
+    no record twice"; red at 7 reads `expected … to have a length of 5 but got 7`. The person is read
+    before the setup and the sign-in record, so an archive landing inside the opening answers 200, then
+    401 at the phone's next step (at `1a48a6a`: 401 and the code left); see Q2 below.
+  - *Re-check 2026-10-30 13:24/13:26 +0700 (Opus, `78c018b`), then its fix pass; C's half is ready, one
+    older Low and two notes. The gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`, below):*
+  - Q `[FIXED]` (`15e4732`; older than the last pass) the QR opening builds the sign-in name from the person read, then
+    reads the sign-in record, and `viewOf` reads whoever that record names: the root changing Lan's code and
+    adding Bao under Lan's old code between the two reads gave Lan's code holder Bao's session. After the
+    read, a record that does not name the person the code was made for is the same 401. Test `C: A code is
+    refused when the sign-in record under its person's code names another person who holds that code too,
+    and stays unspent`, written directly (a third person holding `EMP-0002`). The email sign-in has the
+    same shape and gains nothing (the typed password meets the other's hash): not changed. Red with
+    `found.user.employeeId !== person.employee.id` removed: `expected 200 to be 401`.
+  - H `[ACCEPTED]`, no code: three acts on one person within one c-storage round trip (a first code change
+    A to B; a change back B to A; a password given on B after the change back read B and before the first
+    change's loop reads it) make the first change copy the change back's hash over the password just given,
+    then remove A, the change back's claim: the person holds A with no sign-in record, and A can be given to
+    a second person. It needs three tabs, or the person's own password change, inside one round trip; one
+    company's root cannot do it from one tab, and a company has one root today. Revisit when a company has
+    a second root, or when people change their own codes. The closing alternative, not taken: never remove a
+    record that moved (the old code would then be held up to a minute).
+  - Q2 `[ACCEPTED]`, no code: the hand-off to the view uses the person read before the setup and sign-in
+    reads, so an archive landing inside the opening answers 200, then 401 at the phone's next step. Row 15
+    holds (the person is stopped at their next step), and R6 accepted the same shape for email. Reading the
+    person fresh again costs a sixth read. Revisit if row 15 is ever read to need the opening itself refused.
+  - *Counts:* N1's "1 of 46" is 47 and N2's "83/83" is 84 at `60bf2d5`, corrected above.
 - [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
 
@@ -1393,6 +1419,54 @@ itself:
   - *Gates:* the whole `pnpm check` exit 0 (`logs/20261030-1258-employee-list-fix-pass-check-2.log`, load
     4.85 at its start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 265,
     ui 325, scripts 76, visual 223; knip silent). c-storage did not change, so `make check` was not run.
+  - *Re-check 2026-10-30 13:24/13:26 +0700 (Opus, `78c018b`), then its fix pass; D's half was not ready: one
+    Medium and four Lows. The gate is green (below):*
+  - D-1 `[FIXED]` (`cbbf0e1`; Medium, new in `0d67295`) "Choose another file" stayed enabled while a send ran, and the
+    results were read against whichever file was held when they landed: the page named a row never sent,
+    offered "Add the rest" for rows never sent, or, with no file read in between, crashed on a busy row
+    (`TypeError … reading 'line'`, a blank app); the same file read again sent its rows twice. The button
+    is disabled while a send runs, and `answered` holds `{ row, result }` pairs, so the busy rows and the
+    rest never index the file held now. Tests `Choose another file is disabled while a send runs`, and `A
+    send that ends after the root pressed Choose another file is read against the rows it sent…`. The
+    pairs alone cannot be reached from the page once the button is disabled (the file is held until the
+    send ends), so the second test is red at `78c018b` as a whole and not under the pairs alone. Reds:
+    the button enabled, `AssertionError: expected false to be true`; `ImportPage.tsx` as at `78c018b`,
+    `Unable to find an element with the text: 2 people were added.` with the uncaught `TypeError: Cannot
+    read properties of undefined (reading 'line')`.
+  - D-2 `[FIXED]` (`cbbf0e1`) the walk replay's template step waits for the file as `b0a1150` made the other
+    test wait; with 300 ms after the lazy `import()` in `writeWorkbook`, the old assertion is red
+    `AssertionError: expected undefined to be 'staff-vi.xlsx'` and the new one green.
+  - D-3 `[FIXED]` (`15e4732`, `cbbf0e1`) two guards held by no test: the call's list taking each code written
+    (`listed?.codes?.push`), now held by a call that numbers, types a code, then numbers; and `loading` on
+    "Add the rest", now held by a double click that sends once. Reds: `listed?.codes?.push` removed, received
+    `[EMP-0002, EMP-0005, EMP-0003, EMP-0004]` for `[…, EMP-0006, EMP-0007]`; `loading` removed, `expected [ 100,
+    50, 50, 50 ] to deeply equal [ 100, 50, 50 ]`.
+  - D-4 `[FIXED]` (`15e4732`) a code taken in a numbered try (409) while the call runs sets the call's list to be read
+    again, so codes typed by hand meanwhile cost one extra list and not the three tries; test `numbers a row
+    past codes typed by hand while the call runs…`; red with the reset removed `expected [ 'busy' ] to
+    deeply equal [ 'EMP-0004' ]`.
+  - D-5 `[FIXED]` (`15e4732`; older than this pass) when the write of the person fails with a c-storage failure, the
+    person is read once by the minted id and the row is `added` if found; otherwise the failure stands.
+    Test `answers a row as added, once, when the store wrote the person and its answer was lost…`; red with
+    the read-back removed `expected [ 'refused', 'refused' ] to deeply equal [ 'added', 'added' ]` (the test
+    compares each result's kind, so it reads `refused` where the rows' reason is `busy`).
+  - D-6 `[FIXED]` (`cbbf0e1`) the root's own sign-in name is in the page's taken set, so it is refused in the preview
+    as a code already given, and not as "taken meanwhile" after the send (test `refuses in the preview a
+    code that is the root's own sign-in name…`; red without the entry: the table lacks `The code “ROOT”
+    already belongs to someone in the company.`). The two cosmetic guards are both kept and tested, since
+    each guards something: `answered.length === 0` before resetting `ended` keeps the results on screen
+    while the rest is sent (test `The results stay on screen while the rest is sent`; red: no heading "People added"), and `status ===
+    'failed'` in the `failedPart` condition keeps the warning off while it is sent (test `The warning that
+    the system stopped partway is not shown while the rest is sent`; red: `expected <div …(2)></div> to be
+    null`). A re-send after a call-level failure
+    can still add a row without a code twice: as approved in Decide 23 (a), no change.
+  - *Gates:* the first whole `pnpm check` at `78c018b` plus the fix pass was red at eslint, found and fixed:
+    `ui/src/ImportPage.tsx` 152:76 `@typescript-eslint/no-unnecessary-type-assertion` (a `!` on `part[i]`;
+    `logs/20261030-1341-employee-list-fix-pass-3-check.log`, exit 1, load 5.08). After dropping it, the
+    whole `pnpm check` is exit 0 (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`, load 6.05 at its
+    start, nothing else testing), 100 % in each package, no warning (shared 86 tests, bff 268, ui 331, scripts
+    76, visual 223; knip silent). `pnpm report` (`walks/2026-10-30-134031-78c018b5f-changes`): 0 waiting, 0
+    asked again, 0 no, 92 yes. c-storage did not change.
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
