@@ -90,7 +90,7 @@ describe('the guide opens', () => {
     );
   });
 
-  it('holds the keys, the teal button, many at once, and where this page’s answers go', async () => {
+  it('holds the keys, the blue button, many at once, and where this page’s answers go', async () => {
     render(<Page report={await report()} />);
     key('?');
     const text = guide().textContent;
@@ -101,7 +101,7 @@ describe('the guide opens', () => {
       'L',
       'U',
       'Esc',
-      'The teal button is the next thing to do',
+      'The blue button is the next thing to do',
       'Undo',
       'Paste last answers',
       'Only unanswered',

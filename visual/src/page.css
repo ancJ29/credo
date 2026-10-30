@@ -1,5 +1,5 @@
 /* The walks page as a light table: the drawn screens lie on it as sheets, the chrome stays quiet
-   in the app's own face, and the one strong colour is the app's teal, kept for a yes and for the
+   in the app's own face, and the one strong colour is the app's blue, kept for a yes and for the
    one action. A no is the app's red; asked again is amber. */
 :root {
   --table: #e8ecef;
@@ -8,9 +8,12 @@
   --muted: #56636c;
   --rule: #cdd5db;
   --rule-strong: #94a1aa;
-  --teal: #2f7d6d;
-  --teal-soft: #dcefe9;
-  --on-teal: #ffffff;
+  /* The app's own blue: "CREDO_COLOUR" in shared/src/config.ts, a new client's brand and shade 7 of its
+     theme (ui/src/theme.ts), the one the Add-client button and its checkboxes show. The soft tint is
+     its shade 1 and the dark values its shades 3 and 9 and a near-black, by the theme's own mixing. */
+  --blue: #3e618c;
+  --blue-soft: #dce3ea;
+  --on-blue: #ffffff;
   --red: #b91c1c;
   --red-soft: #fbe7e5;
   --on-red: #ffffff;
@@ -31,9 +34,9 @@
     --muted: #9ba8b0;
     --rule: #2d373d;
     --rule-strong: #56646c;
-    --teal: #5bbba5;
-    --teal-soft: #173a33;
-    --on-teal: #08201a;
+    --blue: #9eb0c6;
+    --blue-soft: #263c57;
+    --on-blue: #08141f;
     --red: #f08a82;
     --red-soft: #3d1d1b;
     --on-red: #2a0b09;
@@ -54,9 +57,9 @@
   --muted: #9ba8b0;
   --rule: #2d373d;
   --rule-strong: #56646c;
-  --teal: #5bbba5;
-  --teal-soft: #173a33;
-  --on-teal: #08201a;
+  --blue: #9eb0c6;
+  --blue-soft: #263c57;
+  --on-blue: #08141f;
   --red: #f08a82;
   --red-soft: #3d1d1b;
   --on-red: #2a0b09;
@@ -215,8 +218,8 @@ html.walks :focus-visible {
   background: var(--red-soft);
 }
 .w-yes {
-  color: var(--teal);
-  background: var(--teal-soft);
+  color: var(--blue);
+  background: var(--blue-soft);
 }
 
 /* The map of the day: the parts across, the people down. */
@@ -259,7 +262,7 @@ html.walks :focus-visible {
   min-width: 0;
   padding: 10px 12px;
   border-radius: 6px;
-  border-left: 3px solid var(--teal);
+  border-left: 3px solid var(--blue);
   background: var(--sheet);
   box-shadow: var(--lift);
   color: inherit;
@@ -368,8 +371,8 @@ a.w-cell:hover b {
   color: var(--ink);
 }
 .w-seg input:checked + .w-face {
-  background: var(--ink);
-  color: var(--sheet);
+  background: var(--blue);
+  color: var(--on-blue);
 }
 
 /* The list: the view and the unanswered toggle fixed at its top, then each walk's screens on one
@@ -409,7 +412,7 @@ a.w-cell:hover b {
 .w-only input {
   width: 18px;
   height: 18px;
-  accent-color: var(--teal);
+  accent-color: var(--blue);
 }
 .w-rail-close,
 .w-moves button,
@@ -429,17 +432,17 @@ a.w-cell:hover b {
   opacity: 0.45;
   cursor: default;
 }
-/* The one action that stands out: teal, and nothing else is. */
+/* The one action that stands out: blue, and nothing else is. */
 .w-walk[data-action='next'] .w-moves .w-next:not(:disabled),
 .w-walk[data-action='done'] .w-moves .w-next,
 .w-send[data-action='done'][data-partner='false'] .w-copy,
 .w-send[data-action='done'][data-partner='true'] .w-share {
-  border-color: var(--teal);
-  background: var(--teal);
-  color: var(--on-teal);
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--on-blue);
 }
 .w-walk[data-action='answer'] .w-big .w-face {
-  box-shadow: inset 0 0 0 2px var(--teal);
+  box-shadow: inset 0 0 0 2px var(--blue);
 }
 .w-all {
   align-self: center;
@@ -503,7 +506,7 @@ a.w-cell:hover b {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--teal);
+  color: var(--blue);
   font: inherit;
   font-weight: 650;
   text-decoration: underline;
@@ -555,7 +558,7 @@ a.w-cell:hover b {
 .w-rail-item[aria-current] {
   background: var(--sheet);
   box-shadow:
-    inset 3px 0 0 var(--teal),
+    inset 3px 0 0 var(--blue),
     var(--lift);
 }
 .w-rail-number {
@@ -614,9 +617,9 @@ a.w-cell:hover b {
   color: var(--muted);
 }
 .w-mark[data-mark='yes'] {
-  background: var(--teal);
-  border-color: var(--teal);
-  color: var(--on-teal);
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--on-blue);
 }
 .w-mark[data-mark='no'] {
   background: var(--red);
@@ -708,7 +711,7 @@ a.w-cell:hover b {
   font-weight: 300;
   line-height: 1;
   text-align: right;
-  color: var(--teal);
+  color: var(--blue);
   font-variant-numeric: tabular-nums;
 }
 .w-sentence {
@@ -868,15 +871,15 @@ a.w-cell:hover b {
   box-shadow: inset 0 0 0 1.5px var(--ink);
 }
 .w-big[data-value='yes'] svg {
-  color: var(--teal);
+  color: var(--blue);
 }
 .w-big[data-value='no'] svg {
   color: var(--red);
 }
 .w-big[data-value='yes'] input:checked + .w-face {
-  background: var(--teal);
+  background: var(--blue);
   box-shadow: none;
-  color: var(--on-teal);
+  color: var(--on-blue);
 }
 .w-big[data-value='no'] input:checked + .w-face {
   background: var(--red);
@@ -1034,7 +1037,7 @@ a.w-cell:hover b {
 .w-walkfill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--teal);
+  background: var(--blue);
 }
 .w-count {
   flex: 0 1 auto;

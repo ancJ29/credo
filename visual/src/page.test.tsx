@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CREDO_COLOUR } from '@credo/shared';
 import { SCREENS } from '@credo/ui/mock';
 import { DICTIONARIES } from '@credo/ui/words';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -759,6 +760,32 @@ describe('the walks page: its layout', () => {
   it('Every control shows a focus ring, a radio’s on the face it lies under', () => {
     expect(rule('html.walks :focus-visible')).toContain('outline: 2px solid var(--focus)');
     expect(rule('.w-hide:focus-visible + .w-face')).toContain('outline: 2px solid var(--focus)');
+  });
+
+  it('The page’s one colour is the app’s own blue, with text on it, and on its tint, readable at AA in light and dark', () => {
+    const value = (block: string, token: string) =>
+      new RegExp(`${token}: (#[0-9a-f]{6})`).exec(block)![1];
+    const luminance = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((at) => {
+        const channel = parseInt(hex.slice(at, at + 2), 16) / 255;
+        return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (one: string, other: string) => {
+      const [high, low] = [luminance(one), luminance(other)].sort((a, b) => b - a);
+      return (high + 0.05) / (low + 0.05);
+    };
+    expect(value(rule(':root'), '--blue')).toBe(CREDO_COLOUR);
+    const dark = rule(":root[data-theme='dark']");
+    for (const block of [rule(':root'), dark]) {
+      expect(ratio(value(block, '--on-blue'), value(block, '--blue'))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(value(block, '--blue'), value(block, '--blue-soft'))).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(value(block, '--blue'), value(block, '--sheet'))).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(rule('.w-seg input:checked + .w-face')).toContain('background: var(--blue)');
+    expect(rule('.w-seg input:checked + .w-face')).toContain('color: var(--on-blue)');
+    expect(css).not.toMatch(/#2f7d6d|--teal/);
   });
 
   it('Every colour has a dark value, whether the system or the page asks for dark', () => {

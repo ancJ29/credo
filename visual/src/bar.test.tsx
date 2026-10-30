@@ -210,7 +210,7 @@ describe('the one button', () => {
     expect(screen.getByLabelText('Label from the invite')).toBeTruthy();
   });
 
-  it('is off while nothing is chosen, quiet while screens wait, and teal when none waits', async () => {
+  it('is off while nothing is chosen, quiet while screens wait, and blue when none waits', async () => {
     const { unmount } = render(<Page report={await make()} />);
     const copy = () => button('Copy my answers') as HTMLButtonElement;
 
@@ -223,7 +223,7 @@ describe('the one button', () => {
     render(<Page report={await make(WALKS.slice(0, 1), all())} />);
     expect(document.querySelector('.w-send')!.getAttribute('data-action')).toBe('done');
     expect(css).toMatch(/\.w-send\[data-action='done'\]\[data-partner='false'\] \.w-copy/);
-    expect(rule('.w-copy,\n.w-share')).not.toContain('var(--teal)');
+    expect(rule('.w-copy,\n.w-share')).not.toContain('var(--blue)');
   });
 });
 

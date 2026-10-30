@@ -1,7 +1,7 @@
 import { Modal } from './modal';
 
 /**
- * The guide: what the keys do, what the teal button is, the many-at-once actions, the paste, the
+ * The guide: what the keys do, what the blue button is, the many-at-once actions, the paste, the
  * toggle, and where this page's answers go. It opens from the "?" and the ? key, and by itself on a
  * first visit.
  */
@@ -33,7 +33,7 @@ export function Guide({
           <dd>close it</dd>
         </dl>
         <h3>What to do next</h3>
-        <p>The teal button is the next thing to do.</p>
+        <p>The blue button is the next thing to do.</p>
         <h3>Many at once</h3>
         <p>
           “Yes for both languages”, “Yes to” and “Clear” on a walk or on the page answer, or take
