@@ -44,6 +44,7 @@ import {
   readEmployee,
   readQr,
   readSetup,
+  type ReadEmployee,
   readSignIn,
 } from './staff-records';
 import { registerStaffRoutes } from './staff';
@@ -102,11 +103,22 @@ export function buildApp({ storage, now, logger }: AppDeps) {
    * is no one. The layers are read here, at every call, so the root's change holds at the person's
    * next step; one that cannot be read throws and answers 503, never a partial set. The setup read
    * for them is handed on, so a route does not read it again: a staff call reads five records. */
-  async function viewOf(tenantId: string, name: string, user: StoredUser) {
+  async function viewOf(
+    tenantId: string,
+    name: string,
+    user: StoredUser,
+    handed: { person?: ReadEmployee | null } = {},
+  ) {
     if (user.root) {
       return { name, root: true, permissions: resolvePermissions([], true), employeeId: null };
     }
-    const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
+    // A person already read is used only if the sign-in record names them; any other is read.
+    const person =
+      handed.person && handed.person.employee.id === user.employeeId
+        ? handed.person
+        : user.employeeId
+          ? await readEmployee(storage, tenantId, user.employeeId)
+          : null;
     if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
     const read = await readSetup(storage, tenantId);
     return {
@@ -222,20 +234,21 @@ export function buildApp({ storage, now, logger }: AppDeps) {
    * of the person the email names. An email names no one unless that person's record holds it. No
    * mail is ever sent to it, so it proves nothing but that the root gave it. */
   async function accountOf(tenantId: string, typed: string) {
-    if (!typed.includes('@'))
-      return { name: typed, found: await readSignIn(storage, tenantId, typed) };
+    if (!typed.includes('@')) {
+      return { name: typed, found: await readSignIn(storage, tenantId, typed), person: null };
+    }
     const claim = await readEmailClaim(storage, tenantId, typed);
     const person = claim ? await readEmployee(storage, tenantId, claim.claim.employeeId) : null;
-    if (!person || person.employee.email !== typed) return { name: typed, found: null };
+    if (!person || person.employee.email !== typed) return { name: typed, found: null, person };
     const name = normaliseSignInName(person.employee.code);
-    return { name, found: await readSignIn(storage, tenantId, name) };
+    return { name, found: await readSignIn(storage, tenantId, name), person };
   }
 
   app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
     const typed = normaliseSignInName(body.name);
-    const { name, found } = await accountOf(request.tenantId, typed);
+    const { name, found, person } = await accountOf(request.tenantId, typed);
     // A person the root has not given a password yet has no sign-in to check against.
     const account = found?.user.passwordHash
       ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -243,7 +256,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     const user = await checked(account, body.password);
     // One answer for an unknown name, a wrong password and a person who left: which part was
     // wrong is not said.
-    const view = user ? await viewOf(request.tenantId, name, user) : null;
+    const view = user ? await viewOf(request.tenantId, name, user, { person }) : null;
     if (!user || !view) throw new HttpError(401, 'Wrong name or password');
     const sessions = sessionsOf(request.tenantId);
     await endKept(request, sessions);

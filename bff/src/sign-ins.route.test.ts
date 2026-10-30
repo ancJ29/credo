@@ -442,6 +442,46 @@ describe('C: An email names the person by id in its own record', () => {
     expect(storedSignInEmailSchema.parse(kept?.data).employeeId).toBe(other);
   });
 
+  it('C: A sign-in by email reads one record more than by code, and no record twice', async () => {
+    const reads: string[] = [];
+    const t = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async getRecord(key) {
+          reads.push(key);
+          return await client.getRecord(key);
+        },
+      }),
+    });
+    const lan = await person(t, { code: 'EMP-0001' });
+    await withEmail(t, lan, 'lan@x.example');
+
+    reads.length = 0;
+    expect(await status(t, 'emp-0001', lan.password)).toBe(200);
+    const byCode = [...reads];
+    reads.length = 0;
+    expect(await status(t, 'lan@x.example', lan.password)).toBe(200);
+
+    expect(byCode).toHaveLength(4);
+    expect(reads).toHaveLength(5);
+    expect(new Set(reads).size).toBe(5);
+  });
+
+  it('C: An email whose person’s sign-in record names another person signs no one in', async () => {
+    const t = await staffTenant(cs);
+    const lan = await person(t, { code: 'EMP-0001' });
+    const third = await person(t, { code: 'EMP-0002' });
+    await withEmail(t, lan, 'lan@x.example');
+    const record = await t.client.getRecord(t.keys.user('emp-0001'));
+    await t.client.putRecord(
+      t.keys.user('emp-0001'),
+      { ...(record!.data as object), employeeId: third.id },
+      record!.tag,
+    );
+
+    expect(await status(t, 'lan@x.example', lan.password)).toBe(401);
+  });
+
   it('C: An email record that does not parse is a 500, never a person signed in', async () => {
     const t = await staffTenant(cs);
     const lan = await person(t, { code: 'EMP-0001' });
