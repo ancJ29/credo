@@ -1485,6 +1485,7 @@ itself:
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
+  - *Walk defect, 2026-10-30 16:0x +0700:* found by the human's fake pass at 15:50 (all 6 tests red at the used QR code's refused title): `open` in `walk/specs/piece-2.spec.ts` never cleared a session and kept every earlier init script, so the phone opened signed in as Lan; fixed at `ec1a880` (the session cleared, only the latest init script kept, phone 1 expects the signed-in name).
 
 **The close.**
 
