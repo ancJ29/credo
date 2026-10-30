@@ -30,7 +30,7 @@ describe('the demo data set', () => {
   it('The demo setup switches the second phone and the photo on, holds one field of each kind and numbers codes as EMP- and 4 digits; every value a person holds is one its field takes, and the photos are ones the BFF would take', () => {
     const { fields, customFields, numbering } = staffConfig(DEMO_STAFF_SETUP);
 
-    expect(fields).toEqual({ personalPhone: true, photo: true });
+    expect(fields).toEqual({ personalPhone: true, photo: true, email: false, qr: false });
     expect(customFields.map((field) => field.kind).sort()).toEqual([
       'choice',
       'date',

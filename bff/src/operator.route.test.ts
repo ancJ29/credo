@@ -413,7 +413,9 @@ describe('The operator never reads or changes a client, never sees a root’s pa
       `${[
         '├── /api/config (GET, HEAD, PUT)',
         '├── /api/auth/sign-in (POST)',
+        '│   └── -qr (POST)',
         '├── /api/auth/sign-out (POST)',
+        '├── /api/auth/password (PUT)',
         '├── /api/auth/me (GET, HEAD)',
         '├── /api/operator/sign-in (POST)',
         '├── /api/operator/sign-out (POST)',
@@ -421,11 +423,14 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/operator/clients (POST)',
         '├── /api/staff-setup (GET, HEAD, PUT)',
         '└── /api/employees (GET, HEAD, POST)',
+        '    ├── /import (POST)',
         '    └── /:id (GET, HEAD, PUT)',
         '        ├── /archive (POST)',
         '        ├── /password (PUT)',
         '        ├── /photo (GET, HEAD, PUT)',
-        '        └── /code (PUT)',
+        '        ├── /code (PUT)',
+        '        ├── /email (PUT)',
+        '        └── /qr (POST)',
       ].join('\n')}\n`,
     );
   });

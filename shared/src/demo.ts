@@ -21,6 +21,9 @@ export const DEMO_CODE = 'demo';
 export const DEMO_ROOT_NAME = 'root';
 export const OPERATOR_NAME = 'operator';
 
+/** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
+export const DEMO_QR_SECRET = 'fake-qr-secret-0001';
+
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 const DEPARTMENTS = { warehouse: id(1), office: id(2), delivery: id(3) };
@@ -200,3 +203,59 @@ export const DEMO_EMPLOYEES: Employee[] = [
 
 /** The one invented photo, Châu's. */
 export const DEMO_PHOTOS: Record<string, string> = { [id(103)]: PHOTO };
+
+/** One row of the import file the demo company's root chooses, by the key of the column it fills:
+ * a built-in column's name, or the key of one of the company's own fields. A column is left out
+ * of a row that gives nothing. */
+export type DemoImportRow = Partial<
+  Record<
+    | 'name'
+    | 'code'
+    | 'phone'
+    | 'personalPhone'
+    | 'department'
+    | 'position'
+    | 'note'
+    | 'licence'
+    | 'started'
+    | 'plate'
+    | 'dependants',
+    string
+  >
+>;
+
+/** The staff file the demo company's root chooses (group D): three rows that hold, with the code
+ * numbered, the code given and the company's own fields; five that do not, one for each reason, in
+ * the order the preview lists them: a code taken in the company, no name, a department the company
+ * lacks, a code an earlier row gave, a value a field refuses. */
+export const DEMO_IMPORT_ROWS: DemoImportRow[] = [
+  {
+    name: 'Mai Linh',
+    phone: '0909 123 456',
+    department: 'Kho',
+    position: 'Nhân viên',
+    note: 'Mới vào làm.',
+  },
+  {
+    name: 'Ngô Thu Hà',
+    code: 'EMP-0100',
+    phone: '0909 777 888',
+    department: 'Văn phòng',
+    position: 'Thực tập',
+    licence: 'b2',
+    started: '2026-10-01',
+  },
+  {
+    name: 'Lý Quang Minh',
+    code: 'EMP-0101',
+    department: 'Giao hàng',
+    position: 'Nhân viên',
+    plate: '51C-678.90',
+    dependants: '3',
+  },
+  { name: 'Hồ Bảo Trân', code: 'EMP-0002', department: 'Kho' },
+  { code: 'EMP-0102', phone: '0909 000 111' },
+  { name: 'Đinh Công Sơn', department: 'Kế toán' },
+  { name: 'Phan Thị Yến', code: 'EMP-0100' },
+  { name: 'Dương Văn Tài', dependants: 'two' },
+];

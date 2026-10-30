@@ -6,7 +6,14 @@ import { LIMITS, runSteps, StepError } from './steps';
 /** Short waits, so a step that finds nothing fails in a moment. */
 const QUICK = { findFor: 120, stillFor: 10, stillAtMost: 100 };
 const WORDS = {
-  form: { name: 'Name', note: 'Note', department: 'Department', save: 'Save', again: 'Again' },
+  form: {
+    name: 'Name',
+    note: 'Note',
+    department: 'Department',
+    file: 'Staff file',
+    save: 'Save',
+    again: 'Again',
+  },
   archive: { confirm: 'Archive {{name}}', plain: 'Archive' },
   perm: { group: 'Their own permissions', archive: 'Archive a person', allow: 'Allow' },
   missing: { none: 1 },
@@ -19,6 +26,7 @@ function Page({ later = false }: { later?: boolean }) {
   const [department, setDepartment] = useState('');
   const [saved, setSaved] = useState('');
   const [allowed, setAllowed] = useState('');
+  const [chosen, setChosen] = useState('');
   const [shown, setShown] = useState(!later);
   if (later) setTimeout(() => setShown(true), 60);
   return (
@@ -37,6 +45,10 @@ function Page({ later = false }: { later?: boolean }) {
           <option value="">None</option>
           <option value="k">Kho</option>
         </select>
+      </label>
+      <label>
+        Staff file
+        <input type="file" onChange={(e) => setChosen(e.currentTarget.files?.[0]?.name ?? '')} />
       </label>
       <button onClick={() => setSaved(`${name}|${note}|${department}`)}>Save</button>
       <a href="#x" onClick={() => setSaved('link')}>
@@ -59,6 +71,7 @@ function Page({ later = false }: { later?: boolean }) {
       {shown && <button onClick={() => setSaved('late')}>Late</button>}
       <p data-testid="out">{saved}</p>
       <p data-testid="allowed">{allowed}</p>
+      <p data-testid="chosen">{chosen}</p>
     </div>
   );
 }
@@ -119,6 +132,23 @@ describe('a scene’s steps', () => {
     await runSteps(document.body, [{ press: 'perm.allow', within: 'perm.archive' }], WORDS, QUICK);
 
     expect(out('allowed')).toBe('archive');
+  });
+
+  it('put the data set’s file in a file field by its words, as choosing it does, and stop naming the step when no file is given', async () => {
+    draw();
+
+    await runSteps(
+      document.body,
+      [{ attach: 'form.file', file: 'import' }],
+      WORDS,
+      QUICK,
+      (which) => Promise.resolve(new File(['x'], `${which}.xlsx`)),
+    );
+    expect(out('chosen')).toBe('import.xlsx');
+
+    await expect(
+      runSteps(document.body, [{ attach: 'form.file', file: 'import' }], WORDS, QUICK),
+    ).rejects.toThrow('no file to attach');
   });
 
   it('read a word’s {{name}} from the step, so a button named by a person is found', async () => {

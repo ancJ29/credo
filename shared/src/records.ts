@@ -24,9 +24,16 @@ export const recordKeys = {
     /** The demo seed's ledger for the tenant, the seed's alone: the BFF never reads it, and its key
      * starts with none of the prefixes the BFF lists. */
     seed: `tenant.${id}.seed`,
+    /** The last number given under each numbering prefix: its own record, so an add raises it
+     * without moving the setup the root is editing. */
+    staffNumbering: `tenant.${id}.staff-numbering`,
     /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
      * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
     employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,
+    /** An email, as `emailSchema` keeps it, names the person who holds it: one record a company. */
+    signInEmail: (email: string) => `tenant.${id}.signin-email.${email}`,
+    /** A person's one QR code, by their minted id: a new code replaces it, spending removes it. */
+    signInQr: (employeeId: string) => `tenant.${id}.signin-qr.${employeeId}`,
   }),
 } as const;
 
@@ -48,6 +55,9 @@ export type StoredOperator = z.infer<typeof storedOperatorSchema>;
 /** A sign-in name as a user record is keyed by it: the same name typed in any case or with
  * spaces around it is one user. */
 export const normaliseSignInName = (raw: string) => raw.normalize('NFC').trim().toLowerCase();
+
+/** An email, a second sign-in name, kept as `normaliseSignInName` keeps a name. */
+export const emailSchema = z.string().transform(normaliseSignInName).pipe(z.email().max(200));
 
 /** The UI mints a device id once and keeps it; it names the session record, so it holds no dot,
  * which splits it from the secret in the handle. */

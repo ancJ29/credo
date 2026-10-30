@@ -237,7 +237,7 @@ describe('The root chooses which optional fields the company keeps on a person, 
       { numbering: { prefix: 'nv', digits: 3 } },
       { numbering: { prefix: '', digits: 1 } },
       { numbering: { prefix: 'NV', digits: 9 } },
-      { fields: { email: true } },
+      { fields: { fax: true } },
     ];
 
     for (const setup of bad) {

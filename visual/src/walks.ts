@@ -1,5 +1,5 @@
 import { LANGUAGES, type Language } from '@credo/shared';
-import { DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
 import type { MockScreen } from '@credo/ui/mock';
 
 /** A text in each language the report draws. */
@@ -26,14 +26,26 @@ export type Step =
   /** Replaces what is typed in the field with these words by `text`. */
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
-  | { choose: string; option: string };
+  | { choose: string; option: string }
+  /** Puts the data set's staff file (`import`, or `import-no-name`) in the file field with these
+   * words, as a person's choosing it does. */
+  | { attach: string; file: 'import' | 'import-no-name' };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
  * as the data-set person with this code (the root when none), with one call's failure cued, then
  * the steps.
  */
-export type Scene = { path: string; as?: string; cue?: string; steps?: Step[] };
+export type Scene = {
+  path: string;
+  as?: string;
+  cue?: string;
+  /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
+  signIns?: true;
+  /** Nobody is signed in: a phone opening a QR code's link. */
+  out?: true;
+  steps?: Step[];
+};
 
 export type Person = { id: string; name: Bilingual; device: Device };
 export type Part = { id: string; name: Bilingual };
@@ -112,14 +124,29 @@ const FILLED_OWN: Step[] = [
   { choose: 'addPerson.position', option: 'Nhân viên' },
 ];
 
+/** The link a QR code opens, for a warehouse member of the data set and the secret given. */
+const qrLinkWith = (secret: string) =>
+  `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === 'EMP-0004')!.id}.${secret}`;
+
+/** One's own password typed: the current one, the new one, and the new one again. */
+const NEW_PASSWORD: Step[] = [
+  { fill: 'ownPassword.current', text: 'Old-password-1!' },
+  { fill: 'ownPassword.new', text: 'New-password-2@' },
+  { fill: 'ownPassword.again', text: 'New-password-2@' },
+  { press: 'ownPassword.submit' },
+];
+
+/** The staff file chosen on the import page. */
+const IMPORT_CHOSEN: Step[] = [{ attach: 'import.file', file: 'import' }];
+
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
  * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 4;
- * then piece 2's groups A and B (the staff setup, the staff, the office's), each screen a scene of
- * the app on the fake. Group C adds the phone's walk, whose screens are all C's.
+ * then piece 2's groups A, B, C and D (the staff setup, the staff, the office's, the phone's), each
+ * screen a scene of the app on the fake.
  */
 export const WALKS: Walk[] = [
   {
@@ -519,6 +546,86 @@ export const WALKS: Walk[] = [
         },
         question: 'Does this say what to fix?',
       },
+      {
+        id: 'staff-17-email',
+        number: 17,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0002'),
+          signIns: true,
+          steps: [
+            { fill: 'person.emailNew', text: 'hung@minh-phat.example' },
+            { press: 'person.emailSet' },
+          ],
+        },
+        sentence: {
+          en: 'An email given: the person may sign in with it',
+          vi: 'Đã cấp email: người đó có thể đăng nhập bằng email',
+        },
+        question: 'Is it clear the email is a second way to sign in, and that no mail is sent?',
+      },
+      {
+        id: 'staff-18-qr',
+        number: 18,
+        path: 'main',
+        scene: { path: personAt('EMP-0004'), signIns: true, steps: [{ press: 'person.qrShow' }] },
+        sentence: {
+          en: 'A QR code and its link, for one sign-in within 15 minutes',
+          vi: 'Mã QR và đường dẫn của nó, để đăng nhập một lần trong 15 phút',
+        },
+        question: 'Would the admin know to show it, and that it works once?',
+      },
+      {
+        id: 'staff-19-import',
+        number: 19,
+        path: 'main',
+        scene: { path: '/staff/import', steps: [{ attach: 'import.file', file: 'import' }] },
+        sentence: {
+          en: 'Import: the template, and the file chosen',
+          vi: 'Nhập từ Excel: tệp mẫu và tệp đã chọn',
+        },
+        question: 'Would the admin know to fill the template and choose it?',
+      },
+      {
+        id: 'staff-20-preview',
+        number: 20,
+        path: 'main',
+        scene: { path: '/staff/import', steps: [...IMPORT_CHOSEN, { press: 'import.read' }] },
+        sentence: {
+          en: 'Before saving: each row read, with the reasons for the refused',
+          vi: 'Trước khi lưu: từng dòng đã đọc, kèm lý do cho các dòng bị từ chối',
+        },
+        question: 'Would the admin know which rows will be added and why others are not?',
+      },
+      {
+        id: 'staff-21-imported',
+        number: 21,
+        path: 'main',
+        scene: {
+          path: '/staff/import',
+          steps: [
+            ...IMPORT_CHOSEN,
+            { press: 'import.read' },
+            { press: 'import.add', with: { count: '3' } },
+          ],
+        },
+        sentence: {
+          en: 'Imported: the people added, without sign-ins yet',
+          vi: 'Đã nhập: những người được thêm, chưa có tên đăng nhập',
+        },
+        question: 'Would the admin know each still needs a sign-in?',
+      },
+      {
+        id: 'staff-22-no-name',
+        number: 22,
+        path: 'wrong',
+        scene: {
+          path: '/staff/import',
+          steps: [{ attach: 'import.file', file: 'import-no-name' }, { press: 'import.read' }],
+        },
+        sentence: { en: 'A file without the name column', vi: 'Tệp không có cột tên' },
+        question: 'Does this say what to fix?',
+      },
     ],
   },
   {
@@ -590,6 +697,63 @@ export const WALKS: Walk[] = [
           vi: 'Được đổi thiết lập: có mục Thiết lập trong menu',
         },
         question: 'Is it clear this person may change the company’s settings?',
+      },
+      {
+        id: 'office-6-password',
+        number: 6,
+        path: 'main',
+        scene: { path: '/password', as: 'EMP-0001', steps: NEW_PASSWORD },
+        sentence: {
+          en: 'Changing one’s own password',
+          vi: 'Tự đổi mật khẩu của mình',
+        },
+        question: 'Would a person find this, and know what to type?',
+      },
+      {
+        id: 'office-7-password-wrong',
+        number: 7,
+        path: 'wrong',
+        scene: {
+          path: '/password',
+          as: 'EMP-0001',
+          cue: 'changePassword:403',
+          steps: NEW_PASSWORD,
+        },
+        sentence: {
+          en: 'The current password wrong',
+          vi: 'Mật khẩu hiện tại không đúng',
+        },
+        question: 'Does this say what to fix?',
+      },
+    ],
+  },
+  {
+    id: 'phone-sign-in',
+    person: 'driver',
+    part: 'staff',
+    title: { en: 'Sign in by a QR code', vi: 'Đăng nhập bằng mã QR' },
+    screens: [
+      {
+        id: 'phone-1-signed-in',
+        number: 1,
+        path: 'main',
+        scene: { path: qrLinkWith(DEMO_QR_SECRET), signIns: true, out: true },
+        sentence: {
+          en: 'Signed in on a phone by the code, on the person’s first page',
+          vi: 'Đăng nhập trên điện thoại bằng mã, vào trang đầu tiên của người đó',
+        },
+        question: 'Would the person know they are in, and where?',
+      },
+      {
+        id: 'phone-2-code-used',
+        number: 2,
+        path: 'wrong',
+        scene: { path: qrLinkWith('used-before-qr-code'), signIns: true, out: true },
+        sentence: {
+          en: 'A code used before, or past its 15 minutes',
+          vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
+        },
+        question: 'Would the person know to ask for a new one?',
       },
     ],
   },

@@ -34,11 +34,31 @@ export function markOf(shown: Shown, choice: Choice | undefined): Mark {
   }
 }
 
-/** A walk's screens in the page's order: the main path, then what can go wrong. */
-export const inPageOrder = (walk: ReportWalk): ReportScreen[] => [
-  ...walk.screens.filter((screen) => screen.path === 'main'),
-  ...walk.screens.filter((screen) => screen.path === 'wrong'),
-];
+/**
+ * Whose page this is: the human's, opened from disk, or a partner's, served over the web. On a
+ * partner's page a screen is answered when that partner answered it, under the label kept in the
+ * browser; the human's answers there mark nothing.
+ */
+export type Whose = { partner: false } | { partner: true; label: string };
+
+export const HUMAN: Whose = { partner: false };
+
+/** What a screen shows in one language for whoever reads this page. */
+export function shownIn(entry: ReportScreen['languages'][Language], whose: Whose): Shown {
+  if (!whose.partner) return entry.shown;
+  return entry.partners.find(({ label }) => label === whose.label)?.shown ?? { kind: 'waiting' };
+}
+
+/** Where a screen stands in one language for this page's reader: the choice made here, else the record. */
+export const markIn = (
+  entry: ReportScreen['languages'][Language],
+  choice: Choice | undefined,
+  whose: Whose,
+): Mark => markOf(shownIn(entry, whose), choice);
+
+/** A walk's screens in the page's order: by number, a screen that goes wrong among the rest. */
+export const inPageOrder = (walk: ReportWalk): ReportScreen[] =>
+  [...walk.screens].sort((a, b) => a.number - b.number);
 
 /** The id of a screen's section on the page, which the rail links to. */
 export const screenId = (walk: ReportWalk, screen: ReportScreen) => `${walk.id}-${screen.id}`;
@@ -47,12 +67,17 @@ export const screenId = (walk: ReportWalk, screen: ReportScreen) => `${walk.id}-
  * Every screen in every language, in the page's order, with its mark; and how many hold a yes or a
  * no, chosen here or on record, of all there are to answer.
  */
-export function progressOf(report: Report, choices: Choices) {
+export function progressOf(report: Report, choices: Choices, whose: Whose = HUMAN) {
   const marks = report.walks.flatMap((walk) =>
     inPageOrder(walk).flatMap((screen) =>
       LANGUAGES.map((language) => {
         const key = answerKey(walk.id, screen.id, language);
-        return { key, mark: markOf(screen.languages[language].shown, choices[key]) };
+        return {
+          key,
+          id: screenId(walk, screen),
+          language,
+          mark: markIn(screen.languages[language], choices[key], whose),
+        };
       }),
     ),
   );

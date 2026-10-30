@@ -1,5 +1,5 @@
 import type { Language } from '@credo/shared';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MemoryRouter } from 'react-router';
 import { Providers } from '../Providers';
@@ -53,6 +53,8 @@ const FLOOR = 320;
 export function Frame({ title, colour, language, scheme, width, path, children }: Props) {
   const [body, setBody] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(FLOOR);
+  const watcher = useRef<MutationObserver>(undefined);
+  useEffect(() => () => watcher.current?.disconnect(), []);
 
   const load = (frame: HTMLIFrameElement) => {
     const inner = frame.contentDocument!;
@@ -61,8 +63,36 @@ export function Frame({ title, colour, language, scheme, width, path, children }
     }
     inner.documentElement.lang = language;
     setBody(inner.body);
-    const fit = () => setHeight(Math.max(FLOOR, inner.documentElement.scrollHeight));
-    new ResizeObserver(fit).observe(inner.documentElement);
+    // The screen is measured when something inside it changes, never because the frame's own
+    // height did. The app's shell is never shorter than the frame (min-height: 100dvh), so it is
+    // read with the frame at its floor and put back: read at its present height, whatever sits
+    // under the shell would be added each time, and the frame would never come down.
+    const fit = () => {
+      const page = frame.ownerDocument.documentElement;
+      const [was, kept, keptInside] = [
+        frame.height,
+        page.scrollTop,
+        inner.documentElement.scrollTop,
+      ];
+      frame.height = String(FLOOR);
+      const tall = inner.documentElement.scrollHeight;
+      frame.height = was;
+      page.scrollTop = kept;
+      inner.documentElement.scrollTop = keptInside;
+      setHeight(Math.max(FLOOR, tall));
+    };
+    watcher.current = new MutationObserver(fit);
+    watcher.current.observe(inner.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+    // An image or a font that arrives later changes the height without changing a node.
+    inner.addEventListener('load', fit, true);
+    const fonts = (inner as Document & { fonts?: FontFaceSet }).fonts;
+    void fonts?.ready.then(fit);
+    fonts?.addEventListener('loadingdone', fit);
   };
 
   return (

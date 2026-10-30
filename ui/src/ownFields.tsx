@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 export type OwnTexts = Record<string, string>;
 
 /** The words each kind's refusal is said in. */
-const INVALID = {
+export const INVALID = {
   text: 'fields.invalidText',
   number: 'fields.invalidNumber',
   date: 'fields.invalidDate',
@@ -23,9 +23,20 @@ const INVALID = {
 export const ownTextsOf = (fields: readonly CustomField[], extra: Record<string, unknown>) =>
   Object.fromEntries(fields.map((field) => [field.key, fieldValueToText(extra[field.key])]));
 
-/** The fields whose typed value does not fit their kind. */
-export const refusedFields = (fields: readonly CustomField[], texts: OwnTexts) =>
-  fields.filter((field) => !fieldValueIsValid(field, texts[field.key] ?? '')).map((f) => f.key);
+/** The fields whose typed value does not fit their kind. A value the person already holds is
+ * never refused while it stands unchanged (`was`): a choice whose option was since removed, or a
+ * value saved before the field changed kind, is theirs until someone types another. */
+export const refusedFields = (
+  fields: readonly CustomField[],
+  texts: OwnTexts,
+  was: OwnTexts = {},
+) =>
+  fields
+    .filter((field) => {
+      const typed = texts[field.key] ?? '';
+      return typed !== (was[field.key] ?? '') && !fieldValueIsValid(field, typed);
+    })
+    .map((f) => f.key);
 
 /** `extra` with what the form shows put in its place: every key the form shows is first taken
  * out, then kept when filled, so an emptied field removes its key and a key the form does not
@@ -39,10 +50,20 @@ export function mergeExtra(
   return Object.fromEntries([...kept, ...filled]);
 }
 
-/** What `extra` takes for the company's own fields as typed. */
-export const ownStored = (fields: readonly CustomField[], texts: OwnTexts) =>
+/** What `extra` takes for the company's own fields as typed. A field left as it was keeps the
+ * stored value itself (`held`): a value that no longer fits is not turned into something else. */
+export const ownStored = (
+  fields: readonly CustomField[],
+  texts: OwnTexts,
+  held?: { was: OwnTexts; extra: Record<string, unknown> },
+) =>
   Object.fromEntries(
-    fields.map((field) => [field.key, fieldValueToStore(field, texts[field.key] ?? '')]),
+    fields.map((field) => [
+      field.key,
+      held && texts[field.key] === held.was[field.key]
+        ? held.extra[field.key]
+        : fieldValueToStore(field, texts[field.key] ?? ''),
+    ]),
   );
 
 type Props = {
@@ -73,6 +94,11 @@ export function OwnFieldInput({ field, value, refused, readOnly, onChange }: Pro
             value: option.value,
             label: option.label[i18n.language as Language],
           })),
+          // A value kept on the person whose option was removed: listed as itself, so the select
+          // shows what is stored and saving it unchanged is no change.
+          ...(value !== '' && !field.options.some((option) => option.value === value)
+            ? [{ value, label: value }]
+            : []),
         ]}
       />
     );

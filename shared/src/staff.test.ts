@@ -5,6 +5,7 @@ import {
   byCode,
   employeeCodeIsValid,
   employeeSchema,
+  keptSetupParts,
   normaliseEmployeeCode,
   passwordIsValid,
   saveEmployeeRequestSchema,
@@ -171,7 +172,7 @@ describe('staff', () => {
     // a setup saved before these existed has none, and reads as the defaults
     expect(staffSetupSchema.safeParse(bare).success).toBe(true);
     expect(staffConfig(bare)).toEqual({
-      fields: { personalPhone: false, photo: false },
+      fields: { personalPhone: false, photo: false, email: false, qr: false },
       customFields: [],
       numbering: { prefix: 'EMP-', digits: 4 },
     });
@@ -184,7 +185,7 @@ describe('staff', () => {
     };
     expect(staffSetupSchema.safeParse(set).success).toBe(true);
     expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
-      fields: { personalPhone: false, photo: true },
+      fields: { personalPhone: false, photo: true, email: false, qr: false },
       customFields: [{ ...own, options: [], inList: false }],
       numbering: { prefix: 'NV', digits: 3 },
     });
@@ -209,5 +210,73 @@ describe('staff', () => {
     expect(changeCodeRequestSchema.safeParse({ version, code: 'x' }).success).toBe(false);
     expect(changeCodeRequestSchema.safeParse({ version: 'v', code: 'NV-12' }).success).toBe(false);
     expect(changeCodeRequestSchema.safeParse({ code: 'NV-12' }).success).toBe(false);
+  });
+
+  it('A setup save keeps each optional part it leaves out, and replaces each it sends', () => {
+    const bare = { departments: [], positions: [], extra: {} };
+    const stored = {
+      departments: [],
+      positions: [],
+      fields: { personalPhone: true, photo: false },
+      numbering: { prefix: 'NV', digits: 3 },
+      extra: {},
+    };
+
+    expect(keptSetupParts({ departments: [], positions: [], extra: {} }, stored)).toEqual({
+      fields: stored.fields,
+      numbering: stored.numbering,
+    });
+    // nothing sent and nothing stored is nothing; an own field stored is kept
+    expect(keptSetupParts({ departments: [], positions: [], extra: {} }, bare)).toEqual({});
+    const own = {
+      key: 'plate',
+      label: { vi: 'Biển', en: 'Plate' },
+      kind: 'text',
+      options: [],
+      inList: false,
+    };
+    expect(
+      keptSetupParts({ departments: [], positions: [], extra: {} }, {
+        ...bare,
+        customFields: [own],
+      } as never),
+    ).toEqual({ customFields: [own] });
+    expect(
+      keptSetupParts(
+        {
+          departments: [],
+          positions: [],
+          fields: { personalPhone: false, photo: true },
+          customFields: [],
+          numbering: { prefix: 'X-', digits: 2 },
+          extra: {},
+        },
+        stored,
+      ),
+    ).toEqual({
+      fields: { personalPhone: false, photo: true },
+      customFields: [],
+      numbering: { prefix: 'X-', digits: 2 },
+    });
+  });
+
+  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switches for the email and the QR code are off until turned on', () => {
+    expect(employeeSchema.parse(person).email).toBeUndefined();
+    expect(employeeSchema.parse({ ...person, email: null }).email).toBeNull();
+    expect(employeeSchema.parse({ ...person, email: '  Lan@Minh-Phat.Example ' }).email).toBe(
+      'lan@minh-phat.example',
+    );
+    expect(employeeSchema.safeParse({ ...person, email: 'not an email' }).success).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({
+        departments: [],
+        positions: [],
+        fields: { email: true, qr: true },
+        extra: {},
+      }).success,
+    ).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
+      { personalPhone: true, photo: false, email: false, qr: true },
+    );
   });
 });

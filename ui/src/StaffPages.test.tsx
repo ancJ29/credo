@@ -98,6 +98,22 @@ describe('the staff list', () => {
     expect(menu().queryAllByRole('link')).toEqual([]);
   });
 
+  it('Only the root imports staff: the list shows it the button to the import page, and shows it to no one else, whatever staff rights they hold', async () => {
+    // the root: the button leads to the import page
+    const root = openApp('/staff');
+    await userEvent.click(await screen.findByRole('link', { name: 'Import from Excel' }));
+    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
+      'Add staff from Excel',
+    );
+    root.unmount();
+
+    // an office manager who may see and add people: the add button, and no import
+    const lan = openApp('/staff', { as: 'EMP-0001' });
+    expect(await screen.findByRole('link', { name: 'Add a person' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+    lan.unmount();
+  });
+
   it('A 403 makes the UI read `me` again and redraw', async () => {
     // the cue stands for what the root just changed: the list is refused once, and `me` is read
     const { api } = openApp('/staff', { as: 'EMP-0004', cue: 'listEmployees:403' });
@@ -128,6 +144,28 @@ describe('a 403 or a 401 on a page', () => {
         });
       },
     });
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
+    ).toBeTruthy();
+    expect(api.me).toHaveBeenCalledTimes(2);
+  });
+
+  it('A 403 on the settings save reads `me` again, and a person who may no longer change them is shown the page that says so', async () => {
+    const { api } = openApp('/settings', {
+      as: 'EMP-0003',
+      override: (spied, original) => {
+        spied.saveConfig.mockRejectedValue(new ApiError(403));
+        let reads = 0;
+        spied.me.mockImplementation(async () => {
+          const answer = await original.me();
+          return ++reads === 1 ? answer : { user: { ...answer.user, permissions: {} } };
+        });
+      },
+    });
+    await userEvent.type(await screen.findByLabelText(/^Company name/), 'x');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
@@ -263,6 +301,21 @@ describe('a person added', () => {
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Mai Linh');
     expect(person('EMP-0008').name).toBe('Hoàng Gia Huy');
     expect((await api.getEmployee(person('EMP-0008').id)).employee.name).toBe('Hoàng Gia Huy');
+  });
+
+  it('A code of spaces alone is no code: the add is sent without one, to be numbered', async () => {
+    const { api } = openApp('/staff/new');
+    await fill('Mai Linh', '   ');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(vi.mocked(api.addEmployee).mock.calls[0]?.[0]).toEqual({
+      name: 'Mai Linh',
+      extra: {},
+      departmentId: null,
+      positionId: null,
+    });
   });
 
   it('A save that fails says so and keeps what was typed (an add)', async () => {

@@ -3,6 +3,7 @@ import { App, sceneParts } from '@credo/ui/scene';
 import type { Language } from '@credo/shared';
 import { DEMO_CUSTOM_FIELDS } from '@credo/shared/demo';
 import { useEffect, useMemo, useState } from 'react';
+import { demoImportFile } from '@credo/ui/import-demo';
 import { type Limits, LIMITS, runSteps } from './steps';
 import type { Scene } from './walks';
 
@@ -35,7 +36,14 @@ export function SceneView({
   limits?: Limits;
 }) {
   const parts = useMemo(
-    () => sceneParts({ as: scene.as, cue: scene.cue, language }),
+    () =>
+      sceneParts({
+        as: scene.as,
+        cue: scene.cue,
+        signIns: scene.signIns,
+        out: scene.out,
+        language,
+      }),
     [scene, language],
   );
   /** The wrapper once it stands in its page, which may be a frame's: the app and the steps wait for it. */
@@ -45,7 +53,9 @@ export function SceneView({
   useEffect(() => {
     if (!host) return;
     let live = true;
-    runSteps(host.ownerDocument.body, scene.steps ?? [], stepWords(language), limits).then(
+    runSteps(host.ownerDocument.body, scene.steps ?? [], stepWords(language), limits, (which) =>
+      demoImportFile(language, which),
+    ).then(
       () => live && setStatus({ phase: 'done' }),
       (error: unknown) => live && setStatus({ phase: 'failed', why: (error as Error).message }),
     );

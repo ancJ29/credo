@@ -1,8 +1,12 @@
 import { LANGUAGES } from '@credo/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { type Bulk, clearIn, yesTo } from './bulk';
 import type { Choices } from './choices';
-import { LANGUAGE_LABEL, screenId } from './marks';
-import type { Report, ReportScreen } from './report';
+import type { Fill } from './fill';
+import { PasteBox } from './paste';
+import { LANGUAGE_LABEL, type Whose } from './marks';
+import { leftIn, type Place } from './nav';
+import type { Report } from './report';
 import { capital, Marks, type View } from './screen';
 
 /** One of a few, as a row of buttons: radios under their legend, so the keys and a reader know it. */
@@ -40,59 +44,103 @@ function Segmented<T extends string>({
   );
 }
 
-/**
- * The section in a band near the top of the window, among the ids given, the first of them in
- * the page's order; none until the browser reports one. jsdom has no IntersectionObserver.
- */
-export function useCurrent(ids: readonly string[]) {
-  const [current, setCurrent] = useState<string>();
-  const list = ids.join(' ');
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const order = list.split(' ');
-    const inBand = new Set<string>();
-    const watcher = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) inBand.add(entry.target.id);
-          else inBand.delete(entry.target.id);
-        }
-        const first = order.find((id) => inBand.has(id));
-        if (first) setCurrent(first);
-      },
-      { rootMargin: '-20% 0px -70% 0px' },
-    );
-    for (const id of order) watcher.observe(document.getElementById(id)!);
-    return () => watcher.disconnect();
-  }, [list]);
-  return current;
+/** Yes to the unanswered, and Clear the choices made here, for some screens; each with its count. */
+function BulkRow({
+  places,
+  choices,
+  whose,
+  scope,
+  onBulk,
+  off,
+}: {
+  places: readonly Place[];
+  choices: Choices;
+  whose: Whose;
+  scope: string;
+  off: boolean;
+  onBulk: (bulk: Bulk, said: string) => void;
+}) {
+  const yes = yesTo(places, choices, whose);
+  const clear = clearIn(places, choices);
+  return (
+    <span className="w-bulk">
+      <button
+        type="button"
+        disabled={yes.count === 0 || off}
+        aria-label={`Yes to ${yes.count} unanswered ${scope}`}
+        onClick={(event) => {
+          event.preventDefault();
+          onBulk(yes, `${yes.count} answered Yes`);
+        }}
+      >
+        Yes to {yes.count}
+      </button>
+      <button
+        type="button"
+        disabled={clear.count === 0}
+        aria-label={`Clear ${clear.count} choices ${scope}`}
+        onClick={(event) => {
+          event.preventDefault();
+          onBulk(clear, `${clear.count} choices cleared`);
+        }}
+      >
+        Clear {clear.count}
+      </button>
+    </span>
+  );
 }
 
-const PATHS: [ReportScreen['path'], string][] = [
-  ['main', 'The main path'],
-  ['wrong', 'What can go wrong'],
-];
-
 /**
- * The page's view and its place: the language and the widths every screen is drawn in, then each
- * walk's screens with their marks, the one in view marked as the current. A side rail on a PC and
- * a strip across the top on a phone, in view while the page scrolls.
+ * The list: the language and the widths, the toggle for the unanswered, then each walk with what is
+ * left in it, the walk in view open and the others folded, and each of its screens on one line in
+ * number order with its marks; the screen in view marked and kept in view. A side list on a PC; on
+ * a phone it opens over the page from the line atop.
  */
 export function Rail({
   report,
+  places,
   view,
   onView,
   choices,
+  whose,
   current,
+  only,
+  onOnly,
+  shown,
+  open,
+  onGo,
+  onClose,
+  onBulk,
+  onFill,
+  bulkOff,
 }: {
   report: Report;
+  places: readonly Place[];
   view: View;
   onView: (view: View) => void;
   choices: Choices;
-  current: string | undefined;
+  whose: Whose;
+  current: string;
+  only: boolean;
+  onOnly: (only: boolean) => void;
+  shown: readonly Place[];
+  open: boolean;
+  onGo: (id: string) => void;
+  onClose: () => void;
+  /** A bulk action, with the words the note says of it once it acts. */
+  onBulk: (bulk: Bulk, said: string) => void;
+  onFill: (fill: Fill) => void;
+  /** A partner's page with no label kept: Yes to the unanswered is off. */
+  bulkOff: boolean;
 }) {
+  const [pasting, setPasting] = useState(false);
+  const list = useRef<HTMLElement>(null);
+  useEffect(() => {
+    list.current!.querySelector('[aria-current]')?.scrollIntoView({ block: 'nearest' });
+  }, [current]);
+  const here = places.find(({ id }) => id === current)!.walk.id;
   return (
-    <aside className="w-rail" aria-label="The view and the screens">
+    <aside ref={list} className="w-rail" aria-label="The view and the screens" data-open={open}>
       <div className="w-view">
         <Segmented
           legend="Language"
@@ -114,43 +162,94 @@ export function Rail({
           value={view.show}
           onChange={(show) => onView({ ...view, show })}
         />
+        <label className="w-only">
+          <input
+            type="checkbox"
+            checked={only}
+            onChange={(event) => onOnly(event.target.checked)}
+          />
+          Only unanswered
+        </label>
+        <BulkRow
+          places={places}
+          choices={choices}
+          whose={whose}
+          scope="on the page"
+          onBulk={onBulk}
+          off={bulkOff}
+        />
+        <button type="button" className="w-paste-open" onClick={() => setPasting(!pasting)}>
+          Paste last answers…
+        </button>
+        {pasting && (
+          <PasteBox
+            report={report}
+            choices={choices}
+            whose={whose}
+            onFill={(fill) => {
+              setPasting(false);
+              onFill(fill);
+            }}
+            onClose={() => setPasting(false)}
+          />
+        )}
+        <button type="button" className="w-rail-close" onClick={onClose}>
+          Close the list
+        </button>
       </div>
       <nav className="w-rail-nav" aria-label="The walks’ screens">
-        {report.walks.map((walk) => (
-          <div key={walk.id} className="w-rail-walk">
-            <a className="w-rail-title" href={`#${walk.id}`}>
-              {walk.title.en}
-            </a>
-            {PATHS.map(([path, heading]) => {
-              const on = walk.screens.filter((screen) => screen.path === path);
-              return (
-                on.length > 0 && (
-                  <div key={path} className="w-rail-group">
-                    <p className="w-rail-path">{heading}</p>
-                    <ul>
-                      {on.map((screen) => {
-                        const id = screenId(walk, screen);
-                        return (
-                          <li key={screen.id}>
-                            <a
-                              className="w-rail-item"
-                              href={`#${id}`}
-                              aria-current={current === id ? 'location' : undefined}
-                            >
-                              <span className="w-rail-number">{screen.number}</span>
-                              <span className="w-rail-sentence">{screen.sentence.en}</span>
-                              <Marks walk={walk} screen={screen} choices={choices} />
-                            </a>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )
-              );
-            })}
-          </div>
-        ))}
+        {report.walks.map((walk) => {
+          const { id } = walk;
+          const mine = places.filter((place) => place.walk.id === id);
+          const left = mine.filter((place) => leftIn(place, choices, whose).length > 0).length;
+          return (
+            <details key={id} className="w-rail-walk" open={id === here}>
+              <summary className="w-rail-title">
+                <span>{walk.title.en}</span>
+                <span className="w-rail-left">{left === 0 ? 'done' : `${left} left`}</span>
+                <BulkRow
+                  places={mine}
+                  choices={choices}
+                  whose={whose}
+                  scope="in this walk"
+                  onBulk={onBulk}
+                  off={bulkOff}
+                />
+              </summary>
+              <ul>
+                {mine
+                  .filter((place) => shown.includes(place))
+                  .map((place) => (
+                    <li key={place.id}>
+                      <a
+                        className="w-rail-item"
+                        href={`#${place.id}`}
+                        aria-current={current === place.id ? 'location' : undefined}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onGo(place.id);
+                        }}
+                      >
+                        <span className="w-rail-number">{place.screen.number}</span>
+                        <span className="w-rail-sentence">
+                          {place.screen.sentence.en}
+                          {place.screen.path === 'wrong' && (
+                            <span className="w-rail-wrong">goes wrong</span>
+                          )}
+                        </span>
+                        <Marks
+                          walk={place.walk}
+                          screen={place.screen}
+                          choices={choices}
+                          whose={whose}
+                        />
+                      </a>
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          );
+        })}
       </nav>
     </aside>
   );

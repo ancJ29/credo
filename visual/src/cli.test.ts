@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { makeRoot } from '../tests/repo';
+import { yesTo } from './bulk';
+import { blockOf, shareOf } from './choices';
 import { answer, parseArgs, report } from './cli';
+import { HUMAN } from './marks';
+import { placesOf } from './nav';
+import type { Report } from './report';
 
 describe('pnpm report', () => {
   it('builds the page from the repository it runs in, with the screens drawn on a DOM of its own, and says where and what waits', async () => {
@@ -18,7 +23,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(72);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(92);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;
@@ -33,8 +38,8 @@ describe('pnpm report', () => {
     expect(failedSave.languages['en'].words).toContain(
       'alert: The settings were not saved. What you typed is still here: try again.',
     );
-    // Groups A and B of piece 2: their twenty-three screens drawn as scenes, none from the mock, a
-    // state for each of the forty-six (screen, language) pairs whatever the answers file holds now,
+    // Groups A, B, C and D of piece 2: their thirty-three screens drawn as scenes, none from the mock, a
+    // state for each of the sixty-six (screen, language) pairs whatever the answers file holds now,
     // and the typing and pressing done on the page as a person does them.
     const piece2 = walks.walks.slice(2);
     const screens = piece2.flatMap((walk) => walk.screens);
@@ -42,12 +47,13 @@ describe('pnpm report', () => {
       'admin-staff-setup',
       'admin-staff',
       'office-staff',
+      'phone-sign-in',
     ]);
-    expect(screens).toHaveLength(23);
+    expect(screens).toHaveLength(33);
     expect(screens.filter((screen) => 'mock' in screen)).toEqual([]);
     expect(screens.filter((screen) => !('scene' in screen))).toEqual([]);
     const asked = screens.flatMap((screen) => Object.values(screen.languages));
-    expect(asked).toHaveLength(46);
+    expect(asked).toHaveLength(66);
     const added = piece2[1].screens.find((screen) => screen.id === 'staff-3-added')!;
     expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
     expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');
@@ -199,6 +205,40 @@ describe('pnpm answers', () => {
     expect(await answer(paste, (line) => plain.push(line), { file: mine, now: NOW })).toBe(1);
     expect(readFileSync(mine, 'utf8')).toBe('{}');
     expect(plain.at(-1)).toBe('0 written to answers.json, 1 refused');
+  });
+
+  it('takes a block made by “Yes to all” with plain pnpm answers, and a Share message made by it with --partners', async () => {
+    const { worktree } = makeRoot();
+    const folder = await report(worktree, () => {});
+    const built = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report;
+    for (const walk of built.walks) {
+      for (const screen of walk.screens) {
+        for (const language of ['vi', 'en'] as const) {
+          screen.languages[language].shown = { kind: 'waiting' };
+        }
+      }
+    }
+    const { next, count } = yesTo(placesOf(built), {}, HUMAN);
+    expect(count).toBe(92);
+    const mine = FILE();
+    writeFileSync(mine, '{}');
+    const theirs = FILE();
+    writeFileSync(theirs, '{}');
+
+    expect(await answer(blockOf(built, next).text, () => {}, { file: mine, now: NOW })).toBe(0);
+    expect(
+      await answer(shareOf(built, next, 'p1').text, () => {}, {
+        file: theirs,
+        now: NOW,
+        partners: true,
+      }),
+    ).toBe(0);
+
+    const human = Object.keys(JSON.parse(readFileSync(mine, 'utf8')) as object);
+    expect(human).toHaveLength(92);
+    expect(Object.keys(JSON.parse(readFileSync(theirs, 'utf8')) as object)).toEqual(
+      human.map((key) => `${key}@p1`),
+    );
   });
 
   it('stops on an answers file that does not parse, and puts the process back', async () => {

@@ -1,5 +1,6 @@
 import {
   can,
+  type CustomField,
   type Employee,
   fieldValueShown,
   type Language,
@@ -21,9 +22,9 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useLocation, useSearchParams } from 'react-router';
 import { Loaded } from './Loaded';
 import { type PageProps, useLoad } from './page';
 import { phoneOf, unitName } from './staffNames';
@@ -34,6 +35,24 @@ const NOTHING_YET: { setup: StaffSetup; people: Employee[] } = {
   setup: { departments: [], positions: [], extra: {} },
   people: [],
 };
+
+/** The criteria less any the page cannot show. */
+function known(criteria: Criteria, setup: StaffSetup, choices: readonly CustomField[]): Criteria {
+  const has = (units: StaffSetup['departments'], id: string) =>
+    units.some((unit) => unit.id === id);
+  return {
+    ...criteria,
+    department: has(setup.departments, criteria.department) ? criteria.department : '',
+    position: has(setup.positions, criteria.position) ? criteria.position : '',
+    choices: Object.fromEntries(
+      Object.entries(criteria.choices).filter(([key, value]) =>
+        choices.some(
+          (field) => field.key === key && field.options.some((option) => option.value === value),
+        ),
+      ),
+    ),
+  };
+}
 
 /** The staff, as the BFF lists them, in code order, narrowed by what the address holds: typed words,
  * a department, a position, whether people who left show, and the company's choice fields. Names
@@ -48,18 +67,38 @@ export function StaffListPage(page: PageProps) {
     [api],
   );
   const [params, setParams] = useSearchParams();
-  const criteria = criteriaOf(params);
-  // What is typed is kept here, and the address is written once a syllable is whole: a Vietnamese
-  // letter is composed from several keystrokes, and rewriting the field mid-way would break it.
-  const [typed, setTyped] = useState(criteria.q);
-  const composing = useRef(false);
-  const narrow = (next: Partial<Criteria>) =>
-    setParams(paramsOf({ ...criteria, ...next }), { replace: true });
-
+  const { search } = useLocation();
   const { setup, people: everyone } = loaded.data ?? NOTHING_YET;
   const { fields, customFields } = staffConfig(setup);
   const columns = customFields.filter((field) => field.inList);
   const choices = columns.filter((field) => field.kind === 'choice');
+  // A criterion the page cannot show (a department or a field since removed, an option the field
+  // lacks) narrows nothing and is dropped at the next write; before the setup is read, all stand.
+  const criteria = loaded.data ? known(criteriaOf(params), setup, choices) : criteriaOf(params);
+  // What is typed is kept here, and the address is written once a syllable is whole: a Vietnamese
+  // letter is composed from several keystrokes, and rewriting the field mid-way would break it.
+  const [typed, setTyped] = useState(criteria.q);
+  const composing = useRef(false);
+  // The addresses written and not yet seen back, the last of them the newest criteria: two
+  // narrowings before the router commits each build on the one before, not on the address it shows.
+  const written = useRef<{ address: string; criteria: Criteria }[]>([]);
+  const address = params.toString();
+  useEffect(() => {
+    const mine = written.current.findLastIndex((entry) => entry.address === address);
+    if (mine >= 0) written.current.splice(0, mine + 1);
+    else {
+      // Another page, the menu or the history set the address: the box follows it.
+      written.current = [];
+      setTyped(criteriaOf(new URLSearchParams(address)).q);
+    }
+  }, [address]);
+  const narrow = (next: Partial<Criteria>) => {
+    const base = written.current.at(-1)?.criteria ?? criteria;
+    const made = { ...base, ...next };
+    const address = paramsOf(made);
+    written.current.push({ address: address.toString(), criteria: made });
+    setParams(address, { replace: true });
+  };
   // In the order the BFF answers, which is code order.
   const people = everyone.filter((person) =>
     matches(person, criteria, { setup, language, columns }),
@@ -81,14 +120,26 @@ export function StaffListPage(page: PageProps) {
     />
   );
 
+  const add = can(user, 'staff.canCreate') && (
+    <Button component={Link} to="/staff/new">
+      {t('staff.add')}
+    </Button>
+  );
+
   return (
     <Stack gap="lg">
       <Group justify="space-between">
         <Title order={2}>{t('staff.title')}</Title>
-        {can(user, 'staff.canCreate') && (
-          <Button component={Link} to="/staff/new">
-            {t('staff.add')}
-          </Button>
+        {user.root ? (
+          // The root alone imports staff, as the import page's route checks (case-table row 4).
+          <Group>
+            <Button component={Link} to="/staff/import" variant="default">
+              {t('staff.import')}
+            </Button>
+            {add}
+          </Group>
+        ) : (
+          add
         )}
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
@@ -159,7 +210,11 @@ export function StaffListPage(page: PageProps) {
                         {fields.photo && (
                           <Avatar name={person.name} color="initials" size={28} aria-hidden />
                         )}
-                        <Anchor component={Link} to={`/staff/${person.id}`}>
+                        <Anchor
+                          component={Link}
+                          to={`/staff/${person.id}`}
+                          state={{ list: search }}
+                        >
                           {person.name}
                         </Anchor>
                         {person.archived && <Badge color="gray">{t('staff.left')}</Badge>}

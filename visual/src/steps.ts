@@ -55,6 +55,14 @@ function target(
       kind: 'field',
     };
   }
+  if ('attach' in step) {
+    return {
+      selector: 'input[type=file]',
+      name: wordsFor(dictionary, step.attach),
+      within: undefined,
+      kind: 'file field',
+    };
+  }
   return {
     selector: 'select',
     name: wordsFor(dictionary, step.choose),
@@ -93,6 +101,12 @@ function setValue(element: HTMLInputElement | HTMLSelectElement, value: string) 
   );
 }
 
+/** Puts a file in a file field as choosing it does: the field's files, then its `change`. */
+function attach(element: HTMLInputElement, file: File) {
+  Object.defineProperty(element, 'files', { value: [file], configurable: true });
+  element.dispatchEvent(new element.ownerDocument.defaultView!.Event('change', { bubbles: true }));
+}
+
 /** Waits until the page has gone `stillFor` ms with no change, or `stillAtMost` in all. */
 async function stillPage(body: HTMLElement, { stillFor, stillAtMost }: Limits) {
   const view = body.ownerDocument.defaultView!;
@@ -115,12 +129,15 @@ async function stillPage(body: HTMLElement, { stillFor, stillAtMost }: Limits) {
  * app booted. A step that finds nothing within `findFor` ms throws a `StepError` naming it.
  *
  * @param dictionary the words of the language the scene is drawn in
+ * @param files the data set's staff file a step attaches, by its name, in that language
  */
 export async function runSteps(
   body: HTMLElement,
   steps: readonly Step[],
   dictionary: unknown,
   limits: Limits = LIMITS,
+  files: (which: 'import' | 'import-no-name') => Promise<File> = () =>
+    Promise.reject(new Error('no file to attach')),
 ) {
   await stillPage(body, limits);
   for (const [index, step] of steps.entries()) {
@@ -140,6 +157,7 @@ export async function runSteps(
     if (!element) throw fail(`found no ${aim.kind} named “${aim.name}”`);
     if ('press' in step) element.click();
     else if ('fill' in step) setValue(element as HTMLInputElement, step.text);
+    else if ('attach' in step) attach(element as HTMLInputElement, await files(step.file));
     else {
       const option = [...(element as HTMLSelectElement).options].find(
         (candidate) => squash(candidate.text) === step.option,

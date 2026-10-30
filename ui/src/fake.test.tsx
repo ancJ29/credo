@@ -1,15 +1,18 @@
 import {
   addEmployeeReplySchema,
+  importEmployeesReplySchema,
   configDocSchema,
   createClientReplySchema,
   employeeDocSchema,
   employeeListReplySchema,
+  issueQrReplySchema,
   meReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   photoReplySchema,
   sessionReplySchema,
   setPasswordReplySchema,
+  staffConfig,
   staffSetupDocSchema,
 } from '@credo/shared';
 import {
@@ -17,7 +20,9 @@ import {
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
+  DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
+  DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 import { screen } from '@testing-library/react';
@@ -39,10 +44,11 @@ const memory = (initial: Record<string, string> = {}) => {
 };
 
 /** A fake whose device holds the handles `held` names. */
-const fake = (cue = '', held: { client?: string; operator?: string } = {}) =>
+const fake = (cue = '', held: { client?: string; operator?: string } = {}, signIns = false) =>
   createFakeApi({
     device: { authId: () => held.client ?? null, operatorAuthId: () => held.operator ?? null },
     cue: parseCue(cue || null),
+    signIns,
   });
 
 const DEMO_PHOTO = Object.values(DEMO_PHOTOS)[0];
@@ -96,6 +102,11 @@ describe('the fake Api', () => {
     parses('getEmployee', employeeDocSchema, await api.getEmployee(id));
     const added = await api.addEmployee({ name: 'Mới', code: 'new-1', extra: {} });
     parses('addEmployee', addEmployeeReplySchema, added.kind === 'added' ? added.reply : null);
+    parses(
+      'importEmployees',
+      importEmployeesReplySchema,
+      await api.importEmployees([{ name: 'Nhập', extra: {} }]),
+    );
     const read = await api.getEmployee(id);
     const saved = await api.saveEmployee(id, {
       version: read.version,
@@ -119,6 +130,23 @@ describe('the fake Api', () => {
       code: 'moi-1',
     });
     parses('changeCode', employeeDocSchema, coded.kind === 'changed' ? coded.doc : null);
+    // the company has turned on the email and the QR code
+    const on = fake('', { client: 'fake.session' }, true);
+    const onDoc = await on.getEmployee(id);
+    const emailed = await on.setEmail(id, {
+      version: onDoc.version,
+      email: 'Hung@Minh-Phat.Example',
+    });
+    parses('setEmail', employeeDocSchema, emailed.kind === 'set' ? emailed.doc : null);
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+    parses('signInQr', sessionReplySchema, await on.signInQr(bao.id, DEMO_QR_SECRET));
+    parses('issueQr', issueQrReplySchema, await on.issueQr(id));
+    const changed = await on.changePassword('Old-password-1!', 'New-password-2@');
+    parses(
+      'changePassword',
+      sessionReplySchema,
+      changed.kind === 'changed' ? changed.session : null,
+    );
     const savedConfig = await api.saveConfig(DEMO_CONFIG, 'v1');
     parses('saveConfig', configDocSchema, savedConfig.kind === 'saved' ? savedConfig.doc : null);
     const made = await api.makeClient('another-one', 'Another One');
@@ -138,9 +166,14 @@ describe('the fake Api', () => {
         'listEmployees',
         'getEmployee',
         'addEmployee',
+        'importEmployees',
         'saveEmployee',
         'setPassword',
         'changeCode',
+        'setEmail',
+        'issueQr',
+        'signInQr',
+        'changePassword',
         'getPhoto',
         'savePhoto',
         'archiveEmployee',
@@ -150,6 +183,160 @@ describe('the fake Api', () => {
         'operatorSignOut',
       ].sort(),
     );
+  });
+
+  it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const hung = DEMO_EMPLOYEES[1];
+    const read = await api.getEmployee(hung.id);
+    await api.setEmail(hung.id, { version: read.version, email: 'hung@minh-phat.example' });
+    const switchEmail = async (email: boolean) => {
+      const held = await api.getStaffSetup();
+      const saved = await api.saveStaffSetup(
+        { ...held.setup, fields: { ...staffConfig(held.setup).fields, email } },
+        held.version,
+      );
+      expect(saved.kind).toBe('saved');
+    };
+
+    await switchEmail(false);
+    expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
+    expect((await api.signIn(hung.code, 'pw')).user.name).toBe(hung.name);
+    expect((await api.getEmployee(hung.id)).employee.email).toBe('hung@minh-phat.example');
+    // The email is set only while the company has the sign-in on, as the BFF has it: a 403.
+    const held = await api.getEmployee(hung.id);
+    expect(await status(api.setEmail(hung.id, { version: held.version, email: null }))).toBe(403);
+    expect((await api.getEmployee(hung.id)).employee.email).toBe('hung@minh-phat.example');
+    await switchEmail(true);
+    expect((await api.signIn('hung@minh-phat.example', 'pw')).user.name).toBe(hung.name);
+  });
+
+  it('C: A person given an email signs in with it or with the code, in any case, until it is taken back, and a second person’s same email is refused', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const [lan, hung] = [DEMO_EMPLOYEES[0], DEMO_EMPLOYEES[1]];
+    const read = await api.getEmployee(hung.id);
+
+    const given = await api.setEmail(hung.id, {
+      version: read.version,
+      email: ' Hung@Minh-Phat.Example ',
+    });
+    expect(given.kind === 'set' && given.doc.employee.email).toBe('hung@minh-phat.example');
+    expect((await api.signIn('HUNG@minh-phat.example', 'pw')).user.name).toBe(hung.name);
+    expect((await api.signIn(hung.code, 'pw')).user.name).toBe(hung.name);
+
+    // a second person's same email is a taken email; the version moved is a conflict
+    const lanRead = await api.getEmployee(lan.id);
+    expect(
+      await api.setEmail(lan.id, { version: lanRead.version, email: 'hung@minh-phat.example' }),
+    ).toEqual({ kind: 'taken' });
+    expect(await api.setEmail(lan.id, { version: 'e99', email: 'lan@minh-phat.example' })).toEqual({
+      kind: 'conflict',
+    });
+    expect(await status(api.setEmail('missing', { version: 'e1', email: null }))).toBe(404);
+    // the cue makes the save a conflict once
+    const cued = fake('setEmail:409', { client: 'fake.session' }, true);
+    expect(await cued.setEmail(lan.id, { version: lanRead.version, email: null })).toEqual({
+      kind: 'conflict',
+    });
+
+    // the person's own email is not taken against themselves; taking it back signs it out
+    const same = given.kind === 'set' ? given.doc : null;
+    const again = await api.setEmail(hung.id, {
+      version: same!.version,
+      email: 'hung@minh-phat.example',
+    });
+    expect(again.kind).toBe('set');
+    const removed = await api.setEmail(hung.id, {
+      version: again.kind === 'set' ? again.doc.version : '',
+      email: null,
+    });
+    expect(removed.kind === 'set' && removed.doc.employee.email).toBeUndefined();
+    expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
+
+    // someone who left, or who was given no password yet, does not sign in by email either
+    const noPassword = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0007')!;
+    const noRead = await api.getEmployee(noPassword.id);
+    await api.setEmail(noPassword.id, { version: noRead.version, email: 'anh@minh-phat.example' });
+    expect(await status(api.signIn('anh@minh-phat.example', 'pw'))).toBe(401);
+    const left = DEMO_EMPLOYEES.find((person) => person.archived)!;
+    const leftRead = await api.getEmployee(left.id);
+    await api.setEmail(left.id, { version: leftRead.version, email: 'huy@minh-phat.example' });
+    expect(await status(api.signIn('huy@minh-phat.example', 'pw'))).toBe(401);
+  });
+
+  it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+    const first = await fake('', { client: 'fake.session' }, true).issueQr(bao.id);
+    const second = await fake('', { client: 'fake.session' }, true).issueQr(bao.id);
+
+    expect(second.link).toBe(first.link);
+  });
+
+  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company with the QR sign-in off shows and accepts none', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+
+    // the data set holds one for the phone's walk, and spending it uses it up
+    expect((await api.signInQr(bao.id, DEMO_QR_SECRET)).user.name).toBe(bao.name);
+    expect(await status(api.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+
+    const first = await api.issueQr(bao.id);
+    const second = await api.issueQr(bao.id);
+    const secretOf = (link: string) => link.split('.').pop()!;
+    expect(first.link).toBe(`/login?client-code=${DEMO_CODE}&qr=${bao.id}.${secretOf(first.link)}`);
+    expect(second.expiresAt - Date.now()).toBeGreaterThan(14 * 60_000);
+    expect(second.expiresAt - Date.now()).toBeLessThanOrEqual(15 * 60_000);
+    expect(await status(api.signInQr(bao.id, secretOf(first.link)))).toBe(401);
+    expect((await api.signInQr(bao.id, secretOf(second.link))).authId).toBe(
+      `fake.session.${bao.id}`,
+    );
+    expect(await status(api.signInQr(bao.id, secretOf(second.link)))).toBe(401);
+    expect(await status(api.signInQr('missing', secretOf(second.link)))).toBe(401);
+    expect(await status(api.issueQr('missing'))).toBe(404);
+
+    // someone who left is refused whatever the code says
+    const left = DEMO_EMPLOYEES.find((person) => person.archived)!;
+    const issued = await api.issueQr(left.id);
+    const archivedRead = await api.getEmployee(left.id);
+    expect(archivedRead.employee.archived).toBe(true);
+    expect(await status(api.signInQr(left.id, secretOf(issued.link)))).toBe(401);
+
+    // the data set turns the QR sign-in off: nothing is shown, and nothing signs in
+    const off = fake('', { client: 'fake.session' });
+    expect(await status(off.issueQr(bao.id))).toBe(403);
+    expect(await status(off.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+  });
+
+  it('C: Anyone signed in changes their own password, a wrong current one is said and not an error, and a password off the rule is a 400', async () => {
+    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    const changed = await staff.changePassword('Old-password-1!', 'New-password-2@');
+
+    expect(changed.kind === 'changed' && changed.session.user.name).toBe(DEMO_EMPLOYEES[0]?.name);
+    expect(changed.kind === 'changed' && changed.session.authId).toBe(
+      `fake.session.${DEMO_EMPLOYEES[0]?.id}`,
+    );
+    const root = fake('', { client: 'fake.session' });
+    const rootChanged = await root.changePassword('Old-password-1!', 'New-password-2@');
+    expect(rootChanged.kind === 'changed' && rootChanged.session.user.root).toBe(true);
+    expect(await status(root.changePassword('Old-password-1!', 'weak'))).toBe(400);
+    expect(await status(fake().changePassword('Old-password-1!', 'New-password-2@'))).toBe(401);
+
+    // the cue makes the current password wrong, once
+    const cued = fake('changePassword:403', { client: 'fake.session' });
+    expect(await cued.changePassword('x', 'New-password-2@')).toEqual({ kind: 'wrong' });
+    expect((await cued.changePassword('x', 'New-password-2@')).kind).toBe('changed');
+  });
+
+  it('C: `&sign-ins` on the address has the company use the email and the QR sign-ins', async () => {
+    const { api } = fakeParts('?fake&sign-ins', memory())!;
+    const { setup } = await api.getStaffSetup();
+    expect(setup.fields).toMatchObject({ email: true, qr: true });
+
+    const { api: plain } = fakeParts('?fake', memory())!;
+    expect((await plain.getStaffSetup()).setup.fields).toEqual({
+      personalPhone: true,
+      photo: true,
+    });
   });
 
   it('The demo company answers as its data set holds it, and a save moves its version', async () => {
@@ -316,6 +503,53 @@ describe('the fake Api’s staff', () => {
   });
 });
 
+describe('the fake Api’s import', () => {
+  it('The rows that hold are added as people without a sign-in, each through the same add as one by hand: a code left empty is numbered past every code given, one taken is refused, and the cue fails the call whole', async () => {
+    const api = fake('', { client: 'fake.session' });
+    const { results } = await api.importEmployees([
+      { name: 'Một', extra: { phone: '0900' } },
+      { name: 'Hai', code: 'nv-7', extra: {}, departmentId: DEMO_STAFF_SETUP.departments[0]?.id },
+      { name: 'Ba', code: 'emp-0002', extra: {} },
+      { name: 'Bốn', extra: {} },
+    ]);
+
+    expect(results.map((result) => result.kind)).toEqual(['added', 'added', 'refused', 'added']);
+    expect(results[2]).toEqual({ kind: 'refused', reason: 'taken' });
+    const added = results.flatMap((result) => (result.kind === 'added' ? [result.employee] : []));
+    expect(added.map((person) => person.code)).toEqual(['EMP-0009', 'NV-7', 'EMP-0010']);
+    expect(added[1]?.department?.name).toBe('Kho');
+    for (const person of added) {
+      expect((await api.getEmployee(person.id)).signIn.ready, person.code).toBe(false);
+    }
+    expect((await api.listEmployees()).map((person) => person.code)).toContain('NV-7');
+
+    const failing = fake('importEmployees:503', { client: 'fake.session' });
+    expect(await status(failing.importEmployees([{ name: 'Một', extra: {} }]))).toBe(503);
+    expect(await failing.listEmployees()).toHaveLength(DEMO_EMPLOYEES.length);
+  });
+});
+
+describe('the fake Api’s import, a row the system is busy on', () => {
+  it('A row whose add fails with a 503 is its own result, busy, and the call goes on to the next row; any other failure fails the call', async () => {
+    const api = fake('addEmployee:503', { client: 'fake.session' });
+    const reply = await api.importEmployees([
+      { name: 'Một', code: 'nv-1', extra: {} },
+      { name: 'Hai', code: 'nv-2', extra: {} },
+    ]);
+
+    expect(
+      reply.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
+    ).toEqual(['busy', 'added']);
+    expect((await api.listEmployees()).map((person) => person.code)).toEqual(
+      expect.arrayContaining(['NV-2']),
+    );
+    expect((await api.listEmployees()).map((person) => person.code)).not.toContain('NV-1');
+
+    const forbidden = fake('addEmployee:403', { client: 'fake.session' });
+    expect(await status(forbidden.importEmployees([{ name: 'Một', extra: {} }]))).toBe(403);
+  });
+});
+
 describe('the fake Api’s record and list', () => {
   const [, hung, chau, , , , , left] = DEMO_EMPLOYEES;
 
@@ -378,8 +612,10 @@ describe('the fake Api’s record and list', () => {
     // the data set holds one photo, the others have none yet
     expect(await api.getPhoto(chau?.id ?? '')).toEqual({ photo, version: 'p1' });
     expect(await api.getPhoto(hung?.id ?? '')).toEqual({ photo: null, version: '' });
+    // a conflict carries the photo as it is now, for the page to take
     expect(await api.savePhoto(hung?.id ?? '', { photo, version: 'p1' })).toEqual({
       kind: 'conflict',
+      current: { photo: null, version: '' },
     });
     expect(await api.savePhoto(hung?.id ?? '', { photo, version: '' })).toEqual({
       kind: 'saved',
@@ -393,7 +629,7 @@ describe('the fake Api’s record and list', () => {
     expect(await status(api.savePhoto('missing', { photo, version: '' }))).toBe(404);
   });
 
-  it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them has none', async () => {
+  it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them keeps the stored ones, as the BFF does', async () => {
     const api = fake();
     const { setup, version } = await api.getStaffSetup();
     expect(setup.fields).toEqual({ personalPhone: true, photo: true });
@@ -415,6 +651,9 @@ describe('the fake Api’s record and list', () => {
     expect(bare.kind === 'saved' && bare.doc.setup).toEqual({
       departments: [],
       positions: [],
+      fields: changed.fields,
+      customFields: changed.customFields,
+      numbering: changed.numbering,
       extra: {},
     });
   });

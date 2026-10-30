@@ -56,6 +56,10 @@ export const customFieldsSchema = z
 export const staffFieldsSchema = z.strictObject({
   personalPhone: z.boolean().default(false),
   photo: z.boolean().default(false),
+  /** The email is a second sign-in name; the QR switch lets the root show a person a QR code.
+   * Both are absent from a setup saved before they existed, and read as off. */
+  email: z.boolean().optional(),
+  qr: z.boolean().optional(),
 });
 export type StaffFields = z.output<typeof staffFieldsSchema>;
 
@@ -78,6 +82,13 @@ export function nextCode({ prefix, digits }: Numbering, codes: Iterable<string>)
   for (const code of codes) highest = Math.max(highest, Number(mine.exec(code)?.[1] ?? 0));
   return `${prefix}${String(highest + 1).padStart(digits, '0')}`;
 }
+
+/** The last number given under each prefix, kept so that a number freed by a code change is never
+ * given again. */
+export const storedNumberingSchema = z.strictObject({
+  given: z.record(z.string(), z.number().int().min(0)),
+});
+export type StoredNumbering = z.output<typeof storedNumberingSchema>;
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const NUMBER = /^-?\d+([.,]\d+)?$/;

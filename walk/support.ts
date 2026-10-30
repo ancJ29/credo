@@ -1,4 +1,3 @@
-import { join } from 'node:path';
 import { type Language } from '@credo/shared';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
@@ -13,10 +12,11 @@ export const required = (name: string, how = 'run this through `pnpm stack -- �
 
 /** The pointer is parked in the corner first: a button under it is drawn hovered, and which one
  * depends on where the last click left it. `mask` paints over what differs on every run, such as
- * a password made for the walk. The `fake` project only takes the picture, into `CREDO_FAKE_DIR`:
- * its pictures are what the full run is compared with, never bases, so nothing is compared. With
- * `CREDO_REFERENCE_DIR` set (the config then points the base images at that folder) a screen that
- * differs is a soft failure, so one walk names every screen that differs, not only the first. */
+ * a password made for the walk. There is one way of taking pictures, the settled one the bases are
+ * written by (two equal shots in a row), and it is not a retry. The `fake` project takes them into
+ * `CREDO_FAKE_DIR` (the config points the base images there), and its pictures are what the full
+ * run is compared with, never bases. With `CREDO_REFERENCE_DIR` set (the config then points the
+ * base images at that folder) a screen that differs is a soft failure, so one walk names every screen that differs, not only the first. */
 export async function shot(
   page: Page,
   screen: string,
@@ -27,16 +27,8 @@ export async function shot(
   await page.mouse.move(0, 0);
   const name = `${screen}-${language}-${width}.png`;
   if (test.info().project.name === 'fake') {
-    await page.screenshot({
-      path: join(
-        required('CREDO_FAKE_DIR', 'the fake run’s script gives it the folder for the pictures'),
-        name,
-      ),
-      fullPage: true,
-      mask,
-      animations: 'disabled',
-      caret: 'hide',
-    });
+    required('CREDO_FAKE_DIR', 'the fake run’s script gives it the folder for the pictures');
+    await expect(page).toHaveScreenshot(name, { fullPage: true, mask });
     return;
   }
   if (process.env['CREDO_REFERENCE_DIR']) {

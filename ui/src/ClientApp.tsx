@@ -4,20 +4,25 @@ import {
   type ConfigDoc,
   type Language,
   normaliseClientCode,
+  parseQr,
+  type SessionReply,
   type UserView,
 } from '@credo/shared';
-import { type ReactElement, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router';
+import { type ReactElement, useEffect, useRef, useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AddPersonPage } from './AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import type { DeviceStore } from './device';
+import { ImportPage } from './ImportPage';
 import { type PageProps } from './page';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
 import { mayOpen, type Page, pagesOf } from './nav';
 import { Notice } from './Notice';
+import { OwnPasswordPage } from './OwnPasswordPage';
+import { QrLanding } from './QrLanding';
 import { SettingsPage } from './SettingsPage';
 import { Shell } from './Shell';
 import { StaffListPage } from './StaffListPage';
@@ -91,6 +96,12 @@ export function ClientApp({ api, device, test, look }: Props) {
   /** What the address named when the app opened; the sign-in's own navigation does not change it. */
   const { search } = useLocation();
   const [linked] = useState(() => linkedCode(search));
+  /** The QR code the address carried when the app opened: it signs this device in once the
+   * settings are known, and the address is then cleared of it. */
+  const [qr] = useState(() => parseQr(new URLSearchParams(search).get('qr')));
+  const [qrStatus, setQrStatus] = useState<'waiting' | 'refused' | 'done'>(qr ? 'waiting' : 'done');
+  const qrAsked = useRef(false);
+  const navigate = useNavigate();
 
   const [attempt, setAttempt] = useState(0);
 
@@ -104,6 +115,27 @@ export function ClientApp({ api, device, test, look }: Props) {
     });
     // A retry runs the boot again; nothing else does.
   }, [api, device, linked, attempt]);
+
+  useEffect(() => {
+    if (!doc || !qr || qrAsked.current) return;
+    qrAsked.current = true;
+    void api.signInQr(qr.id, qr.secret).then(
+      (session) => {
+        device.setAuthId(session.authId);
+        setUser(session.user);
+        setQrStatus('done');
+        // The code is spent: the address is cleared of it, and the first page opens.
+        void navigate('/', { replace: true });
+      },
+      (error: unknown) => {
+        if (error instanceof ApiError && error.status === SIGNED_OUT) return setQrStatus('refused');
+        // Not a refusal of the code: the service is unavailable, and a retry asks again.
+        qrAsked.current = false;
+        setDoc(null);
+        setPhase('unavailable');
+      },
+    );
+  }, [api, device, doc, qr, navigate]);
 
   const retry = () => {
     // A sign-in that failed on the service left its status busy: the form it returns to is idle.
@@ -166,11 +198,21 @@ export function ClientApp({ api, device, test, look }: Props) {
     signedOut();
   }
 
+  /** The session that replaces the one held, when one's own password changed. */
+  const replaced = (session: SessionReply) => {
+    device.setAuthId(session.authId);
+    setUser(session.user);
+  };
+
   const pages = user ? pagesOf(user) : [];
   const first = pages[0];
   /** A page by its address opens only for someone whose menu lists it; else the 403 page. */
   const guarded = (who: UserView, id: Page['id'], page: ReactElement) =>
     mayOpen(who, id) ? page : <Notice kind="forbidden" />;
+  /** One's own password is the one page every signed-in person has, whatever else they may open. */
+  const ownPassword = (who: UserView) => (
+    <Route path="/password" element={<OwnPasswordPage {...pageFor(who)} onSession={replaced} />} />
+  );
   const pageFor = (who: UserView): PageProps => ({
     api,
     user: who,
@@ -178,13 +220,25 @@ export function ClientApp({ api, device, test, look }: Props) {
     onForbidden: () => void readAgain(),
   });
 
+  const landing = !user && qr !== null && qrStatus !== 'done';
+
   return (
     <Providers colour={config.colour} language={language} test={test} {...look}>
-      {user ? (
+      {landing ? (
+        <QrLanding
+          brand={config}
+          status={qrStatus === 'refused' ? 'refused' : 'busy'}
+          onPassword={() => {
+            setQrStatus('done');
+            void navigate('/', { replace: true });
+          }}
+        />
+      ) : user ? (
         <Shell
           brand={config}
           user={user.name}
           pages={pages}
+          passwordPath="/password"
           languages={config.languages}
           onLanguage={(next) => {
             device.setLanguage(next);
@@ -194,12 +248,19 @@ export function ClientApp({ api, device, test, look }: Props) {
         >
           {first ? (
             <Routes>
+              {ownPassword(user)}
               <Route
                 path="/settings"
                 element={guarded(
                   user,
                   'settings',
-                  <SettingsPage api={api} doc={doc} onDoc={setDoc} onSignedOut={signedOut} />,
+                  <SettingsPage
+                    api={api}
+                    doc={doc}
+                    onDoc={setDoc}
+                    onSignedOut={signedOut}
+                    onForbidden={() => void readAgain()}
+                  />,
                 )}
               />
               <Route
@@ -217,6 +278,13 @@ export function ClientApp({ api, device, test, look }: Props) {
                 }
               />
               <Route
+                path="/staff/import"
+                element={
+                  // Only the root imports staff (case-table row 4): no permission allows it.
+                  user.root ? <ImportPage {...pageFor(user)} /> : <Notice kind="forbidden" />
+                }
+              />
+              <Route
                 path="/staff/:id"
                 element={guarded(user, 'staff', <PersonPage {...pageFor(user)} />)}
               />
@@ -227,7 +295,10 @@ export function ClientApp({ api, device, test, look }: Props) {
               <Route path="*" element={<Navigate to={first.path} replace />} />
             </Routes>
           ) : (
-            <Notice kind="nothing" />
+            <Routes>
+              {ownPassword(user)}
+              <Route path="*" element={<Notice kind="nothing" />} />
+            </Routes>
           )}
         </Shell>
       ) : (

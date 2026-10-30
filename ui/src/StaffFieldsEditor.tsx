@@ -39,7 +39,7 @@ type OwnDraft = {
 /** What the person's fields, the company's own fields and the numbering are while being edited:
  * every input as typed. */
 export type FieldsDraft = {
-  fields: StaffFields;
+  fields: Required<StaffFields>;
   own: OwnDraft[];
   prefix: string;
   digits: string;
@@ -142,6 +142,29 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
           checked={draft.fields.photo}
           onChange={(event) =>
             change({ fields: { ...draft.fields, photo: event.currentTarget.checked } })
+          }
+        />
+      </Stack>
+
+      <Stack gap="sm">
+        <div>
+          <Title order={3}>{t('setup.signInsTitle')}</Title>
+          <Text c="dimmed" size="sm">
+            {t('setup.signInsIntro')}
+          </Text>
+        </div>
+        <Checkbox
+          label={t('setup.fieldEmail')}
+          checked={draft.fields.email}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, email: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldQr')}
+          checked={draft.fields.qr}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, qr: event.currentTarget.checked } })
           }
         />
       </Stack>

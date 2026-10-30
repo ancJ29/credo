@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    // The tests build the UI in this process, and a build under `test` ships React's development
+    // build, a third larger: past the bundle warning's 1000 kB, where the real build is about 700.
+    env: { NODE_ENV: 'production' },
     // The stack tests build and start the whole product, and wait for it to answer.
     testTimeout: 120_000,
     hookTimeout: 120_000,
