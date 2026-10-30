@@ -171,6 +171,19 @@ test, which asserted the saved file before the lazily loaded libraries had loade
 file took 32079 ms): the load was 4.58 at the start and 15.55 at the end, with a second agent testing in another worktree, and the
 `scripts` package was killed by that first failure. This is the same test as in run 2 above; it is load, and still unexplained.
 
+Cause found for the `StaffRecord.test.tsx` reds (main merge, 2026-10-30). The first test typed 28 characters one key at a time with
+`userEvent.type`: each key draws the whole staff editor (30 to 45 ms a key at a load of 4) and waits a turn of the event loop, so the
+test took 1667 ms alone (`ui/src/StaffRecord.test.tsx#L310`) and a loaded machine stretched it past 5 s. The second test's "Saved."
+miss is not its own: a test that times out keeps running its remaining keystrokes, and they land in the next test's page (seen by
+running the file with `--testTimeout=1000`: the second test then read `['ĐBỏ2 cl', …]`, the first test's `Đ` among its own keys). A
+longer `findBy` would hide that; its default stands. The change: those two tests put text in with a helper `enter` (a click, then
+`user.paste`), one draw per field; their rules are unchanged, and each mutation of the rule they hold (no refusal of invalid
+fields, an option's English name saved as its Vietnamese one, an option's value lost, a removed field kept) is red from its
+assertion. Alone, at a load of 3 to 5: the first test 1667 ms to 937 ms, the second 838 ms to 552 ms. Left open: the 1.0 to 1.4 s stories
+named `SLOW` (a 20 s timeout, in this file and in `StaffSetupPage.test.tsx`) hold the same typing and the same hidden cause; a
+longer timeout is what qa.md rule 6 rejects, so they should be made cheap the same way and `SLOW` removed. The `SignIns.test.tsx`
+and `cli.test.ts` reds above were not looked at here, so the item stays open.
+
 ## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
 
 Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by

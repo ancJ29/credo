@@ -19,6 +19,15 @@ const at = (code: string) => `/staff/${person(code).id}`;
 /** The staff setup page's last field editor: the one a click on "Add a field" just made. */
 const lastOf = (label: string | RegExp) => screen.getAllByLabelText(label).at(-1) as HTMLElement;
 
+/** Text put into a field in one step: the field is clicked and the text pasted, so the page draws
+ * once for the whole text and not once per character. `userEvent.type` costs a draw of the whole
+ * editor and a wait on the event loop for each key, which a loaded machine stretches past the
+ * test's limit; a case here that is not about keystrokes pastes. */
+const enter = async (field: HTMLElement, text: string) => {
+  await userEvent.click(field);
+  await userEvent.paste(text);
+};
+
 /** Three long stories (dozens of keystrokes on Mantine's inputs, then a save and a re-read) take
  * 1 to 1.4 s alone and over 5 s in a whole `pnpm check` with other worktrees' gates running: named
  * slow here, one by one, while the default timeout stands for every other test. */
@@ -309,24 +318,24 @@ describe('the company’s own fields', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
 
     // the same key as another
-    await userEvent.type(lastOf(/^Key/), 'plate');
-    await userEvent.type(lastOf(/^Name in Vietnamese/), 'Biển');
-    await userEvent.type(lastOf(/^Name in English/), 'Plate');
+    await enter(lastOf(/^Key/), 'plate');
+    await enter(lastOf(/^Name in Vietnamese/), 'Biển');
+    await enter(lastOf(/^Name in English/), 'Plate');
     await save();
     expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
 
     // a choice with an option, then without
     await userEvent.clear(lastOf(/^Key/));
-    await userEvent.type(lastOf(/^Key/), 'colour');
+    await enter(lastOf(/^Key/), 'colour');
     await userEvent.selectOptions(lastOf('Kind'), 'A choice from a list');
     await save();
     expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
     await userEvent.click(
       screen.getAllByRole('button', { name: 'Add an option' }).at(-1) as HTMLElement,
     );
-    await userEvent.type(lastOf('Option key'), 'red');
-    await userEvent.type(lastOf('Option in Vietnamese'), 'Đỏ');
-    await userEvent.type(lastOf('Option in English'), 'Red');
+    await enter(lastOf('Option key'), 'red');
+    await enter(lastOf('Option in Vietnamese'), 'Đỏ');
+    await enter(lastOf('Option in English'), 'Red');
     expect(api.saveStaffSetup).not.toHaveBeenCalled();
     await save();
     await screen.findByText('Saved.');
@@ -346,7 +355,7 @@ describe('the company’s own fields', () => {
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
 
     await userEvent.clear(screen.getAllByLabelText('Option in English')[0]);
-    await userEvent.type(screen.getAllByLabelText('Option in English')[0], 'B2 class');
+    await enter(screen.getAllByLabelText('Option in English')[0], 'B2 class');
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText('Saved.');
     const licence = (await api.getStaffSetup()).setup.customFields?.[0];
