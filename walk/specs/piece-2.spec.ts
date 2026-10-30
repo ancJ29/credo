@@ -58,19 +58,26 @@ async function signedIn(page: Page, client: Seeded, as?: string) {
   return ((await reply.json()) as { authId: string }).authId;
 }
 
+/** The init script of each page's latest opening, to be removed by the next. */
+const setups = new WeakMap<Page, Awaited<ReturnType<Page['addInitScript']>>>();
+
 /** Opens a screen. On the fake: the address with `?fake`, the cue and the sign-in switches. On the
  * stack: a client of its own with those switches saved through the real API, the language and the
  * person's handle kept on the device (none for a phone that is signed out), and the address as it is. */
 async function open(page: Page, language: Language, opening: Opening) {
   const { as, cue, signIns, out } = opening;
+  // Only this opening's setup may run: an earlier one would run again on every navigation, in no set order.
+  await setups.get(page)?.dispose();
   if (!FULL()) {
-    await page.addInitScript(
+    const setup = await page.addInitScript(
       ([chosen, handle]) => {
         sessionStorage.setItem('credo.language', chosen);
         if (handle) sessionStorage.setItem('credo.session', handle);
+        else sessionStorage.removeItem('credo.session');
       },
       [language, out ? '' : handleOf(as)],
     );
+    setups.set(page, setup);
     const path = typeof opening.path === 'string' ? opening.path : await opening.path(null);
     const glue = path.includes('?') ? '&' : '?';
     await page.goto(`${path}${glue}fake${cue ? `&cue=${cue}` : ''}${signIns ? '&sign-ins' : ''}`);
@@ -79,14 +86,16 @@ async function open(page: Page, language: Language, opening: Opening) {
   const client = await seed();
   if (signIns) await switchSignInsOn(page, client);
   const handle = out ? '' : await signedIn(page, client, as);
-  await page.addInitScript(
+  const setup = await page.addInitScript(
     ([chosen, code, kept]) => {
       localStorage.setItem('credo.language', chosen);
       localStorage.setItem('credo.client', code);
       if (kept) localStorage.setItem('credo.session', kept);
+      else localStorage.removeItem('credo.session');
     },
     [language, client.code, handle],
   );
+  setups.set(page, setup);
   await page.goto(typeof opening.path === 'string' ? opening.path : await opening.path(client));
   return client;
 }
@@ -473,6 +482,7 @@ async function walk(page: Page, language: Language, width: number) {
   // The phone's walk: a QR code opened on a phone that is signed out.
   await open(page, language, { path: qrAddress(page, false), out: true, signIns: true });
   await expect(title(words.staff.title)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Phạm Quốc Bảo', exact: true })).toBeVisible();
   await at('phone-1-signed-in');
 
   await open(page, language, { path: qrAddress(page, true), out: true, signIns: true });
