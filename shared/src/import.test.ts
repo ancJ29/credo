@@ -5,6 +5,7 @@ import {
   IMPORT_MAX_BYTES,
   IMPORT_MAX_ROWS,
   IMPORT_ROUTE,
+  importCallSchema,
   importEmployeesReplySchema,
   importEmployeesRequestSchema,
 } from './import';
@@ -22,6 +23,14 @@ describe('the import’s contract', () => {
     expect(importEmployeesRequestSchema.safeParse(rows(100)).success).toBe(true);
     expect(importEmployeesRequestSchema.safeParse(rows(101)).success).toBe(false);
     expect(importEmployeesRequestSchema.safeParse(rows(0)).success).toBe(false);
+  });
+
+  it('A call is read first as one to a call’s rows of anything, so a row the add refuses is that row’s result and not the call’s refusal', () => {
+    const call = (rows: unknown[]) => importCallSchema.safeParse({ rows }).success;
+    expect(call(Array.from({ length: IMPORT_CALL_ROWS }, () => 'not a row'))).toBe(true);
+    expect(call(Array.from({ length: IMPORT_CALL_ROWS + 1 }, () => row))).toBe(false);
+    expect(call([])).toBe(false);
+    expect(importCallSchema.safeParse({ rows: [row], other: 1 }).success).toBe(false);
   });
 
   it('Each row is checked as one add: a row the add refuses is refused here', () => {

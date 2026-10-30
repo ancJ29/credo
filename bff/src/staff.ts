@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  type AddEmployeeRequest,
   addEmployeeRequestSchema,
   archiveEmployeeRequestSchema,
   changeCodeRequestSchema,
@@ -12,6 +13,9 @@ import {
   type EmployeeDoc,
   employeeRoutes,
   employeeSchema,
+  IMPORT_ROUTE,
+  importCallSchema,
+  type ImportResult,
   keptSetupParts,
   normaliseEmployeeCode,
   nextCode,
@@ -270,20 +274,26 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     throw new HttpError(503, 'Service unavailable');
   }
 
-  app.post(ROUTES.employees, forClient, async (request, reply) => {
-    const who = await signedIn(request);
-    mustCan(who, 'staff.canCreate');
-    const body = parse(addEmployeeRequestSchema, request.body);
+  /** One person added, as the add by hand and each row of the import do it: the checks, the
+   * numbering, the sign-in name claimed, then the person written last. With `withPassword` the
+   * sign-in gets a first password, shown once; without, the person comes with none. A refusal is
+   * an `HttpError`: 400 for a unit or a code that is no good, 409 for a code taken. */
+  async function addPerson(
+    tenantId: string,
+    read: { setup: StaffSetup },
+    who: Who,
+    body: AddEmployeeRequest,
+    withPassword: boolean,
+  ) {
     // Only the root gives a department, a position or a sign-in.
     if (!who.root && (body.departmentId != null || body.positionId != null)) {
       throw new HttpError(403, 'Forbidden');
     }
-    const read = who.setup ?? (await setupDoc(request.tenantId));
     const department = linkTo(read.setup.departments, body.departmentId, 'department');
     const position = linkTo(read.setup.positions, body.positionId, 'position');
 
     const id = randomUUID();
-    const password = who.root ? madePassword() : null;
+    const password = withPassword ? madePassword() : null;
     const claim: StoredUser = {
       passwordHash: password ? await hashPassword(password) : null,
       root: false,
@@ -310,7 +320,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     let person: Employee;
     if (body.code === undefined) {
       const code = await claimNumbered(
-        request.tenantId,
+        tenantId,
         staffConfig(read.setup).numbering,
         claim,
         personWith,
@@ -319,17 +329,53 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     } else {
       const code = normaliseEmployeeCode(body.code);
       person = personWith(code);
-      await claimSignIn(request.tenantId, normaliseSignInName(code), claim);
+      await claimSignIn(tenantId, normaliseSignInName(code), claim);
     }
     // The person is written last: the list finds them as soon as they are there.
     if (
-      (await storage.putRecord(recordKeys.tenant(request.tenantId).employee(id), person, null)) ===
-      'moved'
+      (await storage.putRecord(recordKeys.tenant(tenantId).employee(id), person, null)) === 'moved'
     ) {
       throw new CStorageError(412, 'a record already sat under a fresh id');
     }
-    const employee = await docOf(request.tenantId, await mustFind(request.tenantId, id));
-    return reply.status(201).send({ employee, password });
+    const employee = await docOf(tenantId, await mustFind(tenantId, id));
+    return { employee, password };
+  }
+
+  app.post(ROUTES.employees, forClient, async (request, reply) => {
+    const who = await signedIn(request);
+    mustCan(who, 'staff.canCreate');
+    const body = parse(addEmployeeRequestSchema, request.body);
+    const read = who.setup ?? (await setupDoc(request.tenantId));
+    return reply.status(201).send(await addPerson(request.tenantId, read, who, body, who.root));
+  });
+
+  /** The root's import: each row is one add by hand, without a sign-in, one after another so the
+   * numbering counts past the row before. A row the add refuses is its result (409 taken, 400
+   * invalid). Any other failure ends the call as that failure: the rows before it stay added, none
+   * after it is tried. */
+  app.post(IMPORT_ROUTE, forClient, async (request) => {
+    const who = await signedIn(request);
+    mustBeRoot(who);
+    const call = parse(importCallSchema, request.body);
+    const read = await setupDoc(request.tenantId);
+    const results: ImportResult[] = [];
+    for (const raw of call.rows) {
+      const row = addEmployeeRequestSchema.safeParse(raw);
+      if (!row.success) {
+        results.push({ kind: 'refused', reason: 'invalid' });
+        continue;
+      }
+      try {
+        const { employee } = await addPerson(request.tenantId, read, who, row.data, false);
+        results.push({ kind: 'added', employee: employee.employee });
+      } catch (error) {
+        if (!(error instanceof HttpError) || (error.status !== 409 && error.status !== 400)) {
+          throw error;
+        }
+        results.push({ kind: 'refused', reason: error.status === 409 ? 'taken' : 'invalid' });
+      }
+    }
+    return { results };
   });
 
   app.put(employeeRoutes.one(':id'), forClient, async (request) => {
