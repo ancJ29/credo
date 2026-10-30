@@ -528,6 +528,10 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       if (!again || again.user.employeeId !== found.employee.id) {
         return await newest(request.tenantId, found.employee.id);
       }
+      // A person who no longer holds the new code has changed again, perhaps back to this old one,
+      // whose record is then the claim of that change and not this change's to remove.
+      const current = await mustFind(request.tenantId, found.employee.id);
+      if (current.employee.code !== code) return await newest(request.tenantId, found.employee.id);
       const mine = await readSignIn(storage, request.tenantId, name);
       if (mine?.user.employeeId === found.employee.id) {
         await storage.putRecord(
@@ -592,16 +596,18 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     throw new CStorageError(412, 'the email record moved on every attempt to be claimed');
   }
 
-  /** Removes an email's record while it is still this person's, over the tag it was read at, read
-   * again when it moved. One gone, or taken over by another, is nothing of this person's to free. */
-  async function releaseEmail(tenantId: string, email: string, employeeId: string) {
-    const key = recordKeys.tenant(tenantId).signInEmail(email);
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const held = await readEmailClaim(storage, tenantId, email);
-      if (held?.claim.employeeId !== employeeId) return;
-      if ((await storage.removeRecord(key, held.tag)) === 'removed') return;
+  /** Removes an email's record, once, over the tag it was read at, when it was this person's.
+   * A `moved` is a new claim of the same email (only a claim writes that record), which is the
+   * person's now or another's: it is left alone, never read again and removed. */
+  async function dropEmail(
+    tenantId: string,
+    email: string,
+    held: Awaited<ReturnType<typeof readEmailClaim>>,
+    employeeId: string,
+  ) {
+    if (held?.claim.employeeId === employeeId) {
+      await storage.removeRecord(recordKeys.tenant(tenantId).signInEmail(email), held.tag);
     }
-    throw new CStorageError(412, 'the email record moved on every attempt to be removed');
   }
 
   /** An email given, changed or taken back: the root's alone. The new email is claimed first, the
@@ -615,17 +621,21 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
     const before = found.employee.email ?? null;
     if (body.email === before) return await docOf(request.tenantId, found);
+    // The old email's record, read before the new one is claimed: it is removed over this tag
+    // alone, so a claim of the same email made since (a change back) is never removed.
+    const old = before === null ? null : await readEmailClaim(storage, request.tenantId, before);
     const { email: _kept, ...without } = found.employee;
     const updated: Employee = body.email === null ? without : { ...without, email: body.email };
     if (body.email !== null) await claimEmail(request.tenantId, body.email, found.employee.id);
     const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
     if ((await storage.putRecord(key, updated, found.tag)) === 'moved') {
       if (body.email !== null) {
-        await releaseEmail(request.tenantId, body.email, found.employee.id);
+        const mine = await readEmailClaim(storage, request.tenantId, body.email);
+        await dropEmail(request.tenantId, body.email, mine, found.employee.id);
       }
       throw conflict(await newest(request.tenantId, found.employee.id));
     }
-    if (before !== null) await releaseEmail(request.tenantId, before, found.employee.id);
+    if (before !== null) await dropEmail(request.tenantId, before, old, found.employee.id);
     return await newest(request.tenantId, found.employee.id);
   });
 

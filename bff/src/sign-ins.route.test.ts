@@ -150,6 +150,44 @@ describe('C: An email names the person by id in its own record', () => {
     expect((await setEmail(t, other.id, other.version, 'old@x.example')).statusCode).toBe(200);
   });
 
+  it('C: A change back to the old email, made while the first change frees it, keeps the record of the email the person holds', async () => {
+    let between: (() => Promise<unknown>) | null = null;
+    const t = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async removeRecord(key, ifTag) {
+          if (between && key === xKey) {
+            const run = between;
+            between = null;
+            await run();
+          }
+          return await client.removeRecord(key, ifTag);
+        },
+      }),
+    });
+    const xKey = t.keys.signInEmail('x@x.example');
+    const lan = await person(t, { code: 'EMP-0001' });
+    const other = await person(t, { code: 'EMP-0002' });
+    const version = await withEmail(t, lan, 'x@x.example');
+    between = async () => {
+      // The person already holds y; x is a claim older than a minute, so a change back takes it.
+      t.time.advance(ADD_MAX_MS + 1);
+      const now = (await doc(t.rootCall, lan.id)).version;
+      expect((await setEmail(t, lan.id, now, 'x@x.example')).statusCode).toBe(200);
+    };
+
+    const changed = await setEmail(t, lan.id, version, 'y@x.example');
+
+    expect(changed.statusCode).toBe(200);
+    expect((await doc(t.rootCall, lan.id)).employee.email).toBe('x@x.example');
+    const held = await t.client.getRecord(xKey);
+    expect(held).not.toBeNull();
+    expect(storedSignInEmailSchema.parse(held?.data).employeeId).toBe(lan.id);
+    expect(await status(t, 'x@x.example', lan.password)).toBe(200);
+    expect((await setEmail(t, other.id, other.version, 'x@x.example')).statusCode).toBe(409);
+    expect(await t.client.getRecord(t.keys.signInEmail('y@x.example'))).toBeNull();
+  });
+
   it('C: Taking the email back removes its record, and the email signs no one in', async () => {
     const t = await staffTenant(cs);
     const lan = await person(t, { code: 'EMP-0001' });
@@ -399,32 +437,6 @@ describe('C: An email names the person by id in its own record', () => {
     expect([a.statusCode, b.statusCode]).toEqual([200, 200]);
     const kept = await t.client.getRecord(t.keys.signInEmail('taken@x.example'));
     expect(storedSignInEmailSchema.parse(kept?.data).employeeId).toBe(other);
-  });
-
-  it('C: The old email’s record moves on every try to remove it: 503, the person already holds the new one', async () => {
-    const hook: { armed: boolean } = { armed: false };
-    let moves = 0;
-    const t = await staffTenant(cs, {
-      wrap: (client): CStorageClient => ({
-        ...client,
-        async removeRecord(key, ifTag) {
-          if (hook.armed && key.includes('.signin-email.')) {
-            const found = await client.getRecord(key);
-            const claim = storedSignInEmailSchema.parse(found?.data);
-            await client.putRecord(key, { ...claim, at: 1000 + ++moves }, found!.tag);
-          }
-          return await client.removeRecord(key, ifTag);
-        },
-      }),
-    });
-    const lan = await person(t, { code: 'EMP-0001' });
-    const version = await withEmail(t, lan, 'old@x.example');
-    hook.armed = true;
-
-    const stuck = await setEmail(t, lan.id, version, 'new@x.example');
-
-    expect(stuck.statusCode).toBe(503);
-    expect(moves).toBe(3);
   });
 
   it('C: An email record that does not parse is a 500, never a person signed in', async () => {

@@ -759,6 +759,34 @@ describe('A password given while a code change runs', () => {
     ).toBe(200);
   });
 
+  it('leaves the old record alone when a change back to the old code, made while the first change frees it, has claimed it for the person', async () => {
+    const { t, on } = await withRemoval();
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const id = reply.employee.employee.id;
+    on(async () => {
+      on(() => Promise.resolve());
+      // The person already holds NEW-1; EMP-1 is a claim older than a minute, so a change back takes it.
+      t.time.advance(ADD_MAX_MS + 1);
+      const back = await t.rootCall.send('PUT', `/api/employees/${id}/code`, {
+        version: (await doc(t.rootCall, id)).version,
+        code: 'EMP-1',
+      });
+      expect(back.statusCode).toBe(200);
+    });
+
+    const changed = await change(t, id, reply.employee.version);
+
+    expect(changed.statusCode).toBe(200);
+    expect((await doc(t.rootCall, id)).employee.code).toBe('EMP-1');
+    expect(await t.client.getRecord(t.keys.user('emp-1'))).not.toBeNull();
+    expect(
+      (await signIn(t.app, { name: 'EMP-1', password: reply.password as string })).response
+        .statusCode,
+    ).toBe(200);
+    expect(await t.client.getRecord(t.keys.user('new-1'))).toBeNull();
+    expect((await add(t.rootCall, { code: 'EMP-1', name: 'Other' })).statusCode).toBe(409);
+  });
+
   it('answers 503, the person kept on the new code, when the old record moves on every try', async () => {
     const { t, touch, on } = await withRemoval();
     const reply = await added(t.rootCall, { code: 'EMP-1' });
