@@ -160,3 +160,14 @@ between the fake run and the full run, so `staff-15-code-changed-vi-390` differe
 alone; the fields, words and layout were the same. The fix belongs to the next change to the walk: scroll to
 the top, or capture with the bar unfixed, before each picture. It moves every such screen's base and its fake
 reference at once, so it is done once, not per screen.
+
+## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
+
+Step 19's whole `pnpm check` went red twice before a green third run, at the same code, with `ui` and `visual` untouched.
+Run 1, at a load of 12 to 20: `visual/src/cli.test.ts`, "With partners, takes a partner's Share post…", hit its 120 s timeout
+in `pnpm answers`, and "stops on an answers file that does not parse" failed with `window is not defined`, plus 3 unhandled
+errors. Run 2, at a load up to 30: two `ui` tests ran into their 5 s limit, `SignIns.test.tsx` "The root turns the email and the QR
+sign-in on…" and `StaffRecord.test.tsx` "The editor refuses fields it cannot take…", and the run ended with SIGKILL.
+To look into: why `window is not defined` appears after a timeout, and whether a test outlives its jsdom (a timer, a fetch or a
+render still running once the environment is torn down). qa.md rule 6 reads these as defects; a longer timeout or a retry is no fix,
+and no test is changed here.
