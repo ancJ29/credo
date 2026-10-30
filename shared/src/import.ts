@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { addEmployeeRequestSchema, employeeSchema } from './staff';
+import { employeeSchema } from './staff';
 
 /** The limits of staff read from an Excel file. The file is read in the root's browser alone: one
  * over the size or the rows is refused before it is read, and the BFF takes the rows as JSON. */
@@ -10,12 +10,6 @@ export const IMPORT_CALL_ROWS = 100;
 
 /** The import's route, under the employees. */
 export const IMPORT_ROUTE = '/api/employees/import';
-
-/** Up to a call's rows, each checked as one add by hand. Only the root imports. */
-export const importEmployeesRequestSchema = z.strictObject({
-  rows: z.array(addEmployeeRequestSchema).min(1).max(IMPORT_CALL_ROWS),
-});
-export type ImportEmployeesRequest = z.infer<typeof importEmployeesRequestSchema>;
 
 /** A call as the BFF first reads it: only that it holds one to a call's rows. Each row is then
  * checked as one add, so a row the add refuses is that row's result, not the call's 400. */

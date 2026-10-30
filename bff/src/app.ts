@@ -285,14 +285,16 @@ export function buildApp({ storage, now, logger }: AppDeps) {
       !held ||
       !person ||
       held.qr.expiresAt <= now() ||
-      !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened)) ||
-      !staffConfig((await readSetup(storage, tenantId)).setup).fields.qr
+      !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened))
     ) {
       throw unauthorized();
     }
+    // The person and the setup are read once and handed on to the view.
+    const setup = await readSetup(storage, tenantId);
+    if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
     const name = normaliseSignInName(person.employee.code);
     const found = await readSignIn(storage, tenantId, name);
-    const view = found ? await viewOf(tenantId, name, found.user) : null;
+    const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
     if (!found || !view) throw unauthorized();
     if (
       (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===

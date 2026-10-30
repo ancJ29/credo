@@ -163,13 +163,15 @@ describe('C: An email names the person by id in its own record', () => {
     const t = await emailTenant({
       wrap: (client): CStorageClient => ({
         ...client,
-        async removeRecord(key, ifTag) {
-          if (between && key === xKey) {
+        // Right after the first change writes the person, before it frees the old email.
+        async putRecord(key, data, ifTag) {
+          const saved = await client.putRecord(key, data, ifTag);
+          if (between && key.includes('.employee.')) {
             const run = between;
             between = null;
             await run();
           }
-          return await client.removeRecord(key, ifTag);
+          return saved;
         },
       }),
     });
@@ -580,6 +582,28 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     expect(session.user).toMatchObject({ name: 'Bao', root: false });
     expect((await me(t, session.authId)).statusCode).toBe(200);
     expect((await me(t, held)).statusCode).toBe(401);
+  });
+
+  it('C: A QR code opened reads the client, the code, the person, the setup and the sign-in, and no record twice', async () => {
+    const reads: string[] = [];
+    const t = await qrTenant({
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async getRecord(key) {
+          reads.push(key);
+          return await client.getRecord(key);
+        },
+      }),
+    });
+    const bao = await person(t, { code: 'EMP-0004' });
+    const code = await issued(t, bao.id);
+
+    reads.length = 0;
+    const opened = await openQr(t, bao.id, code.secret);
+
+    expect(opened.statusCode).toBe(200);
+    expect(reads).toHaveLength(5);
+    expect(new Set(reads).size).toBe(5);
   });
 
   it('C: Spending a QR code removes the record with its tag, so two openings sign in once', async () => {

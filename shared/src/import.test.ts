@@ -7,7 +7,6 @@ import {
   IMPORT_ROUTE,
   importCallSchema,
   importEmployeesReplySchema,
-  importEmployeesRequestSchema,
 } from './import';
 
 const row = { name: 'Mai Linh', extra: {} };
@@ -18,11 +17,6 @@ describe('the import’s contract', () => {
     expect(IMPORT_MAX_ROWS).toBe(500);
     expect(IMPORT_CALL_ROWS).toBe(100);
     expect(IMPORT_ROUTE).toBe('/api/employees/import');
-
-    const rows = (count: number) => ({ rows: Array.from({ length: count }, () => row) });
-    expect(importEmployeesRequestSchema.safeParse(rows(100)).success).toBe(true);
-    expect(importEmployeesRequestSchema.safeParse(rows(101)).success).toBe(false);
-    expect(importEmployeesRequestSchema.safeParse(rows(0)).success).toBe(false);
   });
 
   it('A call is read first as one to a call’s rows of anything, so a row the add refuses is that row’s result and not the call’s refusal', () => {
@@ -31,15 +25,6 @@ describe('the import’s contract', () => {
     expect(call(Array.from({ length: IMPORT_CALL_ROWS + 1 }, () => row))).toBe(false);
     expect(call([])).toBe(false);
     expect(importCallSchema.safeParse({ rows: [row], other: 1 }).success).toBe(false);
-  });
-
-  it('Each row is checked as one add: a row the add refuses is refused here', () => {
-    const request = (value: object) => importEmployeesRequestSchema.safeParse({ rows: [value] });
-    expect(request({ ...row, code: 'EMP-0100', departmentId: null }).success).toBe(true);
-    expect(request({ ...row, code: 'a b' }).success).toBe(false);
-    expect(request({ extra: {} }).success).toBe(false);
-    expect(request({ ...row, extra: JSON.parse('{"__proto__":1}') as object }).success).toBe(false);
-    expect(request({ ...row, password: 'x' }).success).toBe(false);
   });
 
   it('An answer holds one result for each row: the person added, or why it was not (refused, or the system was busy)', () => {

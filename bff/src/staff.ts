@@ -247,6 +247,13 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     throw new CStorageError(412, 'the numbering moved on every attempt to be raised');
   }
 
+  /** The codes of the people listed, read the first time a numbered code needs them and kept for the
+   * rest of a call, to which each person written is added. */
+  type Listed = { codes: string[] | null };
+
+  const codesOf = async (tenantId: string) =>
+    (await everyone(tenantId)).map((person) => person.code);
+
   /** The code after every code ever given, claimed as a sign-in name. A number is raised in the
    * numbering record, over the tag it was read at, before it is claimed: a number freed by a code
    * change, or lost to a claim that is taken or may be a running add's, is never given again. A
@@ -256,15 +263,16 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     numbering: Numbering,
     record: StoredUser,
     personWith: (code: string) => Employee,
+    listed: Listed | null,
   ) {
     const key = recordKeys.tenant(tenantId).staffNumbering;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const held = await numberingOf(tenantId);
       const last = held.given[numbering.prefix] ?? 0;
-      const code = nextCode(numbering, [
-        ...(await everyone(tenantId)).map((person) => person.code),
-        `${numbering.prefix}${last}`,
-      ]);
+      // An add by hand lists the people at every try. An import's call lists them once, at its first
+      // numbered row: the numbering record is what keeps a number from being given twice.
+      const known = listed ? (listed.codes ??= await codesOf(tenantId)) : await codesOf(tenantId);
+      const code = nextCode(numbering, [...known, `${numbering.prefix}${last}`]);
       personWith(code);
       const given = {
         ...held.given,
@@ -292,6 +300,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     who: Who,
     body: AddEmployeeRequest,
     withPassword: boolean,
+    listed: Listed | null = null,
   ) {
     // Only the root gives a department, a position or a sign-in.
     if (!who.root && (body.departmentId != null || body.positionId != null)) {
@@ -332,6 +341,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         staffConfig(read.setup).numbering,
         claim,
         personWith,
+        listed,
       );
       person = personWith(code);
     } else {
@@ -345,8 +355,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     ) {
       throw new CStorageError(412, 'a record already sat under a fresh id');
     }
-    const employee = await docOf(tenantId, await mustFind(tenantId, id));
-    return { employee, password };
+    listed?.codes?.push(person.code);
+    return { person, password };
   }
 
   app.post(ROUTES.employees, forClient, async (request, reply) => {
@@ -354,7 +364,9 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     mustCan(who, 'staff.canCreate');
     const body = parse(addEmployeeRequestSchema, request.body);
     const read = who.setup ?? (await setupDoc(request.tenantId));
-    return reply.status(201).send(await addPerson(request.tenantId, read, who, body, who.root));
+    const { person, password } = await addPerson(request.tenantId, read, who, body, who.root);
+    const employee = await docOf(request.tenantId, await mustFind(request.tenantId, person.id));
+    return reply.status(201).send({ employee, password });
   });
 
   /** The root's import: each row is one add by hand, without a sign-in, one after another so the
@@ -368,6 +380,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const call = parse(importCallSchema, request.body);
     const read = await setupDoc(request.tenantId);
     const results: ImportResult[] = [];
+    const listed: Listed = { codes: null };
     for (const raw of call.rows) {
       const row = addEmployeeRequestSchema.safeParse(raw);
       if (!row.success) {
@@ -375,8 +388,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         continue;
       }
       try {
-        const { employee } = await addPerson(request.tenantId, read, who, row.data, false);
-        results.push({ kind: 'added', employee: employee.employee });
+        const { person } = await addPerson(request.tenantId, read, who, row.data, false, listed);
+        results.push({ kind: 'added', employee: person });
       } catch (error) {
         const { status } = replyFor(error);
         const reason = IMPORT_REASONS[status];
@@ -543,6 +556,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       if (current.employee.code !== code) return await newest(request.tenantId, found.employee.id);
       const mine = await readSignIn(storage, request.tenantId, name);
       if (mine?.user.employeeId === found.employee.id) {
+        // A claim copies the hash, and a password given writes a fresh salted one: a record that
+        // holds this change's hash is a change back's claim, which is not this change's to remove.
+        if (again.user.passwordHash === mine.user.passwordHash) {
+          return await newest(request.tenantId, found.employee.id);
+        }
         await storage.putRecord(
           keys.user(name),
           {

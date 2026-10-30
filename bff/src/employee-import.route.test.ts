@@ -102,7 +102,7 @@ describe('The rows that hold are added as people without a sign-in, each through
     });
   });
 
-  it('numbers a row with no code past every code given, one after another in the order sent, and never a freed number', async () => {
+  it('numbers a row with no code past a code typed by an earlier row of the call, one after another in the order sent', async () => {
     const t = await staffTenant(cs);
     const first = await added(t.rootCall, { code: undefined });
     await t.rootCall.send('PUT', `/api/employees/${first.employee.employee.id}/code`, {
@@ -116,6 +116,42 @@ describe('The rows that hold are added as people without a sign-in, each through
       results.map((result) => (result.kind === 'added' ? result.employee.code : result.reason)),
     ).toEqual(['EMP-0005', 'EMP-0006', 'EMP-0007']);
     expect(await codes(t.rootCall)).toEqual(['BOSS', 'EMP-0005', 'EMP-0006', 'EMP-0007']);
+  });
+
+  it('never numbers a row with a freed number: a code a change freed counts as given', async () => {
+    const t = await staffTenant(cs);
+    const first = await added(t.rootCall, { code: undefined });
+    expect(first.employee.employee.code).toBe('EMP-0001');
+    await t.rootCall.send('PUT', `/api/employees/${first.employee.employee.id}/code`, {
+      version: first.employee.version,
+      code: 'BOSS',
+    });
+
+    const results = await imported(t, [row(), row()]);
+
+    expect(
+      results.map((result) => (result.kind === 'added' ? result.employee.code : result.reason)),
+    ).toEqual(['EMP-0002', 'EMP-0003']);
+  });
+
+  it('lists the people once for a call, at its first numbered row, however many rows are numbered; a call of typed codes lists no one', async () => {
+    let listings = 0;
+    const t = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async listRecords(prefix) {
+          if (prefix === t.keys.employeePrefix) listings++;
+          return await client.listRecords(prefix);
+        },
+      }),
+    });
+
+    await imported(t, [row(), row(), row({ code: 'NV-1' }), row()]);
+    const afterNumbered = listings;
+    await imported(t, [row({ code: 'NV-2' }), row({ code: 'NV-3' })]);
+
+    expect(afterNumbered).toBe(1);
+    expect(listings).toBe(1);
   });
 
   it('refuses a row whose code is taken, in the company or by an earlier row of the call, and adds the rest', async () => {
@@ -254,6 +290,30 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
       true,
     ]);
     expect(await codes(t.rootCall)).toEqual(['NV-1', 'NV-3']);
+  });
+
+  it('answers a row as added, with the person it wrote, when the store fails on the read after the write', async () => {
+    let failReads = false;
+    const t = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async getRecord(key) {
+          if (failReads && key.includes('.employee.')) throw new CStorageError(503, 'down');
+          return await client.getRecord(key);
+        },
+        async putRecord(key, data, ifTag) {
+          const saved = await client.putRecord(key, data, ifTag);
+          if (key.includes('.employee.')) failReads = true;
+          return saved;
+        },
+      }),
+    });
+
+    const results = await imported(t, [row({ code: 'NV-1' }), row({ code: 'NV-2' })]);
+    failReads = false;
+
+    expect(results.map((result) => result.kind)).toEqual(['added', 'added']);
+    expect(await codes(t.rootCall)).toEqual(['NV-1', 'NV-2']);
   });
 
   it('ends the call as a 500, with the rows before it kept, on a failure that is no outage and no refusal', async () => {
