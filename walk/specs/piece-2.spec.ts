@@ -126,7 +126,7 @@ const qrAddress = (page: Page, used: boolean) => async (client: Seeded | null) =
   if (used) {
     const secret = new URL(issued.link, 'http://x').searchParams.get('qr')!.split('.')[1];
     await page.request.post('/api/auth/sign-in-qr', {
-      headers: { 'x-client-code': client.code },
+      headers: { 'x-client-code': client.code, 'x-device-id': 'device-walk-other' },
       data: { id, secret },
     });
   }

@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   AUTH_HEADER,
+  changeOwnPasswordRequestSchema,
+  CStorageError,
   CLIENT_HEADER,
   clientCodeSchema,
   type ConfigDoc,
@@ -18,8 +21,12 @@ import {
   resolvePermissions,
   ROUTES,
   saveConfigRequestSchema,
+  sha256Hex,
   type SessionReplyBody,
+  signInQrRequestSchema,
   signInRequestSchema,
+  signInRoutes,
+  staffConfig,
   storedClientSchema,
   storedOperatorSchema,
   type StoredUser,
@@ -29,9 +36,17 @@ import {
 import Fastify, { type FastifyRequest } from 'fastify';
 import { createClient, ROOT_NAME } from './clients';
 import { HttpError, parse, replyFor } from './errors';
-import { verifyAgainstNobody, verifyPassword } from './password';
+import { constantTimeEqual } from './constant-time';
+import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
 import { createSessions } from './sessions';
-import { namesPerson, readEmployee, readSetup, readSignIn } from './staff-records';
+import {
+  namesPerson,
+  readEmailClaim,
+  readEmployee,
+  readQr,
+  readSetup,
+  readSignIn,
+} from './staff-records';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -50,6 +65,8 @@ export type AppDeps = {
 };
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
+/** How often a write on a record that moved is re-read and tried again. */
+const ATTEMPTS = 3;
 
 export function buildApp({ storage, now, logger }: AppDeps) {
   const app = Fastify({ logger });
@@ -127,7 +144,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
     const view = await viewOf(request.tenantId, session.user, found.user);
     if (!view) throw unauthorized();
-    return view;
+    return { ...view, signInName: session.user, signIn: found };
   }
 
   /** The answer for a person's own view: no more than the app shows. */
@@ -135,7 +152,11 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     name,
     root,
     permissions,
-  }: Awaited<ReturnType<typeof signedIn>>): UserView => ({
+  }: {
+    name: string;
+    root: boolean;
+    permissions: Record<PermissionId, boolean>;
+  }): UserView => ({
     name,
     root,
     permissions,
@@ -200,11 +221,24 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     return await readConfig(request.tenantId);
   });
 
+  /** The sign-in record a typed name opens: the code's own, or, for an email, the record of the code
+   * of the person the email names. An email names no one unless that person's record holds it. No
+   * mail is ever sent to it, so it proves nothing but that the root gave it. */
+  async function accountOf(tenantId: string, typed: string) {
+    if (!typed.includes('@'))
+      return { name: typed, found: await readSignIn(storage, tenantId, typed) };
+    const claim = await readEmailClaim(storage, tenantId, typed);
+    const person = claim ? await readEmployee(storage, tenantId, claim.claim.employeeId) : null;
+    if (!person || person.employee.email !== typed) return { name: typed, found: null };
+    const name = normaliseSignInName(person.employee.code);
+    return { name, found: await readSignIn(storage, tenantId, name) };
+  }
+
   app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
     const device = deviceOf(request);
     const body = parse(signInRequestSchema, request.body);
-    const name = normaliseSignInName(body.name);
-    const found = await readSignIn(storage, request.tenantId, name);
+    const typed = normaliseSignInName(body.name);
+    const { name, found } = await accountOf(request.tenantId, typed);
     // A person the root has not given a password yet has no sign-in to check against.
     const account = found?.user.passwordHash
       ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -218,6 +252,82 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     await endKept(request, sessions);
     const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
     return { authId, expiresAt, user: userViewOf(view) };
+  });
+
+  /** A phone opening a QR code's link. Every refusal is the same 401, which says only that the code
+   * is not good: a wrong secret, one used before or past its time, a company that turned the QR
+   * sign-in off, a person who left. The record is removed over the tag it was read at before the
+   * session is issued, so two phones opening one code sign in one. */
+  app.post(signInRoutes.qr, forClient, async (request): Promise<SessionReplyBody> => {
+    const device = deviceOf(request);
+    const body = parse(signInQrRequestSchema, request.body);
+    const { tenantId } = request;
+    const held = await readQr(storage, tenantId, body.id);
+    const opened = held ? await sha256Hex(body.secret) : '';
+    const person = held ? await readEmployee(storage, tenantId, body.id) : null;
+    if (
+      !held ||
+      !person ||
+      held.qr.expiresAt <= now() ||
+      !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened)) ||
+      !staffConfig((await readSetup(storage, tenantId)).setup).fields.qr
+    ) {
+      throw unauthorized();
+    }
+    const name = normaliseSignInName(person.employee.code);
+    const found = await readSignIn(storage, tenantId, name);
+    const view = found ? await viewOf(tenantId, name, found.user) : null;
+    if (!found || !view) throw unauthorized();
+    if (
+      (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
+      'moved'
+    ) {
+      throw unauthorized();
+    }
+    const sessions = sessionsOf(tenantId);
+    await endKept(request, sessions);
+    const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
+    return { authId, expiresAt, user: userViewOf(view) };
+  });
+
+  /** Whether `password` is the one a sign-in record holds. A record with none (a person who has only
+   * come in by a QR code) still spends the check, so it takes as long as a wrong one. */
+  async function holdsPassword(user: StoredUser, password: string) {
+    if (!user.passwordHash) {
+      await verifyAgainstNobody(password);
+      return false;
+    }
+    return await verifyPassword(password, user.passwordHash);
+  }
+
+  /** One's own password, the current one first. A new generation signs the person out of every other
+   * device; this device gets the session that replaces the one it held. A password the root gave in
+   * between is met by reading the record again and checking the current one against it. */
+  app.put(signInRoutes.password, forClient, async (request): Promise<SessionReplyBody> => {
+    const who = await signedIn(request);
+    const device = deviceOf(request);
+    const body = parse(changeOwnPasswordRequestSchema, request.body);
+    const key = recordKeys.tenant(request.tenantId).user(who.signInName);
+    let passwordHash: string | undefined;
+    let signIn: typeof who.signIn | null = who.signIn;
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (!signIn) throw unauthorized();
+      if (!(await holdsPassword(signIn.user, body.current))) throw forbidden();
+      const changed: StoredUser = {
+        ...signIn.user,
+        passwordHash: (passwordHash ??= await hashPassword(body.password)),
+        passwordAt: now(),
+        generation: randomUUID(),
+      };
+      if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') {
+        const sessions = sessionsOf(request.tenantId);
+        await endKept(request, sessions);
+        const issued = await sessions.issue(device, who.signInName, changed.generation);
+        return { ...issued, user: userViewOf(who) };
+      }
+      signIn = await readSignIn(storage, request.tenantId, who.signInName);
+    }
+    throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
   });
 
   app.post(ROUTES.signOut, forClient, async (request, reply) => {

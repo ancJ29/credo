@@ -13,6 +13,18 @@ export const setEmailRequestSchema = z.strictObject({
 });
 export type SetEmailRequest = z.input<typeof setEmailRequestSchema>;
 
+/** An email's record: the person who holds it, and when it was claimed, the age a failed set's claim
+ * waits for before it is taken over. It is live only while that person's record holds the email. */
+export const storedSignInEmailSchema = z.strictObject({ employeeId: z.uuid(), at: z.number() });
+export type StoredSignInEmail = z.infer<typeof storedSignInEmailSchema>;
+
+/** A QR code as kept: the SHA-256 hex of its secret, never the secret, and when it stops signing in. */
+export const storedSignInQrSchema = z.strictObject({
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  expiresAt: z.number(),
+});
+export type StoredSignInQr = z.infer<typeof storedSignInQrSchema>;
+
 /** How long a QR code signs in. */
 export const QR_MINUTES = 15;
 

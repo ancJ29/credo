@@ -1,8 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   addEmployeeRequestSchema,
   archiveEmployeeRequestSchema,
   changeCodeRequestSchema,
+  clientCodeSchema,
+  CLIENT_HEADER,
   CStorageError,
   byCode,
   type CStorageClient,
@@ -17,13 +19,18 @@ import {
   normaliseSignInName,
   PERMISSIONS,
   type PhotoReply,
+  QR_MINUTES,
+  qrLink,
   type PermissionId,
   recordKeys,
   ROUTES,
   saveEmployeeRequestSchema,
   savePhotoRequestSchema,
   saveStaffSetupRequestSchema,
+  setEmailRequestSchema,
   setPasswordRequestSchema,
+  sha256Hex,
+  signInRoutes,
   staffConfig,
   type StaffSetup,
   type StoredPhoto,
@@ -35,7 +42,15 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { HttpError, parse } from './errors';
 import { hashPassword, madePassword } from './password';
-import { namesBack, NO_SETUP_VERSION, readEmployee, readSetup, readSignIn } from './staff-records';
+import {
+  namesBack,
+  NO_SETUP_VERSION,
+  readEmailClaim,
+  readEmployee,
+  readQr,
+  readSetup,
+  readSignIn,
+} from './staff-records';
 
 /** How often a write on a record that moved without cause is re-read and tried again. */
 const ATTEMPTS = 3;
@@ -510,5 +525,85 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const saved = await storage.putRecord(key, stored, body.version === '' ? null : body.version);
     if (saved === 'moved') throw conflict(await photoOf(request.tenantId, found.employee.id));
     return await photoOf(request.tenantId, found.employee.id);
+  });
+
+  /** Claims an email for a person, before their record holds it. A record already under the email
+   * whose person holds it is a taken email (409, with no `current`). One whose person does not hold
+   * it is a failed set's, or a running set's while its claim is younger than the longest a call runs
+   * (503, as a sign-in claim's), and is taken over with the tag it was read at after that. */
+  async function claimEmail(tenantId: string, email: string, employeeId: string) {
+    const key = recordKeys.tenant(tenantId).signInEmail(email);
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const record = { employeeId, at: now() };
+      if ((await storage.putRecord(key, record, null)) === 'saved') return;
+      const held = await readEmailClaim(storage, tenantId, email);
+      if (!held) continue;
+      const holder = await readEmployee(storage, tenantId, held.claim.employeeId);
+      if (holder?.employee.email === email) throw new HttpError(409, 'That email is taken');
+      if (now() - held.claim.at <= ADD_MAX_MS) throw new HttpError(503, 'Service unavailable');
+      if ((await storage.putRecord(key, record, held.tag)) === 'saved') return;
+    }
+    throw new CStorageError(412, 'the email record moved on every attempt to be claimed');
+  }
+
+  /** Removes an email's record while it is still this person's, over the tag it was read at, read
+   * again when it moved. One gone, or taken over by another, is nothing of this person's to free. */
+  async function releaseEmail(tenantId: string, email: string, employeeId: string) {
+    const key = recordKeys.tenant(tenantId).signInEmail(email);
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const held = await readEmailClaim(storage, tenantId, email);
+      if (held?.claim.employeeId !== employeeId) return;
+      if ((await storage.removeRecord(key, held.tag)) === 'removed') return;
+    }
+    throw new CStorageError(412, 'the email record moved on every attempt to be removed');
+  }
+
+  /** An email given, changed or taken back: the root's alone. The new email is claimed first, the
+   * person is written with it over the tag they were read at, and the old record is removed after, so
+   * the old email is free again. A version that moved gives the claim back and answers 409 with the
+   * person. No mail is sent whatever the answer. */
+  app.put(signInRoutes.email(':id'), forClient, async (request) => {
+    mustBeRoot(await signedIn(request));
+    const found = await mustFind(request.tenantId, idOf(request));
+    const body = parse(setEmailRequestSchema, request.body);
+    if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
+    const before = found.employee.email ?? null;
+    if (body.email === before) return await docOf(request.tenantId, found);
+    const { email: _kept, ...without } = found.employee;
+    const updated: Employee = body.email === null ? without : { ...without, email: body.email };
+    if (body.email !== null) await claimEmail(request.tenantId, body.email, found.employee.id);
+    const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
+    if ((await storage.putRecord(key, updated, found.tag)) === 'moved') {
+      if (body.email !== null) {
+        await releaseEmail(request.tenantId, body.email, found.employee.id);
+      }
+      throw conflict(await newest(request.tenantId, found.employee.id));
+    }
+    if (before !== null) await releaseEmail(request.tenantId, before, found.employee.id);
+    return await newest(request.tenantId, found.employee.id);
+  });
+
+  /** A QR code for one sign-in, the root's alone and only while the company has the QR sign-in on:
+   * 32 random bytes of which only the hash is kept, in the person's one record, replacing the last
+   * over the tag it was read at. The secret is in the answer's link and nowhere else. */
+  app.post(signInRoutes.issueQr(':id'), forClient, async (request) => {
+    mustBeRoot(await signedIn(request));
+    const found = await mustFind(request.tenantId, idOf(request));
+    if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.qr) {
+      throw new HttpError(403, 'Forbidden');
+    }
+    const id = found.employee.id;
+    const key = recordKeys.tenant(request.tenantId).signInQr(id);
+    const secret = randomBytes(32).toString('base64url');
+    const expiresAt = now() + QR_MINUTES * 60_000;
+    const record = { hash: await sha256Hex(secret), expiresAt };
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const last = await readQr(storage, request.tenantId, id);
+      if ((await storage.putRecord(key, record, last ? last.tag : null)) === 'saved') {
+        const code = clientCodeSchema.parse(request.headers[CLIENT_HEADER]);
+        return { link: qrLink(code, id, secret), expiresAt };
+      }
+    }
+    throw new CStorageError(412, 'the QR record moved on every attempt to be replaced');
   });
 }

@@ -6,6 +6,10 @@ import {
   recordKeys,
   type StaffSetup,
   staffSetupSchema,
+  type StoredSignInEmail,
+  storedSignInEmailSchema,
+  type StoredSignInQr,
+  storedSignInQrSchema,
   type StoredUser,
   storedUserSchema,
 } from '@credo/shared';
@@ -46,6 +50,33 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
   const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
   const parsed = found ? storedUserSchema.safeParse(found.data) : null;
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
+}
+
+/** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500
+ * that names its kind and never its key. */
+export async function readEmailClaim(
+  storage: CStorageClient,
+  tenantId: string,
+  email: string,
+): Promise<{ claim: StoredSignInEmail; tag: string } | null> {
+  const found = await storage.getRecord(recordKeys.tenant(tenantId).signInEmail(email));
+  if (!found) return null;
+  const parsed = storedSignInEmailSchema.safeParse(found.data);
+  if (!parsed.success) throw new Error('an email record does not parse');
+  return { claim: parsed.data, tag: found.tag };
+}
+
+/** A person's QR code as kept. A record that does not parse is a fault, as an email's. */
+export async function readQr(
+  storage: CStorageClient,
+  tenantId: string,
+  employeeId: string,
+): Promise<{ qr: StoredSignInQr; tag: string } | null> {
+  const found = await storage.getRecord(recordKeys.tenant(tenantId).signInQr(employeeId));
+  if (!found) return null;
+  const parsed = storedSignInQrSchema.safeParse(found.data);
+  if (!parsed.success) throw new Error('a QR record does not parse');
+  return { qr: parsed.data, tag: found.tag };
 }
 
 /** Whether a person holds the code a sign-in record is keyed under. */

@@ -8,6 +8,8 @@ import {
   setEmailRequestSchema,
   signInQrRequestSchema,
   signInRoutes,
+  storedSignInEmailSchema,
+  storedSignInQrSchema,
 } from './signins';
 
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
@@ -63,6 +65,22 @@ describe('the ways to sign in', () => {
     expect(signInQrRequestSchema.safeParse({ id: ID, secret: SECRET, extra: 1 }).success).toBe(
       false,
     );
+  });
+
+  it('C: An email’s record names the person and when it was claimed, and a QR code’s keeps a hash and an end, never a secret', () => {
+    expect(storedSignInEmailSchema.safeParse({ employeeId: ID, at: 5 }).success).toBe(true);
+    expect(storedSignInEmailSchema.safeParse({ employeeId: 'x', at: 5 }).success).toBe(false);
+    expect(storedSignInEmailSchema.safeParse({ employeeId: ID }).success).toBe(false);
+    expect(storedSignInQrSchema.safeParse({ hash: 'a'.repeat(64), expiresAt: 5 }).success).toBe(
+      true,
+    );
+    for (const hash of [SECRET, 'A'.repeat(64), 'a'.repeat(63)]) {
+      expect(storedSignInQrSchema.safeParse({ hash, expiresAt: 5 }).success, hash).toBe(false);
+    }
+    expect(
+      storedSignInQrSchema.safeParse({ hash: 'a'.repeat(64), expiresAt: 5, secret: SECRET })
+        .success,
+    ).toBe(false);
   });
 
   it('C: One’s own password is changed with the current one given and a new one that follows the rule', () => {

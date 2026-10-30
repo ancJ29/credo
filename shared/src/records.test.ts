@@ -29,6 +29,20 @@ describe('the record keys', () => {
     expect(other.config).not.toBe(tenant.config);
   });
 
+  it('C: An email and a QR code each have a record of their own, none of them under the staff list’s prefix', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    const tenant = recordKeys.tenant(id);
+
+    expect(tenant.signInEmail('lan@minh-phat.example')).toBe(
+      `tenant.${id}.signin-email.lan@minh-phat.example`,
+    );
+    expect(tenant.signInQr('p1')).toBe(`tenant.${id}.signin-qr.p1`);
+    for (const key of [tenant.signInEmail('a@b.example'), tenant.signInQr('p1')]) {
+      expect(key.startsWith(tenant.employeePrefix)).toBe(false);
+      expect(key.startsWith(`tenant.${id}.user.`)).toBe(false);
+    }
+  });
+
   it('keep the operator’s records apart from every tenant’s', () => {
     expect(recordKeys.operatorUser('operator')).toBe('operator.user.operator');
     expect(recordKeys.operatorSession('device-0001')).toBe('operator.session.device-0001');

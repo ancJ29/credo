@@ -25,6 +25,10 @@ export const recordKeys = {
     /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
      * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
     employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,
+    /** An email, as `emailSchema` keeps it, names the person who holds it: one record a company. */
+    signInEmail: (email: string) => `tenant.${id}.signin-email.${email}`,
+    /** A person's one QR code, by their minted id: a new code replaces it, spending removes it. */
+    signInQr: (employeeId: string) => `tenant.${id}.signin-qr.${employeeId}`,
   }),
 } as const;
 
