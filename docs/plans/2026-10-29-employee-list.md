@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 15:24 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Steps 20 and 25 were reviewed three times (Opus, last at `9a5f7e2`, ready for the human's full walk); the third review's two Low test gaps and two notes are closed, and Decide 26 (a) is recorded: leaving the import page during a send is not fixed. `main` is merged in (`a9c4e9f`, the walks page's navigation and the act and swift-lsp changes); the whole `pnpm check` after it is exit 0 at 100 % (`logs/20261030-1517-employee-list-main-merge-check-2.log`), and `pnpm report` (`walks/2026-10-30-152414-4b3bbb3d8`) reads 0 waiting, 0 asked again, 0 no, 92 yes. The slow `StaffRecord.test.tsx` stories were made cheap (`4b3bbb3`, open item 27). **Next:** step 21, C's full walk. Open item 28 (a limit on wrong passwords) is parked until a client's own stack, and item 27 (tests timing out under load) stays open for the `SLOW` stories and two other reds, parked to the next review.
+**Where it stands — 2026-10-30 17:00 +07:** piece 2 is built and walked: groups A, B, C and D are in `employee-list`, 33 screens at three widths in two languages, and the human accepted the full walk of 16:39 (step 26, Decide 31 (a)); all 198 of piece 2's bases are committed (`47ba1c6`). The recap is written ([step 27](../recaps/2026-10-30-employee-list.md)). **Next:** the merge into `main` on the human's word, then the push, then step 28 (ridge). Decide 29 (a) is parked as open item 31 (nothing shows on a phone that a wide table scrolls sideways). Decide 30, the human's rule that a moved pixel is a raw count, is not in force: its cause (the 14 raw pixels at the 390 logo) is to be found and the walk's script changed first, as a small piece of its own after this one; `qa.md` is not changed.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -1166,7 +1166,8 @@ itself:
   in `ui/src/fake.test.tsx` (the fake); the person's page said "or the email" with the switch off, red
   in `ui/src/SignIns.test.tsx`. The BFF's email tests run on a tenant with the switch on
   (`emailTenant`). No walked screen's words changed: `pnpm report` reads 0 asked again.
-- [ ] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
+- [x] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
+  *Ticked 2026-10-30 17:00 +07: the re-check and its fix pass are below, the last whole gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`), and the human's full walk (step 26) read the result.*
   *Review, 2026-10-30, by Opus on `9b26f71`, probes red or green as run; not ticked until the
   re-check of the fix pass below.*
   *Fix pass, 2026-10-30 11:40 +07, of the six items R1 to R6, one the same shape outside the reviewed
@@ -1267,8 +1268,9 @@ itself:
     holds (the person is stopped at their next step), and R6 accepted the same shape for email. Reading the
     person fresh again costs a sixth read. Revisit if row 15 is ever read to need the opening itself refused.
   - *Counts:* N1's "1 of 46" is 47 and N2's "83/83" is 84 at `60bf2d5`, corrected above.
-- [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
+- [x] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
+  *Evidence:* folded into step 26, the one full walk of everything. The human's yes of 2026-10-30, 11:5x, to leave C's own walk for it; C's 36 bases are among the 198 committed at `47ba1c6`.
 
 **Group D, staff from Excel.** Each step as its group A step, for rows 29 to 31 and 48.
 
@@ -1372,7 +1374,8 @@ itself:
   changed: `pnpm report` reads 0 asked again.
   *Seen on the way:* the take-over hazard in the risks (a later writer of people that
   skips the add) is not met: the import is the add.
-- [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
+- [x] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
+  *Ticked 2026-10-30 17:00 +07: the re-check and its fix pass are below, the last whole gate is green (`logs/20261030-1343-employee-list-fix-pass-3-check-2.log`), and the human's full walk (step 26) read the result.*
   *Review of D read 2026-10-30 (Opus, on `1a48a6a`): D1 to D7. Fix pass 2026-10-30 13:04 +07, each seen red
   from its assertion or its mutation; not ticked until the re-check of this fix pass:*
   - D1 `[FIXED]` (`0d67295`) `ImportPage` keeps the answered results across calls, shows the done view for
@@ -1482,17 +1485,29 @@ itself:
     shape the approved `failed`/`failedPart` words already explain, so there are no new words and no new screen.
     It is older than the third fix pass (`ui/src/ImportPage.tsx#L141-L162`: `send` has no guard for the page being
     left).
-- [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
+- [x] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
   - *Walk defect, 2026-10-30 16:0x +0700:* found by the human's fake pass at 15:50 (all 6 tests red at the used QR code's refused title): `open` in `walk/specs/piece-2.spec.ts` never cleared a session and kept every earlier init script, so the phone opened signed in as Lan; fixed at `ec1a880` (the session cleared, only the latest init script kept, phone 1 expects the signed-in name).
   - *Picture defect, 2026-10-30 16:3x +0700:* the human's full walk at 16:02 went red on six pictures (`staff-20-preview-{en,vi}-{390,768}`, `staff-8-left-{en,vi}-1280`): the fake took one shot at once, while a base is written once two equal shots 100 ms apart agree, and the table's hover scrollbar (staff-20) and the checkbox's 100 ms border transition (staff-8) differ between the two moments. Fixed at `7450420`: the fake project writes its pictures with `toHaveScreenshot` like the bases, and staff-20's "Read the file" is pressed by Enter so the pointer stays parked.
   - *Decide 27 (a), taken 2026-10-30 16:31 +0700 on the human's ask:* a QR link opened on a phone that is already signed in: a good code switches the phone to the code's person (`bff/src/app.ts#L307-L309`), and a used or expired code is ignored silently (`ui/src/ClientApp.tsx#L223`). Recorded, not changed. *Trigger:* staff find the silence confusing.
+  - *Evidence, 2026-10-30 17:00 +07: the human's full walk of 16:39:13 to 16:50:18 at `949fdb4` (`logs/20261030-1438-full-run-employee-list.log`, from its line 753; the folder `walks/full-run-2026-10-30-163915-949fdb4/` in the credo root), accepted by Decide 31 (a).* Its readings:
+    - the full run against the fake: 0 of 198 differ, 198 screens reached, no picture without a reference;
+    - the bases written, against the fake: 0 differ; passes 2 and 3 each 6 of 6;
+    - the fake against the committed bases: only the five expected screens differ (staff-1-list, staff-8-left, staff-14-search, setup-1-departments-positions, setup-2-fields; 30 pictures), no other; 60 new pictures for C's and D's 10 screens;
+    - piece 1's 6 moved bases are all `5-language-menu` (C's "Change password" in the user menu); the operator's none; piece 1 and the operator 12 of 12 written and compared.
+    - The commit `47ba1c6` holds the 90 changed bases of piece 2 and the 6 of piece 1, each of piece 2's 198 byte equal (`cmp`) with the run's `bases-after/`.
+  - *The run's one red, and what it is:* the script's verdict is red because a gate ran before the stack for "others" (log `#L1301`, `#L1468`). Another repo's session ran `vitest` on this Mac during steps 8 and 9, after piece 2's bases were written and compared. A second process can make a run red, never wrongly green; the red is recorded as that and nothing in it is a picture.
+  - *Decide 31 (a), the human's, 2026-10-30 16:5x +07:* the 16:39 walk is accepted. The walks page was not rebuilt here: no screen's words have changed since `pnpm report` last read 0 waiting, 0 asked again, 0 no, 92 yes (step 25's third pass).
+  - *Decide 29 (a), the human's:* parked, as [open item 31](../open-items.md#L196). The import preview's and the staff list's `Table.ScrollContainer` (`ui/src/ImportPage.tsx#L261`, `ui/src/StaffListPage.tsx#L191`) show their scrollbar on hover only.
+  - *Decide 30, the human's rule, not in force:* a moved pixel is a raw pixel count; the same input gives the same output, so anything random (a date, a time) is fixed at its source or masked with a colour box. Today's walks were read by Playwright's comparator, which skips anti-aliasing pixels, and the fake and the full stack differ raw at the 390 logo (14 pixels, 38 pictures, every run). The raw rule needs that cause found and the script changed first: its own small piece after this one. `qa.md` is not changed here.
+  - *Decides 23 (a), 26 (a) and 27 (a)* are recorded above, under steps 25 and 26.
 
 **The close.**
 
-- [ ] **27. The recap and the merge.** Who: 🤖 the recap; the orchestrator merges on the human's
+- [x] **27. The recap and the merge.** Who: 🤖 the recap; the orchestrator merges on the human's
   word. Done when: the recap written, open items updated, `employee-list` ready to merge into `main`.
+  *Evidence, 2026-10-30 17:00 +07:* the recap is [`docs/recaps/2026-10-30-employee-list.md`](../recaps/2026-10-30-employee-list.md); open items 23, 24, 25, 27 and 28 stand and 31 is new. The merge into `main` stays the orchestrator's, on the human's word.
 - [ ] **28. ridge.** Who: 👤, after the push of the `main` that holds it, about 15 minutes. The deploy
   ships c-storage's list, the BFF and the UI. Every handle there stops resolving once (the sessions),
   so each person signs in again. On a client's link, the human signs in as its root, sets a

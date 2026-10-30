@@ -192,3 +192,14 @@ one's own password route answer every try, and each wrong one costs the guesser 
 for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
 after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
 the first client's own stack.
+
+## 31. Nothing on a phone shows that a wide table scrolls sideways — the machine; *parked* until the phone screens' own look (the employee list plan, step 26, 2026-10-30)
+
+On a phone, a wide table scrolls sideways inside its box, and nothing tells the person so: Mantine's
+`ScrollArea` draws its scrollbar on hover only, and a thumb has no hover. It touches the two
+`Table.ScrollContainer`s, the import preview's (`ui/src/ImportPage.tsx#L261`) and the staff list's
+(`ui/src/StaffListPage.tsx#L191`), so a field manager who opens the list on a phone sees the first
+columns and may not know that the rest is there. The fix, if taken: `scrollAreaProps={{ type: 'auto' }}`
+on both, which keeps the scrollbar on screen. It would move the pictures of staff-1, staff-8 and
+staff-14 at 390 and 768 wide, in both languages, and the human is asked about them again. *Trigger:* the
+human's look at the phone screens, or a partner who did not find the columns.
