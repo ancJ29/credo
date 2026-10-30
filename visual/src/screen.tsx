@@ -325,6 +325,12 @@ export function ScreenCard({
   const key = answerKey(walk.id, screen.id, language);
   const here = screen.languages[language];
   const devices = report.devices.filter((device) => show === 'all' || device.id === show);
+  /**
+   * A frame draws one screen in one language: its router starts at that screen's address and its
+   * app keeps what was done in it, so another screen, or the other language, is a new frame
+   * (`page.test.tsx`, "A move draws the new screen’s own picture").
+   */
+  const frameKey = `${screenId(walk, screen)}:${language}`;
   return (
     <section className="w-screen" id={screenId(walk, screen)}>
       <div className="w-screen-head">
@@ -373,7 +379,7 @@ export function ScreenCard({
                   </figcaption>
                   <Scaled width={device.width}>
                     <Frame
-                      key={language}
+                      key={frameKey}
                       title={`Screen ${screen.number} in ${LANGUAGE_LABEL[language]}, ${capital(device.label)} ${device.width}`}
                       colour={drawn.colour}
                       language={language}

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
+import { DICTIONARIES } from '@credo/ui/words';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Answers } from './answers';
@@ -269,6 +270,78 @@ describe('the walks page: the drawn screens', () => {
     // Screen 1 is the sign-in in the company's name.
     card('1-sign-in');
     expect(inFrame('Screen 1 in English, Phone 390').body.textContent).toContain('Minh Phát');
+  });
+
+  /** The level-2 headings a scene's frame draws once its steps are done. */
+  const sceneHeadings = async (title: string) => {
+    const inner = inFrame(title);
+    await waitFor(
+      () => expect(inner.querySelector('[data-scene]')!.getAttribute('data-scene')).toBe('done'),
+      { timeout: 20_000 },
+    );
+    return [...inner.querySelectorAll('h2')].map((heading) => heading.textContent);
+  };
+  const move = (name: '‹ Prev' | 'Next ›') => fireEvent.click(screen.getByRole('button', { name }));
+
+  it('A move draws the new screen’s own picture, never the one shown before it: the operator’s screens 1, 2, 3, 2 and 1 by Next and Prev, at tablet in Tiếng Việt', async () => {
+    render(<Page report={await reportWith({}, false, WALKS.slice(1, 2))} />);
+    pick('Show', 'Tablet');
+    const words = DICTIONARIES.vi.operator;
+    const own = { 1: words.signIn, 2: words.newTitle, 3: words.madeTitle };
+
+    expect(await sceneHeadings('Screen 1 in Tiếng Việt, Tablet 768')).toEqual([own[1]]);
+    for (const [press, number] of [
+      ['Next ›', 2],
+      ['Next ›', 3],
+      ['‹ Prev', 2],
+      ['‹ Prev', 1],
+    ] as const) {
+      move(press);
+      expect(await sceneHeadings(`Screen ${number} in Tiếng Việt, Tablet 768`)).toEqual([
+        own[number],
+      ]);
+    }
+  });
+
+  it('A move draws the new screen’s own picture, never the one shown before it: the admin’s mock screens 4, 3, 2, 1 and 2 by Prev and Next, at PC in English', async () => {
+    window.history.replaceState(null, '', '#admin-setup-4-saved');
+    render(<Page report={await reportWith()} />);
+    pick('Language', 'English');
+    /** What the screen's first field holds: the settings' company name, or the sign-in's name. */
+    const field = (number: number) =>
+      inFrame(`Screen ${number} in English, PC 1280`).querySelector('input')!.value;
+
+    expect(field(4)).toBe('Minh Phát Sài Gòn');
+    for (const [press, number, held] of [
+      ['‹ Prev', 3, 'Minh Phát'],
+      ['‹ Prev', 2, 'root'],
+      ['‹ Prev', 1, ''],
+      ['Next ›', 2, 'root'],
+    ] as const) {
+      move(press);
+      expect(field(number)).toBe(held);
+    }
+  });
+
+  it('A move draws the new screen’s own picture across two walks: from the admin’s last screen to the operator’s first by Next, at phone in Tiếng Việt', async () => {
+    window.history.replaceState(null, '', '#admin-setup-9-unknown-company');
+    render(<Page report={await reportWith({}, false, WALKS.slice(0, 2))} />);
+    pick('Show', 'Phone');
+    // Loaded inside an async act: this screen's frame measures itself again just after its load.
+    const unknown = screen.getByTitle<HTMLIFrameElement>('Screen 9 in Tiếng Việt, Phone 390');
+    await act(() => {
+      fireEvent.load(unknown);
+      return Promise.resolve();
+    });
+    expect(unknown.contentDocument!.body.textContent).toContain(
+      DICTIONARIES.vi.unknownClient.title,
+    );
+
+    move('Next ›');
+
+    expect(await sceneHeadings('Screen 1 in Tiếng Việt, Phone 390')).toEqual([
+      DICTIONARIES.vi.operator.signIn,
+    ]);
   });
 
   it('A switch shows the screen in one language, Tiếng Việt first, at PC to start, at one width or all three, so each width in each language is one press away', async () => {
