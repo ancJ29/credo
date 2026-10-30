@@ -3,6 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { type FakeArtifacts, type RunningFake, withFake } from './fake';
+import { startDemo, type DemoCopy } from './demo/apply';
+import { vietnamToday } from './demo/days';
 import { type Artifacts, type RunningStack, withStack } from './stack';
 
 /** `pnpm stack -- <command>` or `pnpm stack <command>`; pnpm may or may not pass the `--` on. */
@@ -162,6 +164,66 @@ export const runFake = (
       url: (fake) => fake.url,
       env: (fake) => ({ CREDO_URL: fake.url, CREDO_CLIENT_CODE: fake.clientCode }),
       waiting: (fake) => [`open ${fake.url}/?fake, any password signs ${fake.rootName} in`],
+    },
+    out,
+  );
+
+/** The stack with the demo's copies on it: what `pnpm demo` brings up. */
+export type RunningDemo = RunningStack & { copies: DemoCopy[] };
+
+/**
+ * `pnpm demo`: the same stack as `pnpm stack`, then every copy of the demo mapping (or one
+ * partner's, by `partner`) made by the operator's own create and filled as of four days ago, then
+ * three daily runs to yesterday. Each copy's link and root password are printed once, when no
+ * command was given; a command gets them in `CREDO_COPIES` (JSON) instead.
+ */
+export const runDemo = (
+  argv: string[],
+  build: (dir: string) => Promise<Artifacts>,
+  out: (line: string) => void,
+  settings: { partner?: string; now?: () => number } = {},
+) =>
+  runUp<Artifacts, RunningDemo>(
+    argv,
+    {
+      name: 'the demo stack',
+      building: 'building c-storage and the UI',
+      build,
+      up: (artifacts, use) =>
+        withStack(artifacts, async (stack) => {
+          out('making the demo copies');
+          const copies = await startDemo(
+            stack.storage,
+            vietnamToday((settings.now ?? Date.now)()),
+            settings.partner,
+          );
+          return await use({ ...stack, copies });
+        }),
+      url: (demo) => demo.url,
+      env: (demo) => ({
+        CREDO_URL: demo.url,
+        CREDO_OPERATOR_NAME: demo.operatorName,
+        CREDO_OPERATOR_PASSWORD: demo.operatorPassword,
+        CREDO_COPIES: JSON.stringify(
+          demo.copies.map(({ code, partner, client, scenario, company, rootPassword }) => ({
+            code,
+            partner,
+            client,
+            scenario,
+            company,
+            rootName: demo.rootName,
+            rootPassword,
+          })),
+        ),
+      }),
+      waiting: (demo) => [
+        ...demo.copies.flatMap((copy) => [
+          `${copy.company} (${copy.scenario}, for ${copy.partner}): ${demo.url}/login?client-code=${copy.code}`,
+          `  sign in as ${demo.rootName} with the password ${copy.rootPassword}`,
+        ]),
+        `the operator signs in at ${demo.url}/operator`,
+        `the operator is ${demo.operatorName}, first password ${demo.operatorPassword}`,
+      ],
     },
     out,
   );

@@ -9,6 +9,8 @@ import {
   type StoredOperator,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
+import { applyAll } from './demo/apply';
+import { vietnamToday } from './demo/days';
 import { ensureService } from './register';
 
 export type RidgeIo = {
@@ -18,16 +20,21 @@ export type RidgeIo = {
   show: (line: string) => void;
   err: (line: string) => void;
   fetch?: typeof fetch;
+  /** The clock `seed` reads the day from; the real one when none. */
+  now?: () => number;
 };
 
-const USAGE = 'usage: register | operator [--replace] [<name>] | tenant <code> <name>';
+const USAGE = 'usage: register | operator [--replace] [<name>] | tenant <code> <name> | seed';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
  * the BFF's service registered with the super-admin key, the operator's account, and a client made
  * by the operator's create. The connection comes from the environment (C_STORAGE_URL and the BFF's
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
- * printed once: the operator's to `show`, a client's root's to `out`. Returns the exit status.
+ * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
+ * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
+ * copy it had to leave (used first, or too far behind) ends it red after the others are done.
+ * Returns the exit status.
  */
 export async function runRidge(
   argv: string[],
@@ -79,6 +86,21 @@ export async function runRidge(
       const made = await createClient(client(), { code, name, madeAt: Date.now() });
       if (made === 'taken') throw new Error(`the code ${code} names a client already`);
       io.out(made.password);
+      return 0;
+    }
+
+    if (command === 'seed') {
+      const reports = await applyAll(client(), vietnamToday((io.now ?? Date.now)()), io.out);
+      const count = (status: (typeof reports)[number]['status']) =>
+        reports.filter((report) => report.status === status).length;
+      const days = reports.reduce((sum, report) => sum + report.days.length, 0);
+      io.out(
+        `seed: ${reports.length} copies mapped, ${count('ok')} up to date, ${count('missing')} not on this service, ${days} days applied`,
+      );
+      const stopped = reports.filter((r) => r.status === 'refused' || r.status === 'too-far');
+      if (stopped.length > 0) {
+        throw new Error(`left as they were, see above: ${stopped.map((r) => r.code).join(', ')}`);
+      }
       return 0;
     }
 

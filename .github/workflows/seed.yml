@@ -1,0 +1,73 @@
+# The demo copies on ridge get a day each morning: 06:00 in Vietnam (23:00 UTC), and by hand. The job
+# runs ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy
+# up to yesterday, through the BFF's own code over the tunnel. It writes nothing unless /health
+# names this commit, or an earlier one that differs from it in no path ci.yml deploys on, and the
+# BFF's function names the same. A red here is a defect to fix, never a run to repeat: the next morning catches the day up.
+# It runs under the deploy role, so a change here or to ops/seed.sh acts on ridge the next morning;
+# ops/test.sh reads this file as it reads the deploy job. Why: docs/plans/2026-10-29-demo-seed.md.
+name: seed
+
+on:
+  schedule:
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    # A manual run from a branch is refused here, and the environment admits main alone as well.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ridge
+    # Its own group, never `ridge`: a run waiting in a group replaces the one waiting before it, so
+    # a seed queued in the deploy's group would cancel a waiting deploy. A seed that overlaps a
+    # release meets about a second of 503s and ends red; the next run catches the day up.
+    concurrency:
+      group: ridge-seed
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      # Full history: the seed asks whether its commit is an ancestor of origin/main.
+      - name: Check out
+        if: ${{ !env.ACT }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node
+        if: ${{ !env.ACT }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      # The install runs third-party code, so it runs before the role is taken, and the seed's code
+      # runs without the role's credentials (ops/lib.sh's clean).
+      - name: pnpm 12.10.1
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install the workspace
+        if: ${{ !env.ACT }}
+        timeout-minutes: 3
+        run: pnpm install --frozen-lockfile
+      # The same exchange as the deploy's: GitHub's token for environment ridge for the role in the
+      # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
+      - name: Take the deploy role
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ap-southeast-5
+          mask-aws-account-id: true
+          role-skip-session-tagging: true
+          role-duration-seconds: 1200
+      # The script masks the keys itself, before anything is printed.
+      - name: Seed
+        if: ${{ !env.ACT }}
+        timeout-minutes: 10
+        run: bash ops/seed.sh ridge

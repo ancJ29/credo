@@ -23,6 +23,7 @@ on:
       - "eslint.config.js"
       - "knip.json"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/seed.yml"
   pull_request:
     paths:
       - "c-storage/**"
@@ -40,6 +41,7 @@ on:
       - "eslint.config.js"
       - "knip.json"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/seed.yml"
 
 permissions:
   contents: read

@@ -164,6 +164,18 @@ describe('what the ops scripts ask of ridge', () => {
     expect((await run(['tenant', 'good-code'], KEYS, call)).status).toBe(1);
   });
 
+  it('row 7: seed reads the real clock when none is given, and on an empty service makes nothing', async () => {
+    const { records, call } = memoryCStorage({ registered: true });
+
+    const result = await run(['seed'], KEYS, call);
+
+    expect(result).toMatchObject({ status: 0, shown: [], err: [] });
+    expect(result.out.at(-1)).toBe(
+      'seed: 6 copies mapped, 0 up to date, 6 not on this service, 0 days applied',
+    );
+    expect(records.size).toBe(0);
+  });
+
   it('names the variables at fault, never a value, and a command it does not know', async () => {
     const { call } = memoryCStorage();
 

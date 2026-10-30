@@ -24,6 +24,9 @@ describe('the record keys', () => {
     expect(tenant.employeePhoto('p1')).toBe(`tenant.${id}.employee-photo.p1`);
     // a photo is never found by the staff list
     expect(tenant.employeePhoto('p1').startsWith(tenant.employeePrefix)).toBe(false);
+    expect(tenant.seed).toBe(`tenant.${id}.seed`);
+    expect(tenant.seed.startsWith(tenant.all)).toBe(true);
+    expect(tenant.config.startsWith(tenant.all)).toBe(true);
     expect(recordKeys.client('acme')).toBe('client.acme');
     const other = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000002');
     expect(other.config).not.toBe(tenant.config);
@@ -129,5 +132,15 @@ describe('a device id', () => {
     for (const bad of ['short', 'has.a.dot-1234', 'has space 1234', 'x'.repeat(65)]) {
       expect(deviceIdSchema.safeParse(bad).success).toBe(false);
     }
+  });
+});
+
+describe('the seed ledger key', () => {
+  it('row 20: is built by recordKeys and sits outside every prefix the BFF lists', () => {
+    const tenant = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000001');
+    const listed = [tenant.employeePrefix, tenant.session(''), tenant.user('')];
+    for (const prefix of listed) expect(tenant.seed.startsWith(prefix)).toBe(false);
+    expect(tenant.seed).not.toBe(tenant.config);
+    expect(tenant.seed).not.toBe(tenant.staffSetup);
   });
 });

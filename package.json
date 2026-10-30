@@ -12,6 +12,7 @@
     "report": "pnpm --filter @credo/visual run report",
     "answers": "pnpm --filter @credo/visual run answers",
     "stack": "pnpm --filter @credo/scripts run stack",
+    "demo": "pnpm --filter @credo/scripts run demo",
     "fake": "pnpm --filter @credo/scripts run fake"
   },
   "devDependencies": {

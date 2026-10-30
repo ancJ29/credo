@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCStorage } from '@credo/bff/tests/build';
-import { createCStorageClient } from '@credo/shared';
+import { createCStorageClient, type CStorageClient } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './front';
@@ -53,6 +53,9 @@ export type RunningStack = {
   seedUrl: string;
   /** The folder the stack keeps its database and logs in, removed when the stack goes down. */
   dataDir: string;
+  /** The BFF's own c-storage service, for `pnpm demo` to make its copies in this process. Never
+   * handed to a command. */
+  storage: CStorageClient;
 };
 
 /** Listens on loopback alone, on a free port, and answers where it is bound. */
@@ -162,6 +165,7 @@ export async function withStack<T>(
       people,
       seedUrl: `http://127.0.0.1:${seedPort}/seed`,
       dataDir,
+      storage,
     });
   } finally {
     for (const stop of stops) await stop();

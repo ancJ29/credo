@@ -614,6 +614,27 @@ build_of() {
   jq -r '.buildVersion // empty' <<<"$1" 2>/dev/null || true
 }
 
+# push_paths <ci.yml>: the paths ci.yml's push trigger deploys on, one a line, a trailing /** dropped.
+#   Fails closed: under `paths:`, any line that is not `      - "<plain path>"` or
+#   `      - "<plain path>/**"` (a blank line apart) dies naming the line, since a line read as
+#   nothing would leave a path out of the comparison and let a seed run on older code.
+push_paths() {
+  local out
+  out=$(awk '
+    /^  push:$/ { on = 1; next }
+    on && /^  [a-z_]+:$/ { exit }
+    on && /^    paths:$/ { listed = 1; next }
+    on && /^    paths/ { print "!" $0; bad = 1; exit }
+    on && /^    [a-z_-]+:/ { listed = 0; next }
+    on && listed && /^$/ { next }
+    on && listed && /^      - "[A-Za-z0-9._\/-]+(\/\*\*)?"$/ { gsub(/^      - "|"$/, ""); sub(/\/\*\*$/, ""); print; next }
+    on && listed { print "!" $0; bad = 1; exit }
+    END { exit bad }
+  ' "$1") || die "ci.yml's push trigger holds a line this script cannot read, so the paths a push deploys on are not known: nothing was written. The line: $(grep -m1 '^!' <<<"$out" | cut -c2-)"
+  [ -n "$out" ] || die "found no paths under ci.yml's push trigger: nothing was written"
+  printf '%s\n' "$out"
+}
+
 # wait_build <sha> <seconds> <command that prints /health's body...>: until /health names the
 # commit, or the seconds run out (returns 1, saying what it answered)
 wait_build() {
