@@ -13,6 +13,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 /** The fake run's folder, when the full run is to be compared with it and not with its bases. */
 const reference = process.env['CREDO_REFERENCE_DIR'];
+/** The fake run's folder for its pictures, which the fake project writes as its base images. */
+const fakeDir = process.env['CREDO_FAKE_DIR'];
 
 export default defineConfig({
   testDir: 'specs',
@@ -31,7 +33,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', testIgnore: 'piece-2.spec.ts' },
-    { name: 'fake', testMatch: 'piece-2.spec.ts' },
+    {
+      name: 'fake',
+      testMatch: 'piece-2.spec.ts',
+      ...(fakeDir ? { snapshotPathTemplate: `${fakeDir}/{arg}{ext}` } : {}),
+    },
     {
       name: 'full',
       testMatch: 'piece-2.spec.ts',

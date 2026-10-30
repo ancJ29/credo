@@ -398,7 +398,8 @@ async function walk(page: Page, language: Language, width: number) {
   // 20. Before saving: each row read, with the reasons for the refused.
   await open(page, language, { path: '/staff/import' });
   await chooseFile(page, language, 'import');
-  await press(words.import.read);
+  // By the keyboard: the pointer stays parked, so the hover scrollbar of the table never shows.
+  await page.getByRole('button', { name: words.import.read, exact: true }).press('Enter');
   await expect(title(words.import.previewTitle)).toBeVisible();
   await expect(page.getByText(words.import.willAdd, { exact: true })).toHaveCount(3);
   await at('staff-20-preview');
