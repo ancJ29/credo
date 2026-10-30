@@ -1,6 +1,6 @@
 # Piece 2: the employee list
 
-**Where it stands — 2026-10-30 11:08 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`: the import route, each row through the add, without a sign-in; c-storage did not change. `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Open for the human:** what a call that fails on a row should answer (step 24's *Choice*). **Next:** steps 20 and 25, the reviews of C and D by another model, each in a fresh session.
+**Where it stands — 2026-10-30 11:40 +07:** groups A, B, C and D are merged on the fake in `employee-list`, 33 screens of piece 2, and the human's preview of C and D is done (steps 18 and 23). Step 19, C's back end, is done at `9b26f71`, and step 24, D's back end, at `e5e33ff`. Step 20's review of C found six items and one the same shape outside the reviewed commit; the fix pass, with the human's two decisions (18a, the email switch gates the sign-in by email; 19a, a row the system was busy on is its own result), is done at `02d2f64`: `pnpm check` exit 0 at 100 %, `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. **Next:** the reviewer re-checks the fix pass, and only then is step 20 ticked; step 25, the review of D, follows in a fresh session. **Open for the human:** nothing; open item 28 (a limit on wrong passwords) is parked until a client's own stack.
 
 > **Drafted** 2026-10-29 by the machine, from [the app frame](2026-10-27-app-frame.md) (piece 1, its
 > case table and its piece order), [ridge-app](2026-10-28-ridge-app.md) (a client is a tenant under
@@ -433,7 +433,7 @@ the group whose walk holds it.
 | 22 | 👤 | B: Someone allowed to change a person crops and saves a square photo, made small by the app, shown on the person's page; the list shows initials | unit, ui; BFF route; the walk |
 | 23 | 👤 | B: Search finds a person by any word the list shows, the company's own fields included; filters choose by department, position, whether they left, and the company's choice fields; the address keeps both, so a copied link opens the same list | unit, ui; the walk |
 | 24 | 👤 | B: A department, a position or a person may be allowed to change the company's settings | unit, shared; BFF route; the walk |
-| 25 | 👤 | C: The root gives a person an email, unique among the company's sign-ins, and they then sign in with the email or the code; no mail is ever sent to it | BFF route; the walk |
+| 25 | 👤 | C: The root gives a person an email, unique among the company's sign-ins, and they then sign in with the email or the code while the company has the email sign-in on; no mail is ever sent to it | BFF route; the walk |
 | 26 | 👤 | C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last; the company may turn the QR sign-in off | BFF route; unit, ui; the walk |
 | 27 | 👤 | C: A QR code opened on a phone signs that phone in, on the person's first page; opened a second time, or after its 15 minutes, it is refused and says to ask for a new one | BFF route; unit, ui; the walk |
 | 28 | 👤 | C: Each person, the root included, changes their own password from their menu, giving the current one first; the new one follows row 14's rule and signs them out on every other device | BFF route; unit, ui; the walk |
@@ -1140,8 +1140,8 @@ itself:
   `at` is new and the age a failed set's claim waits for, as a sign-in claim's, `ADD_MAX_MS`), writes the
   person with its tag, then removes the old record; a sign-in by a name with an `@` reads the email's
   record, the person it names and the code's sign-in record, and the session is the code's, so a code
-  change or a password reaches it as for any session; sign-in by email is not gated by the email switch
-  (the fake's is not either): the switch shows the person's field; the QR switch is checked at issue (403)
+  change or a password reaches it as for any session; sign-in by email was not gated by the email switch
+  at this commit (it is now: 18a, below); the QR switch is checked at issue (403)
   and at opening (401); the QR record is `{hash, expiresAt}`, SHA-256 of 32 random bytes in base64url,
   and every refusal of an opening is the same 401; one's own password answers 403 for a wrong current
   one (a person who came in by a QR code with no password cannot give one), signs out every other
@@ -1155,7 +1155,77 @@ itself:
   their 5 s (`SignIns.test.tsx`, `StaffRecord.test.tsx`); the third, at the same code with the load
   falling, was green. They are not read as passes (qa.md rule 6): load-bound tests, to be fixed or logged
   with the other load-bound ones.
+  *18a, the human's decision 2026-10-30 10:5x +07, made in the fix pass after step 20 (commit `19b0d22`):*
+  sign-in by email is gated by the setup's email switch, as the QR switch gates the QR code. Off means
+  nobody signs in by email, the same 401 as a wrong code with the dummy check still spent, and the
+  stored emails stay; `PUT …/email` answers 403 while it is off (after the 404 for no such person, as
+  the QR issue). A sign-in by email reads the setup first and hands it, and the person it read, on to
+  the view, so it still reads five records. Seen red first from its assertion: `expected 200 to be 401`
+  (an email signing in with the switch off) and `expected [ 200, 404 ] to deeply equal [ 403, 404 ]`
+  (the email set with it off) in `bff/src/sign-ins.route.test.ts`; `expected 'answered' to be 401`
+  in `ui/src/fake.test.tsx` (the fake); the person's page said "or the email" with the switch off, red
+  in `ui/src/SignIns.test.tsx`. The BFF's email tests run on a tenant with the switch on
+  (`emailTenant`). No walked screen's words changed: `pnpm report` reads 0 asked again.
 - [ ] **20. C's review.** Who: 🤖, another model. Done when: as step 10.
+  *Review, 2026-10-30, by Opus on `9b26f71`, probes red or green as run; not ticked until the
+  re-check of the fix pass below.*
+  *Fix pass, 2026-10-30 11:40 +07, of the six items R1 to R6, one the same shape outside the reviewed
+  commit (E), and the human's decisions 18a and 19a (under steps 19 and 24); each seen red from its
+  assertion before its fix, or, for a test that only needed to hold more, red under the reviewer's
+  mutation:*
+  - R1 `[FIXED]` (commit `eb97bce`) a change of the email freed the old one from a fresh read, so
+    a change back to it, made while the first change freed it, lost its record to the first change: the
+    person held the email with no record and a second person could be given it. The old email's record
+    is read before the new one is claimed and removed once over that tag after the person write; a
+    `moved` is a new claim and is left. Test `C: A change back to the old email, made while the first
+    change frees it, keeps the record of the email the person holds`; red `expected null not to be null`
+    (the held record), and the 409 for a second person given the email. The 503 test of a removal that
+    moves on every try is gone: only a claim moves that record.
+  - E `[FIXED]`, outside the reviewed commit (B's code route, the same shape as R1; commit `eb97bce`)
+    on `moved` the route read the old sign-in record again and removed it if it still named the person,
+    so a change back to the old code, made while the first change freed it, left the person on
+    `EMP-1` with no sign-in record and the next add could be given the code. After the read, a person
+    who no longer holds the new code has changed again and the old record is left. Test (`bff/src/
+    employee-code.route.test.ts`) `leaves the old record alone when a change back to the old code, made
+    while the first change frees it, has claimed it for the person`; red `expected null not to be null`
+    (the sign-in record of `emp-1`). A password given in between (the carried hash) keeps its tests. The
+    window that remains is between the claim of the change back and its person write: nothing then
+    tells a claim from a password given, since both mint a generation and name the person; it
+    needs the first change's removal to fall in that gap.
+  - R2 `[FIXED]` (`882e22f`) the two tests of row 47's 409 are run past `ADD_MAX_MS` before the second
+    person's set, so a held email is refused for being held and not for being young; red under the 409
+    applied only while the claim is under a minute old: `expected 200 to be 409`, in both.
+  - R3 `[FIXED]` (`a9137f3`) the QR order (everything checked, the removal over its tag, then the
+    session) is held: "spent by another phone" opens with a held session and asserts that `me` on it
+    still answers 200 and the session records are as many as before; red with `endKept` and `issue`
+    moved before the removal: `expected 401 to be 200`.
+  - R4 `[FIXED]` (`aa56d21`, with the missing-record case kept in `79c295e`) the QR test of a sign-in record
+    that is not the person's now writes the second person's record naming a third, who is there and
+    holds another code, and keeps a fourth whose record is gone; red with the code check taken out of
+    the view: `expected 200 to be 401`.
+  - R5 `[FIXED]` (`79c295e`) every write of a sign-in record mints a generation, so a record that moved
+    under one's own password has already ended the calling session: it answers 401, where the loop
+    checked the current password against what someone else wrote and answered 403 to a person who typed
+    it right. The loop is one attempt now, and its second `ATTEMPTS` constant (`app.ts`) is gone, so
+    the Info item is met: one constant, in `staff.ts`. The interferer is the root's set-password route,
+    a write a real route makes. Test `C: A password the root gave in between signs the caller out: a
+    401, never a wrong current password, and the root's password stands`; red `expected 403 to be 401`.
+    The 503-on-every-try test went with the loop: no route writes without a generation.
+  - R6 `[FIXED]` (`588c0e6`) the person `accountOf` read is handed to the view when the sign-in record
+    names that person, so a sign-in by email reads 5 records, one more than by code (4), none twice
+    (18a then put the setup read first and handed it on too, still 5). Tests `C: A sign-in by email
+    reads one record more than by code, and no record twice`, red `expected [ …(6) ] to have a length
+    of 5`; and `C: An email whose person's sign-in record names another person signs no one in`, red
+    `expected 200 to be 401` with the id check removed.
+  - *Judged and accepted as they are:* a QR code issued for an archived person (its opening is refused);
+    403 for a wrong current password; no brute-force limit, logged as open item 28 (a per-name limit on
+    the sign-in route and on the current password together, for the human to place before the first
+    client's own stack; ridge's stage throttles at 10 a second), `283c003`.
+  - *Gates:* the whole `pnpm check` exit 0 after the fixes (`02d2f64`) at 100 % in each package, no
+    warning (shared 87 tests, bff 260, ui 321, scripts 76, visual 223; knip silent), the load 3.4 at its
+    start; `pnpm report` reads 0 waiting, 0 asked again, 0 no, 92 yes. c-storage did not change, so
+    `make check` was not run. The first whole run failed on lint alone (two unused names and a needless
+    assertion), fixed in `02d2f64`.
 - [ ] **21. C's full walk.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11, for all 29
   screens; C's 36 bases committed.
 
@@ -1241,14 +1311,25 @@ itself:
   every package (shared 87 tests, bff 254, ui 317, scripts 76, visual 223; knip silent), the load 3.9
   at its start. c-storage and the UI did not change; no screen's words changed.
   *Choice, for the human's word:* a call is not one transaction. A row that fails other than by
-  409 or 400 (a claim that may be a running add's, 503; the store down) ends the call with that
-  answer: the rows before it stay added, none after is tried, and no result is sent, so the page says
-  the send failed. A retry of the same file then meets the added rows with a code as `taken`, and
-  adds a second person for each row with no code. *Recommended:* a new reason `busy` in
-  `importResultSchema`, a row that failed that way answered as that result and the call carried on,
-  so one answer always holds one result per row (the page counts it as refused already, so no screen
-  changes); the page's wording for it is the human's. Held now by two tests (503 by a claim, 503 by
-  the store). *Seen on the way:* the take-over hazard in the risks (a later writer of people that
+  409 or 400 (a claim that may be a running add's, 503; the store down) ended the call with that
+  answer at this commit: the rows before it stayed added, none after was tried, and no result was
+  sent. A retry of the same file then met the added rows with a code as `taken`, and added a second
+  person for each row with no code. Held by two tests (503 by a claim, 503 by the store).
+  *19a, the human's decision 2026-10-30 11:1x +07, made in the fix pass after step 20 (commit
+  `237f5bd`):* a new reason `busy` in `importResultSchema`; a row that fails with a 503 is answered as
+  that result and the call goes on to the next row, so each call always answers one result per row. Any
+  other failure (a 500: a record that does not parse) is a fault and still ends the call, rows before it
+  kept. The result carries no row number: its place in the reply is its row's place in the call, and the
+  page, which holds the rows it sent, names the row of the file (`line`, as the preview's table does).
+  The done screen counts the busy rows apart from the refused ones and lists each by its row, its name
+  and "Not added: the system was busy. Try this row again." (Vietnamese "Chưa thêm: hệ thống đang bận.
+  Hãy thử lại dòng này."). The fake does the same: a row whose add fails with a 503 (the cue
+  `addEmployee:503`) is `busy`. The two partial-call tests became tests of the new behaviour, seen red
+  first (`expected 503 to be 200`, twice, in `bff/src/employee-import.route.test.ts`; `ApiError:
+  answered 503` and the missing "1 rows were not added" in the fake's and the page's); a third holds
+  the 500 (red with every failure made busy: `expected 200 to be 500`). No walked screen's words
+  changed: `pnpm report` reads 0 asked again.
+  *Seen on the way:* the take-over hazard in the risks (a later writer of people that
   skips the add) is not met: the import is the add.
 - [ ] **25. D's review.** Who: 🤖, another model. Done when: as step 10.
 - [ ] **26. The full walk of everything.** Who: 👤 runs the script; 🤖 reads. Done when: as step 11,
