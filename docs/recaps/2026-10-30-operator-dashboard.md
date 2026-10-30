@@ -90,3 +90,6 @@ red first; the plan records no finding rejected or deferred.
 **Hazard, repeated: never revert past this piece on ridge.** Every client made after it carries a
 `madeAt`; the old strict client schema refuses it, so each such client would answer 500
 (`shared/src/records.ts#L41`, read strictly in `bff/src/app.ts`). On ridge, roll forward.
+
+**Merged:** `operator-dashboard` was fast-forwarded into `main` at `05538f3`, 2026-10-30 20:45 +07, on the
+human's word; the push is the human's.

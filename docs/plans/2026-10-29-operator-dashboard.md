@@ -1,12 +1,12 @@
 # The operator's dashboard: a frame of sections, the clients listed, a client added
 
-**Where it stands — 2026-10-30 20:44 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
+**Where it stands — 2026-10-30 20:46 +07:** the UI is fixed on the fake (steps 3 to 7), the BFF is
 built (step 8), the full run's script is written (step 9), the review's six findings are fixed
 (step 10), the full walk is green with the operator's 54 bases committed (step 11) and the recap is
 written (step 12). Step 13 is done: `main` is merged in twice, `pnpm check` is green at 100 %, and the
 human's full run of 18:41 came back red on six card corners, diagnosed and accepted on Decide 33 (a);
-the fix goes to the pixel piece. **Next:** step 14, the merge into `main`, the orchestrator's on the
-human's word ([steps](#steps)).
+the fix goes to the pixel piece. Step 14 is done: `main` holds the dashboard. **Next:** the human's
+push of `main`, then the pixel piece with open item 32 ([steps](#steps)).
 
 > **Drafted** 2026-10-29 by the machine, on the human's ask of 11:0x +07, from
 > [ridge-app](2026-10-28-ridge-app.md) (where the operator and its clients came in),
@@ -565,8 +565,11 @@ worktree; B to D will touch more of the same:
   `main`. The fix goes into the pixel piece ([open item 32](../open-items.md)),
   under the human's Decide 30 ("a moved pixel is a raw pixel"); it comes after the push and is proved by two
   full runs back to back, the second leaving git clean.
-- [ ] **14. The merge.** Who: the orchestrator, on the human's word, after step 13. Done when:
+- [x] **14. The merge.** Who: the orchestrator, on the human's word, after step 13. Done when:
   `operator-dashboard` merged into `main`, the recap's last line naming the merge.
+  *Evidence:* 20:45 +07, on the human's word (Decide 33 (a), "yes, accept"). The orchestrator ran
+  `git merge --ff-only operator-dashboard` in `main`'s worktree; `main` is now at `05538f3`, and the
+  recap's last line names the merge. Not pushed: the push is the human's.
 - [ ] **15. ridge.** Who: 👤, after the push of the `main` that holds it, about 10 minutes. The deploy
   ships the BFF and the UI. The human signs in at `/operator`, finds ridge's clients listed (those made
   before this piece with "—"), adds one, sees it lead the list with today's date, and opens its copied
