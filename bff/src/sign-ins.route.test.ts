@@ -614,8 +614,14 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
     const gone = await issued(t, left.id);
     const lost = await issued(t, orphan.id);
     await t.rootCall.send('POST', `/api/employees/${left.id}/archive`, { version: left.version });
+    const third = await person(t, { code: 'EMP-0003' });
+    // The second person's sign-in record names the third, who is there and holds another code.
     const record = await t.client.getRecord(t.keys.user('emp-0002'));
-    await t.client.removeRecord(t.keys.user('emp-0002'), record!.tag);
+    await t.client.putRecord(
+      t.keys.user('emp-0002'),
+      { ...(record!.data as object), employeeId: third.id },
+      record!.tag,
+    );
 
     expect((await openQr(t, left.id, gone.secret)).statusCode).toBe(401);
     expect((await openQr(t, orphan.id, lost.secret)).statusCode).toBe(401);
