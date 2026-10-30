@@ -250,21 +250,21 @@ describe('moving', () => {
     expect(number()).toBe('9');
   });
 
-  it('N opens the reason box with the cursor in it, and again when a No is already given', async () => {
+  it('N opens the reason box without moving the focus, and the keys still work after it', async () => {
     render(<Page report={await make()} />);
 
     key('n');
     const box = screen.getByLabelText('Reason for the No');
-    expect(document.activeElement).toBe(box);
+    expect(document.activeElement).not.toBe(box);
 
     fireEvent.change(box, { target: { value: 'too small' } });
-    (document.activeElement as HTMLElement).blur();
     key('n');
-    expect(document.activeElement).toBe(box);
-    (document.activeElement as HTMLElement).blur();
-    fireEvent.click(screen.getByLabelText('Yes'));
+    expect(screen.getByLabelText('Reason for the No')).toBe(box);
+    expect(document.activeElement).not.toBe(box);
+    key('y');
+    expect(screen.queryByLabelText('Reason for the No')).toBeNull();
     fireEvent.click(screen.getByLabelText('No'));
-    expect(document.activeElement).toBe(screen.getByLabelText('Reason for the No'));
+    expect(document.activeElement).not.toBe(screen.getByLabelText('Reason for the No'));
   });
 
   it('a key does nothing in a text box, in the paste box, or with Ctrl, Cmd or Alt', async () => {
