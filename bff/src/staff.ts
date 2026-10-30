@@ -65,11 +65,12 @@ const ATTEMPTS = 3;
 export const ADD_MAX_MS = 60_000;
 
 /** The reason an import row is not added, by the status its add failed with; any other is a fault. */
-const IMPORT_REASONS: Partial<Record<number, Exclude<ImportResult, { kind: 'added' }>['reason']>> = {
-  400: 'invalid',
-  409: 'taken',
-  503: 'busy',
-};
+const IMPORT_REASONS: Partial<Record<number, Exclude<ImportResult, { kind: 'added' }>['reason']>> =
+  {
+    400: 'invalid',
+    409: 'taken',
+    503: 'busy',
+  };
 
 /** Who is calling, with the setup the check read when it had to (never for the root). */
 type Who = {

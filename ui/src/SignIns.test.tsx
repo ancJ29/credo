@@ -46,10 +46,11 @@ describe('an email on a person', () => {
   });
 
   it('C: A person’s page says it signs in with the email only while the company has the email sign-in on', async () => {
-    const withEmail = (api: { getEmployee: (id: string) => Promise<EmployeeDoc> }) => async (id: string) => {
-      const held = await api.getEmployee(id);
-      return { ...held, employee: { ...held.employee, email: 'hung@minh-phat.example' } };
-    };
+    const withEmail =
+      (api: { getEmployee: (id: string) => Promise<EmployeeDoc> }) => async (id: string) => {
+        const held = await api.getEmployee(id);
+        return { ...held, employee: { ...held.employee, email: 'hung@minh-phat.example' } };
+      };
     const off = openApp(at('EMP-0002'), {
       override: (spied, original) => spied.getEmployee.mockImplementation(withEmail(original)),
     });

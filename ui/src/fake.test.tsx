@@ -533,10 +533,9 @@ describe('the fake Api’s import, a row the system is busy on', () => {
       { name: 'Hai', code: 'nv-2', extra: {} },
     ]);
 
-    expect(reply.results.map((result) => (result.kind === 'added' ? 'added' : result.reason))).toEqual([
-      'busy',
-      'added',
-    ]);
+    expect(
+      reply.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
+    ).toEqual(['busy', 'added']);
     expect((await api.listEmployees()).map((person) => person.code)).toEqual(
       expect.arrayContaining(['NV-2']),
     );

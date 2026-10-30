@@ -5,7 +5,6 @@ import {
   QR_MINUTES,
   storedSignInEmailSchema,
   storedSignInQrSchema,
-  storedUserSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
@@ -902,10 +901,3 @@ describe('C: One’s own password', () => {
     expect(removed.statusCode).toBe(401);
   });
 });
-
-async function idOf(t: Tenant, code: string) {
-  const list = (await t.rootCall.get('/api/employees')).json<{
-    employees: { id: string; code: string }[];
-  }>();
-  return list.employees.find((person) => person.code === code)!.id;
-}

@@ -212,7 +212,11 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
       generation: randomUUID(),
     });
 
-    const results = await imported(t, [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })]);
+    const results = await imported(t, [
+      row({ code: 'NV-1' }),
+      row({ code: 'NV-2' }),
+      row({ code: 'NV-3' }),
+    ]);
 
     expect(results.map((result) => result.kind === 'added' || result.reason)).toEqual([
       true,
@@ -237,7 +241,11 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
     });
     failOn = 'NV-2';
 
-    const results = await imported(t, [row({ code: 'NV-1' }), row({ code: 'NV-2' }), row({ code: 'NV-3' })]);
+    const results = await imported(t, [
+      row({ code: 'NV-1' }),
+      row({ code: 'NV-2' }),
+      row({ code: 'NV-3' }),
+    ]);
     failOn = null;
 
     expect(results.map((result) => result.kind === 'added' || result.reason)).toEqual([

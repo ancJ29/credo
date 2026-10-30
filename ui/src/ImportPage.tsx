@@ -148,7 +148,7 @@ function ImportForm({
     setStatus('idle');
     // One result for each row sent, in the order sent: a row's place is its place among those held.
     const busy = results.flatMap((result, at) =>
-      result.kind === 'refused' && result.reason === 'busy' ? [held[at]!] : [],
+      result.kind === 'refused' && result.reason === 'busy' ? [held[at]] : [],
     );
     const added = results.filter((result) => result.kind === 'added').length;
     setDone({ added, refused: results.length - added - busy.length, busy });
