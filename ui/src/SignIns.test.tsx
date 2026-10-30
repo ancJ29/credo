@@ -134,7 +134,7 @@ describe('a QR code for a person', () => {
     expect(link.readOnly).toBe(true);
     expect(link.value).toMatch(
       new RegExp(
-        `^https?://[^/]+/login\\?client-code=demo&qr=${person('EMP-0004').id}\\.[0-9a-f]{32}$`,
+        `^https?://[^/]+/login\\?client-code=demo&qr=${person('EMP-0004').id}\\.fake-qr-minted-1$`,
       ),
     );
     expect(screen.getByRole('img', { name: 'QR code' })).toBeTruthy();

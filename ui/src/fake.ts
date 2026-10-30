@@ -84,6 +84,8 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
   const ready = new Set(
     DEMO_EMPLOYEES.filter((person) => person.code !== 'EMP-0007').map((p) => p.id),
   );
+  /** How many QR codes have been minted: each one's secret is its number. */
+  let minted = 0;
   /** The QR code each person was last shown, by the secret it signs in with; spending one removes it.
    * The data set holds one, a warehouse member's, for the phone's walk. */
   const qrs = new Map<string, string>([
@@ -370,7 +372,9 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
       call('issueQr', () => {
         person(id);
         if (!staffConfig(setup).fields.qr) throw new ApiError(403);
-        const secret = crypto.randomUUID().replaceAll('-', '');
+        // Counted, not random: the same walk shows the same link on every build, so an answer
+        // given to the screen keeps holding.
+        const secret = `fake-qr-minted-${++minted}`;
         qrs.set(id, secret);
         return { link: qrLink(DEMO_CODE, id, secret), expiresAt: Date.now() + QR_MINUTES * 60_000 };
       }),

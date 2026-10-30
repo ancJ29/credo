@@ -194,6 +194,11 @@ describe('the app’s own scenes, drawn', () => {
         ].includes(key);
         const words = await readWords(what, language, navigation);
         expect(words, `${key} ${language}`).toContain(PROOF[key](DICTIONARIES[language]));
+        // Drawn again from a fresh start, a screen reads the same: an answer is kept by the
+        // fingerprint of these words, so one that changes between builds can never stay answered.
+        expect(await readWords(what, language, navigation), `${key} ${language} again`).toEqual(
+          words,
+        );
         // A leaked dictionary key reads `word.Word`; an email's domain reads the same, so emails are
         // taken out of a line before it is looked at.
         expect(

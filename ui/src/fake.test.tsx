@@ -237,6 +237,14 @@ describe('the fake Api', () => {
     expect(await status(api.signIn('huy@minh-phat.example', 'pw'))).toBe(401);
   });
 
+  it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {
+    const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
+    const first = await fake('', { client: 'fake.session' }, true).issueQr(bao.id);
+    const second = await fake('', { client: 'fake.session' }, true).issueQr(bao.id);
+
+    expect(second.link).toBe(first.link);
+  });
+
   it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company with the QR sign-in off shows and accepts none', async () => {
     const api = fake('', { client: 'fake.session' }, true);
     const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
