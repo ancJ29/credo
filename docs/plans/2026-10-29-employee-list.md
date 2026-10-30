@@ -1486,6 +1486,8 @@ itself:
   for all 33 screens and piece 1's and the operator's walks; D's 24 bases committed, all 198 of
   piece 2's in place; the walks page shows nothing waiting and no open "no". The piece is done here.
   - *Walk defect, 2026-10-30 16:0x +0700:* found by the human's fake pass at 15:50 (all 6 tests red at the used QR code's refused title): `open` in `walk/specs/piece-2.spec.ts` never cleared a session and kept every earlier init script, so the phone opened signed in as Lan; fixed at `ec1a880` (the session cleared, only the latest init script kept, phone 1 expects the signed-in name).
+  - *Picture defect, 2026-10-30 16:3x +0700:* the human's full walk at 16:02 went red on six pictures (`staff-20-preview-{en,vi}-{390,768}`, `staff-8-left-{en,vi}-1280`): the fake took one shot at once, while a base is written once two equal shots 100 ms apart agree, and the table's hover scrollbar (staff-20) and the checkbox's 100 ms border transition (staff-8) differ between the two moments. Fixed at `7450420`: the fake project writes its pictures with `toHaveScreenshot` like the bases, and staff-20's "Read the file" is pressed by Enter so the pointer stays parked.
+  - *Decide 27 (a), taken 2026-10-30 16:31 +0700 on the human's ask:* a QR link opened on a phone that is already signed in: a good code switches the phone to the code's person (`bff/src/app.ts#L307-L309`), and a used or expired code is ignored silently (`ui/src/ClientApp.tsx#L223`). Recorded, not changed. *Trigger:* staff find the silence confusing.
 
 **The close.**
 
