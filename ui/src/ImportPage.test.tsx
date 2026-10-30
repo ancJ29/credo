@@ -1,10 +1,10 @@
 import { IMPORT_MAX_BYTES, IMPORT_MAX_ROWS } from '@credo/shared';
 import { DEMO_STAFF_SETUP } from '@credo/shared/demo';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { openApp } from '../tests/open';
-import { ApiError } from './api';
+import { openApp, type Spied } from '../tests/open';
+import { type Api, ApiError } from './api';
 import { DICTIONARIES } from './i18n';
 import { demoImportFile } from './importDemo';
 import { readFirstSheet, writeWorkbook } from './importFile';
@@ -262,6 +262,79 @@ describe('the import page', () => {
     expect(sent[2]?.[0]?.name).toBe('Người 100');
   });
 
+  it('refuses in the preview a code that is the root’s own sign-in name, as a code already given', async () => {
+    openApp('/staff/import');
+    await chooseAndRead(await staffFile([{ name: 'Một', code: 'root' }, { name: 'Hai' }]));
+
+    const text = (await screen.findByRole('table')).textContent ?? '';
+    expect(text).toContain('The code “ROOT” already belongs to someone in the company.');
+    expect(screen.getByRole('button', { name: 'Add the people (1)' })).toBeTruthy();
+  });
+
+  it('Choose another file is disabled while a send runs', async () => {
+    const send = pendingSend();
+    openApp('/staff/import', { override: send.override });
+    await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (2)' }));
+    await waitFor(() => expect(send.calls).toHaveLength(1));
+
+    expect(
+      screen.getByRole('button', { name: 'Choose another file' }).hasAttribute('disabled'),
+    ).toBe(true);
+    send.answer(0);
+    await screen.findByText('2 people were added.');
+  });
+
+  it('A send that ends after the root pressed Choose another file is read against the rows it sent: the busy row is named by its place in the file sent', async () => {
+    const send = pendingSend((row) => row.name === 'Hai');
+    openApp('/staff/import', { override: send.override });
+    await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }]));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
+    await waitFor(() => expect(send.calls).toHaveLength(1));
+
+    // A disabled button takes no click; the click is sent so that an enabled one would be pressed.
+    fireEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+    send.answer(0);
+
+    expect(await screen.findByText('2 people were added.')).toBeTruthy();
+    const busy = within(screen.getByRole('table'));
+    expect(busy.getByText('Hai')).toBeTruthy();
+    expect(busy.getByText('3')).toBeTruthy();
+    expect(busy.getAllByRole('row')).toHaveLength(2);
+  });
+
+  it('A double click on Add the rest sends the rest once', async () => {
+    const send = await failedAfterFirstCall();
+
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Add the rest (50)' }));
+
+    expect(send.calls.map((rows) => rows.length)).toEqual([100, 50, 50]);
+    send.answer(2);
+    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+  });
+
+  it('The results stay on screen while the rest is sent', async () => {
+    const send = await failedAfterFirstCall();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+
+    expect(screen.getByRole('heading', { level: 2, name: 'People added' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Check the rows' })).toBeNull();
+    send.answer(2);
+    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+  });
+
+  it('The warning that the system stopped partway is not shown while the rest is sent', async () => {
+    const send = await failedAfterFirstCall();
+    expect(screen.getByText(/will not be sent again/)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+
+    expect(screen.queryByText(/will not be sent again/)).toBeNull();
+    send.answer(2);
+    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+  });
+
   it('says a row the add refused as invalid apart from one whose code was taken', async () => {
     openApp('/staff/import', {
       override: (spied) => {
@@ -389,7 +462,8 @@ describe('the walk spec’s steps for the import, replayed on the real router', 
       await userEvent.click(
         await screen.findByRole('button', { name: whole(words.import.template) }),
       );
-      expect(saved.at(-1)?.name).toBe(`staff-${language}.xlsx`);
+      // The template is made after its two libraries load, so it is handed over a moment later.
+      await waitFor(() => expect(saved.at(-1)?.name).toBe(`staff-${language}.xlsx`));
       const picked = await demoImportFile(language, 'import');
       await userEvent.upload(screen.getByLabelText(whole(words.import.file)), picked);
       expect(await screen.findByText(chosenText(picked.name))).toBeTruthy();
@@ -419,6 +493,51 @@ describe('the walk spec’s steps for the import, replayed on the real router', 
     }
   });
 });
+
+type Rows = Parameters<Api['importEmployees']>[0];
+
+/** A stubbed import whose calls stay pending until `answer(n)` answers the n-th call (from 0) with
+ * one result for each row sent: added, or busy where `busy` says so. The call numbered `failing` is
+ * rejected with a 503 at once. */
+function pendingSend(busy: (row: Rows[number]) => boolean = () => false, failing = -1) {
+  const calls: Rows[] = [];
+  const answers: (() => void)[] = [];
+  return {
+    calls,
+    answer: (at: number) => answers[at]?.(),
+    override: (spied: Spied) => {
+      spied.importEmployees.mockImplementation((rows) => {
+        const at = calls.push(rows) - 1;
+        if (at === failing) return Promise.reject(new ApiError(503));
+        return new Promise((resolve) => {
+          answers[at] = () =>
+            resolve({
+              results: rows.map((row) =>
+                busy(row)
+                  ? { kind: 'refused' as const, reason: 'busy' as const }
+                  : { kind: 'added' as const, employee: employee(row.name) },
+              ),
+            });
+        });
+      });
+    },
+  };
+}
+
+/** The page after 150 rows were sent: the first call answered, the second failed, so the results of
+ * the first stand and 50 rows are left to add. */
+async function failedAfterFirstCall() {
+  const send = pendingSend(() => false, 1);
+  openApp('/staff/import', { override: send.override });
+  await chooseAndRead(
+    await staffFile(Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` }))),
+  );
+  await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+  await waitFor(() => expect(send.calls).toHaveLength(1));
+  send.answer(0);
+  await screen.findByText('100 people were added.');
+  return send;
+}
 
 /** An added person as the BFF would answer, for a stubbed call. */
 function employee(name: string) {

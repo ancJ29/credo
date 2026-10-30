@@ -3,6 +3,7 @@ import {
   IMPORT_MAX_BYTES,
   type ImportResult,
   type Language,
+  normaliseEmployeeCode,
   type StaffSetup,
 } from '@credo/shared';
 import { Alert, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
@@ -72,7 +73,9 @@ export function ImportPage(page: PageProps) {
   const loaded = useLoad(
     async () => {
       const [setup, people] = await Promise.all([api.getStaffSetup(), api.listEmployees()]);
-      return { setup: setup.setup, taken: new Set(people.map((person) => person.code)) };
+      // The root's own sign-in name is a code no one may be given, though no person holds it.
+      const codes = [...people.map((person) => person.code), normaliseEmployeeCode(page.user.name)];
+      return { setup: setup.setup, taken: new Set(codes) };
     },
     page,
     [api],
@@ -105,9 +108,9 @@ function ImportForm({
   const [problem, setProblem] = useState<FileProblem | null>(null);
   const [rows, setRows] = useState<ReadRow[] | null>(null);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed'>('idle');
-  // The results of the rows answered so far, in the order of the rows held: a call that fails does
-  // not take back the calls answered before it.
-  const [answered, setAnswered] = useState<ImportResult[]>([]);
+  // The rows answered so far, each with its result: a call that fails does not take back the calls
+  // answered before it, and a result is read against its own row, never against the file held now.
+  const [answered, setAnswered] = useState<{ row: ReadRow; result: ImportResult }[]>([]);
   // Whether a send has ended: the results are shown once it has, not call by call as it runs.
   const [ended, setEnded] = useState(false);
 
@@ -138,13 +141,15 @@ function ImportForm({
   async function send() {
     if (answered.length === 0) setEnded(false);
     setStatus('busy');
-    const requests = held.slice(answered.length).map((row) => row.request!);
+    const done = new Set(answered.map((one) => one.row));
+    const todo = held.filter((row) => !done.has(row));
     let results = answered;
     try {
-      for (let at = 0; at < requests.length; at += IMPORT_CALL_ROWS) {
-        const reply = await api.importEmployees(requests.slice(at, at + IMPORT_CALL_ROWS));
-        // One result for each row sent, in the order sent: a row's place is its place among those held.
-        results = [...results, ...reply.results];
+      for (let at = 0; at < todo.length; at += IMPORT_CALL_ROWS) {
+        const part = todo.slice(at, at + IMPORT_CALL_ROWS);
+        const reply = await api.importEmployees(part.map((row) => row.request!));
+        // One result for each row sent, in the order sent.
+        results = [...results, ...reply.results.map((result, i) => ({ row: part[i], result }))];
         setAnswered(results);
       }
     } catch (error) {
@@ -166,15 +171,15 @@ function ImportForm({
   };
 
   if (answered.length > 0 && ended) {
-    const busy = answered.flatMap((result, at) =>
-      result.kind === 'refused' && result.reason === 'busy' ? [held[at]] : [],
+    const busy = answered.flatMap(({ row, result }) =>
+      result.kind === 'refused' && result.reason === 'busy' ? [row] : [],
     );
-    const added = answered.filter((result) => result.kind === 'added').length;
+    const added = answered.filter(({ result }) => result.kind === 'added').length;
     const invalid = answered.filter(
-      (result) => result.kind === 'refused' && result.reason === 'invalid',
+      ({ result }) => result.kind === 'refused' && result.reason === 'invalid',
     ).length;
     const taken = answered.length - added - invalid - busy.length;
-    const rest = held.length - answered.length;
+    const rest = held.filter((row) => !answered.some((one) => one.row === row)).length;
     return (
       <Stack gap="lg">
         <Title order={2}>{t('import.doneTitle')}</Title>
@@ -297,7 +302,7 @@ function ImportForm({
             >
               {t('import.add', { count: held.length })}
             </Button>
-            <Button variant="default" onClick={chooseAgain}>
+            <Button variant="default" disabled={status === 'busy'} onClick={chooseAgain}>
               {t('import.another')}
             </Button>
           </Group>
