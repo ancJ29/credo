@@ -216,8 +216,9 @@ describe('pnpm answers', () => {
     expect(plain.at(-1)).toBe('0 written to answers.json, 1 refused');
   });
 
-  it('takes a block made by “Yes to all” with plain pnpm answers, and a Share message made by it with --partners', async () => {
-    // a copy: this test sets every screen waiting, and the others read the page as it was built
+  /** The page of the one build with every screen set waiting and “Yes to all” pressed. */
+  async function yesToAll() {
+    // a copy: this sets every screen waiting, and the others read the page as it was built
     const page = structuredClone(await builtPage());
     for (const walk of page.walks) {
       for (const screen of walk.screens) {
@@ -228,24 +229,36 @@ describe('pnpm answers', () => {
     }
     const { next, count } = yesTo(placesOf(page), {}, HUMAN);
     expect(count).toBe(allKeys(WALKS).length);
-    const mine = FILE();
-    writeFileSync(mine, '{}');
-    const theirs = FILE();
-    writeFileSync(theirs, '{}');
+    return { page, next };
+  }
 
-    expect(await answer(blockOf(page, next).text, () => {}, { file: mine, now: NOW })).toBe(0);
+  // Two tests, not one: each answer command draws every screen, which is the cost of a whole
+  // build, and a test that ran both would pay it twice and grow twice as fast with the screens.
+  it('takes a block made by “Yes to all” with plain pnpm answers', async () => {
+    const { page, next } = await yesToAll();
+    const file = FILE();
+    writeFileSync(file, '{}');
+
+    expect(await answer(blockOf(page, next).text, () => {}, { file, now: NOW })).toBe(0);
+
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
+      [...allKeys(WALKS)].sort(),
+    );
+  });
+
+  it('takes a Share message made by “Yes to all” with --partners, every key under the partner’s label', async () => {
+    const { page, next } = await yesToAll();
+    const file = FILE();
+    writeFileSync(file, '{}');
+
     expect(
-      await answer(shareOf(page, next, 'p1').text, () => {}, {
-        file: theirs,
-        now: NOW,
-        partners: true,
-      }),
+      await answer(shareOf(page, next, 'p1').text, () => {}, { file, now: NOW, partners: true }),
     ).toBe(0);
 
-    const human = Object.keys(JSON.parse(readFileSync(mine, 'utf8')) as object);
-    expect(human).toHaveLength(count);
-    expect(Object.keys(JSON.parse(readFileSync(theirs, 'utf8')) as object)).toEqual(
-      human.map((key) => `${key}@p1`),
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
+      allKeys(WALKS)
+        .map((key) => `${key}@p1`)
+        .sort(),
     );
   });
 
