@@ -315,34 +315,70 @@ export const DEMO_CUSTOMERS: Customer[] = [
   },
 ];
 
-/** Six invented products of the demo company, in code order, by the bag, the tonne, the thousand
- * and the cubic metre, one with a note. */
+/** Seven invented products of the demo company, in code order, by the bag, the tonne, the thousand
+ * and the cubic metre, one with a note, and one not stocked: a delivery fee, by the trip. */
 export const DEMO_PRODUCTS: Product[] = [
+  {
+    id: id(307),
+    code: 'DV-001',
+    name: 'Phí giao hàng theo chuyến',
+    unit: 'chuyến',
+    price: 150_000,
+    stocked: false,
+    extra: {},
+  },
   {
     id: id(301),
     code: 'VT-001',
     name: 'Xi măng PCB40',
     unit: 'bao',
     price: 95_000,
+    stocked: true,
     extra: { note: 'Bao 50 kg.' },
   },
-  { id: id(302), code: 'VT-002', name: 'Cát xây tô', unit: 'm³', price: 320_000, extra: {} },
-  { id: id(303), code: 'VT-003', name: 'Đá 1x2', unit: 'm³', price: 410_000, extra: {} },
+  {
+    id: id(302),
+    code: 'VT-002',
+    name: 'Cát xây tô',
+    unit: 'm³',
+    price: 320_000,
+    stocked: true,
+    extra: {},
+  },
+  {
+    id: id(303),
+    code: 'VT-003',
+    name: 'Đá 1x2',
+    unit: 'm³',
+    price: 410_000,
+    stocked: true,
+    extra: {},
+  },
   {
     id: id(304),
     code: 'VT-004',
     name: 'Gạch ống 4 lỗ',
     unit: 'nghìn viên',
     price: 1_650_000,
+    stocked: true,
     extra: {},
   },
-  { id: id(305), code: 'VT-005', name: 'Thép phi 8', unit: 'tấn', price: 15_800_000, extra: {} },
+  {
+    id: id(305),
+    code: 'VT-005',
+    name: 'Thép phi 8',
+    unit: 'tấn',
+    price: 15_800_000,
+    stocked: true,
+    extra: {},
+  },
   {
     id: id(306),
     code: 'VT-006',
     name: 'Sơn nước ngoại thất 18 L',
     unit: 'thùng',
     price: 1_890_000,
+    stocked: true,
     extra: {},
   },
 ];
@@ -350,7 +386,7 @@ export const DEMO_PRODUCTS: Product[] = [
 /** One row of a customers' or products' import file, by the key of the column it fills. A column is
  * left out of a row that gives nothing. */
 export type DemoListRow = Partial<
-  Record<'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'note', string>
+  Record<'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'stocked' | 'note', string>
 >;
 
 /** The customers' file the demo company's root chooses: three rows that hold (the second typed in
@@ -376,7 +412,7 @@ export const DEMO_CUSTOMER_IMPORT_ROWS: DemoListRow[] = [
 ];
 
 /** The products' file: three rows that hold (one price typed with a dot between the thousands, one
- * with a comma), one whose code the company has (VT-002) and one whose price is no price. */
+ * with a comma; the first with the stocked cell empty, which reads Có, the second Không), one whose code the company has (VT-002) and one whose price is no price. */
 export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
   { code: 'VT-007', name: 'Xi măng đen PC30', unit: 'bao', price: '88.000' },
   {
@@ -386,7 +422,7 @@ export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
     price: '180000',
     note: 'Giao tận công trình.',
   },
-  { code: 'vt-009', name: 'Ống nhựa PVC phi 60', unit: 'cây', price: '72,000' },
+  { code: 'vt-009', name: 'Ống nhựa PVC phi 60', unit: 'cây', price: '72,000', stocked: 'Có' },
   { code: 'VT-002', name: 'Cát xây tô', unit: 'm³', price: '320000' },
   { code: 'VT-011', name: 'Đá mi bụi', unit: 'm³', price: 'thương lượng' },
 ];

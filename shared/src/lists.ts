@@ -27,6 +27,8 @@ export const productSchema = z.strictObject({
   name: nameSchema,
   unit: unitSchema,
   price: priceSchema,
+  /** Whether its stock is kept (Quản lý tồn kho): typed, since the stock piece's BFF relies on it. */
+  stocked: z.boolean(),
   extra: extraSchema,
 });
 export type Product = z.infer<typeof productSchema>;
@@ -47,6 +49,7 @@ export const addProductRequestSchema = z.strictObject({
   name: nameSchema,
   unit: unitSchema,
   price: priceSchema,
+  stocked: z.boolean(),
   extra: extraInputSchema,
 });
 export type AddProductRequest = z.infer<typeof addProductRequestSchema>;
