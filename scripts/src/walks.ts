@@ -6,7 +6,7 @@ import { classifyProcesses, parseProcessList } from './strays';
 export type Io = { stdin: () => Promise<string>; out: (line: string) => void };
 
 const USAGE =
-  'usage: compare <label> <left> <right> [--bases] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
+  'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
 
 /** A picture's screen: its name without the language and the width. */
 const screenOf = (name: string) => name.replace(/-(en|vi)-\d+\.png$/, '');
@@ -14,14 +14,16 @@ const boxOf = ({ x0, y0, x1, y1 }: Box) => `${x0},${y0} to ${x1},${y1}`;
 const pngs = async (dir: string) =>
   (await readdir(dir)).filter((name) => name.endsWith('.png')).sort();
 
-type Options = { bases: boolean; moved: Set<string> | 'all'; raw?: string };
+type Options = { bases: boolean; retired: boolean; moved: Set<string> | 'all'; raw?: string };
 
 function parseOptions(rest: string[], out: Io['out']): Options | undefined {
-  const options: Options = { bases: false, moved: new Set() };
+  const options: Options = { bases: false, retired: false, moved: new Set() };
   for (let i = 0; i < rest.length; i++) {
     const option = rest[i];
     if (option === '--bases') {
       options.bases = true;
+    } else if (option === '--allow-retired') {
+      options.retired = true;
     } else if (option === '--moved' || option === '--raw') {
       const value = rest[++i];
       if (value === undefined) {
@@ -92,6 +94,10 @@ async function compare(
     if (!options.bases) reds.push(`${name} only in the left`);
   }
   for (const name of lacking) {
+    if (options.bases && options.retired) {
+      lines.push(`  retired ${name}`);
+      continue;
+    }
     lines.push(options.bases ? `  base with no picture: ${name}` : `  only in the right: ${name}`);
     reds.push(`${name} has no counterpart`);
   }

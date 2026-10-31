@@ -192,7 +192,7 @@ jobs:
           mkdir "$RUNNER_TEMP/shellcheck"
           tar -xzf "$archive" -C "$RUNNER_TEMP/shellcheck" --strip-components=1
           "$RUNNER_TEMP/shellcheck/shellcheck" --version | grep -qx 'version: 0.11.0'
-          "$RUNNER_TEMP/shellcheck/shellcheck" -x ops/*.sh
+          "$RUNNER_TEMP/shellcheck/shellcheck" -x ops/*.sh walk/*.sh
       - name: cfn-lint
         timeout-minutes: 5
         run: |

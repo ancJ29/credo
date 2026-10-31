@@ -160,6 +160,25 @@ describe('the raw count of two folders of pictures', () => {
     expect(added.lines).toContain('  new new-en-390.png');
   });
 
+  it('with --allow-retired a base no picture matches is listed as retired and green, for a write', async () => {
+    const d = await folders(
+      { 'a-1-en-390.png': png(4, 4) },
+      { 'a-1-en-390.png': png(4, 4), 'old-en-390.png': png(4, 4) },
+    );
+
+    const { code, lines } = await run([
+      'compare',
+      'x',
+      d.left,
+      d.right,
+      '--bases',
+      '--allow-retired',
+    ]);
+
+    expect(code).toBe(0);
+    expect(lines).toContain('  retired old-en-390.png');
+  });
+
   it('a screen moved and not named in --moved is red, a named one is allowed, a named one unmoved is printed', async () => {
     const d = await folders(
       {

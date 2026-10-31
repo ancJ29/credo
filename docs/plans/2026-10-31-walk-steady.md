@@ -1,7 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 08:37 +07:** steps 1 to 5 done: the probe read (`--disable-partial-raster`
-is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`. Next: step 6, the script.
+**Where it stands — 2026-10-31 08:54 +07:** steps 1 to 6 done: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: step 7, the review, then the human's step 8.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -272,13 +272,26 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   Playwright lists 6 tests in each of its 5 projects, `git grep toHaveScreenshot -- walk` is empty.
   Case 10 stays the human's runs (no browser here). The bases keep their folders and names; the script
   (step 6) maps them.
-- [ ] **6. The script.** Who: 🤖, after steps 4 and 5, about 2 hours. Done when: `walk/run.sh` as
+- [x] **6. The script.** Who: 🤖, after steps 4 and 5, about 2 hours. Done when: `walk/run.sh` as
   [the script](#the-script) says; `bash -n` and ShellCheck clean, and CI's ShellCheck takes
   `walk/*.sh` ([`ci.yml#L195`](../../.github/workflows/ci.yml#L195)); cases 8 and 9 each seen.
+  *Evidence:* `walk/run.sh` (bash 3.2 safe, ShellCheck 0.11.0 clean, `bash -n` clean; CI's ShellCheck
+  takes `walk/*.sh`). `scripts/src/walk-run.test.ts` runs it in a made-up repository with stand-ins for
+  node, pnpm, ps and uptime: each refusal seen (an unknown walk, option, none, `--moved` bare; dirty;
+  a merge going; main not in; node; pnpm; the gate lock; the load; unreadable load; no node_modules;
+  Playwright's version; Chromium; the headless shell; no test listed; a pattern not matching one; ps
+  unreadable; a ps the choice cannot read; a live run), each stopping before any act with exit 2 and no
+  `walks/` folder; then whole runs on stand-ins: green with `--write` and a second run at 0, a moved
+  picture between stacks red and nothing written, a moved base red unless named, a pass short of
+  tests red. Each refusal line was broken once and its test went red, except four defensive ones
+  (the commit unreadable, a tool missing, `git status` failing, `mkdir` failing), left untested. A run
+  on stand-ins found that the script's own `--inside` re-entry unset the folders the outer run gave it:
+  fixed. Case 8 is held by `compare` in `scripts/` (table amended). `scripts/` 184 tests, coverage 100 %.
+  The time: about 15 to 20 minutes a run, not the 25 for two: step 8's estimate is 40 minutes for both.
 - [ ] **7. The review, once.** Who: 🤖, a model other than the author's (QA rule 5), about 1 hour.
   Done when: steps 4 to 6 read together, each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with
   its reason, the fixes committed.
-- [ ] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 25 minutes, then 🤖. Run
+- [ ] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 40 minutes (15 to 20 a run), then 🤖. Run
   `bash walk/run.sh piece-1 piece-2 operator --moved all --write` (every base taken again by the new
   capture); the machine commits the bases; then `bash walk/run.sh piece-1 piece-2 operator`. Done
   when: both verdicts green, every raw count of the second 0, `git status` clean after it, both logs
