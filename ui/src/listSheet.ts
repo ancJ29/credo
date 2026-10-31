@@ -69,7 +69,7 @@ export const headingOf = (key: ColumnKey, language: Language) =>
  * a price. */
 /** The stocked cell: empty, Có, Yes, 1 or true read yes; Không, No, 0 or false read no, in any case
  * and without accents. Any other word is not one (null). */
-export function readStocked(typed: string): boolean | null {
+function readStocked(typed: string): boolean | null {
   const word = plain(typed);
   if (['', 'co', 'yes', '1', 'true'].includes(word)) return true;
   if (['khong', 'no', '0', 'false'].includes(word)) return false;
