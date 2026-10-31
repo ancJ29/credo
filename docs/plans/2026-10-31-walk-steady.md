@@ -243,8 +243,10 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   `fresh-layer` steady at 1280 only. Cause 1 is shown; cause 2 is reread (the logo flips under the
   settled capture too); the fix is `--disable-partial-raster`, with its weakness (3 runs at 390) and
   its fall-back written in [the fixes](#the-fixes).
-- [ ] **3. Rule 7's text.** Who: 👤 yes or a correction, then 🤖 5 minutes. Done when: the human's answer,
+- [x] **3. Rule 7's text.** Who: 👤 yes or a correction, then 🤖 5 minutes. Done when: the human's answer,
   dated, here; then `qa.md`'s rule 7 and its line at a glance in one commit, with the stamp.
+  *Evidence:* the human said yes to the text above on 2026-10-31 (08:3x, "all yes"); `qa.md` rule 7,
+  its line at a glance and the header stamp changed in one commit.
 - [ ] **4. The reader and the strays' choice.** Who: 🤖, about 2 hours, needs nothing above. Done
   when: cases 1 to 7 each seen red from its assertion, `scripts/` green at 100 %; the reader on
   `$ROOT_DIR/walks/full-run-operator-2026-10-30-184201-66fa27c/` reads `fake/` against

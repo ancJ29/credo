@@ -4,7 +4,8 @@
 > human: rules 7 and 8. **Amended** 2026-10-27 by the
 > human: rules picked from the old repo's standing preferences. **Amended** 2026-10-27 by the
 > human: the gate's scope and cadence, in rule 6. **Amended** 2026-10-28 by the human: a review's
-> findings tagged, in rule 5. Binds every feature's plan, every test and every merge into `main`.
+> findings tagged, in rule 5. **Amended** 2026-10-31 by the human: rule 7, a moved pixel counted
+> raw. Binds every feature's plan, every test and every merge into `main`.
 
 ## At a glance
 
@@ -34,7 +35,8 @@ The eight rules, numbered as [below](#the-rules):
    deferred, with its reason.
 6. A test that fails only sometimes is a bug, never rerun until it passes; and only the gate that
    can change a conclusion is run.
-7. The screens are the final check: each person's day, on their device, yes or no.
+7. The screens are the final check: each person's day, on their device, yes or no; the machine
+   counts every moved pixel, raw.
 8. Every line is tested, or says why not, as in "we choose not to test this".
 
 ## The shapes, from an invented feature
@@ -99,8 +101,15 @@ The map of walks. A dash is a part of the day not built yet.
    screen by screen, on that person's device. The map places each walk: the day's stages
    across, its people down; an empty cell shows what is missing. A walk shows the main path and
    each kind of failure once; the variations stay in the machine's tests. Each screen has two
-   readers. The machine compares its look with its committed base image: a moved pixel is a
-   red. The human answers yes or no for the business, from the picture and one short question;
+   readers. The machine compares its look with its committed base image, raw: a moved pixel is any
+   pixel whose colour moved by any amount, a softened edge's included, and one is a red. The same
+   input gives the same picture: a date, a name or anything random is fixed at its source (the data
+   set, the fake, the stack's seed); a mask, a box of one colour, covers only what a unit test holds
+   and the human need not judge, and names that test. The run script prints the raw count of moved
+   pixels for every comparison it makes. *Rejected:* a tolerance, a threshold or a comparator that
+   skips anti-aliased pixels: it hides a picture that is not steady, and the next real move of one
+   shade inside it. *Rejected:* a mask over what moves, such as a card's frame: the human judges the
+   frame. The human answers yes or no for the business, from the picture and one short question;
    a yes holds until the screen's words change. A "no" becomes a case in the table, and a
    feature is done when none of its walks holds an open "no". *Rejected:* a gallery of every
    screen that asks nothing. It makes the human read, and finds nothing missing: a picture shows
