@@ -1,8 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 11:44 +07:** steps 1 to 5 done: the lists and imports on the fake, the
-8 screens answered (16 yes), the BFF routes and the stack's generator at the gate. **Next:** the review
-(step 6), by another model.
+**Where it stands — 2026-10-31 12:09 +07:** steps 1 to 6 done: the lists and imports on the fake, the
+8 screens answered (16 yes), the BFF routes and the stack's generator at the gate, the review's findings
+fixed or parked, `main`@`b4e08ee` taken in. **Next:** the human's full run (step 7), two commands below.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -218,15 +218,64 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   alone; a second (`…-1001-…-step5b.log`) was red under a load of 44 (visual timeouts, scripts
   SIGKILL), and both packages were green alone on a quiet Mac (`…-1128-…-scripts-alone.log`,
   `…-1129-…-visual-alone.log`) before the green whole check; not rerun to green by chance.
-- [ ] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
+- [x] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 3 and 5 with the case table. Done when: each
   finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason, and `pnpm check` exit 0
   after the fixes. No re-review.
+  *Evidence:* Opus, on `5fbba5b` in a scratch tree. **Fixed:** `[FIXED]` 1 (medium, row 1): the code-order
+  test used random ids, so c-storage's key order sometimes equalled the code order; it holds fixed ids
+  whose key order is the reverse, and with `records.sort(byCode)` removed it is red every time
+  (`logs/20261031-1156-customers-products-red-review-finding1-sort.log`). `[FIXED]` 5 (row 2): the
+  403 test grants every id in `PERMISSIONS`, not three. `[FIXED]` 6: the products file's comment in
+  `shared/src/demo.ts` names VT-007 and VT-008 as the empty stocked cells (a row change would have
+  re-asked screen 7). `[FIXED]` 7: `readPrice`'s doc comment sits above `readPrice`. `[FIXED]` 8: a row
+  whose write may have landed but whose read-back failed is `busy` and its code joins the call's set,
+  so a later row with it is `taken`, not written twice; red first without that line
+  (`…-1157-…-red-review-finding8-busy-codes.log`). **Deferred**, all to
+  [open item 34](../open-items.md) (technical rows, Decide 46): `[DEFERRED]` 2 (row 14, the 500's log
+  never read), 3 (row 13, the `If-None-Match: *` precondition not held), 4 (row 19, the fake's code
+  order not held). **Not findings:** `[REJECTED]` `taken` by the in-memory set (accepted in
+  [the plan](#what-it-holds), with its trigger), the typed fields (the same section and the wire
+  amendment), the 1,000-record 500 ([the hazard](#hazards-no-gate-catches)) and "moved" answered
+  `busy` (`replyFor` makes every non-400 `CStorageError` a 503; a write under a fresh id cannot move).
+  After the fixes `main`@`b4e08ee` was taken in (`0e000f9`; one conflict, `walk/playwright.config.ts`:
+  main's launch options and capture kept, and the lists' walk given its own projects `lists-fake` and
+  `lists-full` since `walk/run.sh` runs a walk by project; `walk/run.sh` gained the `admin-lists` row,
+  seen red first in `walk-run.test.ts`, `…-red-walk-table.log`; `visual/src/walks.test.ts` reads the new
+  names, red first, `…-red-walk-config.log`). Whole check
+  `logs/20261031-1201-customers-products-whole-check-step6.log`, 133 lines, last line `== exit 0`, no
+  warning, 12:01:08 to 12:08:53; every package at 100 % (shared 101 tests, bff 322, ui 411, scripts 188,
+  visual 386).
 - [ ] **7. The human's full run.** Who: 👤, about 20 minutes, by lane B's shared run script with this
   walk's name, once it is in `main` (all this step takes from lane B); 🤖 reads the log whole. Done
   when: the 8 screens' full-stack pictures equal the fake's, or a screen that differs is asked again
   and answered; the run's bases committed (the 48, and the root screens moved by the menu alone); no
   walked screen holds an open "no".
+  *Prepared, not run* (`walk/run.sh` has the `admin-lists` row; the operator's walk has no menu of the
+  root's and is left out). **The menu moves** piece 1's five settings screens signed in as the root
+  (3, 4, 5, 7, 8: not the sign-in, the refused sign-in, the service down or the unknown company) and
+  piece 2's root screens (`setup-1`, `setup-2`, `staff-1` to `staff-22`; the `office-` and `phone-`
+  screens are other people's menus, which do not gain the root's two pages). A screen named that does
+  not move prints "named, not moved" and stays green. `--write` replaces every base of each walk named
+  with the first stack's picture, and a picture with no base yet (the 48 of `admin-lists`, whose folder
+  does not exist) reads as new and green, never refused (`compare` in `scripts/src/walks.ts`).
+  **First run**, in the human's terminal, about 20 minutes, nothing else running:
+
+  ```
+  bash walk/run.sh piece-1 piece-2 admin-lists --moved 3-settings,4-saved,5-language-menu,7-save-failed,8-save-conflict,setup-1-departments-positions,setup-2-fields,staff-1-list,staff-2-add,staff-3-added,staff-4-person,staff-5-permissions,staff-6-password,staff-7-archive,staff-8-left,staff-9-code-taken,staff-10-save-conflict,staff-11-save-failed,staff-12-own-fields,staff-13-photo,staff-14-search,staff-15-code-changed,staff-16-field-refused,staff-17-email,staff-18-qr,staff-19-import,staff-20-preview,staff-21-imported,staff-22-no-name --write
+  ```
+
+  It must end `== verdict: green`, `== done`, exit 0; `compare full-1 to the bases: admin-lists: 48
+  pictures, 0 moved, 48 new`, `admin-lists: 48 bases written`, `piece-1: 54 bases written`, `piece-2:
+  198 bases written`; the fake to the stack and the stack to the stack read 0 moved on all three
+  walks; only the named screens moved against the bases. **Second run**, the same terminal:
+
+  ```
+  bash walk/run.sh piece-1 piece-2 admin-lists
+  ```
+
+  It must end `== verdict: green`, `== done`, exit 0, every count 0 moved and 0 new, and `git status`
+  holding only what the first run wrote. The machine then reads the diff and commits the bases.
 - [ ] **8. The seed's block.** Who: 🤖, after step 7 (the seed changes `scripts/`, which the run
   reads), about ¼ day: each scenario's customers and products, a block in `scenarios.ts` and a
   generator beside `scripts/src/demo/staff.ts`, written at the first fill; and the demo's files for
