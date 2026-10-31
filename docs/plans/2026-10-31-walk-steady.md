@@ -1,7 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 10:37 +07:** steps 1 to 7 done, step 8's first run green and its bases committed: the probe read (`--disable-partial-raster`
-is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: step 8's second run, no flags.
+**Where it stands — 2026-10-31 11:29 +07:** all nine steps done, ready to merge into `main`: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. The two runs of step 8 read green and the bases are committed. Next: the merge, the orchestrator's call.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -308,7 +308,7 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   stray or interrupt shows them. The capture's test now asserts the equality line, so a tolerance
   turns it red `[FIXED]`. The reader's forward filter in the test is the author's own
   `[REJECTED]`: the reviewer's pngjs run covers it once; Chromium's own encoder cannot run here.
-- [ ] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 40 minutes (15 to 20 a run), then 🤖. Run
+- [x] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 40 minutes (15 to 20 a run), then 🤖. Run
   `bash walk/run.sh piece-1 piece-2 operator --moved all --write` from the worktree's root (every base
   taken again by the new capture); the machine reads its log whole and commits the bases; then
   `bash walk/run.sh piece-1 piece-2 operator`. Done when: both verdicts green, every raw count of the
@@ -317,17 +317,29 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   `== verdict: green` and `== done`, exit 0; the fake-to-stack and stack-to-stack counts read `0 moved`,
   the bases comparison lists the moved pictures `(named)` and the new ones. A red names the comparison
   and its raw pixels: if full-1 to full-2 or fake to full-1 moves, the fix is wrong ([the fixes](#the-fixes)).
-  *First run, 10-31 10:23:10 to 10:35:21 (12m11s), unticked until the second reads:* log
+  *First run, 10-31 10:23:10 to 10:35:21 (12m11s), * log
   `$ROOT_DIR/logs/20261031-1023-walk-piece-1-piece-2-operator.log` (456 lines), ending
   `== verdict: green: 8 comparisons, every raw count as asked` and `== done`. Its comparison lines:
   fake to full-1: piece 2 and the operator, 198 and 54 pictures, 0 moved; full-1 to full-2: piece 1 (54),
   piece 2 (198) and the operator (54), 0 moved; full-1 to the bases: piece 1 24 of 54 moved, piece 2 106
   of 198, the operator 24 of 54, none new, none without a counterpart, all named by `--moved all`. So the
   fix holds on the first run: three takes of every picture agree pixel for pixel. The 154 moved bases
-  are committed (`5353d42`); `git status` was clean after. Next: the second run, no flags.
-- [ ] **9. The close.** Who: 🤖, 30 minutes. Done when: items 25 and 32 deleted from the log; the
+  are committed (`5353d42`); `git status` was clean after. 
+  *Second run, 10-31 11:17:15 to 11:27:41 (10m26s), no flags:* log
+  `$ROOT_DIR/logs/20261031-1117-walk-piece-1-piece-2-operator.log` (299 lines), ending
+  `== verdict: green: 8 comparisons, every raw count as asked` and `== done`; no warning or error line.
+  Its comparisons, all `0 moved, 0 new, 0 without a counterpart, 0 unreadable`: full-1 to full-2 for
+  piece 1 (54), piece 2 (198) and the operator (54); fake to full-1 for piece 2 and the operator;
+  full-1 to the bases for all three, with `== 7/8` not asked. `git status` was clean before it and
+  after. The 154 rewritten bases were read by eye by Opus: the large piece-2 moves were the old bases
+  shot scrolled down, the fixed bar and sidebar painted mid-page over content (the staff person page's 10
+  screens in 6 sizes), now at the top: item 25 is done by this piece.
+- [x] **9. The close.** Who: 🤖, 30 minutes. Done when: items 25 and 32 deleted from the log; the
   recap written (what shipped, the review's findings, what was rejected); this plan's "Where it
   stands" rewritten; the stop tells the orchestrator what the console's step 9 takes (below).
+  *Evidence:* items 25 and 32 are deleted from `docs/open-items.md`; the parked leftovers of the
+  review are item 33 there; the recap is [`docs/recaps/2026-10-31-walk-steady.md`](../recaps/2026-10-31-walk-steady.md).
+  The console's step 9 takes what [What it hands on](#what-it-hands-on) says.
 
 ## What it hands on
 
