@@ -161,19 +161,21 @@ describe('the walks', () => {
     }
   });
 
-  it('parks the pointer before each shot and compares with no tolerance in pixels or in colour', () => {
+  it('parks the pointer and scrolls to the top before each shot, and settles on two equal shots pixel for pixel', () => {
     const support = read('support.ts');
 
-    // the first statement of `shot`, so the fake run's picture, the soft comparison and the hard
-    // one are each taken after it
+    // the first statement of `shot`, so every picture is taken after it
     expect(support).toMatch(
-      /export async function shot\([^)]*\) \{\n {2}await page\.mouse\.move\(0, 0\);\n/,
+      /export async function shot\([^)]*\) \{\n {2}await page\.mouse\.move\(0, 0\);\n {2}await page\.evaluate\('window\.scrollTo\(0, 0\)'\);\n/,
     );
-    expect(read('playwright.config.ts')).toContain('maxDiffPixels: 0, threshold: 0');
-    // both fake projects take pictures only, and neither full project does
-    expect(support).toContain("['fake', 'operator-fake'].includes(test.info().project.name)");
-    // a missing folder for the fake run's pictures names itself and who gives it, not the stack
-    expect(support).toContain("required('CREDO_FAKE_DIR', 'the fake run’s script gives it");
+    // the raw reader decides "equal": no comparator that skips softened edges, no tolerance
+    expect(support).toContain("from '@credo/scripts/pixels'");
+    expect(support).not.toContain('toHaveScreenshot');
+    expect(read('playwright.config.ts')).not.toMatch(/toHaveScreenshot|maxDiffPixels|threshold/);
+    // a missing folder for the pictures names itself and who gives it
+    expect(support).toContain("required('CREDO_SHOTS_DIR', 'walk/run.sh gives it the folder");
+    // the browser draws every tile whole, so a picture has one state
+    expect(read('playwright.config.ts')).toContain("'--disable-partial-raster'");
   });
 
   it('Each piece-2 scene’s person and cue are the ones its screen opens with in the walk spec', () => {

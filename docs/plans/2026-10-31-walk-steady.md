@@ -1,8 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 08:35 +07:** steps 1 to 4 done: the probe read (`--disable-partial-raster`
-is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`. Next: step 5, the
-capture in `walk/`.
+**Where it stands — 2026-10-31 08:37 +07:** steps 1 to 5 done: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`. Next: step 6, the script.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -259,10 +258,20 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   the three files 100 %. The reader on `fake/` against `bases-before/` of the 10-30 operator run read
   `54 pictures, 6 moved`, each `10 px, shade 1` (op-3-made en 768, vi 1280, vi 768; op-4-code-taken
   en and vi 1280; op-9-make-failed vi 1280).
-- [ ] **5. The capture.** Who: 🤖, after steps 2 and 3, about 1 hour 30. Done when: `walk/` as
+- [x] **5. The capture.** Who: 🤖, after steps 2 and 3, about 1 hour 30. Done when: `walk/` as
   [the fixes](#the-fixes) say, with step 2's variant; each mask names its unit test or is gone;
   the walk's typecheck and lint green; Playwright lists each project's tests;
   `git grep toHaveScreenshot -- walk` empty.
+  *Evidence:* `walk/support.ts` takes full-page shots (pointer parked, scrolled to the top first) until
+  two in a row are equal by the raw reader, at most ten, into `CREDO_SHOTS_DIR`;
+  `walk/playwright.config.ts` has `--disable-partial-raster` and no `toHaveScreenshot`, snapshot
+  template, `CREDO_FAKE_DIR` or `CREDO_REFERENCE_DIR`; the walk imports the reader as
+  `@credo/scripts/pixels` (a workspace link, one lockfile line). The four masks (screens op-3, staff-3,
+  staff-6, staff-18) each name their unit test in a comment. `visual/src/walks.test.ts` holds the
+  capture's text (seen red on its assertion before the code). The walk's `tsc` and ESLint are green,
+  Playwright lists 6 tests in each of its 5 projects, `git grep toHaveScreenshot -- walk` is empty.
+  Case 10 stays the human's runs (no browser here). The bases keep their folders and names; the script
+  (step 6) maps them.
 - [ ] **6. The script.** Who: 🤖, after steps 4 and 5, about 2 hours. Done when: `walk/run.sh` as
   [the script](#the-script) says; `bash -n` and ShellCheck clean, and CI's ShellCheck takes
   `walk/*.sh` ([`ci.yml#L195`](../../.github/workflows/ci.yml#L195)); cases 8 and 9 each seen.

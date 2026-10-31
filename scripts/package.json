@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/stack.ts"
+    ".": "./src/stack.ts",
+    "./pixels": "./src/pixels.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

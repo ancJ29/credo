@@ -232,7 +232,9 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-2-add');
 
   // 3. Added: the sign-in name and a first password, shown once; the password is masked, since the
-  // full run's is minted.
+  // full run's is minted (QA rule 7). Held by bff/src/employees.route.test.ts: "answers 201 with the
+  // first password, and lists the person once, …", and bff/src/password.test.ts: "holds a capital, a
+  // small letter, a digit and one of @$!%*?& in 12 characters, and differs each time".
   await press(words.addPerson.submit);
   await expect(title(words.addPerson.madeTitle)).toBeVisible();
   await at('staff-3-added', [page.getByLabel(words.addPerson.firstPassword)]);
@@ -255,7 +257,9 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByText(words.permissions.custom, { exact: true })).toBeVisible();
   await at('staff-5-permissions');
 
-  // 6. A password made, shown once.
+  // 6. A password made, shown once; masked, since it is minted (QA rule 7). Held by
+  // bff/src/employees.route.test.ts: "signs the person out on every device: a session issued before
+  // the new password is a 401", and bff/src/password.test.ts as for screen 3.
   await open(page, language, { path: '/staff' });
   await personNamed(page, 'Bùi Ngọc Anh');
   await press(words.person.passwordMake);
@@ -378,7 +382,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-17-email');
 
   // 18. A QR code and its link, for one sign-in within 15 minutes; both are minted, so both are
-  // masked.
+  // masked (QA rule 7). Held by bff/src/sign-ins.route.test.ts: "C: A QR code is 32 random bytes kept
+  // as their hash, in one record per person, and the secret is in the link alone".
   await open(page, language, { path: '/staff', signIns: true });
   await personNamed(page, 'Phạm Quốc Bảo');
   await press(words.person.qrShow);

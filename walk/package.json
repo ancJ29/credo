@@ -7,6 +7,7 @@
     "walk": "playwright test"
   },
   "dependencies": {
+    "@credo/scripts": "workspace:*",
     "@credo/shared": "workspace:*",
     "@credo/ui": "workspace:*"
   },
