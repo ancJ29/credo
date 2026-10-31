@@ -64,9 +64,6 @@ const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
 export const headingOf = (key: ColumnKey, language: Language) =>
   DICTIONARIES[language].lists.columns[key];
 
-/** A price as a person types it: whole đồng, the thousands set apart by dots or commas (95.000,
- * 95,000) or not at all. A decimal, a negative, a word, zero or more than the schema takes is not
- * a price. */
 /** The stocked cell: empty, Có, Yes, 1 or true read yes; Không, No, 0 or false read no, in any case
  * and without accents. Any other word is not one (null). */
 function readStocked(typed: string): boolean | null {
@@ -76,6 +73,9 @@ function readStocked(typed: string): boolean | null {
   return null;
 }
 
+/** A price as a person types it: whole đồng, the thousands set apart by dots or commas (95.000,
+ * 95,000) or not at all. A decimal, a negative, a word, zero or more than the schema takes is not
+ * a price. */
 export function readPrice(typed: string): number | null {
   if (!/^(\d{1,3}([.,]\d{3})+|\d+)$/.test(typed)) return null;
   const price = Number(typed.replace(/[.,]/g, ''));
