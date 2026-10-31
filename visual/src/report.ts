@@ -84,12 +84,14 @@ export type ReadWords = (
 
 /**
  * Every walk screen's words now, in each language, under its answer's key: the one reader both the
- * page and the answers command hold an answer's fingerprint against.
+ * page and the answers command hold an answer's fingerprint against. With `only`, just the screens
+ * under those keys are drawn: drawing a screen is the slow part, and an answer needs its own.
  */
 export async function currentWords(
   walks: readonly Walk[],
   mock: readonly MockScreen[],
   readWords: ReadWords,
+  only?: ReadonlySet<string>,
 ) {
   const drawn = resolveDrawn(walks, mock);
   const words = new Map<string, string[]>();
@@ -97,10 +99,9 @@ export async function currentWords(
     for (const screen of walk.screens) {
       const what = drawn.get(`${walk.id}:${screen.id}`)!;
       for (const language of LANGUAGES) {
-        words.set(
-          answerKey(walk.id, screen.id, language),
-          await readWords(what, language, screen.navigation === true),
-        );
+        const key = answerKey(walk.id, screen.id, language);
+        if (only && !only.has(key)) continue;
+        words.set(key, await readWords(what, language, screen.navigation === true));
       }
     }
   }
