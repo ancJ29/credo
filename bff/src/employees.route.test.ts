@@ -531,6 +531,9 @@ describe('A person signs in with their code and password on the company’s link
           'staff.canEdit': false,
           'staff.canDelete': false,
           'settings.canEdit': false,
+          'orders.canView': false,
+          'orders.canEdit': false,
+          'deliveries.canDeliver': false,
         },
       });
     }
@@ -629,6 +632,9 @@ describe('Piece 2’s permissions are to see the staff list, to add a person, to
       'staff.canEdit': true,
       'staff.canDelete': true,
       'settings.canEdit': false,
+      'orders.canView': false,
+      'orders.canEdit': false,
+      'deliveries.canDeliver': false,
     });
   });
 });
