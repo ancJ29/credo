@@ -131,12 +131,12 @@ describe('the app', () => {
     expect(getConfig).toHaveBeenCalledTimes(2);
   });
 
-  it('The root signs in and lands on the menu’s first page', async () => {
+  it('The root signs in and lands on the menu’s first page, the orders', async () => {
     const { api, device } = setup();
     await signInAs();
 
-    expect((await screen.findByRole('heading', { level: 2, name: 'Settings' })).textContent).toBe(
-      'Settings',
+    expect((await screen.findByRole('heading', { level: 2, name: 'Orders' })).textContent).toBe(
+      'Orders',
     );
     expect(api.signIn).toHaveBeenCalledExactlyOnceWith('root', 'pw');
     expect(device.authId()).toBe('d.s');
@@ -237,6 +237,7 @@ describe('the app', () => {
         ...signedIn,
         'credo.language': 'vi',
       },
+      '/settings',
     );
     await screen.findAllByText('Cài đặt');
 
@@ -255,7 +256,7 @@ describe('the app', () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() =>
       Promise.resolve({ kind: 'saved', doc: saved }),
     );
-    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' });
+    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
 
     const name = await screen.findByLabelText(/Company name/);
     expect(brandColour()).toBe('#2f7d6d');
@@ -274,7 +275,7 @@ describe('the app', () => {
 
   it('A failed save says so and keeps what was typed', async () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(503)));
-    setup({ saveConfig }, signedIn);
+    setup({ saveConfig }, signedIn, '/settings');
 
     const name = await screen.findByLabelText(/Company name/);
     await userEvent.clear(name);
@@ -288,7 +289,7 @@ describe('the app', () => {
 
   it('A save the BFF refuses with a 400 says it was refused, not that the service is down, and keeps what was typed', async () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(400)));
-    setup({ saveConfig }, signedIn);
+    setup({ saveConfig }, signedIn, '/settings');
 
     const name = await screen.findByLabelText(/Company name/);
     await userEvent.clear(name);
@@ -302,7 +303,11 @@ describe('the app', () => {
   });
 
   it('A save refused with a 401 signs out', async () => {
-    const { device } = setup({ saveConfig: () => Promise.reject(new ApiError(401)) }, signedIn);
+    const { device } = setup(
+      { saveConfig: () => Promise.reject(new ApiError(401)) },
+      signedIn,
+      '/settings',
+    );
 
     await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
 
@@ -313,7 +318,11 @@ describe('the app', () => {
   it('A save over a newer one is refused, and the page offers the newer one', async () => {
     const newer = { config: { ...config, name: 'Someone else’s name' }, version: 'v9' };
     const getConfig = vi.fn<Api['getConfig']>().mockResolvedValueOnce(doc).mockResolvedValue(newer);
-    setup({ getConfig, saveConfig: () => Promise.resolve({ kind: 'conflict' }) }, signedIn);
+    setup(
+      { getConfig, saveConfig: () => Promise.resolve({ kind: 'conflict' }) },
+      signedIn,
+      '/settings',
+    );
 
     await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
     expect((await screen.findByRole('alert')).textContent).toContain('Someone saved newer');
@@ -334,7 +343,11 @@ describe('the app', () => {
       .mockResolvedValueOnce(doc)
       .mockRejectedValueOnce(new ApiError(503))
       .mockResolvedValue(doc);
-    setup({ getConfig, saveConfig: () => Promise.resolve({ kind: 'conflict' }) }, signedIn);
+    setup(
+      { getConfig, saveConfig: () => Promise.resolve({ kind: 'conflict' }) },
+      signedIn,
+      '/settings',
+    );
 
     await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Show the newer settings' }));
@@ -349,7 +362,7 @@ describe('the app', () => {
     const api = setup().api;
     drawApp(<App api={api} device={device} test />, '/nowhere');
 
-    expect(await screen.findAllByRole('heading', { name: 'Settings' })).not.toHaveLength(0);
+    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
   });
 
   it('A client’s link opens its sign-in in its name and colours, and the device keeps the code the link names, lowered and trimmed', async () => {

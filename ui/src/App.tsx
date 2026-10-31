@@ -12,6 +12,8 @@ type Props = {
   test?: boolean;
   /** Set where the app is drawn inside another page's window, as the walks page draws a scene. */
   look?: Look;
+  /** The office's day now, for a client's pages; the browser's own when none is given. */
+  today?: () => string;
 };
 
 /** The operator's door is `/operator`; it is drawn outside the client's boot, which asks a

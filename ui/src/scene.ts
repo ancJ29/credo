@@ -1,5 +1,5 @@
 import type { Language } from '@credo/shared';
-import { DEMO_CODE, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_CODE, DEMO_EMPLOYEES, DEMO_TODAY } from '@credo/shared/demo';
 import { createDeviceStore } from './device';
 import { createFakeApi, parseCue } from './fake';
 
@@ -26,6 +26,8 @@ type SceneOptions = {
   signIns?: boolean;
   /** Nobody is signed in yet: a phone opening a QR code's link. */
   out?: boolean;
+  /** No one is allowed to deliver yet. */
+  noDrivers?: boolean;
   language: Language;
 };
 
@@ -35,7 +37,7 @@ type SceneOptions = {
  * what one scene, or one test of a page, is drawn from. Each call makes a fake of its own, seeded
  * afresh.
  */
-export function sceneParts({ as, cue, operator, signIns, out, language }: SceneOptions) {
+export function sceneParts({ as, cue, operator, signIns, out, noDrivers, language }: SceneOptions) {
   const found = as === undefined ? null : DEMO_EMPLOYEES.find((person) => person.code === as);
   if (found === undefined) throw new Error(`no ${as} in the data set`);
   const device = createDeviceStore(
@@ -46,5 +48,10 @@ export function sceneParts({ as, cue, operator, signIns, out, language }: SceneO
       ...(operator ? { 'credo.operator': 'fake.operator' } : {}),
     }),
   );
-  return { api: createFakeApi({ device, cue: parseCue(cue ?? null), signIns }), device };
+  return {
+    api: createFakeApi({ device, cue: parseCue(cue ?? null), signIns, noDrivers }),
+    device,
+    /** The data set's today, whatever day the page is drawn on. */
+    today: () => DEMO_TODAY,
+  };
 }

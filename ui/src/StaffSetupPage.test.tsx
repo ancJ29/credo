@@ -64,6 +64,9 @@ describe('the staff setup page', () => {
       'Change a person’s name and details',
       'Archive a person',
       'Change the company’s settings',
+      'See orders, delivery requests, customers and products',
+      'Make, change, confirm and cancel orders; send and cancel delivery requests',
+      'Deliver goods (be named as a driver)',
     ];
     // a department takes each as a choice, in the catalogue's order
     const office = screen
@@ -79,6 +82,9 @@ describe('the staff setup page', () => {
       true,
       false,
       false,
+      true,
+      true,
+      false,
     ]);
     // a position takes each as allow, refuse or as the level above
     const trainee = screen
@@ -90,7 +96,7 @@ describe('the staff setup page', () => {
     expect(within(edit).getByRole<HTMLInputElement>('radio', { name: 'Refuse' }).checked).toBe(
       true,
     );
-    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(5);
+    expect(within(trainee).getAllByRole('radiogroup')).toHaveLength(8);
   });
 
   it('A permission that works only with seeing the staff list says so under itself while seeing is refused, at a department and at a position', async () => {
@@ -197,8 +203,14 @@ describe('the staff setup page', () => {
     const { setup } = await api.getStaffSetup();
     expect(setup.departments.map((unit) => unit.permissions)).toEqual([
       { 'staff.canDelete': true },
-      { 'staff.canView': true, 'staff.canCreate': true, 'staff.canEdit': true },
-      { 'staff.canView': true },
+      {
+        'staff.canView': true,
+        'staff.canCreate': true,
+        'staff.canEdit': true,
+        'orders.canView': true,
+        'orders.canEdit': true,
+      },
+      { 'staff.canView': true, 'deliveries.canDeliver': true },
     ]);
     expect(setup.positions.map((unit) => unit.permissions)).toEqual([
       {},

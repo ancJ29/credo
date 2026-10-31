@@ -1,10 +1,16 @@
 import {
+  addDays,
   addEmployeeReplySchema,
   clientListReplySchema,
   importEmployeesReplySchema,
   importCustomersReplySchema,
   importProductsReplySchema,
   customerListReplySchema,
+  deliveryDocSchema,
+  deliveryListReplySchema,
+  driverListReplySchema,
+  orderDocSchema,
+  orderListReplySchema,
   productListReplySchema,
   configDocSchema,
   createClientReplySchema,
@@ -17,6 +23,8 @@ import {
   photoReplySchema,
   sessionReplySchema,
   setPasswordReplySchema,
+  newestOrdersFirst,
+  numberText,
   staffConfig,
   staffSetupDocSchema,
 } from '@credo/shared';
@@ -25,8 +33,11 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
+  DEMO_ORDERS,
   DEMO_PRODUCTS,
+  DEMO_TODAY,
   DEMO_PHOTOS,
   DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
@@ -129,6 +140,59 @@ describe('the fake Api', () => {
         { code: 'vt-90', name: 'Nhập', unit: 'bao', price: 5000, stocked: true, extra: {} },
       ]),
     );
+    // the orders, on a fake whose setup is the data set's
+    const shop = fake('', { client: 'fake.session' });
+    const week = await shop.listOrders('2026-10-29', DEMO_TODAY);
+    parses('listOrders', orderListReplySchema, { orders: week });
+    const draft = week.find((one) => one.state === 'draft')!;
+    const read0 = await shop.getOrder(draft.day, draft.id);
+    parses('getOrder', orderDocSchema, read0);
+    const customer = DEMO_CUSTOMERS[0];
+    const line = { productId: DEMO_PRODUCTS[1].id, quantity: 2 };
+    const made0 = await shop.createOrder({
+      day: DEMO_TODAY,
+      customerId: customer.id,
+      lines: [line],
+      extra: {},
+    });
+    parses('createOrder', orderDocSchema, made0);
+    const saved0 = await shop.saveOrder(DEMO_TODAY, made0.order.id, {
+      day: DEMO_TODAY,
+      customerId: customer.id,
+      lines: [line, { productId: DEMO_PRODUCTS[2].id, quantity: 1 }],
+      extra: {},
+      version: made0.version,
+    });
+    parses('saveOrder', orderDocSchema, saved0.kind === 'done' ? saved0.doc : null);
+    const drivers = await shop.listDrivers();
+    parses('listDrivers', driverListReplySchema, { drivers });
+    const confirmed0 = await shop.confirmOrder(DEMO_TODAY, made0.order.id, {
+      version: saved0.kind === 'done' ? saved0.doc.version : '',
+      driverId: drivers[0].id,
+      day: DEMO_TODAY,
+    });
+    parses('confirmOrder', orderDocSchema, confirmed0.kind === 'done' ? confirmed0.doc : null);
+    const todays = await shop.listDeliveries(DEMO_TODAY);
+    parses('listDeliveries', deliveryListReplySchema, { deliveries: todays });
+    const waiting = todays.find((one) => one.state === 'waiting')!;
+    const request0 = await shop.getDelivery(DEMO_TODAY, waiting.id);
+    parses('getDelivery', deliveryDocSchema, request0);
+    const cancelled0 = await shop.cancelDelivery(DEMO_TODAY, waiting.id, {
+      version: request0.version,
+    });
+    parses('cancelDelivery', deliveryDocSchema, cancelled0.kind === 'done' ? cancelled0.doc : null);
+    const sent0 = await shop.sendOrder(waiting.order.day, waiting.order.id, {
+      version: (await shop.getOrder(waiting.order.day, waiting.order.id)).version,
+      driverId: drivers[0].id,
+      day: DEMO_TODAY,
+    });
+    parses('sendOrder', orderDocSchema, sent0.kind === 'done' ? sent0.doc : null);
+    const cancelledOrder = await shop.cancelOrder(draft.day, draft.id, { version: read0.version });
+    parses(
+      'cancelOrder',
+      orderDocSchema,
+      cancelledOrder.kind === 'done' ? cancelledOrder.doc : null,
+    );
     const read = await api.getEmployee(id);
     const saved = await api.saveEmployee(id, {
       version: read.version,
@@ -194,6 +258,17 @@ describe('the fake Api', () => {
         'listProducts',
         'importCustomers',
         'importProducts',
+        'listOrders',
+        'getOrder',
+        'createOrder',
+        'saveOrder',
+        'confirmOrder',
+        'sendOrder',
+        'cancelOrder',
+        'listDeliveries',
+        'getDelivery',
+        'cancelDelivery',
+        'listDrivers',
         'saveEmployee',
         'setPassword',
         'changeCode',
@@ -473,6 +548,9 @@ describe('the fake Api’s staff', () => {
         'staff.canEdit': true,
         'staff.canDelete': true,
         'settings.canEdit': false,
+        'orders.canView': true,
+        'orders.canEdit': true,
+        'deliveries.canDeliver': false,
       },
     });
     // the warehouse sees, and nothing more
@@ -482,6 +560,9 @@ describe('the fake Api’s staff', () => {
       'staff.canEdit': false,
       'staff.canDelete': false,
       'settings.canEdit': false,
+      'orders.canView': false,
+      'orders.canEdit': false,
+      'deliveries.canDeliver': false,
     });
 
     // a person who left, one with no password yet and one unknown are each a 401
@@ -635,8 +716,9 @@ describe('the fake Api’s customers and products', () => {
     );
   });
 
-  it('The four calls answer 403 to anyone but the root, and a cue’s 403, 409 or 503 once, the call then answering as the data set does', async () => {
-    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+  it('The two lists answer 403 to anyone who may not see orders, and the two imports to anyone but the root; a cue’s 403, 409 or 503 comes once, the call then answering as the data set does', async () => {
+    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[3]?.id}` });
+    const office = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
     const row = { code: 'KH-90', name: 'Một', extra: {} };
     const product = {
       code: 'VT-90',
@@ -651,6 +733,11 @@ describe('the fake Api’s customers and products', () => {
     expect(await status(staff.listProducts())).toBe(403);
     expect(await status(staff.importCustomers([row]))).toBe(403);
     expect(await status(staff.importProducts([product]))).toBe(403);
+    // the office sees both lists, and imports into neither
+    expect((await office.listCustomers()).length).toBe(DEMO_CUSTOMERS.length);
+    expect((await office.listProducts()).length).toBe(DEMO_PRODUCTS.length);
+    expect(await status(office.importCustomers([row]))).toBe(403);
+    expect(await status(office.importProducts([product]))).toBe(403);
 
     for (const code of [403, 409, 503]) {
       for (const name of ['listCustomers', 'listProducts', 'importCustomers', 'importProducts']) {
@@ -883,17 +970,17 @@ describe('?fake', () => {
     expect(reloaded).not.toBeNull();
     drawApp(<App api={reloaded!.api} device={reloaded!.device} test />);
     await signInAs();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
     expect(fakeParts('', memory())).toBeNull();
   });
 
-  it('The root signs in on the fake and lands on Settings', async () => {
+  it('The root signs in on the fake and lands on the orders', async () => {
     const { api, device } = fakeParts('?fake', memory({ 'credo.language': 'en' }))!;
     drawApp(<App api={api} device={device} test />);
 
     await signInAs();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
     expect(device.authId()).toBe('fake.session');
   });
 
@@ -919,7 +1006,290 @@ describe('?fake', () => {
     const button = await screen.findByRole('button', { name: 'Sign In' });
     expect(button.hasAttribute('disabled')).toBe(false);
     await signInAs();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
     expect(device.authId()).toBe('fake.session');
+  });
+});
+
+describe('the fake Api’s orders and delivery requests', () => {
+  const root = { client: 'fake.session' };
+  const office = { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` };
+  const warehouse = { client: `fake.session.${DEMO_EMPLOYEES[3]?.id}` };
+  const order = DEMO_ORDERS.find((one) => one.state === 'draft' && one.day === DEMO_TODAY)!;
+  const sent = DEMO_ORDERS.find((one) => one.request?.day === DEMO_TODAY)!;
+  const driver = DEMO_DELIVERIES[0].driver;
+  const lines = [{ productId: DEMO_PRODUCTS[1].id, quantity: 2 }];
+  const save = { day: order.day, customerId: DEMO_CUSTOMERS[0].id, lines, extra: {} };
+
+  it('The fake’s calls answer as the BFF does: the week newest first, a record by its day and id, a day of requests by driver, the drivers allowed to deliver who have not left', async () => {
+    const api = fake('', office);
+
+    const week = await api.listOrders(addDays(DEMO_TODAY, -6), DEMO_TODAY);
+    expect(week.map((one) => one.number)).toEqual(
+      [...DEMO_ORDERS].sort(newestOrdersFirst).map((one) => one.number),
+    );
+    expect(
+      (await api.listOrders(DEMO_TODAY, DEMO_TODAY)).every((one) => one.day === DEMO_TODAY),
+    ).toBe(true);
+    expect(await status(api.listOrders(DEMO_TODAY, addDays(DEMO_TODAY, -1)))).toBe(400);
+    expect(await status(api.listOrders(addDays(DEMO_TODAY, -7), DEMO_TODAY))).toBe(400);
+    // a record is found by its day and id together
+    expect((await api.getOrder(order.day, order.id)).order.number).toBe(order.number);
+    expect(await status(api.getOrder(addDays(order.day, -1), order.id))).toBe(404);
+    expect(await status(api.getOrder(order.day, 'nope'))).toBe(404);
+    expect(await status(api.getDelivery(DEMO_TODAY, 'nope'))).toBe(404);
+    // a day's requests, by driver code and then number
+    const day = await api.listDeliveries(DEMO_TODAY);
+    expect(day.map((one) => [one.driver.code, one.number])).toEqual(
+      [...day].map((one) => [one.driver.code, one.number]).sort(),
+    );
+    expect(day.every((one) => one.day === DEMO_TODAY)).toBe(true);
+    // the drivers: allowed to deliver by their layers, and not left
+    expect((await api.listDrivers()).map((one) => one.code)).toEqual(['EMP-0005', 'EMP-0006']);
+    const left = fake('', root);
+    const setup = await left.getStaffSetup();
+    await left.saveStaffSetup(
+      {
+        ...setup.setup,
+        departments: setup.setup.departments.map((unit) => ({ ...unit, extra: {} })),
+        positions: setup.setup.positions.map((unit) => ({ ...unit, extra: {} })),
+      },
+      setup.version,
+    );
+    const archived = await left.getEmployee(DEMO_EMPLOYEES[5].id);
+    await left.archiveEmployee(archived.employee.id, archived.version);
+    expect((await left.listDrivers()).map((one) => one.code)).toEqual(['EMP-0005']);
+  });
+
+  it('answer 403 to anyone who may not see or edit orders', async () => {
+    const seeing = fake('', warehouse);
+    const view = fake('', root);
+    for (const answer of [
+      seeing.listOrders(DEMO_TODAY, DEMO_TODAY),
+      seeing.getOrder(order.day, order.id),
+      seeing.listDeliveries(DEMO_TODAY),
+      seeing.getDelivery(DEMO_TODAY, DEMO_DELIVERIES[0].id),
+      seeing.createOrder(save),
+      seeing.saveOrder(order.day, order.id, { ...save, version: 'o1' }),
+      seeing.confirmOrder(order.day, order.id, {
+        version: 'o1',
+        driverId: driver.id,
+        day: order.day,
+      }),
+      seeing.sendOrder(order.day, order.id, { version: 'o1', driverId: driver.id, day: order.day }),
+      seeing.cancelOrder(order.day, order.id, { version: 'o1' }),
+      seeing.cancelDelivery(DEMO_TODAY, DEMO_DELIVERIES[0].id, { version: 'g1' }),
+      seeing.listDrivers(),
+    ]) {
+      expect(await status(answer)).toBe(403);
+    }
+    expect(await status(view.listDrivers())).toBe('answered');
+  });
+
+  it('Each save is priced by the fake as the BFF prices it; an order is numbered past every number given, and a customer or a product the lists lack is a 400', async () => {
+    const api = fake('', office);
+
+    const made = await api.createOrder(save);
+    expect(made.order).toMatchObject({
+      number: numberText('DH-', DEMO_ORDERS.length + 1),
+      state: 'draft',
+      day: order.day,
+      total: DEMO_PRODUCTS[1].price * 2,
+      request: null,
+    });
+    expect((await api.createOrder(save)).order.number).toBe(
+      numberText('DH-', DEMO_ORDERS.length + 2),
+    );
+    expect(await status(api.createOrder({ ...save, customerId: 'nobody' }))).toBe(400);
+    expect(
+      await status(api.createOrder({ ...save, lines: [{ productId: 'nothing', quantity: 1 }] })),
+    ).toBe(400);
+    // the draft is saved again over its version; the day cannot move
+    const again = await api.saveOrder(order.day, made.order.id, {
+      ...save,
+      lines: [{ productId: DEMO_PRODUCTS[2].id, quantity: 3 }],
+      version: made.version,
+    });
+    expect(again).toMatchObject({ kind: 'done', doc: { version: 'o2' } });
+    expect(
+      again.kind === 'done' && again.doc.order.lines.map((one) => [one.code, one.amount]),
+    ).toEqual([['VT-002', 960_000]]);
+    expect(
+      await status(
+        api.saveOrder(order.day, made.order.id, {
+          ...save,
+          day: addDays(order.day, 1),
+          version: 'o2',
+        }),
+      ),
+    ).toBe(400);
+  });
+
+  it('A write over a moved version, or a step the state does not allow, is a conflict that carries the order as it is', async () => {
+    const api = fake('', office);
+    const confirmAs = { driverId: driver.id, day: DEMO_TODAY };
+
+    const stale = await api.saveOrder(order.day, order.id, { ...save, version: 'o9' });
+    expect(stale).toMatchObject({ kind: 'conflict', current: { order: { number: order.number } } });
+    expect(
+      await api.confirmOrder(order.day, order.id, { version: 'o9', ...confirmAs }),
+    ).toMatchObject({ kind: 'conflict' });
+    // a confirmed order is not saved again, nor confirmed again, nor sent while it has a live request
+    expect(
+      await api.saveOrder(sent.day, sent.id, { ...save, day: sent.day, version: 'o1' }),
+    ).toMatchObject({ kind: 'conflict' });
+    expect(
+      await api.confirmOrder(sent.day, sent.id, { version: 'o1', ...confirmAs }),
+    ).toMatchObject({ kind: 'conflict' });
+    expect(await api.sendOrder(sent.day, sent.id, { version: 'o1', ...confirmAs })).toMatchObject({
+      kind: 'conflict',
+    });
+    // a draft is not sent again
+    expect(await api.sendOrder(order.day, order.id, { version: 'o1', ...confirmAs })).toMatchObject(
+      { kind: 'conflict' },
+    );
+    // a cancelled order is not cancelled again
+    const cancelled = DEMO_ORDERS.find((one) => one.state === 'cancelled')!;
+    expect(await api.cancelOrder(cancelled.day, cancelled.id, { version: 'o1' })).toMatchObject({
+      kind: 'conflict',
+    });
+    // a request is cancelled once
+    const gone = DEMO_DELIVERIES.find((one) => one.state === 'cancelled')!;
+    expect(await api.cancelDelivery(gone.day, gone.id, { version: 'g1' })).toMatchObject({
+      kind: 'conflict',
+    });
+    expect(await api.cancelDelivery(gone.day, gone.id, { version: 'g7' })).toMatchObject({
+      kind: 'conflict',
+    });
+  });
+
+  it('Confirm needs a driver who is allowed to deliver and has not left, and a day on or after the order’s: anything else is a 400', async () => {
+    const api = fake('', office);
+    const read = await api.getOrder(order.day, order.id);
+
+    for (const bad of [
+      { driverId: DEMO_EMPLOYEES[0].id, day: DEMO_TODAY },
+      { driverId: 'nobody', day: DEMO_TODAY },
+      { driverId: driver.id, day: addDays(order.day, -1) },
+    ]) {
+      expect(
+        await status(api.confirmOrder(order.day, order.id, { version: read.version, ...bad })),
+      ).toBe(400);
+    }
+    const done = await api.confirmOrder(order.day, order.id, {
+      version: read.version,
+      driverId: driver.id,
+      day: addDays(DEMO_TODAY, 1),
+    });
+    expect(done).toMatchObject({
+      kind: 'done',
+      doc: {
+        order: {
+          state: 'confirmed',
+          request: {
+            number: numberText('GH-', DEMO_DELIVERIES.length + 1),
+            day: addDays(DEMO_TODAY, 1),
+          },
+        },
+      },
+    });
+    const next = await api.listDeliveries(addDays(DEMO_TODAY, 1));
+    const made = next.find((one) => one.order.id === order.id);
+    expect(made).toMatchObject({
+      state: 'waiting',
+      total: order.total,
+      order: { number: order.number },
+    });
+    expect(made?.customer).toEqual(order.customer);
+  });
+
+  it('Cancelling a request leaves its order confirmed with none; sending it again makes a new request with a new number; cancelling an order cancels its request', async () => {
+    const api = fake('', office);
+    const live = sent.request!;
+    const request = await api.getDelivery(live.day, live.id);
+
+    const cancelled = await api.cancelDelivery(live.day, live.id, { version: request.version });
+    expect(cancelled).toMatchObject({ kind: 'done', doc: { request: { state: 'cancelled' } } });
+    const orderNow = await api.getOrder(sent.day, sent.id);
+    expect(orderNow.order).toMatchObject({ state: 'confirmed', request: null });
+    const again = await api.sendOrder(sent.day, sent.id, {
+      version: orderNow.version,
+      driverId: driver.id,
+      day: DEMO_TODAY,
+    });
+    expect(again).toMatchObject({
+      kind: 'done',
+      doc: { order: { request: { number: numberText('GH-', DEMO_DELIVERIES.length + 1) } } },
+    });
+    // the order cancelled takes its live request with it
+    const sentAgain = again.kind === 'done' ? again.doc : null;
+    const stopped = await api.cancelOrder(sent.day, sent.id, { version: sentAgain?.version ?? '' });
+    expect(stopped).toMatchObject({
+      kind: 'done',
+      doc: { order: { state: 'cancelled', request: null } },
+    });
+    const all = await api.listDeliveries(DEMO_TODAY);
+    expect(all.filter((one) => one.order.id === sent.id).map((one) => one.state)).toEqual([
+      'cancelled',
+      'cancelled',
+    ]);
+    // a cancelled order with no live request is cancelled the same way (the draft has none)
+    expect(await api.cancelOrder(order.day, order.id, { version: 'o1' })).toMatchObject({
+      kind: 'done',
+    });
+  });
+
+  it('answer a cue’s 403, 409 or 503 once, the call then answering as the data set does', async () => {
+    const calls: Record<string, (api: ReturnType<typeof fake>) => Promise<unknown>> = {
+      listOrders: (api) => api.listOrders(DEMO_TODAY, DEMO_TODAY),
+      getOrder: (api) => api.getOrder(order.day, order.id),
+      createOrder: (api) => api.createOrder(save),
+      saveOrder: (api) => api.saveOrder(order.day, order.id, { ...save, version: 'o1' }),
+      confirmOrder: (api) =>
+        api.confirmOrder(order.day, order.id, {
+          version: 'o1',
+          driverId: driver.id,
+          day: DEMO_TODAY,
+        }),
+      sendOrder: (api) =>
+        api.sendOrder(sent.day, sent.id, { version: 'o1', driverId: driver.id, day: DEMO_TODAY }),
+      cancelOrder: (api) => api.cancelOrder(order.day, order.id, { version: 'o1' }),
+      listDeliveries: (api) => api.listDeliveries(DEMO_TODAY),
+      getDelivery: (api) =>
+        api.getDelivery(DEMO_TODAY, DEMO_DELIVERIES.find((one) => one.day === DEMO_TODAY)!.id),
+      cancelDelivery: (api) =>
+        api.cancelDelivery(sent.request!.day, sent.request!.id, { version: 'g1' }),
+      listDrivers: (api) => api.listDrivers(),
+    };
+    const conflicting = ['saveOrder', 'confirmOrder', 'sendOrder', 'cancelOrder', 'cancelDelivery'];
+
+    for (const [name, call] of Object.entries(calls)) {
+      for (const code of [403, 409, 503]) {
+        const cued = fake(`${name}:${code}`, root);
+        if (code === 409 && conflicting.includes(name)) {
+          expect(await call(cued), `${name} ${code}`).toMatchObject({ kind: 'conflict' });
+        } else {
+          expect(await status(call(cued)), `${name} ${code}`).toBe(code);
+        }
+        expect(await status(call(cued)), `${name} again`).toBe('answered');
+      }
+    }
+  });
+
+  it('serves no one a driver while the data set’s drivers’ departments lack the right', async () => {
+    const api = createFakeApi({
+      device: { authId: () => 'fake.session', operatorAuthId: () => null },
+      cue: null,
+      noDrivers: true,
+    });
+
+    expect(await api.listDrivers()).toEqual([]);
+  });
+
+  it('?fake gives the pages the data set’s today, whatever day the page is opened on, and `no-drivers` takes the right away', async () => {
+    const parts = fakeParts('?fake&no-drivers', memory());
+
+    expect(parts?.today()).toBe(DEMO_TODAY);
+    expect(await parts?.api.listDrivers()).toEqual([]);
   });
 });

@@ -9,6 +9,8 @@ export type PageProps = {
   onSignedOut: () => void;
   /** A 403 means what the person may do changed: the app reads who they are again. */
   onForbidden: () => void;
+  /** The office's day now, `YYYY-MM-DD`: the day a new order is filed under. */
+  today: () => string;
 };
 
 /** What a refusal needs of its page: a 401 signs out, and a 403, where the page has one to answer,

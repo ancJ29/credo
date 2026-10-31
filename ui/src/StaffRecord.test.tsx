@@ -887,7 +887,13 @@ describe('the list and its address', () => {
     const root = { name: 'root', root: true, permissions: {} };
     draw(
       <>
-        <StaffListPage api={api} user={root} onSignedOut={() => {}} onForbidden={() => {}} />
+        <StaffListPage
+          api={api}
+          user={root}
+          onSignedOut={() => {}}
+          onForbidden={() => {}}
+          today={() => ''}
+        />
         <Probe />
       </>,
     );

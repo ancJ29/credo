@@ -152,6 +152,7 @@ export type SendOrderRequest = z.infer<typeof sendOrderRequestSchema>;
 
 /** Cancelling an order or a request over the version read. */
 export const cancelRequestSchema = z.strictObject({ version: tagSchema });
+export type CancelRequest = z.infer<typeof cancelRequestSchema>;
 
 /** A line's amount, and why an order cannot be priced. */
 export type Priced =

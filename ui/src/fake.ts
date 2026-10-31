@@ -1,25 +1,43 @@
 import {
   addCustomerRequestSchema,
+  addDays,
   addProductRequestSchema,
   byCode,
+  can,
+  type CancelRequest,
   type ClientListItem,
   customerSchema,
   clientLinkPath,
+  type DeliveryRequest,
+  deliveryRequestSchema,
+  type Driver,
   type Employee,
   type EmployeeDoc,
   type ImportResult,
   keptSetupParts,
   layersOf,
   newestFirst,
+  newestOrdersFirst,
   nextCode,
+  numberText,
+  type Order,
+  ORDER_LIST_DAYS,
+  ORDER_PREFIX,
+  orderSchema,
+  type PermissionId,
   type PhotoReply,
+  priceLines,
   normaliseEmployeeCode,
   normaliseSignInName,
   passwordIsValid,
   productSchema,
   QR_MINUTES,
   qrLink,
+  REQUEST_PREFIX,
   resolvePermissions,
+  type SaveOrderRequest,
+  type SendOrderRequest,
+  sendableOn,
   staffConfig,
   type StaffSetup,
   type TenantConfig,
@@ -30,7 +48,10 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
+  DEMO_ORDERS,
   DEMO_PRODUCTS,
+  DEMO_TODAY,
   DEMO_QR_SECRET,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
@@ -38,7 +59,13 @@ import {
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
-import { type Api, ApiError, type ChangePasswordResult } from './api';
+import {
+  type Api,
+  ApiError,
+  type ChangePasswordResult,
+  type DeliveryResult,
+  type OrderResult,
+} from './api';
 import { createDeviceStore } from './device';
 
 /** The statuses the address may ask the fake to answer, once. */
@@ -68,6 +95,8 @@ type Options = {
   cue: Cue | null;
   /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
   signIns?: boolean;
+  /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
+  noDrivers?: boolean;
 };
 
 /**
@@ -75,12 +104,18 @@ type Options = {
  * methods, the same answers' shapes, no network. Any password signs the data set's root in. A
  * cue makes the call it names answer one status once, then the fake goes on from the data set.
  */
-export function createFakeApi({ device, cue, signIns = false }: Options): Api {
+export function createFakeApi({ device, cue, signIns = false, noDrivers = false }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
   let pending = cue;
   let setup: StaffSetup = structuredClone(DEMO_STAFF_SETUP);
   if (signIns) setup.fields = { ...staffConfig(setup).fields, email: true, qr: true };
+  if (noDrivers) {
+    setup.departments = setup.departments.map(({ permissions, ...rest }) => ({
+      ...rest,
+      permissions: { ...permissions, 'deliveries.canDeliver': false },
+    }));
+  }
   let setupVersion = 1;
   const people = new Map<string, Employee>(
     DEMO_EMPLOYEES.map((person) => [person.id, structuredClone(person)]),
@@ -98,6 +133,15 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
    * records, by minted id. */
   const customers = new Map(DEMO_CUSTOMERS.map((one) => [one.id, customerSchema.parse(one)]));
   const products = new Map(DEMO_PRODUCTS.map((one) => [one.id, productSchema.parse(one)]));
+  /** The week of orders and requests, each at the version it is at, and the last number given. */
+  const orders = new Map(DEMO_ORDERS.map((one) => [one.id, orderSchema.parse(one)]));
+  const requests = new Map(
+    DEMO_DELIVERIES.map((one) => [one.id, deliveryRequestSchema.parse(one)]),
+  );
+  const orderVersions = new Map(DEMO_ORDERS.map((one) => [one.id, 1]));
+  const requestVersions = new Map(DEMO_DELIVERIES.map((one) => [one.id, 1]));
+  let lastOrder = DEMO_ORDERS.length;
+  let lastRequest = DEMO_DELIVERIES.length;
   /** How many QR codes have been minted: each one's secret is its number. */
   let minted = 0;
   /** The QR code each person was last shown, by the secret it signs in with; spending one removes it.
@@ -152,9 +196,95 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
     return handle.startsWith(STAFF_HANDLE) && person ? staffUser(person) : ROOT;
   };
   const isRoot = () => !device.authId()?.startsWith(STAFF_HANDLE);
-  /** The two lists are the root's alone, as the BFF checks. */
+  /** The imports are the root's alone, as the BFF checks. */
   const rootOnly = () => {
     if (!isRoot()) throw new ApiError(403);
+  };
+  /** Whoever the permission lets, as the BFF checks it on every call. */
+  const mayOnly = (id: PermissionId) => {
+    if (!isRoot() && !can(signedInUser(device.authId()!), id)) throw new ApiError(403);
+  };
+  /** The people the office may name as a driver: not left, and allowed to deliver by their layers. */
+  const driversNow = (): Driver[] =>
+    [...people.values()]
+      .filter((one) => !one.archived && staffUser(one).permissions['deliveries.canDeliver'])
+      .map(({ id, code, name }) => ({ id, code, name }))
+      .sort(byCode);
+  const orderAt = (day: string, id: string) => {
+    const found = orders.get(id);
+    if (!found || found.day !== day) throw notFound();
+    return found;
+  };
+  const requestAt = (day: string, id: string) => {
+    const found = requests.get(id);
+    if (!found || found.day !== day) throw notFound();
+    return found;
+  };
+  const orderDoc = (found: Order) => ({
+    order: structuredClone(found),
+    version: `o${orderVersions.get(found.id)}`,
+  });
+  const requestDoc = (found: DeliveryRequest) => ({
+    request: structuredClone(found),
+    version: `g${requestVersions.get(found.id)}`,
+  });
+  const orderMoved = (found: Order) => {
+    orderVersions.set(found.id, (orderVersions.get(found.id) as number) + 1);
+    return { kind: 'done' as const, doc: orderDoc(found) };
+  };
+  const requestMoved = (found: DeliveryRequest) => {
+    requestVersions.set(found.id, (requestVersions.get(found.id) as number) + 1);
+  };
+  /** A save's customer and lines as the BFF prices them: a customer or a product the lists lack
+   * is a 400. */
+  const priced = (request: SaveOrderRequest) => {
+    const customer = customers.get(request.customerId);
+    const lines = priceLines(request.lines, [...products.values()]);
+    if (!customer || lines.kind !== 'priced') throw new ApiError(400);
+    return { customer: structuredClone(customer), lines: lines.lines, total: lines.total };
+  };
+  /** A write that finds its order moved, or in a state the step does not allow, answers the order
+   * as it is. */
+  const orderStale = (found: Order, version: string | undefined, allowed: boolean) =>
+    version !== `o${orderVersions.get(found.id)}` || !allowed
+      ? { kind: 'conflict' as const, current: orderDoc(found) }
+      : null;
+  /** Confirming a draft and sending a confirmed order again make a request the same way. */
+  const issue = (
+    day: string,
+    id: string,
+    request: SendOrderRequest,
+    confirming: boolean,
+  ): OrderResult => {
+    mayOnly('orders.canEdit');
+    const found = orderAt(day, id);
+    const stale = orderStale(
+      found,
+      request.version,
+      confirming ? found.state === 'draft' : found.state === 'confirmed' && found.request === null,
+    );
+    if (stale) return stale;
+    const driver = driversNow().find((one) => one.id === request.driverId);
+    if (!driver || !sendableOn(found.day, request.day)) throw new ApiError(400);
+    lastRequest += 1;
+    const made: DeliveryRequest = {
+      id: crypto.randomUUID(),
+      number: numberText(REQUEST_PREFIX, lastRequest),
+      day: request.day,
+      state: 'waiting',
+      driver,
+      order: { id: found.id, day: found.day, number: found.number },
+      customer: structuredClone(found.customer),
+      lines: structuredClone(found.lines),
+      total: found.total,
+      madeAt: Date.now(),
+      extra: {},
+    };
+    requests.set(made.id, made);
+    requestVersions.set(made.id, 1);
+    found.state = 'confirmed';
+    found.request = { id: made.id, number: made.number, day: made.day, driver };
+    return orderMoved(found);
   };
   /** A list in code order, as the BFF answers it. */
   const inOrder = <T extends { code: string }>(held: Map<string, T>) =>
@@ -366,13 +496,13 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
 
     listCustomers: () =>
       call('listCustomers', () => {
-        rootOnly();
+        mayOnly('orders.canView');
         return inOrder(customers);
       }),
 
     listProducts: () =>
       call('listProducts', () => {
-        rootOnly();
+        mayOnly('orders.canView');
         return inOrder(products);
       }),
 
@@ -403,6 +533,135 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
             extra: request.extra,
           }),
         );
+      }),
+
+    listOrders: (from, to) =>
+      call('listOrders', () => {
+        mayOnly('orders.canView');
+        if (from > to || addDays(from, ORDER_LIST_DAYS - 1) < to) throw new ApiError(400);
+        return [...orders.values()]
+          .filter((one) => one.day >= from && one.day <= to)
+          .map((one) => structuredClone(one))
+          .sort(newestOrdersFirst);
+      }),
+
+    getOrder: (day, id) =>
+      call('getOrder', () => {
+        mayOnly('orders.canView');
+        return orderDoc(orderAt(day, id));
+      }),
+
+    createOrder: (request) =>
+      call('createOrder', () => {
+        mayOnly('orders.canEdit');
+        const made: Order = {
+          id: crypto.randomUUID(),
+          number: numberText(ORDER_PREFIX, lastOrder + 1),
+          day: request.day,
+          state: 'draft',
+          ...priced(request),
+          request: null,
+          madeAt: Date.now(),
+          extra: structuredClone(request.extra),
+        };
+        lastOrder += 1;
+        orders.set(made.id, made);
+        orderVersions.set(made.id, 1);
+        return orderDoc(made);
+      }),
+
+    saveOrder: (day, id, request) =>
+      call(
+        'saveOrder',
+        () => {
+          mayOnly('orders.canEdit');
+          const found = orderAt(day, id);
+          const stale = orderStale(found, request.version, found.state === 'draft');
+          if (stale) return stale;
+          if (request.day !== day) throw new ApiError(400);
+          Object.assign(found, priced(request), { extra: structuredClone(request.extra) });
+          return orderMoved(found);
+        },
+        () => ({ kind: 'conflict' as const, current: orderDoc(orderAt(day, id)) }),
+      ),
+
+    confirmOrder: (day, id, request) =>
+      call(
+        'confirmOrder',
+        () => issue(day, id, request, true),
+        () => ({ kind: 'conflict' as const, current: orderDoc(orderAt(day, id)) }),
+      ),
+
+    sendOrder: (day, id, request) =>
+      call(
+        'sendOrder',
+        () => issue(day, id, request, false),
+        () => ({ kind: 'conflict' as const, current: orderDoc(orderAt(day, id)) }),
+      ),
+
+    cancelOrder: (day, id, request: CancelRequest) =>
+      call(
+        'cancelOrder',
+        (): OrderResult => {
+          mayOnly('orders.canEdit');
+          const found = orderAt(day, id);
+          const stale = orderStale(found, request.version, found.state !== 'cancelled');
+          if (stale) return stale;
+          // The request is cancelled first, then the order, as the BFF writes them.
+          const live = found.request && requests.get(found.request.id);
+          if (live) {
+            live.state = 'cancelled';
+            requestMoved(live);
+          }
+          found.state = 'cancelled';
+          found.request = null;
+          return orderMoved(found);
+        },
+        () => ({ kind: 'conflict' as const, current: orderDoc(orderAt(day, id)) }),
+      ),
+
+    listDeliveries: (day) =>
+      call('listDeliveries', () => {
+        mayOnly('orders.canView');
+        return [...requests.values()]
+          .filter((one) => one.day === day)
+          .map((one) => structuredClone(one))
+          .sort(
+            (a, b) =>
+              a.driver.code.localeCompare(b.driver.code) || a.number.localeCompare(b.number),
+          );
+      }),
+
+    getDelivery: (day, id) =>
+      call('getDelivery', () => {
+        mayOnly('orders.canView');
+        return requestDoc(requestAt(day, id));
+      }),
+
+    cancelDelivery: (day, id, request: CancelRequest) =>
+      call<DeliveryResult>(
+        'cancelDelivery',
+        () => {
+          mayOnly('orders.canEdit');
+          const found = requestAt(day, id);
+          if (request.version !== `g${requestVersions.get(id)}` || found.state !== 'waiting') {
+            return { kind: 'conflict', current: requestDoc(found) };
+          }
+          found.state = 'cancelled';
+          requestMoved(found);
+          // The request is cancelled first; the order then names no live request.
+          const order = orders.get(found.order.id)!;
+          order.request = null;
+          orderMoved(order);
+          return { kind: 'done', doc: requestDoc(found) };
+        },
+        () => ({ kind: 'conflict', current: requestDoc(requestAt(day, id)) }),
+      ),
+
+    listDrivers: () =>
+      call('listDrivers', () => {
+        mayOnly('orders.canEdit');
+        return driversNow();
       }),
 
     saveEmployee: (id, request) =>
@@ -591,7 +850,10 @@ export function fakeParts(search: string, storage: Parameters<typeof createDevic
       device,
       cue: parseCue(params.get('cue')),
       signIns: params.has('sign-ins'),
+      noDrivers: params.has('no-drivers'),
     }),
     device,
+    /** The fake build's today is the data set's, so the week of orders is the week shown. */
+    today: () => DEMO_TODAY,
   };
 }

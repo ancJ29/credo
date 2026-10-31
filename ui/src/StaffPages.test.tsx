@@ -54,17 +54,25 @@ describe('the staff list', () => {
       menu()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Settings', 'Staff', 'Departments and positions', 'Customers', 'Products']);
+    ).toEqual([
+      'Orders',
+      'Delivery requests',
+      'Settings',
+      'Staff',
+      'Departments and positions',
+      'Customers',
+      'Products',
+    ]);
     root.unmount();
 
-    // an office manager: the staff list, and the button to add; no Settings, no setup
+    // an office manager: the orders and the staff list, and the button to add; no Settings, no setup
     const lan = openApp('/staff', { as: 'EMP-0001' });
     expect(await screen.findByRole('link', { name: 'Add a person' })).toBeTruthy();
     expect(
       menu()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Staff']);
+    ).toEqual(['Orders', 'Delivery requests', 'Staff', 'Customers', 'Products']);
     lan.unmount();
 
     // a warehouse hand who may only see: the list without the button
@@ -464,7 +472,7 @@ describe('a person’s page', () => {
       within(group('See the staff list')).getByRole('radio', { name: 'As the level above' }),
     ).toBeTruthy();
     expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(1);
-    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(4);
+    expect(screen.getAllByText('As the level above: Refused')).toHaveLength(7);
 
     // the person's own: allow archiving, which nothing above allows; allow seeing, which the department already does
     await userEvent.click(within(group('Archive a person')).getByText('Allow'));
@@ -492,7 +500,7 @@ describe('a person’s page', () => {
     const label = 'Change a person’s name and details';
     const row = screen.getByText(label).parentElement as HTMLElement;
     expect(within(row).getByText('As the level above: Refused')).toBeTruthy();
-    expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(2);
+    expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(4);
     await userEvent.click(
       within(screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` })).getByText(
         'Allow',
