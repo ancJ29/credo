@@ -14,7 +14,12 @@ export const ROUTES = {
   operatorClients: '/api/operator/clients',
   staffSetup: '/api/staff-setup',
   employees: '/api/employees',
+  customers: '/api/customers',
+  products: '/api/products',
 } as const;
+
+/** A list's import, under its own route: the root's, up to a call's rows. */
+export const listImportRoute = (list: 'customers' | 'products') => `${ROUTES[list]}/import`;
 
 /** A person's own routes, under `ROUTES.employees`. */
 export const employeeRoutes = {

@@ -1,5 +1,6 @@
 import type { TenantConfig } from './config';
 import type { CustomField } from './fields';
+import type { Customer, Product } from './lists';
 import type { Employee, StaffSetup, UnitLink } from './staff';
 
 const logo = `data:image/svg+xml;base64,${btoa(
@@ -267,4 +268,125 @@ export const DEMO_IMPORT_ROWS: DemoImportRow[] = [
   { name: 'Đinh Công Sơn', department: 'Kế toán' },
   { name: 'Phan Thị Yến', code: 'EMP-0100' },
   { name: 'Dương Văn Tài', dependants: 'two' },
+];
+
+/** Six invented customers of the demo company, in code order, each with a phone and an address, and
+ * one with a note. */
+export const DEMO_CUSTOMERS: Customer[] = [
+  {
+    id: id(201),
+    code: 'KH-001',
+    name: 'Cửa hàng Vật liệu Hưng Thịnh',
+    extra: {
+      phone: '0908 220 001',
+      address: '12 Nguyễn Trãi, Quận 5',
+      note: 'Lấy hàng sáng thứ Hai.',
+    },
+  },
+  {
+    id: id(202),
+    code: 'KH-002',
+    name: 'Công ty Xây dựng An Phú',
+    extra: { phone: '0908 220 002', address: '88 Lê Văn Việt, TP. Thủ Đức' },
+  },
+  {
+    id: id(203),
+    code: 'KH-003',
+    name: 'Anh Tuấn, thầu xây nhà',
+    extra: { phone: '0908 220 003', address: '5 Đường số 7, Bình Tân' },
+  },
+  {
+    id: id(204),
+    code: 'KH-004',
+    name: 'Đại lý Sắt thép Phước Lộc',
+    extra: { phone: '0908 220 004', address: '301 Quốc lộ 1A, Bình Chánh' },
+  },
+  {
+    id: id(205),
+    code: 'KH-005',
+    name: 'Cô Hạnh, sửa nhà',
+    extra: { phone: '0908 220 005', address: '17 Hoàng Hoa Thám, Tân Bình' },
+  },
+  {
+    id: id(206),
+    code: 'KH-006',
+    name: 'Nhà thầu Bảo Long',
+    extra: { phone: '0908 220 006', address: '240 Phan Văn Hớn, Quận 12' },
+  },
+];
+
+/** Six invented products of the demo company, in code order, by the bag, the tonne, the thousand
+ * and the cubic metre, one with a note. */
+export const DEMO_PRODUCTS: Product[] = [
+  {
+    id: id(301),
+    code: 'VT-001',
+    name: 'Xi măng PCB40',
+    unit: 'bao',
+    price: 95_000,
+    extra: { note: 'Bao 50 kg.' },
+  },
+  { id: id(302), code: 'VT-002', name: 'Cát xây tô', unit: 'm³', price: 320_000, extra: {} },
+  { id: id(303), code: 'VT-003', name: 'Đá 1x2', unit: 'm³', price: 410_000, extra: {} },
+  {
+    id: id(304),
+    code: 'VT-004',
+    name: 'Gạch ống 4 lỗ',
+    unit: 'nghìn viên',
+    price: 1_650_000,
+    extra: {},
+  },
+  { id: id(305), code: 'VT-005', name: 'Thép phi 8', unit: 'tấn', price: 15_800_000, extra: {} },
+  {
+    id: id(306),
+    code: 'VT-006',
+    name: 'Sơn nước ngoại thất 18 L',
+    unit: 'thùng',
+    price: 1_890_000,
+    extra: {},
+  },
+];
+
+/** One row of a customers' or products' import file, by the key of the column it fills. A column is
+ * left out of a row that gives nothing. */
+export type DemoListRow = Partial<
+  Record<'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'note', string>
+>;
+
+/** The customers' file the demo company's root chooses: three rows that hold (the second typed in
+ * lower case), one whose code the company has (KH-002) and one with no name, in the order the
+ * preview lists them. */
+export const DEMO_CUSTOMER_IMPORT_ROWS: DemoListRow[] = [
+  {
+    code: 'KH-007',
+    name: 'Cửa hàng Minh Tâm',
+    phone: '0909 330 007',
+    address: '9 Lý Thường Kiệt, Quận 10',
+  },
+  {
+    code: 'kh-008',
+    name: 'Công ty TNHH Gia Khang',
+    phone: '0909 330 008',
+    address: '61 Cộng Hòa, Tân Bình',
+    note: 'Thanh toán cuối tháng.',
+  },
+  { code: 'KH-009', name: 'Chú Sáu, thợ hồ', phone: '0909 330 009' },
+  { code: 'KH-002', name: 'Xây dựng An Phú', phone: '0909 330 010' },
+  { code: 'KH-011', phone: '0909 330 011' },
+];
+
+/** The products' file: three rows that hold (one price typed with a dot between the thousands, one
+ * with a comma), one whose code the company has (VT-002) and one whose price is no price. */
+export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
+  { code: 'VT-007', name: 'Xi măng đen PC30', unit: 'bao', price: '88.000' },
+  {
+    code: 'VT-008',
+    name: 'Cát san lấp',
+    unit: 'm³',
+    price: '180000',
+    note: 'Giao tận công trình.',
+  },
+  { code: 'vt-009', name: 'Ống nhựa PVC phi 60', unit: 'cây', price: '72,000' },
+  { code: 'VT-002', name: 'Cát xây tô', unit: 'm³', price: '320000' },
+  { code: 'VT-011', name: 'Đá mi bụi', unit: 'm³', price: 'thương lượng' },
 ];
