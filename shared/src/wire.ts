@@ -16,6 +16,9 @@ export const ROUTES = {
   employees: '/api/employees',
   customers: '/api/customers',
   products: '/api/products',
+  orders: '/api/orders',
+  deliveries: '/api/deliveries',
+  drivers: '/api/drivers',
 } as const;
 
 /** A list's import, under its own route: the root's, up to a call's rows. */
@@ -28,6 +31,22 @@ export const employeeRoutes = {
   password: (id: string) => `${ROUTES.employees}/${id}/password`,
   code: (id: string) => `${ROUTES.employees}/${id}/code`,
   photo: (id: string) => `${ROUTES.employees}/${id}/photo`,
+};
+
+/** An order's own routes, under `ROUTES.orders`: a day's records are found by their day and id. */
+export const orderRoutes = {
+  list: (from: string, to: string) => `${ROUTES.orders}?from=${from}&to=${to}`,
+  one: (day: string, id: string) => `${ROUTES.orders}/${day}/${id}`,
+  confirm: (day: string, id: string) => `${ROUTES.orders}/${day}/${id}/confirm`,
+  send: (day: string, id: string) => `${ROUTES.orders}/${day}/${id}/send`,
+  cancel: (day: string, id: string) => `${ROUTES.orders}/${day}/${id}/cancel`,
+};
+
+/** A delivery request's own routes, under `ROUTES.deliveries`. */
+export const deliveryRoutes = {
+  list: (day: string) => `${ROUTES.deliveries}?day=${day}`,
+  one: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}`,
+  cancel: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/cancel`,
 };
 
 /** The client's code, on every call of a client's: it scopes the call to a tenant and proves

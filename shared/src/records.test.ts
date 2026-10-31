@@ -32,6 +32,34 @@ describe('the record keys', () => {
     expect(other.config).not.toBe(tenant.config);
   });
 
+  it('An order is tenant.<id>.order.<day>.<order id>, a request tenant.<id>.delivery.<day>.<request id>, and a day is one prefix', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    const tenant = recordKeys.tenant(id);
+
+    expect(tenant.order('2026-11-04', 'o1')).toBe(`tenant.${id}.order.2026-11-04.o1`);
+    expect(tenant.delivery('2026-11-04', 'r1')).toBe(`tenant.${id}.delivery.2026-11-04.r1`);
+    expect(tenant.documentNumbering).toBe(`tenant.${id}.document-numbering`);
+    expect(tenant.order('2026-11-04', 'o1').startsWith(tenant.orderDayPrefix('2026-11-04'))).toBe(
+      true,
+    );
+    expect(tenant.orderDayPrefix('2026-11-04')).toBe(`tenant.${id}.order.2026-11-04.`);
+    expect(tenant.deliveryDayPrefix('2026-11-04')).toBe(`tenant.${id}.delivery.2026-11-04.`);
+    // one day's prefix finds nothing of another day's, an order's nothing of a request's, and the
+    // numbering is in neither
+    expect(tenant.order('2026-11-05', 'o1').startsWith(tenant.orderDayPrefix('2026-11-04'))).toBe(
+      false,
+    );
+    expect(
+      tenant.delivery('2026-11-04', 'r1').startsWith(tenant.orderDayPrefix('2026-11-04')),
+    ).toBe(false);
+    for (const prefix of [
+      tenant.orderDayPrefix('2026-11-04'),
+      tenant.deliveryDayPrefix('2026-11-04'),
+    ]) {
+      expect(tenant.documentNumbering.startsWith(prefix)).toBe(false);
+    }
+  });
+
   it('C: An email and a QR code each have a record of their own, none of them under the staff list’s prefix', () => {
     const id = '3f2a91bc-0000-4000-8000-000000000001';
     const tenant = recordKeys.tenant(id);

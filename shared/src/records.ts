@@ -28,6 +28,14 @@ export const recordKeys = {
     customerPrefix: `tenant.${id}.customer.`,
     product: (productId: string) => `tenant.${id}.product.${productId}`,
     productPrefix: `tenant.${id}.product.`,
+    /** An order and a delivery request, each by its day and minted id: a list reads one day's prefix,
+     * since c-storage answers at most 1,000 records a read. */
+    order: (day: string, orderId: string) => `tenant.${id}.order.${day}.${orderId}`,
+    orderDayPrefix: (day: string) => `tenant.${id}.order.${day}.`,
+    delivery: (day: string, requestId: string) => `tenant.${id}.delivery.${day}.${requestId}`,
+    deliveryDayPrefix: (day: string) => `tenant.${id}.delivery.${day}.`,
+    /** The last number given to an order and to a request: its own record, raised over its tag. */
+    documentNumbering: `tenant.${id}.document-numbering`,
     staffSetup: `tenant.${id}.staff-setup`,
     /** The demo seed's ledger for the tenant, the seed's alone: the BFF never reads it, and its key
      * starts with none of the prefixes the BFF lists. */
