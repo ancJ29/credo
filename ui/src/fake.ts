@@ -399,6 +399,7 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
             name: request.name,
             unit: request.unit,
             price: request.price,
+            stocked: request.stocked,
             extra: request.extra,
           }),
         );

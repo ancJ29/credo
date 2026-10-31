@@ -48,7 +48,7 @@ Products, where one price is refused. The files are made for each scenario by st
 | | Typed: the BFF trusts it | In `extra`: the company's own |
 | --- | --- | --- |
 | **a customer** | id (minted), code, name | phone, address, note |
-| **a product** | id (minted), code, name, unit, price in whole đồng | note |
+| **a product** | id (minted), code, name, unit, price in whole đồng, stocked (yes or no) | note |
 
 - **Why these are typed:** the code is unique in its list; the name is every later snapshot's (an
   order names its customer); slice 2 prices an order from the product on the BFF, and its line keeps
@@ -76,15 +76,22 @@ Products, where one price is refused. The files are made for each scenario by st
 
 - `customerSchema` and `productSchema`, each list's reply, and each add request:
   `addCustomerRequestSchema` (code, name, `extra`) and `addProductRequestSchema` (code, name, a unit of
-  1 to 20 characters, a whole price from 1 to 10¹², `extra`).
+  1 to 20 characters, a whole price from 1 to 10¹², stocked, `extra`).
 - `importReplyOf(record)`: one result a row, in the order sent: `added` with the record, or `refused`
   as `taken`, `invalid` or `busy`, as piece 2's `importResultSchema`. Both imports reuse
   `importCallSchema` and the limits in [`import.ts`](../../shared/src/import.ts#L6): 2 MB and 500
   rows a file, 100 rows a call. Staff's reply keeps its own shape.
 - `ROUTES.customers` and `ROUTES.products`, each a `GET` of the list and a `POST …/import`.
-- The data set, `@credo/shared/demo`: six customers and six products for the fake's company, and each
+- The data set, `@credo/shared/demo`: six customers and seven products (one not stocked) for the fake's company, and each
   list's import rows (three that hold, one code already there, one refused), with a file that lacks
   the code column.
+
+**Amended 2026-10-31 by the human (08:5x), before any screen was answered:** a product carries a
+`stocked` flag (Quản lý tồn kho), the flag only, from the old app's v1 product flag; typed because the
+stock piece's BFF will rely on it, required on the wire (the sheet supplies Có for an empty cell).
+Row 23 is the new 👤 row, the human's yes as written; rows 1, 3, 11 and 12 are amended above. The
+template column sits between price and note, is not a needed column, and shows in the list and the
+preview; no new screen. Stock on hand and what the flag drives stay after 11-04.
 
 ## The model files
 
@@ -109,9 +116,9 @@ red once from its assertion (rule 2); every package stays at 100 % (rule 8).
 
 | # | 👤 | The case | Held by |
 | --- | --- | --- | --- |
-| 1 | 👤 | The root opens Customers and Products from the menu; each lists all of the company's in code order: a customer's code, name, phone and address; a product's code, name, unit and price in đồng | BFF route; unit, ui; the walk |
+| 1 | 👤 | The root opens Customers and Products from the menu; each lists all of the company's in code order: a customer's code, name, phone and address; a product's code, name, unit, price in đồng and whether its stock is kept | BFF route; unit, ui; the walk |
 | 2 | 👤 | Only the company's root sees the two lists and imports into them; office staff get them with orders, in slice 2 | BFF route |
-| 3 | 👤 | For each list the app gives a template in Vietnamese or English: its columns, two sample rows, and a sheet saying what each column takes | unit, ui; the walk |
+| 3 | 👤 | For each list the app gives a template in Vietnamese or English: its columns (a product's with Stocked, before Note), two sample rows, and a sheet saying what each column takes | unit, ui; the walk |
 | 4 | 👤 | Before anything is saved, the root sees each row read and the reason for any refused; Add adds only the rows that hold, and the list then shows them | unit, ui; BFF route; the walk |
 | 5 | 👤 | A customer needs a code and a name; a product a code, a name, a unit and a price; a row missing one is refused, naming it | unit, ui; BFF route |
 | 6 | 👤 | A code is 2 to 20 letters, digits and hyphens, read in capitals, unique in its list; one already in the list, or twice in the file, is refused, and the one there stays as it was | unit, ui; BFF route |
@@ -119,8 +126,9 @@ red once from its assertion (rule 2); every package stays at 100 % (rule 8).
 | 8 | 👤 | A customer's phone, address and note, and a product's note, are kept as typed and may be empty | unit, ui; BFF route |
 | 9 | 👤 | A file over 2 MB or 500 rows, or without its code or name column, is refused before any row is read, saying what to fix | unit, ui; the walk |
 | 10 | 👤 | A row the system could not answer for is listed by its row and name, "not added, try again", and the rest goes on; the same file sent again is refused row by row as already in the list | BFF route; unit, ui |
-| 11 | 👤 | Each demo copy starts with its company's lists: S1 about 30 builders and 60 materials by bag, tonne, thousand bricks and m³; S2 about 80 grocery shops and 250 drinks and household goods by carton; every name, phone and address invented | unit, scripts; the applier on real c-storage |
-| 12 | 👤 | Not yet: adding, changing or removing one by hand; one workbook for staff, customers and products; files over 500 rows; search in the lists; a company's own columns; prices by customer | none: the human's to move |
+| 11 | 👤 | Each demo copy starts with its company's lists: S1 about 30 builders and 60 stocked materials by bag, tonne, thousand bricks and m³, plus 2 not stocked (a transport fee by the trip, rebar cutting by the job); S2 about 80 grocery shops and 250 stocked drinks and household goods by carton, plus 1 not stocked (a delivery fee by the trip); every name, phone and address invented | unit, scripts; the applier on real c-storage |
+| 12 | 👤 | Not yet: adding, changing or removing one by hand; one workbook for staff, customers and products; files over 500 rows; search in the lists; a company's own columns; prices by customer; stock on hand and anything the stocked flag drives | none: the human's to move |
+| 23 | 👤 | A product says whether its stock is kept (Quản lý tồn kho / Stocked: Có or Không). An empty cell reads Có. Không, No, 0 or false read Không; Có, Yes, 1 or true read Có. Any other word refuses the row and names the column. The list shows it. Nothing moves stock yet; stock comes after 11-04 | unit, ui; BFF route |
 | 13 | | Each customer and product is one record under a minted id, its key built by `recordKeys`, written once with `If-None-Match: *` | BFF route |
 | 14 | | A list answers 500 when c-storage says there are more, or when a record does not parse, naming its kind and never its key; never a short list | BFF route |
 | 15 | | An import call takes 1 to 100 rows, each read as one add: refused by the schema, `invalid`; a code in the list or earlier in the call, `taken`; a 503, `busy`, and the call goes on; any other failure ends the call, the rows before it kept | BFF route |

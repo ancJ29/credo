@@ -319,7 +319,15 @@ describe('the API client', () => {
 
     it('lists the customers and the products, and sends each list’s import rows to its own route as JSON', async () => {
       const customer = { id, code: 'KH-1', name: 'Một', extra: {} };
-      const product = { id, code: 'VT-1', name: 'Một', unit: 'bao', price: 5000, extra: {} };
+      const product = {
+        id,
+        code: 'VT-1',
+        name: 'Một',
+        unit: 'bao',
+        price: 5000,
+        stocked: true,
+        extra: {},
+      };
       const { calls, api } = fake(
         json({ customers: [customer] }),
         json({ products: [product] }),
@@ -331,7 +339,9 @@ describe('the API client', () => {
         json({}, 403),
       );
       const rows = [{ code: 'KH-1', name: 'Một', extra: {} }];
-      const items = [{ code: 'VT-1', name: 'Một', unit: 'bao', price: 5000, extra: {} }];
+      const items = [
+        { code: 'VT-1', name: 'Một', unit: 'bao', price: 5000, stocked: true, extra: {} },
+      ];
 
       expect(await api.listCustomers()).toEqual([customer]);
       expect(await api.listProducts()).toEqual([product]);

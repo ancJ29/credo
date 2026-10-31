@@ -413,6 +413,7 @@ export const en = {
       address: 'Address',
       unit: 'Unit',
       price: 'Price (VND)',
+      stocked: 'Stocked',
       note: 'Note',
     },
     write: {
@@ -422,7 +423,10 @@ export const en = {
       unit: 'Needed. What the price is for, such as bag, tonne or m³, at most 20 characters.',
       price:
         'Needed. A whole number of đồng above zero. Dots or commas between the thousands are fine: 95.000 is 95000. No decimals.',
+      stocked: 'Có or Không (Yes or No also work). Empty reads Có.',
     },
+    yes: 'Yes',
+    no: 'No',
     sampleAddress: '1 Example Street',
     sampleProduct1: 'Sample product 1',
     sampleProduct2: 'Sample product 2',
@@ -437,6 +441,8 @@ export const en = {
     refusedUnit: 'The unit is empty or longer than 20 characters.',
     refusedPrice:
       '“{{typed}}” is not a price: write whole đồng above zero, such as 95000 or 95.000.',
+    refusedStocked:
+      'The “Stocked” column holds “{{typed}}”: write Có or Không (Yes or No), or leave it empty.',
     refusedRow: 'The details of this row together are too long to save.',
     failed:
       'The rows may not all have been added. Open the list to see which were. Adding the file again refuses the codes already there.',

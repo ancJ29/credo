@@ -413,6 +413,7 @@ export const vi: Dictionary = {
       address: 'Địa chỉ',
       unit: 'Đơn vị tính',
       price: 'Giá (đồng)',
+      stocked: 'Quản lý tồn kho',
       note: 'Ghi chú',
     },
     write: {
@@ -422,7 +423,10 @@ export const vi: Dictionary = {
       unit: 'Bắt buộc. Giá tính cho đơn vị nào, ví dụ bao, tấn hay m³, tối đa 20 ký tự.',
       price:
         'Bắt buộc. Số đồng nguyên, lớn hơn không. Có thể ngăn hàng nghìn bằng dấu chấm hoặc dấu phẩy: 95.000 là 95000. Không có số thập phân.',
+      stocked: 'Có hoặc Không (Yes hoặc No cũng được). Để trống là Có.',
     },
+    yes: 'Có',
+    no: 'Không',
     sampleAddress: '1 Đường Mẫu',
     sampleProduct1: 'Sản phẩm mẫu 1',
     sampleProduct2: 'Sản phẩm mẫu 2',
@@ -438,6 +442,7 @@ export const vi: Dictionary = {
     refusedUnit: 'Đơn vị tính bị bỏ trống hoặc dài quá 20 ký tự.',
     refusedPrice:
       '“{{typed}}” không phải là giá: hãy ghi số đồng nguyên lớn hơn không, ví dụ 95000 hoặc 95.000.',
+    refusedStocked: 'Cột “Quản lý tồn kho” ghi “{{typed}}”: hãy ghi Có hoặc Không, hoặc để trống.',
     refusedRow: 'Các chi tiết của dòng này cộng lại quá dài để lưu.',
     failed:
       'Có thể chưa thêm đủ các dòng. Hãy mở danh sách để xem dòng nào đã có. Thêm lại tệp sẽ từ chối các mã đã có.',

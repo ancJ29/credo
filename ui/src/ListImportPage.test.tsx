@@ -356,6 +356,31 @@ describe('the import page for the products', () => {
     }
   });
 
+  it('shows each product row’s stocked cell as it reads, an empty cell as Yes, and names the column of a word that is neither', async () => {
+    const { api } = openApp('/products/import');
+    await chooseAndRead(
+      await listFile('products', [
+        { code: 'SP-1', name: 'Để trống', unit: 'bao', price: '5000' },
+        { code: 'SP-2', name: 'Không quản lý', unit: 'chuyến', price: '5000', stocked: 'Không' },
+        { code: 'SP-3', name: 'Lạ', unit: 'bao', price: '5000', stocked: 'có thể' },
+      ]),
+    );
+
+    const rows = (await screen.findAllByRole('row')).map((row) =>
+      [...row.querySelectorAll('td')].map((cell) => cell.textContent),
+    );
+    expect(rows[1]?.slice(1, 6)).toEqual(['SP-1', 'Để trống', 'bao', '5000', 'Yes']);
+    expect(rows[2]?.[5]).toBe('No');
+    expect(rows[3]?.[5]).toBe('có thể');
+    expect(rows[3]?.[6]).toContain('The “Stocked” column holds “có thể”');
+    await userEvent.click(screen.getByRole('button', { name: 'Add the products (2)' }));
+    await screen.findByText('2 products were added.');
+    expect(vi.mocked(api.importProducts).mock.calls[0]?.[0].map((row) => row.stocked)).toEqual([
+      true,
+      false,
+    ]);
+  });
+
   it('shows the same page in Vietnamese', async () => {
     openApp('/products/import', { language: 'vi' });
     await userEvent.upload(await waitFor(field2), await demoImportFile('vi', 'products'));

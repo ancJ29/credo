@@ -67,6 +67,9 @@ describe('the template', () => {
     const [products] = templateSheets('products', 'en');
     expect(products.rows[2]?.[3]).toBe('120.000');
     expect(readPrice(products.rows[2]?.[3])).toBe(120000);
+    // the stocked column sits between the price and the note: the first sample Có, the second Không
+    expect(products.rows[0]?.slice(3)).toEqual(['Price (VND)', 'Stocked', 'Note']);
+    expect([products.rows[1]?.[4], products.rows[2]?.[4]]).toEqual(['Có', 'Không']);
   });
 });
 
@@ -155,10 +158,47 @@ describe('reading a file', () => {
         name: 'Có chú thích',
         unit: 'bao',
         price: 95000,
+        stocked: true,
         extra: { note: 'Bao 50 kg' },
       },
-      { code: 'SP-2', name: 'Không', unit: 'bao', price: 95000, extra: {} },
+      { code: 'SP-2', name: 'Không', unit: 'bao', price: 95000, stocked: true, extra: {} },
     ]);
+  });
+
+  it('A product says whether its stock is kept (Quản lý tồn kho / Stocked: Có or Không). An empty cell reads Có. Không, No, 0 or false read Không; Có, Yes, 1 or true read Có. Any other word refuses the row and names the column', () => {
+    const typed = [
+      '',
+      'Có',
+      'co',
+      'Yes',
+      '1',
+      'TRUE',
+      'Không',
+      'khong',
+      'No',
+      '0',
+      'false',
+      'có thể',
+    ];
+    const table: Table = [
+      ['Mã', 'Tên', 'Đơn vị tính', 'Giá (đồng)', 'Quản lý tồn kho'],
+      ...typed.map((value, at) => [`P-${at}`, 'Hàng', 'bao', '5000', value]),
+    ];
+    const read = readList('products', table, none);
+
+    expect(read.kind === 'read' && read.rows.map((row) => row.problems)).toEqual([
+      ...typed.slice(0, 11).map(() => []),
+      [{ kind: 'stocked', typed: 'có thể' }],
+    ]);
+    expect(
+      read.kind === 'read' &&
+        read.rows.slice(0, 11).map((row) => (row.request as { stocked: boolean }).stocked),
+    ).toEqual([true, true, true, true, true, true, false, false, false, false, false]);
+    // a file with no such column reads every product as stocked
+    const without = readList('products', products(['SP-1', 'Một', 'bao', '5000']), none);
+    expect(
+      without.kind === 'read' && (without.rows[0]?.request as { stocked: boolean }).stocked,
+    ).toBe(true);
   });
 
   it('A price is read from the file as a person typed it: a dotted price holds, and a word is refused with what was typed', () => {

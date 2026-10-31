@@ -47,6 +47,8 @@ function reasonOf(problem: Problem, t: TFunction) {
       return t('lists.refusedUnit');
     case 'price':
       return t('lists.refusedPrice', { typed: problem.typed });
+    case 'stocked':
+      return t('lists.refusedStocked', { typed: problem.typed });
     case 'row':
       return t('lists.refusedRow');
   }
@@ -271,7 +273,11 @@ function ImportForm({
                     <Table.Td>{row.cells.code}</Table.Td>
                     <Table.Td>{row.cells.name}</Table.Td>
                     {list.preview.map((key) => (
-                      <Table.Td key={key}>{row.cells[key]}</Table.Td>
+                      <Table.Td key={key}>
+                        {key === 'stocked' && row.stocked !== null
+                          ? t(row.stocked ? 'lists.yes' : 'lists.no')
+                          : row.cells[key]}
+                      </Table.Td>
                     ))}
                     <Table.Td>
                       {row.request ? (

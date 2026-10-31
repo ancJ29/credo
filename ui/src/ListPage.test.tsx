@@ -35,16 +35,21 @@ describe('the customers and the products', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
     await screen.findByText('VT-006');
-    expect(cells()[0]).toEqual(['Code', 'Name', 'Unit', 'Price (VND)']);
+    expect(cells()[0]).toEqual(['Code', 'Name', 'Unit', 'Price (VND)', 'Stocked']);
     expect(cells().slice(1)).toEqual(
       DEMO_PRODUCTS.map((one) => [
         one.code,
         one.name,
         one.unit,
         new Intl.NumberFormat('en').format(one.price),
+        one.stocked ? 'Yes' : 'No',
       ]),
     );
-    expect(cells()[1]?.[3]).toBe('95,000');
+    expect(cells().find((row) => row[0] === 'VT-001')?.[3]).toBe('95,000');
+    // the delivery fee, by the trip, is the one not stocked
+    expect(cells().filter((row) => row[4] === 'No')).toEqual([
+      ['DV-001', 'Phí giao hàng theo chuyến', 'chuyến', '150,000', 'No'],
+    ]);
     drawn.unmount();
   });
 
@@ -53,8 +58,13 @@ describe('the customers and the products', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Sản phẩm' })).toBeTruthy();
     await screen.findByText('VT-001');
-    expect(cells()[0]).toEqual(['Mã', 'Tên', 'Đơn vị tính', 'Giá (đồng)']);
-    expect(cells()[1]?.[3]).toBe('95.000');
+    expect(cells()[0]).toEqual(['Mã', 'Tên', 'Đơn vị tính', 'Giá (đồng)', 'Quản lý tồn kho']);
+    expect(
+      cells()
+        .find((row) => row[0] === 'VT-001')
+        ?.slice(3),
+    ).toEqual(['95.000', 'Có']);
+    expect(cells().find((row) => row[0] === 'DV-001')?.[4]).toBe('Không');
     expect(screen.getByRole('link', { name: 'Nhập từ Excel' }).getAttribute('href')).toBe(
       '/products/import',
     );

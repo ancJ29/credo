@@ -126,7 +126,7 @@ describe('the fake Api', () => {
       'importProducts',
       importProductsReplySchema,
       await api.importProducts([
-        { code: 'vt-90', name: 'Nhập', unit: 'bao', price: 5000, extra: {} },
+        { code: 'vt-90', name: 'Nhập', unit: 'bao', price: 5000, stocked: true, extra: {} },
       ]),
     );
     const read = await api.getEmployee(id);
@@ -619,9 +619,9 @@ describe('the fake Api’s customers and products', () => {
     ]);
 
     const products = await api.importProducts([
-      { code: 'vt-90', name: 'Một', unit: 'bao', price: 5000, extra: {} },
-      { code: 'VT-91', name: 'Giá sai', unit: 'bao', price: 0, extra: {} },
-      { code: 'VT-001', name: 'Đã có', unit: 'bao', price: 5000, extra: {} },
+      { code: 'vt-90', name: 'Một', unit: 'bao', price: 5000, stocked: true, extra: {} },
+      { code: 'VT-91', name: 'Giá sai', unit: 'bao', price: 0, stocked: true, extra: {} },
+      { code: 'VT-001', name: 'Đã có', unit: 'bao', price: 5000, stocked: true, extra: {} },
     ]);
     expect(
       products.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
@@ -638,7 +638,14 @@ describe('the fake Api’s customers and products', () => {
   it('The four calls answer 403 to anyone but the root, and a cue’s 403, 409 or 503 once, the call then answering as the data set does', async () => {
     const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
     const row = { code: 'KH-90', name: 'Một', extra: {} };
-    const product = { code: 'VT-90', name: 'Một', unit: 'bao', price: 5000, extra: {} };
+    const product = {
+      code: 'VT-90',
+      name: 'Một',
+      unit: 'bao',
+      price: 5000,
+      stocked: true,
+      extra: {},
+    };
 
     expect(await status(staff.listCustomers())).toBe(403);
     expect(await status(staff.listProducts())).toBe(403);

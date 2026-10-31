@@ -16,7 +16,8 @@ import type { Api } from './api';
 
 /** The two lists the root imports from Excel, and the columns of their files. */
 export type ListKind = 'customers' | 'products';
-export type ColumnKey = 'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'note';
+export type ColumnKey =
+  'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'stocked' | 'note';
 export type Cells = Partial<Record<ColumnKey, string>>;
 /** A record of a list as the page shows it: the code is always there. */
 export type Shown = Cells & { code: string };
@@ -41,16 +42,17 @@ export const LISTS = {
     send: (api: Api, rows: ListRequest[]) => api.importCustomers(rows),
   },
   products: {
-    columns: ['code', 'name', 'unit', 'price', 'note'],
+    columns: ['code', 'name', 'unit', 'price', 'stocked', 'note'],
     needed: ['code', 'name', 'unit', 'price'],
-    shown: ['code', 'name', 'unit', 'price'],
-    preview: ['unit', 'price'],
+    shown: ['code', 'name', 'unit', 'price', 'stocked'],
+    preview: ['unit', 'price', 'stocked'],
     load: async (api: Api, language: Language): Promise<Shown[]> =>
-      (await api.listProducts()).map(({ code, name, unit, price }) => ({
+      (await api.listProducts()).map(({ code, name, unit, price, stocked }) => ({
         code,
         name,
         unit,
         price: new Intl.NumberFormat(language).format(price),
+        stocked: DICTIONARIES[language].lists[stocked ? 'yes' : 'no'],
       })),
     send: (api: Api, rows: ListRequest[]) => api.importProducts(rows as AddProductRequest[]),
   },
@@ -65,6 +67,15 @@ export const headingOf = (key: ColumnKey, language: Language) =>
 /** A price as a person types it: whole đồng, the thousands set apart by dots or commas (95.000,
  * 95,000) or not at all. A decimal, a negative, a word, zero or more than the schema takes is not
  * a price. */
+/** The stocked cell: empty, Có, Yes, 1 or true read yes; Không, No, 0 or false read no, in any case
+ * and without accents. Any other word is not one (null). */
+export function readStocked(typed: string): boolean | null {
+  const word = plain(typed);
+  if (['', 'co', 'yes', '1', 'true'].includes(word)) return true;
+  if (['khong', 'no', '0', 'false'].includes(word)) return false;
+  return null;
+}
+
 export function readPrice(typed: string): number | null {
   if (!/^(\d{1,3}([.,]\d{3})+|\d+)$/.test(typed)) return null;
   const price = Number(typed.replace(/[.,]/g, ''));
@@ -85,8 +96,8 @@ export function templateSheets(
       { code: 'KH-002', name: words.import.sampleName2, phone: '0900 000 002' },
     ].map((row) => ({ ...row, address: words.lists.sampleAddress })),
     products: [
-      { code: 'SP-001', name: words.lists.sampleProduct1, price: '95000' },
-      { code: 'SP-002', name: words.lists.sampleProduct2, price: '120.000' },
+      { code: 'SP-001', name: words.lists.sampleProduct1, price: '95000', stocked: 'Có' },
+      { code: 'SP-002', name: words.lists.sampleProduct2, price: '120.000', stocked: 'Không' },
     ].map((row) => ({ ...row, unit: words.lists.sampleUnit })),
   };
   const write: Record<ColumnKey, string> = {
@@ -127,6 +138,7 @@ export type Problem =
   | { kind: 'code-twice'; code: string }
   | { kind: 'unit' }
   | { kind: 'price'; typed: string }
+  | { kind: 'stocked'; typed: string }
   /** Every cell fits, but the row as a whole is no add (its details together are too long). */
   | { kind: 'row' };
 
@@ -137,6 +149,8 @@ export type ReadRow = {
   /** The cells as typed, a column the file lacks being empty. */
   cells: Cells;
   problems: Problem[];
+  /** What the stocked cell reads as; null for a customer, or a word that is not one. */
+  stocked: boolean | null;
   /** Set when the row holds. */
   request: ListRequest | null;
 };
@@ -196,19 +210,29 @@ export function readList(kind: ListKind, table: Table, taken: ReadonlySet<string
       if (cell(key) !== '') extra[key] = cell(key);
     }
     let asked: ListRequest;
+    let stocked: boolean | null = null;
     if (kind === 'customers') {
       asked = { code, name: cell('name'), extra };
     } else {
       if (cell('unit') === '' || cell('unit').length > UNIT_MAX) problems.push({ kind: 'unit' });
       const price = readPrice(cell('price'));
       if (price === null) problems.push({ kind: 'price', typed: cell('price') });
-      asked = { code, name: cell('name'), unit: cell('unit'), price: price ?? 0, extra };
+      stocked = readStocked(cell('stocked'));
+      if (stocked === null) problems.push({ kind: 'stocked', typed: cell('stocked') });
+      asked = {
+        code,
+        name: cell('name'),
+        unit: cell('unit'),
+        price: price ?? 0,
+        stocked: stocked ?? true,
+        extra,
+      };
     }
     // The row as the add reads it, so no row that the add would refuse is offered.
     const schema = kind === 'customers' ? addCustomerRequestSchema : addProductRequestSchema;
     if (problems.length === 0 && !schema.safeParse(asked).success) problems.push({ kind: 'row' });
     if (problems.length === 0) given.add(code);
-    return { line, cells, problems, request: problems.length > 0 ? null : asked };
+    return { line, cells, problems, stocked, request: problems.length > 0 ? null : asked };
   });
   return { kind: 'read', rows };
 }
