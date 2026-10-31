@@ -108,13 +108,20 @@ describe('pnpm answers', () => {
     walks: { screens: { id: string; languages: Record<string, { fingerprint: string }> }[] }[];
   };
 
+  /** The page of one real build, made once for this file: drawing every screen of every walk takes
+   * minutes under load, and the words of a screen are the same in every build. */
+  let built: Promise<Built> | undefined;
+
   /** The fingerprints the page of a real build holds, to answer on as the human's block does. */
   async function pageFingerprints() {
-    const { worktree } = makeRoot();
-    const folder = await report(worktree, () => {});
-    const built = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Built;
+    built ??= (async () => {
+      const { worktree } = makeRoot();
+      const folder = await report(worktree, () => {});
+      return JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Built;
+    })();
+    const page = await built;
     return (id: string, language: string) =>
-      built.walks[0].screens.find((screen) => screen.id === id)!.languages[language].fingerprint;
+      page.walks[0].screens.find((screen) => screen.id === id)!.languages[language].fingerprint;
   }
 
   it('writes the answers that hold into the file, on the words the screens draw now, dated in Vietnam’s day, and says what it took and refused', async () => {
