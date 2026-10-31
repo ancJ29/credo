@@ -203,9 +203,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   each 👤 row kept or corrected here. **Then stop.** *Evidence:* the human, 2026-10-31 13:1x, to the
   14 rows put as yes-or-no questions: "yes, as your recommendation", all 14 yes; no row corrected,
   so the table below stands as drafted.
-- [ ] **3. `main` taken in once slice 1 has merged.** Who: 🤖, after slice 1's merge into `main` (an
+- [x] **3. `main` taken in once slice 1 has merged.** Who: 🤖, after slice 1's merge into `main` (an
   order picks from its lists and its words), ¼ hour. Done when: `main` merged in, its conflicts named;
-  `pnpm install --offline` exit 0.
+  `pnpm install --offline` exit 0. *Evidence:* `main`@`983d454` merged at `0d736db`, no conflict (the
+  branch held only this plan); `pnpm install --offline --frozen-lockfile` read "Done in 2.4s", exit 0.
 - [ ] **4. The pages on the fake.** Who: 🤖, after step 3, about a day. The wire above in `shared/`;
   in `ui/`: the orders list, the order's form and page with its confirm and cancel, the requests by
   driver, a request's page, the fake's calls, the menu, the words in vi and en; piece 1's walk to its

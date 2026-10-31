@@ -44,6 +44,10 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   of its own); the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
+- **An order's day is the page's, never the BFF's clock** (`localToday()` in `ui/src/day.ts`): the fake
+  build and a walks-page scene are given the data set's `DEMO_TODAY`, and the walk fixes the browser's
+  clock at it, so no picture holds the day it was taken on
+  ([the plan](docs/plans/2026-10-31-orders-delivery.md#what-it-holds)).
 - **A client's own data goes in `extra`, never in a new typed field,** unless the BFF or c-storage must
   trust it; `extraSchema` in `shared/` is the one bound ([extra](docs/memo/extra.md)).
 - **`pnpm fake -- <command>` serves the UI alone over invented data: no BFF, no c-storage.** It builds
