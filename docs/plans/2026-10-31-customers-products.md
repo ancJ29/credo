@@ -1,8 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 12:41 +07:** steps 1 to 7 done: the lists and imports on the fake, the
+**Where it stands — 2026-10-31 13:21 +07:** steps 1 to 7 done, step 8 done but for one run: the lists and imports on the fake, the
 8 screens answered (16 yes), the BFF routes and the stack's generator at the gate, the review's findings
-fixed or parked, `main`@`b4e08ee` taken in. **Next:** the seed's block (step 8).
+fixed or parked, `main`@`b4e08ee` taken in. **Next:** one `pnpm demo` run's log (step 8's last clause), then the recap and the merge (step 9).
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -300,6 +300,36 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   step 2 (8 new rows, one code already in the copy, one refused; S1 and S2, vi and en), which
   `pnpm demo-files` writes into the credo root's `demo-files/`, outside git. Done when: rows 11 and 22
   each seen red once; `pnpm check` exit 0; a `pnpm demo` run's log reads each copy's two counts.
+  *Evidence:* commits `8e29068` (ui: `listFile` and `readListFile` in `ui/src/importDemo.ts`) and
+  `72cfda5` (scripts: each scenario's `lists` profile in `scripts/src/demo/scenarios.ts`, the generator
+  `scripts/src/demo/lists.ts` beside `staff.ts`, `addLists` in the first fill of
+  `scripts/src/demo/apply.ts`, and `pnpm demo-files`). The first fill writes a copy's customers and
+  products through the two import routes, 100 rows a call: S1 30 customers, 60 stocked products and 2
+  services (`Cước vận chuyển theo chuyến`, `Cắt sắt theo việc`), S2 80 customers, 250 stocked and 1
+  service (`Phí giao hàng theo chuyến`); a code already there is skipped and named, any other refusal
+  stops the run red. Reds, each from the row's own assertion with its rule's line changed and put
+  back, in `logs/20261031-1247-customers-products-red-seed-<name>.log` (`row22-fill`, `row22-skip`,
+  `row22-calls`, `row11-notstocked`, `row11-counts`, `row11-refused-file`) and
+  `…-1256-…-red-seed-row22-stop.log` (the 1247 log of that mutation was a broken edit, deleted). Whole
+  check `logs/20261031-1312-customers-products-whole-check-step8b.log`, 133 lines, last line
+  `== exit 0`, 13:12:40 to 13:20:30, no warning; every package at 100 % (shared 101 tests, bff 322, ui
+  413, scripts 203, visual 386). The check before it (`…-1304-…-step8.log`, 13:04:32 to 13:12:17) was
+  red on knip alone, two exports nothing else called (`digits`, `FileRow`), fixed, not rerun to green by
+  chance. **Not done, so the step stays unticked:** a `pnpm demo` run's log reading each copy's two
+  counts (it starts a stack, and the Mac was held for the human's timed walk); the applier's own tests
+  on the real c-storage read the 30, 80 and 251 counts meanwhile.
+  **The demo's files**, for the human to run later from the worktree's root:
+
+  ```
+  pnpm demo-files
+  ```
+
+  It writes eight files into the credo root's `demo-files/` (outside git): `S1-customers-vi.xlsx`,
+  `S1-customers-en.xlsx`, `S1-products-vi.xlsx`, `S1-products-en.xlsx`, and the same four for `S2`. It
+  ends `8 files written, outside git`, exit 0. Each has ten rows: eight new, one whose code a fresh
+  copy already holds, one refused (a customer with no name, a product whose price is no price); the
+  import page reads each as 8 that hold, 1 already there, 1 refused (`scripts/src/demo-files.test.ts`).
+
 - [ ] **9. The recap and the merge.** Who: 🤖 the half-page recap, after step 8; the orchestrator
   merges into `main` on the human's word. Done when: the recap is committed.
 - [ ] **10. ridge, on a fresh demo copy.** Who: 👤, about 15 minutes, after the push of the `main`
