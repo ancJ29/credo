@@ -19,18 +19,25 @@ const RUNS = /\b(playwright|vitest|vite|tsx|c-storage|fake-main|demo-main)\b|\/m
 /** The BFF a stack starts runs a path relative to its folder, so its command line names no root. */
 const RELATIVE_ENTRY = /--import tsx src\/(main|fake-main|demo-main)\.ts\b/;
 
-const isCredos = (command: string, root: string) =>
-  (command.includes(`${root}/`) && RUNS.test(command)) ||
-  RELATIVE_ENTRY.test(command) ||
+/** `cwdOf` reads a process's working folder (undefined when it cannot): the relative entry is credo's
+ * only when it runs under the root, or another repo's server of the same shape would be stopped. */
+const isCredos = (p: Listed, root: string, cwdOf: (pid: number) => string | undefined) =>
+  // a node process: an editor or a tmux holding a credo file in its arguments is not a run
+  (/^(\S*\/)?node\s/.test(p.command) && p.command.includes(`${root}/`) && RUNS.test(p.command)) ||
+  (RELATIVE_ENTRY.test(p.command) && (cwdOf(p.pid) ?? '').startsWith(`${root}/`)) ||
   // c-storage, built by the stack into a temp folder of its own.
-  /^\S*\/credo-[^/\s]*\/c-storage\b/.test(command);
+  /^\S*\/credo-[^/\s]*\/c-storage\b/.test(p.command);
 
 /** A process of credo's whose parent is 1 was left by a run that was killed: a stray. One with a
  * live parent is someone's run, busy. The script itself, what started it and what it started are
  * neither. */
 export function classifyProcesses(
   list: Listed[],
-  { root, self }: { root: string; self: number },
+  {
+    root,
+    self,
+    cwdOf = () => undefined,
+  }: { root: string; self: number; cwdOf?: (pid: number) => string | undefined },
 ): { strays: Listed[]; busy: Listed[] } {
   const byPid = new Map(list.map((p) => [p.pid, p]));
   const inChain = (p: Listed, of: number) => {
@@ -45,7 +52,7 @@ export function classifyProcesses(
     ancestors.add(at.pid);
   }
   const credos = list.filter(
-    (p) => !ancestors.has(p.pid) && !inChain(p, self) && isCredos(p.command, root),
+    (p) => !ancestors.has(p.pid) && !inChain(p, self) && isCredos(p, root, cwdOf),
   );
   return {
     strays: credos.filter((p) => p.ppid === 1),

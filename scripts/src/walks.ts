@@ -3,7 +3,12 @@ import { join } from 'node:path';
 import { type Box, comparePictures, decodePng } from './pixels';
 import { classifyProcesses, parseProcessList } from './strays';
 
-export type Io = { stdin: () => Promise<string>; out: (line: string) => void };
+export type Io = {
+  stdin: () => Promise<string>;
+  out: (line: string) => void;
+  /** A process's working folder, for the strays' choice. */
+  cwdOf?: (pid: number) => string | undefined;
+};
 
 const USAGE =
   'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
@@ -55,7 +60,9 @@ async function compare(
   const reds: string[] = [];
   const raw: string[] = [];
   let movedCount = 0;
-  const unmoved = new Set<string>();
+  const seen = new Set<string>();
+  const movedScreens = new Set<string>();
+  let movedReds = 0;
   const allowed = (name: string) =>
     options.bases && (options.moved === 'all' || options.moved.has(screenOf(name)));
   const names = leftNames.filter((name) => rightNames.includes(name));
@@ -65,11 +72,10 @@ async function compare(
         decodePng(await readFile(join(left, name))),
         decodePng(await readFile(join(right, name))),
       );
-      if (difference.kind === 'equal') {
-        unmoved.add(screenOf(name));
-        continue;
-      }
+      seen.add(screenOf(name));
+      if (difference.kind === 'equal') continue;
       movedCount++;
+      movedScreens.add(screenOf(name));
       const text =
         difference.kind === 'size'
           ? `size ${difference.left} against ${difference.right}`
@@ -80,6 +86,7 @@ async function compare(
       } else {
         lines.push(`  moved ${name}: ${text}`);
         reds.push(`${name} moved`);
+        movedReds++;
         if (options.bases) lines.push(`  red ${name} moved and its screen is not named in --moved`);
       }
     } catch (error) {
@@ -103,7 +110,8 @@ async function compare(
   }
   if (options.moved !== 'all') {
     for (const screen of [...options.moved].sort()) {
-      if (unmoved.has(screen)) lines.push(`  named, not moved: ${screen}`);
+      if (!seen.has(screen)) lines.push(`  named, no such screen: ${screen}`);
+      else if (!movedScreens.has(screen)) lines.push(`  named, not moved: ${screen}`);
     }
   }
   if (leftNames.length === 0 && rightNames.length === 0) {
@@ -118,7 +126,7 @@ async function compare(
   out(
     reds.length === 0
       ? 'result: green'
-      : `result: red: ${reds.length === movedCount && movedCount > 0 ? `${movedCount} moved` : reds.join('; ')}`,
+      : `result: red: ${reds.length === movedReds ? `${movedReds} moved` : reds.join('; ')}`,
   );
   if (options.raw && raw.length > 0) await appendFile(options.raw, raw.join(''));
   return reds.length === 0 ? 0 : 1;
@@ -138,6 +146,7 @@ export async function walksCommand(argv: string[], io: Io): Promise<number> {
       const { strays, busy } = classifyProcesses(parseProcessList(await io.stdin()), {
         root: rest[0],
         self: Number(rest[1]),
+        cwdOf: io.cwdOf,
       });
       strays.forEach((p) => io.out(`stray ${p.pid} ${p.command}`));
       busy.forEach((p) => io.out(`busy ${p.pid} ${p.command}`));

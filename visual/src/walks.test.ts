@@ -170,6 +170,7 @@ describe('the walks', () => {
     );
     // the raw reader decides "equal": no comparator that skips softened edges, no tolerance
     expect(support).toContain("from '@credo/scripts/pixels'");
+    expect(support).toContain("if (difference.kind === 'equal') {");
     expect(support).not.toContain('toHaveScreenshot');
     expect(read('playwright.config.ts')).not.toMatch(/toHaveScreenshot|maxDiffPixels|threshold/);
     // a missing folder for the pictures names itself and who gives it

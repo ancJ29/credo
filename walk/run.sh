@@ -133,7 +133,7 @@ main() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --moved)
-        [ $# -ge 2 ] || refuse "--moved needs a list of screens or all"
+        [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || refuse "--moved needs a list of screens or all"
         moved="$2"
         shift
         ;;
@@ -161,7 +161,12 @@ main() {
     exit "$2"
   }
   stop_if_interrupted() {
-    [ -z "$interrupted" ] || finish "red: interrupted $interrupted; the stacks took themselves down; what ran is in $run" 130
+    [ -z "$interrupted" ] || {
+      local left
+      left="$(ps -axo pid=,ppid=,command= 2>/dev/null | tool strays "$root" "$me" 2>/dev/null | tr '\n' ';')"
+      [ -n "$left" ] && left="left running: $left" || left="nothing of credo's is left running"
+      finish "red: interrupted $interrupted; $left; what ran is in $run" 130
+    }
   }
 
   echo "== 1/8 checks (elapsed $(elapsed))"
@@ -207,7 +212,7 @@ main() {
   list_titles() { # <project> [-g pattern]: one line a test, "describe test"
     local project="$1"
     shift
-    (cd "$tree/walk" && env "${listing_env[@]}" pnpm exec playwright test --list --project "$project" "$@" 2>&1 | plain |
+    (cd "$tree/walk" && env "${listing_env[@]}" pnpm exec playwright test --list --project "$project" "$@" 2>&1 </dev/null | plain |
       awk -F' › ' '/^[[:space:]]*\[/ { print $(NF - 1) " " $NF }')
   }
   local walk project titles n pattern
@@ -267,7 +272,7 @@ main() {
   fi
   stop_if_interrupted
 
-  mkdir -p "$run/out" || refuse "cannot make $run"
+  mkdir -p "$run/out" || finish "red: cannot make $run" 1
   : >"$results"
   : >"$run/raw.txt"
   echo "  pictures and results in $run"

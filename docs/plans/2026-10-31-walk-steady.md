@@ -1,7 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 08:54 +07:** steps 1 to 6 done: the probe read (`--disable-partial-raster`
-is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: step 7, the review, then the human's step 8.
+**Where it stands — 2026-10-31 09:12 +07:** steps 1 to 7 done: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: the human's step 8, prepared.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -288,9 +288,26 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   on stand-ins found that the script's own `--inside` re-entry unset the folders the outer run gave it:
   fixed. Case 8 is held by `compare` in `scripts/` (table amended). `scripts/` 184 tests, coverage 100 %.
   The time: about 15 to 20 minutes a run, not the 25 for two: step 8's estimate is 40 minutes for both.
-- [ ] **7. The review, once.** Who: 🤖, a model other than the author's (QA rule 5), about 1 hour.
+- [x] **7. The review, once.** Who: 🤖, a model other than the author's (QA rule 5), about 1 hour.
   Done when: steps 4 to 6 read together, each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with
   its reason, the fixes committed.
+  *Evidence:* read by Opus (the author is Sonnet), steps 4 to 6 together, with the reader checked
+  against Playwright's bundled encoder (filters 0 to 4, RGB and RGBA, up to 1280x6000: 0 mismatches),
+  Bash 3.2 behaviours run, Ctrl-C and pnpm's argument passing tried by hand. Findings: (1) the strays'
+  choice matched file names (`.tsx`, `vite.config.ts`) in any process and a relative entry of another
+  repo `[FIXED]`: a root path must be in a node process's arguments, a relative entry counts only when
+  `lsof` puts its working folder under the root; the four processes it named added to the test.
+  (2) the tail of a compare's result called a missing base "1 moved" `[FIXED]`. (3) "named, not moved"
+  printed when one language moved, and a typo in `--moved` was silent `[FIXED]`: "named, no such
+  screen". (4) `--moved --write` took `--write` as the list `[FIXED]`. (5) the listings read stdin
+  `[FIXED]`. (7) `mkdir` failing after the strays were stopped said "refused" `[FIXED]`: red, exit 1.
+  (6) the interrupt verdict claimed the stacks were down unchecked `[FIXED]`: it names what is left; a
+  Ctrl-C during step 1's listings ends as a refusal, exit 2 `[DEFERRED]`, harmless: nothing was acted
+  on. (8) the stray stop loop and the Ctrl-C path are not exercised by the stand-in tests
+  `[DEFERRED]`: the sandbox cannot signal a process an earlier command started; the human's first
+  stray or interrupt shows them. The capture's test now asserts the equality line, so a tolerance
+  turns it red `[FIXED]`. The reader's forward filter in the test is the author's own
+  `[REJECTED]`: the reviewer's pngjs run covers it once; Chromium's own encoder cannot run here.
 - [ ] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 40 minutes (15 to 20 a run), then 🤖. Run
   `bash walk/run.sh piece-1 piece-2 operator --moved all --write` (every base taken again by the new
   capture); the machine commits the bases; then `bash walk/run.sh piece-1 piece-2 operator`. Done

@@ -220,6 +220,27 @@ describe('the raw count of two folders of pictures', () => {
     expect(all.lines).not.toContain('  named, not moved: op-5-dash');
   });
 
+  it('a named screen that matches no picture is said, and the tail names the red that is not a move', async () => {
+    const d = await folders(
+      { 'op-3-made-en-1280.png': moved([[0, 0]]) },
+      { 'op-3-made-en-1280.png': png(4, 4), 'old-en-1280.png': png(4, 4) },
+    );
+
+    const { code, lines } = await run([
+      'compare',
+      'x',
+      d.left,
+      d.right,
+      '--bases',
+      '--moved',
+      'op-3-made,op-33-typo',
+    ]);
+
+    expect(code).toBe(1);
+    expect(lines).toContain('  named, no such screen: op-33-typo');
+    expect(lines.at(-1)).toBe('result: red: old-en-1280.png has no counterpart');
+  });
+
   it('a moved picture is red whether the other side is named by --moved or not, outside --bases', async () => {
     const d = await folders(
       { 'op-3-made-en-1280.png': moved([[0, 0]]) },

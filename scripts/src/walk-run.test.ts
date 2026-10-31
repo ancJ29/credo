@@ -185,6 +185,11 @@ describe('walk/run.sh refuses before it acts', () => {
     refusedWith(l, ['operator', '--bogus'], /== refused: unknown option --bogus/);
     refusedWith(l, [], /== refused: no walk named/);
     refusedWith(l, ['operator', '--moved'], /== refused: --moved needs a list of screens or all/);
+    refusedWith(
+      l,
+      ['operator', '--moved', '--write'],
+      /== refused: --moved needs a list of screens or all/,
+    );
   });
 
   it('a tree that is not clean', () => {
