@@ -110,16 +110,17 @@ describe('pnpm answers', () => {
 
   /** The page of one real build, made once for this file: drawing every screen of every walk takes
    * minutes under load, and the words of a screen are the same in every build. */
-  let built: Promise<Built> | undefined;
+  let built: Promise<Report> | undefined;
+  const builtPage = () =>
+    (built ??= (async () => {
+      const { worktree } = makeRoot();
+      const folder = await report(worktree, () => {});
+      return JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report;
+    })());
 
   /** The fingerprints the page of a real build holds, to answer on as the human's block does. */
   async function pageFingerprints() {
-    built ??= (async () => {
-      const { worktree } = makeRoot();
-      const folder = await report(worktree, () => {});
-      return JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Built;
-    })();
-    const page = await built;
+    const page = (await builtPage()) as unknown as Built;
     return (id: string, language: string) =>
       page.walks[0].screens.find((screen) => screen.id === id)!.languages[language].fingerprint;
   }
@@ -216,26 +217,25 @@ describe('pnpm answers', () => {
   });
 
   it('takes a block made by “Yes to all” with plain pnpm answers, and a Share message made by it with --partners', async () => {
-    const { worktree } = makeRoot();
-    const folder = await report(worktree, () => {});
-    const built = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report;
-    for (const walk of built.walks) {
+    // a copy: this test sets every screen waiting, and the others read the page as it was built
+    const page = structuredClone(await builtPage());
+    for (const walk of page.walks) {
       for (const screen of walk.screens) {
         for (const language of ['vi', 'en'] as const) {
           screen.languages[language].shown = { kind: 'waiting' };
         }
       }
     }
-    const { next, count } = yesTo(placesOf(built), {}, HUMAN);
+    const { next, count } = yesTo(placesOf(page), {}, HUMAN);
     expect(count).toBe(allKeys(WALKS).length);
     const mine = FILE();
     writeFileSync(mine, '{}');
     const theirs = FILE();
     writeFileSync(theirs, '{}');
 
-    expect(await answer(blockOf(built, next).text, () => {}, { file: mine, now: NOW })).toBe(0);
+    expect(await answer(blockOf(page, next).text, () => {}, { file: mine, now: NOW })).toBe(0);
     expect(
-      await answer(shareOf(built, next, 'p1').text, () => {}, {
+      await answer(shareOf(page, next, 'p1').text, () => {}, {
         file: theirs,
         now: NOW,
         partners: true,

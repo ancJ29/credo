@@ -8,8 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['src/setup.ts'],
     // The build tests run Vite's own build of the page, which takes seconds, and draw each scene of
-    // piece 2 in both languages: they grow with its screens.
-    testTimeout: 120_000,
+    // every walk in both languages: they grow with its screens. The one that answers every screen
+    // draws all of them twice, which takes about a minute alone and twice that under the whole
+    // gate's load.
+    testTimeout: 240_000,
     coverage: {
       provider: 'v8',
       // untested: `run.mjs` is outside `include`, a bare entry; what stays in it is reading stdin
