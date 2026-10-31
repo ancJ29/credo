@@ -1,7 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 09:36 +07:** steps 1 to 4 done: both lists and both imports on the fake, the
-8 screens answered, 16 yes. **Next:** the BFF (step 5). No BFF route and no c-storage change yet.
+**Where it stands — 2026-10-31 11:44 +07:** steps 1 to 5 done: the lists and imports on the fake, the
+8 screens answered (16 yes), the BFF routes and the stack's generator at the gate. **Next:** the review
+(step 6), by another model.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -202,10 +203,21 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   *Evidence:* 2026-10-31 09:3x, the human, on the walks page built from `8becb80`: all 16 yes
   (`visual/answers.json`, 16 written by `pnpm answers`, 0 refused; the file now reads 118 yes, 0 no,
   0 waiting). No case added.
-- [ ] **5. The BFF, at the gate.** Who: 🤖, after step 4 (the contract as the preview left it), about
+- [x] **5. The BFF, at the gate.** Who: 🤖, after step 4 (the contract as the preview left it), about
   ¼ day: the four routes, and the stack's generator writing the data set's lists. c-storage does not
   change, so `make check` is not run. Done when: the BFF half of rows 2, 4 to 6, 8 and 10 each seen red
   once; `pnpm check` exit 0 at 100 %, no warning.
+  *Evidence:* commits `7fefb42` (the routes in `bff/src/lists.ts`, tested in `bff/src/lists.route.test.ts`)
+  and the generator's (`scripts/src/generator.ts`, the data set's lists through the two import
+  routes; c-storage unchanged). Whole check `logs/20261031-1136-customers-products-whole-check-step5c.log`,
+  133 lines, last line `== exit 0`, no warning, started 11:36:38 and ended 11:44:12; every package at
+  100 % (shared 101 tests, bff 320, ui 411, scripts 146, visual 386). Reds, each from the row's own
+  assertion with its rule's line changed and put back, in `logs/20261031-0949-customers-products-red-<name>.log`:
+  `row2-root`, `row4-added`, `row5-invalid`, `row6-capitals`, `row6-taken`, `row8-extra`,
+  `row10-busy`, `row23-stocked`. An earlier whole check (`…-0950-…-step5.log`) was red on prettier
+  alone; a second (`…-1001-…-step5b.log`) was red under a load of 44 (visual timeouts, scripts
+  SIGKILL), and both packages were green alone on a quiet Mac (`…-1128-…-scripts-alone.log`,
+  `…-1129-…-visual-alone.log`) before the green whole check; not rerun to green by chance.
 - [ ] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 3 and 5 with the case table. Done when: each
   finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason, and `pnpm check` exit 0
