@@ -239,3 +239,21 @@ are fixed; these stay.
   `ui/src/fake.test.tsx#L594` and assert the list starts with it.
 
 *Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
+
+## 35. Orders and requests: five small things left under the demo's ceremony — the machine; *parked* until the orders are next touched (orders-delivery, step 6, 2026-10-31)
+
+Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
+- **A first save that carries a `version`** is accepted and the version ignored; the create route
+  could refuse it (400). Nothing sends one.
+- **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
+  request's cancel): a moved order is left as it is and the page reads the request as none, so the
+  order offers to send again either way; no test moves the order between the two writes.
+- **The orders list reads each day of the span and each day its requests name**, one list read a day:
+  at S2's busiest, a week is at most 14 reads. A report over a longer span would need an index.
+- **`GET /api/drivers` asks `orders.canEdit`**, as the fake does, not `orders.canView`; a viewer who
+  opens Confirm has none to see. Right while only an editor confirms.
+- **The `--moved` list of the full run** is given as `all` for the first run (the office-orders bases
+  do not exist yet, so nothing is guarded); step 8 narrows it to the screens the menu and the
+  catalogue move once the bases are made.
+
+*Trigger:* the orders get a second caller (a report, a driver's phone), or a reader of a test names one.

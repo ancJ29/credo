@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { verifyPassword } from '@credo/bff/password';
 import { buildApp } from '@credo/bff';
 import {
+  addDays,
   clientLinkPath,
   CStorageError,
   clientListReplySchema,
@@ -10,7 +11,9 @@ import {
   storedClientSchema,
   storedOperatorSchema,
   storedUserSchema,
+  type DeliveryRequest,
   type Employee,
+  type Order,
   type StaffSetupDoc,
   tenantConfigSchema,
 } from '@credo/shared';
@@ -19,11 +22,14 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
+  DEMO_ORDERS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
+  DEMO_TODAY,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
@@ -279,6 +285,58 @@ describe('the demo generator', () => {
         const held = setup.departments.find((unit) => unit.id === person.department?.id);
         expect(held?.name ?? null, person.code).toBe(link(person.department));
       }
+    });
+
+    it('The week of orders and requests the BFF lists is the data set’s, with its numbers, days, states, drivers and times', async () => {
+      const { storage } = memoryStorage();
+      const { code, rootPassword } = await seedClient(storage, 'walk-1');
+      const { call, signIn } = bff(storage, code);
+      const root = (await signIn(ROOT_NAME, rootPassword))!;
+
+      const orders = (
+        await call('GET', `/api/orders?from=${addDays(DEMO_TODAY, -6)}&to=${DEMO_TODAY}`, root)
+      ).json<{ orders: Order[] }>().orders;
+      const requests: DeliveryRequest[] = [];
+      for (let back = 6; back >= -1; back--) {
+        const day = addDays(DEMO_TODAY, -back);
+        requests.push(
+          ...(await call('GET', `/api/deliveries?day=${day}`, root)).json<{
+            deliveries: DeliveryRequest[];
+          }>().deliveries,
+        );
+      }
+
+      const orderShape = (order: Order) => ({
+        number: order.number,
+        day: order.day,
+        state: order.state,
+        customer: order.customer.code,
+        lines: order.lines.map((line) => [line.code, line.quantity, line.amount]),
+        total: order.total,
+        request: order.request && [
+          order.request.number,
+          order.request.day,
+          order.request.driver.code,
+        ],
+        madeAt: order.madeAt,
+      });
+      const requestShape = (request: DeliveryRequest) => ({
+        number: request.number,
+        day: request.day,
+        state: request.state,
+        driver: request.driver.code,
+        order: request.order.number,
+        total: request.total,
+        madeAt: request.madeAt,
+      });
+      const byNumber = <T extends { number: string }>(a: T, b: T) =>
+        a.number.localeCompare(b.number);
+      expect(orders.map(orderShape).sort(byNumber)).toEqual(
+        DEMO_ORDERS.map(orderShape).sort(byNumber),
+      );
+      expect(requests.map(requestShape).sort(byNumber)).toEqual(
+        DEMO_DELIVERIES.map(requestShape).sort(byNumber),
+      );
     });
 
     it('Each photo the data set holds is on its person, and no one else has one', async () => {
