@@ -128,8 +128,9 @@ Each comes back at a review (the human, 10-27).
   extension", the memo's rule (the human, 10-27 23:05 +07; it read "the core flow").
 - **Đối soát**, the settling, comes back at a review after the six pieces (the human, 10-27
   23:05 +07).
-- **No page for customers or vendors:** the demo's generator writes them until the import
-  (the human, 10-27 23:05 +07).
+- **No page for vendors:** the demo's generator writes them until the import (the human, 10-27
+  23:05 +07). *Amended 2026-10-31:* customers and products have their list pages and their Excel
+  import now, as [slice 1 of the road to 11-04](2026-10-31-customers-products.md) builds them.
 - **No more work on the old app.**
 - **No client's server before a client signs.** The demo runs on the local stack for the
   screenshots and video.
@@ -142,6 +143,10 @@ Each comes back at a review (the human, 10-27).
   the repo alone, and a review reads the seed.
 
 ## Dates
+
+*Amended 2026-10-31 (Decide 41, as the slice's plan cites it):* the demo on ridge is 11-04, and the
+pieces' order below is the road to it, led by [customers and
+products](2026-10-31-customers-products.md); the dated rows that follow are as they were written.
 
 | Date | What | Who reads it |
 | --- | --- | --- |
