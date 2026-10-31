@@ -1,7 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 08:07 +07:** the diagnosis is this plan. Next: the probe in the
-human's terminal (step 2) and the human's yes to rule 7's new text (step 3). No code yet.
+**Where it stands — 2026-10-31 08:29 +07:** the probe is read (step 2): `--disable-partial-raster` is
+the fix. Next: the human's yes to rule 7's new text (step 3), asked; the code steps 4 to 6 follow.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -11,8 +11,8 @@ human's terminal (step 2) and the human's yes to rule 7's new text (step 3). No 
 
 | What moved | Where | Why | Fix |
 | --- | --- | --- | --- |
-| A card's two top corners, 10 pixels by one shade | the operator's screens 3, 4, 9; piece 2's phone cards | after a busy button the browser draws the edge one of two ways, run by run. **Not proven** | the setting the probe finds steady (step 2) |
-| The client's logo on a phone, 14 pixels | 38 phone pictures, every run until 10-30 16:02 | the fake took one shot, the full run a settled one | gone since `7450420`; one capture, made strict |
+| A card's two top corners, 8 to 19 pixels by one shade | the operator's screens 3, 4, 9; piece 2's phone cards | the browser rasters a tile in part, and the edge falls one of two ways, run by run. Shown by the probe: only the switch `--disable-partial-raster` made it steady | `--disable-partial-raster` in the walk's browser |
+| The client's logo on a phone, 14 pixels by up to 22 shades | piece 2's phone menus and lists | the same two states, run to run, even in the settled capture; until 10-30 16:02 the fake also took one shot | the same switch; one capture, made strict |
 | Neither was flagged | every run read "0 differ" | Playwright's check skips softened edge pixels | the script counts raw pixels |
 | The top bar mid-page | item 25 | the scroll at the shot | scroll to the top first |
 | A run refused on a stray | 10-30 18:37 | a killed stack leaves its servers up | the script stops orphans first |
@@ -36,7 +36,7 @@ reviewed once. The human's part: the probe and two runs in the terminal, and one
 Read by the machine from the 10-30 runs' folders in `$ROOT_DIR/walks/`, pixel by pixel (any channel
 moved by any amount), with Playwright's own comparator beside it.
 
-### 1. A card's corners: two raw states, and the run picks one. Not proven
+### 1. A card's corners: two raw states, and the run picks one. Shown by the probe
 
 - `full-run-operator-2026-10-30-184201-66fa27c/moved-bases/` holds the six bases pass 2 rewrote. Each
   differs from the committed one by the same 10 pixels, at most one shade a channel, on the lower arc
@@ -52,17 +52,23 @@ moved by any amount), with Playwright's own comparator beside it.
 - Piece 2, 16:39 (`full-run-2026-10-30-163915-949fdb4/`): its fake against its own written bases,
   3 of 198 differ raw (`office-6-password-vi-390`, `staff-22-no-name-{en,vi}-390`), 19 pixels at most
   one shade, on a card's corners (x 16 and 373, eight rows).
-- *Inferred:* Mantine 9.6.3's busy button mounts its loader in a 150 ms transform transition, and
+- *Inferred (the mechanism; the effect is shown below):* Mantine 9.6.3's busy button mounts its loader in a 150 ms transform transition, and
   its `::before` overlay carries `filter: blur(12px)` with transitions of its own; while they run the
   browser gives them a layer, and a half-covered edge pixel blended through one more layer rounds one
   shade off. No browser starts in the agent's sandbox to see it.
-- **The probe** (step 2): the operator's walk at 1280, five runs under each of four ways of taking
-  pictures (as now; `--disable-partial-raster`; `--run-all-compositor-stages-before-draw
-  --disable-checker-imaging`; a stylesheet at the shot that rasters the page afresh as one layer),
-  each picture's raw states counted. The cause is shown if "as now" takes two states on screens 3, 4
-  and 9 and a variant takes one.
+- **The probe** (10-31 08:19–08:26, 31 runs, each "2 passed"; log `$ROOT_DIR/logs/20261031-0758-probe-walk-steady.log`,
+  results `$ROOT_DIR/walks/probe-walk-steady-2026-10-31-081917-dc7096d/states.txt`), the fake alone, each
+  picture's raw states counted over the runs, four ways of taking pictures:
 
-### 2. The logo on a phone: two ways of taking a picture. Closed by `7450420`
+  | Set | now | no-partial-raster | all-stages | fresh-layer |
+  | --- | --- | --- | --- | --- |
+  | operator at 1280, 5 runs each | 6 pictures unsteady (screens 3, 4, 9, both languages), 10 px, shade 1 | **steady** | the same 6 | steady |
+  | piece 2 at 390 | 5 runs: 9 pictures unsteady | **3 runs: steady** | 3 runs: 4 unsteady | not run |
+
+  Cause 1 is shown: "as now" takes two states on screens 3, 4 and 9, and `--disable-partial-raster`
+  takes one on every picture of both sets.
+
+### 2. The logo on a phone: two raw states, and the settled capture does not close them
 
 - The logo ([`shared/src/demo.ts#L5-L7`](../../shared/src/demo.ts#L5-L7), an SVG drawn at 32 pixels
   by [`ui/src/BrandMark.tsx#L8`](../../ui/src/BrandMark.tsx#L8)) has two raw states at 390 wide: 14
@@ -73,12 +79,17 @@ moved by any amount), with Playwright's own comparator beside it.
   on 11 of the 12 English screens taller than the window and the first on 9 of the 10 that fit it.
   Hence 38 phone pictures, 14 pixels each, at 16:02.
 - `7450420` (10-30 16:36) gave the fake the settled capture. At 16:39 the fake, that run's bases and the
-  committed bases hold the same state screen by screen (24 pictures in the second, 20 in the
-  first): no logo pixel moved. The same commit
-  closed staff-20's hover scrollbar and staff-8's checkbox transition (its message).
-- *Inferred:* Playwright 1.64's settled loop keeps the last of two shots its comparator calls equal,
-  blind to these pixels (cause 3), and a first shot of a page taller than the window lands in the
-  first state. The probe's piece 2 set (five runs at 390) shows whether one capture holds it run to run.
+  committed bases held the same state screen by screen: no logo pixel moved *in that run*.
+  The same commit closed staff-20's hover scrollbar and staff-8's checkbox transition (its message).
+- **What the probe shows, and what holds.** With the settled capture alone (`now`), five runs at 390
+  took the logo in both states: `office-1-menu` and `staff-1-list`, English and Vietnamese, 14 pixels by
+  up to 22 shades, in runs 1 to 3 against runs 4 and 5. So the logo was never only the first shot against
+  the settled one. That difference was real (it made 38 pictures differ at once) and `7450420` removed
+  it, but under it lay the same flip as cause 1: the browser's partial raster draws the logo's rounded
+  edge one of two ways, run by run, and the settled loop keeps whichever the last two shots agree on,
+  blind to these pixels (cause 3). The 16:39 run was one draw of that coin, not a proof it was steady.
+  The same set shows the card corners flip at 390 (office-6, office-7, staff-19: 8 to 19 pixels, shade
+  1). `--disable-partial-raster` took one state on all 66 pictures, three runs.
 
 ### 3. The comparator sees neither
 
@@ -114,9 +125,18 @@ parent 1, up since 09:53.
   settling and its comparison both skip those pixels, and it takes pictures two ways, comparing or
   writing (the console's 0147 fake one-off ran without `--update-snapshots=all`, which main's settled
   capture needs).
-- **The browser setting step 2 finds steady**, in the config's `launchOptions` or as the capture's
-  stylesheet. If none is, a second probe (the button's transitions awaited before the next screen; one
-  raster thread) comes before any code.
+- **The browser setting: `--disable-partial-raster`**, in the config's `launchOptions.args`, chosen by
+  the probe. It is the only variant steady in both sets. *Rejected:* `--run-all-compositor-stages-before-draw
+  --disable-checker-imaging`, unsteady in both sets (the same 6 pictures at 1280, 4 at 390). *Rejected:*
+  the stylesheet `html { will-change: transform }`, steady at 1280 but never tried at 390, so it would
+  need a second probe, and it changes how the page is composited inside the picture where a switch
+  changes only how it is drawn. *Weaker than it looks:* piece 2's steadiness rests on 3 runs, against 5
+  for `now`, and a coin that lands the same way three times in a row is no proof (one in four, if fair).
+  Step 8 takes every picture three more times in one go (the fake, `full-1`, `full-2`) and the script's
+  raw count is red on any difference between them: if one moves, the fix is wrong and the second probe
+  (the button's transitions awaited before the next screen; one raster thread; the stylesheet at 390)
+  comes before the bases are written. Bases written under it move (46 of 66 of piece 2's, 8 of 18 of
+  the operator's at 1280, against main's bases): step 8's `--moved all` is the rewrite.
 - **The raw reader**, in `scripts/`: Node's zlib decodes the PNGs (8-bit RGB or RGBA, not interlaced,
   what Chromium writes; any other kind refused by name) and counts each pixel whose colour moved.
   *Rejected:* Playwright's bundled decoder, an internal path the one-offs pinned to 1.64; `pngjs`, a
@@ -214,10 +234,15 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   config listing 2 and 2 tests, then refused as built on the process list, which the sandbox cannot
   read (`pgrep: Cannot get process list`); its reading, on folders made from the 10-30 runs, gave the
   numbers above. The path grep finds nothing in this file, and it names no person.
-- [ ] **2. The probe.** Who: 👤 in the human's terminal, about 12 minutes, then 🤖 15 minutes. Run
+- [x] **2. The probe.** Who: 👤 in the human's terminal, about 12 minutes, then 🤖 15 minutes. Run
   `bash $ROOT_DIR/one-off/20261031-0758-probe-walk-steady.sh`; lane B tests nothing meanwhile. Done
   when: its log ends on `== verdict: read: …` and `== done`, the machine has read it whole with its
-  `states.txt`, and cause 1 here names the steady variant, or the second probe.
+  `states.txt`, and cause 1 here names the steady variant, or the second probe. *Evidence:* the log
+  (1384 lines) ends `== done`, 31 of 31 runs "2 passed", no warning or error line; `states.txt` read
+  whole: `now` unsteady in both sets, `no-partial-raster` steady in both, `all-stages` unsteady in both,
+  `fresh-layer` steady at 1280 only. Cause 1 is shown; cause 2 is reread (the logo flips under the
+  settled capture too); the fix is `--disable-partial-raster`, with its weakness (3 runs at 390) and
+  its fall-back written in [the fixes](#the-fixes).
 - [ ] **3. Rule 7's text.** Who: 👤 yes or a correction, then 🤖 5 minutes. Done when: the human's answer,
   dated, here; then `qa.md`'s rule 7 and its line at a glance in one commit, with the stamp.
 - [ ] **4. The reader and the strays' choice.** Who: 🤖, about 2 hours, needs nothing above. Done
