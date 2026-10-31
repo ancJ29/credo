@@ -144,9 +144,12 @@ Each comes back at a review (the human, 10-27).
 
 ## Dates
 
-*Amended 2026-10-31 (Decide 41, as the slice's plan cites it):* the demo on ridge is 11-04, and the
-pieces' order below is the road to it, led by [customers and
-products](2026-10-31-customers-products.md); the dated rows that follow are as they were written.
+*Amended 2026-10-31 (Decide 41, as the slice's plan cites it; the human, 10-31):* the demo on ridge
+is 11-04, and it is four slices: customers and products from Excel
+([the first](2026-10-31-customers-products.md)); an order with its delivery request to a driver; the
+driver's phone with a photo; đối soát per driver per day. Stock beyond the product's `stocked` flag
+(the flag only, the human, 10-31 09:0x) and goods receipts are parked until after 11-04. The dated
+rows below are as they were written.
 
 | Date | What | Who reads it |
 | --- | --- | --- |
