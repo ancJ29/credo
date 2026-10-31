@@ -11,12 +11,14 @@
     "test": "vitest run --coverage",
     "stack": "node --import tsx src/main.ts",
     "demo": "node --import tsx src/demo-main.ts",
+    "demo-files": "node --import tsx src/demo-files-main.ts",
     "fake": "node --import tsx src/fake-main.ts",
     "walks": "node --import tsx src/walks-main.ts"
   },
   "dependencies": {
     "@credo/bff": "workspace:*",
     "@credo/shared": "workspace:*",
+    "@credo/ui": "workspace:*",
     "tsx": "catalog:",
     "vite": "catalog:"
   },

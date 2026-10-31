@@ -341,6 +341,9 @@ importers:
       '@credo/shared':
         specifier: workspace:*
         version: link:../shared
+      '@credo/ui':
+        specifier: workspace:*
+        version: link:../ui
       tsx:
         specifier: 'catalog:'
         version: 4.23.15

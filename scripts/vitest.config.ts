@@ -30,6 +30,9 @@ export default defineConfig({
       // elsewhere: walks-main.ts only reads stdin and binds src/walks.ts's walksCommand to the
       // process; src/walks.test.ts runs walksCommand with the same arguments, and walk/run.sh's
       // test (src/walk-run.test.ts) runs the entry as a process.
+      //
+      // elsewhere: demo-files-main.ts only finds the credo root from git and binds src/demo-files.ts's
+      // writeDemoFiles to it; src/demo-files.test.ts runs writeDemoFiles on a temporary folder.
       exclude: [
         'src/walks-main.ts',
         'src/**/*.test.ts',
@@ -37,6 +40,7 @@ export default defineConfig({
         'src/fake-main.ts',
         'src/ridge-main.ts',
         'src/demo-main.ts',
+        'src/demo-files-main.ts',
       ],
       reporter: [['text', { skipFull: true }]],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
