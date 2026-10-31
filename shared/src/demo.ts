@@ -411,8 +411,9 @@ export const DEMO_CUSTOMER_IMPORT_ROWS: DemoListRow[] = [
   { code: 'KH-011', phone: '0909 330 011' },
 ];
 
-/** The products' file: three rows that hold (one price typed with a dot between the thousands, one
- * with a comma; the first with the stocked cell empty, which reads Có, the second Không), one whose code the company has (VT-002) and one whose price is no price. */
+/** The products' file: three rows that hold (VT-007 and VT-008 with the stocked cell empty, which
+ * reads Có; VT-009 says Có; the prices typed with a dot, none and a comma between the thousands),
+ * one whose code the company has (VT-002) and one whose price is no price. */
 export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
   { code: 'VT-007', name: 'Xi măng đen PC30', unit: 'bao', price: '88.000' },
   {
