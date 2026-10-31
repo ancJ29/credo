@@ -178,7 +178,8 @@ export function SendPanel({
     const today = page.today();
     return today < minDay ? minDay : today;
   });
-  const ready = driverId !== '' && day >= minDay && day !== '' && !disabled;
+  // A day cleared is '', which is before any order's day.
+  const ready = driverId !== '' && day >= minDay && !disabled;
   const send = (event: FormEvent) => {
     event.preventDefault();
     if (ready) onSend(driverId, day);

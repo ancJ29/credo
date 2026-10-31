@@ -1,5 +1,13 @@
 import { LANGUAGES, type Language } from '@credo/shared';
-import { DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
+import {
+  DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
+  DEMO_EMPLOYEES,
+  DEMO_ORDERS,
+  DEMO_PRODUCTS,
+  DEMO_QR_SECRET,
+  DEMO_TODAY,
+} from '@credo/shared/demo';
 import type { DemoFile } from '@credo/ui/import-demo';
 import type { MockScreen } from '@credo/ui/mock';
 
@@ -47,6 +55,8 @@ export type Scene = {
   signIns?: true;
   /** Nobody is signed in: a phone opening a QR code's link. */
   out?: true;
+  /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
+  noDrivers?: true;
   steps?: Step[];
 };
 
@@ -132,6 +142,41 @@ const FILLED_OWN: Step[] = [
   { choose: 'addPerson.department', option: 'Kho' },
   { choose: 'addPerson.position', option: 'Nhân viên' },
 ];
+
+/** The orders' walk's data, by the data set: today's draft the office confirms, and the request of
+ * a driver the office cancels and sends again. */
+const DRAFT_TODAY = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.state === 'draft')!;
+const WAITING_TODAY = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+)!;
+/** A customer or a product as the order form lists it in its choice. */
+const customerChoice = (code: string) => {
+  const one = DEMO_CUSTOMERS.find((candidate) => candidate.code === code)!;
+  return `${one.code} · ${one.name}`;
+};
+const productChoice = (code: string) => {
+  const one = DEMO_PRODUCTS.find((candidate) => candidate.code === code)!;
+  return `${one.code} · ${one.name} · ${one.unit}`;
+};
+const DRIVER_CHOICE = 'EMP-0005 · Võ Thanh Tùng';
+/** A line added to the order form: the product, its quantity, and the press. */
+const LINE = (code: string, quantity: number): Step[] => [
+  { choose: 'orders.product', option: productChoice(code) },
+  { fill: 'orders.quantity', text: String(quantity) },
+  { press: 'orders.addLine' },
+];
+/** The new order form as the office fills it: a customer and two products. */
+const FILLED_ORDER: Step[] = [
+  { choose: 'orders.customer', option: customerChoice('KH-001') },
+  ...LINE('VT-001', 40),
+  ...LINE('VT-002', 3),
+];
+/** Today's draft, opened from its page, with its first line taken off and another put in. */
+const CHANGED_DRAFT: Step[] = [
+  { press: 'orders.removeLine', with: { name: DRAFT_TODAY.lines[0].name } },
+  ...LINE('VT-001', 1),
+];
+const DRAFT_PATH = `/orders/${DRAFT_TODAY.day}/${DRAFT_TODAY.id}`;
 
 /** The link a QR code opens, for a warehouse member of the data set and the secret given. */
 const qrLinkWith = (secret: string) =>
@@ -965,6 +1010,156 @@ export const WALKS: Walk[] = [
           vi: 'Đã nhập: những sản phẩm được thêm',
         },
         question: 'Would the admin know they are now in the list?',
+      },
+    ],
+  },
+  {
+    id: 'office-orders',
+    person: 'office',
+    part: 'orders',
+    title: { en: 'An order, sent to a driver', vi: 'Một đơn hàng, giao cho tài xế' },
+    screens: [
+      {
+        id: 'orders-1-list',
+        number: 1,
+        path: 'main',
+        scene: { path: '/orders', as: 'EMP-0001' },
+        sentence: {
+          en: 'Orders: the last 7 days’, with number, customer, total, state and driver',
+          vi: 'Đơn hàng: 7 ngày gần đây, kèm số, khách hàng, tổng tiền, trạng thái và tài xế',
+        },
+        question: 'Is this what the office needs to see of its week’s orders at a glance?',
+      },
+      {
+        id: 'orders-2-new',
+        number: 2,
+        path: 'main',
+        scene: { path: '/orders/new', as: 'EMP-0001', steps: FILLED_ORDER },
+        sentence: {
+          en: 'A new order: a customer, two products at their prices, the total',
+          vi: 'Đơn hàng mới: một khách hàng, hai sản phẩm theo giá, và tổng tiền',
+        },
+        question: 'Is this how the office would take an order?',
+      },
+      {
+        id: 'orders-3-confirm',
+        number: 3,
+        path: 'main',
+        scene: {
+          path: DRAFT_PATH,
+          as: 'EMP-0001',
+          steps: [{ choose: 'orders.driver', option: DRIVER_CHOICE }],
+        },
+        sentence: {
+          en: 'Confirm: the driver and the day, today chosen',
+          vi: 'Xác nhận: chọn tài xế và ngày, hôm nay đã được chọn sẵn',
+        },
+        question: 'Would the office know whom it goes to, and when?',
+      },
+      {
+        id: 'orders-4-confirmed',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: DRAFT_PATH,
+          as: 'EMP-0001',
+          steps: [
+            { choose: 'orders.driver', option: DRIVER_CHOICE },
+            { press: 'orders.confirmSubmit' },
+          ],
+        },
+        sentence: {
+          en: 'Confirmed: the order’s number and its request’s',
+          vi: 'Đã xác nhận: số đơn hàng và số yêu cầu giao hàng của nó',
+        },
+        question: 'Would the office know the order is confirmed and with the driver?',
+      },
+      {
+        id: 'orders-5-requests',
+        number: 5,
+        path: 'main',
+        scene: { path: '/deliveries', as: 'EMP-0001' },
+        sentence: {
+          en: 'Delivery requests: today’s, by driver',
+          vi: 'Yêu cầu giao hàng: của hôm nay, theo tài xế',
+        },
+        question: 'Is this how the office would see who delivers what today?',
+      },
+      {
+        id: 'orders-6-request',
+        number: 6,
+        path: 'main',
+        scene: { path: `/deliveries/${WAITING_TODAY.day}/${WAITING_TODAY.id}`, as: 'EMP-0001' },
+        sentence: {
+          en: 'A delivery request opened: customer, address, lines, total to collect',
+          vi: 'Một yêu cầu giao hàng: khách hàng, địa chỉ, các dòng hàng, số tiền cần thu',
+        },
+        question: 'Is anything missing that the office or the driver needs?',
+      },
+      {
+        id: 'orders-7-cancelled',
+        number: 7,
+        path: 'main',
+        scene: {
+          path: `/deliveries/${WAITING_TODAY.day}/${WAITING_TODAY.id}`,
+          as: 'EMP-0001',
+          steps: [
+            { press: 'orders.cancelRequest' },
+            { press: 'orders.cancelRequestConfirm', with: { number: WAITING_TODAY.number } },
+            { press: 'orders.openOrder' },
+          ],
+        },
+        sentence: {
+          en: 'A request cancelled: its order offers to send it again',
+          vi: 'Một yêu cầu đã hủy: đơn hàng của nó cho phép gửi lại',
+        },
+        question: 'Would the office know how to send it again?',
+      },
+      {
+        id: 'orders-8-conflict',
+        number: 8,
+        path: 'wrong',
+        scene: {
+          path: DRAFT_PATH,
+          as: 'EMP-0001',
+          cue: 'saveOrder:409',
+          steps: [...CHANGED_DRAFT, { press: 'orders.saveDraft' }],
+        },
+        sentence: {
+          en: 'Someone else saved the draft first, what was typed kept',
+          vi: 'Có người đã lưu bản nháp trước, những gì đã nhập vẫn còn',
+        },
+        question: 'Would the office know someone else saved first, and how to see it?',
+      },
+      {
+        id: 'orders-9-confirm-failed',
+        number: 9,
+        path: 'wrong',
+        scene: {
+          path: DRAFT_PATH,
+          as: 'EMP-0001',
+          cue: 'confirmOrder:503',
+          steps: [
+            { choose: 'orders.driver', option: DRIVER_CHOICE },
+            { press: 'orders.confirmSubmit' },
+          ],
+        },
+        sentence: {
+          en: 'A confirm that failed, what was typed kept',
+          vi: 'Xác nhận không thành công, những gì đã nhập vẫn còn',
+        },
+        question: 'Would the office know nothing was sent, and nothing typed is lost?',
+      },
+      {
+        id: 'orders-10-no-drivers',
+        number: 10,
+        path: 'wrong',
+        scene: { path: DRAFT_PATH, as: 'EMP-0001', noDrivers: true },
+        sentence: {
+          en: 'No one is allowed to deliver yet',
+          vi: 'Chưa ai được phép giao hàng',
+        },
+        question: 'Would the office know to ask the admin?',
       },
     ],
   },

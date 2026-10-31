@@ -1,4 +1,5 @@
 import { LANGUAGES } from '@credo/shared';
+import { DEMO_DELIVERIES, DEMO_EMPLOYEES, DEMO_TODAY } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { DICTIONARIES } from '@credo/ui/words';
 import { describe, expect, it, vi } from 'vitest';
@@ -137,6 +138,12 @@ describe('the app’s own screens, drawn', () => {
   });
 });
 
+/** The driver the orders' scenes choose, by the id the fake's choice holds, and the request they cancel. */
+const DRIVER_ID = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0005')!.id;
+const WAITING = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+)!;
+
 /** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
 const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
@@ -189,6 +196,19 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-6-products': (w) => `heading: ${w.nav.products}`,
   'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
+  'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
+  // the second line is the one added by the steps; the form's own list holds the product too, as an option
+  'office-orders:orders-2-new': () => 'cell: Cát xây tô',
+  'office-orders:orders-3-confirm': (w) => `combobox "${w.orders.driver}" = "${DRIVER_ID}"`,
+  'office-orders:orders-4-confirmed': (w) =>
+    `alert: ${w.orders.done.confirmed.replace('{{number}}', 'GH-00015')}`,
+  'office-orders:orders-5-requests': (w) => `heading: ${w.nav.deliveries}`,
+  'office-orders:orders-6-request': (w) =>
+    `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING.number)}`,
+  'office-orders:orders-7-cancelled': (w) => `heading: ${w.orders.sendAgain}`,
+  'office-orders:orders-8-conflict': (w) => `alert: ${w.orders.conflict}`,
+  'office-orders:orders-9-confirm-failed': (w) => `alert: ${w.orders.stepFailed}`,
+  'office-orders:orders-10-no-drivers': (w) => `alert: ${w.orders.noDrivers}`,
 };
 
 describe('the app’s own scenes, drawn', () => {

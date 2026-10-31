@@ -23,7 +23,7 @@ describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(59);
+    expect(states.size).toBe(69);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -125,9 +125,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, a hundred and eighteen for the fifty-nine screens', () => {
+  it('keys an answer by walk, screen and language, a hundred and thirty-eight for the sixty-nine screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(118);
+    expect(allKeys(WALKS)).toHaveLength(138);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -312,7 +312,7 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(50);
+    expect(scenes).toHaveLength(60);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
@@ -325,6 +325,7 @@ describe('the walks', () => {
       'EMP-0003',
       'EMP-0001',
       'EMP-0001',
+      ...Array<string>(10).fill('EMP-0001'),
     ]);
   });
 
@@ -335,6 +336,7 @@ describe('the walks', () => {
 
     expect(shot('piece-2.spec.ts')).toEqual(piece2);
     expect(shot('lists.spec.ts')).toEqual(WALKS[6].screens.map((screen) => screen.id));
+    expect(shot('orders.spec.ts')).toEqual(WALKS[7].screens.map((screen) => screen.id));
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),
@@ -345,11 +347,14 @@ describe('the walks', () => {
     expect(config).toContain("name: 'operator-fake'");
     expect(config).toContain("name: 'operator-full'");
     expect(config).toContain(
-      "testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'operator.spec.ts']",
+      "testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'orders.spec.ts', 'operator.spec.ts']",
     );
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");
     expect(config).toContain("testMatch: 'lists.spec.ts'");
+    expect(config).toContain("name: 'orders-fake'");
+    expect(config).toContain("name: 'orders-full'");
+    expect(config).toContain("testMatch: 'orders.spec.ts'");
   });
 
   it('puts the customers and products from Excel in one walk of the admin’s set-up, eight screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
@@ -392,5 +397,60 @@ describe('the walks', () => {
       expect(screen.scene!.as, screen.id).toBeUndefined();
       expect(screen.scene!.cue, screen.id).toBeUndefined();
     }
+  });
+
+  it('puts an order sent to a driver in one walk of the office’s orders, ten screens, each a scene and none from the mock, the three failures on the wrong path', () => {
+    const walk = WALKS[7];
+
+    expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
+    expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['orders-1-list', 1, 'main'],
+      ['orders-2-new', 2, 'main'],
+      ['orders-3-confirm', 3, 'main'],
+      ['orders-4-confirmed', 4, 'main'],
+      ['orders-5-requests', 5, 'main'],
+      ['orders-6-request', 6, 'main'],
+      ['orders-7-cancelled', 7, 'main'],
+      ['orders-8-conflict', 8, 'wrong'],
+      ['orders-9-confirm-failed', 9, 'wrong'],
+      ['orders-10-no-drivers', 10, 'wrong'],
+    ]);
+    expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
+    // every screen is the office manager's, and the failures are cued or provoked as the spec does
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(10).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'saveOrder:409',
+      'confirmOrder:503',
+      undefined,
+    ]);
+    expect(walk.screens[9].scene!.noDrivers).toBe(true);
+  });
+
+  it('Each orders screen opens in the walk spec as its scene does: the cue, the right taken from the drivers, and the clock at the data set’s today', () => {
+    const spec = read('specs/orders.spec.ts');
+    const parts = spec.slice(spec.indexOf('async function walk(')).split(/await at\('([^']+)'/);
+    const before = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2)
+      before.set(parts[index], parts[index - 1]);
+
+    for (const screen of WALKS[7].screens) {
+      const { cue, noDrivers } = screen.scene!;
+      const steps = before.get(screen.id)!;
+      const opened = [...steps.matchAll(/(?:listed|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';
+      expect(opened.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
+      expect(opened.includes('noDrivers: true'), `${screen.id}: noDrivers`).toBe(
+        noDrivers === true,
+      );
+    }
+    // the browser's clock is fixed before each opening, at the day the fake build and a scene take
+    expect(spec).toContain('await page.clock.setFixedTime(CLOCK);');
+    expect(spec).toContain('DEMO_TODAY.split');
   });
 });

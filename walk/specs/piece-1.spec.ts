@@ -95,6 +95,14 @@ async function walk(page: Page, language: Language, width: number) {
   // 3. Settings: name, logo, colour, languages.
   await page.getByLabel(words.auth.password, { exact: true }).fill(ROOT.password);
   await page.getByRole('button', { name: words.auth.submit }).click();
+  // Signing in lands on the first page of the menu, the orders: Settings is opened from the menu.
+  await expect(page.getByRole('heading', { level: 2, name: words.nav.orders })).toBeVisible();
+  const burger = page.getByRole('button', { name: words.nav.menu, exact: true });
+  if (await burger.isVisible()) await burger.click();
+  await page
+    .getByRole('navigation', { name: words.nav.menu })
+    .getByRole('link', { name: words.nav.settings })
+    .click();
   await expect(page.getByRole('heading', { level: 2, name: words.settings.title })).toBeVisible();
   await at('3-settings');
 
