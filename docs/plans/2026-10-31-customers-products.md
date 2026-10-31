@@ -1,8 +1,7 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 09:25 +07:** steps 1 to 3 done: both lists and both imports on the fake, the
-8 screens on the walks page (`pnpm report`: 16 waiting, 0 asked again). **Next:** the human's preview
-(step 4). No BFF route and no c-storage change yet.
+**Where it stands — 2026-10-31 09:36 +07:** steps 1 to 4 done: both lists and both imports on the fake, the
+8 screens answered, 16 yes. **Next:** the BFF (step 5). No BFF route and no c-storage change yet.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -197,9 +196,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   (the fake), `employeeSchema` and `importResultSchema` in `shared/` (the records and the reply).
   The big picture's "no page for customers" and dates are amended; Decide 41's own text was not
   readable from this worktree, so the dates note cites it as the slice's plan does.
-- [ ] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens on the walks
+- [x] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens on the walks
   page, or on `pnpm fake` at `/customers` and `/products`. Done when: each screen answered yes or no;
   a no becomes a case here and its fix lands before step 5. **Then stop.**
+  *Evidence:* 2026-10-31 09:3x, the human, on the walks page built from `8becb80`: all 16 yes
+  (`visual/answers.json`, 16 written by `pnpm answers`, 0 refused; the file now reads 118 yes, 0 no,
+  0 waiting). No case added.
 - [ ] **5. The BFF, at the gate.** Who: 🤖, after step 4 (the contract as the preview left it), about
   ¼ day: the four routes, and the stack's generator writing the data set's lists. c-storage does not
   change, so `make check` is not run. Done when: the BFF half of rows 2, 4 to 6, 8 and 10 each seen red
