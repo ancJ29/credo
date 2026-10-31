@@ -125,6 +125,9 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
           await write(request.tenantId, record);
         } catch (error) {
           if (replyFor(error).status !== 503) throw error;
+          // The write may have landed with its read-back failed: the code counts as held, so a
+          // later row with it is not written a second time.
+          codes.add(code);
           results.push({ kind: 'refused', reason: 'busy' });
           continue;
         }

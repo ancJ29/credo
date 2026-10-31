@@ -6,6 +6,7 @@ import {
   importCustomersReplySchema,
   importProductsReplySchema,
   listImportRoute,
+  PERMISSIONS,
   recordKeys,
   ROUTES,
 } from '@credo/shared';
@@ -89,7 +90,7 @@ describe.each(LISTS)('The $name: only the root reads the list and imports into i
   it('refuses a person who holds every staff permission, 403, and one not signed in, 401, on the list and on the import, and adds nothing', async () => {
     const t = await staffTenant(cs);
     const office = await t.staff('OFFICE', {
-      own: { 'staff.canCreate': true, 'staff.canView': true, 'staff.canEdit': true },
+      own: Object.fromEntries(PERMISSIONS.map((id) => [id, true])),
     });
 
     const read = await office.call.get(list.route);
@@ -116,8 +117,14 @@ describe.each(LISTS)('The $name list is the company’s own, in code order, neve
   it('lists every record of the company in code order, and none of another company’s', async () => {
     const t = await staffTenant(cs);
     const other = await staffTenant(cs);
-    await hold(t, list, { code: 'B-2', name: 'Second' });
-    await hold(t, list, { code: 'A-1', name: 'First' });
+    // Ids whose key order is the reverse of the code order: c-storage lists by key, so only the
+    // route's own sort can put the codes right.
+    await hold(t, list, {
+      id: '00000000-0000-4000-8000-000000000000',
+      code: 'B-2',
+      name: 'Second',
+    });
+    await hold(t, list, { id: 'ffffffff-ffff-4fff-8fff-ffffffffffff', code: 'A-1', name: 'First' });
     await hold(other, list, { code: 'C-3' });
 
     expect(await codesOf(t, list)).toEqual(['A-1', 'B-2']);
@@ -470,6 +477,38 @@ describe.each(LISTS)(
       ]);
 
       expect(results.map(outcome)).toEqual(['busy', 'added']);
+    });
+
+    it('answers a row as busy when the write landed and the read after it failed, and a later row with the same code is taken, not written twice', async () => {
+      let armed = false;
+      let down = false;
+      const t = await staffTenant(cs, {
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async getRecord(key) {
+            if (down && key.startsWith(list.prefix(t.keys))) throw new CStorageError(503, 'down');
+            return await client.getRecord(key);
+          },
+          async putRecord(key, data, ifTag) {
+            const saved = await client.putRecord(key, data, ifTag);
+            if (armed && key.startsWith(list.prefix(t.keys))) {
+              down = true;
+              throw new CStorageError(null, 'c-storage did not answer a put');
+            }
+            return saved;
+          },
+        }),
+      });
+
+      armed = true;
+      const results = await imported(t, list, [
+        list.row({ code: 'A-1' }),
+        list.row({ code: 'A-1' }),
+      ]);
+      down = false;
+
+      expect(results.map(outcome)).toEqual(['busy', 'taken']);
+      expect(await codesOf(t, list)).toEqual(['A-1']);
     });
 
     it('ends the call as a 500, with the rows before it kept, on a failure that is no outage and no refusal', async () => {
