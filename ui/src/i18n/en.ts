@@ -21,6 +21,8 @@ export const en = {
     settings: 'Settings',
     staff: 'Staff',
     staffSetup: 'Departments and positions',
+    customers: 'Customers',
+    products: 'Products',
     clients: 'Clients',
     operators: 'Operators',
     services: 'Services status',
@@ -397,6 +399,69 @@ export const en = {
     busy: 'Not added: the system was busy. Try this row again.',
     doneSignIn:
       'None of them can sign in yet. Open each person’s page to give them a sign-in and a first password.',
+  },
+  lists: {
+    import: 'Import from Excel',
+    intro:
+      'Download the template, fill it in, choose the file and check each row. Nothing is saved until you press Add. The file is read in this browser and goes nowhere.',
+    templateHint:
+      'It has the columns of the list, two sample rows, and a sheet that says what each column takes.',
+    columns: {
+      code: 'Code',
+      name: 'Name',
+      phone: 'Phone',
+      address: 'Address',
+      unit: 'Unit',
+      price: 'Price (VND)',
+      note: 'Note',
+    },
+    write: {
+      code: 'Needed. 2 to 20 letters, digits or hyphens, used once in the list; capitals or small letters are the same.',
+      name: 'Needed. At most 200 characters.',
+      address: 'Any address.',
+      unit: 'Needed. What the price is for, such as bag, tonne or m³, at most 20 characters.',
+      price:
+        'Needed. A whole number of đồng above zero. Dots or commas between the thousands are fine: 95.000 is 95000. No decimals.',
+    },
+    sampleAddress: '1 Example Street',
+    sampleProduct1: 'Sample product 1',
+    sampleProduct2: 'Sample product 2',
+    sampleUnit: 'bag',
+    noColumn:
+      'This file has no “{{name}}” column, which every row needs. Add a column headed “{{name}}”, as the template has, and choose the file again.',
+    refusedName: 'The name is empty or longer than 200 characters.',
+    refusedCodeMissing: 'The code is empty.',
+    refusedCodeInvalid: 'The code “{{code}}” is not 2 to 20 letters A to Z, digits or hyphens.',
+    refusedCodeTaken: 'The code “{{code}}” is already in the list, which stays as it was.',
+    refusedCodeTwice: 'The code “{{code}}” is given by an earlier row of this file.',
+    refusedUnit: 'The unit is empty or longer than 20 characters.',
+    refusedPrice:
+      '“{{typed}}” is not a price: write whole đồng above zero, such as 95000 or 95.000.',
+    refusedRow: 'The details of this row together are too long to save.',
+    failed:
+      'The rows may not all have been added. Open the list to see which were. Adding the file again refuses the codes already there.',
+    failedPart:
+      'The system stopped answering partway. The rows answered above are kept and will not be sent again. The rest may or may not have been added: open the list to see which were. Adding them again refuses the codes already there.',
+    doneTaken: '{{count}} rows were not added: their codes were taken meanwhile.',
+    doneInvalid: '{{count}} rows were not added: what they hold was refused.',
+    customers: {
+      sheet: 'Customers',
+      empty: 'No customers yet. Import them from an Excel file.',
+      importTitle: 'Add customers from Excel',
+      add: 'Add the customers ({{count}})',
+      doneTitle: 'Customers added',
+      doneAdded: '{{count}} customers were added.',
+      back: 'Back to the customers',
+    },
+    products: {
+      sheet: 'Products',
+      empty: 'No products yet. Import them from an Excel file.',
+      importTitle: 'Add products from Excel',
+      add: 'Add the products ({{count}})',
+      doneTitle: 'Products added',
+      doneAdded: '{{count}} products were added.',
+      back: 'Back to the products',
+    },
   },
   unknownClient: {
     title: 'We do not know this address',

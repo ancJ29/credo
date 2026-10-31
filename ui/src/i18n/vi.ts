@@ -22,6 +22,8 @@ export const vi: Dictionary = {
     settings: 'Cài đặt',
     staff: 'Nhân viên',
     staffSetup: 'Phòng ban và chức vụ',
+    customers: 'Khách hàng',
+    products: 'Sản phẩm',
     clients: 'Khách hàng',
     operators: 'Người vận hành',
     services: 'Trạng thái dịch vụ',
@@ -397,6 +399,70 @@ export const vi: Dictionary = {
     busy: 'Chưa thêm: hệ thống đang bận. Hãy thử lại dòng này.',
     doneSignIn:
       'Chưa ai trong số họ đăng nhập được. Hãy mở trang của từng người để cấp tên đăng nhập và mật khẩu đầu tiên.',
+  },
+  lists: {
+    import: 'Nhập từ Excel',
+    intro:
+      'Tải tệp mẫu, điền thông tin, chọn tệp rồi kiểm tra từng dòng. Chưa có gì được lưu cho đến khi bạn bấm Thêm. Tệp chỉ được đọc trong trình duyệt này và không gửi đi đâu.',
+    templateHint:
+      'Tệp có các cột của danh sách, hai dòng mẫu và một trang nói mỗi cột cần điền gì.',
+    columns: {
+      code: 'Mã',
+      name: 'Tên',
+      phone: 'Điện thoại',
+      address: 'Địa chỉ',
+      unit: 'Đơn vị tính',
+      price: 'Giá (đồng)',
+      note: 'Ghi chú',
+    },
+    write: {
+      code: 'Bắt buộc. 2 đến 20 chữ cái, chữ số hoặc dấu gạch nối, không trùng trong danh sách; chữ hoa hay chữ thường đều như nhau.',
+      name: 'Bắt buộc. Tối đa 200 ký tự.',
+      address: 'Địa chỉ bất kỳ.',
+      unit: 'Bắt buộc. Giá tính cho đơn vị nào, ví dụ bao, tấn hay m³, tối đa 20 ký tự.',
+      price:
+        'Bắt buộc. Số đồng nguyên, lớn hơn không. Có thể ngăn hàng nghìn bằng dấu chấm hoặc dấu phẩy: 95.000 là 95000. Không có số thập phân.',
+    },
+    sampleAddress: '1 Đường Mẫu',
+    sampleProduct1: 'Sản phẩm mẫu 1',
+    sampleProduct2: 'Sản phẩm mẫu 2',
+    sampleUnit: 'bao',
+    noColumn:
+      'Tệp này không có cột “{{name}}”, mà dòng nào cũng cần. Hãy thêm một cột có tiêu đề “{{name}}”, như tệp mẫu, rồi chọn lại tệp.',
+    refusedName: 'Tên bị bỏ trống hoặc dài quá 200 ký tự.',
+    refusedCodeMissing: 'Mã bị bỏ trống.',
+    refusedCodeInvalid:
+      'Mã “{{code}}” không phải 2 đến 20 chữ cái A đến Z, chữ số hoặc dấu gạch nối.',
+    refusedCodeTaken: 'Mã “{{code}}” đã có trong danh sách, và dòng cũ vẫn như trước.',
+    refusedCodeTwice: 'Mã “{{code}}” đã được một dòng trước trong tệp này dùng.',
+    refusedUnit: 'Đơn vị tính bị bỏ trống hoặc dài quá 20 ký tự.',
+    refusedPrice:
+      '“{{typed}}” không phải là giá: hãy ghi số đồng nguyên lớn hơn không, ví dụ 95000 hoặc 95.000.',
+    refusedRow: 'Các chi tiết của dòng này cộng lại quá dài để lưu.',
+    failed:
+      'Có thể chưa thêm đủ các dòng. Hãy mở danh sách để xem dòng nào đã có. Thêm lại tệp sẽ từ chối các mã đã có.',
+    failedPart:
+      'Hệ thống ngừng trả lời giữa chừng. Các dòng đã trả lời ở trên được giữ và sẽ không gửi lại. Các dòng còn lại có thể đã được thêm hoặc chưa: hãy mở danh sách để xem dòng nào đã có. Thêm lại sẽ từ chối các mã đã có.',
+    doneTaken: '{{count}} dòng chưa được thêm: mã của chúng đã bị dùng trong lúc đó.',
+    doneInvalid: '{{count}} dòng chưa được thêm: nội dung của chúng bị từ chối.',
+    customers: {
+      sheet: 'Khách hàng',
+      empty: 'Chưa có khách hàng nào. Hãy nhập từ một tệp Excel.',
+      importTitle: 'Thêm khách hàng từ Excel',
+      add: 'Thêm khách hàng ({{count}})',
+      doneTitle: 'Đã thêm khách hàng',
+      doneAdded: 'Đã thêm {{count}} khách hàng.',
+      back: 'Về danh sách khách hàng',
+    },
+    products: {
+      sheet: 'Sản phẩm',
+      empty: 'Chưa có sản phẩm nào. Hãy nhập từ một tệp Excel.',
+      importTitle: 'Thêm sản phẩm từ Excel',
+      add: 'Thêm sản phẩm ({{count}})',
+      doneTitle: 'Đã thêm sản phẩm',
+      doneAdded: 'Đã thêm {{count}} sản phẩm.',
+      back: 'Về danh sách sản phẩm',
+    },
   },
   unknownClient: {
     title: 'Chúng tôi không biết địa chỉ này',

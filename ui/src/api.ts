@@ -1,4 +1,6 @@
 import {
+  type AddCustomerRequest,
+  type AddProductRequest,
   type AddEmployeeReply,
   addEmployeeReplySchema,
   type AddEmployeeRequest,
@@ -9,6 +11,8 @@ import {
   type ChangeCodeRequest,
   type ConfigDoc,
   configDocSchema,
+  type Customer,
+  customerListReplySchema,
   type CreateClientReply,
   createClientReplySchema,
   DEVICE_HEADER,
@@ -18,14 +22,21 @@ import {
   employeeListReplySchema,
   employeeRoutes,
   IMPORT_ROUTE,
+  type ImportCustomersReply,
+  importCustomersReplySchema,
   type ImportEmployeesReply,
   importEmployeesReplySchema,
+  type ImportProductsReply,
+  importProductsReplySchema,
+  listImportRoute,
   meReplySchema,
   type MeReply,
   type IssueQrReply,
   issueQrReplySchema,
   type PhotoReply,
   photoReplySchema,
+  type Product,
+  productListReplySchema,
   type OperatorMeReply,
   operatorMeReplySchema,
   type OperatorSessionReply,
@@ -244,6 +255,35 @@ export function createApi({
       const response = await send('POST', IMPORT_ROUTE, { rows });
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, importEmployeesReplySchema);
+    },
+
+    /** The root's: every customer of the company, in code order. */
+    async listCustomers(): Promise<Customer[]> {
+      const response = await send('GET', ROUTES.customers);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, customerListReplySchema)).customers;
+    },
+
+    /** The root's: every product of the company, in code order. */
+    async listProducts(): Promise<Product[]> {
+      const response = await send('GET', ROUTES.products);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, productListReplySchema)).products;
+    },
+
+    /** The root's: up to a call's rows, one result for each in order; a refused row is a result,
+     * not an error. */
+    async importCustomers(rows: AddCustomerRequest[]): Promise<ImportCustomersReply> {
+      const response = await send('POST', listImportRoute('customers'), { rows });
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, importCustomersReplySchema);
+    },
+
+    /** The root's, as the customers' import is. */
+    async importProducts(rows: AddProductRequest[]): Promise<ImportProductsReply> {
+      const response = await send('POST', listImportRoute('products'), { rows });
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, importProductsReplySchema);
     },
 
     async saveEmployee(id: string, request: SaveEmployeeRequest): Promise<SaveEmployeeResult> {

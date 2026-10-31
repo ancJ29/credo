@@ -2,6 +2,10 @@ import {
   addEmployeeReplySchema,
   clientListReplySchema,
   importEmployeesReplySchema,
+  importCustomersReplySchema,
+  importProductsReplySchema,
+  customerListReplySchema,
+  productListReplySchema,
   configDocSchema,
   createClientReplySchema,
   employeeDocSchema,
@@ -20,7 +24,9 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_CUSTOMERS,
   DEMO_EMPLOYEES,
+  DEMO_PRODUCTS,
   DEMO_PHOTOS,
   DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
@@ -109,6 +115,20 @@ describe('the fake Api', () => {
       importEmployeesReplySchema,
       await api.importEmployees([{ name: 'Nhập', extra: {} }]),
     );
+    parses('listCustomers', customerListReplySchema, { customers: await api.listCustomers() });
+    parses('listProducts', productListReplySchema, { products: await api.listProducts() });
+    parses(
+      'importCustomers',
+      importCustomersReplySchema,
+      await api.importCustomers([{ code: 'kh-90', name: 'Nhập', extra: {} }]),
+    );
+    parses(
+      'importProducts',
+      importProductsReplySchema,
+      await api.importProducts([
+        { code: 'vt-90', name: 'Nhập', unit: 'bao', price: 5000, extra: {} },
+      ]),
+    );
     const read = await api.getEmployee(id);
     const saved = await api.saveEmployee(id, {
       version: read.version,
@@ -170,6 +190,10 @@ describe('the fake Api', () => {
         'getEmployee',
         'addEmployee',
         'importEmployees',
+        'listCustomers',
+        'listProducts',
+        'importCustomers',
+        'importProducts',
         'saveEmployee',
         'setPassword',
         'changeCode',
@@ -561,6 +585,78 @@ describe('the fake Api’s import', () => {
     const failing = fake('importEmployees:503', { client: 'fake.session' });
     expect(await status(failing.importEmployees([{ name: 'Một', extra: {} }]))).toBe(503);
     expect(await failing.listEmployees()).toHaveLength(DEMO_EMPLOYEES.length);
+  });
+});
+
+describe('the fake Api’s customers and products', () => {
+  const root = { client: 'fake.session' };
+
+  it('The fake’s four calls answer as the BFF does: both lists in code order, the rows that hold added as records under a minted id with the code in capitals, one whose code is in the list or was given by an earlier row refused as taken, one the add would refuse as invalid, and the list then holding what was added', async () => {
+    const api = fake('', root);
+
+    expect((await api.listCustomers()).map((one) => one.code)).toEqual(
+      DEMO_CUSTOMERS.map((one) => one.code),
+    );
+    const customers = await api.importCustomers([
+      { code: 'kh-90', name: 'Một', extra: { phone: '0900' } },
+      { code: 'KH-002', name: 'Đã có', extra: {} },
+      { code: 'KH-90', name: 'Lặp', extra: {} },
+      { code: 'a b', name: 'Mã sai', extra: {} },
+      { code: 'KH-91', name: '', extra: {} },
+    ] as Parameters<typeof api.importCustomers>[0]);
+    expect(
+      customers.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
+    ).toEqual(['added', 'taken', 'taken', 'invalid', 'invalid']);
+    const added = customers.results[0];
+    expect(added?.kind === 'added' && added.record).toMatchObject({
+      code: 'KH-90',
+      name: 'Một',
+      extra: { phone: '0900' },
+    });
+    expect((await api.listCustomers()).map((one) => one.code)).toEqual([
+      ...DEMO_CUSTOMERS.map((one) => one.code),
+      'KH-90',
+    ]);
+
+    const products = await api.importProducts([
+      { code: 'vt-90', name: 'Một', unit: 'bao', price: 5000, extra: {} },
+      { code: 'VT-91', name: 'Giá sai', unit: 'bao', price: 0, extra: {} },
+      { code: 'VT-001', name: 'Đã có', unit: 'bao', price: 5000, extra: {} },
+    ]);
+    expect(
+      products.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
+    ).toEqual(['added', 'invalid', 'taken']);
+    expect((await api.listProducts()).map((one) => [one.code, one.price]).at(-1)).toEqual([
+      'VT-90',
+      5000,
+    ]);
+    expect((await api.listProducts()).map((one) => one.code)).toEqual(
+      [...DEMO_PRODUCTS.map((one) => one.code), 'VT-90'].sort(),
+    );
+  });
+
+  it('The four calls answer 403 to anyone but the root, and a cue’s 403, 409 or 503 once, the call then answering as the data set does', async () => {
+    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    const row = { code: 'KH-90', name: 'Một', extra: {} };
+    const product = { code: 'VT-90', name: 'Một', unit: 'bao', price: 5000, extra: {} };
+
+    expect(await status(staff.listCustomers())).toBe(403);
+    expect(await status(staff.listProducts())).toBe(403);
+    expect(await status(staff.importCustomers([row]))).toBe(403);
+    expect(await status(staff.importProducts([product]))).toBe(403);
+
+    for (const code of [403, 409, 503]) {
+      for (const name of ['listCustomers', 'listProducts', 'importCustomers', 'importProducts']) {
+        const cued = fake(`${name}:${code}`, root) as unknown as Record<
+          string,
+          (rows?: unknown[]) => Promise<unknown>
+        >;
+        const rows =
+          name === 'importCustomers' ? [row] : name === 'importProducts' ? [product] : [];
+        expect(await status(cued[name](rows)), `${name} ${code}`).toBe(code);
+        expect(await status(cued[name](rows)), `${name} again`).toBe('answered');
+      }
+    }
   });
 });
 

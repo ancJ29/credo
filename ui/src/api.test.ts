@@ -317,6 +317,41 @@ describe('the API client', () => {
       expect(JSON.parse(calls[0]?.init.body as string)).toEqual({ rows });
     });
 
+    it('lists the customers and the products, and sends each list’s import rows to its own route as JSON', async () => {
+      const customer = { id, code: 'KH-1', name: 'Một', extra: {} };
+      const product = { id, code: 'VT-1', name: 'Một', unit: 'bao', price: 5000, extra: {} };
+      const { calls, api } = fake(
+        json({ customers: [customer] }),
+        json({ products: [product] }),
+        json({ results: [{ kind: 'added', record: customer }] }),
+        json({ results: [{ kind: 'refused', reason: 'taken' }] }),
+        json({}, 403),
+        json({}, 403),
+        json({}, 403),
+        json({}, 403),
+      );
+      const rows = [{ code: 'KH-1', name: 'Một', extra: {} }];
+      const items = [{ code: 'VT-1', name: 'Một', unit: 'bao', price: 5000, extra: {} }];
+
+      expect(await api.listCustomers()).toEqual([customer]);
+      expect(await api.listProducts()).toEqual([product]);
+      expect(await api.importCustomers(rows)).toMatchObject({ results: [{ kind: 'added' }] });
+      expect(await api.importProducts(items)).toMatchObject({
+        results: [{ kind: 'refused', reason: 'taken' }],
+      });
+      await expect(api.listCustomers()).rejects.toMatchObject({ status: 403 });
+      await expect(api.listProducts()).rejects.toMatchObject({ status: 403 });
+      await expect(api.importCustomers(rows)).rejects.toMatchObject({ status: 403 });
+      await expect(api.importProducts(items)).rejects.toMatchObject({ status: 403 });
+      expect(calls.slice(0, 4).map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/customers'],
+        ['GET', '/api/products'],
+        ['POST', '/api/customers/import'],
+        ['POST', '/api/products/import'],
+      ]);
+      expect(JSON.parse(calls[2]?.init.body as string)).toEqual({ rows });
+    });
+
     it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
       const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
       const request = { version: 'e1', name: 'Lan', extra: {} };

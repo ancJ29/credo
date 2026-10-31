@@ -1,6 +1,9 @@
 import {
+  addCustomerRequestSchema,
+  addProductRequestSchema,
   byCode,
   type ClientListItem,
+  customerSchema,
   clientLinkPath,
   type Employee,
   type EmployeeDoc,
@@ -13,6 +16,7 @@ import {
   normaliseEmployeeCode,
   normaliseSignInName,
   passwordIsValid,
+  productSchema,
   QR_MINUTES,
   qrLink,
   resolvePermissions,
@@ -25,6 +29,8 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_CUSTOMERS,
+  DEMO_PRODUCTS,
   DEMO_QR_SECRET,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
@@ -88,6 +94,10 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
   const ready = new Set(
     DEMO_EMPLOYEES.filter((person) => person.code !== 'EMP-0007').map((p) => p.id),
   );
+  /** The company's customers and products, read through the shared schemas as the BFF reads its
+   * records, by minted id. */
+  const customers = new Map(DEMO_CUSTOMERS.map((one) => [one.id, customerSchema.parse(one)]));
+  const products = new Map(DEMO_PRODUCTS.map((one) => [one.id, productSchema.parse(one)]));
   /** How many QR codes have been minted: each one's secret is its number. */
   let minted = 0;
   /** The QR code each person was last shown, by the secret it signs in with; spending one removes it.
@@ -142,6 +152,33 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
     return handle.startsWith(STAFF_HANDLE) && person ? staffUser(person) : ROOT;
   };
   const isRoot = () => !device.authId()?.startsWith(STAFF_HANDLE);
+  /** The two lists are the root's alone, as the BFF checks. */
+  const rootOnly = () => {
+    if (!isRoot()) throw new ApiError(403);
+  };
+  /** A list in code order, as the BFF answers it. */
+  const inOrder = <T extends { code: string }>(held: Map<string, T>) =>
+    [...held.values()].map((one) => structuredClone(one)).sort(byCode);
+  /** An import into a list, a row at a time as the BFF reads it: a row the add would refuse is
+   * `invalid`, a code the list holds (or an earlier row gave) `taken`, else the record is added. */
+  const importInto = <Request extends { code: string }, Held extends { id: string; code: string }>(
+    held: Map<string, Held>,
+    rows: readonly unknown[],
+    schema: { safeParse: (row: unknown) => { success: true; data: Request } | { success: false } },
+    make: (request: Request, code: string) => Held,
+  ) => ({
+    results: rows.map((row) => {
+      const parsed = schema.safeParse(row);
+      if (!parsed.success) return { kind: 'refused' as const, reason: 'invalid' as const };
+      const code = normaliseEmployeeCode(parsed.data.code);
+      if ([...held.values()].some((existing) => existing.code === code)) {
+        return { kind: 'refused' as const, reason: 'taken' as const };
+      }
+      const record = make(parsed.data, code);
+      held.set(record.id, record);
+      return { kind: 'added' as const, record: structuredClone(record) };
+    }),
+  });
 
   const person = (id: string) => {
     const found = people.get(id);
@@ -325,6 +362,46 @@ export function createFakeApi({ device, cue, signIns = false }: Options): Api {
           results.push({ kind: 'added', employee });
         }
         return { results };
+      }),
+
+    listCustomers: () =>
+      call('listCustomers', () => {
+        rootOnly();
+        return inOrder(customers);
+      }),
+
+    listProducts: () =>
+      call('listProducts', () => {
+        rootOnly();
+        return inOrder(products);
+      }),
+
+    importCustomers: (rows) =>
+      call('importCustomers', () => {
+        rootOnly();
+        return importInto(customers, rows, addCustomerRequestSchema, (request, code) =>
+          customerSchema.parse({
+            id: crypto.randomUUID(),
+            code,
+            name: request.name,
+            extra: request.extra,
+          }),
+        );
+      }),
+
+    importProducts: (rows) =>
+      call('importProducts', () => {
+        rootOnly();
+        return importInto(products, rows, addProductRequestSchema, (request, code) =>
+          productSchema.parse({
+            id: crypto.randomUUID(),
+            code,
+            name: request.name,
+            unit: request.unit,
+            price: request.price,
+            extra: request.extra,
+          }),
+        );
       }),
 
     saveEmployee: (id, request) =>

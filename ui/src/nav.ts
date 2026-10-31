@@ -1,5 +1,11 @@
 import { can, type PermissionLayer } from '@credo/shared';
-import { IconSettings, IconSitemap, IconUsers } from '@tabler/icons-react';
+import {
+  IconAddressBook,
+  IconPackage,
+  IconSettings,
+  IconSitemap,
+  IconUsers,
+} from '@tabler/icons-react';
 import type { ParseKeys } from 'i18next';
 
 /** What the shell's menu draws of a page: where it is, its words and its icon. */
@@ -35,6 +41,20 @@ export const PAGES = [
     path: '/staff-setup',
     label: 'nav.staffSetup',
     icon: IconSitemap,
+    allowed: (user: Person) => user.root,
+  },
+  {
+    id: 'customers',
+    path: '/customers',
+    label: 'nav.customers',
+    icon: IconAddressBook,
+    allowed: (user: Person) => user.root,
+  },
+  {
+    id: 'products',
+    path: '/products',
+    label: 'nav.products',
+    icon: IconPackage,
     allowed: (user: Person) => user.root,
   },
 ] as const;
