@@ -179,6 +179,16 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-staff:office-7-password-wrong': (w) => `alert: ${w.ownPassword.wrong}`,
   'phone-sign-in:phone-1-signed-in': (w) => `heading: ${w.staff.title}`,
   'phone-sign-in:phone-2-code-used': (w) => `heading: ${w.qrSignIn.refusedTitle}`,
+  'admin-lists:lists-1-customers': (w) => `heading: ${w.nav.customers}`,
+  'admin-lists:lists-2-customers-import': (w) =>
+    `main: ${w.import.chosen.replace('{{name}}', 'customers.xlsx')}`,
+  'admin-lists:lists-3-customers-preview': (w) => `heading: ${w.import.previewTitle}`,
+  'admin-lists:lists-4-customers-added': (w) => `heading: ${w.lists.customers.doneTitle}`,
+  'admin-lists:lists-5-no-code': (w) =>
+    `alert: ${w.lists.noColumn.replaceAll('{{name}}', w.lists.columns.code)}`,
+  'admin-lists:lists-6-products': (w) => `heading: ${w.nav.products}`,
+  'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
+  'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
 };
 
 describe('the app’s own scenes, drawn', () => {

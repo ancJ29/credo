@@ -32,15 +32,18 @@ export default defineConfig({
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixels: 0, threshold: 0 },
   },
   projects: [
-    { name: 'chromium', testIgnore: ['piece-2.spec.ts', 'operator.spec.ts'] },
+    {
+      name: 'chromium',
+      testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'operator.spec.ts'],
+    },
     {
       name: 'fake',
-      testMatch: 'piece-2.spec.ts',
+      testMatch: ['piece-2.spec.ts', 'lists.spec.ts'],
       ...(fakeDir ? { snapshotPathTemplate: `${fakeDir}/{arg}{ext}` } : {}),
     },
     {
       name: 'full',
-      testMatch: 'piece-2.spec.ts',
+      testMatch: ['piece-2.spec.ts', 'lists.spec.ts'],
       // A walk opens each of its screens on a client of its own, which the stack makes first: 15
       // openings, beyond the default budget of 30 seconds.
       timeout: 120_000,

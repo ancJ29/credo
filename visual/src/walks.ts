@@ -1,5 +1,6 @@
 import { LANGUAGES, type Language } from '@credo/shared';
 import { DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
+import type { DemoFile } from '@credo/ui/import-demo';
 import type { MockScreen } from '@credo/ui/mock';
 
 /** A text in each language the report draws. */
@@ -27,9 +28,9 @@ export type Step =
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
   | { choose: string; option: string }
-  /** Puts the data set's staff file (`import`, or `import-no-name`) in the file field with these
-   * words, as a person's choosing it does. */
-  | { attach: string; file: 'import' | 'import-no-name' };
+  /** Puts one of the data set's files (the staff's, the customers' or the products') in the file
+   * field with these words, as a person's choosing it does. */
+  | { attach: string; file: DemoFile };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
@@ -150,11 +151,15 @@ const IMPORT_CHOSEN: Step[] = [{ attach: 'import.file', file: 'import' }];
 /** A person's name replaced, for the screens that save it. */
 const RENAMED: Step[] = [{ fill: 'person.name', text: 'Trần Hùng' }, { press: 'person.save' }];
 
+/** The customers' file, then the products', chosen on their import pages. */
+const CUSTOMERS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'customers' }];
+const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
+
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
  * numbers and gain the ridge-app plan's screen 9; then the operator's, on a PC, numbered 1 to 9;
  * then piece 2's groups A, B, C and D (the staff setup, the staff, the office's, the phone's), each
- * screen a scene of the app on the fake.
+ * screen a scene of the app on the fake; then the admin's customers and products from Excel.
  */
 export const WALKS: Walk[] = [
   {
@@ -841,6 +846,125 @@ export const WALKS: Walk[] = [
           vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
         },
         question: 'Would the person know to ask for a new one?',
+      },
+    ],
+  },
+  {
+    id: 'admin-lists',
+    person: 'admin',
+    part: 'setup',
+    title: {
+      en: 'Customers and products from Excel',
+      vi: 'Khách hàng và sản phẩm từ Excel',
+    },
+    screens: [
+      {
+        id: 'lists-1-customers',
+        number: 1,
+        path: 'main',
+        scene: { path: '/customers' },
+        sentence: {
+          en: 'The customer list: code, name, phone, address',
+          vi: 'Danh sách khách hàng: mã, tên, điện thoại, địa chỉ',
+        },
+        question: 'Is this what the office needs to see about its customers at a glance?',
+      },
+      {
+        id: 'lists-2-customers-import',
+        number: 2,
+        path: 'main',
+        scene: { path: '/customers/import', steps: CUSTOMERS_CHOSEN },
+        sentence: {
+          en: 'Import: the template, and the file chosen',
+          vi: 'Nhập từ Excel: tệp mẫu và tệp đã chọn',
+        },
+        question: 'Would the admin know to fill the template and choose it?',
+      },
+      {
+        id: 'lists-3-customers-preview',
+        number: 3,
+        path: 'main',
+        scene: {
+          path: '/customers/import',
+          steps: [...CUSTOMERS_CHOSEN, { press: 'import.read' }],
+        },
+        sentence: {
+          en: 'Before saving: each row read, with the reasons for the refused',
+          vi: 'Trước khi lưu: từng dòng đã đọc, kèm lý do cho các dòng bị từ chối',
+        },
+        question: 'Would the admin know which customers will be added, and why the others are not?',
+      },
+      {
+        id: 'lists-4-customers-added',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: '/customers/import',
+          steps: [
+            ...CUSTOMERS_CHOSEN,
+            { press: 'import.read' },
+            { press: 'lists.customers.add', with: { count: '3' } },
+          ],
+        },
+        sentence: {
+          en: 'Imported: the customers added',
+          vi: 'Đã nhập: những khách hàng được thêm',
+        },
+        question: 'Would the admin know they are now in the list?',
+      },
+      {
+        id: 'lists-5-no-code',
+        number: 5,
+        path: 'wrong',
+        scene: {
+          path: '/customers/import',
+          steps: [{ attach: 'import.file', file: 'customers-no-code' }, { press: 'import.read' }],
+        },
+        sentence: { en: 'A file without the code column', vi: 'Tệp không có cột mã' },
+        question: 'Does this say what to fix?',
+      },
+      {
+        id: 'lists-6-products',
+        number: 6,
+        path: 'main',
+        scene: { path: '/products' },
+        sentence: {
+          en: 'The product list: code, name, unit, price',
+          vi: 'Danh sách sản phẩm: mã, tên, đơn vị tính, giá',
+        },
+        question: 'Is this what the office needs to see about its products at a glance?',
+      },
+      {
+        id: 'lists-7-products-preview',
+        number: 7,
+        path: 'main',
+        scene: {
+          path: '/products/import',
+          steps: [...PRODUCTS_CHOSEN, { press: 'import.read' }],
+        },
+        sentence: {
+          en: 'Before saving: a price that is no price, refused',
+          vi: 'Trước khi lưu: một giá không phải là giá, bị từ chối',
+        },
+        question: 'Would the admin know which products will be added, and what to fix in a price?',
+      },
+      {
+        id: 'lists-8-products-added',
+        number: 8,
+        path: 'main',
+        scene: {
+          path: '/products/import',
+          steps: [
+            ...PRODUCTS_CHOSEN,
+            { press: 'import.read' },
+            { press: 'lists.products.add', with: { count: '3' } },
+          ],
+        },
+        sentence: {
+          en: 'Imported: the products added',
+          vi: 'Đã nhập: những sản phẩm được thêm',
+        },
+        question: 'Would the admin know they are now in the list?',
       },
     ],
   },

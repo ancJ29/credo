@@ -163,7 +163,7 @@ describe('the report', () => {
     expect('mock' in drawn).toBe(false);
     expect(drawn.scene!.steps!.at(-1)).toEqual({ press: 'addPerson.submit' });
     expect(drawn.languages.en.words).toEqual(['text: staff-3-added en']);
-    expect(report.tally.waiting).toBe(102);
+    expect(report.tally.waiting).toBe(118);
   });
 
   it('waits for a reader that answers later, as a scene’s does', async () => {

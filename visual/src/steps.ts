@@ -1,4 +1,5 @@
 import { computeAccessibleName } from 'dom-accessibility-api';
+import type { DemoFile } from '@credo/ui/import-demo';
 import type { Step } from './walks';
 
 /** What a scene waits for, in ms: the longest for a step's element, how long the page must stand
@@ -136,8 +137,7 @@ export async function runSteps(
   steps: readonly Step[],
   dictionary: unknown,
   limits: Limits = LIMITS,
-  files: (which: 'import' | 'import-no-name') => Promise<File> = () =>
-    Promise.reject(new Error('no file to attach')),
+  files: (which: DemoFile) => Promise<File> = () => Promise.reject(new Error('no file to attach')),
 ) {
   await stillPage(body, limits);
   for (const [index, step] of steps.entries()) {
