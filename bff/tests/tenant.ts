@@ -20,6 +20,18 @@ export const ROOT = { name: 'root', password: 'correct horse battery' };
 export const CODE = 'acme-co';
 export const OPERATOR = { name: 'operator', password: 'an operator password' };
 
+/** A password's scrypt hash, made once for each password in the process: a test's setup then spends
+ * its time on the routes, not on hashing the same few passwords again. */
+const hashes = new Map<string, Promise<string>>();
+const hashed = (password: string) => {
+  let hash = hashes.get(password);
+  if (!hash) {
+    hash = hashPassword(password);
+    hashes.set(password, hash);
+  }
+  return hash;
+};
+
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** A clock the test moves, started on a fixed day. */
@@ -39,7 +51,7 @@ export async function seedUser(
   user: { name: string; password: string; root: boolean },
 ) {
   const stored: StoredUser = {
-    passwordHash: await hashPassword(user.password),
+    passwordHash: await hashed(user.password),
     root: user.root,
     employeeId: null,
     passwordAt: 0,
@@ -67,7 +79,7 @@ export async function seedEmployee(
   };
   const keys = recordKeys.tenant(tenantId);
   const stored: StoredUser = {
-    passwordHash: password === null ? null : await hashPassword(password),
+    passwordHash: password === null ? null : await hashed(password),
     root: false,
     employeeId: employee.id,
     passwordAt: 0,

@@ -56,18 +56,19 @@ describe('Row 1: the permissions to see orders, to make and send them, and to de
 
   it('lets a person who may deliver, and no more, do none of it: they are only offered in Confirm', async () => {
     const w = await ordersTenant(cs);
+    const driver = await w.t.staff('DRV-3', { department: { 'deliveries.canDeliver': true } });
 
     const replies = await Promise.all([
-      w.driverOne.call.get(orderRoutes.list(DAY, DAY)),
-      w.driverOne.call.get(deliveryRoutes.list(DAY)),
-      w.driverOne.call.get(ROUTES.customers),
-      w.driverOne.call.send('POST', ROUTES.orders, w.body()),
+      driver.call.get(orderRoutes.list(DAY, DAY)),
+      driver.call.get(deliveryRoutes.list(DAY)),
+      driver.call.get(ROUTES.customers),
+      driver.call.send('POST', ROUTES.orders, w.body()),
       w.someone.call.get(orderRoutes.list(DAY, DAY)),
     ]);
     const offered = driverListReplySchema.parse((await w.office.call.get(ROUTES.drivers)).json());
 
     expect(replies.map((reply) => reply.statusCode)).toEqual([403, 403, 403, 403, 403]);
-    expect(offered.drivers.map((driver) => driver.code)).toEqual(['DRV-1', 'DRV-2']);
+    expect(offered.drivers.map((driver) => driver.code)).toEqual(['DRV-1', 'DRV-2', 'DRV-3']);
   });
 
   it('keeps the two imports the root’s alone, whatever orders a person may do', async () => {

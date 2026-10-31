@@ -40,8 +40,18 @@ export async function ordersTenant(
     department: { 'orders.canView': true, 'orders.canEdit': true },
   });
   const viewer = await t.staff('VIEWER', { own: { 'orders.canView': true } });
-  const driverOne = await t.staff('DRV-1', { department: { 'deliveries.canDeliver': true } });
-  const driverTwo = await t.staff('DRV-2', { department: { 'deliveries.canDeliver': true } });
+  const driverOne = await t.staff(
+    'DRV-1',
+    { department: { 'deliveries.canDeliver': true } },
+    {},
+    { signedIn: false },
+  );
+  const driverTwo = await t.staff(
+    'DRV-2',
+    { department: { 'deliveries.canDeliver': true } },
+    {},
+    { signedIn: false },
+  );
   const someone = await t.staff('NOBODY');
 
   const ids = {
