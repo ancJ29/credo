@@ -1,10 +1,8 @@
 # Slice 2: an order, sent to a driver
 
-**Where it stands — 2026-10-31 15:05 +07:** steps 1 to 3 done. Step 4's code is in and its whole check
-is green (`logs/20261031-1459-orders-delivery-check.log`, exit 0); its last clause is not met as drafted:
-the walks page reads 20 waiting and **26** asked again, not 4 (13 screens, below). **Next:** the human
-answers whether the 26 are asked again as they are (step 4's last clause), then the preview (step 5),
-which the machine only prepares.
+**Where it stands — 2026-10-31 15:12 +07:** steps 1 to 5 done. The human answered yes to all 62 of the
+preview's lines (the 20 new, the 26 asked again, `admin-lists`'s 16); `pnpm report` reads 0 waiting,
+0 asked again, 0 no, 138 yes. **Next:** step 6, the BFF at the gate.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's second demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 2; part 6, amended 10-31 on the human's four missing pieces; Decides
@@ -210,7 +208,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   order picks from its lists and its words), ¼ hour. Done when: `main` merged in, its conflicts named;
   `pnpm install --offline` exit 0. *Evidence:* `main`@`983d454` merged at `0d736db`, no conflict (the
   branch held only this plan); `pnpm install --offline --frozen-lockfile` read "Done in 2.4s", exit 0.
-- [ ] **4. The pages on the fake.** Who: 🤖, after step 3, about a day. The wire above in `shared/`;
+- [x] **4. The pages on the fake.** Who: 🤖, after step 3, about a day. The wire above in `shared/`;
   in `ui/`: the orders list, the order's form and page with its confirm and cancel, the requests by
   driver, a request's page, the fake's calls, the menu, the words in vi and en; piece 1's walk to its
   Settings by the menu; the 10 screens in `visual/src/walks.ts` and `walk/specs/orders.spec.ts`, its
@@ -226,10 +224,14 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   that draws the permission editors changes its words by three rows (`setup-2`, `staff-4`, `staff-6`,
   `staff-7`, `staff-10`, `staff-11`, `staff-13`, `staff-15`, `staff-17`, `staff-18`), and `office-1-menu`
   draws the menu, now five pages for the office's manager. *Price:* 22 more answers than drafted; the
-  words are the same but for those rows, and a yes is held to the words.
-- [ ] **5. The human's preview.** Who: 👤, about 25 minutes, after step 4: the 12 screens on the walks
+  words are the same but for those rows, and a yes is held to the words. *Evidence of the last
+  clause:* the human accepted the 26 asked again as they are (step 5's answers below).
+- [x] **5. The human's preview.** Who: 👤, about 25 minutes, after step 4: the 12 screens on the walks
   page, or on `pnpm fake` at `/orders`. Done when: each answered yes or no; a no becomes a case here
-  and its fix lands before step 6. **Then stop.**
+  and its fix lands before step 6. **Then stop.** *Evidence:* the human, 2026-10-31 15:0x, on the
+  preview of build `orders-delivery`@`ba120e1c3`: "yes to all"; the block of 62 lines went in by
+  `pnpm answers` ("62 written to answers.json, 0 refused"); `pnpm report` then read "0 waiting, 0 asked
+  again, 0 no, 138 yes".
 - [ ] **6. The BFF, at the gate.** Who: 🤖, after step 5 (the contract as the preview left it), about
   ¾ day: the routes in `bff/src/orders.ts`, the lists opened to `orders.canView`, the stack's generator
   writing the data set's week at its times. c-storage does not change, so `make check` is not run.
