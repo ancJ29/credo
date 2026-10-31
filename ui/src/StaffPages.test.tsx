@@ -5,6 +5,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { openApp, person, type Spied } from '../tests/open';
 import { ApiError, type Api } from './api';
 
+/** One user for the file, with no wait on the event loop between the actions it makes: the default
+ * `delay: 0` hands control back to the loop after every key and click, which a loaded machine
+ * stretches; the events themselves, and what the page does with them, are the same. */
+const user = userEvent.setup({ delay: null });
 /** A row of the list, by the person's name. */
 const rowOf = async (name: string) => {
   const rows = (await screen.findAllByText(name)).flatMap((cell) => cell.closest('tr') ?? []);
@@ -39,7 +43,7 @@ describe('the staff list', () => {
     ]);
     expect(screen.queryByText('Hoàng Gia Huy')).toBeNull();
 
-    await userEvent.click(screen.getByLabelText('Show people who left'));
+    await user.click(screen.getByLabelText('Show people who left'));
 
     const left = await rowOf('Hoàng Gia Huy');
     expect(within(left).getByText('Left')).toBeTruthy();
@@ -101,7 +105,7 @@ describe('the staff list', () => {
   it('Only the root imports staff: the list shows it the button to the import page, and shows it to no one else, whatever staff rights they hold', async () => {
     // the root: the button leads to the import page
     const root = openApp('/staff');
-    await userEvent.click(await screen.findByRole('link', { name: 'Import from Excel' }));
+    await user.click(await screen.findByRole('link', { name: 'Import from Excel' }));
     expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
       'Add staff from Excel',
     );
@@ -120,7 +124,7 @@ describe('the staff list', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
     await waitFor(() => expect(api.me).toHaveBeenCalledTimes(2));
     // what they may do is as it was, so the page stays theirs and offers another try
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await rowOf('Nguyễn Thị Lan')).toBeTruthy();
   });
 });
@@ -163,9 +167,9 @@ describe('a 403 or a 401 on a page', () => {
         });
       },
     });
-    await userEvent.type(await screen.findByLabelText(/^Company name/), 'x');
+    await user.type(await screen.findByLabelText(/^Company name/), 'x');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' }),
@@ -224,19 +228,19 @@ describe('a page left before it is read', () => {
 
 describe('a person added', () => {
   const fill = async (name: string, code: string, phone = '', note = '') => {
-    await userEvent.type(await screen.findByLabelText(/^Name/), name);
-    await userEvent.type(screen.getByLabelText(/^Code/), code);
-    if (phone) await userEvent.type(screen.getByLabelText('Phone'), phone);
-    if (note) await userEvent.type(screen.getByLabelText('Note'), note);
+    await user.type(await screen.findByLabelText(/^Name/), name);
+    await user.type(screen.getByLabelText(/^Code/), code);
+    if (phone) await user.type(screen.getByLabelText('Phone'), phone);
+    if (note) await user.type(screen.getByLabelText('Note'), note);
   };
 
   it('The root adds a person with a name, a code, a phone, a department, a position and a note, and is then shown their sign-in name and a first password once, to copy and hand over; the password is never shown again and is kept only as its hash', async () => {
     const { api } = openApp('/staff/new');
     await fill('Mai Linh', 'emp-0100', '0909', 'Mới vào');
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'Kho');
-    await userEvent.selectOptions(screen.getByLabelText('Position'), 'Nhân viên');
+    await user.selectOptions(screen.getByLabelText('Department'), 'Kho');
+    await user.selectOptions(screen.getByLabelText('Position'), 'Nhân viên');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Person added' })).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>('Sign-in name').value).toBe('EMP-0100');
@@ -251,14 +255,14 @@ describe('a person added', () => {
     });
 
     // another person: the form is empty again and the password is on no screen
-    await userEvent.click(screen.getByRole('button', { name: 'Add another person' }));
+    await user.click(screen.getByRole('button', { name: 'Add another person' }));
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('');
     expect(document.body.textContent).not.toContain(shown);
     // their page: they are the root's, with a sign-in
-    await userEvent.type(screen.getByLabelText(/^Name/), 'Người khác');
-    await userEvent.type(screen.getByLabelText(/^Code/), 'EMP-0101');
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
-    await userEvent.click(await screen.findByRole('link', { name: 'Open their page' }));
+    await user.type(screen.getByLabelText(/^Name/), 'Người khác');
+    await user.type(screen.getByLabelText(/^Code/), 'EMP-0101');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(await screen.findByRole('link', { name: 'Open their page' }));
     expect(await screen.findByText('Signs in with the code EMP-0101 and a password.')).toBeTruthy();
   });
 
@@ -268,7 +272,7 @@ describe('a person added', () => {
     expect(screen.queryByLabelText('Department')).toBeNull();
     expect(screen.queryByLabelText('Position')).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
       await screen.findByText('Cannot sign in yet: the root has not given a password.'),
@@ -285,7 +289,7 @@ describe('a person added', () => {
     const { api } = openApp('/staff/new');
     await fill('Mai Linh', 'E');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(
       await screen.findByText('A code is 2 to 20 letters A to Z, digits or hyphens.'),
@@ -293,9 +297,9 @@ describe('a person added', () => {
     expect(api.addEmployee).not.toHaveBeenCalled();
 
     // a code that a person who left holds, typed in another case
-    await userEvent.clear(screen.getByLabelText(/^Code/));
-    await userEvent.type(screen.getByLabelText(/^Code/), 'emp-0008');
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.clear(screen.getByLabelText(/^Code/));
+    await user.type(screen.getByLabelText(/^Code/), 'emp-0008');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('already belongs to someone');
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Mai Linh');
@@ -307,7 +311,7 @@ describe('a person added', () => {
     const { api } = openApp('/staff/new');
     await fill('Mai Linh', '   ');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     await screen.findByRole('heading', { level: 2, name: 'Person added' });
     expect(vi.mocked(api.addEmployee).mock.calls[0]?.[0]).toEqual({
@@ -322,7 +326,7 @@ describe('a person added', () => {
     openApp('/staff/new', { cue: 'addEmployee:503' });
     await fill('Mai Linh', 'EMP-0100');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: 'Add' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('was not added');
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Mai Linh');
@@ -348,10 +352,10 @@ describe('a person’s page', () => {
     expect(screen.queryByText('Password', { selector: 'h3' })).toBeNull();
 
     const name = screen.getByLabelText(/^Name/);
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Trần Hùng');
-    await userEvent.clear(screen.getByLabelText('Phone'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.clear(name);
+    await user.type(name, 'Trần Hùng');
+    await user.clear(screen.getByLabelText('Phone'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     const saved = (await api.getEmployee(person('EMP-0002').id)).employee;
@@ -379,16 +383,16 @@ describe('a person’s page', () => {
   it('A save over someone else’s newer one is refused, what was typed is kept, and the page offers the newer details', async () => {
     const { api } = open('EMP-0002', { cue: 'saveEmployee:409' });
     const name = await screen.findByLabelText(/^Name/);
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Tên mới');
+    await user.clear(name);
+    await user.type(name, 'Tên mới');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Someone saved newer details first',
     );
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Tên mới');
-    await userEvent.click(screen.getByRole('button', { name: 'Show the newer details' }));
+    await user.click(screen.getByRole('button', { name: 'Show the newer details' }));
     expect(await screen.findByDisplayValue('Trần Văn Hùng')).toBeTruthy();
     expect(api.getEmployee).toHaveBeenCalledTimes(2);
   });
@@ -396,10 +400,10 @@ describe('a person’s page', () => {
   it('A save that fails says so and keeps what was typed', async () => {
     open('EMP-0002', { cue: 'saveEmployee:503' });
     const name = await screen.findByLabelText(/^Name/);
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Tên mới');
+    await user.clear(name);
+    await user.type(name, 'Tên mới');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('were not saved');
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).value).toBe('Tên mới');
@@ -412,16 +416,16 @@ describe('a person’s page', () => {
       screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` });
     const needs = () => screen.queryAllByText('Needs “See the staff list”.');
     // the warehouse allows seeing, so an added right has what it needs
-    await userEvent.click(within(group('Add a person')).getByText('Allow'));
+    await user.click(within(group('Add a person')).getByText('Allow'));
     expect(needs()).toHaveLength(0);
 
-    await userEvent.click(within(group('See the staff list')).getByText('Refuse'));
+    await user.click(within(group('See the staff list')).getByText('Refuse'));
     expect(needs()).toHaveLength(1);
-    await userEvent.click(within(group('Add a person')).getByText('As the level above'));
+    await user.click(within(group('Add a person')).getByText('As the level above'));
     expect(needs()).toHaveLength(0);
-    await userEvent.click(within(group('Archive a person')).getByText('Allow'));
+    await user.click(within(group('Archive a person')).getByText('Allow'));
     expect(needs()).toHaveLength(1);
-    await userEvent.click(within(group('See the staff list')).getByText('As the level above'));
+    await user.click(within(group('See the staff list')).getByText('As the level above'));
     expect(needs()).toHaveLength(0);
   });
 
@@ -440,10 +444,10 @@ describe('a person’s page', () => {
       },
     });
     const name = await screen.findByLabelText(/^Name/);
-    await userEvent.clear(name);
-    await userEvent.type(name, 'Tên mới');
+    await user.clear(name);
+    await user.type(name, 'Tên mới');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
     expect((await screen.findByRole('alert')).textContent).toBe(
@@ -467,10 +471,10 @@ describe('a person’s page', () => {
     expect(screen.getAllByText('As the level above: Refused')).toHaveLength(4);
 
     // the person's own: allow archiving, which nothing above allows; allow seeing, which the department already does
-    await userEvent.click(within(group('Archive a person')).getByText('Allow'));
-    await userEvent.click(within(group('See the staff list')).getByText('Allow'));
+    await user.click(within(group('Archive a person')).getByText('Allow'));
+    await user.click(within(group('See the staff list')).getByText('Allow'));
     expect(screen.getAllByText('Custom')).toHaveLength(2);
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     // only what differs is stored
     expect(await screen.findByText('Saved.')).toBeTruthy();
@@ -486,19 +490,19 @@ describe('a person’s page', () => {
     await screen.findByRole('heading', { level: 2, name: 'Bùi Ngọc Anh' });
 
     // the office allows changing a person's details and the trainee position refuses it
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'Văn phòng');
-    await userEvent.selectOptions(screen.getByLabelText('Position'), 'Thực tập');
+    await user.selectOptions(screen.getByLabelText('Department'), 'Văn phòng');
+    await user.selectOptions(screen.getByLabelText('Position'), 'Thực tập');
 
     const label = 'Change a person’s name and details';
     const row = screen.getByText(label).parentElement as HTMLElement;
     expect(within(row).getByText('As the level above: Refused')).toBeTruthy();
     expect(screen.getAllByText('As the level above: Allowed')).toHaveLength(2);
-    await userEvent.click(
+    await user.click(
       within(screen.getByRole('radiogroup', { name: `Their own permissions: ${label}` })).getByText(
         'Allow',
       ),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     // what the levels above refuse, the person's Allow differs from, so it is stored
     expect(await screen.findByText('Saved.')).toBeTruthy();
@@ -511,10 +515,10 @@ describe('a person’s page', () => {
     const { api } = open('EMP-0004');
     await screen.findByRole('heading', { level: 2, name: 'Phạm Quốc Bảo' });
 
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'Văn phòng');
-    await userEvent.selectOptions(screen.getByLabelText('Position'), 'Quản lý');
-    await userEvent.type(screen.getByLabelText('Note'), 'Chuyển lên văn phòng.');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.selectOptions(screen.getByLabelText('Department'), 'Văn phòng');
+    await user.selectOptions(screen.getByLabelText('Position'), 'Quản lý');
+    await user.type(screen.getByLabelText('Note'), 'Chuyển lên văn phòng.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     const saved = (await api.getEmployee(person('EMP-0004').id)).employee;
@@ -525,8 +529,8 @@ describe('a person’s page', () => {
       personalPhone: '0903 222 004',
     });
     // a person put in no department has none
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'None');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.selectOptions(screen.getByLabelText('Department'), 'None');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(async () =>
       expect((await api.getEmployee(person('EMP-0004').id)).employee.department).toBeNull(),
     );
@@ -536,7 +540,7 @@ describe('a person’s page', () => {
     const { api } = open('EMP-0007');
     await screen.findByRole('heading', { level: 2, name: 'Bùi Ngọc Anh' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     expect(api.saveEmployee).toHaveBeenCalledWith(
@@ -548,22 +552,22 @@ describe('a person’s page', () => {
   it('The root gives a person a password, typed twice or made by the app, of at least 8 characters with a capital, a small letter, a digit and one of `@$!%*?&`; it is shown once, and it signs the person out on every device', async () => {
     const { api } = open('EMP-0007');
     await screen.findByText('Cannot sign in yet: the root has not given a password.');
-    const give = () => userEvent.click(screen.getByRole('button', { name: 'Give this password' }));
+    const give = () => user.click(screen.getByRole('button', { name: 'Give this password' }));
 
     // refused on the page before any call
-    await userEvent.type(screen.getByLabelText('New password'), 'weak');
+    await user.type(screen.getByLabelText('New password'), 'weak');
     await give();
     expect((await screen.findByRole('alert')).textContent).toContain('does not meet the rule');
-    await userEvent.clear(screen.getByLabelText('New password'));
-    await userEvent.type(screen.getByLabelText('New password'), 'Abcdef1!');
-    await userEvent.type(screen.getByLabelText('The new password again'), 'Abcdef1?');
+    await user.clear(screen.getByLabelText('New password'));
+    await user.type(screen.getByLabelText('New password'), 'Abcdef1!');
+    await user.type(screen.getByLabelText('The new password again'), 'Abcdef1?');
     await give();
     expect((await screen.findByRole('alert')).textContent).toContain('The two passwords differ');
     expect(api.setPassword).not.toHaveBeenCalled();
 
     // typed twice
-    await userEvent.clear(screen.getByLabelText('The new password again'));
-    await userEvent.type(screen.getByLabelText('The new password again'), 'Abcdef1!');
+    await user.clear(screen.getByLabelText('The new password again'));
+    await user.type(screen.getByLabelText('The new password again'), 'Abcdef1!');
     await give();
     expect(await screen.findByDisplayValue('Abcdef1!')).toBeTruthy();
     expect(api.setPassword).toHaveBeenCalledWith(person('EMP-0007').id, 'Abcdef1!');
@@ -572,7 +576,7 @@ describe('a person’s page', () => {
     expect(screen.getByLabelText<HTMLInputElement>('New password').value).toBe('');
 
     // made by the app
-    await userEvent.click(screen.getByRole('button', { name: 'Make one for me' }));
+    await user.click(screen.getByRole('button', { name: 'Make one for me' }));
     await waitFor(() =>
       expect(api.setPassword).toHaveBeenLastCalledWith(person('EMP-0007').id, null),
     );
@@ -586,7 +590,7 @@ describe('a person’s page', () => {
     open('EMP-0007', { cue: 'setPassword:503' });
     await screen.findByText('Cannot sign in yet: the root has not given a password.');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Make one for me' }));
+    await user.click(screen.getByRole('button', { name: 'Make one for me' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('The password was not set');
   });
@@ -596,11 +600,11 @@ describe('a person’s page', () => {
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
 
     // the check first: nothing is archived until it is answered
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
     expect(api.archiveEmployee).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Keep them' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
+    await user.click(screen.getByRole('button', { name: 'Keep them' }));
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
 
     expect(
       await screen.findByText('This person left. Their record and code are kept.'),
@@ -614,7 +618,7 @@ describe('a person’s page', () => {
       code: 'EMP-0006',
     });
     // and the list hides them
-    await userEvent.click(screen.getByRole('link', { name: 'Back to the staff list' }));
+    await user.click(screen.getByRole('link', { name: 'Back to the staff list' }));
     await rowOf('Nguyễn Thị Lan');
     expect(screen.queryByText('Đặng Hoài Nam')).toBeNull();
   });
@@ -622,8 +626,8 @@ describe('a person’s page', () => {
   it('An archive that fails says so, and one over a newer record is refused', async () => {
     const failing = open('EMP-0006', { cue: 'archiveEmployee:503' });
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       'were not archived'.replace('were', 'They were'),
     );
@@ -631,8 +635,8 @@ describe('a person’s page', () => {
 
     open('EMP-0006', { cue: 'archiveEmployee:409' });
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
-    await userEvent.click(screen.getByRole('button', { name: 'Archive' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
+    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Someone saved newer details first',
     );

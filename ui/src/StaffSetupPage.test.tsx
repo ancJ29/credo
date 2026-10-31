@@ -6,6 +6,10 @@ import { vi } from 'vitest';
 import { openApp } from '../tests/open';
 import { ApiError } from './api';
 
+/** One user for the file, with no wait on the event loop between the actions it makes: the default
+ * `delay: 0` hands control back to the loop after every key and click, which a loaded machine
+ * stretches; the events themselves, and what the page does with them, are the same. */
+const user = userEvent.setup({ delay: null });
 /** The line under a permission that works only with seeing the staff list. */
 const NEEDS = 'Needs “See the staff list”.';
 
@@ -23,14 +27,14 @@ describe('the staff setup page', () => {
       await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
 
       // add one, rename one, remove one
-      await userEvent.click(screen.getByRole('button', { name: 'Add a department' }));
+      await user.click(screen.getByRole('button', { name: 'Add a department' }));
       const names = screen.getAllByRole('textbox', { name: /^Name/ });
-      await userEvent.type(names[3], 'Bếp');
+      await user.type(names[3], 'Bếp');
       const warehouse = screen.getByDisplayValue('Kho');
-      await userEvent.clear(warehouse);
-      await userEvent.type(warehouse, 'Kho hàng');
-      await userEvent.click(screen.getByRole('button', { name: 'Remove Giao hàng' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await user.clear(warehouse);
+      await user.type(warehouse, 'Kho hàng');
+      await user.click(screen.getByRole('button', { name: 'Remove Giao hàng' }));
+      await user.click(screen.getByRole('button', { name: 'Save' }));
 
       expect((await screen.findByText('Saved.')).textContent).toBe('Saved.');
       const saved = await api.getStaffSetup();
@@ -44,7 +48,7 @@ describe('the staff setup page', () => {
       expect(saved.setup.departments[0]?.id).toBe(DEMO_STAFF_SETUP.departments[0]?.id);
 
       // on the list: the rename follows each person, the removed one stays as it was saved
-      await userEvent.click(screen.getByRole('link', { name: 'Staff' }));
+      await user.click(screen.getByRole('link', { name: 'Staff' }));
       const warehouseStaff = (await screen.findByText('Phạm Quốc Bảo')).closest(
         'tr',
       ) as HTMLElement;
@@ -103,7 +107,7 @@ describe('the staff setup page', () => {
 
     // the office stops seeing: the two it still allows say so, the one it never allowed does not
     const office = within(paper('Văn phòng')).getAllByRole('checkbox');
-    await userEvent.click(office[0]);
+    await user.click(office[0]);
     expect(needs('Văn phòng')).toHaveLength(2);
     expect((office[1].closest('.mantine-Checkbox-root') as HTMLElement).textContent).toContain(
       NEEDS,
@@ -111,33 +115,33 @@ describe('the staff setup page', () => {
     expect((office[3].closest('.mantine-Checkbox-root') as HTMLElement).textContent).not.toContain(
       NEEDS,
     );
-    await userEvent.click(office[3]);
+    await user.click(office[3]);
     expect(needs('Văn phòng')).toHaveLength(3);
-    await userEvent.click(office[0]);
+    await user.click(office[0]);
     expect(needs('Văn phòng')).toHaveLength(0);
 
     // a position that refuses seeing and allows adding says so; one that leaves seeing to the
     // department above does not, since the page cannot know that department
     const staff = (label: string) =>
       within(paper('Nhân viên')).getByRole('radiogroup', { name: `Nhân viên: ${label}` });
-    await userEvent.click(within(staff('Add a person')).getByText('Allow'));
+    await user.click(within(staff('Add a person')).getByText('Allow'));
     expect(needs('Nhân viên')).toHaveLength(0);
-    await userEvent.click(within(staff('See the staff list')).getByText('Refuse'));
+    await user.click(within(staff('See the staff list')).getByText('Refuse'));
     expect(needs('Nhân viên')).toHaveLength(1);
-    await userEvent.click(within(staff('See the staff list')).getByText('As the level above'));
+    await user.click(within(staff('See the staff list')).getByText('As the level above'));
     expect(needs('Nhân viên')).toHaveLength(0);
   });
 
   it('A department that never said anything about seeing, and allows changing, says it needs seeing', async () => {
     openApp('/staff-setup');
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-    await userEvent.click(screen.getByRole('button', { name: 'Add a department' }));
+    await user.click(screen.getByRole('button', { name: 'Add a department' }));
     const fresh = screen.getAllByRole('textbox', { name: /^Name/ })[3];
     const paper = fresh.closest('.mantine-Paper-root') as HTMLElement;
     const boxes = within(paper).getAllByRole('checkbox');
     expect(within(paper).queryAllByText(NEEDS)).toHaveLength(0);
 
-    await userEvent.click(boxes[3]);
+    await user.click(boxes[3]);
 
     expect(within(paper).queryAllByText(NEEDS)).toHaveLength(1);
   });
@@ -146,16 +150,16 @@ describe('the staff setup page', () => {
     const { api } = openApp('/staff-setup', { cue: 'saveStaffSetup:409' });
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
     const warehouse = screen.getByDisplayValue('Kho');
-    await userEvent.clear(warehouse);
-    await userEvent.type(warehouse, 'Kho mới');
+    await user.clear(warehouse);
+    await user.type(warehouse, 'Kho mới');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Someone saved newer ones first',
     );
     expect(screen.getByDisplayValue('Kho mới')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Show the newer ones' }));
+    await user.click(screen.getByRole('button', { name: 'Show the newer ones' }));
     expect(await screen.findByDisplayValue('Kho')).toBeTruthy();
     expect(api.getStaffSetup).toHaveBeenCalledTimes(2);
   });
@@ -163,9 +167,9 @@ describe('the staff setup page', () => {
   it('A save that fails says so and keeps what was typed', async () => {
     openApp('/staff-setup', { cue: 'saveStaffSetup:503' });
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-    await userEvent.type(screen.getByDisplayValue('Kho'), ' 2');
+    await user.type(screen.getByDisplayValue('Kho'), ' 2');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('Nothing was saved');
     expect(screen.getByDisplayValue('Kho 2')).toBeTruthy();
@@ -179,19 +183,19 @@ describe('the staff setup page', () => {
 
     // the warehouse stops seeing and starts archiving; the delivery hands start seeing
     const warehouse = within(paper('Kho')).getAllByRole('checkbox');
-    await userEvent.click(warehouse[0]);
-    await userEvent.click(warehouse[3]);
-    await userEvent.click(within(paper('Giao hàng')).getAllByRole('checkbox')[0]);
+    await user.click(warehouse[0]);
+    await user.click(warehouse[3]);
+    await user.click(within(paper('Giao hàng')).getAllByRole('checkbox')[0]);
     // the staff position refuses archiving; the manager's allowance is left as the level above
     const staff = within(paper('Nhân viên')).getByRole('radiogroup', {
       name: 'Nhân viên: Archive a person',
     });
-    await userEvent.click(within(staff).getByText('Refuse'));
+    await user.click(within(staff).getByText('Refuse'));
     const manager = within(paper('Quản lý')).getByRole('radiogroup', {
       name: 'Quản lý: Archive a person',
     });
-    await userEvent.click(within(manager).getByText('As the level above'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(within(manager).getByText('As the level above'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     const { setup } = await api.getStaffSetup();
@@ -229,7 +233,7 @@ describe('the staff setup page', () => {
     });
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     const saved = vi.mocked(api.saveStaffSetup).mock.calls[0]?.[0];
@@ -249,11 +253,11 @@ describe('the staff setup page', () => {
     });
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
     for (const name of ['Quản lý', 'Nhân viên', 'Thực tập']) {
-      await userEvent.click(screen.getByRole('button', { name: `Remove ${name}` }));
+      await user.click(screen.getByRole('button', { name: `Remove ${name}` }));
     }
     expect(screen.getByText('None yet.')).toBeTruthy();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect((await screen.findByRole('alert')).textContent).toContain('refused as they are');
     expect(screen.getByText('None yet.')).toBeTruthy();

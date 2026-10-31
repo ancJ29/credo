@@ -175,6 +175,14 @@ named `SLOW` (a 20 s timeout, in this file and in `StaffSetupPage.test.tsx`) hol
 longer timeout is what qa.md rule 6 rejects, so they should be made cheap the same way and `SLOW` removed. The `SignIns.test.tsx`
 and `cli.test.ts` reds above were not looked at here, so the item stays open.
 
+Seen on GitHub (the push of `main`@`983d454`, 2026-10-31, ci run 41177806474): the same test and "Search finds a person by any word…"
+timed out at 5000 ms; the file took 58.7 s there against 40.7 s the day before. Cause: every `userEvent` call (and the search test's
+key-by-key typing) hands the event loop a turn after each key and click, which a loaded runner stretches. Fixed in branch
+`ci-timeouts`: the three Staff test files use one `userEvent.setup({ delay: null })`, and the search test and the two `SLOW` stories
+paste where they are not about keystrokes. Alone: the refusal test 1572 ms to about 730 ms, the search test 972 ms to under 300 ms,
+the two `SLOW` stories 2240 and 2291 ms to about 830 and 680 ms. `SLOW` stays until a run on GitHub shows them well under 5 s.
+Still open here: the `SignIns.test.tsx` and `cli.test.ts` reds. Item 23 (the scripts test) is not touched.
+
 ## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
 
 Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
