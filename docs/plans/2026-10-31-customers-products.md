@@ -1,8 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 13:21 +07:** steps 1 to 7 done, step 8 done but for one run: the lists and imports on the fake, the
-8 screens answered (16 yes), the BFF routes and the stack's generator at the gate, the review's findings
-fixed or parked, `main`@`b4e08ee` taken in. **Next:** one `pnpm demo` run's log (step 8's last clause), then the recap and the merge (step 9).
+**Where it stands — 2026-10-31 13:36 +07:** steps 1 to 8 done, the recap written
+([recap](../recaps/2026-10-31-customers-products.md)). **Next:** the merge into `main` (the
+orchestrator's) and the push (the human's); then step 10, ridge on a fresh mapped code.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -294,7 +294,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   twice, bases), `admin-lists` 48 (the same three); no `moved`, `new` or `red` line anywhere. The 16
   `admin-lists` answers are unchanged (the screens' words did not move), and the bases are committed
   (`e0a9849`). No walked screen holds an open "no".
-- [ ] **8. The seed's block.** Who: 🤖, after step 7 (the seed changes `scripts/`, which the run
+- [x] **8. The seed's block.** Who: 🤖, after step 7 (the seed changes `scripts/`, which the run
   reads), about ¼ day: each scenario's customers and products, a block in `scenarios.ts` and a
   generator beside `scripts/src/demo/staff.ts`, written at the first fill; and the demo's files for
   step 2 (8 new rows, one code already in the copy, one refused; S1 and S2, vi and en), which
@@ -315,9 +315,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `== exit 0`, 13:12:40 to 13:20:30, no warning; every package at 100 % (shared 101 tests, bff 322, ui
   413, scripts 203, visual 386). The check before it (`…-1304-…-step8.log`, 13:04:32 to 13:12:17) was
   red on knip alone, two exports nothing else called (`digits`, `FileRow`), fixed, not rerun to green by
-  chance. **Not done, so the step stays unticked:** a `pnpm demo` run's log reading each copy's two
-  counts (it starts a stack, and the Mac was held for the human's timed walk); the applier's own tests
-  on the real c-storage read the 30, 80 and 251 counts meanwhile.
+  chance. **The `pnpm demo` run**, `logs/20261031-1335-customers-products-demo-counts.log`, 9 lines, last
+  line `== exit 0` (`CREDO_DEMO_PARTNER=p3 pnpm demo -- node <a one-off script that signs in as each
+  copy's root and counts>`): `vat-lieu-quang-tin-dat-3 S1: customers 30, products 62 (not stocked 2)`,
+  `phan-phoi-loc-vuong-hai-3 S2: customers 80, products 251 (not stocked 1)`.
   **The demo's files**, for the human to run later from the worktree's root:
 
   ```
@@ -330,8 +331,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   copy already holds, one refused (a customer with no name, a product whose price is no price); the
   import page reads each as 8 that hold, 1 already there, 1 refused (`scripts/src/demo-files.test.ts`).
 
-- [ ] **9. The recap and the merge.** Who: 🤖 the half-page recap, after step 8; the orchestrator
-  merges into `main` on the human's word. Done when: the recap is committed.
+- [x] **9. The recap and the merge.** Who: 🤖 the half-page recap, after step 8; the orchestrator
+  merges into `main` on the human's word. Done when: the recap is committed. *Evidence:* the recap
+  [`docs/recaps/2026-10-31-customers-products.md`](../recaps/2026-10-31-customers-products.md), in
+  the commit that follows this line's; the merge is the orchestrator's and waits for the human's word.
 - [ ] **10. ridge, on a fresh demo copy.** Who: 👤, about 15 minutes, after the push of the `main`
   that holds it and CI's deploy green: a fresh copy of an S1 and an S2 client made at `/operator`,
   filled by the seed (`ops/seed.sh ridge`, or the morning's run), then demo step 2 as its root with
