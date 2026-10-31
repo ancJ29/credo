@@ -215,3 +215,19 @@ matched by its relative `src/main.ts` only when `lsof` puts its working folder u
 refuses on it by name. A Ctrl-C during the first step's listings ends as a refusal (exit 2), not 130;
 nothing was acted on. *Trigger:* a refusal naming a stray the script did not stop, or a log with
 `stopped` lines that look wrong.
+
+## 34. Three technical rows of the lists are held weakly: the list's 500 log, the write's precondition, the fake's code order — the machine; *parked* until the lists are next touched (the customers and products plan, step 6, 2026-10-31)
+
+The review of the lists found three technical rows (the case table's 13, 14 and 19) whose test passes
+with the behaviour broken. Under the demo's ceremony (Decide 46) only the High and the Medium findings
+are fixed; these stay.
+- **Row 14:** the 500 on a short or unparsable list is asserted by status and by the key being absent
+  from the body, but the log line is never read. Capture the logger as
+  `bff/src/employees.route.test.ts#L1132` does and assert it names the kind and never the key.
+- **Row 13:** the record is written with `If-None-Match: *`, but no test would fail if the precondition
+  went. Record the `ifTag` the wrapped client receives in the "adds each row" test of
+  `bff/src/lists.route.test.ts` and assert it is `null`.
+- **Row 19:** the fake lists in code order, but no test imports a code that sorts first. Import one at
+  `ui/src/fake.test.tsx#L594` and assert the list starts with it.
+
+*Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
