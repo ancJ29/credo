@@ -1,7 +1,10 @@
 # Slice 2: an order, sent to a driver
 
-**Where it stands — 2026-10-31 12:54 +07:** step 1 done: this plan. **Next:** the human's read of the
-👤 rows (step 2), then step 3 once slice 1 (customers and products) is in `main`.
+**Where it stands — 2026-10-31 15:05 +07:** steps 1 to 3 done. Step 4's code is in and its whole check
+is green (`logs/20261031-1459-orders-delivery-check.log`, exit 0); its last clause is not met as drafted:
+the walks page reads 20 waiting and **26** asked again, not 4 (13 screens, below). **Next:** the human
+answers whether the 26 are asked again as they are (step 4's last clause), then the preview (step 5),
+which the machine only prepares.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's second demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 2; part 6, amended 10-31 on the human's four missing pieces; Decides
@@ -214,7 +217,16 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   projects `orders-fake` and `orders-full`, and the row `office-orders` in `walk/run.sh`'s `WALKS`,
   seen red first in `scripts/src/walk-run.test.ts`. Done when: the UI half of rows 1 to 12 each seen
   red once; `pnpm check` exit 0 at 100 %, no warning; `pnpm report` reads 20 waiting and 4 asked
-  again (`setup-1`, `staff-5`), none elsewhere.
+  again (`setup-1`, `staff-5`), none elsewhere. *Where it stopped:* everything but the last clause.
+  The 12 business rows' UI halves were each seen red once from their assertion (`logs/*-orders-delivery-red-row*.log`);
+  `pnpm check` read exit 0 at 100 % in every package, no warning, on the sixth run (the first five
+  were red: two bff expectations that spell out the catalogue, two budgets of the answers tests that
+  draw every screen, and one run of the ui's tests under another lane's load, reported not passed).
+  `pnpm report` reads **20 waiting and 26 asked again**: besides `setup-1` and `staff-5`, every screen
+  that draws the permission editors changes its words by three rows (`setup-2`, `staff-4`, `staff-6`,
+  `staff-7`, `staff-10`, `staff-11`, `staff-13`, `staff-15`, `staff-17`, `staff-18`), and `office-1-menu`
+  draws the menu, now five pages for the office's manager. *Price:* 22 more answers than drafted; the
+  words are the same but for those rows, and a yes is held to the words.
 - [ ] **5. The human's preview.** Who: 👤, about 25 minutes, after step 4: the 12 screens on the walks
   page, or on `pnpm fake` at `/orders`. Done when: each answered yes or no; a no becomes a case here
   and its fix lands before step 6. **Then stop.**
