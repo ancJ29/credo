@@ -1,7 +1,7 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 07:50 +07:** planned (step 1). **Next:** the human's read of the 👤 rows
-(step 2), then both lists and both imports on the fake (step 3). Nothing is built yet.
+**Where it stands — 2026-10-31 08:36 +07:** planned (step 1) and the 👤 rows read, all yes (step 2).
+**Next:** both lists and both imports on the fake (step 3). Nothing is built yet.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -166,8 +166,9 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   clean, the diff naming no person. *Evidence:* this file's commit (`git log -- <this file>`); before
   it, the path grep of [documentation](../conventions/documentation.md#nothing-machine-local-or-personal-in-a-committed-file)
   found nothing in it, and its diff names no person.
-- [ ] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no a row. Done when:
-  each 👤 row kept or corrected here. **Then stop.**
+- [x] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no a row. Done when:
+  each 👤 row kept or corrected here. **Then stop.** *Evidence:* 2026-10-31 08:3x, the human, to the
+  12 rows (1 to 12) put as yes-or-no questions: "all yes". Every 👤 row stands as written.
 - [ ] **3. Both lists and both imports, on the fake.** Who: 🤖, after step 2 (the rows it builds),
   about ¾ day. In `shared/`: the wire above, the keys, the data set's lists and files. In `ui/`: the
   two list pages, the one import page, the fake's four calls, the menu's two pages, the words in vi and
