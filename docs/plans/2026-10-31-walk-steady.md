@@ -1,7 +1,7 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 09:12 +07:** steps 1 to 7 done: the probe read (`--disable-partial-raster`
-is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: the human's step 8, prepared.
+**Where it stands — 2026-10-31 10:37 +07:** steps 1 to 7 done, step 8's first run green and its bases committed: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`, the capture in `walk/`, the script `walk/run.sh`. Next: step 8's second run, no flags.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -317,6 +317,14 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   `== verdict: green` and `== done`, exit 0; the fake-to-stack and stack-to-stack counts read `0 moved`,
   the bases comparison lists the moved pictures `(named)` and the new ones. A red names the comparison
   and its raw pixels: if full-1 to full-2 or fake to full-1 moves, the fix is wrong ([the fixes](#the-fixes)).
+  *First run, 10-31 10:23:10 to 10:35:21 (12m11s), unticked until the second reads:* log
+  `$ROOT_DIR/logs/20261031-1023-walk-piece-1-piece-2-operator.log` (456 lines), ending
+  `== verdict: green: 8 comparisons, every raw count as asked` and `== done`. Its comparison lines:
+  fake to full-1: piece 2 and the operator, 198 and 54 pictures, 0 moved; full-1 to full-2: piece 1 (54),
+  piece 2 (198) and the operator (54), 0 moved; full-1 to the bases: piece 1 24 of 54 moved, piece 2 106
+  of 198, the operator 24 of 54, none new, none without a counterpart, all named by `--moved all`. So the
+  fix holds on the first run: three takes of every picture agree pixel for pixel. The 154 moved bases
+  are committed (`5353d42`); `git status` was clean after. Next: the second run, no flags.
 - [ ] **9. The close.** Who: 🤖, 30 minutes. Done when: items 25 and 32 deleted from the log; the
   recap written (what shipped, the review's findings, what was rejected); this plan's "Where it
   stands" rewritten; the stop tells the orchestrator what the console's step 9 takes (below).
