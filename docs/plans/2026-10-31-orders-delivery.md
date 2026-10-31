@@ -1,8 +1,11 @@
 # Slice 2: an order, sent to a driver
 
-**Where it stands — 2026-10-31 15:12 +07:** steps 1 to 5 done. The human answered yes to all 62 of the
-preview's lines (the 20 new, the 26 asked again, `admin-lists`'s 16); `pnpm report` reads 0 waiting,
-0 asked again, 0 no, 138 yes. **Next:** step 6, the BFF at the gate.
+**Where it stands — 2026-10-31 17:58 +07:** steps 1 to 5 done; step 6 built, not ticked. The BFF
+(`bff/src/orders.ts`), the two lists opened to `orders.canView` and the generator's week are in, the
+12 business rows seen red once. The last whole check (`logs/20261031-1647-orders-delivery-check-bff-4.log`)
+read every package green at 100 % and ended `== exit 1` on one knip item (an unused export), removed
+since; knip alone then read exit 0 (`logs/20261031-1758-orders-delivery-knip.log`). No single
+`pnpm check` has read exit 0 on this tree, so step 6 waits for that. **Next:** the review (step 7).
 
 > **Drafted** 2026-10-31 by the machine, for lane A's second demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 2; part 6, amended 10-31 on the human's four missing pieces; Decides
@@ -236,6 +239,15 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   ¾ day: the routes in `bff/src/orders.ts`, the lists opened to `orders.canView`, the stack's generator
   writing the data set's week at its times. c-storage does not change, so `make check` is not run.
   Done when: the BFF half of rows 1 to 12 each seen red once; `pnpm check` exit 0 at 100 %, no warning.
+  *Where it stopped:* everything but one clean `pnpm check`. Rows 1 to 12 were seen red together
+  from their assertions before `bff/src/orders.ts` existed (`logs/20261031-1517-orders-delivery-red-bff-rows.log`:
+  22 of 23 failed; the one that passed holds that the imports stay the root's, true before). Four
+  whole checks: the first red under a load of 50 to 70 from other lanes (worker timeouts, a SIGKILL);
+  the second red on 14 timeouts of 5 s in the orders route tests, made cheap at the cause (hashes made
+  once a password, drivers not signed in: 40 tests from 14 s to 7.5 s); the third green in every
+  package (shared 111, bff 362, ui 468, scripts 205, visual 389 tests, 100 % each) and red on knip's
+  unused `OrdersTenant` export, removed. The ui's own tests failed in the second run under load
+  and passed in the third, reported as a red, not as a pass.
 - [ ] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 4 and 6 with the case table, about ¼ day with
   its fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its

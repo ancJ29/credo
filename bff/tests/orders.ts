@@ -131,4 +131,3 @@ export async function ordersTenant(
     asDriver,
   };
 }
-export type OrdersTenant = Awaited<ReturnType<typeof ordersTenant>>;
