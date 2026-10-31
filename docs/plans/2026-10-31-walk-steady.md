@@ -1,7 +1,8 @@
 # The walk made steady, and one run script for every walk
 
-**Where it stands — 2026-10-31 08:29 +07:** the probe is read (step 2): `--disable-partial-raster` is
-the fix. Next: the human's yes to rule 7's new text (step 3), asked; the code steps 4 to 6 follow.
+**Where it stands — 2026-10-31 08:35 +07:** steps 1 to 4 done: the probe read (`--disable-partial-raster`
+is the fix), rule 7's text in `qa.md`, the reader and the strays' choice in `scripts/`. Next: step 5, the
+capture in `walk/`.
 
 > **Drafted** 2026-10-31 by the machine: lane B's first piece of the road to 11-04, its fixes two
 > and three (the pictures made steady, with the pixel piece of the human's Decide 30 of 10-30, "a
@@ -247,10 +248,17 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   dated, here; then `qa.md`'s rule 7 and its line at a glance in one commit, with the stamp.
   *Evidence:* the human said yes to the text above on 2026-10-31 (08:3x, "all yes"); `qa.md` rule 7,
   its line at a glance and the header stamp changed in one commit.
-- [ ] **4. The reader and the strays' choice.** Who: 🤖, about 2 hours, needs nothing above. Done
+- [x] **4. The reader and the strays' choice.** Who: 🤖, about 2 hours, needs nothing above. Done
   when: cases 1 to 7 each seen red from its assertion, `scripts/` green at 100 %; the reader on
   `$ROOT_DIR/walks/full-run-operator-2026-10-30-184201-66fa27c/` reads `fake/` against
   `bases-before/` as 6 of 54, 10 pixels each, shade 1.
+  *Evidence:* `scripts/src/pixels.ts` (PNG reader, raw compare), `strays.ts` (the choice from a `ps`
+  listing), `walks.ts` (`compare` and `strays`, the commands `walk/run.sh` calls, entry
+  `walks-main.ts`); cases 1 to 7 each seen red from their assertion before the code (a stub first), and
+  cases 1 and 6 broken once by hand (the zero test, the root test, the self test) and red; coverage of
+  the three files 100 %. The reader on `fake/` against `bases-before/` of the 10-30 operator run read
+  `54 pictures, 6 moved`, each `10 px, shade 1` (op-3-made en 768, vi 1280, vi 768; op-4-code-taken
+  en and vi 1280; op-9-make-failed vi 1280).
 - [ ] **5. The capture.** Who: 🤖, after steps 2 and 3, about 1 hour 30. Done when: `walk/` as
   [the fixes](#the-fixes) say, with step 2's variant; each mask names its unit test or is gone;
   the walk's typecheck and lint green; Playwright lists each project's tests;

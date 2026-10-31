@@ -26,7 +26,12 @@ export default defineConfig({
       // elsewhere: ridge-main.ts only binds runRidge to the process and to fd 3, the terminal ops/
       // operator.sh hands on. ops/test.sh runs ops/operator.sh whole under a pseudo-terminal and
       // reads the password on it and nowhere else; runRidge is tested in src/ridge.test.ts.
+      //
+      // elsewhere: walks-main.ts only reads stdin and binds src/walks.ts's walksCommand to the
+      // process; src/walks.test.ts runs walksCommand with the same arguments, and walk/run.sh's
+      // test (src/walk-run.test.ts) runs the entry as a process.
       exclude: [
+        'src/walks-main.ts',
         'src/**/*.test.ts',
         'src/main.ts',
         'src/fake-main.ts',
