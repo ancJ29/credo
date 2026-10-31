@@ -309,10 +309,14 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   turns it red `[FIXED]`. The reader's forward filter in the test is the author's own
   `[REJECTED]`: the reviewer's pngjs run covers it once; Chromium's own encoder cannot run here.
 - [ ] **8. Two runs back to back.** Who: 👤 in the human's terminal, about 40 minutes (15 to 20 a run), then 🤖. Run
-  `bash walk/run.sh piece-1 piece-2 operator --moved all --write` (every base taken again by the new
-  capture); the machine commits the bases; then `bash walk/run.sh piece-1 piece-2 operator`. Done
-  when: both verdicts green, every raw count of the second 0, `git status` clean after it, both logs
-  read whole.
+  `bash walk/run.sh piece-1 piece-2 operator --moved all --write` from the worktree's root (every base
+  taken again by the new capture); the machine reads its log whole and commits the bases; then
+  `bash walk/run.sh piece-1 piece-2 operator`. Done when: both verdicts green, every raw count of the
+  second 0, `git status` clean after it, both logs read whole. What the first run ends with: `== 8/8`,
+  one line a comparison (fake to full-1, full-1 to full-2, full-1 to the bases, each walk), then
+  `== verdict: green` and `== done`, exit 0; the fake-to-stack and stack-to-stack counts read `0 moved`,
+  the bases comparison lists the moved pictures `(named)` and the new ones. A red names the comparison
+  and its raw pixels: if full-1 to full-2 or fake to full-1 moves, the fix is wrong ([the fixes](#the-fixes)).
 - [ ] **9. The close.** Who: 🤖, 30 minutes. Done when: items 25 and 32 deleted from the log; the
   recap written (what shipped, the review's findings, what was rejected); this plan's "Where it
   stands" rewritten; the stop tells the orchestrator what the console's step 9 takes (below).
