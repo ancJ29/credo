@@ -1,8 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 12:25 +07:** steps 1 to 6 done: the lists and imports on the fake, the
+**Where it stands — 2026-10-31 12:41 +07:** steps 1 to 7 done: the lists and imports on the fake, the
 8 screens answered (16 yes), the BFF routes and the stack's generator at the gate, the review's findings
-fixed or parked, `main`@`b4e08ee` taken in. **Next:** the human's second full run (step 7); the first ran green and its bases are committed.
+fixed or parked, `main`@`b4e08ee` taken in. **Next:** the seed's block (step 8).
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -246,7 +246,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `logs/20261031-1201-customers-products-whole-check-step6.log`, 133 lines, last line `== exit 0`, no
   warning, 12:01:08 to 12:08:53; every package at 100 % (shared 101 tests, bff 322, ui 411, scripts 188,
   visual 386).
-- [ ] **7. The human's full run.** Who: 👤, about 20 minutes, by lane B's shared run script with this
+- [x] **7. The human's full run.** Who: 👤, about 20 minutes, by lane B's shared run script with this
   walk's name, once it is in `main` (all this step takes from lane B); 🤖 reads the log whole. Done
   when: the 8 screens' full-stack pictures equal the fake's, or a screen that differs is asked again
   and answered; the run's bases committed (the 48, and the root screens moved by the menu alone); no
@@ -287,6 +287,13 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   named screen of a walk that has it failed to move (no "named, not moved" line). Bases written: 54,
   198 and 48, committed in `e0a9849`. The second run is the human's, and this step stays unticked
   until it ends green with every count 0.
+  *Second run, read from its log* (`logs/20261031-1230-walk-piece-1-piece-2-admin-lists.log`, the
+  human, 12:30:13 to 12:40:22, 10m09s, 189 lines): `== verdict: green: 8 comparisons, every raw count
+  as asked`, `== done`. Every comparison reads 0 moved, 0 new, 0 without a counterpart, 0 unreadable:
+  `piece-1` 54 pictures (stack twice, and against the bases), `piece-2` 198 (fake to stack, stack
+  twice, bases), `admin-lists` 48 (the same three); no `moved`, `new` or `red` line anywhere. The 16
+  `admin-lists` answers are unchanged (the screens' words did not move), and the bases are committed
+  (`e0a9849`). No walked screen holds an open "no".
 - [ ] **8. The seed's block.** Who: 🤖, after step 7 (the seed changes `scripts/`, which the run
   reads), about ¼ day: each scenario's customers and products, a block in `scenarios.ts` and a
   generator beside `scripts/src/demo/staff.ts`, written at the first fill; and the demo's files for
