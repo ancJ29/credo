@@ -315,10 +315,13 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `== exit 0`, 13:12:40 to 13:20:30, no warning; every package at 100 % (shared 101 tests, bff 322, ui
   413, scripts 203, visual 386). The check before it (`…-1304-…-step8.log`, 13:04:32 to 13:12:17) was
   red on knip alone, two exports nothing else called (`digits`, `FileRow`), fixed, not rerun to green by
-  chance. **The `pnpm demo` run**, `logs/20261031-1335-customers-products-demo-counts.log`, 9 lines, last
-  line `== exit 0` (`CREDO_DEMO_PARTNER=p3 pnpm demo -- node <a one-off script that signs in as each
-  copy's root and counts>`): `vat-lieu-quang-tin-dat-3 S1: customers 30, products 62 (not stocked 2)`,
-  `phan-phoi-loc-vuong-hai-3 S2: customers 80, products 251 (not stocked 1)`.
+  chance. **The `pnpm demo` run**, `logs/20261031-1337-customers-products-demo-counts-2.log`, 8 lines, last
+  line `== exit 0`, written by the capture itself (`CREDO_DEMO_PARTNER=p3 pnpm demo -- node <a one-off
+  script that signs in as each copy's root and counts>`):
+  `vat-lieu-quang-tin-dat-3 S1: customers 30, products 62 (not stocked 2)`,
+  `phan-phoi-loc-vuong-hai-3 S2: customers 80, products 251 (not stocked 1)`. The first run's log,
+  `…-1335-…-demo-counts.log`, was edited by hand after its run (a stray line removed, its last line
+  set), so it is no evidence and is kept as it is, replaced by this one.
   **The demo's files**, for the human to run later from the worktree's root:
 
   ```
