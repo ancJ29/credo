@@ -1,8 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 12:09 +07:** steps 1 to 6 done: the lists and imports on the fake, the
+**Where it stands — 2026-10-31 12:25 +07:** steps 1 to 6 done: the lists and imports on the fake, the
 8 screens answered (16 yes), the BFF routes and the stack's generator at the gate, the review's findings
-fixed or parked, `main`@`b4e08ee` taken in. **Next:** the human's full run (step 7), two commands below.
+fixed or parked, `main`@`b4e08ee` taken in. **Next:** the human's second full run (step 7); the first ran green and its bases are committed.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -276,6 +276,17 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
 
   It must end `== verdict: green`, `== done`, exit 0, every count 0 moved and 0 new, and `git status`
   holding only what the first run wrote. The machine then reads the diff and commits the bases.
+  *First run, read from its log* (`logs/20261031-1214-walk-piece-1-piece-2-admin-lists.log`, the human,
+  12:14 to 12:24:26, 10m00s, `== verdict: green: 8 comparisons, every raw count as asked`, `== done`):
+  fake to the stack and the stack to a second stack, 0 moved on `piece-2` (198) and `admin-lists` (48),
+  and the stack twice on `piece-1` (54), 0 moved. Against the bases: `piece-1` 54 pictures, 20 moved,
+  0 new (the five named settings screens, en and vi at 1280 and 768 only: the phone's menu is closed);
+  `piece-2` 198 pictures, 96 moved, 0 new (the 24 named root screens, the same four pictures each);
+  `admin-lists` 0 base pictures, 48 new. Every picture that moved is on a named screen, at the same
+  box (the menu's two new entries, 1043 px in English and 1162 in Vietnamese, shade 255), and no
+  named screen of a walk that has it failed to move (no "named, not moved" line). Bases written: 54,
+  198 and 48, committed in `e0a9849`. The second run is the human's, and this step stays unticked
+  until it ends green with every count 0.
 - [ ] **8. The seed's block.** Who: 🤖, after step 7 (the seed changes `scripts/`, which the run
   reads), about ¼ day: each scenario's customers and products, a block in `scenarios.ts` and a
   generator beside `scripts/src/demo/staff.ts`, written at the first fill; and the demo's files for
