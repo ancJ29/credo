@@ -3,7 +3,7 @@
 #
 #   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks]
 #
-# Walks: piece-1, piece-2, operator (the table below). It takes every picture of each walk on the
+# Walks: piece-1, piece-2, admin-lists, operator (the table below). It takes every picture of each walk on the
 # fake UI (where the walk has one), then on the stack, then on fresh stacks again, and counts raw the
 # pixels that moved between the passes and against the committed base images: no threshold, no
 # comparator that skips softened edges. Green means fake = stack = stack again pixel for pixel, and
@@ -38,6 +38,7 @@ set -uo pipefail
 WALKS='
 piece-1|piece-1.spec.ts|-|chromium|pass|walk/specs/piece-1.spec.ts-snapshots|-chromium-darwin
 piece-2|piece-2.spec.ts|fake|full|pass|walk/specs/piece-2.spec.ts-snapshots|-full-darwin
+admin-lists|lists.spec.ts|lists-fake|lists-full|pass|walk/specs/lists.spec.ts-snapshots|-lists-full-darwin
 operator|operator.spec.ts|operator-fake|operator-full|test|walk/specs/operator.spec.ts-snapshots|-operator-full-darwin
 '
 walk_field() { # <walk> <column>

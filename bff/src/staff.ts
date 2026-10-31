@@ -79,7 +79,7 @@ type Who = {
   setup?: { setup: StaffSetup; version: string };
 };
 
-type Deps = {
+export type Deps = {
   storage: CStorageClient;
   now: () => number;
   forClient: { onRequest: (request: FastifyRequest) => Promise<void> };

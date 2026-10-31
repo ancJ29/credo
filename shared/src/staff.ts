@@ -21,6 +21,9 @@ export const normaliseEmployeeCode = (raw: string) => raw.trim().toUpperCase();
  * the page shows the list as it is answered. */
 export const byCode = (a: { code: string }, b: { code: string }) => (a.code < b.code ? -1 : 1);
 export const employeeCodeIsValid = (raw: string) => EMPLOYEE_CODE.test(normaliseEmployeeCode(raw));
+/** A code as a record keeps it, in capitals: the customers' and the products' codes follow the
+ * employees' rule, and are this one schema. */
+export const codeSchema = z.string().regex(EMPLOYEE_CODE);
 
 /** 8 to 128 printable characters (spaces inside, any script, no control or format character) with a
  * capital, a small letter, a digit and one of `@$!%*?&`, and no space at either end: it would not
@@ -28,7 +31,8 @@ export const employeeCodeIsValid = (raw: string) => EMPLOYEE_CODE.test(normalise
 const PASSWORD = /^(?!\s)(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[^\p{C}]{8,128}(?<!\s)$/u;
 export const passwordIsValid = (password: string) => PASSWORD.test(password);
 
-const nameSchema = z.string().trim().min(1).max(200);
+/** A name as a record keeps it: 1 to 200 characters, trimmed. */
+export const nameSchema = z.string().trim().min(1).max(200);
 
 /** A department or position as a person names it: the minted id, and the name as it was saved,
  * which shows when the unit has since been removed. */
@@ -39,7 +43,7 @@ export type UnitLink = z.infer<typeof unitLinkSchema>;
  * are in `extra`. */
 export const employeeSchema = z.strictObject({
   id: z.uuid(),
-  code: z.string().regex(EMPLOYEE_CODE),
+  code: codeSchema,
   name: nameSchema,
   department: unitLinkSchema.nullable(),
   position: unitLinkSchema.nullable(),

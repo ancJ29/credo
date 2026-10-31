@@ -24,7 +24,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(102);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(118);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;
@@ -42,7 +42,7 @@ describe('pnpm report', () => {
     // Groups A, B, C and D of piece 2: their thirty-three screens drawn as scenes, none from the mock, a
     // state for each of the sixty-six (screen, language) pairs whatever the answers file holds now,
     // and the typing and pressing done on the page as a person does them.
-    const piece2 = walks.walks.slice(2);
+    const piece2 = walks.walks.slice(2, 6);
     const screens = piece2.flatMap((walk) => walk.screens);
     expect(piece2.map((walk) => walk.id)).toEqual([
       'admin-staff-setup',

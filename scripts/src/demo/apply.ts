@@ -12,6 +12,8 @@ import {
   type EmployeeDoc,
   employeeRoutes,
   type EmployeeListReply,
+  IMPORT_CALL_ROWS,
+  listImportRoute,
   recordKeys,
   ROUTES,
   type StaffSetupDoc,
@@ -21,6 +23,7 @@ import {
 } from '@credo/shared';
 import { companyConfig, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween } from './days';
+import { customersOf, productsOf } from './lists';
 import { type Ledger, readLedger, writeLedger } from './ledger';
 import { allCopies, assertLedgerScenario, type MappedCopy } from './mapping';
 import { dayEvents, type Person, staffAsOf, type StaffEvent } from './staff';
@@ -163,8 +166,40 @@ async function unitsOf(driver: Driver): Promise<Units> {
   };
 }
 
+/** The company's customers and products, through the root's two import routes, 100 rows a call, as
+ * the app sends them. A code already there is what its users did first: skipped and named. Any
+ * other refusal stops the run. */
+async function addLists(driver: Driver, copy: MappedCopy, skipped: string[], log: Log) {
+  const lists = {
+    customers: customersOf(copy.client, copy.scenario),
+    products: productsOf(copy.client, copy.scenario),
+  };
+  for (const kind of ['customers', 'products'] as const) {
+    let added = 0;
+    for (let from = 0; from < lists[kind].length; from += IMPORT_CALL_ROWS) {
+      const sent = lists[kind].slice(from, from + IMPORT_CALL_ROWS);
+      const { results } = await driver.must<{ results: { kind: string; reason?: string }[] }>(
+        'POST',
+        listImportRoute(kind),
+        { rows: sent },
+      );
+      results.forEach((result, at) => {
+        if (result.kind === 'added') {
+          added++;
+        } else if (result.reason === 'taken') {
+          skipped.push(`${sent[at].code} is already in the ${kind}`);
+          log(`${copy.code}: ${sent[at].code} is already in the ${kind}, left as it is`);
+        } else {
+          throw new Error(`the seed's ${kind} import refused ${sent[at].code}: ${result.reason}`);
+        }
+      });
+    }
+    log(`${copy.code}: ${added} ${kind} added`);
+  }
+}
+
 /** The first fill: the company's settings, its staff setup, and its people as they stood on the
- * morning of `firstDay`. A fill that stopped halfway is finished by the next run: what is there is
+ * morning of `firstDay`, then its customers and products. A fill that stopped halfway is finished by the next run: what is there is
  * kept. */
 async function fill(
   driver: Driver,
@@ -188,6 +223,7 @@ async function fill(
   const units = await unitsOf(driver);
   const people = staffAsOf(copy.client, copy.scenario, firstDay);
   for (const person of people) await addPerson(driver, units, person, skipped, log, copy.code);
+  await addLists(driver, copy, skipped, log);
   log(`${copy.code}: filled as of ${firstDay}, ${people.length} people`);
 }
 

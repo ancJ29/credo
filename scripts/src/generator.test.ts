@@ -3,6 +3,7 @@ import { verifyPassword } from '@credo/bff/password';
 import { buildApp } from '@credo/bff';
 import {
   clientLinkPath,
+  CStorageError,
   clientListReplySchema,
   type CStorageClient,
   recordKeys,
@@ -17,8 +18,10 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_CUSTOMERS,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
+  DEMO_PRODUCTS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
@@ -87,6 +90,45 @@ describe('the demo generator', () => {
     expect((await root('not the password')).statusCode).toBe(401);
     const operator = await signIn('/api/operator/sign-in', {}, OPERATOR_NAME, operatorPassword);
     expect(operator.json()).toMatchObject({ operator: { name: OPERATOR_NAME } });
+  });
+
+  it('The demo client holds the data set’s customers and products, each under a minted id, with the stocked flag as the data set has it', async () => {
+    const { records, storage } = memoryStorage();
+    await seedDemo(storage, { operatorPassword: newOperatorPassword() });
+
+    const index = storedClientSchema.parse(records.get(recordKeys.client(DEMO_CODE)));
+    const keys = recordKeys.tenant(index.id);
+    const customers = (await storage.listRecords(keys.customerPrefix)).records.map(
+      (one) => one.data,
+    );
+    const products = (await storage.listRecords(keys.productPrefix)).records.map((one) => one.data);
+
+    const withoutId = ({ id: _id, ...row }: { id: string }) => row;
+    const byCode = (a: object, b: object) =>
+      (a as { code: string }).code < (b as { code: string }).code ? -1 : 1;
+    expect(customers.map((one) => withoutId(one as { id: string })).sort(byCode)).toEqual(
+      DEMO_CUSTOMERS.map(withoutId).sort(byCode),
+    );
+    expect(products.map((one) => withoutId(one as { id: string })).sort(byCode)).toEqual(
+      DEMO_PRODUCTS.map(withoutId).sort(byCode),
+    );
+    expect(DEMO_PRODUCTS.some((one) => !one.stocked)).toBe(true);
+    expect(products.some((one) => (one as { stocked: boolean }).stocked === false)).toBe(true);
+  });
+
+  it('stops the run when a list’s import does not add every row', async () => {
+    const { storage } = memoryStorage();
+    const down: CStorageClient = {
+      ...storage,
+      putRecord: (key, data, ifTag) =>
+        key.includes('.product.')
+          ? Promise.reject(new CStorageError(503, 'down'))
+          : storage.putRecord(key, data, ifTag),
+    };
+
+    await expect(seedDemo(down, { operatorPassword: newOperatorPassword() })).rejects.toThrow(
+      'products import did not add every row',
+    );
   });
 
   it('The passwords are stored nowhere readable: only their scrypt hashes are', async () => {

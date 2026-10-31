@@ -94,7 +94,7 @@ const NOTES = ['Làm ca sáng.', 'Có thể làm thêm cuối tuần.', 'Đã qu
 
 const digits = (s: Stream, n: number) => Array.from({ length: n }, () => s.int(10)).join('');
 /** One invented phone range, `0600`, that no operator assigns. */
-const phone = (s: Stream) => `0600 ${digits(s, 3)} ${digits(s, 3)}`;
+export const phone = (s: Stream) => `0600 ${digits(s, 3)} ${digits(s, 3)}`;
 /** Invented plates: a province `00` that does not exist. */
 const plate = (s: Stream, kind: 'car' | 'moto') =>
   kind === 'car'

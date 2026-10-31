@@ -5,6 +5,8 @@ import {
   type AddEmployeeReply,
   CLIENT_HEADER,
   type CStorageClient,
+  IMPORT_CALL_ROWS,
+  listImportRoute,
   DEVICE_HEADER,
   type EmployeeDoc,
   employeeRoutes,
@@ -21,8 +23,10 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_CUSTOMERS,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
+  DEMO_PRODUCTS,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -147,6 +151,26 @@ export async function seedClient(
     adder,
     false,
   );
+
+  // The customers and the products, through the root's two import routes as the app sends them: the
+  // data set's id is dropped, since the BFF mints it. A row not added stops the run.
+  for (const list of ['customers', 'products'] as const) {
+    const rows = (list === 'customers' ? DEMO_CUSTOMERS : DEMO_PRODUCTS).map(
+      ({ id: _id, ...row }) => row,
+    );
+    for (let from = 0; from < rows.length; from += IMPORT_CALL_ROWS) {
+      const sent = rows.slice(from, from + IMPORT_CALL_ROWS);
+      const { results } = await call<{ results: { kind: string }[] }>(
+        'POST',
+        listImportRoute(list),
+        root,
+        { rows: sent },
+      );
+      if (results.some((result) => result.kind !== 'added')) {
+        throw new Error(`the generator's ${list} import did not add every row`);
+      }
+    }
+  }
   return { code, rootPassword: made.password, people };
 }
 

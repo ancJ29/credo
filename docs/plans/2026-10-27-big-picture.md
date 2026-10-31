@@ -128,8 +128,9 @@ Each comes back at a review (the human, 10-27).
   extension", the memo's rule (the human, 10-27 23:05 +07; it read "the core flow").
 - **Đối soát**, the settling, comes back at a review after the six pieces (the human, 10-27
   23:05 +07).
-- **No page for customers or vendors:** the demo's generator writes them until the import
-  (the human, 10-27 23:05 +07).
+- **No page for vendors:** the demo's generator writes them until the import (the human, 10-27
+  23:05 +07). *Amended 2026-10-31:* customers and products have their list pages and their Excel
+  import now, as [slice 1 of the road to 11-04](2026-10-31-customers-products.md) builds them.
 - **No more work on the old app.**
 - **No client's server before a client signs.** The demo runs on the local stack for the
   screenshots and video.
@@ -142,6 +143,13 @@ Each comes back at a review (the human, 10-27).
   the repo alone, and a review reads the seed.
 
 ## Dates
+
+*Amended 2026-10-31 (Decide 41, as the slice's plan cites it; the human, 10-31):* the demo on ridge
+is 11-04, and it is four slices: customers and products from Excel
+([the first](2026-10-31-customers-products.md)); an order with its delivery request to a driver; the
+driver's phone with a photo; đối soát per driver per day. Stock beyond the product's `stocked` flag
+(the flag only, the human, 10-31 09:0x) and goods receipts are parked until after 11-04. The dated
+rows below are as they were written.
 
 | Date | What | Who reads it |
 | --- | --- | --- |

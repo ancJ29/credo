@@ -23,6 +23,11 @@ export const recordKeys = {
     employee: (employeeId: string) => `tenant.${id}.employee.${employeeId}`,
     /** What the staff list reads: every person's key starts with it. */
     employeePrefix: `tenant.${id}.employee.`,
+    /** A customer and a product, each by its minted id: one record each, read by its prefix. */
+    customer: (customerId: string) => `tenant.${id}.customer.${customerId}`,
+    customerPrefix: `tenant.${id}.customer.`,
+    product: (productId: string) => `tenant.${id}.product.${productId}`,
+    productPrefix: `tenant.${id}.product.`,
     staffSetup: `tenant.${id}.staff-setup`,
     /** The demo seed's ledger for the tenant, the seed's alone: the BFF never reads it, and its key
      * starts with none of the prefixes the BFF lists. */

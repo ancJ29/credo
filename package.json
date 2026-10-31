@@ -13,6 +13,7 @@
     "answers": "pnpm --filter @credo/visual run answers",
     "stack": "pnpm --filter @credo/scripts run stack",
     "demo": "pnpm --filter @credo/scripts run demo",
+    "demo-files": "pnpm --filter @credo/scripts run demo-files",
     "fake": "pnpm --filter @credo/scripts run fake"
   },
   "devDependencies": {

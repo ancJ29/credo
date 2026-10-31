@@ -16,6 +16,8 @@ import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import type { DeviceStore } from './device';
 import { ImportPage } from './ImportPage';
+import { ListImportPage } from './ListImportPage';
+import { ListPage } from './ListPage';
 import { type PageProps } from './page';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
@@ -292,6 +294,20 @@ export function ClientApp({ api, device, test, look }: Props) {
                 path="/staff-setup"
                 element={guarded(user, 'staff-setup', <StaffSetupPage {...pageFor(user)} />)}
               />
+              {(['customers', 'products'] as const).map((kind) => (
+                <Route
+                  key={kind}
+                  path={`/${kind}`}
+                  element={guarded(user, kind, <ListPage kind={kind} {...pageFor(user)} />)}
+                />
+              ))}
+              {(['customers', 'products'] as const).map((kind) => (
+                <Route
+                  key={kind}
+                  path={`/${kind}/import`}
+                  element={guarded(user, kind, <ListImportPage kind={kind} {...pageFor(user)} />)}
+                />
+              ))}
               <Route path="*" element={<Navigate to={first.path} replace />} />
             </Routes>
           ) : (

@@ -49,7 +49,7 @@ export const headingOf = (column: Column, language: Language) =>
   column.field ? column.field.label[language] : DICTIONARIES[language].addPerson[column.key];
 
 /** Headings compared as a person types them: without accents, case, spacing or a required star. */
-const plain = (text: string) =>
+export const plain = (text: string) =>
   text
     .normalize('NFD')
     .replace(/\p{M}/gu, '')

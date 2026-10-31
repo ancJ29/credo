@@ -54,7 +54,7 @@ describe('the staff list', () => {
       menu()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Settings', 'Staff', 'Departments and positions']);
+    ).toEqual(['Settings', 'Staff', 'Departments and positions', 'Customers', 'Products']);
     root.unmount();
 
     // an office manager: the staff list, and the button to add; no Settings, no setup

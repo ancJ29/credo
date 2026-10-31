@@ -28,7 +28,10 @@ export default defineConfig({
     launchOptions: { args: ['--disable-partial-raster'] },
   },
   projects: [
-    { name: 'chromium', testIgnore: ['piece-2.spec.ts', 'operator.spec.ts'] },
+    {
+      name: 'chromium',
+      testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'operator.spec.ts'],
+    },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
     { name: 'fake', testMatch: 'piece-2.spec.ts', timeout: 120_000 },
     {
@@ -38,6 +41,9 @@ export default defineConfig({
       // openings, beyond the default budget of 30 seconds.
       timeout: 120_000,
     },
+    // The lists' walk (customers and products from Excel), the same two ways as piece 2's.
+    { name: 'lists-fake', testMatch: 'lists.spec.ts', timeout: 120_000 },
+    { name: 'lists-full', testMatch: 'lists.spec.ts', timeout: 120_000 },
     // The operator's walk, the same two ways: the fake, and the full run on a stack of its own for
     // each language and width.
     { name: 'operator-fake', testMatch: 'operator.spec.ts', timeout: 120_000 },
