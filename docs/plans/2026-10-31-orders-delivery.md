@@ -199,8 +199,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   the diff naming no person. *Evidence:* this file's commit (`git log -- <this file>`); before it, the
   path grep of [documentation](../conventions/documentation.md#nothing-machine-local-or-personal-in-a-committed-file)
   found nothing in it, every relative link resolves, and its diff names no person.
-- [ ] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no a row. Done when:
-  each 👤 row kept or corrected here. **Then stop.**
+- [x] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no a row. Done when:
+  each 👤 row kept or corrected here. **Then stop.** *Evidence:* the human, 2026-10-31 13:1x, to the
+  14 rows put as yes-or-no questions: "yes, as your recommendation", all 14 yes; no row corrected,
+  so the table below stands as drafted.
 - [ ] **3. `main` taken in once slice 1 has merged.** Who: 🤖, after slice 1's merge into `main` (an
   order picks from its lists and its words), ¼ hour. Done when: `main` merged in, its conflicts named;
   `pnpm install --offline` exit 0.
