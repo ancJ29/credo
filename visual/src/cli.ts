@@ -2,6 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SCREENS } from '@credo/ui/mock';
 import { parseAnswers } from './answers';
+import { parseBlock } from './block';
 import { PACKAGE } from './build';
 import { installDom } from './dom';
 import { vietnamTime } from './home';
@@ -66,7 +67,10 @@ export async function answer(
   const restore = installDom();
   try {
     const { readWords } = await loadWords();
-    const current = await currentWords(WALKS, SCREENS, readWords);
+    // Only the screens the block answers are drawn: all of them take minutes, and a line for any
+    // other key is refused without their words.
+    const asked = new Set(parseBlock(block, { partners }).entries.map((entry) => entry.key));
+    const current = await currentWords(WALKS, SCREENS, readWords, asked);
     const existing = parseAnswers(await readFile(file, 'utf8'));
     const { answers, taken, refused } = takeAnswers(
       block,

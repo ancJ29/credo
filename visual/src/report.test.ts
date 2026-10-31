@@ -2,7 +2,7 @@ import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import type { Answers } from './answers';
 import { fingerprintOf } from './fingerprint';
-import { makeReport, type ReadWords } from './report';
+import { currentWords, makeReport, type ReadWords } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
 const source = {
@@ -173,5 +173,31 @@ describe('the report', () => {
     });
 
     expect(report.walks[0].screens[0].languages.vi.words).toEqual(['text: vi']);
+  });
+});
+
+describe('the words now', () => {
+  it('draws every screen in both languages, or with `only` just the screens under those keys', async () => {
+    const drawn: string[] = [];
+    const read: ReadWords = (what, language) => {
+      drawn.push(`${'scene' in what ? what.id : 'mock'}:${language}`);
+      return [`text: ${language}`];
+    };
+
+    const all = await currentWords(WALKS.slice(0, 2), SCREENS, read);
+    expect(all.size).toBe(36);
+    drawn.length = 0;
+    const some = await currentWords(
+      WALKS.slice(0, 2),
+      SCREENS,
+      read,
+      new Set(['admin-setup:1-sign-in:vi', 'operator-setup:op-4-code-taken:en']),
+    );
+
+    expect([...some.keys()]).toEqual([
+      'admin-setup:1-sign-in:vi',
+      'operator-setup:op-4-code-taken:en',
+    ]);
+    expect(drawn).toHaveLength(2);
   });
 });
