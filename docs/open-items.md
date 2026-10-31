@@ -143,15 +143,6 @@ The BFF now parses the person before any write and answers 400, so no record the
 The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
 never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.
 
-## 25. The app's fixed top bar lands mid-page in a full-page picture, so a screen reached after scrolling can differ between two runs on the bar alone — the walk; *parked* until the walk is next changed, or a second such difference (the employee list plan, step 16, 2026-10-29)
-
-The walk scrolls to a panel before it takes the picture, and a full-page picture at phone width draws the
-fixed bar (company name, menu, avatar) at the scroll position the walk leaves. That position moved a little
-between the fake run and the full run, so `staff-15-code-changed-vi-390` differed (3597 pixels) on the bar
-alone; the fields, words and layout were the same. The fix belongs to the next change to the walk: scroll to
-the top, or capture with the bar unfixed, before each picture. It moves every such screen's base and its fake
-reference at once, so it is done once, not per screen.
-
 ## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
 
 Step 19's whole `pnpm check` went red twice before a green third run, at the same code, with `ui` and `visual` untouched.
@@ -213,23 +204,14 @@ on both, which keeps the scrollbar on screen. It would move the pictures of staf
 staff-14 at 390 and 768 wide, in both languages, and the human is asked about them again. *Trigger:* the
 human's look at the phone screens, or a partner who did not find the columns.
 
-## 32. The operator's card corners flip by one channel value between runs, and the comparator cannot see it — the machine, in the pixel piece after the push (the operator dashboard plan, step 13, 2026-10-30)
+## 33. The walk script's stray-stop loop and its Ctrl-C path were never run, and the strays' choice reads working folders with `lsof` — the machine; *parked* until a stack is left behind or a run is interrupted (the walk-steady plan, step 7, 2026-10-31)
 
-Same input, different output: in the full run's pass 2, six committed bases were rewritten with exactly 10
-different pixels each, a channel delta of 1, on the lower arc of the two top rounded corners of the bordered
-card (Mantine `Paper withBorder`: `ui/src/ClientMade.tsx#L41` on screen 3, `ui/src/NewClient.tsx#L52` on
-screens 4 and 9). The six: `op-3-made` in en and vi at 1280 and 768, `op-4-code-taken-vi-1280` and
-`op-9-make-failed-en-1280`, all `-operator-full-darwin.png`. Playwright's comparator at threshold 0 calls
-them equal (it skips anti-aliased pixels, `includeAA: false`), while pass 2's `--update-snapshots=all`
-rewrites on any byte difference, so the walk reports green and git shows six changed files. Only screens 3,
-4 and 9 flip, at 1280 and 768: those where a press sends a request and the button goes busy (loader
-transition, blur overlay). The likely cause is the browser's partial raster, which depends on frame timing;
-inferred, not proven, since no browser runs in the agent's sandbox. It predates the dashboard's merges: the
-fake run of 10-29 (`63ae46b`) is byte-equal to the committed bases on 48 pictures and shows the same 10
-pixels on the other 6. The human accepted the run for the delivery (Decide 33 (a)); the committed bases stand.
-
-The fix belongs to the pixel piece under the human's Decide 30 ("a moved pixel is a raw pixel": same input
-gives the same output). Two options: a full-page repaint just before `toHaveScreenshot`
-(`walk/support.ts#L27-L38`), or Chromium's `--disable-partial-raster` in `walk/playwright.config.ts#L25-L30`
-(present in headless shell r1248). A mask is not the fix: the corners are the card's frame, which the human
-judges. *Proof, the human runs it:* two full runs back to back, the second leaving `git status` clean.
+`walk/run.sh` stops a process of credo's whose parent is 1 (TERM, five seconds, KILL) and names what is
+left running on a Ctrl-C. The stand-in tests in `scripts/src/walk-run.test.ts` never reach either: the
+sandbox cannot signal a process an earlier command started or read the process list. The first real
+stray or interrupt shows them; read that run's log for the `stopped` lines. The BFF a stack starts is
+matched by its relative `src/main.ts` only when `lsof` puts its working folder under the root
+(`scripts/src/strays.ts`), so a Mac where `lsof` is denied leaves such a BFF running and the next run
+refuses on it by name. A Ctrl-C during the first step's listings ends as a refusal (exit 2), not 130;
+nothing was acted on. *Trigger:* a refusal naming a stray the script did not stop, or a log with
+`stopped` lines that look wrong.

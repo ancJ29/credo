@@ -57,7 +57,10 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
 - **The walk spec (`walk/`) needs a browser, so it runs in the human's terminal, never in the
   agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not
   run it; its base images are made by the human's run, once a piece, on one Mac
-  ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)).
+  ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)). **One command runs any
+  walk: `bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write]`**: fake, stack and stack again,
+  then every moved pixel counted raw (no tolerance) between them and against the bases
+  ([the plan](docs/plans/2026-10-31-walk-steady.md#the-script)).
 - **`pnpm report` builds the walks page in the sandbox, no browser,** into the credo root's `walks/`
   (one folder a build, never committed). The screens are drawn on jsdom through a Vite server's
   module loader, since the app's CSS modules and TSX do not import in plain Node; the page itself is

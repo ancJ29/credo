@@ -6,14 +6,14 @@ import { required, shot, WIDTHS } from '../support';
 
 /**
  * The customers and products from Excel, one walk of eight screens, each in Vietnamese and in
- * English at the three widths (8 × 2 × 3 = 48). The `fake` project runs it on `pnpm fake -- …` and
- * keeps the pictures as the full run's reference; the `full` project runs it on the stack
- * (`pnpm stack -- …`) and compares them. Each screen opens at an address of its own, signed in as
+ * English at the three widths (8 × 2 × 3 = 48). The `lists-fake` project runs it on `pnpm fake -- …`
+ * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
+ * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
  * added. Words come from the app's own dictionaries.
  */
 
-const FULL = () => test.info().project.name === 'full';
+const FULL = () => test.info().project.name === 'lists-full';
 
 /** What the stack's seed door answers: a client made from the data set, with its first passwords. */
 type Seeded = { code: string; rootPassword: string };

@@ -130,7 +130,10 @@ async function walk(page: Page, language: Language, width: number) {
   await at('op-2-new-client');
 
   // 3. Made: the link, the root's name and its first password, once. The link's address and the
-  // password differ between the fake and the stack, so both are masked.
+  // password differ between the fake and the stack, so both are masked (QA rule 7). Held by
+  // bff/src/operator.route.test.ts: "answers the link’s path, the root’s name and a first password
+  // that signs the root in", and bff/src/password.test.ts: "holds a capital, a small letter, a digit
+  // and one of @$!%*?& in 12 characters, and differs each time".
   await open(page, language, { path: '/operator/clients/new', operator: true });
   await fillClient();
   await press(words.operator.make);
