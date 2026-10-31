@@ -1,7 +1,8 @@
 # Slice 1: customers and products from Excel
 
-**Where it stands — 2026-10-31 08:36 +07:** planned (step 1) and the 👤 rows read, all yes (step 2).
-**Next:** both lists and both imports on the fake (step 3). Nothing is built yet.
+**Where it stands — 2026-10-31 09:25 +07:** steps 1 to 3 done: both lists and both imports on the fake, the
+8 screens on the walks page (`pnpm report`: 16 waiting, 0 asked again). **Next:** the human's preview
+(step 4). No BFF route and no c-storage change yet.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's first demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 1; Decides 41 to 47, by which a demo's details are the machine's).
@@ -177,13 +178,25 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
 - [x] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no a row. Done when:
   each 👤 row kept or corrected here. **Then stop.** *Evidence:* 2026-10-31 08:3x, the human, to the
   12 rows (1 to 12) put as yes-or-no questions: "all yes". Every 👤 row stands as written.
-- [ ] **3. Both lists and both imports, on the fake.** Who: 🤖, after step 2 (the rows it builds),
+- [x] **3. Both lists and both imports, on the fake.** Who: 🤖, after step 2 (the rows it builds),
   about ¾ day. In `shared/`: the wire above, the keys, the data set's lists and files. In `ui/`: the
   two list pages, the one import page, the fake's four calls, the menu's two pages, the words in vi and
   en. The 8 screens in `visual/src/walks.ts` and a walk spec. The big picture's "no page for customers"
   and its piece order amended to 11-04, as Decide 41 says. Done when: the UI half of rows 1 and 3 to
   10 each seen red once; `pnpm check` exit 0 at 100 %, no warning; `pnpm report` reads the 16 new
-  answers waiting and none asked again elsewhere.
+  answers waiting and none asked again elsewhere. *Evidence:* commits `e812ecd` and `f9bcbcd` (shared),
+  `bf23fcc`, `08b2069` and the fix after it (ui), `18f29de` (the walks and `walk/specs/lists.spec.ts`);
+  whole check `logs/20261031-0915-customers-products-whole-check.log`, last line `== exit 0`, no
+  warning (the run before it, `…-0907-…-knip-red.log`, was red on an exported function nothing else
+  called, fixed, not rerun to green by chance); every package at 100 %. `pnpm report` read "16 waiting, 0
+  asked again, 0 no, 102 yes". *Reds*, each from the row's own assertion with its rule's line changed
+  and put back, in `logs/20261031-0852-customers-products-red-row<n>-*.log` for rows 1, 3, 4, 5, 6, 7, 8,
+  9 and 10, and row 23 seen red before its code (`…-0904-…-red-row23-stocked.log`). *Model files
+  followed:* `StaffListPage.tsx` (the list), `ImportPage.tsx` and `importSheet.ts` (the import and the
+  sheet), `importFile.ts`, `importDemo.ts` and `saveAs.ts` as they are, `importEmployees` in `fake.ts`
+  (the fake), `employeeSchema` and `importResultSchema` in `shared/` (the records and the reply).
+  The big picture's "no page for customers" and dates are amended; Decide 41's own text was not
+  readable from this worktree, so the dates note cites it as the slice's plan does.
 - [ ] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens on the walks
   page, or on `pnpm fake` at `/customers` and `/products`. Done when: each screen answered yes or no;
   a no becomes a case here and its fix lands before step 5. **Then stop.**
