@@ -243,10 +243,16 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `issue`). `pnpm report` after the answers: "0 waiting, 0 asked again, 0 no, 192 yes". The 409 body
   carries `{ delivered, waiting, reconciliation }`, the day as it now is; the page still reads the lists
   again (parked 5). Not run: the stack's walk (step 8).
-- [ ] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By` line
+- [x] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By` line
   ([QA](../conventions/qa.md) rule 5), on steps 3 and 5 with the case table, about ¼ day with its fixes.
   Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason; one whole
   `pnpm check` exit 0 after the fixes, when the orchestrator calls for it. No re-review.
+  *Evidence:* Opus 5.5, 2026-11-01 14:27, in `review-a`@`beeaedb`: `logs/20261101-1427-driver-reconcile-review.md`.
+  No High, no Medium; findings 1 to 11 (6 Low, 5 Info) each `[DEFERRED]` to open item 41 under the 11-04
+  demo's exception, finding 3 also noted in item 35. Row 5's two clauses are held by the reviewer's runs in
+  `logs/20261101-1424-driver-reconcile-review-runs.log`: its BFF half red at run 1 (`bff/src/reconciliations.route.test.ts#L220`,
+  "expected 200 to be 409") and its UI half red at run 3 (`ui/src/Reconcile.test.tsx#L379`). The whole
+  `pnpm check` after `main` is in is owed (the line below it).
 - [ ] **7. `main` taken in, once slice 3 has merged whole.** Who: 🤖, after slice 2's and slice 3's
   merges into `main` (`office-orders`' bases, one of which step 8 moves; slice 3's deliveries block,
   whose delivered days step 9 closes), ¼ hour. Done when: merged, its conflicts named;
