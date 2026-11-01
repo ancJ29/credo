@@ -1,7 +1,7 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 12:58 +07:** step 1 done, this plan; **step 2, the human's read of rows 1
-to 10, is next.** Nothing is built.
+**Where it stands — 2026-11-01 13:14 +07:** steps 1 and 2 done; **step 3, the office's pages on the
+fake, is in hand.** Nothing is built yet.
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -203,8 +203,11 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   the diff naming no person. *Evidence:* this file's commit (`git log -- <this file>`); before it, the
   path grep of [documentation](../conventions/documentation.md#nothing-machine-local-or-personal-in-a-committed-file)
   found nothing in it, every relative link resolves, and its diff names no person.
-- [ ] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no for rows 1 to 10, the
+- [x] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no for rows 1 to 10, the
   demo's choices with them. Done when: each 👤 row kept or corrected here. **Then stop.**
+  *Evidence:* the human answered yes to all ten 👤 rows ("yes, agree", 2026-11-01 about 13:00, in the
+  orchestrator's chat), the demo's choices with them; no row is corrected, so the table above stands as
+  drafted.
 - [ ] **3. The office's pages on the fake.** Who: 🤖 (Sonnet), after step 2 (the rows as read), about ½
   day. The wire above in `shared/` and the data set's closed days; in `ui/`: each driver's line in
   Delivery requests, a driver's day with the cash, the gap, the close's check and Closed, the words in vi
