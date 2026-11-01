@@ -1,17 +1,14 @@
 # Slice 2: an order, sent to a driver
 
-**Where it stands — 2026-11-01 08:48 +07:** steps 1 to 5 done; step 6 built, not ticked. The BFF
-(`bff/src/orders.ts`), the two lists opened to `orders.canView` and the generator's week are in, the
-12 business rows seen red once at their assertions (step 6). The review (step 7) is done and its two
-Medium findings fixed; the rest sit in open items 35 and 36. The last whole check
-(`logs/20261031-1647-orders-delivery-check-bff-4.log`) read every package green at 100 % and ended
-`== exit 1` on one knip item, removed since; no single `pnpm check` has read exit 0 on this tree, so
-step 6 waits for one, after `main` takes in line 31. *Review notes for the recap, each finding tagged:*
-finding 9 `[DEFERRED]` into the recap's hazards (three more ids in a strict permission layer: skew and
-rollback); finding 10 `[DEFERRED]`: when `main` is taken in after line 31, keep `main`'s versions of
-the `visual` answers tests (`visual/vitest.config.ts`); findings 11, 12 and 13 `[REJECTED]`, no change,
-each for the review's reason (the walks' cost is read by step 8's log; no screen sends another day;
-screen 9's words stay true). **Next:** `main` in after line 31, one whole check, then step 8's list.
+**Where it stands — 2026-11-01 09:08 +07:** steps 1 to 7 done, 6 and 7 ticked: `main` (line 31) is
+taken in at `a71961a` and one whole check reads `== exit 0` on this tree
+(`logs/20261101-0903-orders-delivery-check.log`, after two reds, each reported as one). The review's
+Medium findings are fixed; the rest sit in open items 35 and 36. *Review notes for the recap, each
+finding tagged:* finding 9 `[DEFERRED]` into the recap's hazards (three more ids in a strict permission
+layer: skew and rollback); finding 10 `[DEFERRED]` and now done: `main`'s versions of the `visual`
+answers tests were kept; findings 11, 12 and 13 `[REJECTED]`, no change, each for the review's reason
+(the walks' cost is read by step 8's log; no screen sends another day; screen 9's words stay true).
+**Next:** line 30 can merge into `main`; step 8, the human's full run.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's second demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 2; part 6, amended 10-31 on the human's four missing pieces; Decides
@@ -241,11 +238,11 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   preview of build `orders-delivery`@`ba120e1c3`: "yes to all"; the block of 62 lines went in by
   `pnpm answers` ("62 written to answers.json, 0 refused"); `pnpm report` then read "0 waiting, 0 asked
   again, 0 no, 138 yes".
-- [ ] **6. The BFF, at the gate.** Who: 🤖, after step 5 (the contract as the preview left it), about
+- [x] **6. The BFF, at the gate.** Who: 🤖, after step 5 (the contract as the preview left it), about
   ¾ day: the routes in `bff/src/orders.ts`, the lists opened to `orders.canView`, the stack's generator
   writing the data set's week at its times. c-storage does not change, so `make check` is not run.
   Done when: the BFF half of rows 1 to 12 each seen red once; `pnpm check` exit 0 at 100 %, no warning.
-  *Where it stopped:* everything but one clean `pnpm check`. *Red evidence, rule 2:* the first run
+  *Where it stopped:* nothing; done 2026-11-01 09:08. *Red evidence, rule 2:* the first run
   (`logs/20261031-1517-orders-delivery-red-bff-rows.log`) holds nothing: 20 of its 22 reds are the setup
   helper's `expected 404 to be 201` (`bff/tests/orders.ts#L77`). The reds that count are from the
   assertions, by breaking the rule's line in `bff/src/orders.ts` and putting it back: the review's run
@@ -264,10 +261,31 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   package (shared 111, bff 362, ui 468, scripts 205, visual 389 tests, 100 % each) and red on knip's
   unused `OrdersTenant` export, removed. The ui's own tests failed in the second run under load
   and passed in the third, reported as a red, not as a pass.
-- [ ] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
+  After `main` (line 31) was taken in at `a71961a`: the fifth whole check
+  (`logs/20261101-0852-orders-delivery-check.log`, `== exit 1`) was red under load, not a pass: `ui`'s
+  `StaffRecord.test.tsx` "The editor refuses fields it cannot take and says so…" timed out at 5000 ms
+  (5302 ms) beside `bff`'s tests and 44 `ui` workers. The test was made cheap at its cause (alert read
+  off the DOM, buttons found by text or label, fields set in one change event; `4760ad9`), its refusal
+  broken once and seen red at its own assertion, `'Saved.'` for the refusal
+  (`logs/20261101-0857-orders-delivery-staffrecord-red.log`); alone, 975 ms to 803 ms
+  (`…-staffrecord-before.log`, `…-staffrecord-after.log`). The sixth
+  (`logs/20261101-0858-orders-delivery-check.log`, `== exit 1`) read `ui` green and was red on
+  `visual/src/cli.test.ts#L27`, `expected 138 to be 118`: main's side of the merge carried its count of
+  screens, fixed to this branch's 138 (`d31b8ae`). The seventh, green after both fixes:
+  `logs/20261101-0903-orders-delivery-check.log`, `== exit 0`: shared 111 tests, bff 363, ui 468,
+  scripts 205, visual 442, every package at 100 % statements, branches, functions and lines; its only
+  note is vitest's `isolate: false` hint.
+- [x] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 4 and 6 with the case table, about ¼ day with
   its fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its
   reason; `pnpm check` exit 0 after the fixes. No re-review.
+  *Evidence:* Opus, 2026-11-01 08:37, in `review-a`@`8c3c536`; the review is
+  `logs/20261101-0822-orders-delivery-review.md`, its rule-2 run
+  `logs/20261101-0832-orders-delivery-review-rule2.log`. `[FIXED]`: finding 1 (`1592608`), findings 2
+  and 15 (`ab6626f`). `[DEFERRED]`: findings 3 to 8 to open item 36, 14 to item 35, 9 and 10 as the
+  where-it-stands lists them (10 now done by taking `main` in). `[REJECTED]`: 11, 12 and 13, each for
+  the review's reason. `pnpm check` exit 0 after the fixes: step 6's
+  `logs/20261101-0903-orders-delivery-check.log`.
 - [ ] **8. The human's full run.** Who: 👤, about 25 minutes for two runs, nothing else running; 🤖
   reads each log whole. First `bash walk/run.sh piece-1 piece-2 admin-lists office-orders --moved
   3-settings,4-saved,5-language-menu,7-save-failed,8-save-conflict,lists-1-customers,lists-2-customers-import,lists-3-customers-preview,lists-4-customers-added,lists-5-no-code,lists-6-products,lists-7-products-preview,lists-8-products-added,setup-1-departments-positions,setup-2-fields,staff-1-list,staff-2-add,staff-3-added,staff-4-person,staff-5-permissions,staff-6-password,staff-7-archive,staff-8-left,staff-9-code-taken,staff-10-save-conflict,staff-11-save-failed,staff-12-own-fields,staff-13-photo,staff-14-search,staff-15-code-changed,staff-16-field-refused,staff-17-email,staff-18-qr,staff-19-import,staff-20-preview,staff-21-imported,staff-22-no-name,office-1-menu,office-2-add,office-3-forbidden,office-5-settings,office-6-password,office-7-password-wrong,phone-1-signed-in --write`, then the same without flags. *The list:* 44 screens, every
