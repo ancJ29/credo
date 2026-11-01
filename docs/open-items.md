@@ -169,6 +169,11 @@ and how much the drawing of the screens? Is it near 60 s only because the machin
 each test build the page again when one built page would do, so that the work, and the chance of
 the bound, is a multiple of what it needs?
 
+Answered (line 31 and line 34, 2026-11-01): `answer` draws only the screens a block answers (line 31), and the file's tests share one
+build made in a `beforeAll` (line 34), so the timeouts came from the build's cost landing on whichever test ran first and from a
+timed-out test leaving `report()` running with `installDom`'s globals; the file alone is 150.7 s down to 40.1 s. Left open until
+GitHub's next green run.
+
 ## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
 
 Step 19's whole `pnpm check` went red twice before a green third run, at the same code, with `ui` and `visual` untouched.
@@ -207,7 +212,9 @@ key-by-key typing) hands the event loop a turn after each key and click, which a
 `ci-timeouts`: the three Staff test files use one `userEvent.setup({ delay: null })`, and the search test and the two `SLOW` stories
 paste where they are not about keystrokes. Alone: the refusal test 1572 ms to about 730 ms, the search test 972 ms to under 300 ms,
 the two `SLOW` stories 2240 and 2291 ms to about 830 and 680 ms. `SLOW` stays until a run on GitHub shows them well under 5 s.
-Still open here: the `SignIns.test.tsx` and `cli.test.ts` reds. Item 23 (the scripts test) is not touched.
+Still open here: the `SignIns.test.tsx` red. Item 23 (the scripts test) is not touched. The `cli.test.ts` reds have their cause (line 34, 2026-11-01): the shared
+build's cost landed on the first test by run order, and when that test timed out `report()` went on with `installDom`'s globals, so the next
+`beforeEach` hit `window is not defined`; the file's one build in a `beforeAll` removed it, and a timed-out build now skips the file's tests.
 
 A scene can hang its full 30 s at a low load with no frozen process (line 31's review, 2026-11-01): the second `answer` in "With
 partners…" (`visual/src/cli.test.ts#L214`) failed with "walk admin-staff, screen staff-14-search: the scene did not end in 30000 ms"
@@ -344,26 +351,20 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
 *Trigger:* the orders are next touched, a price changes in a demo (5), a real client's order volume
 (7), or a reader of a test names one.
 
-## 37. `visual`'s tests: review findings 3 to 7 of line 31 and a finer budget, deferred under the 11-04 demo's exception — the machine; *parked* until after the demo (ci-timeouts, step 3, 2026-11-01)
+## 37. `visual`'s tests: review findings 4 and 6 of line 31 and a finer budget, deferred under the 11-04 demo's exception — the machine; *parked* until after the demo (ci-timeouts, step 3, 2026-11-01)
 
 The review of line 31 fixed its High and Medium findings; these stay.
-- **Finding 3, `visual/src/cli.test.ts#L111-L119` and `visual/src/setup.ts#L56-L58`:** the shared build is charged to whichever test
-  awaits it first, and when that test times out `report()` keeps running with `installDom`'s globals, so the next `beforeEach` fails
-  with `Cannot read properties of undefined (reading 'setItem')` (the `window is not defined` of item 27). Fix: the tests that read
-  the build under one nested `describe`, the build in its `beforeAll`, and 240 s as that block's budget.
 - **Finding 4, `visual/src/cli.ts#L70-L73`:** no test holds that `answer` draws only the screens a block answers; passing `undefined`
   for `asked` leaves the cheap answers tests green and slower (20 ms to 27 s). Fix: a test of `answer` that counts what it draws,
   through a words reader passed in or a `vi.mock('./words', …)` wrapper in a small file of its own.
-- **Finding 5, `visual/src/cli.test.ts` (the four whole-page tests) and `.github/workflows/ci.yml#L117`:** the file is the `app` job's
-  critical path, about 370 s on GitHub; the job ends near 10.5 of its 15 minutes now and about 11.5 after line 30, plus about a
-  minute per ten screens. Fix: the report test's build serves as the file's one build, and the partners' "Yes to all" holds its
-  rule with `parseBlock` over the whole message plus `answer` on a few keys.
-- **Finding 6, `visual/src/take.ts#L16` and `visual/src/cli.test.ts#L235-L236`:** two comments say "every screen" where it is now
-  "the screens asked". Fix: reword both at the next touch.
-- **Finding 7, `visual/src/cli.test.ts#L107-L109` and `#L123`:** `Built` repeats `Report`, and `as unknown as Built` would hide a
-  renamed field. Fix: read `Report` directly.
+- **Finding 6, `visual/src/take.ts#L16`:** a comment says "every screen" where it is now "the screens asked". Fix: reword it at the next touch.
 - **The finer budget (Decide 48's (b), done honestly):** the build's readers under one `describe` with 240 s on that block alone,
   then `visual/vitest.config.ts`'s default lowered to what the other tests need (the slowest takes about 35 s on GitHub).
+  Line 34's review adds: the five tests that read the build go under that `describe`, and the four that do not (the process put back,
+  the command line, all lines refused, the unparsable file) stay outside, so a `-t` on them does not pay the draw.
+- **Where `visual`'s ceiling is now (line 34's review):** `words.test.tsx` is `visual`'s slowest file, about 1.5 times the scene draws of
+  the one build (four draws a piece-2 screen), so the real saving on GitHub is about 200 to 280 s, not 240 to 290; measure the file in
+  the next GitHub run.
 
 *Trigger:* after the 11-04 demo, or the `app` job nearing its 15 minutes, or line 32's screens pushing a whole-page test past 120 s.
 
