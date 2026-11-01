@@ -219,12 +219,12 @@ describe('moving', () => {
     expect(document.querySelector('.w-moved')!.textContent).toContain('Back at the first screen');
   });
 
-  it('J and K move, Y and N answer, L switches the language and U goes to the next unanswered', async () => {
+  it('← and → move to the previous and next screen, Y and N answer, L switches the language and U goes to the next unanswered', async () => {
     render(<Page report={await make()} />);
 
-    key('j');
+    key('ArrowRight');
     expect(number()).toBe('2');
-    key('k');
+    key('ArrowLeft');
     expect(number()).toBe('1');
     key('y');
     expect(screen.getByLabelText<HTMLInputElement>('Yes').checked).toBe(true);
@@ -234,20 +234,90 @@ describe('moving', () => {
     expect(place()).toContain('English');
     key('l');
     expect(place()).toContain('Tiếng Việt');
-    key('J');
-    expect(number()).toBe('2');
+    key('L');
+    expect(place()).toContain('English');
     key('x');
-    expect(number()).toBe('2');
+    expect(number()).toBe('1');
   });
 
-  it('J and K stop at the ends', async () => {
+  it('J and K no longer move, and ← and → move also with a Language or Show radio focused, which the arrow leaves as it was', async () => {
     render(<Page report={await make()} />);
 
+    key('j');
+    key('J');
+    expect(number()).toBe('1');
     key('k');
     expect(number()).toBe('1');
+
+    fireEvent.click(screen.getByLabelText('English'));
+    const radio = screen.getByLabelText<HTMLInputElement>('English');
+    radio.focus();
+    expect(fireEvent.keyDown(radio, { key: 'ArrowRight' })).toBe(false);
+    expect(number()).toBe('2');
+    expect(fireEvent.keyDown(radio, { key: 'ArrowLeft' })).toBe(false);
+    expect(number()).toBe('1');
+    expect(radio.checked).toBe(true);
+
+    fireEvent.click(screen.getByLabelText('Tablet'));
+    const show = screen.getByLabelText<HTMLInputElement>('Tablet');
+    show.focus();
+    expect(fireEvent.keyDown(show, { key: 'ArrowRight' })).toBe(false);
+    expect(number()).toBe('2');
+    expect(show.checked).toBe(true);
+  });
+
+  it('← and → stop at the first and the last screen', async () => {
+    render(<Page report={await make()} />);
+
+    key('ArrowLeft');
+    expect(number()).toBe('1');
     go('9-unknown-company');
-    key('j');
+    key('ArrowRight');
     expect(number()).toBe('9');
+  });
+
+  it('Tab moves the focus nowhere, also from a clicked text field, while the page’s own keys still act and the text field still takes typing', async () => {
+    render(<Page report={await make()} />);
+    fireEvent.click(screen.getByLabelText('No'));
+    const box = screen.getByLabelText<HTMLTextAreaElement>('Reason for the No');
+
+    expect(key('Tab')).toBe(false);
+    expect(key('Tab', { shiftKey: true })).toBe(false);
+    expect(key('Tab', {}, box)).toBe(false);
+    expect(key('Tab', {}, button('Screens'))).toBe(false);
+
+    fireEvent.change(box, { target: { value: 'too small' } });
+    expect(box.value).toBe('too small');
+    expect(key('x', {}, box)).toBe(true);
+    key('ArrowRight');
+    expect(number()).toBe('2');
+    key('ArrowLeft');
+    key('y');
+    expect(screen.getByLabelText<HTMLInputElement>('Yes').checked).toBe(true);
+    key('l');
+    expect(place()).toContain('English');
+    key('u');
+    key('h');
+    expect(document.querySelector('dialog[open]')).toBeTruthy();
+    expect(key('Tab', {}, document.querySelector('dialog[open]')!)).toBe(true);
+  });
+
+  it('leaves Ctrl, Cmd or Alt with Tab to the browser', async () => {
+    render(<Page report={await make()} />);
+
+    expect(key('Tab', { ctrlKey: true })).toBe(true);
+    expect(key('Tab', { metaKey: true })).toBe(true);
+    expect(key('Tab', { altKey: true })).toBe(true);
+  });
+
+  it('names H and ← · → in the keys line under the moves, and no longer J · K', async () => {
+    render(<Page report={await make()} />);
+    const line = document.querySelector('.w-keys')!.textContent;
+
+    expect(line).toContain('← previous · → next');
+    expect(line).toContain('H guide');
+    expect(line).not.toMatch(/\bJ\b/);
+    expect(line).not.toMatch(/\bK\b/);
   });
 
   it('N opens the reason box without moving the focus, and the keys still work after it', async () => {
@@ -267,25 +337,25 @@ describe('moving', () => {
     expect(document.activeElement).not.toBe(screen.getByLabelText('Reason for the No'));
   });
 
-  it('a key does nothing in a text box, in the paste box, or with Ctrl, Cmd or Alt', async () => {
+  it('← and → do nothing in a text box, in the paste box, or with Ctrl, Cmd or Alt', async () => {
     render(<Page report={await make()} />);
     fireEvent.click(screen.getByLabelText('No'));
     const box = screen.getByLabelText('Reason for the No');
     fireEvent.click(button('Paste last answers…'));
     const pasteBox = screen.getByLabelText('Paste an earlier block or Share message');
 
-    key('j', {}, box);
-    key('j', {}, pasteBox);
-    key('j', { ctrlKey: true });
-    key('j', { metaKey: true });
-    key('j', { altKey: true });
+    key('ArrowRight', {}, box);
+    key('ArrowRight', {}, pasteBox);
+    key('ArrowRight', { ctrlKey: true });
+    key('ArrowRight', { metaKey: true });
+    key('ArrowRight', { altKey: true });
     expect(number()).toBe('1');
 
-    key('j', {}, screen.getByLabelText('Yes'));
+    key('ArrowRight', {}, screen.getByLabelText('Yes'));
     expect(number()).toBe('2');
   });
 
-  it('Tab from the line atop reaches the drawn language’s Yes and No before any drawn screen, and the drawn screens take no pointer and are not inert', async () => {
+  it('reads the line atop, then the drawn language’s Yes and No, then the drawn screens, which take no pointer and are not inert', async () => {
     render(<Page report={await make()} />);
     const css = readFileSync(join(process.cwd(), 'src/page.css'), 'utf8');
     const stage = document.querySelector('.w-stage')!;
@@ -332,7 +402,7 @@ describe('moving', () => {
 describe('only unanswered', () => {
   const done = yes(...both('1-sign-in'), ...both('3-settings'));
 
-  it('keeps the list, Prev, Next, J and K to the screens with a language left, and says done on a walk with none', async () => {
+  it('keeps the list, Prev, Next, ← and → to the screens with a language left, and says done on a walk with none', async () => {
     render(<Page report={await make(done)} />);
     expect(items()).toHaveLength(9);
 
@@ -341,9 +411,9 @@ describe('only unanswered', () => {
     expect(items()).toHaveLength(7);
     expect(items()).not.toContain('#admin-setup-3-settings');
     go('2-sign-in-refused');
-    key('j');
+    key('ArrowRight');
     expect(number()).toBe('4');
-    key('k');
+    key('ArrowLeft');
     expect(number()).toBe('2');
     expect((button('‹ Prev') as HTMLButtonElement).disabled).toBe(true);
   });
@@ -358,7 +428,7 @@ describe('only unanswered', () => {
 
     expect(number()).toBe('1');
     expect(items()).toContain('#admin-setup-1-sign-in');
-    key('j');
+    key('ArrowRight');
     expect(number()).toBe('2');
     expect(items()).not.toContain('#admin-setup-1-sign-in');
   });

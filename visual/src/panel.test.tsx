@@ -665,7 +665,8 @@ describe('the label judged again', () => {
 describe('what the keys do in the label box', () => {
   it('answers nothing and moves nothing for a key typed there', async () => {
     render(<Page report={await make()} partner />);
-    for (const typed of ['n', 'y', 'j', 'l']) fireEvent.keyDown(labelBox(), { key: typed });
+    for (const typed of ['n', 'y', 'ArrowRight', 'l'])
+      fireEvent.keyDown(labelBox(), { key: typed });
 
     expect(tocopy()).toBe('none chosen yet');
     expect(document.querySelector('.w-screen .w-number')?.textContent).toBe('1');

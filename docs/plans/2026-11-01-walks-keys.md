@@ -45,10 +45,10 @@ The page's keys are now ← → Y N L U H ? and Escape. A text field, clicked, s
 | 4 | 👤 | The map of the day folds; it is open on a first visit and a fold is kept in this browser, so a reload finds it as it was | unit, `page.test.tsx` |
 | 5 | | ← and → stop at the first and the last screen | unit, `one-screen.test.tsx` |
 | 6 | | ← and → do nothing in a text box, in the paste box, or with Ctrl, Cmd or Alt | unit, `one-screen.test.tsx` |
-| 7 | | Ctrl, Cmd or Alt with Tab is left to the browser, and Tab is left alone while a dialog is open | unit, `one-screen.test.tsx`, `guide.test.tsx` |
+| 7 | | Ctrl, Cmd or Alt with Tab is left to the browser, and Tab is left alone while a dialog is open | unit, `one-screen.test.tsx` |
 | 8 | | With "Only unanswered" on, ← and → and Prev and Next keep to the screens with a language left | unit, `one-screen.test.tsx` |
 | 9 | | While a dialog is open, ←, →, Y, N, L, U and H do nothing to the page behind | unit, `guide.test.tsx`, `bar.test.tsx` |
-| 10 | | The keys line under the moves and the guide's keys list name H and ← · →, and no longer J · K | unit, `one-screen.test.tsx`, `guide.test.tsx` |
+| 10 | | The keys line under the moves and the guide's keys list name H and ← · →, and no longer J · K | unit, `one-screen.test.tsx` |
 | 11 | | The fold is kept as a mark in the browser; with no storage the page works and the map is open at each load | unit, `choices.test.ts`, `page.test.tsx` |
 | 12 | | The drawn screens take no pointer and are not `inert`, and the panel's Yes and No follow the line atop and come before them in the reading order | unit, `one-screen.test.tsx` |
 

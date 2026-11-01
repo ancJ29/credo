@@ -225,6 +225,25 @@ export function saveOnly(only: boolean) {
   }
 }
 
+const MAP_KEY = 'credo-walks-map-open';
+
+/** Whether the map of the day is open: on a first visit, and with no storage, always. */
+export function loadMapOpen() {
+  try {
+    return localStorage.getItem(MAP_KEY) !== 'no';
+  } catch {
+    return true;
+  }
+}
+
+export function saveMapOpen(open: boolean) {
+  try {
+    localStorage.setItem(MAP_KEY, open ? 'yes' : 'no');
+  } catch {
+    // The map is open at each load, then.
+  }
+}
+
 const GUIDE_KEY = 'credo-walks-guide-seen';
 
 /** Whether the guide has opened by itself on this browser before; without storage, never. */

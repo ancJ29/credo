@@ -6,9 +6,11 @@ import {
   loadChoices,
   loadGuideSeen,
   loadLabel,
+  loadMapOpen,
   saveChoices,
   saveGuideSeen,
   saveLabel,
+  saveMapOpen,
   shareOf,
 } from './choices';
 import { makeReport } from './report';
@@ -331,5 +333,27 @@ describe('the guide’s first visit', () => {
     });
     expect(loadGuideSeen()).toBe(false);
     expect(() => saveGuideSeen()).not.toThrow();
+  });
+});
+
+describe('the map of the day’s fold', () => {
+  it('is open on a first visit, kept as it was left, and open at each load with no storage', () => {
+    localStorage.removeItem('credo-walks-map-open');
+    expect(loadMapOpen()).toBe(true);
+    saveMapOpen(false);
+    expect(loadMapOpen()).toBe(false);
+    saveMapOpen(true);
+    expect(loadMapOpen()).toBe(true);
+
+    vi.stubGlobal('localStorage', {
+      getItem: () => {
+        throw new Error('blocked');
+      },
+      setItem: () => {
+        throw new Error('blocked');
+      },
+    });
+    expect(loadMapOpen()).toBe(true);
+    expect(() => saveMapOpen(false)).not.toThrow();
   });
 });
