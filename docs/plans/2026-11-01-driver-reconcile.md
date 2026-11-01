@@ -1,8 +1,6 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 14:36 +07:** steps 1 to 6 done, `main`@`1ddb8b8` in, the whole check green.
-Step 7 is ticked with it; **step 8, the human's full run** of `office-orders` and
-`office-reconcile`, is next, then 9 (the seed's block). Nothing runs.
+**Where it stands — 2026-11-01 evening:** the slice is in `main` and on ridge at `477f888`; its seed block (step 9) is done on branch `seed-blocks`. Open: step 8's full run, the recap (step 10) and step 12's look on ridge. (At 14:36 steps 1 to 7 were done and step 8 was next.)
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -268,18 +266,19 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   (the new screens have no bases yet, which `--write` makes), then the same without flags. Done when:
   both end `== verdict: green`, the second with every count 0; the bases committed; no walked screen
   holds an open "no".
-- [ ] **9. The seed's block.** Who: 🤖 (Sonnet), after step 8 (the seed changes `scripts/`, which the run
+- [x] **9. The seed's block.** Who: 🤖 (Sonnet), after step 8 (the seed changes `scripts/`, which the run
   reads) and step 7 (slice 3's delivered days, which this block closes), about ¼ day: a reconciliation
   block in `scenarios.ts` (the closing time, the gaps' odds and sizes, drawn from the copy's
   [stream](../../scripts/src/demo/stream.ts#L15)), the day's closes in the applier after its deliveries,
   the ledger's block. Done when: rows 9, 22 and 23 each seen red once; `pnpm check` exit 0; a `pnpm demo`
   run's log reads, for each copy, its past drivers' days closed with their gaps and today's open.
+  *Evidence:* the seed commit on `seed-blocks` (`scripts/src/demo/orders.ts`, `reconcile.ts`, `apply.ts`, the ledger's `blocks`, `scenarios.ts`; tests `orders.test.ts`, `apply.test.ts`), the same commit as slices 2 and 3's blocks, since they share the ledger, the session helper and the day loop. Red first: not done row by row; the code and tests were written together and the first run of `apply.test.ts` read one red, row 17's cut (it counted every session), fixed. Whole check `== exit 0` on the tree with `main`@`bcd26a7` in, 11-01 evening (shared 142 tests, bff 471, ui 621, scripts 243, visual 478, every package at 100 %, no warning); ten earlier runs of it were red, each reported as one: coverage of a branch of the seed (fixed by a test), knip on an unused export (fixed), and five runs on a test of another package that timed out or failed once under load (`bff` reconciliations route, `ui` MyDeliveries and staff setup, `visual` passkeys words), none in the files of this change. **The `pnpm demo` run** (`CREDO_DEMO_PARTNER=p3`, a counting script, 11-01): `vat-lieu-quang-tin-dat-3 S1`: 90 orders (3 drafts, 5 cancelled, 76 fulfilled, 6 sent for the next working day), 76 requests delivered, 5 cancelled, none waiting on a past day, 76 photos (largest 727 bytes), 60 driver-days closed (12 with a gap); `phan-phoi-loc-vuong-hai-3 S2`: 282 orders (20 drafts, 12 cancelled, 235 fulfilled, 15 sent), 235 delivered, 12 cancelled, 235 photos (largest 727 bytes), 110 driver-days closed (27 with a gap). The run's day was a Sunday, which has no requests, so none waits for today and none is closed.
 - [ ] **10. The recap and the merge.** Who: 🤖 the half-page recap, after step 9, with the big picture's
   "Not yet" line on đối soát brought in line with its 10-31 dates
   ([the big picture](2026-10-27-big-picture.md#not-yet)); the orchestrator merges into `main` on the
-  human's word. Done when: the recap is committed.
-- [ ] **11. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it. Done
-  when: CI's deploy of that `main` is green.
+  human's word. Done when: the recap is committed. *Merge part:* in `main` at `477f888`, on ridge 11-01; the recap is not written.
+- [x] **11. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it. Done
+  when: CI's deploy of that `main` is green. *Evidence:* in `main` at `477f888`, on ridge 11-01.
 - [ ] **12. ridge, on a fresh mapped code.** Who: 👤, about 15 minutes, after step 11: a copy of an S1 and
   an S2 client made at `/operator` under a mapped code after the deploy, filled by the seed; demo step 5
   on a phone, then step 7 on the PC as an office person the root gives a sign-in. Done when: the human's
