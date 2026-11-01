@@ -1,17 +1,12 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 13:33 +07:** steps 1 and 2 done. **Step 3 is written and NOT yet run:** the
-gate lock was held by other runs from 13:15 to 13:32, so no test, typecheck beyond `shared`, `ui` and `visual`,
-red run or `pnpm report` has been read back for it, and step 3 stays unticked. Built: the wire and the data
-set's closed days in `shared/`; the fake's `listReconciliations` and `closeDay`, `DriverDayPage`, the
-driver lines in `DeliveriesPage`, the words in vi and en; the walk `office-reconcile` (8 screens),
-`walk/specs/reconcile.spec.ts`, its two projects and its `walk/run.sh` row. **Next, in order:** run the
-`shared`, `ui`, `visual` and `scripts` tests and fix what they read; the red runs for rows 1 to 8's
-shared and UI halves (each breaks the rule's line, logs under the credo root's `logs/`, puts it back);
-`pnpm report`; then tick step 3. *Model files followed:* slice 2's `DeliveriesPage.tsx` and `DeliveryPage.tsx`
-(the groups, the check before a write, the outcome alerts), `OrderPage.tsx`'s `NumberInput` (the cash),
-slice 3's `fake.ts` delivery calls (`deliverRequest`, `cancelRequest` were taken out of them), slice 3's
-office screens `orders-11-fulfilled` and `orders-12-proof` in `walks.ts` and `orders.spec.ts` (the walk).
+**Where it stands — 2026-11-01 13:58 +07:** steps 1, 2 and 3 done; **step 4, the human's preview, is next**:
+the walks page `walks/2026-11-01-135535-fd9789618` (8 new screens, 16 waiting, and `orders-5-requests` asked
+again, 2 answers) or `pnpm fake` at `/deliveries`. Nothing runs. *Model files followed:* slice 2's
+`DeliveriesPage.tsx` and `DeliveryPage.tsx` (the groups, the check before a write, the outcome alerts),
+`OrderPage.tsx`'s `NumberInput` (the cash), slice 3's delivery calls in `fake.ts` (`deliverRequest` and
+`cancelRequest` were taken out of them), slice 3's office screens `orders-11-fulfilled` and
+`orders-12-proof` in `walks.ts` and `orders.spec.ts` (the walk).
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -218,7 +213,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   *Evidence:* the human answered yes to all ten 👤 rows ("yes, agree", 2026-11-01 about 13:00, in the
   orchestrator's chat), the demo's choices with them; no row is corrected, so the table above stands as
   drafted.
-- [ ] **3. The office's pages on the fake.** Who: 🤖 (Sonnet), after step 2 (the rows as read), about ½
+- [x] **3. The office's pages on the fake.** Who: 🤖 (Sonnet), after step 2 (the rows as read), about ½
   day. The wire above in `shared/` and the data set's closed days; in `ui/`: each driver's line in
   Delivery requests, a driver's day with the cash, the gap, the close's check and Closed, the words in vi
   and en, the fake's two calls and its confirm's refusal; the 8 screens in `visual/src/walks.ts` with the
@@ -227,6 +222,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   Done when: the shared and UI halves of rows 1 to 8 each seen red once; each touched package's tests
   at 100 %, its typecheck, eslint and prettier exit 0, no warning; `pnpm report` reads 16 waiting and
   the screens asked again, each named here.
+  *Evidence (step 3):* `shared` 142+ tests, `ui` 618 tests, `visual` 469, `scripts` 216, each at 100 %
+  (`== exit 0`); typecheck of shared, ui, visual, walk and scripts exit 0; prettier and eslint on every
+  touched file exit 0, no warning. Red once each at its own assertion, logs `20261101-1354-driver-reconcile-red-*.log`
+  in the credo root's `logs/`: shared rows 2, 3, 7; ui rows 1 (count and offered), 2, 3, 4, 5, 6, 7, 8; the
+  fake's row 5; the `walk/run.sh` row. `pnpm report`: "16 waiting, 2 asked again, 0 no, 174 yes", the page
+  `walks/2026-11-01-135535-fd9789618`; the 2 asked again are `orders-5-requests` in vi and en.
 - [ ] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens and those asked
   again on the walks page, or on `pnpm fake` at `/deliveries`. Done when: each answered yes or no; a no
   becomes a case here and its fix lands before step 5. **Then stop.**
