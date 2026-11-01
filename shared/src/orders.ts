@@ -59,11 +59,11 @@ export const orderLineSchema = z.strictObject({
 });
 export type OrderLine = z.infer<typeof orderLineSchema>;
 
-export const ORDER_STATES = ['draft', 'confirmed', 'cancelled'] as const;
+export const ORDER_STATES = ['draft', 'confirmed', 'fulfilled', 'cancelled'] as const;
 export const orderStateSchema = z.enum(ORDER_STATES);
 export type OrderState = z.infer<typeof orderStateSchema>;
 
-/** The live request an order names: where to find it, and who carries it. */
+/** The live request an order names (waiting or delivered): where to find it, and who carries it. */
 export const requestLinkSchema = z.strictObject({
   id: z.uuid(),
   number: requestNumberSchema,
@@ -73,7 +73,8 @@ export const requestLinkSchema = z.strictObject({
 export type RequestLink = z.infer<typeof requestLinkSchema>;
 
 /** An order: its customer as at the order, the lines and total priced by the app, and its live
- * request (none for a draft, a cancelled order, or a confirmed one whose request was cancelled). */
+ * request (none for a draft, a cancelled order, or a confirmed one whose request was cancelled). A
+ * fulfilled order keeps its delivered request. */
 export const orderSchema = z.strictObject({
   id: z.uuid(),
   number: orderNumberSchema,
@@ -88,12 +89,13 @@ export const orderSchema = z.strictObject({
 });
 export type Order = z.infer<typeof orderSchema>;
 
-export const REQUEST_STATES = ['waiting', 'cancelled'] as const;
+export const REQUEST_STATES = ['waiting', 'delivered', 'cancelled'] as const;
 export const requestStateSchema = z.enum(REQUEST_STATES);
 export type RequestState = z.infer<typeof requestStateSchema>;
 
 /** A delivery request: the order it was made from, its customer and lines as at the order, and the
- * total to collect. */
+ * total to collect. `deliveredAt` is the BFF's clock when the driver marked it delivered; optional,
+ * so a request written before deliveries still reads. */
 export const deliveryRequestSchema = z.strictObject({
   id: z.uuid(),
   number: requestNumberSchema,
@@ -105,6 +107,7 @@ export const deliveryRequestSchema = z.strictObject({
   lines: z.array(orderLineSchema).min(1).max(LINES_MAX),
   total: z.number().int().min(1).max(TOTAL_MAX),
   madeAt: z.number(),
+  deliveredAt: z.number().optional(),
   extra: extraSchema,
 });
 export type DeliveryRequest = z.infer<typeof deliveryRequestSchema>;

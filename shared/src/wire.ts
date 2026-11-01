@@ -19,6 +19,7 @@ export const ROUTES = {
   orders: '/api/orders',
   deliveries: '/api/deliveries',
   drivers: '/api/drivers',
+  myDeliveries: '/api/my-deliveries',
 } as const;
 
 /** A list's import, under its own route: the root's, up to a call's rows. */
@@ -47,6 +48,10 @@ export const deliveryRoutes = {
   list: (day: string) => `${ROUTES.deliveries}?day=${day}`,
   one: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}`,
   cancel: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/cancel`,
+  deliver: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/deliver`,
+  photo: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/photo`,
+  /** The driver's own requests of a day. */
+  mine: (day: string) => `${ROUTES.myDeliveries}?day=${day}`,
 };
 
 /** The client's code, on every call of a client's: it scopes the call to a tenant and proves

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { DEMO_CUSTOMERS, DEMO_DELIVERIES, DEMO_ORDERS, DEMO_PRODUCTS, DEMO_TODAY } from './demo';
+import {
+  DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
+  DEMO_ORDERS,
+  DEMO_PRODUCTS,
+  DEMO_TODAY,
+} from './demo';
 import {
   addDays,
   daySchema,
@@ -7,13 +14,16 @@ import {
   documentNumberingSchema,
   newestOrdersFirst,
   numberText,
+  ORDER_STATES,
   orderSchema,
   priceLines,
+  REQUEST_STATES,
   saveOrderRequestSchema,
   sendableOn,
   sendOrderRequestSchema,
   TOTAL_MAX,
 } from './orders';
+import { proofIsValid } from './photo';
 import { orderRoutes, deliveryRoutes } from './wire';
 
 const cement = DEMO_PRODUCTS.find((one) => one.code === 'VT-001')!;
@@ -181,6 +191,9 @@ describe('the lists and the routes', () => {
     expect(deliveryRoutes.list('2026-11-04')).toBe('/api/deliveries?day=2026-11-04');
     expect(deliveryRoutes.one('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b');
     expect(deliveryRoutes.cancel('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/cancel');
+    expect(deliveryRoutes.deliver('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/deliver');
+    expect(deliveryRoutes.photo('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/photo');
+    expect(deliveryRoutes.mine('2026-11-04')).toBe('/api/my-deliveries?day=2026-11-04');
   });
 
   it('A confirm and a send carry the version read, the driver and the day, and nothing else', () => {
@@ -220,7 +233,7 @@ describe('the demo week', () => {
     expect(DEMO_ORDERS.some((order) => order.state === 'cancelled')).toBe(true);
     for (const order of DEMO_ORDERS.filter((one) => one.request)) {
       const request = DEMO_DELIVERIES.find((one) => one.id === order.request!.id)!;
-      expect(request.state).toBe('waiting');
+      expect(['waiting', 'delivered']).toContain(request.state);
       expect(request.order).toEqual({ id: order.id, day: order.day, number: order.number });
       expect(sendableOn(order.day, request.day)).toBe(true);
     }
@@ -228,5 +241,47 @@ describe('the demo week', () => {
     const today = DEMO_DELIVERIES.filter((request) => request.day === DEMO_TODAY);
     expect(new Set(today.map((request) => request.driver.id)).size).toBe(2);
     expect(today.some((request) => request.state === 'cancelled')).toBe(true);
+  });
+});
+
+describe('the states', () => {
+  it('A request’s states are waiting, delivered and cancelled, an order’s draft, confirmed, fulfilled and cancelled; deliveredAt is optional, so a request slice 2 wrote still reads', () => {
+    expect(REQUEST_STATES).toEqual(['waiting', 'delivered', 'cancelled']);
+    expect(ORDER_STATES).toEqual(['draft', 'confirmed', 'fulfilled', 'cancelled']);
+    const waiting = DEMO_DELIVERIES.find((request) => request.state === 'waiting')!;
+    expect('deliveredAt' in waiting).toBe(false);
+    expect(deliveryRequestSchema.safeParse(waiting).success).toBe(true);
+    expect(deliveryRequestSchema.safeParse({ ...waiting, deliveredAt: 1 }).success).toBe(true);
+    expect(deliveryRequestSchema.safeParse({ ...waiting, state: 'lost' }).success).toBe(false);
+    expect(orderSchema.safeParse({ ...DEMO_ORDERS[0], state: 'fulfilled' }).success).toBe(true);
+  });
+
+  it('Each request of a past day is delivered between 14:00 and 17:30 on its day, after it was sent, with one of three drawn photos under 10 KB, and its order is fulfilled; of today’s one was delivered before 10:00 and the rest wait', () => {
+    const delivered = DEMO_DELIVERIES.filter((request) => request.state === 'delivered');
+    expect(delivered.length).toBeGreaterThan(3);
+    for (const request of delivered) {
+      const at = new Date(request.deliveredAt! + 7 * 3_600_000);
+      expect(at.toISOString().slice(0, 10), request.number).toBe(request.day);
+      expect(request.deliveredAt!, request.number).toBeGreaterThan(request.madeAt);
+      const order = DEMO_ORDERS.find((one) => one.id === request.order.id)!;
+      expect(order.state, request.number).toBe('fulfilled');
+      expect(order.request?.id, request.number).toBe(request.id);
+      expect(proofIsValid(DEMO_DELIVERY_PHOTOS[request.id]), request.number).toBe(true);
+      expect(DEMO_DELIVERY_PHOTOS[request.id].length, request.number).toBeLessThan(10_000);
+    }
+    const past = DEMO_DELIVERIES.filter((request) => request.day < DEMO_TODAY);
+    expect(past.every((request) => ['delivered', 'cancelled'].includes(request.state))).toBe(true);
+    for (const request of past.filter((one) => one.state === 'delivered')) {
+      const minutes = new Date(request.deliveredAt! + 7 * 3_600_000);
+      const total = minutes.getUTCHours() * 60 + minutes.getUTCMinutes();
+      expect(total, request.number).toBeGreaterThanOrEqual(14 * 60);
+      expect(total, request.number).toBeLessThanOrEqual(17 * 60 + 30);
+    }
+    const today = DEMO_DELIVERIES.filter((request) => request.day === DEMO_TODAY);
+    const early = today.filter((request) => request.state === 'delivered');
+    expect(early).toHaveLength(1);
+    expect(early[0].deliveredAt!).toBeLessThan(Date.UTC(2026, 10, 4, 3, 0));
+    expect(today.filter((request) => request.state === 'waiting').length).toBeGreaterThan(1);
+    expect(new Set(Object.values(DEMO_DELIVERY_PHOTOS)).size).toBe(3);
   });
 });

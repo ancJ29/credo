@@ -60,6 +60,21 @@ describe('the record keys', () => {
     }
   });
 
+  it('A delivery’s photo is tenant.<id>.delivery-photo.<day>.<request id>, outside every day’s prefix, so no day’s list reads one', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    const tenant = recordKeys.tenant(id);
+
+    expect(tenant.deliveryPhoto('2026-11-04', 'r1')).toBe(
+      `tenant.${id}.delivery-photo.2026-11-04.r1`,
+    );
+    expect(
+      tenant.deliveryPhoto('2026-11-04', 'r1').startsWith(tenant.deliveryDayPrefix('2026-11-04')),
+    ).toBe(false);
+    expect(
+      tenant.deliveryPhoto('2026-11-04', 'r1').startsWith(tenant.orderDayPrefix('2026-11-04')),
+    ).toBe(false);
+  });
+
   it('C: An email and a QR code each have a record of their own, none of them under the staff list’s prefix', () => {
     const id = '3f2a91bc-0000-4000-8000-000000000001';
     const tenant = recordKeys.tenant(id);

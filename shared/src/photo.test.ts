@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  deliverRequestSchema,
+  deliveryPhotoReplySchema,
   MAX_PHOTO_BYTES,
+  MAX_PROOF_BYTES,
   photoIsValid,
   photoReplySchema,
+  PROOF_SIDE,
+  proofIsValid,
   savePhotoRequestSchema,
   storedPhotoSchema,
 } from './photo';
@@ -54,5 +59,28 @@ describe('a photo', () => {
     expect(storedPhotoSchema.safeParse({ photo: image(10) }).success).toBe(true);
     expect(storedPhotoSchema.safeParse({ photo: image(MAX_PHOTO_BYTES + 1) }).success).toBe(false);
     expect(storedPhotoSchema.safeParse({ photo: image(10), version: 'x' }).success).toBe(false);
+  });
+});
+
+describe('a delivery’s photo', () => {
+  it('A delivery’s photo is a JPEG, PNG or WebP of at most 200 KB shrunk to 1280 px on its long side, and the deliver and the photo’s record take that alone', () => {
+    expect(MAX_PROOF_BYTES).toBe(204_800);
+    expect(PROOF_SIDE).toBe(1280);
+    expect(proofIsValid(image(MAX_PROOF_BYTES))).toBe(true);
+    expect(proofIsValid(image(MAX_PROOF_BYTES + 1))).toBe(false);
+    expect(proofIsValid(image(MAX_PHOTO_BYTES + 1))).toBe(true);
+    expect(proofIsValid(image(10, 'gif'))).toBe(false);
+    expect(proofIsValid('')).toBe(false);
+    const tag = 'a'.repeat(64);
+    const photo = image(10);
+    expect(deliverRequestSchema.safeParse({ version: tag, photo }).success).toBe(true);
+    expect(deliverRequestSchema.safeParse({ version: tag }).success).toBe(false);
+    expect(deliverRequestSchema.safeParse({ version: 'nope', photo }).success).toBe(false);
+    expect(
+      deliverRequestSchema.safeParse({ version: tag, photo: image(MAX_PROOF_BYTES + 1) }).success,
+    ).toBe(false);
+    expect(deliverRequestSchema.safeParse({ version: tag, photo, day: 'x' }).success).toBe(false);
+    expect(deliveryPhotoReplySchema.safeParse({ photo }).success).toBe(true);
+    expect(deliveryPhotoReplySchema.safeParse({ photo, version: tag }).success).toBe(false);
   });
 });

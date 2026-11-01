@@ -1,4 +1,5 @@
 import type { TenantConfig } from './config';
+import { DEMO_PROOFS } from './demo-proofs';
 import type { CustomField } from './fields';
 import type { Customer, Product } from './lists';
 import {
@@ -46,6 +47,8 @@ export const DEMO_CLIENTS: { code: string; name: string; madeAt: number }[] = [
 
 /** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
 export const DEMO_QR_SECRET = 'fake-qr-secret-0001';
+/** The same for the driver `EMP-0005`, whose link the driver's walk opens on the fake. */
+export const DEMO_DRIVER_QR_SECRET = 'fake-qr-secret-0005';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
@@ -459,7 +462,8 @@ export const DEMO_TODAY = '2026-11-04';
 
 /** One order of the week: a day (counted back from today), the hour it was made, the customer and
  * the products by code, its state, and for a confirmed one the driver by code, the day it was sent
- * for (counted from today) and whether its request was cancelled since. */
+ * for (counted from today), whether its request was cancelled since, and for one of today's the
+ * time its driver delivered it. */
 type OrderSpec = {
   back: number;
   time: string;
@@ -469,6 +473,7 @@ type OrderSpec = {
   driver?: string;
   sentFor?: number;
   requestState?: RequestState;
+  deliveredAt?: string;
 };
 
 const WEEK_OF_ORDERS: OrderSpec[] = [
@@ -587,6 +592,7 @@ const WEEK_OF_ORDERS: OrderSpec[] = [
     state: 'confirmed',
     driver: 'EMP-0005',
     sentFor: 0,
+    deliveredAt: '09:30',
   },
   {
     back: 0,
@@ -624,6 +630,9 @@ const WEEK_OF_ORDERS: OrderSpec[] = [
 
 /** The minutes after an order that its request is made, in the data set. */
 const SENT_AFTER_MINUTES = 20;
+/** The times of day a request of a past day was delivered at, in turn: after it was sent and before
+ * 17:30. */
+const PAST_DELIVERY_TIMES = ['14:00', '14:40', '15:20', '16:00'] as const;
 /** A time of day in Vietnam (UTC+7), as milliseconds since the epoch, fixed. */
 const atVietnam = (day: string, time: string) => {
   const [year, month, date] = day.split('-').map(Number) as [number, number, number];
@@ -638,10 +647,13 @@ const driverOf = (code: string): Driver => {
 
 /** A week of the demo company's orders and their delivery requests at fixed times, ending on
  * `DEMO_TODAY`, numbered DH- and GH- in the order they were made. One data set for the fake and
- * the stack's generator; a request is made for each confirmed order, and one is cancelled since. */
+ * the stack's generator; a request is made for each confirmed order, and one is cancelled since.
+ * Each request of a past day was delivered, with a drawn photo, and its order is fulfilled; of
+ * today's, one was delivered before the walk's 10:00 and the rest wait. */
 const WEEK = (() => {
   const orders: Order[] = [];
   const requests: DeliveryRequest[] = [];
+  const photos: Record<string, string> = {};
   WEEK_OF_ORDERS.forEach((spec, index) => {
     const day = addDays(DEMO_TODAY, -spec.back);
     const customer = DEMO_CUSTOMERS.find((one) => one.code === spec.customer)!;
@@ -681,13 +693,30 @@ const WEEK = (() => {
       extra: {},
     };
     requests.push(request);
-    if (request.state === 'waiting') {
+    const deliveredTime =
+      spec.deliveredAt ??
+      (request.day < DEMO_TODAY
+        ? PAST_DELIVERY_TIMES[requests.length % PAST_DELIVERY_TIMES.length]
+        : undefined);
+    if (request.state === 'waiting' && deliveredTime !== undefined) {
+      request.state = 'delivered';
+      request.deliveredAt = atVietnam(request.day, deliveredTime);
+      order.state = 'fulfilled';
+      photos[request.id] = DEMO_PROOFS[Object.keys(photos).length % DEMO_PROOFS.length];
+    }
+    if (request.state === 'waiting' || request.state === 'delivered') {
       const { id: requestId, number, day: sentDay, driver } = request;
       order.request = { id: requestId, number, day: sentDay, driver };
     }
   });
-  return { orders, requests };
+  return { orders, requests, photos };
 })();
 
 export const DEMO_ORDERS: Order[] = WEEK.orders;
 export const DEMO_DELIVERIES: DeliveryRequest[] = WEEK.requests;
+
+/** The drawn photo of each delivered request, by the request's id: three pictures in turn. */
+export const DEMO_DELIVERY_PHOTOS: Record<string, string> = WEEK.photos;
+
+/** The picture the walks choose as the camera's file when a driver delivers: the first of the three. */
+export const DEMO_WALK_PROOF: string = DEMO_PROOFS[0];

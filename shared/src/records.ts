@@ -34,6 +34,10 @@ export const recordKeys = {
     orderDayPrefix: (day: string) => `tenant.${id}.order.${day}.`,
     delivery: (day: string, requestId: string) => `tenant.${id}.delivery.${day}.${requestId}`,
     deliveryDayPrefix: (day: string) => `tenant.${id}.delivery.${day}.`,
+    /** A delivery's photo, its own record beside the request's. Its key does not start with
+     * `deliveryDayPrefix`, so a day's list never reads a photo. */
+    deliveryPhoto: (day: string, requestId: string) =>
+      `tenant.${id}.delivery-photo.${day}.${requestId}`,
     /** The last number given to an order and to a request: its own record, raised over its tag. */
     documentNumbering: `tenant.${id}.document-numbering`,
     staffSetup: `tenant.${id}.staff-setup`,
