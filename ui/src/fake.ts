@@ -57,8 +57,13 @@ import {
   DEMO_TODAY,
   DEMO_QR_SECRET,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_JOIN_TOKEN,
+  DEMO_OPERATOR_ID,
+  DEMO_PASSKEYS,
   DEMO_PHOTOS,
   DEMO_ROOT_NAME,
+  DEMO_SERVICES,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -70,22 +75,84 @@ import {
   type OrderResult,
 } from './api';
 import { createDeviceStore } from './device';
+import { type Passkeys, PasskeyAlreadyHere, PasskeyNotGiven } from './passkeys';
 
 /** The statuses the address may ask the fake to answer, once. */
-const STATUSES = [403, 409, 503] as const;
+const STATUSES = [401, 403, 404, 409, 503] as const;
 type Status = (typeof STATUSES)[number];
 
-/** One call and the status it answers once: `?cue=saveConfig:409`. */
-export type Cue = { call: string; status: Status };
+/** What the authenticator may be asked to answer instead of a passkey: it was not given. */
+const NOT_GIVEN = 'notGiven';
+
+/** What a call may be asked to do instead of an answer: nothing at all, as when the BFF is down. */
+const SILENT = 'silent';
+
+/** One call and the status it answers once: `?cue=saveConfig:409`. The authenticator's is
+ * `passkey:notGiven`, and `operatorServices:silent` is a call nothing answers. */
+export type Cue = { call: string; status: Status | typeof NOT_GIVEN | typeof SILENT };
 
 /** The cue an address names, or null for none or one the fake does not know. */
 export function parseCue(raw: string | null): Cue | null {
   const [call, status] = (raw ?? '').split(':');
-  const found = STATUSES.find((known) => String(known) === status);
+  const found = ([...STATUSES, NOT_GIVEN, SILENT] as const).find(
+    (known) => String(known) === status,
+  );
   return call && found ? { call, status: found } : null;
 }
 
+const OPTIONS = { options: { challenge: 'fake-challenge' }, token: 'fake.token' };
+const DEMO_OPERATOR = { id: DEMO_OPERATOR_ID, name: OPERATOR_NAME };
+const INVITED_OPERATOR = { id: '00000000-0000-4000-8000-000000000202', name: DEMO_INVITED_NAME };
+
+/** The credential the fake authenticator answers every ceremony with. */
+const CREDENTIAL = {
+  id: 'fake-credential',
+  rawId: 'fake-credential',
+  type: 'public-key' as const,
+  response: {},
+  clientExtensionResults: {},
+};
+
+/** The fake device, which a test may tell what it already holds, as a real one holds the passkeys
+ * made on it. */
+export type FakePasskeys = Passkeys & {
+  /** The device now holds the credential with this id. */
+  hold: (id: string) => void;
+};
+
+/** The device's passkeys, faked: each ceremony answers a fixed credential after a tick, as the
+ * device would after a touch. The cue `passkey:notGiven` makes the first one not given. A device
+ * that holds a credential the options exclude refuses a registration as a real one does, with
+ * "already here"; a fake device holds none until a test says so. */
+export function createFakePasskeys({ cue }: { cue: Cue | null }): FakePasskeys {
+  let notGiven = cue?.call === 'passkey' && cue.status === NOT_GIVEN;
+  const held = new Set<string>();
+  const tick = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (notGiven) {
+      notGiven = false;
+      throw new PasskeyNotGiven();
+    }
+    return CREDENTIAL;
+  };
+  return {
+    register: async (options) => {
+      const excluded = Array.isArray(options.excludeCredentials) ? options.excludeCredentials : [];
+      if (excluded.some((credential: { id?: unknown }) => held.has(String(credential.id)))) {
+        // What the browser's own refusal (`InvalidStateError`) is read as.
+        throw new PasskeyAlreadyHere();
+      }
+      return await tick();
+    },
+    authenticate: tick,
+    hold: (id) => void held.add(id),
+  };
+}
+
 const WEEK = 7 * 24 * 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
+/** The handle of the operator who joined by the data set's link, apart from the data set's own. */
+const JOINED_HANDLE = 'fake.operator.joined';
 const ROOT: UserView = { name: DEMO_ROOT_NAME, root: true, permissions: {} };
 /** The password every fake sign-in hands out, since none is ever checked. */
 const MADE_PASSWORD = 'Fake-password-1!';
@@ -98,6 +165,8 @@ type Options = {
   cue: Cue | null;
   /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
   signIns?: boolean;
+  /** A deploy half done: c-storage runs the newer build the others have not reached. */
+  drift?: boolean;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
   noDrivers?: boolean;
 };
@@ -107,7 +176,13 @@ type Options = {
  * methods, the same answers' shapes, no network. Any password signs the data set's root in. A
  * cue makes the call it names answer one status once, then the fake goes on from the data set.
  */
-export function createFakeApi({ device, cue, signIns = false, noDrivers = false }: Options): Api {
+export function createFakeApi({
+  device,
+  cue,
+  signIns = false,
+  drift = false,
+  noDrivers = false,
+}: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
   let pending = cue;
@@ -164,12 +239,15 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
     onConflict?: () => T,
     onForbidden?: () => T,
   ) {
-    if (pending?.call === name) {
+    if (pending?.call === name && pending.status !== NOT_GIVEN) {
       const { status } = pending;
       pending = null;
+      // Nothing answers: the request failed, or the edge's own error came back.
+      if (status === SILENT) throw new ApiError(null);
       if (status === 409 && onConflict) return onConflict();
       if (status === 403 && onForbidden) return onForbidden();
-      throw new ApiError(status);
+      // The fake's BFF answered, in its own error shape.
+      throw new ApiError(status, true);
     }
     return await answer();
   }
@@ -178,6 +256,11 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
   const clients = new Map<string, ClientListItem>(
     DEMO_CLIENTS.map((client) => [client.code, { ...client, link: clientLinkPath(client.code) }]),
   );
+
+  /** The operator's own passkeys, and whether the data set's join link has been used. */
+  let passkeys = DEMO_PASSKEYS.map((passkey) => ({ ...passkey }));
+  let added = 0;
+  let joined = false;
 
   const signedOut = () => new ApiError(401);
   const notFound = () => new ApiError(404);
@@ -417,22 +500,100 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
         () => ({ kind: 'conflict' as const }),
       ),
 
-    operatorSignIn: (name) =>
-      call('operatorSignIn', () => {
-        if (normaliseSignInName(name) !== OPERATOR_NAME) throw signedOut();
+    operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),
+
+    operatorPasskeySignIn: () =>
+      call('operatorPasskeySignIn', () => ({
+        authId: 'fake.operator',
+        expiresAt: Date.now() + HOUR,
+        operator: DEMO_OPERATOR,
+      })),
+
+    operatorJoinOptions: (link) =>
+      call('operatorJoinOptions', () => {
+        if (link !== DEMO_JOIN_TOKEN || joined) throw notFound();
         return {
-          authId: 'fake.operator',
-          expiresAt: Date.now() + WEEK,
-          operator: { name: OPERATOR_NAME },
+          ...OPTIONS,
+          name: DEMO_INVITED_NAME,
+          madeBy: OPERATOR_NAME,
+          madeByTerminal: false,
         };
+      }),
+
+    operatorJoin: ({ link }) =>
+      call('operatorJoin', () => {
+        if (link !== DEMO_JOIN_TOKEN || joined) throw notFound();
+        joined = true;
+        passkeys = [{ id: 'fake-passkey-first', addedAt: Date.now(), lastUsedAt: null }];
+        return { authId: JOINED_HANDLE, expiresAt: Date.now() + HOUR, operator: INVITED_OPERATOR };
       }),
 
     operatorSignOut: () => call('operatorSignOut', () => undefined),
 
     operatorMe: () =>
       call('operatorMe', () => {
+        const handle = device.operatorAuthId();
+        if (!handle) throw signedOut();
+        return { operator: handle === JOINED_HANDLE ? INVITED_OPERATOR : DEMO_OPERATOR };
+      }),
+
+    operatorServices: () =>
+      call('operatorServices', () => {
         if (!device.operatorAuthId()) throw signedOut();
-        return { operator: { name: OPERATOR_NAME } };
+        return {
+          build: DEMO_SERVICES.build,
+          storage: {
+            build: drift ? DEMO_SERVICES.driftBuild : DEMO_SERVICES.build,
+            ms: DEMO_SERVICES.storageMs,
+          },
+          bffMs: DEMO_SERVICES.bffMs,
+          checkedAt: DEMO_SERVICES.checkedAt,
+        };
+      }),
+
+    operatorPasskeys: () =>
+      call('operatorPasskeys', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return passkeys.map((passkey) => ({ ...passkey }));
+      }),
+
+    operatorPasskeyConfirmOptions: () =>
+      call('operatorPasskeyConfirmOptions', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return OPTIONS;
+      }),
+
+    operatorPasskeyAddOptions: () =>
+      call('operatorPasskeyAddOptions', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        // As the real options do: the passkeys held are excluded from another made on the device.
+        return {
+          ...OPTIONS,
+          options: {
+            ...OPTIONS.options,
+            excludeCredentials: passkeys.map((passkey) => ({ id: passkey.id })),
+          },
+        };
+      }),
+
+    operatorPasskeyAdd: () =>
+      call('operatorPasskeyAdd', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        added += 1;
+        passkeys = [
+          ...passkeys,
+          { id: `fake-passkey-${added}`, addedAt: Date.now(), lastUsedAt: null },
+        ];
+        return passkeys.map((passkey) => ({ ...passkey }));
+      }),
+
+    operatorPasskeyRemove: (id) =>
+      call('operatorPasskeyRemove', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        if (!passkeys.some((passkey) => passkey.id === id)) throw notFound();
+        if (passkeys.length === 1) return { kind: 'last' as const };
+        passkeys = passkeys.filter((passkey) => passkey.id !== id);
+        return { kind: 'removed' as const, passkeys: passkeys.map((passkey) => ({ ...passkey })) };
       }),
 
     getStaffSetup: () =>
@@ -920,21 +1081,25 @@ const FAKE_KEY = 'credo.fake';
  * to the demo company, so a fake sign-in never touches what the device keeps for the real app.
  * The tab remembers the switch once read, so a reload without `?fake` is still the fake; null when
  * the address names no `?fake` and the tab never did. `&sign-ins` has the company use sign-in by
- * email and by QR code. */
+ * email and by QR code; `&drift` has c-storage a build ahead of the others. */
 export function fakeParts(search: string, storage: Parameters<typeof createDeviceStore>[0]) {
   const params = new URLSearchParams(search);
   if (!params.has('fake') && storage.getItem(FAKE_KEY) === null) return null;
   storage.setItem(FAKE_KEY, '1');
   const device = createDeviceStore(storage);
   device.setClientCode(DEMO_CODE);
+  const cue = parseCue(params.get('cue'));
   return {
     api: createFakeApi({
       device,
-      cue: parseCue(params.get('cue')),
+      cue,
       signIns: params.has('sign-ins'),
+      drift: params.has('drift'),
       noDrivers: params.has('no-drivers'),
     }),
     device,
+    passkeys: createFakePasskeys({ cue }),
+    build: DEMO_SERVICES.build,
     /** The fake build's today is the data set's, so the week of orders is the week shown. */
     today: () => DEMO_TODAY,
   };

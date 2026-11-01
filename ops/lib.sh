@@ -596,6 +596,13 @@ clean() {
   env "${BRU_UNSET[@]}" "$@"
 }
 
+# build_app <source folder> <commit>: the BFF's bundle and the UI's files, built in the folder, each
+# stamped with the commit (CREDO_BUILD), which the Services status page reads back. The install is
+# not stamped: it builds nothing of ours.
+build_app() {
+  (cd "$1" && clean pnpm install --frozen-lockfile && CREDO_BUILD=$2 clean pnpm --filter @credo/bff bundle && CREDO_BUILD=$2 clean pnpm --filter @credo/ui build)
+}
+
 # bru_clean <bru arguments...>: bru, without the job's credentials
 bru_clean() {
   clean bru "$@"
@@ -733,13 +740,19 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the four variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <get-function-configuration> → the names of its variables, sorted and comma-joined;
 # values are never read here
 function_env_names() {
   jq -r '(.Environment.Variables // {}) | keys | join(",")' <<<"$1"
+}
+
+# function_origin_verdict <get-function-configuration> <the app's address> → yes, or no: the function's
+# APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
+function_origin_verdict() {
+  jq -r --arg a "${2%/}" 'if (.Environment.Variables.APP_ORIGIN // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
 }
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
@@ -842,6 +855,9 @@ edge_reads() {
   expect "a missing code is a 400" 400 "$EDGE_STATUS"
   edge GET /api/operator/me
   expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
+  edge POST /api/operator/passkey/options
+  expect "the sign-in options' relying party is the app's host, never the request's" "200 $(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" \
+    "$EDGE_STATUS $(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)"
   edge GET /api/health
   expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
 }

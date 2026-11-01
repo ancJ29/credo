@@ -6,8 +6,6 @@ import {
   configDocSchema,
   clientListReplySchema,
   createClientReplySchema,
-  operatorMeReplySchema,
-  operatorSessionReplySchema,
   recordKeys,
   sessionReplySchema,
   storedClientSchema,
@@ -16,18 +14,8 @@ import {
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import {
-  bffOn,
-  DAY_MS,
-  DEVICE,
-  OPERATOR,
-  ROOT,
-  scoped,
-  seedOperator,
-  seedTenant,
-  signIn,
-  withAuth,
-} from '../tests/tenant';
+import { bffOn, DAY_MS, DEVICE, scoped, seedTenant, signIn, withAuth } from '../tests/tenant';
+import { joinedOperator, session, signInWith } from '../tests/operator';
 import { createClient } from './clients';
 import { verifyPassword } from './password';
 
@@ -41,112 +29,62 @@ afterAll(async () => {
 
 type Options = Parameters<typeof bffOn>[1];
 
-/** The BFF with the operator's account seeded, as `pnpm stack` leaves it. */
-async function withOperator(options: Options = {}) {
-  const t = await bffOn(cs, options);
-  await seedOperator(t.client);
-  return t;
-}
-
-type App = Awaited<ReturnType<typeof bffOn>>['app'];
-
-const operatorSignIn = (app: App, credentials: object = OPERATOR, device = DEVICE) =>
-  app.inject({
-    method: 'POST',
-    url: '/api/operator/sign-in',
-    headers: { 'x-device-id': device },
-    payload: credentials,
-  });
+/** The BFF with nobody signed in. */
+const withOperator = async (options: Options = {}) => await bffOn(cs, options);
 
 async function signedInOperator(options: Options = {}) {
-  const t = await withOperator(options);
-  const authId = operatorSessionReplySchema.parse((await operatorSignIn(t.app)).json()).authId;
-  const make = async (payload: object, headers: Record<string, string> = withAuth(authId)) =>
+  const t = await bffOn(cs, options);
+  const op = await joinedOperator(t);
+  const held = { authId: op.authId };
+  const make = async (payload: object, headers: Record<string, string> = withAuth(held.authId)) =>
     await t.app.inject({ method: 'POST', url: '/api/operator/clients', headers, payload });
-  return { ...t, authId, make };
+  /** Signs in again with the passkey: a day passes in some tests, and a sign-in lasts an hour. */
+  const signInAgain = async () => {
+    held.authId = session((await signInWith(t, op.authenticator)).sent).authId;
+  };
+  return {
+    ...t,
+    get authId() {
+      return held.authId;
+    },
+    make,
+    signInAgain,
+    operator: op,
+  };
 }
 
 const acme = { code: 'acme', name: 'Acme Trading' };
 
-describe('The operator signs in at /operator with a name and password of its own', () => {
-  it('opens a session for the operator and answers who it is', async () => {
-    const t = await withOperator();
-    const signedIn = await operatorSignIn(t.app);
-    expect(signedIn.statusCode).toBe(200);
-    const session = operatorSessionReplySchema.parse(signedIn.json());
-    expect(session.operator).toEqual({ name: 'operator' });
-    const me = await t.app.inject({
-      method: 'GET',
-      url: '/api/operator/me',
-      headers: withAuth(session.authId),
-    });
-    expect(operatorMeReplySchema.parse(me.json())).toEqual({ operator: { name: 'operator' } });
-    expect(
-      await t.client.getRecord(recordKeys.operatorSession(session.authId.split('.')[0])),
-    ).not.toBeNull();
-  });
-
-  it('answers an unknown name and a wrong password with the same 401 and opens nothing', async () => {
-    const t = await withOperator();
-    const unknown = await operatorSignIn(t.app, { name: 'nobody', password: OPERATOR.password });
-    const wrong = await operatorSignIn(t.app, { name: OPERATOR.name, password: 'not it' });
-    expect(unknown.statusCode).toBe(401);
-    expect(unknown.body).toBe(wrong.body);
-    expect(wrong.statusCode).toBe(401);
-    expect((await t.client.listRecords('operator.session.')).records).toEqual([]);
-  });
-
-  it('refuses a sign-in with no device id, and a body that is not a name and password', async () => {
-    const t = await withOperator();
-    const noDevice = await t.app.inject({
-      method: 'POST',
-      url: '/api/operator/sign-in',
-      payload: OPERATOR,
-    });
-    expect(noDevice.statusCode).toBe(400);
-    expect((await operatorSignIn(t.app, { name: 'operator' })).statusCode).toBe(400);
-  });
-
-  it('is not opened by a client’s sign-in: a root’s name and password are no operator’s', async () => {
-    const t = await withOperator();
-    await seedTenant(t.client, 'acme');
-    expect((await operatorSignIn(t.app, ROOT)).statusCode).toBe(401);
-    expect(
-      (await operatorSignIn(t.app, { name: ROOT.name, password: OPERATOR.password })).statusCode,
-    ).toBe(401);
-  });
-
+describe('A client’s sign-in is no operator’s, and an operator’s handle opens no client', () => {
   it('opens no client: its handle is no client’s, whatever code is sent', async () => {
-    const t = await withOperator();
+    const t = await signedInOperator();
     await seedTenant(t.client, 'acme');
-    const { authId } = operatorSessionReplySchema.parse((await operatorSignIn(t.app)).json());
     const acmeApp = scoped(t.app, 'acme');
     const me = await acmeApp.inject({
       method: 'GET',
       url: '/api/auth/me',
-      headers: withAuth(authId),
+      headers: withAuth(t.authId),
     });
     expect(me.statusCode).toBe(401);
     const save = await acmeApp.inject({
       method: 'PUT',
       url: '/api/config',
-      headers: withAuth(authId),
+      headers: withAuth(t.authId),
       payload: { version: null, config: {} },
     });
     expect(save.statusCode).toBe(401);
   });
 
-  it('ends its session on sign-out, and a handle that names none ends nothing', async () => {
-    const t = await signedInOperator();
-    const out = await t.app.inject({
-      method: 'POST',
-      url: '/api/operator/sign-out',
-      headers: withAuth(t.authId),
+  it('is not opened by a client root’s handle', async () => {
+    const t = await withOperator();
+    await seedTenant(t.client, 'acme');
+    const root = await signIn(scoped(t.app, 'acme'));
+    const me = await t.app.inject({
+      method: 'GET',
+      url: '/api/operator/me',
+      headers: withAuth(root.body.authId),
     });
-    expect(out.statusCode).toBe(204);
-    expect(await t.client.getRecord(recordKeys.operatorSession(t.authId.split('.')[0]))).toBeNull();
-    const again = await t.app.inject({ method: 'POST', url: '/api/operator/sign-out' });
-    expect(again.statusCode).toBe(204);
+    expect(me.statusCode).toBe(401);
   });
 });
 
@@ -402,7 +340,6 @@ describe('A root’s first password is random per client, stored only as its scr
     );
     const log = lines.join('\n');
     expect(log).not.toContain(reply.password);
-    expect(log).not.toContain(OPERATOR.password);
     expect(log).not.toContain('a wrong password');
     expect(log).not.toContain('scrypt$');
   });
@@ -423,8 +360,16 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/auth/sign-out (POST)',
         '├── /api/auth/password (PUT)',
         '├── /api/auth/me (GET, HEAD)',
-        '├── /api/operator/sign-in (POST)',
+        '├── /api/operator/passkey/options (POST)',
+        '├── /api/operator/passkey/sign-in (POST)',
+        '├── /api/operator/passkeys (GET, HEAD, POST)',
+        '│   ├── /confirm-options (POST)',
+        '│   ├── /options (POST)',
+        '│   └── /:id (DELETE)',
+        '├── /api/operator/join (POST)',
+        '│   └── /options (POST)',
         '├── /api/operator/sign-out (POST)',
+        '├── /api/operator/services (GET, HEAD)',
         '├── /api/operator/me (GET, HEAD)',
         '├── /api/operator/clients (GET, HEAD, POST)',
         '├── /api/orders (GET, HEAD, POST)',
@@ -471,6 +416,7 @@ describe('The operator is shown every client on the stack, newest first, from th
     });
     expect((await t.make(acme)).statusCode).toBe(201);
     t.time.advance(DAY_MS);
+    await t.signInAgain();
     expect((await t.make({ code: 'newer', name: 'Newer' })).statusCode).toBe(201);
 
     const answer = await list(t);
@@ -546,6 +492,7 @@ describe('The operator is shown every client on the stack, newest first, from th
     const t = await signedInOperator();
     await t.make(acme);
     t.time.advance(DAY_MS);
+    await t.signInAgain();
     expect((await t.make({ code: 'acme', name: 'Other Name' })).statusCode).toBe(409);
 
     const { clients } = clientListReplySchema.parse((await list(t)).json());

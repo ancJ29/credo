@@ -14,6 +14,16 @@ export function dayOf(time: number | null, language: Language) {
   ).format(time);
 }
 
+/** A time as the clock reads it in the browser's time zone, to the second, on 24 hours: `19:00:00`. */
+export function timeOf(time: number, language: Language) {
+  return new Intl.DateTimeFormat(LOCALE[language], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).format(time);
+}
+
 /** The office's calendar day at this browser: today as `YYYY-MM-DD`, the day a new order is filed
  * under. The walk fixes the browser's clock, and the fake build takes the data set's. */
 export function localToday() {

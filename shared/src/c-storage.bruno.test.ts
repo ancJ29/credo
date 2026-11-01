@@ -122,4 +122,9 @@ describe('the c-storage client sends what its Bruno request sends', () => {
     const wire = await sent((call) => client(call).removeRecord(key, values['staleTag']));
     expect(wire).toEqual(requestOf('02-records/15-remove-naming-a-stale-tag.yml', values));
   });
+
+  it('reads the health as 01-health does', async () => {
+    const wire = await sent((call) => client(call).health());
+    expect(wire).toEqual(requestOf('03-the-boundary/01-health.yml', values));
+  });
 });

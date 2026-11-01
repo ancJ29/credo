@@ -128,6 +128,7 @@ else
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --output json)
   expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
   expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+  expect "the function's APP_ORIGIN is the app's address, which its passkeys are bound to" yes "$(function_origin_verdict "$fn" "$APP_ADDRESS")"
   expect "the function reaches c-storage at the box's private address" yes \
     "$([ "$(jq -r '.Environment.Variables.C_STORAGE_URL // empty' <<<"$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"
   fn_commit=$(jq -r '.Description // empty' <<<"$fn")

@@ -14,6 +14,7 @@
     "@fontsource-variable/noto-sans": "catalog:",
     "@mantine/core": "catalog:",
     "@mantine/hooks": "catalog:",
+    "@simplewebauthn/browser": "catalog:",
     "@tabler/icons-react": "catalog:",
     "i18next": "catalog:",
     "qrcode.react": "catalog:",

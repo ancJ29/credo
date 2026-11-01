@@ -1,7 +1,7 @@
 import { type TenantConfig } from '@credo/shared';
 import { DEMO_DELIVERIES, DEMO_DELIVERY_PHOTOS, DEMO_ORDERS } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
-import { ApiError, createApi } from './api';
+import { ApiError, createApi, hopOf } from './api';
 
 const config: TenantConfig = {
   name: 'Minh Phát',
@@ -16,6 +16,11 @@ type Call = { path: string; init: RequestInit };
 
 /** A fetch that answers each call in turn and records what was sent. */
 function fake(...answers: (Response | Error)[]) {
+  return fakeAt(undefined, ...answers);
+}
+
+/** The same with a clock of the test's own, for the calls that time themselves. */
+function fakeAt(now: (() => number) | undefined, ...answers: (Response | Error)[]) {
   const calls: Call[] = [];
   const call: typeof fetch = (path, init) => {
     calls.push({ path: path instanceof Request ? path.url : path.toString(), init: init ?? {} });
@@ -28,9 +33,22 @@ function fake(...answers: (Response | Error)[]) {
     authId: () => 'device-0001.secret',
     operatorAuthId: () => 'device-0001.operator',
     fetch: call,
+    ...(now ? { now } : {}),
   });
   return { calls, api };
 }
+
+const credential = {
+  id: 'k',
+  rawId: 'k',
+  type: 'public-key' as const,
+  response: { clientDataJSON: 'x' },
+  clientExtensionResults: {},
+};
+const options = { challenge: 'Zm9v' };
+const confirm = { token: 'c.s', response: credential };
+const session = { authId: 'a.b', expiresAt: 1, operator: { id: 'o1', name: 'operator' } };
+const link = 'l'.repeat(43);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 const headersOf = (call: Call | undefined) => new Headers(call?.init.headers);
@@ -88,21 +106,21 @@ describe('the API client', () => {
 
   it('The operator’s calls carry the operator’s handle and no client code, and a client’s carry its own handle', async () => {
     const { calls, api } = fake(
-      json({ authId: 'a.b', expiresAt: 1, operator: { name: 'operator' } }),
-      json({ operator: { name: 'operator' } }),
+      json({ authId: 'a.b', expiresAt: 1, operator: { id: 'o1', name: 'operator' } }),
+      json({ operator: { id: 'o1', name: 'operator' } }),
       json({ link: '/login?client-code=minh-phat', rootName: 'root', password: 'x' }, 201),
       new Response(null, { status: 204 }),
       json({ user: { name: 'root', root: true } }),
     );
 
-    await api.operatorSignIn('operator', 'pw');
+    await api.operatorPasskeySignIn({ token: 't.s', response: credential });
     await api.operatorMe();
     await api.makeClient('minh-phat', 'Minh Phát');
     await api.operatorSignOut();
     await api.me();
 
     expect(calls.map((call) => call.path)).toEqual([
-      '/api/operator/sign-in',
+      '/api/operator/passkey/sign-in',
       '/api/operator/me',
       '/api/operator/clients',
       '/api/operator/sign-out',
@@ -134,7 +152,9 @@ describe('the API client', () => {
     await expect(api.makeClient('minh-phat', 'A')).rejects.toMatchObject({ status: null });
     await expect(api.operatorMe()).rejects.toMatchObject({ status: 401 });
     await expect(api.operatorSignOut()).rejects.toMatchObject({ status: 503 });
-    await expect(api.operatorSignIn('a', 'b')).rejects.toMatchObject({ status: 401 });
+    await expect(
+      api.operatorPasskeySignIn({ token: 't.s', response: credential }),
+    ).rejects.toMatchObject({ status: 401 });
   });
 
   it('The operator’s list is read with the operator’s handle and no client code, and returns the clients as answered; a refusal or a reply of the wrong shape is an error', async () => {
@@ -720,5 +740,178 @@ describe('the API client', () => {
       ]);
       expect(calls[2]?.init.body).toBe(JSON.stringify({ version, photo }));
     });
+  });
+});
+
+describe('the API client’s passkey calls', () => {
+  it('The sign-in asks for options and sends the device’s answer with the token, with no client code, and returns the session with the operator’s id', async () => {
+    const { calls, api } = fake(json({ options, token: 't.s' }), json(session));
+
+    expect(await api.operatorPasskeyOptions()).toEqual({ options, token: 't.s' });
+    expect(await api.operatorPasskeySignIn({ token: 't.s', response: credential })).toEqual(
+      session,
+    );
+
+    expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+      ['POST', '/api/operator/passkey/options'],
+      ['POST', '/api/operator/passkey/sign-in'],
+    ]);
+    expect(calls[0]?.init.body).toBeNull();
+    expect(JSON.parse(calls[1]?.init.body as string)).toEqual({
+      token: 't.s',
+      response: credential,
+    });
+    for (const call of calls) expect(headersOf(call).has('x-client-code')).toBe(false);
+  });
+
+  it('A join opens a link by its token in the body, never the path or query, then sends the passkey made', async () => {
+    const { calls, api } = fake(
+      json({ options, token: 't.s', name: 'Lan Anh', madeBy: null }),
+      json(session),
+    );
+
+    expect(await api.operatorJoinOptions(link)).toMatchObject({ name: 'Lan Anh', madeBy: null });
+    await api.operatorJoin({ link, token: 't.s', response: credential });
+
+    expect(calls.map((call) => call.path)).toEqual([
+      '/api/operator/join/options',
+      '/api/operator/join',
+    ]);
+    expect(calls.map((call) => call.path.includes(link))).toEqual([false, false]);
+    expect(calls[0]?.init.body).toBe(JSON.stringify({ link }));
+    expect(JSON.parse(calls[1]?.init.body as string)).toMatchObject({ link, token: 't.s' });
+  });
+
+  it('The operator’s own passkeys are listed, added with a token and removed by id, each with the operator’s handle', async () => {
+    const list = { passkeys: [{ id: 'a', addedAt: 1, lastUsedAt: null }] };
+    const { calls, api } = fake(
+      json(list),
+      json({ options, token: 't.s' }),
+      json({ options, token: 'c.s' }),
+      json(list, 201),
+      json(list),
+    );
+
+    expect(await api.operatorPasskeys()).toEqual(list.passkeys);
+    expect(await api.operatorPasskeyAddOptions()).toEqual({ options, token: 't.s' });
+    expect(await api.operatorPasskeyConfirmOptions('add')).toEqual({ options, token: 'c.s' });
+    expect(await api.operatorPasskeyAdd({ token: 't.s', response: credential, confirm })).toEqual(
+      list.passkeys,
+    );
+    expect(await api.operatorPasskeyRemove('a b', confirm)).toEqual({
+      kind: 'removed',
+      passkeys: list.passkeys,
+    });
+
+    expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+      ['GET', '/api/operator/passkeys'],
+      ['POST', '/api/operator/passkeys/options'],
+      ['POST', '/api/operator/passkeys/confirm-options'],
+      ['POST', '/api/operator/passkeys'],
+      ['DELETE', '/api/operator/passkeys/a%20b'],
+    ]);
+    expect(JSON.parse(calls[2]?.init.body as string)).toEqual({ act: 'add' });
+    expect(JSON.parse(calls[3]?.init.body as string)).toMatchObject({ confirm });
+    expect(JSON.parse(calls[4]?.init.body as string)).toEqual({ confirm });
+    for (const call of calls) {
+      expect(headersOf(call).get('x-auth-id')).toBe('device-0001.operator');
+      expect(headersOf(call).has('x-client-code')).toBe(false);
+    }
+  });
+
+  it('Removing the last passkey is a result, not an error; any other refusal, or a wrong shape, is an error', async () => {
+    const { api } = fake(
+      json({ error: 'last' }, 409),
+      json({}, 401),
+      json({ passkeys: 1 }),
+      json({}, 503),
+      json({ options: {}, token: 't' }),
+      json({}, 404),
+      json({}, 503),
+      json({}, 401),
+      json({}, 503),
+      json({}, 503),
+      json({}, 401),
+    );
+
+    expect(await api.operatorPasskeyRemove('a', confirm)).toEqual({ kind: 'last' });
+    await expect(api.operatorPasskeyRemove('a', confirm)).rejects.toMatchObject({ status: 401 });
+    await expect(api.operatorPasskeys()).rejects.toMatchObject({ status: null });
+    await expect(
+      api.operatorPasskeyAdd({ token: 't', response: credential, confirm }),
+    ).rejects.toMatchObject({ status: 503 });
+    await expect(api.operatorPasskeyOptions()).rejects.toMatchObject({ status: null });
+    await expect(api.operatorJoinOptions(link)).rejects.toMatchObject({ status: 404 });
+    await expect(api.operatorPasskeyAddOptions()).rejects.toMatchObject({ status: 503 });
+    await expect(
+      api.operatorJoin({ link, token: 't', response: credential }),
+    ).rejects.toMatchObject({ status: 401 });
+    await expect(api.operatorPasskeyOptions()).rejects.toMatchObject({ status: 503 });
+    await expect(api.operatorPasskeys()).rejects.toMatchObject({ status: 503 });
+    await expect(api.operatorPasskeyConfirmOptions('add')).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('C: A services check is a read marked as no use of the sign-in, with the operator’s handle and no client code; the BFF’s round trip and the moment are timed by the page’s clock, and c-storage’s time is the BFF’s own', async () => {
+    const reply = { build: '4e1a9c7', storage: { build: '4e1a9c7', ms: 7 } };
+    const clock = [1_000, 1_042];
+    const { calls, api } = fakeAt(() => clock.shift()!, json(reply));
+
+    expect(await api.operatorServices()).toEqual({ ...reply, bffMs: 42, checkedAt: 1_042 });
+    expect(calls[0]?.path).toBe('/api/operator/services?renew=0');
+    expect(calls[0]?.init.method).toBe('GET');
+    expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
+    expect(headersOf(calls[0]).has('x-client-code')).toBe(false);
+  });
+
+  it('C: A services check uses the real clock when none is given', async () => {
+    const { api } = fake(json({ build: 'b', storage: { build: 'b', ms: 1 } }));
+    const before = Date.now();
+
+    const check = await api.operatorServices();
+
+    expect(check.checkedAt).toBeGreaterThanOrEqual(before);
+    expect(check.bffMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('C: A failure is the BFF’s only in the BFF’s own error shape: a 503 of that shape is c-storage silent; the edge’s own error, a failed request or a reply of the wrong shape is the BFF silent', async () => {
+    const { api } = fake(
+      json({ error: 'Service unavailable' }, 503),
+      new Response('<html>Bad gateway</html>', { status: 503 }),
+      json({ message: 'Service Unavailable' }, 503),
+      new Error('offline'),
+      json({ build: 'x' }),
+      json({ error: 'Unauthorized' }, 401),
+    );
+    const failure = async () => await api.operatorServices().catch((error: unknown) => error);
+
+    const storage = await failure();
+    expect(storage).toMatchObject({ status: 503, bff: true });
+    expect(hopOf(storage)).toBe('storage');
+    for (const [name, error] of [
+      ['edge html', await failure()],
+      ['edge json', await failure()],
+      ['no request', await failure()],
+      ['wrong shape', await failure()],
+    ] as const) {
+      expect(hopOf(error), name).toBe('bff');
+    }
+    const signedOut = await failure();
+    expect(signedOut).toMatchObject({ status: 401, bff: true });
+    expect(hopOf(signedOut)).toBe('bff');
+    expect(hopOf(new Error('not an ApiError'))).toBe('bff');
+  });
+
+  it('C: The calls a console meets before it is signed in keep whether the BFF answered, so a failure names its hop', async () => {
+    const { api } = fake(
+      json({ error: 'Service unavailable' }, 503),
+      json({ error: 'Service unavailable' }, 503),
+      new Response('Bad gateway', { status: 502 }),
+    );
+
+    await expect(api.operatorPasskeyOptions()).rejects.toMatchObject({ status: 503, bff: true });
+    await expect(api.operatorMe()).rejects.toMatchObject({ status: 503, bff: true });
+    await expect(
+      api.operatorPasskeySignIn({ token: 't.s', response: credential }),
+    ).rejects.toMatchObject({ status: 502, bff: false });
   });
 });

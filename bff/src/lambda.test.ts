@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freePort, freshTenant, startCStorage, type RunningCStorage } from '../tests/c-storage';
-import { CODE, ROOT, seedTenant } from '../tests/tenant';
+import { CODE, ORIGIN, ROOT, seedTenant } from '../tests/tenant';
 import { createLambdaHandler } from './lambda';
 import { startBff } from './server';
 
@@ -55,6 +55,7 @@ async function setUp() {
     INTERNAL_ACCESS_KEY: cs.internalAccessKey,
     SERVICE_CODE: tenant.serviceCode,
     SERVICE_ACCESS_KEY: tenant.accessKey,
+    APP_ORIGIN: ORIGIN,
   };
   const port = await freePort();
   const listener = await startBff({ ...env, PORT: String(port) }, { logger: false });
@@ -145,7 +146,7 @@ describe('the Lambda entry', () => {
       createLambdaHandler({ C_STORAGE_URL: 'not a url', INTERNAL_ACCESS_KEY: secret }),
     ).toThrowError(
       expect.objectContaining({
-        message: 'invalid environment: C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY',
+        message: 'invalid environment: C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN',
       }) as Error,
     );
   });

@@ -9,7 +9,13 @@ export const recordKeys = {
   client: (code: string) => `${clientPrefix}${code}`,
   /** What the operator's list reads: every index key starts with it, and no other key does. */
   clientPrefix,
-  operatorUser: (name: string) => `operator.user.${name}`,
+  /** Every operator in one record, under one tag: a name taken and "at least one operator" hold
+   * under it. */
+  operatorRoster: 'operator.roster',
+  /** An operator's passkeys, their live link's hash and the challenges they spent. */
+  operatorAccount: (id: string) => `operator.account.${id}`,
+  /** A join or new-passkey link, by the SHA-256 hex of its token. */
+  operatorLink: (tokenHash: string) => `operator.link.${tokenHash}`,
   operatorSession: (sessionId: string) => `operator.session.${sessionId}`,
   /** Every record of one tenant, by its minted id. */
   tenant: (id: string) => ({
@@ -74,9 +80,54 @@ export const storedClientSchema = z.strictObject({
 });
 export type StoredClient = z.infer<typeof storedClientSchema>;
 
-/** The operator's account. It belongs to no tenant, and its record has no `root` flag. */
-export const storedOperatorSchema = z.strictObject({ passwordHash: z.string() });
-export type StoredOperator = z.infer<typeof storedOperatorSchema>;
+/** One operator in the roster: invited until the first passkey is made, then active. `addedBy` is
+ * the id of the operator (or null for the terminal) who made them, which may name no one once that
+ * operator is deleted. */
+export const rosterOperatorSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  state: z.enum(['invited', 'active']),
+  addedBy: z.string().nullable(),
+  addedAt: z.number(),
+  joinedAt: z.number().nullable(),
+});
+export type RosterOperator = z.infer<typeof rosterOperatorSchema>;
+
+export const storedRosterSchema = z.strictObject({ operators: z.array(rosterOperatorSchema) });
+export type StoredRoster = z.infer<typeof storedRosterSchema>;
+
+/** One passkey of an operator: the credential's id and public key as base64url, the counter the
+ * library checks, and when it was added and last used. */
+export const storedPasskeySchema = z.strictObject({
+  id: z.string(),
+  publicKey: z.string(),
+  counter: z.number(),
+  transports: z.array(z.string()),
+  addedAt: z.number(),
+  lastUsedAt: z.number().nullable(),
+});
+export type StoredPasskey = z.infer<typeof storedPasskeySchema>;
+
+/** An operator's account. `generation` moves when a new-passkey link replaces every passkey: the
+ * sessions issued before it are refused. `spent` holds the challenges answered in the last five
+ * minutes, so the same answer sent twice is refused. */
+export const storedAccountSchema = z.strictObject({
+  passkeys: z.array(storedPasskeySchema),
+  linkHash: z.string().nullable(),
+  generation: z.number(),
+  spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
+});
+export type StoredAccount = z.infer<typeof storedAccountSchema>;
+
+/** A link: whose it is, whether it makes a first passkey or replaces the ones held, who made it
+ * (null for the terminal) and when it ends. */
+export const storedLinkSchema = z.strictObject({
+  operatorId: z.uuid(),
+  kind: z.enum(['join', 'replace']),
+  madeBy: z.string().nullable(),
+  endsAt: z.number(),
+});
+export type StoredLink = z.infer<typeof storedLinkSchema>;
 
 /** A sign-in name as a user record is keyed by it: the same name typed in any case or with
  * spaces around it is one user. */
@@ -117,7 +168,10 @@ export const storedSessionSchema = z.strictObject({
   /** The device it was issued to. */
   device: z.string(),
   /** The sign-in record's `generation` when this session was issued, equal to the record's while no
-   * claim or password has come since. The operator's, which has no such record, is `''`. */
+   * claim or password has come since. An operator's is its account's `generation`, as a string. */
   generation: z.string(),
+  /** When the session was issued, which an operator's 12-hour cap counts from; a tenant's
+   * session, which has no cap, reads 0. */
+  issuedAt: z.number().default(0),
 });
 export type StoredSession = z.infer<typeof storedSessionSchema>;

@@ -16,7 +16,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
-| the operator's account on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
+| the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
@@ -168,19 +168,24 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
 
 ## The operator
 
-`ops/operator.sh ridge` makes the operator's account (the name `operator`, or the one given) and shows
-its first password on your terminal once. It is never written in the log: the script writes it past the
-log, then searches the log for it. It refuses in GitHub's job and without a terminal.
+`ops/operator.sh ridge` makes the operator (the name `operator`, or the one given) and shows their
+one-time join link, `<the app's address>/operator/join#<token>`, on your terminal once. It is never
+written in the log: the script writes it past the log, then searches the log for it. It refuses in
+GitHub's job and without a terminal.
 
 1. Run it from a worktree at `main` with `pnpm install` done, after the first app deploy (which makes
-   the BFF's service). Read the account from the terminal, not the log.
-   - **the operator ... exists:** it will not make one over another; add `--replace` for a new password,
-     the way back from a lost one.
+   the BFF's service and sets `APP_ORIGIN` in its environment). Read the link from the terminal, not
+   the log, and give it to the operator: they open it and make their first passkey. It works once,
+   within 24 hours.
+   - **the operator ... exists:** it will not make one over another; add `--replace` for a
+     new-passkey link, the way back from lost passkeys. Using it replaces every passkey the operator
+     held and ends their sessions.
    - **the run was killed with `kill -9`:** the trap that deletes the scratch folder did not run, and
-     the first password stays in `$TMPDIR` (`credo-ops.*/shown`). Delete that folder, then run again
-     with `--replace`.
-2. Open `<the app's address>/operator` and sign in. The address is in the local log of
-   `ops/stack.sh env ridge` (never in a committed file or a public log).
+     the link stays in `$TMPDIR` (`credo-ops.*/shown`). Delete that folder, then run again with
+     `--replace`.
+2. The link opens at the app's address, which a passkey is bound to for good: CloudFront's own name.
+   The address is in the local log of `ops/stack.sh env ridge` (never in a committed file or a
+   public log).
 
 ## The seed
 

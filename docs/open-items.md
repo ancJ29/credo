@@ -143,6 +143,32 @@ The BFF now parses the person before any write and answers 400, so no record the
 The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
 never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.
 
+## 26. `visual/src/cli.test.ts` times out at 60 s under load — the machine, at the next review of `visual`; *parked* until then (the operator console plan, step 6, 2026-10-30)
+
+The first whole `pnpm check` of the operator console's step 6 went red in `visual/src/cli.test.ts`:
+"Test timed out in 60000ms" in the `pnpm answers` tests (and the test after the first). The
+one-minute load was about 10, with two agents' whole gates running at once. That file alone then
+passed (7 tests), and the next whole run, at load about 4, was green. Nothing in `visual/` had
+changed in that step. [QA](conventions/qa.md) rule 6 holds: a flaky red is a defect, so the test
+and its bound are left as they are, and a longer timeout would hide the cause.
+
+**Seen again, 2026-10-30 12:28 +0700** (the operator console's warning fix): the whole `pnpm check`
+went red in the same file, with a second symptom. `logs/20261030-1224-operator-console-warning-check.log`,
+lines 116 to 158: the file took 219976 ms; "With partners, takes a partner’s Share post under their
+label, refuses a human’s block among them, and the plain command refuses the partner’s" timed out at
+60000 ms; "stops on an answers file that does not parse, and puts the process back" threw `window is not
+defined`, and react-dom raised two unhandled errors after the timeout. The one-minute load was 12.02.
+Nothing in `visual/` had changed. The rerun
+(`logs/20261030-1229-operator-console-warning-check-2.log`) was green on the whole check at load 7.52,
+with no verdict on the red ([QA](conventions/qa.md) rule 6).
+
+To look into: each `pnpm answers` test first calls `pageFingerprints`, which makes a root and
+builds the whole walks page with `report` (a Vite production build, with all the walks' screens
+drawn) before it answers on it. How long does that take alone, and how much of it is the build
+and how much the drawing of the screens? Is it near 60 s only because the machine was busy, or does
+each test build the page again when one built page would do, so that the work, and the chance of
+the bound, is a multiple of what it needs?
+
 ## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
 
 Step 19's whole `pnpm check` went red twice before a green third run, at the same code, with `ui` and `visual` untouched.
@@ -213,6 +239,22 @@ description naming the new commit on the old code, so the seed's check passes an
 BFF that is a commit behind. It needs a deploy that is already red to bite, and the next one is
 red anyway. Fix: write the description after the code, in `ops/app.sh`, and a stand-in `aws` test in
 `ops/test.sh` that stops the code's write and reads the description unchanged.
+
+## 30. Adding a passkey in Safari may be refused — the machine, with the human's 3 minutes; *parked* until the console is used in Safari (the operator console plan, step 8, 2026-10-30)
+
+One click on "Add a passkey" (`ui/src/PasskeysPage.tsx`) runs two WebAuthn ceremonies: the touch of a
+passkey already held (`passkeys.authenticate`), then the registration (`passkeys.register`). WebKit
+may spend the click's user activation on the first and refuse the second, so an operator on Safari
+might never add a second passkey. Chromium and jsdom have no such rule, so no test or walk can see it;
+nothing here has been tried in Safari.
+
+**The check (3 minutes):** on the local stack, sign in in Safari, add a passkey, remove one. If the add
+works, delete this entry.
+
+**The fix, if it fails:** the confirm touch gets a click of its own, and the add its second click, so
+each ceremony has its own user activation. The picture of pk-2 stays as it is.
+
+**Why parked:** the console is Chrome-only for now, the human's call (Decide 24, 2026-10-30).
 
 ## 31. Nothing on a phone shows that a wide table scrolls sideways — the machine; *parked* until the phone screens' own look (the employee list plan, step 26, 2026-10-30)
 
@@ -324,6 +366,41 @@ The review of line 31 fixed its High and Medium findings; these stay.
   then `visual/vitest.config.ts`'s default lowered to what the other tests need (the slowest takes about 35 s on GitHub).
 
 *Trigger:* after the 11-04 demo, or the `app` job nearing its 15 minutes, or line 32's screens pushing a whole-page test past 120 s.
+
+## 38. The services status page: review findings 4 to 10 and 12 to 15 of line 24, deferred under the 11-04 demo's exception — the machine; *parked* until after the demo (the operator console plan, step 17, 2026-11-01)
+
+The review of line 24 fixed its High and Medium findings and the Low that made the stamp visible on ridge (finding 11); these stay.
+- **Finding 4, `ui/src/OperatorApp.tsx#L175`:** once the sign-in has ended, the minute's check meets the 401 again and `setEnded('idle')`
+  resets the prompt, mid-touch included. Fix: `setEnded((was) => was ?? 'idle')` for every page's `onSignedOut`, and a fake-timer test
+  (the prompt busy, a minute passes, still busy).
+- **Finding 5, `ui/src/api.ts#L274`:** every services call carries `?renew=0`, so "Check now" keeps no sign-in open (row 8, "working
+  keeps it"). Fix: the minute's turn and the return to view send `renew=0`; the opening and "Check now" do not; a test in `api.test.ts`
+  and in the page test.
+- **Finding 6, `bff/src/operator.route.test.ts#L92`:** no test tries a client root's handle on `/api/operator/services`. Fix: add the
+  route to that loop.
+- **Finding 7, `bff/src/operator-auth.ts#L274`:** sv-5 is provoked by an options 503 the BFF never answers for c-storage (cue
+  `operatorPasskeyOptions:503`, `visual/src/walks.ts#L554`, `walk/specs/operator-services.spec.ts#L82` and `#L182`). Fix: cue
+  `operatorPasskeySignIn:503` in the fake and the scene; the full spec stubs the sign-in POST and lets the virtual authenticator answer the
+  touch; or record why the shortcut stays.
+- **Finding 8, `walk/run.sh#L44`:** the services row and its build stamp (`#L295-L304`) have no case in `scripts/src/walk-run.test.ts`.
+  Fix: a case like the passkeys one: `--checks` lists both projects; with a stand-in `pnpm` the stack phase gets `CREDO_BUILD=4e1a9c7`;
+  a `demo.ts` without the line is "red: the fake's build could not be read".
+- **Finding 9, `bff/vitest.config.ts#L14`:** `bundle-main.ts`'s exclusion reason ("only names the bundle's file") is false since it reads
+  `CREDO_BUILD`. Fix: name `ops/app.sh`'s refusal and `ops/test.sh` as where it is held, or move the env read into `bundleBff`'s default
+  and test it.
+- **Finding 10, `bff/src/build.ts#L1`:** the comment says nothing reads the build at run time, but the unbundled BFF and an unstamped
+  bundle do. Fix: "Read where the module loads, unless the bundle's build replaced it with the commit (`bundleBff`)."
+- **Finding 12, `scripts/src/generator.ts#L248`:** the hint's reason ("the roster was read empty") is inexact. Fix: "unreachable: the
+  roster was just written holding the active operator alone, whose name the invited one's differs from (`shared/src/demo.test.ts`)".
+- **Finding 13, `bff/src/app.ts#L89`:** a 5xx's log line carries the cause chain, the c-storage address included (every route since the
+  client was written; the open page adds one a minute while c-storage is down). Fix: log the `CStorageError`'s message and status without
+  its cause, and a route test that searches the logger's output for the base URL.
+- **Finding 14, `shared/src/wire.ts#L175`:** `servicesReplySchema` is strict, so a field added later reads as "the BFF does not answer" in
+  an older tab. Fix: loosen the UI's read (`ui/src/api.ts#L283`) in the commit that adds the field.
+- **Finding 15, `walk/specs/operator-services.spec.ts#L119`:** the full spec pauses the page's clock, a first in the walks, never run;
+  Mantine's transitions run on the timers it stops. Fix: if step 19's sv-1 or sv-2 differ from the fake's at "Check now", look here first.
+
+*Trigger:* after the 11-04 demo, or step 19's full walk reading one of these.
 
 ## 39. The driver's phone: line 32's review findings 2 to 6 and 8 to 14, deferred under the 11-04 demo's exception — the machine; *parked* until the deliveries are next touched, and worked after the demo (driver-phone, step 7, 2026-11-01)
 

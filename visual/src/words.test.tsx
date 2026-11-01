@@ -1,5 +1,11 @@
 import { LANGUAGES } from '@credo/shared';
-import { DEMO_DELIVERIES, DEMO_EMPLOYEES, DEMO_TODAY } from '@credo/shared/demo';
+import {
+  DEMO_DELIVERIES,
+  DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_TODAY,
+  OPERATOR_NAME,
+} from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { DICTIONARIES } from '@credo/ui/words';
 import { describe, expect, it, vi } from 'vitest';
@@ -230,10 +236,94 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'driver-deliveries:driver-6-cancelled': (w) => `alert: ${w.myDeliveries.cancelled}`,
 };
 
+/** What each passkeys screen must say, in either language: the line that makes it that screen. */
+const PASSKEY_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
+  'operator-passkeys:pk-1-join': (w) => [
+    `text: ${w.passkey.joinFor.replace('{{name}}', DEMO_INVITED_NAME)}`,
+    `text: ${w.passkey.joinMadeBy.replace('{{name}}', OPERATOR_NAME)}`,
+    `button: ${w.passkey.makeButton}`,
+  ],
+  'operator-passkeys:pk-2-passkeys': (w) => [
+    `heading: ${w.passkey.title}`,
+    `button: ${w.passkey.add}`,
+    `cell: ${w.passkey.never}`,
+  ],
+  'operator-passkeys:pk-3-not-given': (w) => [
+    `alert: ${w.passkey.notGiven}`,
+    `button: ${w.passkey.signInButton}`,
+  ],
+  'operator-passkeys:pk-4-no-operator': (w) => [`alert: ${w.passkey.refused}`],
+  'operator-passkeys:pk-5-link-dead': (w) => [`alert: ${w.passkey.dead}`],
+  'operator-passkeys:pk-6-sign-in-ended': (w) => [
+    `dialog: ${w.passkey.endedTitle}`,
+    `dialog: ${w.passkey.endedText}`,
+    `button: ${w.passkey.endedButton}`,
+  ],
+};
+
+describe('the passkeys walk, drawn', () => {
+  it('Each passkeys screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
+    const drawn = resolveDrawn(WALKS.slice(2, 3), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(PASSKEY_PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const words = await readWords(what, language, false);
+        for (const line of PASSKEY_PROOF[key](DICTIONARIES[language])) {
+          expect(words, `${key} ${language}`).toContain(line);
+        }
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+  });
+
+  it('The ended sign-in keeps what was typed beneath the prompt', async () => {
+    const drawn = resolveDrawn(WALKS.slice(2, 3), SCREENS);
+    const words = await readWords(drawn.get('operator-passkeys:pk-6-sign-in-ended')!, 'en', false);
+
+    expect(words.some((line) => line.startsWith('textbox "Client code" = "minh-phat"'))).toBe(true);
+    expect(words.some((line) => line.startsWith('textbox "Company name" = "Minh Phát"'))).toBe(
+      true,
+    );
+  });
+});
+
+/** What each services screen must say, in either language: the line that makes it that screen. */
+const SERVICES_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
+  'operator-services:sv-1-all-well': (w) => [`status: ${w.services.oneBuild}`],
+  'operator-services:sv-2-two-builds': (w) => [`status: ${w.services.twoBuilds}`],
+  'operator-services:sv-3-storage-silent': (w) => [`alert: ${w.services.storageDown}`],
+  'operator-services:sv-4-bff-silent': (w) => [`alert: ${w.services.bffDown}`],
+  'operator-services:sv-5-unavailable': (w) => [`alert: ${w.operator.unavailableStorage}`],
+};
+
+describe('the services walk, drawn', () => {
+  it('C: Each services screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
+    const drawn = resolveDrawn(WALKS.slice(3, 4), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(SERVICES_PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const words = await readWords(what, language, false);
+        for (const line of SERVICES_PROOF[key](DICTIONARIES[language])) {
+          expect(words, `${key} ${language}`).toContain(line);
+        }
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+  });
+});
+
 describe('the app’s own scenes, drawn', () => {
   // One test a screen: the cost of a screen is its own, so a walk added never moves another test
   // toward its budget, and a red names the screen.
-  const DRAWN = resolveDrawn(WALKS.slice(2), SCREENS);
+  const DRAWN = resolveDrawn(WALKS.slice(4), SCREENS);
 
   it('The piece-2 walks hold exactly the screens the proofs below name', () => {
     expect([...DRAWN.keys()].sort()).toEqual(Object.keys(PROOF).sort());

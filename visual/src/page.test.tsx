@@ -201,7 +201,7 @@ describe('the walks page: a walk', () => {
 
 describe('the walks page: the drawn screens', () => {
   it('Each piece-2 screen is drawn as a scene: the whole app on the fake at its address, inside its frame, with its steps done there', async () => {
-    render(<Page report={await reportWith({}, false, WALKS.slice(3, 4))} />);
+    render(<Page report={await reportWith({}, false, WALKS.slice(5, 6))} />);
 
     // The page opens at the walk's first screen; the list moves to the second.
     fireEvent.click(document.querySelector('a.w-rail-item[href="#admin-staff-staff-2-add"]')!);

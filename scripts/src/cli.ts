@@ -46,7 +46,7 @@ function watchSignals() {
 }
 
 /** Runs `command` with the stack's address, the demo client's code, its root's sign-in, its
- * people's and the operator's in its environment, and the door to more clients; a signal this
+ * people's and the operator's link in its environment, and the door to more clients; a signal this
  * process catches is passed on to it. Resolves with its exit status, or 128 + the signal's number
  * when a signal ended it. */
 function runCommand(
@@ -134,15 +134,15 @@ export const runStack = (
         CREDO_ROOT_NAME: stack.rootName,
         CREDO_ROOT_PASSWORD: stack.rootPassword,
         CREDO_OPERATOR_NAME: stack.operatorName,
-        CREDO_OPERATOR_PASSWORD: stack.operatorPassword,
+        CREDO_OPERATOR_HANDLE: stack.operatorHandle,
+        CREDO_OPERATOR_LINK: stack.operatorLink,
         CREDO_PEOPLE: JSON.stringify(stack.people),
         CREDO_SEED_URL: stack.seedUrl,
       }),
       waiting: (stack) => [
         `the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`,
         `sign in as ${stack.rootName} with the password ${stack.rootPassword}`,
-        `the operator signs in at ${stack.url}/operator`,
-        `the operator is ${stack.operatorName}, first password ${stack.operatorPassword}`,
+        `the invited operator joins by ${stack.operatorLink}, then signs in at ${stack.url}/operator`,
       ],
     },
     out,
@@ -203,7 +203,8 @@ export const runDemo = (
       env: (demo) => ({
         CREDO_URL: demo.url,
         CREDO_OPERATOR_NAME: demo.operatorName,
-        CREDO_OPERATOR_PASSWORD: demo.operatorPassword,
+        CREDO_OPERATOR_HANDLE: demo.operatorHandle,
+        CREDO_OPERATOR_LINK: demo.operatorLink,
         CREDO_COPIES: JSON.stringify(
           demo.copies.map(({ code, partner, client, scenario, company, rootPassword }) => ({
             code,
@@ -221,8 +222,7 @@ export const runDemo = (
           `${copy.company} (${copy.scenario}, for ${copy.partner}): ${demo.url}/login?client-code=${copy.code}`,
           `  sign in as ${demo.rootName} with the password ${copy.rootPassword}`,
         ]),
-        `the operator signs in at ${demo.url}/operator`,
-        `the operator is ${demo.operatorName}, first password ${demo.operatorPassword}`,
+        `the invited operator joins by ${demo.operatorLink}, then signs in at ${demo.url}/operator`,
       ],
     },
     out,

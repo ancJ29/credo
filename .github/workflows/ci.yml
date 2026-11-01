@@ -262,6 +262,10 @@ jobs:
       - name: Build the BFF's bundle and the UI
         if: ${{ !env.ACT }}
         timeout-minutes: 5
+        # On this step alone: the stamp the Services status page reads back. A job-level value would
+        # reach the tests too, and bff/src/bundle.test.ts expects 'dev'.
+        env:
+          CREDO_BUILD: ${{ github.sha }}
         run: |
           pnpm --filter @credo/bff bundle
           pnpm --filter @credo/ui build

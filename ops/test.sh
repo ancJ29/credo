@@ -642,6 +642,11 @@ Check|after" ] || missing="${missing}[the steps end Release, then the ship and t
   role=$(grep -nF 'uses: aws-actions/configure-aws-credentials' <<<"$block" | head -n 1 | cut -d: -f1)
   bld=$(grep -nF 'pnpm --filter @credo/bff bundle' <<<"$block" | head -n 1 | cut -d: -f1)
   [ -n "$role" ] && [ -n "$bld" ] && [ "$bld" -lt "$role" ] || missing="${missing}[the app's build before the role is taken] "
+  # The build step stamps the commit on that step alone (a job-level env would turn the bundle's own
+  # test of 'dev' red): the step's own text, up to the next step, holds an env with CREDO_BUILD.
+  stamp_step=$(awk '/^      - name: Build the BFF.s bundle and the UI$/ {f = 1; next} f && /^      - / {exit} f' <<<"$block" | tr '\n' ' ')
+  # shellcheck disable=SC2016 # the workflow's literal text
+  grep -qE 'env: +CREDO_BUILD: \$\{\{ github\.sha \}\} ' <<<"$stamp_step" || missing="${missing}[CREDO_BUILD: github.sha in the env of the build step] "
   # No other cancel-in-progress than false, in any group of the file, and no step that may fail and go on.
   if grep 'cancel-in-progress:' "$1" | grep -qv 'cancel-in-progress: false$'; then
     missing="${missing}[cancel-in-progress: false everywhere in the file] "
@@ -691,6 +696,8 @@ sed 's#^        id: release$#        id: released#' "$WORKFLOW" >"$WORK/wf-id.ym
 refuses "  a release step the later steps cannot read is refused" "id: release" deploy_guards "$WORK/wf-id.yml"
 awk '/Build the BFF.s bundle and the UI/ {skip = 1} skip && /^      # The arm64 binary/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nobuild.yml"
 refuses "  an app that is not built before the role is taken is refused" "the app's build before the role" deploy_guards "$WORK/wf-nobuild.yml"
+sed '/^          CREDO_BUILD: \${{ github.sha }}$/d' "$WORKFLOW" >"$WORK/wf-nostamp.yml"
+refuses "  a build step that does not stamp the commit is refused (row 39)" "CREDO_BUILD: github.sha in the env of the build step" deploy_guards "$WORK/wf-nostamp.yml"
 
 # app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24
 app_block() { awk '/^  app:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
@@ -1543,15 +1550,19 @@ check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules
 check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a"}}}'
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a","APP_ORIGIN":"https://app.example.test"}}}'
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
-check "the function holds the four variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-check "  and the super-admin key among them is seen" "C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
   "$(function_env_names "$(jq -c '.Environment.Variables.X_SUPER_ADMIN_KEY = "z"' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
+check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
+  "$(function_origin_verdict "$fn" https://app.example.test) $(function_origin_verdict "$fn" https://app.example.test/)"
+check "  another address, an origin with a path, and no origin at all are refused" "no no no no" \
+  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.Environment.Variables.APP_ORIGIN)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
 
 pab='{"PublicAccessBlockConfiguration":{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}}'
 statement='{"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::b/*","Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::123:distribution/E1ABC"}}}'
@@ -1623,6 +1634,10 @@ class H(BaseHTTPRequestHandler):
         if path == '/api/auth/sign-out':
             signed_out[0] = True
             return self.reply(204)
+        if path == '/api/operator/passkey/options':
+            # the relying party is the app's host (MODE rp-from-request: the request's, which is wrong)
+            rp = 'attacker.example' if MODE == 'rp-from-request' else '127.0.0.1'
+            return self.reply(200, json.dumps({'options': {'rpId': rp, 'challenge': 'c'}, 'token': 't'}).encode())
         self.reply(404, b'{}')
 HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
 PY
@@ -1650,21 +1665,40 @@ refuses_edge "  /api/health carrying the build is red" api-health-leak "/api/hea
 refuses_edge "  an /api/* answer from a cache is red" cached "with no cache in front of /api/*"
 refuses_edge "  a handle that outlives sign-out is red" no-sign-out "the handle is refused after"
 refuses_edge "  the operator's door open without a session is red" operator-open "the operator's door without a session"
+refuses_edge "  a sign-in whose relying party is not the app's host is red" rp-from-request "relying party is the app's host"
 cport_edge=$(free_port)
 check "  an address that answers nothing is red, and the address is not in what is printed" "no" \
   "$( (REDS=''; edge_reads "http://127.0.0.1:$cport_edge" check-t x y 2>&1 | grep -c "127.0.0.1:$cport_edge" | sed 's/^0$/no/'))"
 
+echo "== ops/app.sh builds the bundle and the UI with the commit stamped (row 39)"
+mkdir -p "$WORK/stampbin" "$WORK/stampsrc"
+cat >"$WORK/stampbin/pnpm" <<'STANDIN'
+#!/bin/bash
+echo "$* | ${CREDO_BUILD:-unset}" >>"$STAMP_LOG"
+STANDIN
+chmod +x "$WORK/stampbin/pnpm"
+STAMP_LOG=$WORK/stamp.log
+export STAMP_LOG
+(PATH="$WORK/stampbin:$PATH" build_app "$WORK/stampsrc" 0123456789abcdef0123456789abcdef01234567)
+check "the BFF's bundle is built with the commit" "--filter @credo/bff bundle | 0123456789abcdef0123456789abcdef01234567" \
+  "$(grep 'bff bundle' "$STAMP_LOG")"
+check "the UI is built with the commit" "--filter @credo/ui build | 0123456789abcdef0123456789abcdef01234567" \
+  "$(grep 'ui build' "$STAMP_LOG")"
+check "the install is not stamped, and runs from the lockfile" "install --frozen-lockfile | unset" "$(grep install "$STAMP_LOG")"
+
 echo "== ops/app.sh run whole, on stand-ins for aws and ssh (rows 27, 28, 30, 31)"
 FAKE_APP_PORT=$(free_port)
-export FAKE_APP=http://127.0.0.1:$FAKE_APP_PORT FAKE_API=http://api-test-host.invalid:9
+export FAKE_APP=http://localhost:$FAKE_APP_PORT FAKE_API=http://api-test-host.invalid:9
 APP_LOCAL=$(free_port)
 export APP_LOCAL_PORT=$APP_LOCAL
 mkdir -p "$E2E/ui/assets"
-echo 'exports.handler = async () => ({});' >"$E2E/index.js"
+app_sha=$e2e_sha
+# the stand-ins carry the commit as the real builds do (CREDO_BUILD), which app.sh refuses to ship without
+echo "exports.handler = async () => ({build: '$app_sha'});" >"$E2E/index.js"
 echo '<div id="root"></div>' >"$E2E/ui/index.html"
 echo 'body{}' >"$E2E/ui/assets/index-abc123.css"
+echo "console.log('$app_sha');" >"$E2E/ui/assets/index-abc123.js"
 export APP_BUNDLE=$E2E/index.js APP_UI_DIR=$E2E/ui
-app_sha=$e2e_sha
 git_e2e() { git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
 line_of() { grep -n -- "$1" "$S/aws.calls" | head -n 1 | cut -d: -f1; }
 
@@ -1689,15 +1723,16 @@ check "  the settings carry the commit as the description, and ridge's subnet an
   "$(cat "$S/description") $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
-check "  it names the four variables, and the super-admin key is not among them" "C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
+check "  and holds the app's address as the origin its passkeys are bound to" "$FAKE_APP" "$(jq -r .Variables.APP_ORIGIN "$S/envfile.seen")"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
 check "  the UI's files other than index.html are kept a year, index.html is read again with the commit in its metadata" "1 1 1" \
   "$(grep -c "immutable" "$S/aws.calls" || true) $(grep -c "index.html --cache-control no-cache.*--metadata commit=$app_sha" "$S/aws.calls" || true) $(grep -c 's3://ui-test-bucket/ --recursive' "$S/aws.calls" || true)"
 check "  no key is in the log or on the terminal, apart from GitHub's mask lines" "0 0" "$(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(grep -vE '^::add-mask::' "$S/out" | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true)" 
 check "  each key was masked first" 3 "$(grep -cE "^::add-mask::($FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY)\$" "$S/out" || true)"
 check "  the app's address and the API's are masked, and print nowhere" "1 1 0" \
-  "$(grep -cF "::add-mask::$FAKE_APP" "$S/out" || true) $(grep -cF "::add-mask::api-test-host.invalid:9" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "127.0.0.1:$FAKE_APP_PORT|api-test-host" || true)"
+  "$(grep -cF "::add-mask::$FAKE_APP" "$S/out" || true) $(grep -cF "::add-mask::api-test-host.invalid:9" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "localhost:$FAKE_APP_PORT|api-test-host" || true)"
 check "  the box's private address is masked, and prints nowhere" "1 0" \
   "$(grep -cF "::add-mask::10.20.30.40" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.40 || true)"
 check "  and check.sh never lets expect print it as the wanted value" 0 \
@@ -1715,6 +1750,20 @@ FAKE_BAD_SHA=1 e2e_run app.sh ridge
 check "a function whose CodeSha256 is not the upload's stops the deploy before the UI's files" "1 1" \
   "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true)"
 check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
+
+# a bundle or a UI built without the commit is refused before anything is sent (row 39)
+e2e_fresh app-unstamped-bundle
+echo 'exports.handler = async () => ({build: "dev"});' >"$E2E/unstamped.js"
+APP_BUNDLE=$E2E/unstamped.js e2e_run app.sh ridge
+check "a bundle that does not carry the commit stops the deploy before anything is sent" "1 1 gone gone" \
+  "$RC $(grep -c 'the bundle carries no .*built without CREDO_BUILD' "$S/out" || true) $(file_state "$S/code.zip") $(file_state "$S/ssh.calls")"
+e2e_fresh app-unstamped-ui
+mkdir -p "$E2E/unstamped-ui/assets"
+echo '<div id="root"></div>' >"$E2E/unstamped-ui/index.html"
+echo "console.log('dev');" >"$E2E/unstamped-ui/assets/index-abc123.js"
+APP_UI_DIR=$E2E/unstamped-ui e2e_run app.sh ridge
+check "a UI whose scripts do not carry the commit stops the deploy before anything is sent" "1 1 gone gone" \
+  "$RC $(grep -c 'the UI.s scripts carry no .*built without CREDO_BUILD' "$S/out" || true) $(file_state "$S/code.zip") $(file_state "$S/ssh.calls")"
 
 # ridge never moves backwards: the function already runs a descendant
 e2e_fresh app-superseded
@@ -1734,7 +1783,7 @@ e2e_fresh release-superseded-by-hand
 GITHUB_ACTIONS='' RELEASE_BINARY=$E2E/binary FAKE_RUNNING=$desc_newer e2e_run release.sh ridge
 check "  by hand it exits 0 as before" 0 "$RC"
 
-echo "== ops/operator.sh (row 19: the operator's first password is shown on the terminal and in no log)"
+echo "== ops/operator.sh (the operator's join link is shown on the terminal and in no log)"
 # A pseudo-terminal where the machine can open one (GitHub's runner can); where it cannot, fd 3 is a
 # plain file and the script is told so for this test (OPS_TEST_NO_TTY).
 if python3 -I -c 'import pty; pty.openpty()' >/dev/null 2>&1; then have_pty=1; else have_pty=0; echo "note: no pseudo-terminal here; operator.sh is run with OPS_TEST_NO_TTY=1"; fi
@@ -1749,27 +1798,28 @@ pty_run() { # <script> <args...>: under a pseudo-terminal, its transcript in the
 }
 e2e_fresh operator
 GITHUB_ACTIONS='' e2e_run app.sh ridge
-check "the BFF's service exists on the box, for the operator's account to be written with it" 0 "$RC"
+check "the BFF's service exists on the box, for the operator to be written with it" 0 "$RC"
 export OPS_LOG_DIR=$E2E/logs-operator-pty
 pty_run operator.sh ridge
-pw=$(sed -n 's/^.*the operator is operator, first password \([A-Za-z0-9_-]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
-check "the operator is made, and its first password shown on the terminal once" "0 16 1" \
-  "$RC ${#pw} $(grep -c "first password $pw" "$S/out" || true)"
-check "  the log holds the account made and no password" "1 0" \
-  "$(grep -c '^operator operator made' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF -e "$pw" || true)"
+link=$(sed -n 's/^.*the operator is operator, join link \(http[^ ]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
+token=${link##*#}
+check "the operator is made, and its join link, at the app's address, shown on the terminal once" "0 ${#token} $FAKE_APP/operator/join 1" \
+  "$RC 43 ${link%%#*} $(grep -c "join link $link" "$S/out" || true)"
+check "  the log holds the operator made and neither the link nor its token" "1 0 0" \
+  "$(grep -c '^operator operator made' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF -e "$link" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF -e "$token" || true)"
 check "  and the log's search for it ran" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 export OPS_LOG_DIR=$E2E/logs-operator-pty2
 pty_run operator.sh ridge
-check "a second run refuses to make it over, and shows no password" "1 0" \
-  "$RC $(grep -c 'first password' "$S/out" || true)"
+check "a second run refuses to make it over, and shows no link" "1 0" \
+  "$RC $(grep -c 'join link' "$S/out" || true)"
 export OPS_LOG_DIR=$E2E/logs-operator-pty3
 pty_run operator.sh ridge --replace
-pw2=$(sed -n 's/^.*first password \([A-Za-z0-9_-]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
-check "--replace gives a new password" "0 yes" "$RC $([ -n "$pw2" ] && [ "$pw2" != "$pw" ] && echo yes || echo no)"
+link2=$(sed -n 's/^.*the operator is operator, new-passkey link \(http[^ ]*\).*$/\1/p' "$S/out" | tr -d '\r' | head -n 1)
+check "--replace gives a new-passkey link, and a different one" "0 yes" "$RC $([ -n "$link2" ] && [ "$link2" != "$link" ] && echo yes || echo no)"
 export OPS_LOG_DIR=$E2E/logs-operator-pipe
 e2e_run operator.sh ridge
-check "without a terminal it refuses, and writes no account" "1 1 0" \
-  "$RC $(grep -c 'needs a terminal to show the password on' "$OPS_LOG_DIR"/*.log || true) $(grep -c 'first password' "$S/out" || true)"
+check "without a terminal it refuses, and writes no operator" "1 1 0" \
+  "$RC $(grep -c 'needs a terminal to show the link on' "$OPS_LOG_DIR"/*.log || true) $(grep -c 'join link' "$S/out" || true)"
 rc=0
 out=$(GITHUB_ACTIONS=true bash "$E2E/repo/ops/operator.sh" ridge 2>&1) || rc=$?
 check "in GitHub's job it refuses before anything else" "1 1" "$rc $(grep -c "never in a job's log" <<<"$out" || true)"

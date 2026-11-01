@@ -112,7 +112,13 @@ const down = () => new CStorageError(null, 'c-storage did not answer');
 
 /** The copy's root as its users would be: signed in through the BFF with the first password. */
 async function asRoot(storage: CStorageClient, code: string, password: string) {
-  const app = buildApp({ storage, now: () => Date.now(), logger: false });
+  const app = buildApp({
+    storage,
+    now: () => Date.now(),
+    origin: 'http://localhost',
+    serviceKey: 'a-key',
+    logger: false,
+  });
   const headers = { [CLIENT_HEADER]: code, [DEVICE_HEADER]: 'device-users-0001' };
   const signed = await app.inject({
     method: 'POST',

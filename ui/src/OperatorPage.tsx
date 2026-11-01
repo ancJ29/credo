@@ -14,8 +14,8 @@ type Props = {
 };
 
 /** The operator's signed-in frame: the client's shell in credo's name, a badge saying whose door
- * this is, the operator's five sections in the menu, and the language and sign-out in the user's
- * menu. */
+ * this is, the operator's five sections in the menu, and the language, their passkeys and sign-out in the
+ * user's menu. */
 export function OperatorPage({ name, onLanguage, onSignOut, children }: Props) {
   const { t } = useTranslation();
   return (
@@ -27,6 +27,7 @@ export function OperatorPage({ name, onLanguage, onSignOut, children }: Props) {
       languages={LANGUAGES}
       onLanguage={onLanguage}
       onSignOut={onSignOut}
+      menuLinks={[{ to: '/operator/passkeys', label: t('passkey.menu') }]}
     >
       {children}
     </Shell>

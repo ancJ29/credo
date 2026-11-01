@@ -1,5 +1,14 @@
-import { verifyPassword } from '@credo/bff/password';
-import { recordKeys, storedClientSchema, storedOperatorSchema } from '@credo/shared';
+import { joinByLink } from '@credo/bff/tests/join';
+import { buildApp } from '@credo/bff';
+import {
+  createCStorageClient,
+  recordKeys,
+  sha256Hex,
+  storedAccountSchema,
+  storedClientSchema,
+  storedLinkSchema,
+  storedRosterSchema,
+} from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { runRidge, type RidgeIo } from './ridge';
 
@@ -9,16 +18,21 @@ const KEYS = {
   SERVICE_CODE: 'bff',
   SERVICE_ACCESS_KEY: 'service-key-xyz',
 };
+const ORIGIN = 'https://app.example.test';
+const WITH_ORIGIN = { ...KEYS, APP_ORIGIN: ORIGIN };
 
-/** c-storage over `fetch`, in memory: one service, its records, and the register route. */
+/** c-storage over `fetch`, in memory: one service, its records with a tag that changes at every
+ * write, a write or removal over a tag that moved refused, and the register route. */
 function memoryCStorage(options: { registered?: boolean } = {}) {
   const records = new Map<string, unknown>();
+  const tags = new Map<string, string>();
+  let writes = 0;
   let registered = options.registered ?? false;
   const call: typeof fetch = (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     const headers = new Headers(init?.headers);
     const reply = (status: number, body: unknown = {}) =>
-      Promise.resolve(new Response(JSON.stringify(body), { status }));
+      Promise.resolve(new Response(status === 204 ? null : JSON.stringify(body), { status }));
     if (url.pathname === '/api/services/register') {
       if (registered) return reply(409);
       registered = true;
@@ -26,15 +40,27 @@ function memoryCStorage(options: { registered?: boolean } = {}) {
     }
     if (headers.get('x-access-key') !== KEYS.SERVICE_ACCESS_KEY) return reply(403);
     const base = `/api/records/${KEYS.SERVICE_CODE}`;
+    const precondition = (key: string) => {
+      if (headers.get('if-none-match') === '*') return !records.has(key);
+      const wanted = headers.get('if-match');
+      return wanted === null || tags.get(key) === wanted;
+    };
     if (init?.method === 'POST' && url.pathname === base) {
       const { key, data } = JSON.parse(init.body as string) as { key: string; data: unknown };
-      if (headers.get('if-none-match') === '*' && records.has(key)) return reply(412);
+      if (!precondition(key)) return reply(412);
       records.set(key, data);
+      tags.set(key, String(++writes));
       return reply(201);
     }
     const key = decodeURIComponent(url.pathname.slice(base.length + 1));
+    if (init?.method === 'DELETE') {
+      if (!precondition(key)) return reply(412);
+      records.delete(key);
+      tags.delete(key);
+      return reply(204);
+    }
     return records.has(key)
-      ? reply(200, { record: { data: records.get(key), tag: 't' } })
+      ? reply(200, { record: { data: records.get(key), tag: tags.get(key) } })
       : reply(404);
   };
   return { records, call };
@@ -77,54 +103,122 @@ describe('what the ops scripts ask of ridge', () => {
     });
   });
 
-  it('makes the operator’s account, shows its first password to the terminal alone, and stores its hash', async () => {
+  it('makes the operator and a join link, shows the link to the terminal alone, and stores its hash', async () => {
     const { records, call } = memoryCStorage({ registered: true });
 
-    const result = await run(['operator', 'Boss'], KEYS, call);
+    const result = await run(['operator', 'Boss'], WITH_ORIGIN, call);
 
     expect(result.status).toBe(0);
-    const password = /first password (\S+)$/.exec(result.shown[0] ?? '')?.[1] ?? '';
-    expect(password).toHaveLength(16);
-    expect(result.shown).toEqual([`the operator is boss, first password ${password}`]);
-    expect(result.out.join('\n')).not.toContain(password);
+    const token = /join link https:\/\/app\.example\.test\/operator\/join#([\w-]{43})$/.exec(
+      result.shown[0] ?? '',
+    )?.[1];
+    expect(result.shown).toEqual([
+      `the operator is boss, join link ${ORIGIN}/operator/join#${token}`,
+    ]);
     expect(result.out).toEqual(['operator boss made']);
-    const stored = storedOperatorSchema.parse(records.get(recordKeys.operatorUser('boss')));
-    expect(await verifyPassword(password, stored.passwordHash)).toBe(true);
-    expect(JSON.stringify([...records.values()])).not.toContain(password);
+    expect(result.out.join('\n')).not.toContain(token);
+    const roster = storedRosterSchema.parse(records.get(recordKeys.operatorRoster));
+    expect(roster.operators).toMatchObject([{ name: 'boss', state: 'invited', addedBy: null }]);
+    const account = storedAccountSchema.parse(
+      records.get(recordKeys.operatorAccount(roster.operators[0].id)),
+    );
+    expect(account.linkHash).toBe(await sha256Hex(token!));
+    expect(JSON.stringify([...records.values()])).not.toContain(token);
   });
 
   it('names the operator "operator" when no name is given', async () => {
     const { records, call } = memoryCStorage();
 
-    await run(['operator'], KEYS, call);
+    await run(['operator'], WITH_ORIGIN, call);
 
-    expect([...records.keys()]).toEqual([recordKeys.operatorUser('operator')]);
+    expect(
+      storedRosterSchema.parse(records.get(recordKeys.operatorRoster)).operators[0]?.name,
+    ).toBe('operator');
   });
 
-  it('refuses to make an operator over one that exists, and --replace gives a new password', async () => {
+  it('refuses to make an operator that exists, and --replace gives a new-passkey link', async () => {
     const { records, call } = memoryCStorage();
-    await run(['operator'], KEYS, call);
-    const before = JSON.stringify(records.get(recordKeys.operatorUser('operator')));
+    await run(['operator'], WITH_ORIGIN, call);
+    const before = JSON.stringify([...records]);
 
-    const refused = await run(['operator'], KEYS, call);
+    const refused = await run(['operator'], WITH_ORIGIN, call);
     expect(refused).toMatchObject({ status: 1, shown: [] });
     expect(refused.err[0]).toContain('--replace');
-    expect(JSON.stringify(records.get(recordKeys.operatorUser('operator')))).toBe(before);
+    expect(JSON.stringify([...records])).toBe(before);
 
-    const replaced = await run(['operator', '--replace'], KEYS, call);
+    const replaced = await run(['operator', '--replace'], WITH_ORIGIN, call);
     expect(replaced).toMatchObject({ status: 0, out: ['operator operator replaced'] });
-    expect(JSON.stringify(records.get(recordKeys.operatorUser('operator')))).not.toBe(before);
+    expect(replaced.shown[0]).toMatch(/^the operator is operator, new-passkey link https:\/\/app/);
+    expect(JSON.stringify([...records])).not.toBe(before);
+    const token = replaced.shown[0].split('#')[1];
+    expect(JSON.stringify([...records])).not.toContain(token);
+    // The link replaces the passkeys held and ends their sessions, so it is no first-passkey link.
+    expect(
+      storedLinkSchema.parse(records.get(recordKeys.operatorLink(await sha256Hex(token)))),
+    ).toMatchObject({ kind: 'replace', madeBy: null });
   });
 
-  it('takes a named operator after --replace, and refuses a name that is no name', async () => {
-    const { records, call } = memoryCStorage();
+  it('takes a named operator after --replace, and refuses one that is not there or is no name', async () => {
+    const { call } = memoryCStorage();
 
-    expect((await run(['operator', '--replace', 'second'], KEYS, call)).status).toBe(0);
-    expect(records.has(recordKeys.operatorUser('second'))).toBe(true);
-    expect(await run(['operator', 'no spaces'], KEYS, call)).toMatchObject({
+    const none = await run(['operator', '--replace', 'second'], WITH_ORIGIN, call);
+    expect(none).toMatchObject({ status: 1, shown: [] });
+    expect(none.err[0]).toContain('there is no operator second');
+    expect(await run(['operator', 'no spaces'], WITH_ORIGIN, call)).toMatchObject({
       status: 1,
       err: ['error: that is not an operator name'],
     });
+    await run(['operator', 'second'], WITH_ORIGIN, call);
+    expect((await run(['operator', '--replace', 'second'], WITH_ORIGIN, call)).status).toBe(0);
+  });
+
+  it('names no address it was not given, or one a passkey cannot be bound to', async () => {
+    const { records, call } = memoryCStorage();
+
+    for (const env of [KEYS, { ...KEYS, APP_ORIGIN: 'http://127.0.0.1:3181' }]) {
+      expect(await run(['operator'], env, call)).toMatchObject({
+        status: 1,
+        err: ['error: invalid environment: APP_ORIGIN'],
+        shown: [],
+      });
+    }
+    expect(records.size).toBe(0);
+  });
+
+  it('will not give a link to an operator whose account is gone', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['operator'], WITH_ORIGIN, call);
+    const roster = storedRosterSchema.parse(records.get(recordKeys.operatorRoster));
+    records.delete(recordKeys.operatorAccount(roster.operators[0].id));
+
+    const result = await run(['operator', '--replace'], WITH_ORIGIN, call);
+
+    expect(result).toMatchObject({ status: 1, shown: [] });
+    expect(result.err[0]).toContain('has no account');
+  });
+
+  it('makes a link the BFF accepts: the operator joins by it with a passkey', async () => {
+    const { call } = memoryCStorage();
+    const result = await run(['operator'], WITH_ORIGIN, call);
+    const token = result.shown[0].split('#')[1];
+    const storage = createCStorageClient({
+      baseUrl: KEYS.C_STORAGE_URL,
+      internalAccessKey: KEYS.INTERNAL_ACCESS_KEY,
+      serviceCode: KEYS.SERVICE_CODE,
+      accessKey: KEYS.SERVICE_ACCESS_KEY,
+      fetch: call,
+    });
+    const app = buildApp({
+      storage,
+      now: () => Date.now(),
+      origin: ORIGIN,
+      serviceKey: KEYS.SERVICE_ACCESS_KEY,
+      logger: false,
+    });
+
+    const { session } = await joinByLink(app, token, ORIGIN);
+
+    expect(session.operator.name).toBe('operator');
   });
 
   it('makes a client by the operator’s create and prints the root’s first password to out', async () => {
@@ -179,7 +273,7 @@ describe('what the ops scripts ask of ridge', () => {
   it('names the variables at fault, never a value, and a command it does not know', async () => {
     const { call } = memoryCStorage();
 
-    const missing = await run(['operator'], { ...KEYS, INTERNAL_ACCESS_KEY: '' }, call);
+    const missing = await run(['operator'], { ...WITH_ORIGIN, INTERNAL_ACCESS_KEY: '' }, call);
     expect(missing.err).toEqual(['error: invalid environment: INTERNAL_ACCESS_KEY']);
     expect(await run(['nothing'], KEYS, call)).toMatchObject({ status: 1 });
     expect(await run([], KEYS, call)).toMatchObject({ status: 1 });
@@ -188,18 +282,18 @@ describe('what the ops scripts ask of ridge', () => {
   it('reports a store that refuses, without the key', async () => {
     const { call } = memoryCStorage();
 
-    const result = await run(['operator'], { ...KEYS, SERVICE_ACCESS_KEY: 'wrong' }, call);
+    const result = await run(['operator'], { ...WITH_ORIGIN, SERVICE_ACCESS_KEY: 'wrong' }, call);
 
     expect(result.status).toBe(1);
     expect(result.err.join()).not.toContain('wrong');
   });
 
   it('reports a store that does not answer', async () => {
-    const result = await run(['operator'], KEYS, () => Promise.reject(new Error('down')));
+    const result = await run(['operator'], WITH_ORIGIN, () => Promise.reject(new Error('down')));
 
     expect(result).toMatchObject({
       status: 1,
-      err: ['error: c-storage did not answer POST a operator record'],
+      err: ['error: c-storage did not answer GET a operator record'],
     });
   });
 });

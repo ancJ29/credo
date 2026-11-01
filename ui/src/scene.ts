@@ -1,7 +1,7 @@
 import type { Language } from '@credo/shared';
-import { DEMO_CODE, DEMO_EMPLOYEES, DEMO_TODAY } from '@credo/shared/demo';
+import { DEMO_CODE, DEMO_EMPLOYEES, DEMO_SERVICES, DEMO_TODAY } from '@credo/shared/demo';
 import { createDeviceStore } from './device';
-import { createFakeApi, parseCue } from './fake';
+import { createFakeApi, createFakePasskeys, parseCue } from './fake';
 
 /** What the walks page draws a scene with: the whole app, and the parts that put it on the fake. */
 export { App } from './App';
@@ -24,6 +24,8 @@ type SceneOptions = {
   operator?: boolean;
   /** The company has turned on sign-in by email and by QR code. */
   signIns?: boolean;
+  /** A deploy half done: c-storage runs a newer build than the app and the BFF. */
+  drift?: boolean;
   /** Nobody is signed in yet: a phone opening a QR code's link. */
   out?: boolean;
   /** No one is allowed to deliver yet. */
@@ -47,7 +49,16 @@ const asChosen = async (file: File) => {
  * what one scene, or one test of a page, is drawn from. Each call makes a fake of its own, seeded
  * afresh.
  */
-export function sceneParts({ as, cue, operator, signIns, out, noDrivers, language }: SceneOptions) {
+export function sceneParts({
+  as,
+  cue,
+  operator,
+  signIns,
+  drift,
+  out,
+  noDrivers,
+  language,
+}: SceneOptions) {
   const found = as === undefined ? null : DEMO_EMPLOYEES.find((person) => person.code === as);
   if (found === undefined) throw new Error(`no ${as} in the data set`);
   const device = createDeviceStore(
@@ -58,9 +69,13 @@ export function sceneParts({ as, cue, operator, signIns, out, noDrivers, languag
       ...(operator ? { 'credo.operator': 'fake.operator' } : {}),
     }),
   );
+  const parsed = parseCue(cue ?? null);
   return {
-    api: createFakeApi({ device, cue: parseCue(cue ?? null), signIns, noDrivers }),
+    api: createFakeApi({ device, cue: parsed, signIns, drift, noDrivers }),
     device,
+    passkeys: createFakePasskeys({ cue: parsed }),
+    /** The build the app says it was built from, as the data set holds it. */
+    build: DEMO_SERVICES.build,
     /** The data set's today, whatever day the page is drawn on. */
     today: () => DEMO_TODAY,
     /** What makes a delivery's photo small: the file itself, as chosen. */

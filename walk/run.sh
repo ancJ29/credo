@@ -3,7 +3,7 @@
 #
 #   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks]
 #
-# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, operator (the table below). It takes every picture of each walk on the
+# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, operator, passkeys, services (the table below). It takes every picture of each walk on the
 # fake UI (where the walk has one), then on the stack, then on fresh stacks again, and counts raw the
 # pixels that moved between the passes and against the committed base images: no threshold, no
 # comparator that skips softened edges. Green means fake = stack = stack again pixel for pixel, and
@@ -13,7 +13,7 @@
 #             are added and retired ones removed; the machine reads git's diff and commits
 #   --checks  the refusals and Playwright's listings only, then stop
 #
-# TIME: about 15 to 20 minutes for all three walks (a Mac with nothing else running): the fake
+# TIME: about 15 to 20 minutes for the first three walks (a Mac with nothing else running): the fake
 # passes about 2 minutes, a pass of the stacks about 6 (the operator's 18 stacks 2½, piece 2's 2½,
 # piece 1's ½). A line "== n/8" prints with the time elapsed and the load; "-- stack k/K" within a pass.
 # Run it in YOUR terminal, on the Mac: it opens a browser (headless Chromium). Nothing else may test on
@@ -42,6 +42,8 @@ admin-lists|lists.spec.ts|lists-fake|lists-full|pass|walk/specs/lists.spec.ts-sn
 office-orders|orders.spec.ts|orders-fake|orders-full|pass|walk/specs/orders.spec.ts-snapshots|-orders-full-darwin
 driver-deliveries|driver.spec.ts|driver-fake|driver-full|pass|walk/specs/driver.spec.ts-snapshots|-driver-full-darwin
 operator|operator.spec.ts|operator-fake|operator-full|test|walk/specs/operator.spec.ts-snapshots|-operator-full-darwin
+passkeys|operator-passkeys.spec.ts|passkeys-fake|passkeys-full|test|walk/specs/operator-passkeys.spec.ts-snapshots|-passkeys-full-darwin
+services|operator-services.spec.ts|services-fake|services-full|pass|walk/specs/operator-services.spec.ts-snapshots|-services-full-darwin
 '
 walk_field() { # <walk> <column>
   printf '%s\n' "$WALKS" | awk -F'|' -v w="$1" -v c="$2" '$1 == w { print $c }'
@@ -293,7 +295,16 @@ main() {
     if [ "$phase" = fake ]; then
       (cd "$tree" && CREDO_SHOTS_DIR="$run/$phase/$w" pnpm fake -- bash "$self" --inside "$phase" "$w" "$pat" "$k" 2>&1 </dev/null)
     else
-      (cd "$tree" && CREDO_SHOTS_DIR="$run/$phase/$w" pnpm stack -- bash "$self" --inside "$phase" "$w" "$pat" "$k" 2>&1 </dev/null)
+      # The services walk's UI is built with the build its fake shows (shared/src/demo.ts), so the page
+      # names one build on the stack as it does on the fake.
+      local stamp=()
+      if [ "$w" = services ]; then
+        local demo_build
+        demo_build="$(sed -n "/^export const DEMO_SERVICES/,/^};/s/^  build: '\([0-9a-f]*\)',\$/\1/p" "$tree/shared/src/demo.ts")"
+        [ -n "$demo_build" ] || finish "red: the fake's build could not be read from shared/src/demo.ts" 1
+        stamp=(CREDO_BUILD="$demo_build")
+      fi
+      (cd "$tree" && env ${stamp[@]+"${stamp[@]}"} CREDO_SHOTS_DIR="$run/$phase/$w" pnpm stack -- bash "$self" --inside "$phase" "$w" "$pat" "$k" 2>&1 </dev/null)
     fi
     echo "  exited $? after $(elapsed)"
     stop_if_interrupted

@@ -50,11 +50,32 @@ describe('the fake build', () => {
     const fakeBundle = await bundleOf(fake.uiDir);
     const appBundle = await bundleOf(served);
 
-    // The fake's own handle, and the data set's company: the code and the data.
-    for (const part of ['fake.session', 'Minh Phát']) {
+    // The fake's own handle, and the data set's company: the code and the data; the fake
+    // authenticator's credential and the invited operator's link, which the app never holds.
+    for (const part of ['fake.session', 'Minh Phát', 'fake-credential', 'demo-join-link']) {
       expect(fakeBundle.includes(part), part).toBe(true);
       expect(appBundle.includes(part), part).toBe(false);
     }
+  });
+
+  it('The served bundle carries the commit it is built from, and says dev when it is built from none', async () => {
+    const stamped = join(dir, 'stamped');
+    const bare = join(dir, 'bare');
+    const was = process.env['CREDO_BUILD'];
+    try {
+      process.env['CREDO_BUILD'] = 'a1b2c3d4e5f6';
+      await build({
+        root: UI_DIR,
+        logLevel: 'warn',
+        build: { outDir: stamped, emptyOutDir: true },
+      });
+      delete process.env['CREDO_BUILD'];
+      await build({ root: UI_DIR, logLevel: 'warn', build: { outDir: bare, emptyOutDir: true } });
+    } finally {
+      if (was !== undefined) process.env['CREDO_BUILD'] = was;
+    }
+    expect(await bundleOf(stamped)).toContain('a1b2c3d4e5f6');
+    expect(await bundleOf(bare)).not.toContain('a1b2c3d4e5f6');
   });
 
   it('puts the fake UI in its own folder, so a running fake’s files are never emptied', () => {

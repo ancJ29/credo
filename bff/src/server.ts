@@ -1,10 +1,11 @@
 import { createCStorageClient } from '@credo/shared';
 import { buildApp } from './app';
-import { readEnv, type StorageEnv } from './env';
+import { BUILD } from './build';
+import { type BffEnv, readEnv } from './env';
 
 /** The BFF's app on its c-storage: the one build a listener and a Lambda share. */
 export function buildBff(
-  config: StorageEnv,
+  config: BffEnv,
   { now = Date.now, logger = true }: { now?: () => number; logger?: boolean } = {},
 ) {
   const storage = createCStorageClient({
@@ -13,7 +14,14 @@ export function buildBff(
     serviceCode: config.SERVICE_CODE,
     accessKey: config.SERVICE_ACCESS_KEY,
   });
-  return buildApp({ storage, now, logger });
+  return buildApp({
+    storage,
+    now,
+    origin: config.APP_ORIGIN,
+    serviceKey: config.SERVICE_ACCESS_KEY,
+    logger,
+    build: BUILD,
+  });
 }
 
 /** The BFF as a process runs it: the environment to the app, the app to a listener. The Lambda

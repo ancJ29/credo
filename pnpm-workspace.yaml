@@ -23,6 +23,10 @@ catalog:
   '@mantine/core': 9.6.3
   '@mantine/hooks': 9.6.3
   '@playwright/test': 1.64.0
+  # The passkey ceremonies in the browser; the newest release two weeks old on 2026-10-30, its types inside.
+  '@simplewebauthn/browser': 14.0.0
+  # The passkey ceremonies on the server; the newest release two weeks old on 2026-10-30, its types inside.
+  '@simplewebauthn/server': 14.0.3
   '@tabler/icons-react': 3.49.0
   '@testing-library/dom': ^10.4.2
   '@testing-library/react': ^16.3.3

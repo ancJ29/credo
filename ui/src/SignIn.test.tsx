@@ -1,8 +1,8 @@
-import { screen } from '@testing-library/react';
+import { cleanup, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
-import { SignIn } from './SignIn';
+import { SignIn, SignInFrame } from './SignIn';
 
 const brand = { name: 'Minh Phát', logo: null };
 
@@ -24,10 +24,19 @@ describe('SignIn', () => {
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret');
   });
 
-  it('names its heading as it is told, in place of the account title', () => {
-    draw(<SignIn brand={brand} status="idle" title="Operator sign-in" onSubmit={vi.fn()} />);
+  it('wears the account title over its form, and the frame names its heading as it is told over what it holds', () => {
+    draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Sign in to your account');
+    cleanup();
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Operator sign-in');
+    draw(
+      <SignInFrame brand={brand} title="Join us">
+        <p>inside</p>
+      </SignInFrame>,
+    );
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Join us');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(brand.name);
+    expect(screen.getByText('inside')).toBeTruthy();
   });
 
   it('starts from what is already typed', () => {

@@ -6,7 +6,6 @@ import {
   type Employee,
   normaliseSignInName,
   recordKeys,
-  type StoredOperator,
   type StoredUser,
 } from '@credo/shared';
 import { buildApp } from '../src/app';
@@ -18,7 +17,8 @@ export const OTHER_DEVICE = 'device-bbbb-0002';
 export const ROOT = { name: 'root', password: 'correct horse battery' };
 
 export const CODE = 'acme-co';
-export const OPERATOR = { name: 'operator', password: 'an operator password' };
+/** The address the tests' operator opens: the relying party is its host, `localhost`. */
+export const ORIGIN = 'http://localhost:3181';
 
 /** A password's scrypt hash, made once for each password in the process: a test's setup then spends
  * its time on the routes, not on hashing the same few passwords again. */
@@ -90,14 +90,6 @@ export async function seedEmployee(
   return { employee, password };
 }
 
-export async function seedOperator(
-  storage: CStorageClient,
-  operator: { name: string; password: string } = OPERATOR,
-) {
-  const stored: StoredOperator = { passwordHash: await hashPassword(operator.password) };
-  await storage.putRecord(recordKeys.operatorUser(normaliseSignInName(operator.name)), stored);
-}
-
 /** A tenant's index and its root, as the operator's create leaves them but with the test's known
  * password, and no settings yet. Returns the minted id. */
 export async function seedTenant(storage: CStorageClient, code: string) {
@@ -114,12 +106,20 @@ export async function bffOn(
     now?: () => number;
     wrap?: (client: CStorageClient) => CStorageClient;
     logger?: Parameters<typeof buildApp>[0]['logger'];
+    build?: string;
   } = {},
 ) {
   const service = await freshTenant(cs);
   const time = clock();
   const storage = options.wrap ? options.wrap(service.client) : service.client;
-  const app = buildApp({ storage, now: options.now ?? time.now, logger: options.logger ?? false });
+  const app = buildApp({
+    storage,
+    now: options.now ?? time.now,
+    origin: ORIGIN,
+    serviceKey: service.accessKey,
+    logger: options.logger ?? false,
+    ...(options.build === undefined ? {} : { build: options.build }),
+  });
   return { ...service, app, time };
 }
 

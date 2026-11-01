@@ -5,13 +5,20 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_JOIN_TOKEN,
+  DEMO_OPERATOR_ID,
+  DEMO_PASSKEYS,
   DEMO_PHOTOS,
+  DEMO_SERVICES,
   DEMO_STAFF_SETUP,
+  OPERATOR_NAME,
 } from './demo';
 import { fieldValueIsValid } from './fields';
 import { photoIsValid } from './photo';
 import { clientCodeSchema } from './records';
 import { employeeSchema, staffConfig, staffSetupSchema } from './staff';
+import { joinTokenSchema, passkeyListReplySchema, servicesReplySchema } from './wire';
 
 describe('the demo data set', () => {
   it('The demo company is a company’s settings the BFF would take, logo included', () => {
@@ -75,5 +82,35 @@ describe('the demo clients', () => {
       expect(new Date(client.madeAt).getUTCHours(), client.code).toBe(12);
       expect(new Date(client.madeAt).getUTCMinutes(), client.code).toBe(0);
     }
+  });
+});
+
+describe('the demo operator', () => {
+  it('The operator holds two passkeys, one used and one not yet, each made at noon UTC; the invited one has a join link in the token’s form', () => {
+    expect(passkeyListReplySchema.safeParse({ passkeys: DEMO_PASSKEYS }).success).toBe(true);
+    expect(DEMO_PASSKEYS).toHaveLength(2);
+    expect(DEMO_PASSKEYS.filter((passkey) => passkey.lastUsedAt === null)).toHaveLength(1);
+    for (const passkey of DEMO_PASSKEYS) {
+      expect(new Date(passkey.addedAt).getUTCHours(), passkey.id).toBe(12);
+    }
+    expect(joinTokenSchema.safeParse(DEMO_JOIN_TOKEN).success).toBe(true);
+    expect(DEMO_OPERATOR_ID).not.toBe('');
+    expect(DEMO_INVITED_NAME).not.toBe(OPERATOR_NAME);
+  });
+});
+
+describe('the demo services', () => {
+  it('C: The services hold one build and a drifted one that differ, as the BFF would answer them, checked at noon UTC so the time reads the same in every whole-hour zone', () => {
+    const reply = (build: string) => ({
+      build: DEMO_SERVICES.build,
+      storage: { build, ms: DEMO_SERVICES.storageMs },
+    });
+    expect(servicesReplySchema.safeParse(reply(DEMO_SERVICES.build)).success).toBe(true);
+    expect(servicesReplySchema.safeParse(reply(DEMO_SERVICES.driftBuild)).success).toBe(true);
+    expect(DEMO_SERVICES.driftBuild).not.toBe(DEMO_SERVICES.build);
+    expect(DEMO_SERVICES.bffMs).toBeGreaterThan(DEMO_SERVICES.storageMs);
+    expect(new Date(DEMO_SERVICES.checkedAt).getUTCHours()).toBe(12);
+    expect(new Date(DEMO_SERVICES.checkedAt).getUTCMinutes()).toBe(0);
+    expect(new Date(DEMO_SERVICES.checkedAt).getUTCSeconds()).toBe(0);
   });
 });

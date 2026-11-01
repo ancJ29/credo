@@ -1,8 +1,9 @@
-import { DEMO_CODE, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_CODE, DEMO_EMPLOYEES, DEMO_OPERATOR_ID } from '@credo/shared/demo';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { drawApp } from '../tests/render';
 import { ApiError } from './api';
+import { PasskeyNotGiven } from './passkeys';
 import { App, sceneParts } from './scene';
 
 describe('a scene’s parts', () => {
@@ -26,7 +27,9 @@ describe('a scene’s parts', () => {
   it('sign the operator in, with a handle kept apart from the root’s, when asked', async () => {
     const operator = sceneParts({ operator: true, language: 'en' });
     expect(operator.device.operatorAuthId()).toBe('fake.operator');
-    expect(await operator.api.operatorMe()).toEqual({ operator: { name: 'operator' } });
+    expect(await operator.api.operatorMe()).toEqual({
+      operator: { id: DEMO_OPERATOR_ID, name: 'operator' },
+    });
 
     expect(sceneParts({ language: 'en' }).device.operatorAuthId()).toBeNull();
   });
@@ -43,6 +46,15 @@ describe('a scene’s parts', () => {
     expect(() => sceneParts({ as: 'EMP-9999', language: 'en' })).toThrow(
       'no EMP-9999 in the data set',
     );
+  });
+
+  it('carry the device’s passkeys, faked, with the authenticator’s cue', async () => {
+    const { passkeys } = sceneParts({ cue: 'passkey:notGiven', language: 'en' });
+
+    await expect(passkeys.authenticate({ challenge: 'c' })).rejects.toBeInstanceOf(PasskeyNotGiven);
+    await expect(passkeys.authenticate({ challenge: 'c' })).resolves.toMatchObject({
+      type: 'public-key',
+    });
   });
 
   it('carry a cue, which makes the call it names answer its status once', async () => {
@@ -69,10 +81,17 @@ describe('a scene’s parts', () => {
   it('draw the app with the look it is given: its colour scheme fixed, on the element asked', async () => {
     const holder = document.createElement('div');
     document.documentElement.removeAttribute('data-mantine-color-scheme');
-    const { api, device } = sceneParts({ language: 'en' });
+    const { api, device, passkeys, build } = sceneParts({ language: 'en' });
 
     drawApp(
-      <App api={api} device={device} look={{ scheme: 'dark', root: () => holder }} test />,
+      <App
+        api={api}
+        device={device}
+        passkeys={passkeys}
+        build={build}
+        look={{ scheme: 'dark', root: () => holder }}
+        test
+      />,
       '/staff',
     );
 

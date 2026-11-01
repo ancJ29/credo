@@ -6,7 +6,9 @@ import {
   normaliseSignInName,
   recordKeys,
   storedClientSchema,
-  storedOperatorSchema,
+  storedAccountSchema,
+  storedLinkSchema,
+  storedRosterSchema,
   storedSessionSchema,
   storedUserSchema,
 } from './records';
@@ -90,7 +92,9 @@ describe('the record keys', () => {
   });
 
   it('keep the operator’s records apart from every tenant’s', () => {
-    expect(recordKeys.operatorUser('operator')).toBe('operator.user.operator');
+    expect(recordKeys.operatorRoster).toBe('operator.roster');
+    expect(recordKeys.operatorAccount('o1')).toBe('operator.account.o1');
+    expect(recordKeys.operatorLink('ab12')).toBe('operator.link.ab12');
     expect(recordKeys.operatorSession('device-0001')).toBe('operator.session.device-0001');
   });
 });
@@ -116,7 +120,9 @@ describe('the index prefix', () => {
   it('Only index records sit under `client.`: no other key the layout builds starts with it', () => {
     const tenant = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000001');
     const others = [
-      recordKeys.operatorUser('operator'),
+      recordKeys.operatorRoster,
+      recordKeys.operatorAccount('o1'),
+      recordKeys.operatorLink('ab12'),
       recordKeys.operatorSession('device-0001'),
       tenant.config,
       tenant.user('root'),
@@ -145,8 +151,30 @@ describe('the index and the operator’s account', () => {
     const id = '3f2a91bc-0000-4000-8000-000000000001';
     expect(storedClientSchema.safeParse({ id, name: 'Acme' }).success).toBe(true);
     expect(storedClientSchema.safeParse({ id: 'acme', name: 'Acme' }).success).toBe(false);
-    expect(storedOperatorSchema.safeParse({ passwordHash: 'h' }).success).toBe(true);
-    expect(storedOperatorSchema.safeParse({ passwordHash: 'h', root: true }).success).toBe(false);
+  });
+
+  it('the operator’s roster, account and link hold what the plan’s records say and nothing more', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    const line = { id, name: 'boss', state: 'invited', addedBy: null, addedAt: 1, joinedAt: null };
+    expect(storedRosterSchema.safeParse({ operators: [line] }).success).toBe(true);
+    expect(storedRosterSchema.safeParse({ operators: [{ ...line, state: 'gone' }] }).success).toBe(
+      false,
+    );
+    expect(storedRosterSchema.safeParse({ operators: [{ ...line, level: 2 }] }).success).toBe(
+      false,
+    );
+    const account = { passkeys: [], linkHash: null, generation: 0, spent: [] };
+    expect(storedAccountSchema.safeParse(account).success).toBe(true);
+    expect(storedAccountSchema.safeParse({ ...account, password: 'x' }).success).toBe(false);
+    const link = { operatorId: id, kind: 'join', madeBy: null, endsAt: 5 };
+    expect(storedLinkSchema.safeParse(link).success).toBe(true);
+    expect(storedLinkSchema.safeParse({ ...link, kind: 'other' }).success).toBe(false);
+  });
+
+  it('a session written before the cap was kept reads its issue as 0', () => {
+    const old = { secretHash: 'h', user: 'u', expiresAt: 1, device: 'd', generation: '' };
+    expect(storedSessionSchema.parse(old).issuedAt).toBe(0);
+    expect(storedSessionSchema.parse({ ...old, issuedAt: 9 }).issuedAt).toBe(9);
   });
 });
 

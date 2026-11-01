@@ -7,9 +7,9 @@ import {
 } from '@tabler/icons-react';
 import type { MenuPage } from './nav';
 
-/** The operator's sections, top to bottom. Clients is built; the other four are one empty page
- * each ("coming soon") until a plan fills them. The BFF checks the operator's session on every
- * call, so this menu is a view, never the guard. */
+/** The operator's sections, top to bottom. Clients and Services are built; the other three are one
+ * empty page each ("coming soon") until a plan fills them. The BFF checks the operator's session
+ * on every call, so this menu is a view, never the guard. */
 export const OPERATOR_PAGES = [
   { id: 'clients', path: '/operator/clients', label: 'nav.clients', icon: IconBuildingStore },
   { id: 'operators', path: '/operator/operators', label: 'nav.operators', icon: IconUserShield },
@@ -19,4 +19,6 @@ export const OPERATOR_PAGES = [
 ] as const satisfies readonly MenuPage[];
 
 /** The sections that have no page of their own yet. */
-export const SOON_PAGES = OPERATOR_PAGES.filter((page) => page.id !== 'clients');
+export const SOON_PAGES = OPERATOR_PAGES.filter(
+  (page) => page.id !== 'clients' && page.id !== 'services',
+);

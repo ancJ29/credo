@@ -91,6 +91,67 @@ export const en = {
       'Use 3 to 32 lowercase letters, digits and hyphens, starting with a letter and ending with a letter or digit.',
     nameInvalid: 'Enter the company’s name.',
     back: 'Back to the clients',
+    unavailableStorage:
+      'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',
+    unavailableBff:
+      'The app answers, but the BFF does not, so nothing behind it can be seen from here. Try again in a moment.',
+  },
+  passkey: {
+    signInButton: 'Sign in with a passkey',
+    signInHint: 'Your device will ask for your fingerprint, face or PIN.',
+    notGiven: 'No passkey was given. Try again when you are ready.',
+    refused: 'No operator here has this passkey. Ask another operator for a new link.',
+    endedTitle: 'Your sign-in ended',
+    endedText:
+      'A sign-in ends after an hour away, or 12 hours in. What you typed is still here: use your passkey, then press save again.',
+    endedButton: 'Use your passkey',
+    joinTitle: 'Join as an operator',
+    joinFor: 'This link is for {{name}}.',
+    joinMadeBy: 'It was made by {{name}}.',
+    joinMadeByTerminal: 'This link was made from the command line.',
+    joinMadeByNone: 'The operator who made it has since been deleted.',
+    joinHint:
+      'You make a passkey on this device, which will ask for your fingerprint, face or PIN. The link then stops working.',
+    makeButton: 'Make a passkey',
+    dead: 'This link cannot be used. It was used already, it is more than a day old, or a newer link replaced it. Ask another operator for a new one.',
+    menu: 'Your passkeys',
+    title: 'Your passkeys',
+    intro:
+      'Each device you sign in with holds a passkey. Keep a second one, in case you lose the first.',
+    colAdded: 'Added on',
+    colLastUsed: 'Last used',
+    never: 'Not used yet',
+    add: 'Add a passkey',
+    remove: 'Remove',
+    lastOne: 'Your last passkey cannot be removed.',
+    alreadyHere:
+      'This device already has a passkey for you. Add one on another device or a security key.',
+    addFailed: 'The passkey was not added. Try again.',
+    removeFailed: 'The passkey was not removed. Try again.',
+  },
+  services: {
+    intro:
+      'The three parts everything runs on. This page asks each minute while it is open and in view.',
+    checkNow: 'Check now',
+    app: 'The app’s page',
+    appNote: 'The page you are reading.',
+    bff: 'The BFF',
+    bffNote: 'The server the app talks to.',
+    storage: 'c-storage (the data store)',
+    storageNote: 'Where the data is kept.',
+    answers: 'Answers',
+    silent: 'Does not answer',
+    unseen: 'Cannot be seen from here',
+    build: 'Build',
+    time: 'Took {{ms}} ms',
+    differs: 'Different build',
+    checkedAt: 'Last checked at {{time}}',
+    oneBuild: 'All three answer, and all run one build.',
+    twoBuilds:
+      'All three answer, but not on one build: a deploy is half done. c-storage is updated first, then the BFF and the app.',
+    storageDown:
+      'The app answers. The BFF answers but cannot reach its storage: no one can sign in or save.',
+    bffDown: 'The app answers. The BFF does not, so c-storage cannot be seen from here.',
   },
   forbidden: {
     title: 'You cannot open this page',

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { dayOf, localToday, shownDay } from './day';
+import { dayOf, localToday, shownDay, timeOf } from './day';
 
 describe('a made-on day', () => {
   const noon = Date.UTC(2026, 9, 29, 12);
@@ -12,6 +12,18 @@ describe('a made-on day', () => {
   it('is a dash for a client made before the time was kept', () => {
     expect(dayOf(null, 'vi')).toBe('—');
     expect(dayOf(null, 'en')).toBe('—');
+  });
+});
+
+describe('a checked-at time', () => {
+  it('C: reads as the clock to the second on 24 hours, midnight as 00 and not 24, the same in both languages', () => {
+    const early = new Date(2026, 9, 31, 0, 5, 9).getTime();
+    const late = new Date(2026, 9, 31, 19, 7, 3).getTime();
+
+    expect(timeOf(early, 'vi')).toBe('00:05:09');
+    expect(timeOf(early, 'en')).toBe('00:05:09');
+    expect(timeOf(late, 'vi')).toBe('19:07:03');
+    expect(timeOf(late, 'en')).toBe('19:07:03');
   });
 });
 

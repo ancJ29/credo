@@ -6,7 +6,7 @@
 # box (the function holds a copy of the BFF's keys, set again at every run).
 #   In order: reads the keys from the box's files and masks them first; makes sure of the BFF's
 #   service in c-storage; sets the function's environment from a 0600 file that is deleted at once, and
-#   its description to the commit; then sends the bundle and compares the function's CodeSha256 with
+#   its description to the commit (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the function's CodeSha256 with
 #   the one sent; sends the UI's files, index.html last, with the commit in its metadata.
 #   In the job: APP_BUNDLE (the bundle's index.js) and APP_UI_DIR (the UI's built folder) name what the
 #   job built from the commit it runs on, before it took the role. By hand: builds <sha> (main's tip
@@ -63,12 +63,16 @@ if [ -n "${APP_BUNDLE:-}" ]; then
 else
   echo "building $sha in a throwaway worktree, without the AWS session"
   git -C "$REPO_DIR" worktree add -q --detach "$WORK/src" "$sha"
-  (cd "$WORK/src" && clean pnpm install --frozen-lockfile && clean pnpm --filter @credo/bff bundle && clean pnpm --filter @credo/ui build)
+  build_app "$WORK/src" "$sha"
   bundle=$WORK/src/bff/dist/index.js
   ui=$WORK/src/ui/dist/app
 fi
 [ -f "$bundle" ] || die "no bundle at $bundle"
 [ -f "$ui/index.html" ] || die "the UI's folder holds no index.html"
+# The Services status page compares the builds of the app, the BFF and c-storage: a bundle or a UI built
+# without the commit would read "dev" on ridge for good, on either path (the job's or build_app's).
+grep -qF -- "$sha" "$bundle" || die "the bundle carries no $sha: it was built without CREDO_BUILD"
+grep -rqF --include='*.js' -- "$sha" "$ui" || die "the UI's scripts carry no $sha: it was built without CREDO_BUILD"
 rm -f "$WORK/bff.zip"
 # The handler is index.handler, so the file is index.js at the zip's top.
 cp "$bundle" "$WORK/index.js"
@@ -123,8 +127,9 @@ step "the BFF: settings, then code"
 # sent each time: the role may change settings only when it names the subnet and group.
 (
   umask 077
-  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url \
-    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY}}' \
+  # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
+  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} \
+    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
     >"$WORK/bff-env.json"
 )
 aws lambda update-function-configuration --function-name "$BFF_NAME" --description "$sha" \

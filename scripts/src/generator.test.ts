@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { verifyPassword } from '@credo/bff/password';
 import { buildApp } from '@credo/bff';
+import { joinByLink } from '@credo/bff/tests/join';
 import {
   addDays,
   clientLinkPath,
@@ -9,7 +9,10 @@ import {
   type CStorageClient,
   recordKeys,
   storedClientSchema,
-  storedOperatorSchema,
+  storedAccountSchema,
+  storedLinkSchema,
+  storedRosterSchema,
+  sha256Hex,
   storedUserSchema,
   type DeliveryRequest,
   type Employee,
@@ -25,6 +28,9 @@ import {
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_OPERATOR_ID,
+  DEMO_PASSKEYS,
   DEMO_ORDERS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
@@ -34,7 +40,7 @@ import {
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
-import { newOperatorPassword, ROOT_NAME, seedClient, seedDemo } from './generator';
+import { ROOT_NAME, seedClient, seedDemo } from './generator';
 
 /** A c-storage service in memory: records, each with a tag of c-storage's form that changes at every
  * write, and a write over a tag that moved refused. */
@@ -68,40 +74,43 @@ function memoryStorage() {
       tags.delete(key);
       return Promise.resolve('removed');
     },
+    health: () => Promise.resolve({ buildVersion: 'dev' }),
   };
   return { records, storage };
 }
 
-describe('the demo generator', () => {
-  it('The demo client is made by the operator’s create, its root signs in through the BFF, and so does the operator', async () => {
-    const { records, storage } = memoryStorage();
-    const operatorPassword = newOperatorPassword();
+const ORIGIN = 'http://localhost:3181';
+/** The app on the generator's storage, as a stack's BFF is, with the address the operator opens. */
+const appOn = (storage: CStorageClient) =>
+  buildApp({ storage, now: () => Date.now(), origin: ORIGIN, serviceKey: 'a-key', logger: false });
 
-    const { rootPassword } = await seedDemo(storage, { operatorPassword });
+describe('the demo generator', () => {
+  it('The demo client is made by the operator’s create, its root signs in through the BFF, and the invited operator joins by the link', async () => {
+    const { records, storage } = memoryStorage();
+
+    const { rootPassword, invitedToken } = await seedDemo(storage);
 
     const index = storedClientSchema.parse(records.get(recordKeys.client(DEMO_CODE)));
     const keys = recordKeys.tenant(index.id);
     expect(storedUserSchema.parse(records.get(keys.user(ROOT_NAME))).root).toBe(true);
     expect(tenantConfigSchema.parse(records.get(keys.config))).toEqual(DEMO_CONFIG);
-    const app = buildApp({ storage, now: () => Date.now(), logger: false });
-    const signIn = (url: string, headers: Record<string, string>, name: string, password: string) =>
+    const app = appOn(storage);
+    const root = (password: string) =>
       app.inject({
         method: 'POST',
-        url,
-        headers: { 'x-device-id': 'device-aaaa-0001', ...headers },
-        payload: { name, password },
+        url: '/api/auth/sign-in',
+        headers: { 'x-device-id': 'device-aaaa-0001', 'x-client-code': DEMO_CODE },
+        payload: { name: ROOT_NAME, password },
       });
-    const root = (password: string) =>
-      signIn('/api/auth/sign-in', { 'x-client-code': DEMO_CODE }, ROOT_NAME, password);
     expect((await root(rootPassword)).json()).toMatchObject({ user: { root: true } });
     expect((await root('not the password')).statusCode).toBe(401);
-    const operator = await signIn('/api/operator/sign-in', {}, OPERATOR_NAME, operatorPassword);
-    expect(operator.json()).toMatchObject({ operator: { name: OPERATOR_NAME } });
+    const joined = await joinByLink(app, invitedToken, ORIGIN);
+    expect(joined.session.operator.name).toBe(DEMO_INVITED_NAME);
   });
 
   it('The demo client holds the data set’s customers and products, each under a minted id, with the stocked flag as the data set has it', async () => {
     const { records, storage } = memoryStorage();
-    await seedDemo(storage, { operatorPassword: newOperatorPassword() });
+    await seedDemo(storage);
 
     const index = storedClientSchema.parse(records.get(recordKeys.client(DEMO_CODE)));
     const keys = recordKeys.tenant(index.id);
@@ -133,77 +142,115 @@ describe('the demo generator', () => {
           : storage.putRecord(key, data, ifTag),
     };
 
-    await expect(seedDemo(down, { operatorPassword: newOperatorPassword() })).rejects.toThrow(
-      'products import did not add every row',
-    );
+    await expect(seedDemo(down)).rejects.toThrow('products import did not add every row');
   });
 
-  it('The passwords are stored nowhere readable: only their scrypt hashes are', async () => {
+  it('The operators are the data set’s: the active one with its two passkeys at their fixed times, the invited one with a link the first made, and nothing readable stored: hashes alone', async () => {
     const { records, storage } = memoryStorage();
-    const operatorPassword = newOperatorPassword();
 
-    const { rootPassword } = await seedDemo(storage, { operatorPassword });
+    const { rootPassword, invitedToken, operatorHandle } = await seedDemo(storage);
 
     const all = JSON.stringify([...records]);
     expect(all).not.toContain(rootPassword);
-    expect(all).not.toContain(operatorPassword);
-    const stored = storedOperatorSchema.parse(records.get(recordKeys.operatorUser(OPERATOR_NAME)));
-    expect(stored.passwordHash).toMatch(/^scrypt\$/);
-    expect(await verifyPassword(operatorPassword, stored.passwordHash)).toBe(true);
+    expect(all).not.toContain(invitedToken);
+    expect(all).not.toContain(operatorHandle.split('.')[1]);
+    const roster = storedRosterSchema.parse(records.get(recordKeys.operatorRoster));
+    expect(roster.operators).toEqual([
+      expect.objectContaining({
+        id: DEMO_OPERATOR_ID,
+        name: OPERATOR_NAME,
+        state: 'active',
+        addedBy: null,
+      }),
+      expect.objectContaining({
+        name: DEMO_INVITED_NAME,
+        state: 'invited',
+        addedBy: DEMO_OPERATOR_ID,
+      }),
+    ]);
+    const held = storedAccountSchema.parse(
+      records.get(recordKeys.operatorAccount(DEMO_OPERATOR_ID)),
+    );
+    expect(held.linkHash).toBeNull();
+    expect(
+      held.passkeys.map(({ id, addedAt, lastUsedAt }) => ({ id, addedAt, lastUsedAt })),
+    ).toEqual(DEMO_PASSKEYS);
+    for (const { publicKey } of held.passkeys) {
+      const key = Buffer.from(publicKey, 'base64url');
+      expect([key.length, key[0]]).toEqual([77, 0xa5]);
+    }
+    const invited = storedAccountSchema.parse(
+      records.get(recordKeys.operatorAccount(roster.operators[1].id)),
+    );
+    expect(invited.passkeys).toEqual([]);
+    const hash = await sha256Hex(invitedToken);
+    expect(invited.linkHash).toBe(hash);
+    expect(storedLinkSchema.parse(records.get(recordKeys.operatorLink(hash)))).toMatchObject({
+      operatorId: roster.operators[1].id,
+      madeBy: DEMO_OPERATOR_ID,
+    });
+  });
+
+  it('The active operator is signed in by the handle the seed gives, and its passkeys read through the BFF as the fake’s do', async () => {
+    const { storage } = memoryStorage();
+    const { operatorHandle } = await seedDemo(storage);
+    const app = appOn(storage);
+    const headers = { 'x-auth-id': operatorHandle };
+
+    const me = await app.inject({ method: 'GET', url: '/api/operator/me', headers });
+    const listed = await app.inject({ method: 'GET', url: '/api/operator/passkeys', headers });
+
+    expect(me.json()).toEqual({ operator: { id: DEMO_OPERATOR_ID, name: OPERATOR_NAME } });
+    expect(listed.json()).toEqual({
+      passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }) => ({ id, addedAt, lastUsedAt })),
+    });
   });
 
   it('The data set names the root as the BFF does, so the fake’s sign-in is the real one’s', () => {
     expect(DEMO_ROOT_NAME).toBe(ROOT_NAME);
   });
 
-  it('makes a new password for each stack, long enough to guess no better than at random', () => {
-    const [one, two] = [newOperatorPassword(), newOperatorPassword()];
+  it('makes a link of its own for each stack', async () => {
+    const [one, two] = [
+      await seedDemo(memoryStorage().storage),
+      await seedDemo(memoryStorage().storage),
+    ];
 
-    expect(one).not.toBe(two);
-    expect(one.length).toBeGreaterThanOrEqual(16);
+    expect(one.invitedToken).not.toBe(two.invitedToken);
+    expect(one.invitedToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
   });
 
   it('never seeds over a service that holds data, the operator’s or the demo client’s', async () => {
     const { records, storage } = memoryStorage();
-    await seedDemo(storage, { operatorPassword: 'first' });
-    await expect(seedDemo(storage, { operatorPassword: 'second' })).rejects.toThrow(
-      'not seeded over',
-    );
+    await seedDemo(storage);
+    await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
 
-    records.delete(recordKeys.client(DEMO_CODE));
-    await expect(seedDemo(storage, { operatorPassword: 'third' })).rejects.toThrow(
-      'not seeded over',
-    );
-    records.delete(recordKeys.operatorUser(OPERATOR_NAME));
-    records.set(recordKeys.client(DEMO_CODE), {});
-    await expect(seedDemo(storage, { operatorPassword: 'fourth' })).rejects.toThrow(
-      'not seeded over',
-    );
+    // the operator's line gone, the operator's account still there
+    records.delete(recordKeys.operatorRoster);
+    await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
 
-    // one of the data set's other clients already there
-    records.delete(recordKeys.operatorUser(OPERATOR_NAME));
+    // the operator's account gone too, the demo client still there
+    records.delete(recordKeys.operatorRoster);
+    records.delete(recordKeys.operatorAccount(DEMO_OPERATOR_ID));
+    await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
+
+    // the demo client gone too, one of the data set's other clients still there
+    records.delete(recordKeys.operatorRoster);
+    records.delete(recordKeys.operatorAccount(DEMO_OPERATOR_ID));
     records.delete(recordKeys.client(DEMO_CODE));
-    await expect(seedDemo(storage, { operatorPassword: 'fifth' })).rejects.toThrow(
-      'not seeded over',
-    );
+    await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
   });
 
   it('The stack’s operator lists the data set’s three clients with their fixed days, the demo company’s name as made, and newest first', async () => {
     const { storage } = memoryStorage();
-    const operatorPassword = newOperatorPassword();
-    await seedDemo(storage, { operatorPassword });
-    const app = buildApp({ storage, now: () => Date.now(), logger: false });
-    const session = await app.inject({
-      method: 'POST',
-      url: '/api/operator/sign-in',
-      headers: { 'x-device-id': 'device-aaaa-0001' },
-      payload: { name: OPERATOR_NAME, password: operatorPassword },
-    });
+    const { invitedToken } = await seedDemo(storage);
+    const app = appOn(storage);
+    const { session } = await joinByLink(app, invitedToken, ORIGIN);
 
     const listed = await app.inject({
       method: 'GET',
       url: '/api/operator/clients',
-      headers: { 'x-auth-id': session.json<{ authId: string }>().authId },
+      headers: { 'x-auth-id': session.authId },
     });
 
     expect(clientListReplySchema.parse(listed.json()).clients).toEqual(
@@ -228,7 +275,7 @@ describe('the demo generator', () => {
   describe('one data set for the fake and the stack', () => {
     /** A call to the BFF over this storage, as the person holding `authId` (the root's when none). */
     function bff(storage: CStorageClient, code: string) {
-      const app = buildApp({ storage, now: () => Date.now(), logger: false });
+      const app = appOn(storage);
       const call = (
         method: 'GET' | 'POST',
         url: string,

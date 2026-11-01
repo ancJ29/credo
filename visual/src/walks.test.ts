@@ -19,11 +19,17 @@ import { stepWords } from './scene';
 const SPECS = new URL('../../walk/specs/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
 
+/** Piece 2's walks, which start at the staff setup whatever walks come before them. */
+const piece2Walks = () => {
+  const first = WALKS.findIndex((walk) => walk.id === 'admin-staff-setup');
+  return WALKS.slice(first, first + 4);
+};
+
 describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(77);
+    expect(states.size).toBe(WALKS.flatMap((walk) => walk.screens).length);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -125,9 +131,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, a hundred and fifty-four for the seventy-seven screens', () => {
+  it('keys an answer by walk, screen and language, two for each screen', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(154);
+    expect(allKeys(WALKS)).toHaveLength(WALKS.flatMap((walk) => walk.screens).length * 2);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -188,7 +194,7 @@ describe('the walks', () => {
     for (let index = 1; index < parts.length; index += 2) {
       openings.set(parts[index], parts[index - 1]);
     }
-    const screens = WALKS.slice(2, 6).flatMap((walk) => walk.screens);
+    const screens = piece2Walks().flatMap((walk) => walk.screens);
 
     expect([...openings.keys()]).toEqual(screens.map((screen) => screen.id));
     for (const screen of screens) {
@@ -206,8 +212,102 @@ describe('the walks', () => {
     }
   });
 
+  it('puts the passkeys walk after the operator’s: six screens numbered 1 to 6, each a scene, the failures on the wrong path, for the operator on a PC', () => {
+    const walk = WALKS[2];
+
+    expect(walk.id).toBe('operator-passkeys');
+    expect(walk.person).toBe('operator');
+    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(walk.screens.filter((s) => s.path === 'main').map((s) => s.id)).toEqual([
+      'pk-1-join',
+      'pk-2-passkeys',
+    ]);
+    expect(walk.screens.filter((s) => s.path === 'wrong').map((s) => s.id)).toEqual([
+      'pk-3-not-given',
+      'pk-4-no-operator',
+      'pk-5-link-dead',
+      'pk-6-sign-in-ended',
+    ]);
+    expect(walk.screens.filter((s) => s.mock !== undefined || s.scene === undefined)).toEqual([]);
+    expect(PARTS.map((part) => part.id)).toContain(walk.part);
+  });
+
+  it('C: puts the services walk after the passkeys: five screens, each a scene for the operator, the first the main path and the failures wrong', () => {
+    const walk = WALKS[3];
+
+    expect(walk.id).toBe('operator-services');
+    expect(walk.person).toBe('operator');
+    expect(walk.screens.map((screen) => screen.id)).toEqual([
+      'sv-1-all-well',
+      'sv-2-two-builds',
+      'sv-3-storage-silent',
+      'sv-4-bff-silent',
+      'sv-5-unavailable',
+    ]);
+    expect(walk.screens.map((screen) => screen.path)).toEqual([
+      'main',
+      'wrong',
+      'wrong',
+      'wrong',
+      'wrong',
+    ]);
+    expect(walk.screens.every((screen) => screen.scene !== undefined)).toBe(true);
+    expect(PARTS.map((part) => part.id)).toContain(walk.part);
+  });
+
+  it('C: opens each services scene as the services spec opens it: its address, who is signed in, whether c-storage runs a newer build, and its cue', () => {
+    const spec = read('specs/operator-services.spec.ts');
+    const body = spec.slice(spec.indexOf('async function walk('));
+    const parts = body.split(/await at\('([^']+)'/);
+    const openings = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2) {
+      openings.set(parts[index], parts[index - 1]);
+    }
+
+    for (const screen of WALKS[3].screens) {
+      const { path, operator, drift, cue } = screen.scene!;
+      const opened = [
+        ...openings.get(screen.id)!.matchAll(/await open\(page, language, \{([^}]*)\}\)/gs),
+      ].at(-1)![1];
+      const named = (key: string) =>
+        [...opened.matchAll(new RegExp(`\\b${key}: '([^']+)'`, 'g'))].map((found) => found[1]);
+      expect(named('path'), `${screen.id}: path`).toEqual([path]);
+      expect(named('cue'), `${screen.id}: cue`).toEqual(cue === undefined ? [] : [cue]);
+      expect(/\boperator: true\b/.test(opened), `${screen.id}: operator`).toBe(operator === true);
+      expect(/\bdrift: true\b/.test(opened), `${screen.id}: drift`).toBe(drift === true);
+    }
+  });
+
+  it('opens each passkeys scene as the passkeys spec opens it: its address with the token in the fragment, who is signed in, and its cue', () => {
+    const spec = read('specs/operator-passkeys.spec.ts');
+    const body = spec.slice(spec.indexOf('async function walk('));
+    const parts = body.split(/await at\('([^']+)'/);
+    const openings = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2) {
+      openings.set(parts[index], parts[index - 1]);
+    }
+
+    for (const screen of WALKS[2].screens) {
+      const { path, operator, cue, as } = screen.scene!;
+      const opened = [
+        ...openings.get(screen.id)!.matchAll(/await open\(page, language, \{([^}]*)\}\)/g),
+      ].at(-1)![1];
+      const named = (key: string) =>
+        [...opened.matchAll(new RegExp(`\\b${key}: '([^']+)'`, 'g'))].map((found) => found[1]);
+      // the link's address is built from the data set's token, which the spec imports
+      const address = path.startsWith('/operator/join#') ? 'JOIN_LINK' : path;
+      const written = [...opened.matchAll(/\bpath: (?:'([^']+)'|(JOIN_LINK))/g)].map(
+        (found) => found[1] ?? found[2],
+      );
+      expect(written, `${screen.id}: path`).toEqual([address]);
+      expect(named('cue'), `${screen.id}: cue`).toEqual(cue === undefined ? [] : [cue]);
+      expect(/\boperator: true\b/.test(opened), `${screen.id}: operator`).toBe(operator === true);
+      expect(as, screen.id).toBeUndefined();
+    }
+  });
+
   it('puts piece 2’s groups A, B, C and D in four walks, thirty-three screens in all, each a scene and none from the mock', () => {
-    const piece2 = WALKS.slice(2, 6);
+    const piece2 = piece2Walks();
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
@@ -241,7 +341,7 @@ describe('the walks', () => {
   });
 
   it('puts B’s seven screens after A’s sixteen, the screens the plan names', () => {
-    const [setup, staff, office] = WALKS.slice(2, 6).map((walk) => walk.screens.map((s) => s.id));
+    const [setup, staff, office] = piece2Walks().map((walk) => walk.screens.map((s) => s.id));
 
     expect(setup?.slice(1)).toEqual(['setup-2-fields']);
     expect(staff?.slice(11, 16)).toEqual([
@@ -255,7 +355,7 @@ describe('the walks', () => {
   });
 
   it('puts C’s six screens after B’s, the screens the plan names, the phone’s walk being all C’s', () => {
-    const [, staff, office, phone] = WALKS.slice(2, 6).map((walk) => walk.screens.map((s) => s.id));
+    const [, staff, office, phone] = piece2Walks().map((walk) => walk.screens.map((s) => s.id));
 
     expect(staff?.slice(16, 18)).toEqual(['staff-17-email', 'staff-18-qr']);
     expect(office?.slice(5)).toEqual(['office-6-password', 'office-7-password-wrong']);
@@ -312,7 +412,8 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(68);
+    const everyScreen = WALKS.flatMap((walk) => walk.screens);
+    expect(scenes).toHaveLength(everyScreen.filter((screen) => screen.mock === undefined).length);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
@@ -333,12 +434,14 @@ describe('the walks', () => {
   it('The walk spec’s screens equal the walks page’s list, piece 2’s and the operator’s as piece 1’s', () => {
     const shot = (name: string) =>
       [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]);
-    const piece2 = WALKS.slice(2, 6).flatMap((walk) => walk.screens.map((screen) => screen.id));
+    const piece2 = piece2Walks().flatMap((walk) => walk.screens.map((screen) => screen.id));
 
     expect(shot('piece-2.spec.ts')).toEqual(piece2);
-    expect(shot('lists.spec.ts')).toEqual(WALKS[6].screens.map((screen) => screen.id));
-    expect(shot('orders.spec.ts')).toEqual(WALKS[7].screens.map((screen) => screen.id));
-    expect(shot('driver.spec.ts')).toEqual(WALKS[8].screens.map((screen) => screen.id));
+    expect(shot('lists.spec.ts')).toEqual(WALKS[8].screens.map((screen) => screen.id));
+    expect(shot('orders.spec.ts')).toEqual(WALKS[9].screens.map((screen) => screen.id));
+    expect(shot('driver.spec.ts')).toEqual(WALKS[10].screens.map((screen) => screen.id));
+    expect(shot('operator-passkeys.spec.ts')).toEqual(WALKS[2].screens.map((screen) => screen.id));
+    expect(shot('operator-services.spec.ts')).toEqual(WALKS[3].screens.map((screen) => screen.id));
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),
@@ -348,9 +451,27 @@ describe('the walks', () => {
     expect(config).toContain("name: 'full'");
     expect(config).toContain("name: 'operator-fake'");
     expect(config).toContain("name: 'operator-full'");
-    expect(config).toContain(
-      "'orders.spec.ts',\n        'driver.spec.ts',\n        'operator.spec.ts',",
-    );
+    expect(config).toContain("name: 'passkeys-fake'");
+    expect(config).toContain("name: 'passkeys-full'");
+    expect(config).toContain("name: 'services-fake'");
+    expect(config).toContain("name: 'services-full'");
+    // the chromium project's whole ignore list, in order: a line that another project's testMatch also
+    // holds cannot stand in for it
+    const chromium = /name: 'chromium',\s*testIgnore: \[([^\]]*)\],/.exec(config);
+    expect(
+      chromium?.[1]
+        ?.split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ).toEqual([
+      "'piece-2.spec.ts'",
+      "'lists.spec.ts'",
+      "'orders.spec.ts'",
+      "'driver.spec.ts'",
+      "'operator.spec.ts'",
+      "'operator-passkeys.spec.ts'",
+      "'operator-services.spec.ts'",
+    ]);
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");
     expect(config).toContain("testMatch: 'lists.spec.ts'");
@@ -363,7 +484,7 @@ describe('the walks', () => {
   });
 
   it('puts the customers and products from Excel in one walk of the admin’s set-up, eight screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
-    const walk = WALKS[6];
+    const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
     expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -394,7 +515,7 @@ describe('the walks', () => {
       openings.set(parts[index], before);
     }
 
-    for (const screen of WALKS[6].screens) {
+    for (const screen of WALKS[8].screens) {
       const opened = [
         ...openings.get(screen.id)!.matchAll(/await open\(page, language, '([^']+)'\)/g),
       ];
@@ -405,7 +526,7 @@ describe('the walks', () => {
   });
 
   it('puts an order sent to a driver in one walk of the office’s orders, twelve screens, each a scene and none from the mock, the three failures on the wrong path', () => {
-    const walk = WALKS[7];
+    const walk = WALKS[9];
 
     expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
     expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -443,7 +564,7 @@ describe('the walks', () => {
   });
 
   it('The driver’s walk: the phone’s six screens, the first from the QR link with nobody signed in, the rest the data set’s driver, the failures cued as the spec cues them and on the wrong path', () => {
-    const walk = WALKS[8];
+    const walk = WALKS[10];
 
     expect(walk).toMatchObject({ id: 'driver-deliveries', person: 'driver', part: 'delivery' });
     expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -483,7 +604,7 @@ describe('the walks', () => {
     for (let index = 1; index < parts.length; index += 2)
       before.set(parts[index], parts[index - 1]);
 
-    for (const screen of WALKS[8].screens) {
+    for (const screen of WALKS[10].screens) {
       const { cue, out } = screen.scene!;
       const steps = before.get(screen.id)!;
       const opened = [...steps.matchAll(/(?:opened|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';
@@ -500,7 +621,7 @@ describe('the walks', () => {
     for (let index = 1; index < parts.length; index += 2)
       before.set(parts[index], parts[index - 1]);
 
-    for (const screen of WALKS[7].screens) {
+    for (const screen of WALKS[9].screens) {
       const { cue, noDrivers } = screen.scene!;
       const steps = before.get(screen.id)!;
       const opened = [...steps.matchAll(/(?:listed|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';

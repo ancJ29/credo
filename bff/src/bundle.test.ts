@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freshTenant, startCStorage, type RunningCStorage } from '../tests/c-storage';
-import { CODE, seedTenant } from '../tests/tenant';
+import { CODE, ORIGIN, seedTenant } from '../tests/tenant';
+import { BUILD } from './build';
 import { bundleBff } from './bundle';
 
 let cs: RunningCStorage;
@@ -80,6 +81,7 @@ describe('the Lambda bundle', () => {
           INTERNAL_ACCESS_KEY: cs.internalAccessKey,
           SERVICE_CODE: tenant.serviceCode,
           SERVICE_ACCESS_KEY: tenant.accessKey,
+          APP_ORIGIN: ORIGIN,
         },
       },
     );
@@ -93,5 +95,15 @@ describe('the Lambda bundle', () => {
       statusCode: 404,
       body: expect.stringContaining('Unknown client') as string,
     });
+  });
+
+  it('carries the commit it is given, and says dev when it is given none', async () => {
+    const stamped = join(dir, 'stamped', 'index.js');
+    const bare = join(dir, 'bare', 'index.js');
+    await bundleBff(stamped, 'a1b2c3d4e5f6');
+    await bundleBff(bare);
+    expect(await readFile(stamped, 'utf8')).toContain('"a1b2c3d4e5f6"');
+    expect(await readFile(bare, 'utf8')).not.toContain('a1b2c3d4e5f6');
+    expect(BUILD).toBe('dev');
   });
 });

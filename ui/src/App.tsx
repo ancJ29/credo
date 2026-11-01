@@ -3,11 +3,16 @@ import type { Api } from './api';
 import { ClientApp } from './ClientApp';
 import type { DeviceStore } from './device';
 import { OperatorApp } from './OperatorApp';
+import type { Passkeys } from './passkeys';
 import type { Look } from './Providers';
 
 type Props = {
   api: Api;
   device: DeviceStore;
+  /** The device's passkeys: the browser's, or the fake that answers as one would. */
+  passkeys: Passkeys;
+  /** The commit the app's own files were built from, or `dev` where none is stamped. */
+  build: string;
   /** Tests switch Mantine's transitions off. */
   test?: boolean;
   /** Set where the app is drawn inside another page's window, as the walks page draws a scene. */

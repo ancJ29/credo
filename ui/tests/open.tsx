@@ -19,6 +19,8 @@ type Options = {
   operator?: boolean;
   /** The company has turned on the email and QR sign-ins. */
   signIns?: boolean;
+  /** A deploy half done: c-storage runs a newer build. */
+  drift?: boolean;
   /** Nobody is signed in: a phone that opens a QR code's link. */
   out?: boolean;
   /** No one is allowed to deliver yet. */
@@ -37,18 +39,30 @@ export type Spied = { [K in keyof Api]: Mock<Api[K]> };
  * code); each call of the fake is a spy. */
 export function openApp(
   path: string,
-  { as, cue, operator, signIns, out, noDrivers, language = 'en', shrink, override }: Options = {},
+  {
+    as,
+    cue,
+    operator,
+    signIns,
+    drift,
+    out,
+    noDrivers,
+    language = 'en',
+    shrink,
+    override,
+  }: Options = {},
 ) {
   const parts = sceneParts({
     as,
     cue,
     operator,
     signIns,
+    drift,
     out,
     noDrivers,
     language,
   });
-  const { api, device, today } = parts;
+  const { api, device, passkeys, build, today } = parts;
   const original = { ...api };
   for (const name of Object.keys(api) as (keyof Api)[]) vi.spyOn(api, name);
   const spied = api as unknown as Spied;
@@ -56,8 +70,17 @@ export function openApp(
   return {
     api: spied,
     device,
+    passkeys,
     ...drawApp(
-      <App api={api} device={device} today={today} shrink={shrink ?? parts.shrink} test />,
+      <App
+        api={api}
+        device={device}
+        passkeys={passkeys}
+        build={build}
+        today={today}
+        shrink={shrink ?? parts.shrink}
+        test
+      />,
       path,
     ),
   };

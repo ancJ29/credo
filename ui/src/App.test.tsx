@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { drawApp } from '../tests/render';
-import { staffCalls } from '../tests/unused';
+import { noPasskeys, passkeyCalls, staffCalls } from '../tests/unused';
 import { type Api, ApiError } from './api';
 import { App } from './App';
 import { DICTIONARIES } from './i18n';
@@ -53,14 +53,18 @@ function setup(
     saveConfig: vi.fn(() =>
       Promise.resolve({ kind: 'saved' as const, doc: { config, version: 'v2' } }),
     ),
-    operatorSignIn: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.reject(new ApiError(401))),
     makeClient: vi.fn(() => Promise.reject(new ApiError(null))),
+    operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
     ...staffCalls,
+    ...passkeyCalls,
     ...(typeof overrides === 'function' ? overrides(device) : overrides),
   } satisfies Api;
-  const drawn = drawApp(<App api={api} device={device} test />, path);
+  const drawn = drawApp(
+    <App api={api} device={device} passkeys={noPasskeys} build="dev" test />,
+    path,
+  );
   return { api, device, storage, ...drawn };
 }
 
@@ -181,7 +185,7 @@ describe('the app', () => {
     first.unmount();
 
     const second = createDeviceStore(first.storage);
-    drawApp(<App api={first.api} device={second} test />);
+    drawApp(<App api={first.api} device={second} passkeys={noPasskeys} build="dev" test />);
     expect((await screen.findAllByText('Cài đặt')).length).toBeGreaterThan(0);
   });
 
@@ -360,7 +364,7 @@ describe('the app', () => {
     const storage = memory({ ...linked, ...signedIn });
     const device = createDeviceStore(storage);
     const api = setup().api;
-    drawApp(<App api={api} device={device} test />, '/nowhere');
+    drawApp(<App api={api} device={device} passkeys={noPasskeys} build="dev" test />, '/nowhere');
 
     expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
   });

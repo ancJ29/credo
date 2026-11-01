@@ -110,6 +110,29 @@ describe('Shell', () => {
     expect(document.querySelector('header .mantine-Badge-root')?.textContent).toBe('Operator');
   });
 
+  it('lists the pages of the user’s own in the user’s menu, above sign-out, only when it is given some', async () => {
+    shell(['en']);
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Sign out']);
+
+    draw(
+      <Shell
+        brand={brand}
+        user="ops"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        menuLinks={[{ to: '/mine', label: 'Mine' }]}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'ops' }));
+    const items = screen.getAllByRole('menuitem');
+    expect(items.map((item) => item.textContent).slice(-2)).toEqual(['Mine', 'Sign out']);
+    expect(items.at(-2)?.getAttribute('href')).toBe('/mine');
+  });
+
   it('C: The user’s menu lists "Change password" only where the app gives the page, and it opens that page', async () => {
     draw(
       <Shell

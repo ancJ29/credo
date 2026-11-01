@@ -1,8 +1,9 @@
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type Language } from '@credo/shared';
 import { comparePictures, decodePng, type Difference } from '@credo/scripts/pixels';
-import { type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** The widths the visual report draws a screen at; every walk shoots the same three. */
 export const WIDTHS = { pc: 1280, tablet: 768, phone: 390 } as const;
@@ -58,4 +59,75 @@ export async function shot(
     last = next;
   }
   throw new Error(`${name} did not settle in ${MAX_SHOTS} shots: the last two differ by ${moved}`);
+}
+
+/**
+ * Chromium's virtual authenticator, added to this page alone through the DevTools protocol: an
+ * internal one that keeps resident keys and verifies the user, so no browser dialog enters a
+ * picture and the machine's own keychain is never touched. `verified(false)` makes it unable to
+ * verify the user, as a device whose owner does not give a fingerprint, face or PIN; `stranger()`
+ * puts a passkey on it that no operator here holds; `forget()` empties it.
+ */
+export async function virtualAuthenticator(page: Page) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('WebAuthn.enable');
+  const { authenticatorId } = await cdp.send('WebAuthn.addVirtualAuthenticator', {
+    options: {
+      protocol: 'ctap2',
+      transport: 'internal',
+      hasResidentKey: true,
+      hasUserVerification: true,
+      isUserVerified: true,
+      automaticPresenceSimulation: true,
+    },
+  });
+  return {
+    verified: (isUserVerified: boolean) =>
+      cdp.send('WebAuthn.setUserVerified', { authenticatorId, isUserVerified }),
+    stranger: () =>
+      cdp.send('WebAuthn.addCredential', {
+        authenticatorId,
+        credential: {
+          credentialId: randomBytes(32).toString('base64'),
+          isResidentCredential: true,
+          rpId: 'localhost',
+          privateKey: generateKeyPairSync('ec', { namedCurve: 'P-256' })
+            .privateKey.export({ type: 'pkcs8', format: 'der' })
+            .toString('base64'),
+          userHandle: randomBytes(16).toString('base64'),
+          signCount: 0,
+        },
+      }),
+    forget: () => cdp.send('WebAuthn.clearCredentials', { authenticatorId }),
+  };
+}
+
+/** The operator's own handle, as the console keeps it on the device. */
+export const readOperatorHandle = (page: Page) =>
+  page.evaluate(() => localStorage.getItem('credo.operator'));
+
+/**
+ * Opens an address that may hold a one-time token (a join link's fragment). A failed opening says
+ * so and not where: Playwright's own error names the address, and the log is read by others.
+ */
+export async function gotoQuietly(page: Page, address: string) {
+  try {
+    await page.goto(address);
+  } catch {
+    throw new Error(
+      'the page did not open (the address is left out of the log, it may hold a token)',
+    );
+  }
+}
+
+/**
+ * Waits for the page to stand on `path`, matched on the pathname alone: `toHaveURL` prints the
+ * address it received, and after a failed join that is the link with its token.
+ */
+export async function reachedPath(page: Page, path: string) {
+  await expect
+    .poll(() => new URL(page.url()).pathname, {
+      message: `the page did not reach ${path}`,
+    })
+    .toBe(path);
 }

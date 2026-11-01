@@ -53,4 +53,14 @@ describe('OperatorPage', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
     expect(handlers.onSignOut).toHaveBeenCalledOnce();
   });
+
+  it('lists the operator’s own passkeys in the user’s menu, above sign-out, at their own address', async () => {
+    page();
+
+    await userEvent.click(screen.getByRole('button', { name: 'operator' }));
+    const items = screen.getAllByRole('menuitem');
+    expect(items.at(-2)?.textContent).toBe('Your passkeys');
+    expect(items.at(-2)?.getAttribute('href')).toBe('/operator/passkeys');
+    expect(items.at(-1)?.textContent).toBe('Sign out');
+  });
 });

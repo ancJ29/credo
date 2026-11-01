@@ -22,25 +22,32 @@ type Connection = {
 };
 
 const DEFAULT_TIMEOUT_MS = 5000;
+/** How long the services status waits for c-storage's `/health` (the plan's row 38). */
+const HEALTH_TIMEOUT_MS = 3000;
+
+const healthReplySchema = z.object({ status: z.literal('OK'), buildVersion: z.string().min(1) });
 
 async function send(
   connection: Connection,
   path: string,
-  init: { method: string; headers: Record<string, string>; body?: unknown },
+  init: {
+    method: string;
+    headers: Record<string, string>;
+    body?: unknown;
+    /** `/health` is the one route without the internal key, and sends none. */
+    keyless?: boolean;
+    timeoutMs?: number;
+  },
   what: string,
 ) {
-  const {
-    baseUrl,
-    internalAccessKey,
-    fetch: call = fetch,
-    timeoutMs = DEFAULT_TIMEOUT_MS,
-  } = connection;
+  const { baseUrl, internalAccessKey, fetch: call = fetch } = connection;
+  const timeoutMs = init.timeoutMs ?? connection.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const hasBody = init.body !== undefined;
   try {
     return await call(`${baseUrl}${path}`, {
       method: init.method,
       headers: {
-        'x-internal-access-key': internalAccessKey,
+        ...(init.keyless ? {} : { 'x-internal-access-key': internalAccessKey }),
         ...(hasBody ? { 'content-type': 'application/json' } : {}),
         ...init.headers,
       },
@@ -85,6 +92,9 @@ export type CStorageClient = {
    * exists, undefined over whatever is there. A moved record is 'moved', not an error. */
   putRecord(key: string, data: unknown, ifTag?: string | null): Promise<'saved' | 'moved'>;
   removeRecord(key: string, ifTag?: string): Promise<'removed' | 'moved'>;
+  /** c-storage's build, from its `/health`, which answers `OK` without a key within 3 seconds.
+   * Anything else, a late answer included, is an error. */
+  health(): Promise<{ buildVersion: string }>;
 };
 
 export function createCStorageClient(
@@ -149,6 +159,21 @@ export function createCStorageClient(
       if (response.status === 204) return 'removed';
       if (response.status === 412) return 'moved';
       throw refused(response, what);
+    },
+
+    async health() {
+      const what = 'GET /health';
+      const response = await send(
+        connection,
+        '/health',
+        { method: 'GET', headers: {}, keyless: true, timeoutMs: HEALTH_TIMEOUT_MS },
+        what,
+      );
+      if (response.status !== 200) throw refused(response, what);
+      const parsed = healthReplySchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success)
+        throw new CStorageError(null, 'c-storage sent a health in no known shape');
+      return { buildVersion: parsed.data.buildVersion };
     },
   };
 }

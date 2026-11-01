@@ -8,10 +8,15 @@ export const ROUTES = {
   signIn: '/api/auth/sign-in',
   signOut: '/api/auth/sign-out',
   me: '/api/auth/me',
-  operatorSignIn: '/api/operator/sign-in',
   operatorSignOut: '/api/operator/sign-out',
   operatorMe: '/api/operator/me',
+  operatorPasskeyOptions: '/api/operator/passkey/options',
+  operatorPasskeySignIn: '/api/operator/passkey/sign-in',
+  operatorJoinOptions: '/api/operator/join/options',
+  operatorJoin: '/api/operator/join',
+  operatorPasskeys: '/api/operator/passkeys',
   operatorClients: '/api/operator/clients',
+  operatorServices: '/api/operator/services',
   staffSetup: '/api/staff-setup',
   employees: '/api/employees',
   customers: '/api/customers',
@@ -130,7 +135,9 @@ export const conflictReplySchema = z.strictObject({
 });
 export type ConflictReply = z.infer<typeof conflictReplySchema>;
 
-export const operatorViewSchema = z.strictObject({ name: z.string() });
+/** `id` is the operator's minted id, which names whose passkey answered; an answer that predates it
+ * reads as empty. */
+export const operatorViewSchema = z.strictObject({ id: z.string().default(''), name: z.string() });
 
 export const operatorSessionReplySchema = z.strictObject({
   authId: z.string(),
@@ -138,9 +145,12 @@ export const operatorSessionReplySchema = z.strictObject({
   operator: operatorViewSchema,
 });
 export type OperatorSessionReply = z.infer<typeof operatorSessionReplySchema>;
+/** What the BFF sends: the id is the reader's to default. */
+export type OperatorSessionReplyBody = z.input<typeof operatorSessionReplySchema>;
 
 export const operatorMeReplySchema = z.strictObject({ operator: operatorViewSchema });
 export type OperatorMeReply = z.infer<typeof operatorMeReplySchema>;
+export type OperatorMeReplyBody = z.input<typeof operatorMeReplySchema>;
 
 export const createClientRequestSchema = z.strictObject({
   code: clientCodeSchema,
@@ -178,3 +188,136 @@ export type ClientListReply = z.infer<typeof clientListReplySchema>;
 export const newestFirst = (a: ClientListItem, b: ClientListItem) =>
   // A time is positive, so -1 stands for none and falls after every real one.
   (b.madeAt ?? -1) - (a.madeAt ?? -1) || a.code.localeCompare(b.code);
+
+/** What a read of the operator's says in its query when it must not count as use: the status
+ * page's timed read each minute, so a tab left in view does not hold a sign-in open. */
+export const NO_RENEW_QUERY = 'renew=0';
+
+/** What the services status call answers: the BFF's build, and c-storage's build with how long the
+ * BFF's read of its `/health` took, in milliseconds. It exists only when c-storage answered; with
+ * c-storage silent the BFF answers its own 503 (`bffErrorSchema`). */
+export const servicesReplySchema = z.strictObject({
+  build: z.string().min(1),
+  storage: z.strictObject({ build: z.string().min(1), ms: z.number().int().nonnegative() }),
+});
+export type ServicesReply = z.infer<typeof servicesReplySchema>;
+
+/** The shape of every answer the BFF itself gives to a failure, `{ error }` and what the route
+ * adds. Anything else that fails came from the edge or from nowhere, and is the BFF not answering. */
+export const bffErrorSchema = z.object({ error: z.string() });
+
+/** One operator's own passkeys, under `ROUTES.operatorPasskeys`. */
+export const passkeyRoutes = {
+  /** Asks for the options a new passkey is made with. */
+  options: `${ROUTES.operatorPasskeys}/options`,
+  /** Asks for the options of the touch an add or a remove needs, in the same act. */
+  confirmOptions: `${ROUTES.operatorPasskeys}/confirm-options`,
+  one: (id: string) => `${ROUTES.operatorPasskeys}/${id}`,
+};
+
+/** A join link's token: 32 random bytes in base64url. It travels in the address's fragment and a
+ * request's body, never a path or a query, so no page request or log carries it. */
+export const joinTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
+/** The page a join link opens. */
+export const JOIN_PATH = '/operator/join';
+
+/** The link's path and fragment, `/operator/join#<token>`: the one function that builds it. */
+export const joinLinkPath = (token: string) => `${JOIN_PATH}#${token}`;
+
+/** The token in an address's fragment, or null when it holds none in the token's form. */
+export function tokenOfFragment(hash: string) {
+  const parsed = joinTokenSchema.safeParse(hash.replace(/^#/, ''));
+  return parsed.success ? parsed.data : null;
+}
+
+/** The options a ceremony starts from, as `@simplewebauthn/server` makes them and the browser's
+ * library takes them: only the challenge is read here, so a newer library's options still parse. */
+export const ceremonyOptionsSchema = z.looseObject({ challenge: z.string().min(1) });
+export type CeremonyOptions = z.infer<typeof ceremonyOptionsSchema>;
+
+/** What the device answers a ceremony with, in the library's JSON form. The BFF's library checks
+ * the rest; this is the shape that is worth refusing before it is read. */
+const credentialSchema = z.looseObject({
+  id: z.string().min(1),
+  rawId: z.string().min(1),
+  type: z.literal('public-key'),
+  response: z.looseObject({}),
+  clientExtensionResults: z.looseObject({}),
+});
+export const registrationResponseSchema = credentialSchema;
+export type RegistrationResponse = z.infer<typeof registrationResponseSchema>;
+export const authenticationResponseSchema = credentialSchema;
+export type AuthenticationResponse = z.infer<typeof authenticationResponseSchema>;
+
+/** The challenge is signed, not stored: the options come with the token that binds it, and the
+ * answer sends the token back. */
+const challengeToken = z.string().min(1);
+
+export const optionsReplySchema = z.strictObject({
+  options: ceremonyOptionsSchema,
+  token: challengeToken,
+});
+export type OptionsReply = z.infer<typeof optionsReplySchema>;
+
+export const passkeySignInRequestSchema = z.strictObject({
+  token: challengeToken,
+  response: authenticationResponseSchema,
+});
+export type PasskeySignInRequest = z.infer<typeof passkeySignInRequestSchema>;
+
+export const joinOptionsRequestSchema = z.strictObject({ link: joinTokenSchema });
+
+/** Opening a link names whose it is and who made it. `madeBy` is none when the link came from the
+ * terminal or its maker has been deleted, and `madeByTerminal` tells the two apart; an older BFF
+ * says nothing of it, which reads as false (the maker deleted, as it was said then). */
+export const joinOptionsReplySchema = optionsReplySchema.extend({
+  name: z.string(),
+  madeBy: z.string().nullable(),
+  madeByTerminal: z.boolean().default(false),
+});
+export type JoinOptionsReply = z.infer<typeof joinOptionsReplySchema>;
+
+export const joinRequestSchema = z.strictObject({
+  link: joinTokenSchema,
+  token: challengeToken,
+  response: registrationResponseSchema,
+});
+export type JoinRequest = z.infer<typeof joinRequestSchema>;
+
+/** What a touch is asked for: an add or a remove of one's own passkeys. A session alone does
+ * neither, so a stolen session cannot put the thief's passkey in or take the owner's out. */
+export const confirmActSchema = z.enum(['add', 'remove']);
+export type ConfirmAct = z.infer<typeof confirmActSchema>;
+export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
+
+/** The fresh touch: a sign-in answer from one of the operator's own passkeys, to a challenge made
+ * for this act. */
+export const confirmationSchema = z.strictObject({
+  token: challengeToken,
+  response: authenticationResponseSchema,
+});
+export type Confirmation = z.infer<typeof confirmationSchema>;
+
+/** A passkey added to the operator's own, beside the ones held, with the touch that allows it. */
+export const passkeyAddRequestSchema = z.strictObject({
+  token: challengeToken,
+  response: registrationResponseSchema,
+  confirm: confirmationSchema,
+});
+export type PasskeyAddRequest = z.infer<typeof passkeyAddRequestSchema>;
+
+/** A passkey removed, with the touch that allows it. */
+export const passkeyRemoveRequestSchema = z.strictObject({ confirm: confirmationSchema });
+export type PasskeyRemoveRequest = z.infer<typeof passkeyRemoveRequestSchema>;
+
+/** A passkey as its owner is shown it: when it was added and last used, and no secret. */
+export const passkeyItemSchema = z.strictObject({
+  id: z.string(),
+  addedAt: z.number(),
+  lastUsedAt: z.number().nullable(),
+});
+export type PasskeyItem = z.infer<typeof passkeyItemSchema>;
+
+export const passkeyListReplySchema = z.strictObject({ passkeys: z.array(passkeyItemSchema) });
+export type PasskeyListReply = z.infer<typeof passkeyListReplySchema>;

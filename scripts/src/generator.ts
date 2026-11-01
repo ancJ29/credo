@@ -1,6 +1,8 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
-import { hashPassword, newPassword } from '@credo/bff/password';
+import { createOperator } from '@credo/bff/operators';
+import { createSessions, OPERATOR_SESSION } from '@credo/bff/sessions';
 import {
   type AddEmployeeReply,
   type Customer,
@@ -19,12 +21,13 @@ import {
   employeeRoutes,
   type Employee,
   type UnitLink,
-  recordKeys,
   ROUTES,
   type SessionReply,
   type StaffSetupDoc,
-  type StoredOperator,
+  type StoredAccount,
+  type StoredRoster,
   AUTH_HEADER,
+  recordKeys,
 } from '@credo/shared';
 import {
   DEMO_CLIENTS,
@@ -35,6 +38,9 @@ import {
   DEMO_DELIVERY_PHOTOS,
   DEMO_ORDERS,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_OPERATOR_ID,
+  DEMO_PASSKEYS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
   DEMO_STAFF_SETUP,
@@ -43,8 +49,9 @@ import {
 
 export { ROOT_NAME };
 
-/** Random for each stack, so no password is written anywhere in the repository. */
-export const newOperatorPassword = newPassword;
+/** The generator drives a client's routes alone, through the BFF's own functions: it signs no
+ * operator in, so no passkey is ever checked against this address or challenge signed under this key. */
+const NO_OPERATOR = { origin: 'http://localhost', serviceKey: 'the generator' };
 
 /** A client the generator made: its code, its root's first password and a first password for each
  * data-set person who may sign in, by code. */
@@ -77,7 +84,7 @@ export async function seedClient(
 
   // The clock is the BFF's `madeAt` alone; the week's replay sets it at each record's own time.
   let clock: number | null = null;
-  const app = buildApp({ storage, now: () => clock ?? Date.now(), logger: false });
+  const app = buildApp({ storage, now: () => clock ?? Date.now(), ...NO_OPERATOR, logger: false });
   const call = async <T>(
     method: 'GET' | 'POST' | 'PUT',
     url: string,
@@ -196,6 +203,24 @@ export async function seedClient(
   return { code, rootPassword: made.password, people };
 }
 
+/** A public key in the COSE form a passkey is stored in (EC2, ES256), made from a key pair whose
+ * private half is dropped at once: nothing can sign in with the data set's passkeys, which the
+ * list shows and no walk uses. */
+function forgottenPublicKey() {
+  const { x, y } = generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey.export({
+    format: 'jwk',
+  });
+  return Buffer.concat([
+    Buffer.from([0xa5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01, 0x21, 0x58, 0x20]),
+    Buffer.from(x!, 'base64url'),
+    Buffer.from([0x22, 0x58, 0x20]),
+    Buffer.from(y!, 'base64url'),
+  ]).toString('base64url');
+}
+
+/** The device the data set's operator session is kept for. */
+const OPERATOR_DEVICE = 'device-operator-seed';
+
 type Call = <T>(
   method: 'GET' | 'POST' | 'PUT',
   url: string,
@@ -267,18 +292,72 @@ async function replayWeek(
 }
 
 /**
- * The stack's data: the operator's account, the demo client made from the data set, and the
- * data set's other clients, made by the same function with their fixed times. Only
- * hashes are stored. Every write is where nothing exists, so a second run over a service stops
- * rather than replaces it. Returns the root's first password and each person's.
+ * The data set's operators, as the fake has them: `operator`, active, with the data set's two
+ * passkeys at their fixed times and a session signed in (its handle, for a walk to keep on the
+ * device without a ceremony that would stamp today on a passkey); and the invited one, with a link
+ * `operator` made. Returns that link's token and the session's handle.
  */
-export async function seedDemo(
-  storage: CStorageClient,
-  { operatorPassword }: { operatorPassword: string },
-) {
-  const operator: StoredOperator = { passwordHash: await hashPassword(operatorPassword) };
-  const saved = await storage.putRecord(recordKeys.operatorUser(OPERATOR_NAME), operator, null);
-  if (saved === 'moved') throw new Error('the service already holds data: not seeded over');
+async function seedOperators(storage: CStorageClient, now: number) {
+  const taken = () => new Error('the service already holds data: not seeded over');
+  const first = DEMO_PASSKEYS[0].addedAt;
+  const account: StoredAccount = {
+    passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }) => ({
+      id,
+      publicKey: forgottenPublicKey(),
+      counter: 0,
+      transports: ['internal'],
+      addedAt,
+      lastUsedAt,
+    })),
+    linkHash: null,
+    generation: 0,
+    spent: [],
+  };
+  const line: StoredRoster = {
+    operators: [
+      {
+        id: DEMO_OPERATOR_ID,
+        name: OPERATOR_NAME,
+        state: 'active',
+        addedBy: null,
+        addedAt: first,
+        joinedAt: first,
+      },
+    ],
+  };
+  if ((await storage.putRecord(recordKeys.operatorRoster, line, null)) === 'moved') throw taken();
+  if (
+    (await storage.putRecord(recordKeys.operatorAccount(DEMO_OPERATOR_ID), account, null)) ===
+    'moved'
+  ) {
+    throw taken();
+  }
+  const invited = await createOperator(storage, {
+    name: DEMO_INVITED_NAME,
+    addedBy: DEMO_OPERATOR_ID,
+    now,
+  });
+  /* v8 ignore next -- unreachable: the roster was read empty and written a moment ago */
+  if (invited === 'taken') throw taken();
+  const { authId } = await createSessions({
+    storage,
+    now: () => now,
+    keyOf: recordKeys.operatorSession,
+    sliding: OPERATOR_SESSION,
+  }).issue(OPERATOR_DEVICE, DEMO_OPERATOR_ID, String(account.generation));
+  return { invitedToken: invited.token, operatorHandle: authId };
+}
+
+/**
+ * The stack's data: the data set's operators (see `seedOperators`), the demo client made from the
+ * data set, and the data set's other clients, made by the same function with their fixed times.
+ * Only hashes are stored. Every write is where nothing exists, so a second run over a service
+ * stops rather than replaces it. Returns the root's first password, each person's, the invited
+ * operator's link token and the operator's session handle, which the stack shows once as the first
+ * password was.
+ */
+export async function seedDemo(storage: CStorageClient, now: number = Date.now()) {
+  const { invitedToken, operatorHandle } = await seedOperators(storage, now);
   const demo = DEMO_CLIENTS.find((client) => client.code === DEMO_CODE)!;
   const { rootPassword, people } = await seedClient(storage, demo.code, demo.madeAt);
   // The operator's list shows three clients: the other two are only made, with their fixed times.
@@ -287,5 +366,5 @@ export async function seedDemo(
       throw new Error('the service already holds data: not seeded over');
     }
   }
-  return { rootPassword, people };
+  return { rootPassword, people, invitedToken, operatorHandle };
 }

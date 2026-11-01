@@ -17,11 +17,17 @@ import {
   createClientReplySchema,
   employeeDocSchema,
   employeeListReplySchema,
+  authenticationResponseSchema,
   issueQrReplySchema,
+  joinOptionsReplySchema,
   meReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
+  servicesReplySchema,
+  optionsReplySchema,
+  passkeyListReplySchema,
   photoReplySchema,
+  registrationResponseSchema,
   sessionReplySchema,
   setPasswordReplySchema,
   newestOrdersFirst,
@@ -38,12 +44,17 @@ import {
   DEMO_DELIVERY_PHOTOS,
   DEMO_DRIVER_QR_SECRET,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
+  DEMO_JOIN_TOKEN,
+  DEMO_OPERATOR_ID,
+  DEMO_PASSKEYS,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
   DEMO_PHOTOS,
   DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
+  DEMO_SERVICES,
   DEMO_STAFF_SETUP,
   DEMO_WALK_PROOF,
   OPERATOR_NAME,
@@ -55,7 +66,8 @@ import { drawApp } from '../tests/render';
 import { ApiError } from './api';
 import { App } from './App';
 import { DICTIONARIES } from './i18n';
-import { createFakeApi, fakeParts, parseCue } from './fake';
+import { createFakeApi, createFakePasskeys, fakeParts, parseCue } from './fake';
+import { PasskeyNotGiven } from './passkeys';
 
 const memory = (initial: Record<string, string> = {}) => {
   const kept = new Map(Object.entries(initial));
@@ -67,13 +79,27 @@ const memory = (initial: Record<string, string> = {}) => {
 };
 
 /** A fake whose device holds the handles `held` names. */
-const fake = (cue = '', held: { client?: string; operator?: string } = {}, signIns = false) =>
+const fake = (
+  cue = '',
+  held: { client?: string; operator?: string } = {},
+  signIns = false,
+  drift = false,
+) =>
   createFakeApi({
     device: { authId: () => held.client ?? null, operatorAuthId: () => held.operator ?? null },
     cue: parseCue(cue || null),
     signIns,
+    drift,
   });
 
+const CREDENTIAL = {
+  id: 'k',
+  rawId: 'k',
+  type: 'public-key' as const,
+  response: {},
+  clientExtensionResults: {},
+};
+const CONFIRM = { token: 'fake.token', response: CREDENTIAL };
 const DEMO_PHOTO = Object.values(DEMO_PHOTOS)[0];
 
 const status = async (answer: Promise<unknown>) =>
@@ -104,12 +130,45 @@ describe('the fake Api', () => {
     );
     parses('me', meReplySchema, await api.me());
     parses('me staff', meReplySchema, await staff.me());
+    parses('operatorPasskeyOptions', optionsReplySchema, await api.operatorPasskeyOptions());
     parses(
-      'operatorSignIn',
+      'operatorPasskeySignIn',
       operatorSessionReplySchema,
-      await api.operatorSignIn(OPERATOR_NAME, 'pw'),
+      await api.operatorPasskeySignIn({ token: 'fake.token', response: CREDENTIAL }),
     );
     parses('operatorMe', operatorMeReplySchema, await api.operatorMe());
+    parses(
+      'operatorJoinOptions',
+      joinOptionsReplySchema,
+      await api.operatorJoinOptions(DEMO_JOIN_TOKEN),
+    );
+    parses('operatorPasskeys', passkeyListReplySchema, {
+      passkeys: await api.operatorPasskeys(),
+    });
+    parses(
+      'operatorPasskeyConfirmOptions',
+      optionsReplySchema,
+      await api.operatorPasskeyConfirmOptions('add'),
+    );
+    parses('operatorPasskeyAddOptions', optionsReplySchema, await api.operatorPasskeyAddOptions());
+    parses('operatorPasskeyAdd', passkeyListReplySchema, {
+      passkeys: await api.operatorPasskeyAdd({
+        token: 'fake.token',
+        response: CREDENTIAL,
+        confirm: CONFIRM,
+      }),
+    });
+    const removed = await api.operatorPasskeyRemove(DEMO_PASSKEYS[0]?.id ?? '', CONFIRM);
+    parses(
+      'operatorPasskeyRemove',
+      passkeyListReplySchema,
+      removed.kind === 'removed' ? { passkeys: removed.passkeys } : null,
+    );
+    parses(
+      'operatorJoin',
+      operatorSessionReplySchema,
+      await api.operatorJoin({ link: DEMO_JOIN_TOKEN, token: 'fake.token', response: CREDENTIAL }),
+    );
     const setup = await api.getStaffSetup();
     parses('getStaffSetup', staffSetupDocSchema, setup);
     const savedSetup = await api.saveStaffSetup(
@@ -254,6 +313,8 @@ describe('the fake Api', () => {
     const savedConfig = await api.saveConfig(DEMO_CONFIG, 'v1');
     parses('saveConfig', configDocSchema, savedConfig.kind === 'saved' ? savedConfig.doc : null);
     parses('listClients', clientListReplySchema, { clients: await api.listClients() });
+    const { build, storage } = await api.operatorServices();
+    parses('operatorServices', servicesReplySchema, { build, storage });
     const made = await api.makeClient('another-one', 'Another One');
     parses('makeClient', createClientReplySchema, made.kind === 'made' ? made.client : null);
 
@@ -264,7 +325,16 @@ describe('the fake Api', () => {
         'getConfig',
         'signIn',
         'me',
-        'operatorSignIn',
+        'operatorPasskeyOptions',
+        'operatorPasskeySignIn',
+        'operatorJoinOptions',
+        'operatorJoin',
+        'operatorPasskeys',
+        'operatorPasskeyConfirmOptions',
+        'operatorPasskeyAddOptions',
+        'operatorPasskeyAdd',
+        'operatorPasskeyRemove',
+        'operatorServices',
         'operatorMe',
         'getStaffSetup',
         'saveStaffSetup',
@@ -494,10 +564,6 @@ describe('the fake Api', () => {
       permissions: {},
     });
     expect(await status(api.signIn('someone', 'any'))).toBe(401);
-    expect(await status(api.operatorSignIn('root', 'any'))).toBe(401);
-    expect(await api.operatorSignIn(OPERATOR_NAME, 'any')).toMatchObject({
-      operator: { name: OPERATOR_NAME },
-    });
   });
 
   it('A device with no handle is a 401 on `me`, the client’s and the operator’s', async () => {
@@ -956,10 +1022,17 @@ describe('the cue', () => {
     expect(await status(api.saveConfig(DEMO_CONFIG, 'v1'))).toBe(503);
   });
 
-  it('An address’s cue is a call and one of the three statuses, or it is no cue', () => {
+  it('An address’s cue is a call and one of the five statuses, or the authenticator’s “not given”, or it is no cue', () => {
     expect(parseCue('saveConfig:409')).toEqual({ call: 'saveConfig', status: 409 });
     expect(parseCue('me:403')).toEqual({ call: 'me', status: 403 });
-    expect(parseCue('me:404')).toBeNull();
+    expect(parseCue('me:401')).toEqual({ call: 'me', status: 401 });
+    expect(parseCue('me:404')).toEqual({ call: 'me', status: 404 });
+    expect(parseCue('passkey:notGiven')).toEqual({ call: 'passkey', status: 'notGiven' });
+    expect(parseCue('operatorServices:silent')).toEqual({
+      call: 'operatorServices',
+      status: 'silent',
+    });
+    expect(parseCue('me:418')).toBeNull();
     expect(parseCue('me')).toBeNull();
     expect(parseCue(':503')).toBeNull();
     expect(parseCue(null)).toBeNull();
@@ -974,8 +1047,8 @@ async function signInAs() {
 
 describe('?fake', () => {
   it('The app boots on the data set: the sign-in already wears the demo company’s name', async () => {
-    const { api, device } = fakeParts('?fake', memory())!;
-    drawApp(<App api={api} device={device} test />);
+    const { api, device, passkeys } = fakeParts('?fake', memory())!;
+    drawApp(<App api={api} device={device} passkeys={passkeys} build="dev" test />);
 
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe(DEMO_CONFIG.name);
     expect(device.clientCode()).toBe(DEMO_CODE);
@@ -989,15 +1062,23 @@ describe('?fake', () => {
     const reloaded = fakeParts('', tab);
 
     expect(reloaded).not.toBeNull();
-    drawApp(<App api={reloaded!.api} device={reloaded!.device} test />);
+    drawApp(
+      <App
+        api={reloaded!.api}
+        device={reloaded!.device}
+        passkeys={reloaded!.passkeys}
+        build="dev"
+        test
+      />,
+    );
     await signInAs();
     expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
     expect(fakeParts('', memory())).toBeNull();
   });
 
   it('The root signs in on the fake and lands on the orders', async () => {
-    const { api, device } = fakeParts('?fake', memory({ 'credo.language': 'en' }))!;
-    drawApp(<App api={api} device={device} test />);
+    const { api, device, passkeys } = fakeParts('?fake', memory({ 'credo.language': 'en' }))!;
+    drawApp(<App api={api} device={device} passkeys={passkeys} build="dev" test />);
 
     await signInAs();
 
@@ -1006,8 +1087,11 @@ describe('?fake', () => {
   });
 
   it('The address’s cue is read: the call it names answers its status, and the page says the service is unavailable', async () => {
-    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }))!;
-    drawApp(<App api={api} device={device} test />);
+    const { api, device, passkeys } = fakeParts(
+      '?fake&cue=signIn:503',
+      memory({ 'credo.language': 'en' }),
+    )!;
+    drawApp(<App api={api} device={device} passkeys={passkeys} build="dev" test />);
 
     await signInAs();
 
@@ -1018,8 +1102,11 @@ describe('?fake', () => {
   });
 
   it('A sign-in that failed on the service can be sent again after "Try again", and signs in', async () => {
-    const { api, device } = fakeParts('?fake&cue=signIn:503', memory({ 'credo.language': 'en' }))!;
-    drawApp(<App api={api} device={device} test />);
+    const { api, device, passkeys } = fakeParts(
+      '?fake&cue=signIn:503',
+      memory({ 'credo.language': 'en' }),
+    )!;
+    drawApp(<App api={api} device={device} passkeys={passkeys} build="dev" test />);
 
     await signInAs();
     await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
@@ -1029,6 +1116,211 @@ describe('?fake', () => {
     await signInAs();
     expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
     expect(device.authId()).toBe('fake.session');
+  });
+});
+
+describe('the fake’s passkey calls', () => {
+  const held = { operator: 'fake.operator' };
+
+  it('A passkey sign-in answers the data set’s operator, with the id a later passkey names, whatever the device answered', async () => {
+    const api = fake('');
+    const reply = await api.operatorPasskeySignIn({ token: 'fake.token', response: CREDENTIAL });
+
+    expect(reply.operator).toEqual({ id: DEMO_OPERATOR_ID, name: OPERATOR_NAME });
+    expect(reply.authId).toBe('fake.operator');
+    expect(reply.expiresAt).toBeGreaterThan(Date.now());
+    await expect(fake('', held).operatorMe()).resolves.toEqual({
+      operator: { id: DEMO_OPERATOR_ID, name: OPERATOR_NAME },
+    });
+  });
+
+  it('A passkey the data set does not know opens nothing: the sign-in cue makes it a 401 once', async () => {
+    const api = fake('operatorPasskeySignIn:401');
+
+    expect(await status(api.operatorPasskeySignIn({ token: 't', response: CREDENTIAL }))).toBe(401);
+    await expect(
+      api.operatorPasskeySignIn({ token: 't', response: CREDENTIAL }),
+    ).resolves.toMatchObject({ operator: { name: OPERATOR_NAME } });
+  });
+
+  it('The invited operator’s link names whose it is and who made it; any other, or a link already used, is a 404', async () => {
+    const api = fake('');
+
+    await expect(api.operatorJoinOptions(DEMO_JOIN_TOKEN)).resolves.toMatchObject({
+      name: DEMO_INVITED_NAME,
+      madeBy: OPERATOR_NAME,
+    });
+    expect(await status(api.operatorJoinOptions('x'.repeat(43)))).toBe(404);
+    expect(
+      await status(api.operatorJoin({ link: 'x'.repeat(43), token: 't', response: CREDENTIAL })),
+    ).toBe(404);
+
+    const joined = await api.operatorJoin({
+      link: DEMO_JOIN_TOKEN,
+      token: 't',
+      response: CREDENTIAL,
+    });
+    expect(joined.operator.name).toBe(DEMO_INVITED_NAME);
+    expect(joined.authId).not.toBe('fake.operator');
+    expect(await status(api.operatorJoinOptions(DEMO_JOIN_TOKEN))).toBe(404);
+    expect(
+      await status(api.operatorJoin({ link: DEMO_JOIN_TOKEN, token: 't', response: CREDENTIAL })),
+    ).toBe(404);
+  });
+
+  it('A dead link can be cued on the join’s options, once', async () => {
+    const api = fake('operatorJoinOptions:404');
+
+    expect(await status(api.operatorJoinOptions(DEMO_JOIN_TOKEN))).toBe(404);
+    await expect(api.operatorJoinOptions(DEMO_JOIN_TOKEN)).resolves.toMatchObject({
+      name: DEMO_INVITED_NAME,
+    });
+  });
+
+  it('Once joined, `me` names the new operator, not the data set’s, and they hold the one passkey they made', async () => {
+    const joined = fake('', { operator: 'fake.operator.joined' });
+    await expect(joined.operatorMe()).resolves.toMatchObject({
+      operator: { name: DEMO_INVITED_NAME },
+    });
+
+    const api = fake('', { operator: 'fake.operator.joined' });
+    await api.operatorJoin({ link: DEMO_JOIN_TOKEN, token: 't', response: CREDENTIAL });
+    expect(await api.operatorPasskeys()).toHaveLength(1);
+  });
+
+  it('The operator’s own passkeys are the data set’s two, a device with no handle is a 401, one is added and one is removed', async () => {
+    expect(await status(fake('').operatorPasskeys())).toBe(401);
+    expect(
+      await status(
+        fake('').operatorPasskeyAdd({ token: 't', response: CREDENTIAL, confirm: CONFIRM }),
+      ),
+    ).toBe(401);
+    expect(await status(fake('').operatorPasskeyRemove('x', CONFIRM))).toBe(401);
+
+    const api = fake('', held);
+    expect(await api.operatorPasskeys()).toEqual(DEMO_PASSKEYS);
+    const added = await api.operatorPasskeyAdd({
+      token: 't',
+      response: CREDENTIAL,
+      confirm: CONFIRM,
+    });
+    expect(added).toHaveLength(3);
+    expect(added[2]?.lastUsedAt).toBeNull();
+    expect(new Set(added.map((passkey) => passkey.id)).size).toBe(3);
+
+    const removed = await api.operatorPasskeyRemove(DEMO_PASSKEYS[0]?.id ?? '', CONFIRM);
+    expect(removed.kind === 'removed' && removed.passkeys.map((p) => p.id)).toEqual([
+      DEMO_PASSKEYS[1]?.id,
+      added[2]?.id,
+    ]);
+    expect(await status(api.operatorPasskeyRemove('missing', CONFIRM))).toBe(404);
+  });
+
+  it('The last passkey is not removed: the answer is a result and the passkey stays', async () => {
+    const api = fake('', held);
+    await api.operatorPasskeyRemove(DEMO_PASSKEYS[0]?.id ?? '', CONFIRM);
+
+    expect(await api.operatorPasskeyRemove(DEMO_PASSKEYS[1]?.id ?? '', CONFIRM)).toEqual({
+      kind: 'last',
+    });
+    expect(await api.operatorPasskeys()).toHaveLength(1);
+  });
+
+  it('The options of a sign-in and of an add are asked of a device with no handle only for the sign-in', async () => {
+    expect(await status(fake('').operatorPasskeyOptions())).toBe('answered');
+    expect(await status(fake('').operatorPasskeyAddOptions())).toBe(401);
+    expect(await status(fake('', held).operatorPasskeyAddOptions())).toBe('answered');
+    expect(await status(fake('').operatorPasskeyConfirmOptions('add'))).toBe(401);
+    expect(await status(fake('', held).operatorPasskeyConfirmOptions('remove'))).toBe('answered');
+  });
+
+  it('A “not given” cue touches no call of the Api', async () => {
+    const api = fake('operatorMe:notGiven', held);
+
+    await expect(api.operatorMe()).resolves.toMatchObject({ operator: { name: OPERATOR_NAME } });
+  });
+});
+
+describe('the fake’s services call', () => {
+  const held = { operator: 'fake.operator' };
+
+  it('C: The services answer from the data set: one build, the times and the moment fixed at their source; a device with no handle is a 401', async () => {
+    expect(await fake('', held).operatorServices()).toEqual({
+      build: DEMO_SERVICES.build,
+      storage: { build: DEMO_SERVICES.build, ms: DEMO_SERVICES.storageMs },
+      bffMs: DEMO_SERVICES.bffMs,
+      checkedAt: DEMO_SERVICES.checkedAt,
+    });
+    expect(await status(fake('').operatorServices())).toBe(401);
+  });
+
+  it('C: `drift` has c-storage a build ahead of the others, as a deploy half done leaves it', async () => {
+    const reply = await fake('', held, false, true).operatorServices();
+
+    expect(reply.build).toBe(DEMO_SERVICES.build);
+    expect(reply.storage.build).toBe(DEMO_SERVICES.driftBuild);
+  });
+
+  it('C: The cue makes the call answer the BFF’s 503 once, or nothing at all, and then goes on from the data set', async () => {
+    const down = fake('operatorServices:503', held);
+    await expect(down.operatorServices()).rejects.toMatchObject({ status: 503, bff: true });
+    await expect(down.operatorServices()).resolves.toMatchObject({ build: DEMO_SERVICES.build });
+
+    const silent = fake('operatorServices:silent', held);
+    await expect(silent.operatorServices()).rejects.toMatchObject({ status: null, bff: false });
+    await expect(silent.operatorServices()).resolves.toMatchObject({ build: DEMO_SERVICES.build });
+  });
+
+  it('C: `&drift` on the address has the fake’s c-storage a build ahead, and the app is given the data set’s build', async () => {
+    const parts = fakeParts('?fake&drift', memory({ 'credo.operator': 'x' }))!;
+
+    expect(parts.build).toBe(DEMO_SERVICES.build);
+    parts.device.setOperatorAuthId('fake.operator');
+    expect((await parts.api.operatorServices()).storage.build).toBe(DEMO_SERVICES.driftBuild);
+    const plain = fakeParts('?fake', memory())!;
+    plain.device.setOperatorAuthId('fake.operator');
+    expect((await plain.api.operatorServices()).storage.build).toBe(DEMO_SERVICES.build);
+  });
+});
+
+describe('the fake authenticator', () => {
+  const options = { challenge: 'fake' };
+
+  it('Answers a registration and a sign-in with a credential the shared schemas take, after a tick', async () => {
+    const passkeys = createFakePasskeys({ cue: null });
+    let answered = false;
+    const pending = passkeys.register(options).then((answer) => {
+      answered = true;
+      return answer;
+    });
+
+    expect(answered).toBe(false);
+    expect(registrationResponseSchema.safeParse(await pending).success).toBe(true);
+    expect(
+      authenticationResponseSchema.safeParse(await passkeys.authenticate(options)).success,
+    ).toBe(true);
+  });
+
+  it('The cue “passkey:notGiven” makes the first ceremony, of either kind, not given, once', async () => {
+    const registering = createFakePasskeys({ cue: parseCue('passkey:notGiven') });
+    await expect(registering.register(options)).rejects.toBeInstanceOf(PasskeyNotGiven);
+    await expect(registering.register(options)).resolves.toMatchObject({ type: 'public-key' });
+
+    const signing = createFakePasskeys({ cue: parseCue('passkey:notGiven') });
+    await expect(signing.authenticate(options)).rejects.toBeInstanceOf(PasskeyNotGiven);
+    await expect(signing.authenticate(options)).resolves.toMatchObject({ type: 'public-key' });
+  });
+
+  it('Another call’s cue, or none, is not the authenticator’s', async () => {
+    for (const cue of [parseCue('operatorMe:503'), parseCue('operatorMe:notGiven'), null]) {
+      await expect(createFakePasskeys({ cue }).register(options)).resolves.toBeDefined();
+    }
+  });
+
+  it('The app is given the fake authenticator with the fake Api on `?fake`', async () => {
+    const parts = fakeParts('?fake&cue=passkey:notGiven', memory())!;
+
+    await expect(parts.passkeys.authenticate(options)).rejects.toBeInstanceOf(PasskeyNotGiven);
   });
 });
 

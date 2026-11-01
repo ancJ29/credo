@@ -859,10 +859,10 @@ describe('the list and its address', () => {
   }
   const address = () => screen.getByLabelText('address').textContent;
   const appAt = (...entries: string[]) => {
-    const { api, device } = sceneParts({ language: 'en' });
+    const { api, device, passkeys, build } = sceneParts({ language: 'en' });
     render(
       <MemoryRouter initialEntries={entries} initialIndex={entries.length - 1}>
-        <App api={api} device={device} test />
+        <App api={api} device={device} passkeys={passkeys} build={build} test />
         <Probe />
       </MemoryRouter>,
     );
@@ -941,10 +941,10 @@ describe('the list and its address', () => {
   });
 
   it('A word typed and undone inside one router update leaves nothing behind: the menu’s Staff link then clears the box', async () => {
-    const { api, device } = sceneParts({ language: 'en' });
+    const { api, device, passkeys, build } = sceneParts({ language: 'en' });
     render(
       <MemoryRouter initialEntries={['/staff']}>
-        <App api={api} device={device} test />
+        <App api={api} device={device} passkeys={passkeys} build={build} test />
         <Probe />
       </MemoryRouter>,
     );

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { CStorageError, createCStorageClient, registerCStorageService } from './c-storage';
 
 type Call = { url: string; init: RequestInit };
@@ -231,5 +231,45 @@ describe('what an error says of a record', () => {
       expect(message).toContain('a user record');
       expect(message).not.toContain('nguyen');
     }
+  });
+});
+
+describe('the health read', () => {
+  const answer = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
+
+  it('gives the build c-storage answers, sending no key', async () => {
+    const { calls, call } = fake(answer({ status: 'OK', buildVersion: 'abc1234' }));
+    expect(await connect(call).health()).toEqual({ buildVersion: 'abc1234' });
+    expect(calls[0]?.url).toBe('http://cs.test/health');
+    expect(headersOf(calls[0]).get('x-internal-access-key')).toBeNull();
+  });
+
+  it('waits 3 seconds, not the 5 of a record call', async () => {
+    const waits: number[] = [];
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+      waits.push(ms);
+      return new AbortController().signal;
+    });
+    const { call } = fake(answer({ status: 'OK', buildVersion: 'x' }), answer({}, 404));
+    await connect(call).health();
+    await connect(call).getRecord('k');
+    spy.mockRestore();
+    expect(waits).toEqual([3000, 5000]);
+  });
+
+  it('refuses a status that is not OK, a refusal, no answer and an answer in no known shape', async () => {
+    for (const bad of [
+      fake(answer({ status: 'DOWN', buildVersion: 'x' })),
+      fake(answer({ status: 'OK' })),
+      fake(new Response('not json', { status: 200 })),
+    ]) {
+      await expect(connect(bad.call).health()).rejects.toMatchObject({ status: null });
+    }
+    await expect(connect(fake(answer({}, 503)).call).health()).rejects.toMatchObject({
+      status: 503,
+    });
+    await expect(connect(fake(new TypeError('x')).call).health()).rejects.toMatchObject({
+      status: null,
+    });
   });
 });

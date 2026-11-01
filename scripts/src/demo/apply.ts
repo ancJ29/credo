@@ -50,13 +50,17 @@ export type Report = {
 
 type Log = (line: string) => void;
 
+/** The copies' routes alone are driven, through the BFF's own functions: no operator signs in, so no
+ * passkey is ever checked against this address or challenge signed under this key. */
+const NO_OPERATOR = { origin: 'http://localhost', serviceKey: 'the demo seed' };
+
 /** The BFF's own code in this process, signed in as the copy's root by a session the BFF's
  * `createSessions` issues, its clock set by the caller to each event's time. No password is read,
  * made or shown for it. */
 function driverFor(storage: CStorageClient, tenantId: string, code: string) {
   let clock = 0;
   const now = () => clock;
-  const app = buildApp({ storage, now, logger: false });
+  const app = buildApp({ storage, now, ...NO_OPERATOR, logger: false });
   const sessions = createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
   let authId = '';
 

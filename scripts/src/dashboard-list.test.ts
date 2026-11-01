@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { buildApp } from '@credo/bff';
+import { joinByLink } from '@credo/bff/tests/join';
 import { clientListReplySchema, type CStorageClient } from '@credo/shared';
-import { DEMO_CLIENTS, OPERATOR_NAME } from '@credo/shared/demo';
+import { DEMO_CLIENTS } from '@credo/shared/demo';
 import { expect, it } from 'vitest';
-import { newOperatorPassword, seedDemo } from './generator';
+import { seedDemo } from './generator';
 
 /** c-storage in memory, enough for the BFF to run over: keys sorted, a tag a write. */
 function memoryStorage(): CStorageClient {
@@ -30,21 +31,23 @@ function memoryStorage(): CStorageClient {
       return Promise.resolve('saved');
     },
     removeRecord: () => Promise.resolve('removed'),
+    health: () => Promise.resolve({ buildVersion: 'dev' }),
   };
 }
 
 it('The operator’s dashboard on a seeded stack lists the data set’s three as the fake does, until the walk makes a client, which then leads it', async () => {
   const storage = memoryStorage();
-  const operatorPassword = newOperatorPassword();
-  await seedDemo(storage, { operatorPassword });
-  const app = buildApp({ storage, now: () => Date.now(), logger: false });
-  const signIn = await app.inject({
-    method: 'POST',
-    url: '/api/operator/sign-in',
-    headers: { 'x-device-id': 'device-walk-seed' },
-    payload: { name: OPERATOR_NAME, password: operatorPassword },
+  const { invitedToken } = await seedDemo(storage);
+  const origin = 'http://localhost:3181';
+  const app = buildApp({
+    storage,
+    now: () => Date.now(),
+    origin,
+    serviceKey: 'a-key',
+    logger: false,
   });
-  const headers = { 'x-auth-id': signIn.json<{ authId: string }>().authId };
+  const { session } = await joinByLink(app, invitedToken, origin, 'device-walk-seed');
+  const headers = { 'x-auth-id': session.authId };
   const listed = async () =>
     clientListReplySchema
       .parse((await app.inject({ method: 'GET', url: '/api/operator/clients', headers })).json())

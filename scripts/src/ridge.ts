@@ -1,12 +1,11 @@
-import { readStorageEnv } from '@credo/bff/env';
 import { createClient } from '@credo/bff/clients';
-import { hashPassword, newPassword } from '@credo/bff/password';
+import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
+import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
   clientCodeSchema,
   createCStorageClient,
+  joinLinkPath,
   normaliseSignInName,
-  recordKeys,
-  type StoredOperator,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll } from './demo/apply';
@@ -16,7 +15,7 @@ import { ensureService } from './register';
 export type RidgeIo = {
   /** A line for the caller's output: a log, or a command substitution. */
   out: (line: string) => void;
-  /** A line for the human's terminal alone: the operator's first password goes only here. */
+  /** A line for the human's terminal alone: the operator's link goes only here. */
   show: (line: string) => void;
   err: (line: string) => void;
   fetch?: typeof fetch;
@@ -65,18 +64,32 @@ export async function runRidge(
       const name = normaliseSignInName((replace ? rest[1] : rest[0]) ?? OPERATOR_NAME);
       if (!/^[a-z0-9][a-z0-9._-]{0,31}$/.test(name))
         throw new Error('that is not an operator name');
-      const password = newPassword();
-      const record: StoredOperator = { passwordHash: await hashPassword(password) };
-      const saved = await client().putRecord(
-        recordKeys.operatorUser(name),
-        record,
-        replace ? undefined : null,
-      );
-      if (saved === 'moved') {
-        throw new Error(`the operator ${name} exists: run it with --replace for a new password`);
+      const origin = readAppOrigin(env);
+      const now = Date.now();
+      let token: string | null;
+      if (replace) {
+        const line = (await readRoster(client())).roster.operators.find((op) => op.name === name);
+        if (!line) throw new Error(`there is no operator ${name}: run it without --replace`);
+        token = await makeLink(client(), {
+          operatorId: line.id,
+          kind: 'replace',
+          madeBy: null,
+          now,
+        });
+      } else {
+        const made = await createOperator(client(), { name, addedBy: null, now });
+        if (made === 'taken') {
+          throw new Error(
+            `the operator ${name} exists: run it with --replace for a new-passkey link`,
+          );
+        }
+        token = made.token;
       }
+      if (token === null) throw new Error(`the operator ${name} has no account to give a link`);
       io.out(`operator ${name} ${replace ? 'replaced' : 'made'}`);
-      io.show(`the operator is ${name}, first password ${password}`);
+      io.show(
+        `the operator is ${name}, ${replace ? 'new-passkey' : 'join'} link ${origin}${joinLinkPath(token)}`,
+      );
       return 0;
     }
 

@@ -91,6 +91,68 @@ export const vi: Dictionary = {
       'Dùng từ 3 đến 32 chữ thường, chữ số và dấu gạch ngang, bắt đầu bằng một chữ cái và kết thúc bằng chữ cái hoặc chữ số.',
     nameInvalid: 'Hãy nhập tên công ty.',
     back: 'Về danh sách khách hàng',
+    unavailableStorage:
+      'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',
+    unavailableBff:
+      'Ứng dụng trả lời, nhưng BFF không trả lời, nên không nhìn thấy gì phía sau nó từ đây. Hãy thử lại sau giây lát.',
+  },
+  passkey: {
+    signInButton: 'Đăng nhập bằng khóa truy cập',
+    signInHint: 'Thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN của bạn.',
+    notGiven: 'Chưa có khóa truy cập nào được đưa ra. Hãy thử lại khi bạn sẵn sàng.',
+    refused:
+      'Không có người vận hành nào ở đây dùng khóa truy cập này. Hãy nhờ một người vận hành khác gửi đường dẫn mới.',
+    endedTitle: 'Phiên đăng nhập đã kết thúc',
+    endedText:
+      'Phiên đăng nhập kết thúc sau một giờ không dùng, hoặc sau 12 giờ. Những gì bạn đã nhập vẫn còn đây: hãy dùng khóa truy cập rồi bấm lưu lại.',
+    endedButton: 'Dùng khóa truy cập',
+    joinTitle: 'Tham gia với tư cách người vận hành',
+    joinFor: 'Đường dẫn này dành cho {{name}}.',
+    joinMadeBy: 'Do {{name}} tạo.',
+    joinMadeByTerminal: 'Đường dẫn này được tạo từ dòng lệnh.',
+    joinMadeByNone: 'Người vận hành đã tạo nó nay đã bị xóa.',
+    joinHint:
+      'Bạn tạo khóa truy cập trên thiết bị này, thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN. Sau đó đường dẫn hết hiệu lực.',
+    makeButton: 'Tạo khóa truy cập',
+    dead: 'Không dùng được đường dẫn này. Nó đã được dùng, đã quá một ngày, hoặc đã có đường dẫn mới thay thế. Hãy nhờ một người vận hành khác gửi đường dẫn mới.',
+    menu: 'Khóa truy cập của bạn',
+    title: 'Khóa truy cập của bạn',
+    intro:
+      'Mỗi thiết bị bạn đăng nhập đều giữ một khóa truy cập. Hãy giữ thêm một khóa nữa, phòng khi bạn mất khóa đầu tiên.',
+    colAdded: 'Ngày thêm',
+    colLastUsed: 'Dùng lần cuối',
+    never: 'Chưa dùng',
+    add: 'Thêm khóa truy cập',
+    remove: 'Xóa',
+    lastOne: 'Không xóa được khóa truy cập cuối cùng của bạn.',
+    alreadyHere:
+      'Thiết bị này đã có khóa truy cập của bạn. Hãy thêm trên thiết bị khác hoặc khóa bảo mật.',
+    addFailed: 'Chưa thêm được khóa truy cập. Hãy thử lại.',
+    removeFailed: 'Chưa xóa được khóa truy cập. Hãy thử lại.',
+  },
+  services: {
+    intro:
+      'Ba phần mà mọi thứ chạy trên đó. Trang này kiểm tra mỗi phút khi đang mở và đang được xem.',
+    checkNow: 'Kiểm tra ngay',
+    app: 'Trang ứng dụng',
+    appNote: 'Chính trang bạn đang đọc.',
+    bff: 'BFF của ứng dụng',
+    bffNote: 'Máy chủ mà ứng dụng gọi tới.',
+    storage: 'c-storage (kho dữ liệu)',
+    storageNote: 'Nơi lưu dữ liệu.',
+    answers: 'Đang trả lời',
+    silent: 'Không trả lời',
+    unseen: 'Không nhìn thấy từ đây',
+    build: 'Bản dựng',
+    time: 'Mất {{ms}} ms',
+    differs: 'Bản dựng khác',
+    checkedAt: 'Kiểm tra lần cuối lúc {{time}}',
+    oneBuild: 'Cả ba đều trả lời và cùng chạy một bản dựng.',
+    twoBuilds:
+      'Cả ba đều trả lời nhưng không cùng một bản dựng: đợt triển khai mới làm được nửa chừng. c-storage được cập nhật trước, rồi đến BFF và ứng dụng.',
+    storageDown:
+      'Ứng dụng trả lời. BFF trả lời nhưng không kết nối được tới kho dữ liệu của nó: không ai đăng nhập hoặc lưu được.',
+    bffDown: 'Ứng dụng trả lời. BFF không trả lời, nên không nhìn thấy c-storage từ đây.',
   },
   forbidden: {
     title: 'Bạn không mở được trang này',

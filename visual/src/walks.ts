@@ -3,6 +3,7 @@ import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
+  DEMO_JOIN_TOKEN,
   DEMO_ORDERS,
   DEMO_DRIVER_QR_SECRET,
   DEMO_PRODUCTS,
@@ -54,6 +55,8 @@ export type Scene = {
   cue?: string;
   /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
   signIns?: true;
+  /** A deploy half done: c-storage runs a newer build than the app and the BFF. */
+  drift?: true;
   /** Nobody is signed in: a phone opening a QR code's link. */
   out?: true;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
@@ -130,6 +133,9 @@ const FILLED_CLIENT: Step[] = [
   { fill: 'operator.code', text: 'minh-phat' },
   { fill: 'operator.companyName', text: 'Minh Phát' },
 ];
+
+/** The data set's join link, as the invited operator opens it: the token is in the fragment. */
+const JOIN_LINK = `/operator/join#${DEMO_JOIN_TOKEN}`;
 
 /** The add form with the company's own fields and the second phone filled, the code left to be
  * numbered. */
@@ -459,6 +465,165 @@ export const WALKS: Walk[] = [
           vi: 'Chưa tạo được khách hàng, những gì đã nhập vẫn còn',
         },
         question: 'Would you know the client was not made, and that nothing typed is lost?',
+      },
+    ],
+  },
+
+  {
+    id: 'operator-passkeys',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'Sign in with a passkey, and keep one’s passkeys',
+      vi: 'Đăng nhập bằng khóa truy cập và quản lý khóa của mình',
+    },
+    screens: [
+      {
+        id: 'pk-1-join',
+        number: 1,
+        path: 'main',
+        scene: { path: JOIN_LINK },
+        sentence: {
+          en: 'A join link opened: whose it is, who made it, and the button to make a passkey',
+          vi: 'Mở đường dẫn tham gia: của ai, ai tạo, và nút tạo khóa truy cập',
+        },
+        question: 'Would the new operator know what this is and what to do?',
+      },
+      {
+        id: 'pk-2-passkeys',
+        number: 2,
+        path: 'main',
+        scene: { path: '/operator/passkeys', operator: true },
+        sentence: {
+          en: 'One’s own passkeys: when each was added and last used, add one, remove one',
+          vi: 'Khóa truy cập của mình: ngày thêm và dùng lần cuối, thêm, xóa',
+        },
+        question: 'Would you keep a second passkey here, and tell them apart?',
+      },
+      {
+        id: 'pk-3-not-given',
+        number: 3,
+        path: 'wrong',
+        scene: {
+          path: '/operator',
+          cue: 'passkey:notGiven',
+          steps: [{ press: 'passkey.signInButton' }],
+        },
+        sentence: { en: 'The passkey not given', vi: 'Chưa có khóa truy cập nào được đưa ra' },
+        question: 'Does this say what to do?',
+      },
+      {
+        id: 'pk-4-no-operator',
+        number: 4,
+        path: 'wrong',
+        scene: {
+          path: '/operator',
+          cue: 'operatorPasskeySignIn:401',
+          steps: [{ press: 'passkey.signInButton' }],
+        },
+        sentence: {
+          en: 'A passkey that opens nothing here',
+          vi: 'Khóa truy cập không mở được gì ở đây',
+        },
+        question: 'Would you know to ask another operator?',
+      },
+      {
+        id: 'pk-5-link-dead',
+        number: 5,
+        path: 'wrong',
+        scene: { path: JOIN_LINK, cue: 'operatorJoinOptions:404' },
+        sentence: {
+          en: 'A link used, too old or replaced',
+          vi: 'Đường dẫn đã dùng, quá cũ hoặc đã bị thay',
+        },
+        question: 'Would you know to ask for a new link?',
+      },
+      {
+        id: 'pk-6-sign-in-ended',
+        number: 6,
+        path: 'wrong',
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          cue: 'makeClient:401',
+          steps: [...FILLED_CLIENT, { press: 'operator.make' }],
+        },
+        sentence: {
+          en: 'The sign-in ended mid-task: one touch to go on, what was typed kept',
+          vi: 'Phiên đăng nhập kết thúc giữa chừng: chạm một lần để tiếp tục, những gì đã nhập vẫn còn',
+        },
+        question: 'Would you know nothing typed is lost, and to press save again?',
+      },
+    ],
+  },
+
+  {
+    id: 'operator-services',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'The services status: whether each part answers',
+      vi: 'Trạng thái dịch vụ: từng phần có trả lời không',
+    },
+    screens: [
+      {
+        id: 'sv-1-all-well',
+        number: 1,
+        path: 'main',
+        scene: { path: '/operator/services', operator: true },
+        sentence: {
+          en: 'All three answer, one build',
+          vi: 'Cả ba đều trả lời, cùng một bản dựng',
+        },
+        question: 'Would you know from this that all is well?',
+      },
+      {
+        id: 'sv-2-two-builds',
+        number: 2,
+        path: 'wrong',
+        scene: { path: '/operator/services', operator: true, drift: true },
+        sentence: {
+          en: 'Two builds: a deploy half done',
+          vi: 'Hai bản dựng: đợt triển khai làm được nửa chừng',
+        },
+        question: 'Would you know what is out of step?',
+      },
+      {
+        id: 'sv-3-storage-silent',
+        number: 3,
+        path: 'wrong',
+        scene: { path: '/operator/services', operator: true, cue: 'operatorServices:503' },
+        sentence: {
+          en: 'c-storage does not answer',
+          vi: 'c-storage không trả lời',
+        },
+        question: 'Would you know what is down and what it stops?',
+      },
+      {
+        id: 'sv-4-bff-silent',
+        number: 4,
+        path: 'wrong',
+        scene: { path: '/operator/services', operator: true, cue: 'operatorServices:silent' },
+        sentence: {
+          en: 'The BFF does not answer',
+          vi: 'BFF không trả lời',
+        },
+        question: 'Would you know what is down, and what cannot be seen?',
+      },
+      {
+        id: 'sv-5-unavailable',
+        number: 5,
+        path: 'wrong',
+        scene: {
+          path: '/operator',
+          cue: 'operatorPasskeyOptions:503',
+          steps: [{ press: 'passkey.signInButton' }],
+        },
+        sentence: {
+          en: 'Before sign-in: the service unavailable, naming the hop',
+          vi: 'Trước khi đăng nhập: dịch vụ không khả dụng, nói rõ chặng nào',
+        },
+        question: 'Would you know where it fails without signing in?',
       },
     ],
   },

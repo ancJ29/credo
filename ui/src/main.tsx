@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import { App } from './App';
 import { createApi } from './api';
+import { browserPasskeys } from './browserPasskeys';
 import { createDeviceStore } from './device';
 
 /** `?fake` serves the app over invented data, and only in the fake build (`vite build --mode
@@ -14,7 +15,7 @@ const fake =
   import.meta.env.MODE === 'fake'
     ? (await import('./fake')).fakeParts(location.search, sessionStorage)
     : null;
-const { api, device, today } = fake ?? realParts();
+const { api, device, passkeys, build, today } = fake ?? realParts();
 
 function realParts() {
   const device = createDeviceStore(localStorage);
@@ -24,11 +25,17 @@ function realParts() {
     authId: device.authId,
     operatorAuthId: device.operatorAuthId,
   });
-  return { api, device, today: undefined };
+  return {
+    api,
+    device,
+    passkeys: browserPasskeys,
+    build: import.meta.env.VITE_CREDO_BUILD as string,
+    today: undefined,
+  };
 }
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <App api={api} device={device} today={today} />
+    <App api={api} device={device} passkeys={passkeys} build={build} today={today} />
   </BrowserRouter>,
 );

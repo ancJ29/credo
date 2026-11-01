@@ -9,7 +9,9 @@ import { required, shot, WIDTHS } from '../support';
  * data set, and keeps the pictures as the full run's reference; the `operator-full` project runs it
  * on a stack (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures.
  * Each screen opens at an address of its own, so a screen never meets what an earlier one made. The
- * words come from the app's own dictionaries.
+ * words come from the app's own dictionaries. The full run's operator is the one the stack gives,
+ * signed in by its handle (`CREDO_OPERATOR_HANDLE`) on the device; the join by a link is the
+ * passkeys walk's.
  */
 
 /** Where a screen opens: the address, whether the operator is signed in, and the failure the fake
@@ -17,17 +19,6 @@ import { required, shot, WIDTHS } from '../support';
 type Opening = { path: string; operator?: true; cue?: string };
 
 const FULL = () => test.info().project.name === 'operator-full';
-
-/** The operator's handle, from the BFF's own sign-in on a device of the walk's own, so a screen
- * opens signed in without typing the sign-in. */
-async function operatorHandle(page: Page) {
-  const reply = await page.request.post('/api/operator/sign-in', {
-    headers: { 'x-device-id': 'device-walk-seed' },
-    data: { name: required('CREDO_OPERATOR_NAME'), password: required('CREDO_OPERATOR_PASSWORD') },
-  });
-  expect(reply.ok(), 'the operator signs in').toBe(true);
-  return ((await reply.json()) as { authId: string }).authId;
-}
 
 /** Makes the call a cue names answer its status, as the stack would if it failed: the list is a
  * `GET` of the clients' route and making one a `POST` to it. */
@@ -59,7 +50,7 @@ async function open(page: Page, language: Language, { path, operator, cue }: Ope
   }
   // A failure stubbed for an earlier screen is not this one's.
   await page.unrouteAll();
-  const handle = operator ? await operatorHandle(page) : '';
+  const handle = operator ? required('CREDO_OPERATOR_HANDLE') : '';
   await page.addInitScript(
     ([chosen, kept]) => {
       localStorage.setItem('credo.language', chosen);

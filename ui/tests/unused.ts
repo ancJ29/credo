@@ -40,3 +40,19 @@ export const staffCalls = {
   getDeliveryPhoto: down,
   listClients: down,
 };
+
+/** The operator's passkey calls, for a test of something else, failing the same way. */
+export const passkeyCalls = {
+  operatorPasskeyOptions: down,
+  operatorPasskeySignIn: down,
+  operatorJoinOptions: down,
+  operatorJoin: down,
+  operatorPasskeys: down,
+  operatorPasskeyConfirmOptions: down,
+  operatorPasskeyAddOptions: down,
+  operatorPasskeyAdd: down,
+  operatorPasskeyRemove: down,
+};
+
+/** The device's passkeys, for a test of something else: a ceremony fails as if the device refused. */
+export const noPasskeys = { register: down, authenticate: down };

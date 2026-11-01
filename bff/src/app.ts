@@ -6,6 +6,7 @@ import {
   clientCodeSchema,
   clientLinkPath,
   type ClientListReply,
+  type ServicesReply,
   type ConfigDoc,
   createClientRequestSchema,
   type CreateClientReply,
@@ -16,8 +17,6 @@ import {
   type MeReplyBody,
   type PermissionId,
   normaliseSignInName,
-  type OperatorMeReply,
-  type OperatorSessionReply,
   recordKeys,
   resolvePermissions,
   ROUTES,
@@ -29,7 +28,6 @@ import {
   signInRoutes,
   staffConfig,
   storedClientSchema,
-  storedOperatorSchema,
   type StoredUser,
   tenantConfigSchema,
   type UserView,
@@ -49,6 +47,7 @@ import {
   type ReadEmployee,
   readSignIn,
 } from './staff-records';
+import { registerOperatorAuth } from './operator-auth';
 import { registerListRoutes } from './lists';
 import { registerOrderRoutes } from './orders';
 import { registerStaffRoutes } from './staff';
@@ -66,15 +65,21 @@ export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
   storage: CStorageClient;
   now: () => number;
+  /** The address the operator opens (`APP_ORIGIN`): passkeys are checked against it, never the
+   * request's host. */
+  origin: string;
+  /** The BFF's own service key, which the operator's challenges are signed under. */
+  serviceKey: string;
   /** On or off, or on into a stream a test reads. */
   logger: boolean | { stream: { write: (line: string) => void } };
+  /** The commit this BFF was built from, `dev` unstamped. */
+  build?: string;
 };
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
 
-export function buildApp({ storage, now, logger }: AppDeps) {
+export function buildApp({ storage, now, origin, serviceKey, logger, build = 'dev' }: AppDeps) {
   const app = Fastify({ logger });
-  const operatorSessions = createSessions({ storage, now, keyOf: recordKeys.operatorSession });
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
   const sessionsOf = (tenantId: string) =>
     createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
@@ -142,12 +147,6 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     };
   }
 
-  async function readOperator(name: string) {
-    const found = await storage.getRecord(recordKeys.operatorUser(name));
-    const parsed = found ? storedOperatorSchema.safeParse(found.data) : null;
-    return parsed?.success ? parsed.data : null;
-  }
-
   /** Who the handle names in this tenant. A handle that names no live session, a sign-in record
    * no longer there or given a password since the session was issued (its generation no longer
    * equal to the record's), or a person who left, is a 401; a store that cannot answer throws, and answers 503. */
@@ -188,15 +187,6 @@ export function buildApp({ storage, now, logger }: AppDeps) {
   ) => {
     if (!who.root && !who.permissions[id]) throw forbidden();
   };
-
-  /** Who the handle names among the operators; a client's handle names no one here. */
-  async function operatorSignedIn(request: FastifyRequest) {
-    const handle = request.headers[AUTH_HEADER];
-    const session = typeof handle === 'string' ? await operatorSessions.resolve(handle) : null;
-    const operator = session ? await readOperator(session.user) : null;
-    if (!session || !operator) throw unauthorized();
-    return { name: session.user };
-  }
 
   async function readConfig(tenantId: string): Promise<ConfigDoc | null> {
     const found = await storage.getRecord(recordKeys.tenant(tenantId).config);
@@ -357,30 +347,21 @@ export function buildApp({ storage, now, logger }: AppDeps) {
     user: userViewOf(await signedIn(request)),
   }));
 
-  app.post(ROUTES.operatorSignIn, async (request): Promise<OperatorSessionReply> => {
-    const device = deviceOf(request);
-    const body = parse(signInRequestSchema, request.body);
-    const name = normaliseSignInName(body.name);
-    const operator = await checked(await readOperator(name), body.password);
-    if (!operator) throw new HttpError(401, 'Wrong name or password');
-    await endKept(request, operatorSessions);
-    const { authId, expiresAt } = await operatorSessions.issue(device, name, '');
-    return { authId, expiresAt, operator: { name } };
-  });
-
-  app.post(ROUTES.operatorSignOut, async (request, reply) => {
-    const handle = request.headers[AUTH_HEADER];
-    if (typeof handle === 'string') await operatorSessions.end(handle);
-    return reply.status(204).send();
-  });
-
-  app.get(ROUTES.operatorMe, async (request): Promise<OperatorMeReply> => ({
-    operator: await operatorSignedIn(request),
-  }));
+  const { operatorSignedIn } = registerOperatorAuth(app, { storage, now, origin, serviceKey });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
     await operatorSignedIn(request);
     return { clients: await listClients(storage) };
+  });
+
+  app.get(ROUTES.operatorServices, async (request, reply): Promise<ServicesReply> => {
+    await operatorSignedIn(request);
+    const began = performance.now();
+    const { buildVersion } = await storage.health();
+    const ms = Math.round(performance.now() - began);
+    return reply
+      .header('cache-control', 'no-store')
+      .send({ build, storage: { build: buildVersion, ms } });
   });
 
   app.post(ROUTES.operatorClients, async (request, reply): Promise<CreateClientReply> => {

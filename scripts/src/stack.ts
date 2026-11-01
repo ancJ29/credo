@@ -6,11 +6,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCStorage } from '@credo/bff/tests/build';
-import { createCStorageClient, type CStorageClient } from '@credo/shared';
+import { createCStorageClient, type CStorageClient, joinLinkPath } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './front';
-import { newOperatorPassword, ROOT_NAME, seedClient, seedDemo } from './generator';
+import { ROOT_NAME, seedClient, seedDemo } from './generator';
 import { freePort, startProcess, waitUntilUp } from './processes';
 import { ensureService } from './register';
 import { createSeeding, logToStderr } from './seeding';
@@ -42,9 +42,15 @@ export type RunningStack = {
   rootName: string;
   /** Known to this process and to whoever it hands it to; stored nowhere readable. */
   rootPassword: string;
+  /** The data set's active operator, whose two passkeys are the fake's. */
   operatorName: string;
-  /** Known to this process and to whoever it hands it to; stored nowhere readable. */
-  operatorPassword: string;
+  /** That operator's session, kept on a device in place of a sign-in: a passkey ceremony would
+   * stamp today on a passkey the list shows. Known to this process and to whoever it hands it to. */
+  operatorHandle: string;
+  /** The invited operator's one-time link to make their first passkey,
+   * `<address>/operator/join#<token>`, made by the active one. Known to this process and to whoever
+   * it hands it to; stored only as its hash. */
+  operatorLink: string;
   /** The data set's people with a sign-in, each with the first password the generator made, by
    * code. Known to this process and to whoever it hands it to; stored nowhere readable. */
   people: Record<string, string>;
@@ -58,10 +64,10 @@ export type RunningStack = {
   storage: CStorageClient;
 };
 
-/** Listens on loopback alone, on a free port, and answers where it is bound. */
-export const listening = (server: Server) =>
+/** Listens on loopback alone, on a free port or the one given, and answers where it is bound. */
+export const listening = (server: Server, port = 0) =>
   new Promise<AddressInfo>((resolve) => {
-    server.listen(0, '127.0.0.1', () => resolve(server.address() as AddressInfo));
+    server.listen(port, '127.0.0.1', () => resolve(server.address() as AddressInfo));
   });
 
 const key = () => randomBytes(24).toString('hex');
@@ -76,6 +82,8 @@ export function bffEnvironment(settings: {
   cStorageUrl: string;
   internalAccessKey: string;
   service: { code: string; accessKey: string };
+  /** The address the operator opens: the front's, which every passkey is checked against. */
+  appOrigin: string;
 }) {
   return {
     PORT: String(settings.port),
@@ -84,6 +92,7 @@ export function bffEnvironment(settings: {
     INTERNAL_ACCESS_KEY: settings.internalAccessKey,
     SERVICE_CODE: settings.service.code,
     SERVICE_ACCESS_KEY: settings.service.accessKey,
+    APP_ORIGIN: settings.appOrigin,
   };
 }
 
@@ -120,14 +129,13 @@ export async function withStack<T>(
     await waitUntilUp(`${cStorageUrl}/health`, cStorage, 'c-storage');
 
     await ensureService({ baseUrl: cStorageUrl, internalAccessKey, superAdminKey }, service);
-    const operatorPassword = newOperatorPassword();
     const storage = createCStorageClient({
       baseUrl: cStorageUrl,
       internalAccessKey,
       serviceCode: service.code,
       accessKey: service.accessKey,
     });
-    const { rootPassword, people } = await seedDemo(storage, { operatorPassword });
+    const { rootPassword, people, invitedToken, operatorHandle } = await seedDemo(storage);
     let seeded = 0;
     const seeding = createSeeding(
       () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
@@ -136,13 +144,24 @@ export async function withStack<T>(
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
     const { port: seedPort } = await listening(seeding);
 
+    // A passkey is bound to a name and no IP address has one: the operator opens `localhost`, on the
+    // front's port, which is picked before the BFF starts since the BFF checks every ceremony
+    // against it.
+    const frontPort = await freePort();
+    const appOrigin = `http://localhost:${frontPort}`;
     const bffPort = await freePort();
     const bffUrl = `http://127.0.0.1:${bffPort}`;
     const bff = await startProcess(
       process.execPath,
       ['--import', import.meta.resolve('tsx'), join(ROOT, 'bff/src/main.ts')],
       {
-        env: bffEnvironment({ port: bffPort, cStorageUrl, internalAccessKey, service }),
+        env: bffEnvironment({
+          port: bffPort,
+          cStorageUrl,
+          internalAccessKey,
+          service,
+          appOrigin,
+        }),
         logFile: join(dataDir, 'bff.log'),
       },
     );
@@ -153,15 +172,16 @@ export async function withStack<T>(
 
     const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
-    const { port } = await listening(front);
+    await listening(front, frontPort);
 
     return await use({
-      url: `http://127.0.0.1:${port}`,
+      url: appOrigin,
       clientCode: DEMO_CODE,
       rootName: ROOT_NAME,
       rootPassword,
       operatorName: OPERATOR_NAME,
-      operatorPassword,
+      operatorHandle,
+      operatorLink: `${appOrigin}${joinLinkPath(invitedToken)}`,
       people,
       seedUrl: `http://127.0.0.1:${seedPort}/seed`,
       dataDir,

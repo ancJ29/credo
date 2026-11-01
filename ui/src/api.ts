@@ -49,6 +49,9 @@ import {
   orderRoutes,
   type IssueQrReply,
   issueQrReplySchema,
+  type JoinOptionsReply,
+  joinOptionsReplySchema,
+  type JoinRequest,
   type PhotoReply,
   photoReplySchema,
   type Product,
@@ -57,12 +60,25 @@ import {
   operatorMeReplySchema,
   type OperatorSessionReply,
   operatorSessionReplySchema,
+  bffErrorSchema,
+  NO_RENEW_QUERY,
+  type OptionsReply,
+  optionsReplySchema,
+  type ConfirmAct,
+  type Confirmation,
+  type PasskeyAddRequest,
+  type PasskeyItem,
+  passkeyListReplySchema,
+  type PasskeySignInRequest,
+  passkeyRoutes,
   ROUTES,
   type SaveEmployeeRequest,
   type SaveOrderRequest,
   type SendOrderRequest,
   type SavePhotoRequest,
   type SaveStaffSetupRequest,
+  type ServicesReply,
+  servicesReplySchema,
   type SessionReply,
   sessionReplySchema,
   type SetEmailRequest,
@@ -77,10 +93,24 @@ import {
 /** A call that did not give the answer its route promises. `status` is the HTTP status, or null
  * when no answer came or it was not the shape promised. Only a 401 means "signed out". */
 export class ApiError extends Error {
-  constructor(readonly status: number | null) {
+  /** `bff` is set where the answer came in the BFF's own error shape: the BFF answered, and the
+   * status is its. A 503 of that shape is c-storage silent; the same status of any other shape
+   * (the edge's own error) or no answer at all is the BFF not answering. */
+  constructor(
+    readonly status: number | null,
+    readonly bff = false,
+  ) {
     super(status === null ? 'no usable answer' : `answered ${status}`);
     this.name = 'ApiError';
   }
+}
+
+/** The hop a failure of the BFF's own calls names, since the session lives in c-storage: the BFF
+ * answered and its storage did not (`storage`), or the BFF itself did not (`bff`). */
+export type Hop = 'storage' | 'bff';
+
+export function hopOf(error: unknown): Hop {
+  return error instanceof ApiError && error.bff && error.status === 503 ? 'storage' : 'bff';
 }
 
 /** The one thing a reply is checked with: any zod schema fits. */
@@ -90,6 +120,9 @@ export type SaveResult = { kind: 'saved'; doc: ConfigDoc } | { kind: 'conflict' 
 
 /** A client made, or the code was already taken: the answer 409 is not an error to the form. */
 export type MakeResult = { kind: 'made'; client: CreateClientReply } | { kind: 'taken' };
+
+/** A passkey removed, with those left, or it was the operator's last: a 409 is a result. */
+export type RemovePasskeyResult = { kind: 'removed'; passkeys: PasskeyItem[] } | { kind: 'last' };
 
 /** A person added, or the code was already taken: the answer 409 is not an error to the form. */
 export type AddResult = { kind: 'added'; reply: AddEmployeeReply } | { kind: 'taken' };
@@ -127,6 +160,10 @@ export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kin
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
 
+/** What a services check gives the page: the BFF's answer with the two times the page shows. The
+ * BFF's is the round trip of the call, timed here; c-storage's is the BFF's own read of it. */
+export type ServicesCheck = ServicesReply & { bffMs: number; checkedAt: number };
+
 type Options = {
   /** The device id this device minted once. */
   deviceId: string;
@@ -137,6 +174,8 @@ type Options = {
   /** The operator's own handle now held, or null. */
   operatorAuthId: () => string | null;
   fetch?: typeof fetch;
+  /** The clock a services check is timed and stamped with. */
+  now?: () => number;
 };
 
 /** The BFF's routes as the UI calls them. A client's calls carry its code and its handle; the
@@ -147,6 +186,7 @@ export function createApi({
   authId,
   operatorAuthId,
   fetch: call = fetch,
+  now = Date.now,
 }: Options) {
   async function send(
     method: string,
@@ -168,6 +208,13 @@ export function createApi({
     } catch {
       throw new ApiError(null);
     }
+  }
+
+  /** A refusal of the calls whose failure names a hop: it keeps whether the BFF's own error shape
+   * came back. */
+  async function refused(response: Response) {
+    const body: unknown = await response.json().catch(() => null);
+    return new ApiError(response.status, bffErrorSchema.safeParse(body).success);
   }
 
   async function read<T>(response: Response, schema: Schema<T>) {
@@ -225,8 +272,31 @@ export function createApi({
       return { kind: 'saved', doc: await read(response, configDocSchema) };
     },
 
-    async operatorSignIn(name: string, password: string): Promise<OperatorSessionReply> {
-      const response = await send('POST', ROUTES.operatorSignIn, { name, password }, 'operator');
+    /** The options a passkey sign-in starts from, with the token that binds their challenge. */
+    async operatorPasskeyOptions(): Promise<OptionsReply> {
+      const response = await send('POST', ROUTES.operatorPasskeyOptions, undefined, 'operator');
+      if (!response.ok) throw await refused(response);
+      return await read(response, optionsReplySchema);
+    },
+
+    /** A 401 means no operator here holds that passkey; it does not say which part failed. */
+    async operatorPasskeySignIn(request: PasskeySignInRequest): Promise<OperatorSessionReply> {
+      const response = await send('POST', ROUTES.operatorPasskeySignIn, request, 'operator');
+      if (!response.ok) throw await refused(response);
+      return await read(response, operatorSessionReplySchema);
+    },
+
+    /** Opens a join link: whose it is, who made it, and the options for its passkey. The token is
+     * sent in the body; a 404 is a link used, old or replaced. */
+    async operatorJoinOptions(link: string): Promise<JoinOptionsReply> {
+      const response = await send('POST', ROUTES.operatorJoinOptions, { link }, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, joinOptionsReplySchema);
+    },
+
+    /** Makes the operator's first passkey, spends the link, and signs them in. */
+    async operatorJoin(request: JoinRequest): Promise<OperatorSessionReply> {
+      const response = await send('POST', ROUTES.operatorJoin, request, 'operator');
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, operatorSessionReplySchema);
     },
@@ -238,8 +308,65 @@ export function createApi({
 
     async operatorMe(): Promise<OperatorMeReply> {
       const response = await send('GET', ROUTES.operatorMe, undefined, 'operator');
-      if (!response.ok) throw new ApiError(response.status);
+      if (!response.ok) throw await refused(response);
       return await read(response, operatorMeReplySchema);
+    },
+
+    /** One check of the three services. The read is marked as no use of the sign-in, so a page
+     * left open does not hold it open; the round trip and the moment are the page's. A 503 in the
+     * BFF's own shape is c-storage silent, and any other failure is the BFF silent. */
+    async operatorServices(): Promise<ServicesCheck> {
+      const began = now();
+      const response = await send(
+        'GET',
+        `${ROUTES.operatorServices}?${NO_RENEW_QUERY}`,
+        undefined,
+        'operator',
+      );
+      if (!response.ok) throw await refused(response);
+      const reply = await read(response, servicesReplySchema);
+      const ended = now();
+      return { ...reply, bffMs: ended - began, checkedAt: ended };
+    },
+
+    /** The signed-in operator's own passkeys. */
+    async operatorPasskeys(): Promise<PasskeyItem[]> {
+      const response = await send('GET', ROUTES.operatorPasskeys, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, passkeyListReplySchema)).passkeys;
+    },
+
+    /** The options of the fresh touch an add or a remove needs, made for that act. */
+    async operatorPasskeyConfirmOptions(act: ConfirmAct): Promise<OptionsReply> {
+      const response = await send('POST', passkeyRoutes.confirmOptions, { act }, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, optionsReplySchema);
+    },
+
+    async operatorPasskeyAddOptions(): Promise<OptionsReply> {
+      const response = await send('POST', passkeyRoutes.options, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, optionsReplySchema);
+    },
+
+    /** Adds a passkey beside the ones held; the answer is the list after it. */
+    async operatorPasskeyAdd(request: PasskeyAddRequest): Promise<PasskeyItem[]> {
+      const response = await send('POST', ROUTES.operatorPasskeys, request, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, passkeyListReplySchema)).passkeys;
+    },
+
+    /** The last passkey is never removed: that is a result the page words, not an error. */
+    async operatorPasskeyRemove(id: string, confirm: Confirmation): Promise<RemovePasskeyResult> {
+      const response = await send(
+        'DELETE',
+        passkeyRoutes.one(encodeURIComponent(id)),
+        { confirm },
+        'operator',
+      );
+      if (response.status === 409) return { kind: 'last' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'removed', passkeys: (await read(response, passkeyListReplySchema)).passkeys };
     },
 
     /** A code already taken is a result, not an error: the form says so and keeps what was typed. */

@@ -36,6 +36,8 @@ export default defineConfig({
         'orders.spec.ts',
         'driver.spec.ts',
         'operator.spec.ts',
+        'operator-passkeys.spec.ts',
+        'operator-services.spec.ts',
       ],
     },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
@@ -64,5 +66,14 @@ export default defineConfig({
       testMatch: 'operator.spec.ts',
       timeout: 120_000,
     },
+    // The passkeys walk, the same two ways: the fake, and the full run on a stack of its own for
+    // each language and width, on Chromium's virtual authenticator.
+    { name: 'passkeys-fake', testMatch: 'operator-passkeys.spec.ts', timeout: 120_000 },
+    { name: 'passkeys-full', testMatch: 'operator-passkeys.spec.ts', timeout: 120_000 },
+    // The services status walk, the same two ways: the fake, and the full run on a stack, where the
+    // page's own call is real and the failures are stubbed at the browser (the stack cannot stop
+    // c-storage under a running spec).
+    { name: 'services-fake', testMatch: 'operator-services.spec.ts', timeout: 120_000 },
+    { name: 'services-full', testMatch: 'operator-services.spec.ts', timeout: 120_000 },
   ],
 });

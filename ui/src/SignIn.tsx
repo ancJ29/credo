@@ -12,7 +12,7 @@ import {
   Title,
 } from '@mantine/core';
 import { IconLock, IconUser } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from './brand';
 import { BRAND_GRADIENT } from './theme';
@@ -21,28 +21,24 @@ type Props = {
   brand: Brand;
   /** Idle, waiting on the service, or the last attempt refused. */
   status: 'idle' | 'busy' | 'refused';
-  /** The heading over the form, where it is not "Sign in to your account": the operator's door. */
-  title?: string;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
   onSubmit: (username: string, password: string) => void;
 };
 
+type FrameProps = {
+  brand: Brand;
+  /** The heading over what the card holds. */
+  title: string;
+  children: ReactNode;
+};
+
 /**
- * The sign-in, in the company's name and colours, drawn as the old app's: one card on a soft
- * grey ground, the brand's bar across its top, the logo and name in its tinted head, a title
- * over underlined fields, and a gradient button.
+ * The card a door is drawn in, in the company's name and colours, as the old app's: one card on a
+ * soft grey ground, the brand's bar across its top, the logo and name in its tinted head, and a
+ * title over what the person does there. The sign-in, the operator's and the join page share it.
  */
-export function SignIn({ brand, status, title, initial, onSubmit }: Props) {
-  const { t } = useTranslation();
-  const [username, setUsername] = useState(initial?.username ?? '');
-  const [password, setPassword] = useState(initial?.password ?? '');
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    onSubmit(username, password);
-  };
-
+export function SignInFrame({ brand, title, children }: FrameProps) {
   return (
     <Box
       mih="100vh"
@@ -80,52 +76,70 @@ export function SignIn({ brand, status, title, initial, onSubmit }: Props) {
           </Box>
           <Box p={40} pt={28}>
             <Title order={2} fw={700} ta="center" mb="md">
-              {title ?? t('auth.title')}
+              {title}
             </Title>
-            {status === 'refused' && (
-              <Alert color="red" role="alert" mb="md">
-                {t('auth.refused')}
-              </Alert>
-            )}
-            <form onSubmit={submit}>
-              <Stack gap="lg">
-                <TextInput
-                  size="md"
-                  label={t('auth.username')}
-                  placeholder={t('auth.usernamePlaceholder')}
-                  leftSection={<IconUser size={18} />}
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  required
-                  withAsterisk={false}
-                  value={username}
-                  onChange={(event) => setUsername(event.currentTarget.value)}
-                />
-                <PasswordInput
-                  size="md"
-                  label={t('auth.password')}
-                  placeholder={t('auth.passwordPlaceholder')}
-                  leftSection={<IconLock size={18} />}
-                  autoComplete="current-password"
-                  required
-                  withAsterisk={false}
-                  value={password}
-                  onChange={(event) => setPassword(event.currentTarget.value)}
-                />
-                <Button
-                  type="submit"
-                  fullWidth
-                  size="md"
-                  loading={status === 'busy'}
-                  style={{ background: BRAND_GRADIENT }}
-                >
-                  {t('auth.submit')}
-                </Button>
-              </Stack>
-            </form>
+            {children}
           </Box>
         </Paper>
       </Container>
     </Box>
+  );
+}
+
+/** The sign-in: a username and a password in the company's card. */
+export function SignIn({ brand, status, initial, onSubmit }: Props) {
+  const { t } = useTranslation();
+  const [username, setUsername] = useState(initial?.username ?? '');
+  const [password, setPassword] = useState(initial?.password ?? '');
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    onSubmit(username, password);
+  };
+
+  return (
+    <SignInFrame brand={brand} title={t('auth.title')}>
+      {status === 'refused' && (
+        <Alert color="red" role="alert" mb="md">
+          {t('auth.refused')}
+        </Alert>
+      )}
+      <form onSubmit={submit}>
+        <Stack gap="lg">
+          <TextInput
+            size="md"
+            label={t('auth.username')}
+            placeholder={t('auth.usernamePlaceholder')}
+            leftSection={<IconUser size={18} />}
+            autoComplete="username"
+            autoCapitalize="none"
+            required
+            withAsterisk={false}
+            value={username}
+            onChange={(event) => setUsername(event.currentTarget.value)}
+          />
+          <PasswordInput
+            size="md"
+            label={t('auth.password')}
+            placeholder={t('auth.passwordPlaceholder')}
+            leftSection={<IconLock size={18} />}
+            autoComplete="current-password"
+            required
+            withAsterisk={false}
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            size="md"
+            loading={status === 'busy'}
+            style={{ background: BRAND_GRADIENT }}
+          >
+            {t('auth.submit')}
+          </Button>
+        </Stack>
+      </form>
+    </SignInFrame>
   );
 }

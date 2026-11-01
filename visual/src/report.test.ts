@@ -155,7 +155,10 @@ describe('the report', () => {
       builtAt: new Date('2026-10-27T19:30:00Z'),
       readWords: (drawn, language) => [`text: ${drawn.id} ${language}`],
     });
-    const [mocked, drawn] = [report.walks[0].screens[0], report.walks[3].screens[2]];
+    const [mocked, drawn] = [
+      report.walks[0].screens[0],
+      report.walks.find((walk) => walk.id === 'admin-staff')!.screens[2],
+    ];
 
     expect(mocked.mock).toEqual({ screen: 1, state: 'empty' });
     expect('scene' in mocked).toBe(false);
@@ -163,7 +166,7 @@ describe('the report', () => {
     expect('mock' in drawn).toBe(false);
     expect(drawn.scene!.steps!.at(-1)).toEqual({ press: 'addPerson.submit' });
     expect(drawn.languages.en.words).toEqual(['text: staff-3-added en']);
-    expect(report.tally.waiting).toBe(154);
+    expect(report.tally.waiting).toBe(WALKS.flatMap((walk) => walk.screens).length * 2);
   });
 
   it('waits for a reader that answers later, as a scene’s does', async () => {

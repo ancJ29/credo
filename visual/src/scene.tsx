@@ -42,6 +42,7 @@ export function SceneView({
         cue: scene.cue,
         operator: scene.operator,
         signIns: scene.signIns,
+        drift: scene.drift,
         out: scene.out,
         noDrivers: scene.noDrivers,
         language,
@@ -72,6 +73,8 @@ export function SceneView({
         <App
           api={parts.api}
           device={parts.device}
+          passkeys={parts.passkeys}
+          build={parts.build}
           today={parts.today}
           shrink={parts.shrink}
           test={test}

@@ -35,6 +35,23 @@ export const DEMO_CODE = 'demo';
 /** The name the demo company's root signs in with: the BFF's own root name. */
 export const DEMO_ROOT_NAME = 'root';
 export const OPERATOR_NAME = 'operator';
+/** The operator's minted id, which a passkey's answer names. */
+export const DEMO_OPERATOR_ID = '00000000-0000-4000-8000-000000000201';
+/** The operator the join link in the data set is for: invited, with no passkey yet. */
+export const DEMO_INVITED_NAME = 'Lan Anh';
+/** That link's token, 43 characters in the token's form. */
+export const DEMO_JOIN_TOKEN = 'demo-join-link-for-the-fake-run-00000000000';
+
+/** The operator's own passkeys, a laptop's and a phone's, one never used. Each is made at noon UTC,
+ * so its day reads the same in every zone from UTC-11 to UTC+11. */
+export const DEMO_PASSKEYS: { id: string; addedAt: number; lastUsedAt: number | null }[] = [
+  {
+    id: 'demo-passkey-laptop',
+    addedAt: Date.UTC(2026, 9, 5, 12),
+    lastUsedAt: Date.UTC(2026, 9, 28, 12),
+  },
+  { id: 'demo-passkey-phone', addedAt: Date.UTC(2026, 9, 25, 12), lastUsedAt: null },
+];
 
 /** The clients the operator's list shows: the demo company and two more invented ones, never a
  * real client's. Each time is noon UTC, so its day reads the same in every zone from UTC-11 to
@@ -44,6 +61,18 @@ export const DEMO_CLIENTS: { code: string; name: string; madeAt: number }[] = [
   { code: 'hoa-sen', name: 'Hoa Sen', madeAt: Date.UTC(2026, 9, 2, 12) },
   { code: 'binh-an', name: 'Bình An', madeAt: Date.UTC(2026, 9, 21, 12) },
 ];
+
+/** The services the status page shows, fixed at their source so the fake's screens and the stack's
+ * read the same: one build for the app, the BFF and c-storage (the commit they were built from,
+ * as a short hash); how long the BFF and c-storage took; and when it was last checked, at noon UTC
+ * like every time here. `driftBuild` is c-storage's when a deploy is half done: it ships first. */
+export const DEMO_SERVICES = {
+  build: '4e1a9c7',
+  driftBuild: 'b72d0f3',
+  bffMs: 42,
+  storageMs: 7,
+  checkedAt: Date.UTC(2026, 9, 31, 12),
+};
 
 /** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
 export const DEMO_QR_SECRET = 'fake-qr-secret-0001';

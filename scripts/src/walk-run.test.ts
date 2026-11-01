@@ -425,6 +425,23 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(git(l.tree, 'status', '--porcelain')).toBe('');
   });
 
+  it('a walk with no bases yet reads every picture as new, and --write makes its folder', () => {
+    const l = layout();
+    const folder = join(l.tree, 'walk/specs/operator-passkeys.spec.ts-snapshots');
+    expect(existsSync(folder)).toBe(false);
+
+    const first = run(l, ['passkeys', '--moved', 'all', '--write']);
+
+    expect(first.out).toContain('passkeys: passkeys-full lists 2 tests');
+    expect(first.out).toContain(
+      'compare full-1 to the bases: passkeys: 0 pictures, 0 moved, 2 new, 0 without a counterpart',
+    );
+    expect(first.out).toMatch(/== verdict: green/);
+    expect(first.code).toBe(0);
+    expect(first.out).toContain('passkeys: 2 bases written');
+    expect(existsSync(join(folder, 's2-en-390-passkeys-full-darwin.png'))).toBe(true);
+  });
+
   it('a picture that moves between the two stacks is red and nothing is written', () => {
     const l = layout();
 

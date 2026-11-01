@@ -19,7 +19,7 @@ export const ROOT_NAME = 'root';
 
 /** A write that must find nothing there. The id is fresh, so a record already under it is a fault
  * of the store and not a caller's to settle: it surfaces as an unavailable store. */
-async function createRecord(storage: CStorageClient, key: string, data: unknown) {
+export async function createRecord(storage: CStorageClient, key: string, data: unknown) {
   if ((await storage.putRecord(key, data, null)) === 'moved') {
     throw new CStorageError(412, 'a record already sat under a fresh id');
   }

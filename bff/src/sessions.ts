@@ -14,6 +14,15 @@ const SESSION_MS = 7 * DAY_MS;
 /** A session in its last three days is renewed on use. The four-day gap bounds the write rate:
  * at the full lifetime every request would write. */
 const RENEW_WINDOW_MS = 3 * DAY_MS;
+/** The operator's sessions: an hour from the last use, renewed at most once in five minutes, and
+ * never past 12 hours from the issue. */
+export const OPERATOR_SESSION = {
+  idleMs: 60 * 60 * 1000,
+  capMs: 12 * 60 * 60 * 1000,
+  gapMs: 5 * 60 * 1000,
+};
+export type Sliding = typeof OPERATOR_SESSION;
+
 /** How often a write on a moved session is re-read and tried again before giving up. */
 const ATTEMPTS = 3;
 
@@ -34,11 +43,26 @@ export function createSessions({
   storage,
   now,
   keyOf,
+  sliding,
 }: {
   storage: CStorageClient;
   now: () => number;
   keyOf: (sessionId: string) => string;
+  /** Present for a realm whose session ends after a time unused and at a cap from its issue;
+   * without it a session lasts a week and is renewed in its last three days. */
+  sliding?: Sliding;
 }) {
+  /** Where the end of `session` moves on a use now, or null when it stays. */
+  function renewedEnd(session: StoredSession): number | null {
+    if (!sliding) {
+      return session.expiresAt - now() > RENEW_WINDOW_MS ? null : now() + SESSION_MS;
+    }
+    const lastRenewal = session.expiresAt - sliding.idleMs;
+    if (now() - lastRenewal <= sliding.gapMs) return null;
+    const end = Math.min(now() + sliding.idleMs, session.issuedAt + sliding.capMs);
+    return end > session.expiresAt ? end : null;
+  }
+
   /** A record that does not parse is no session: it stops resolving, and is left for the sweep nothing calls yet. */
   async function read(id: string) {
     const found = await storage.getRecord(keyOf(id));
@@ -52,13 +76,15 @@ export function createSessions({
      * store. */
     async issue(device: string, user: string, generation: string) {
       const id = randomUUID();
+      const issuedAt = now();
       const secret = randomBytes(32).toString('base64url');
       const session: StoredSession = {
         secretHash: await sha256Hex(secret),
         user,
-        expiresAt: now() + SESSION_MS,
+        expiresAt: sliding ? issuedAt + sliding.idleMs : issuedAt + SESSION_MS,
         device,
         generation,
+        issuedAt,
       };
       if ((await storage.putRecord(keyOf(id), session, null)) === 'moved') {
         throw new CStorageError(412, 'a record already sat under a fresh session id');
@@ -69,7 +95,7 @@ export function createSessions({
     /** The session a handle names, or null. A session in its last three days is renewed with the
      * tag it was read at; a renewal on a moved session re-reads, and after a few tries the
      * session is answered as it was, still valid, renewed by the next request. */
-    async resolve(authId: string): Promise<StoredSession | null> {
+    async resolve(authId: string, { renew = true } = {}): Promise<StoredSession | null> {
       const handle = parseHandle(authId);
       if (!handle) return null;
       const secretHash = await sha256Hex(handle.secret);
@@ -79,8 +105,9 @@ export function createSessions({
         if (!found || !sameHash(found.session.secretHash, secretHash)) return null;
         if (found.session.expiresAt <= now()) return null;
         latest = found.session;
-        if (found.session.expiresAt - now() > RENEW_WINDOW_MS) return latest;
-        const renewed = { ...found.session, expiresAt: now() + SESSION_MS };
+        const end = renew ? renewedEnd(found.session) : null;
+        if (end === null) return latest;
+        const renewed = { ...found.session, expiresAt: end };
         const saved = await storage.putRecord(keyOf(handle.id), renewed, found.tag);
         if (saved === 'saved') return renewed;
       }

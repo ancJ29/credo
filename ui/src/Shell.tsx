@@ -25,6 +25,8 @@ type Props = {
   pages?: readonly MenuPage[];
   /** A word beside the brand, which says whose door this is; a client's app passes none. */
   badge?: string;
+  /** Pages of the user's own, listed in the user's menu above sign-out; a client's app has none. */
+  menuLinks?: readonly { to: string; label: string }[];
   children: ReactNode;
 };
 
@@ -39,6 +41,7 @@ export function Shell({
   passwordPath,
   pages = PAGES,
   badge,
+  menuLinks = [],
   children,
 }: Props) {
   const { t, i18n } = useTranslation();
@@ -101,6 +104,11 @@ export function Shell({
                   {t('user.password')}
                 </Menu.Item>
               )}
+              {menuLinks.map(({ to, label }) => (
+                <Menu.Item key={to} component={Link} to={to}>
+                  {label}
+                </Menu.Item>
+              ))}
               <Menu.Item onClick={onSignOut}>{t('user.signOut')}</Menu.Item>
             </Menu.Dropdown>
           </Menu>

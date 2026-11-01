@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freePort, freshTenant, startCStorage, type RunningCStorage } from '../tests/c-storage';
-import { CODE, ROOT, seedTenant } from '../tests/tenant';
-import { readEnv } from './env';
+import { CODE, ORIGIN, ROOT, seedTenant } from '../tests/tenant';
+import { readAppOrigin, readEnv, readStorageEnv } from './env';
 import { startBff } from './server';
 
 let cs: RunningCStorage;
@@ -16,6 +16,7 @@ const environment = (port: number, tenant: Awaited<ReturnType<typeof freshTenant
   INTERNAL_ACCESS_KEY: cs.internalAccessKey,
   SERVICE_CODE: tenant.serviceCode,
   SERVICE_ACCESS_KEY: tenant.accessKey,
+  APP_ORIGIN: ORIGIN,
 });
 
 describe('the BFF as a process runs it', () => {
@@ -50,7 +51,8 @@ describe('the BFF as a process runs it', () => {
       readEnv({ PORT: 'x', C_STORAGE_URL: 'not a url', INTERNAL_ACCESS_KEY: secret }),
     ).toThrowError(
       expect.objectContaining({
-        message: 'invalid environment: PORT, C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY',
+        message:
+          'invalid environment: PORT, C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN',
       }) as Error,
     );
   });
@@ -62,9 +64,59 @@ describe('the BFF as a process runs it', () => {
       INTERNAL_ACCESS_KEY: 'i',
       SERVICE_CODE: 's',
       SERVICE_ACCESS_KEY: 'a',
+      APP_ORIGIN: ORIGIN,
       X_SUPER_ADMIN_KEY: 'admin',
     });
     expect(Object.keys(parsed)).not.toContain('X_SUPER_ADMIN_KEY');
     expect(parsed.HOST).toBe('127.0.0.1');
+  });
+
+  it('takes APP_ORIGIN as an origin that is https, or localhost for the local stack, and no other', () => {
+    const base = {
+      PORT: '3182',
+      C_STORAGE_URL: 'http://127.0.0.1:3181',
+      INTERNAL_ACCESS_KEY: 'i',
+      SERVICE_CODE: 's',
+      SERVICE_ACCESS_KEY: 'a',
+    };
+    for (const good of [
+      'https://d111abc.cloudfront.net',
+      'http://localhost:3181',
+      'https://console.example.vn',
+    ]) {
+      expect(readEnv({ ...base, APP_ORIGIN: good }).APP_ORIGIN, good).toBe(good);
+    }
+    // An address, a path, a plain-http host that is not localhost: a passkey would be bound wrongly.
+    const bad = [
+      'http://127.0.0.1:3181',
+      'http://example.com',
+      'https://x.example/app',
+      'https://x.example/',
+      'localhost',
+      '',
+    ];
+    for (const value of bad) {
+      expect(() => readEnv({ ...base, APP_ORIGIN: value }), value).toThrowError(
+        'invalid environment: APP_ORIGIN',
+      );
+    }
+    expect(() => readEnv(base)).toThrowError('invalid environment: APP_ORIGIN');
+  });
+
+  it('gives the ops scripts the four c-storage variables without the app’s address, and the address alone', () => {
+    const four = {
+      C_STORAGE_URL: 'http://127.0.0.1:3181',
+      INTERNAL_ACCESS_KEY: 'i',
+      SERVICE_CODE: 's',
+      SERVICE_ACCESS_KEY: 'a',
+    };
+    expect(readStorageEnv(four)).toEqual(four);
+    expect(() => readStorageEnv({ ...four, SERVICE_CODE: '' })).toThrowError(
+      'invalid environment: SERVICE_CODE',
+    );
+    expect(readAppOrigin({ APP_ORIGIN: ORIGIN })).toBe(ORIGIN);
+    expect(() => readAppOrigin({ APP_ORIGIN: 'http://example.com' })).toThrowError(
+      'invalid environment: APP_ORIGIN',
+    );
   });
 });
