@@ -2,7 +2,7 @@ import { Modal } from './modal';
 
 /**
  * The guide: what the keys do, what the blue button is, the many-at-once actions, the paste, the
- * toggle, and where this page's answers go. It opens from the "?" and the ? key, and by itself on a
+ * toggle, and where this page's answers go. It opens from the "?" and the ? and H keys, and by itself on a
  * first visit.
  */
 export function Guide({

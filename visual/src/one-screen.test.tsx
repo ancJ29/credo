@@ -266,6 +266,18 @@ describe('moving', () => {
     expect(show.checked).toBe(true);
   });
 
+  it('a clicked radio lets go of the focus, so ↑ and ↓ scroll the page and never flip an answer, the language or the width', async () => {
+    render(<Page report={await make()} />);
+
+    for (const label of ['Yes', 'English', 'Tablet']) {
+      const radio = screen.getByLabelText<HTMLInputElement>(label);
+      radio.focus();
+      expect(document.activeElement).toBe(radio);
+      fireEvent.click(radio);
+      expect(document.activeElement).not.toBe(radio);
+    }
+  });
+
   it('← and → stop at the first and the last screen', async () => {
     render(<Page report={await make()} />);
 
@@ -346,6 +358,11 @@ describe('moving', () => {
 
     key('ArrowRight', {}, box);
     key('ArrowRight', {}, pasteBox);
+    for (const typed of ['h', 'H', '?']) {
+      key(typed, {}, box);
+      key(typed, {}, pasteBox);
+    }
+    expect(document.querySelector('dialog[open]')).toBeNull();
     key('ArrowRight', { ctrlKey: true });
     key('ArrowRight', { metaKey: true });
     key('ArrowRight', { altKey: true });

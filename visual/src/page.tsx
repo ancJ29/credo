@@ -228,7 +228,10 @@ function Where({
   );
 }
 
-/** A key typed where text is typed, or with a modifier, is the browser's, not the page's. */
+/**
+ * A key typed where text is typed, or with a modifier, is the browser's, not the page's, but for
+ * Tab (above).
+ */
 function isTyping(event: KeyboardEvent) {
   const target = event.target as HTMLElement;
   return (
