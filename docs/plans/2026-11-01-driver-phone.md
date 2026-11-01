@@ -220,8 +220,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   found nothing in it (its one text hit is `main`'s own, that rule's line; the rest are bytes in base
   pictures, the same files at `main`@`5c8cb98`),
   every relative link resolves, and its diff names no person.
-- [ ] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no for rows 1 to 10;
+- [x] **2. The human's read of the 👤 rows.** Who: 👤, about 10 minutes, yes or no for rows 1 to 10;
   it consumes nothing of slice 2. Done when: each 👤 row kept or corrected here. **Then stop.**
+  *Evidence:* the human answered yes to all 10 👤 rows on 2026-11-01 about 09:0x, in the
+  orchestrator's chat; none corrected, so rows 1 to 10 stand as drafted.
 - [ ] **3. Slice 2 taken in.** Who: 🤖, after slice 2's review (its step 7: its contract in
   `shared/src/orders.ts`, its pages, its fake and its walk as the review's fixes leave them), on the
   orchestrator's word; or `main`, if slice 2 has merged by then; ¼ hour. Done when: merged, its
