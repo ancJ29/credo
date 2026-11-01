@@ -183,6 +183,15 @@ paste where they are not about keystrokes. Alone: the refusal test 1572 ms to ab
 the two `SLOW` stories 2240 and 2291 ms to about 830 and 680 ms. `SLOW` stays until a run on GitHub shows them well under 5 s.
 Still open here: the `SignIns.test.tsx` and `cli.test.ts` reds. Item 23 (the scripts test) is not touched.
 
+A scene can hang its full 30 s at a low load with no frozen process (line 31's review, 2026-11-01): the second `answer` in "With
+partners…" (`visual/src/cli.test.ts#L214`) failed with "walk admin-staff, screen staff-14-search: the scene did not end in 30000 ms"
+at a load of 1.4 to 1.8, the other draws in that process staying at 26 to 27 s
+(`logs/20261101-0839-ci-timeouts-review-scene-hang.log`). Each step waits at most 3 s to find and 3 s to go still, so
+`runSteps` settles well inside 30 s; the phase never reaching `done` or `failed` points at the status update not landing
+(`visual/src/scene.tsx#L54-L66`, awaited at `visual/src/words.tsx#L120-L131`). A red like it is not filed under the sandbox's freeze,
+and no test budget covers it. To diagnose after the 11-04 demo, or the first time it shows on GitHub: log in `drawnSceneWords`
+whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visual` test stays (Decide 48); item 37 holds the finer budget.
+
 ## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
 
 Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
@@ -239,3 +248,26 @@ are fixed; these stay.
   `ui/src/fake.test.tsx#L594` and assert the list starts with it.
 
 *Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
+
+## 37. `visual`'s tests: review findings 3 to 7 of line 31 and a finer budget, deferred under the 11-04 demo's exception — the machine; *parked* until after the demo (ci-timeouts, step 3, 2026-11-01)
+
+The review of line 31 fixed its High and Medium findings; these stay.
+- **Finding 3, `visual/src/cli.test.ts#L111-L119` and `visual/src/setup.ts#L56-L58`:** the shared build is charged to whichever test
+  awaits it first, and when that test times out `report()` keeps running with `installDom`'s globals, so the next `beforeEach` fails
+  with `Cannot read properties of undefined (reading 'setItem')` (the `window is not defined` of item 27). Fix: the tests that read
+  the build under one nested `describe`, the build in its `beforeAll`, and 240 s as that block's budget.
+- **Finding 4, `visual/src/cli.ts#L70-L73`:** no test holds that `answer` draws only the screens a block answers; passing `undefined`
+  for `asked` leaves the cheap answers tests green and slower (20 ms to 27 s). Fix: a test of `answer` that counts what it draws,
+  through a words reader passed in or a `vi.mock('./words', …)` wrapper in a small file of its own.
+- **Finding 5, `visual/src/cli.test.ts` (the four whole-page tests) and `.github/workflows/ci.yml#L117`:** the file is the `app` job's
+  critical path, about 370 s on GitHub; the job ends near 10.5 of its 15 minutes now and about 11.5 after line 30, plus about a
+  minute per ten screens. Fix: the report test's build serves as the file's one build, and the partners' "Yes to all" holds its
+  rule with `parseBlock` over the whole message plus `answer` on a few keys.
+- **Finding 6, `visual/src/take.ts#L16` and `visual/src/cli.test.ts#L235-L236`:** two comments say "every screen" where it is now
+  "the screens asked". Fix: reword both at the next touch.
+- **Finding 7, `visual/src/cli.test.ts#L107-L109` and `#L123`:** `Built` repeats `Report`, and `as unknown as Built` would hide a
+  renamed field. Fix: read `Report` directly.
+- **The finer budget (Decide 48's (b), done honestly):** the build's readers under one `describe` with 240 s on that block alone,
+  then `visual/vitest.config.ts`'s default lowered to what the other tests need (the slowest takes about 35 s on GitHub).
+
+*Trigger:* after the 11-04 demo, or the `app` job nearing its 15 minutes, or line 32's screens pushing a whole-page test past 120 s.
