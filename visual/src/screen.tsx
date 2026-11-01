@@ -185,6 +185,9 @@ function Panel({
                 name={name}
                 checked={choice.answer === value}
                 onChange={() => onChange({ ...choice, answer: value })}
+                // A clicked radio lets go of the focus (as Safari does): ↑ and ↓ then scroll the page
+                // and never flip the answer. Held by `one-screen.test.tsx`.
+                onClick={(event) => event.currentTarget.blur()}
               />
               <span className="w-face">
                 {value === 'yes' ? <Check /> : <Cross />}

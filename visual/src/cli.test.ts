@@ -2,8 +2,9 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { makeRoot } from '../tests/repo';
+import { parseBlock } from './block';
 import { yesTo } from './bulk';
 import { blockOf, shareOf } from './choices';
 import { answer, parseArgs, report } from './cli';
@@ -12,12 +13,28 @@ import { placesOf } from './nav';
 import type { Report } from './report';
 import { allKeys, WALKS } from './walks';
 
-describe('pnpm report', () => {
-  it('builds the page from the repository it runs in, with the screens drawn on a DOM of its own, and says where and what waits', async () => {
-    const { root, worktree } = makeRoot();
-    const lines: string[] = [];
+/**
+ * The file's one whole-page draw, made in `beforeAll`: drawing every screen of every walk in both
+ * languages takes minutes under load, so it is paid once, here, with the budget of its own, and
+ * never charged to whichever test runs first. The report test reads its folder and two lines, and
+ * the answers tests that answer on a real screen read the page it wrote (`walks.json`).
+ */
+let built: { root: string; folder: string; lines: string[]; page: Report };
+beforeAll(async () => {
+  const { root, worktree } = makeRoot();
+  const lines: string[] = [];
+  const folder = await report(worktree, (line) => lines.push(line));
+  built = {
+    root,
+    folder,
+    lines,
+    page: JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report,
+  };
+}, 240_000);
 
-    const folder = await report(worktree, (line) => lines.push(line));
+describe('pnpm report', () => {
+  it('builds the page from the repository it runs in, with the screens drawn on a DOM of its own, and says where and what waits', () => {
+    const { root, folder, lines, page } = built;
 
     expect(readdirSync(join(root, 'walks'))).toHaveLength(1);
     // The rows come from the committed `answers.json`, which the walks fill, so only the sum is fixed.
@@ -27,26 +44,16 @@ describe('pnpm report', () => {
     // Every screen is asked in both languages, whatever the walks hold now.
     const shown = WALKS.flatMap((walk) => walk.screens).length * 2;
     expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(shown);
-    type Language = { words: string[]; shown: { kind: string } };
-    type Screen = {
-      id: string;
-      mock?: unknown;
-      scene?: unknown;
-      languages: Record<string, Language>;
-    };
-    const walks = JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as {
-      walks: { id: string; screens: Screen[] }[];
-    };
-    const failedSave = walks.walks[0].screens.find((screen) => screen.id === '7-save-failed')!;
+    const failedSave = page.walks[0].screens.find((screen) => screen.id === '7-save-failed')!;
     expect(failedSave.languages['en'].words).toContain(
       'alert: The settings were not saved. What you typed is still here: try again.',
     );
     // Groups A, B, C and D of piece 2: their thirty-three screens drawn as scenes, none from the mock, a
     // state for each of the sixty-six (screen, language) pairs whatever the answers file holds now,
     // and the typing and pressing done on the page as a person does them.
-    const piece2 = walks.walks.slice(
-      walks.walks.findIndex((walk) => walk.id === 'admin-staff-setup'),
-      walks.walks.findIndex((walk) => walk.id === 'admin-staff-setup') + 4,
+    const piece2 = page.walks.slice(
+      page.walks.findIndex((walk) => walk.id === 'admin-staff-setup'),
+      page.walks.findIndex((walk) => walk.id === 'admin-staff-setup') + 4,
     );
     const screens = piece2.flatMap((walk) => walk.screens);
     expect(piece2.map((walk) => walk.id)).toEqual([
@@ -64,7 +71,7 @@ describe('pnpm report', () => {
     expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
     expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');
     // The driver's walk, drawn there too: the photo is chosen and shown, with no refusal in its place.
-    const driver = walks.walks.find((walk) => walk.id === 'driver-deliveries')!;
+    const driver = page.walks.find((walk) => walk.id === 'driver-deliveries')!;
     expect(driver.screens).toHaveLength(6);
     const photo = driver.screens.find((screen) => screen.id === 'driver-3-photo')!;
     expect(photo.languages['en'].words).toContain('heading: Your photo');
@@ -115,29 +122,12 @@ describe('the command line', () => {
 describe('pnpm answers', () => {
   const FILE = () => join(mkdtempSync(join(tmpdir(), 'walks-answers-')), 'answers.json');
   const NOW = new Date('2026-10-28T20:00:00Z');
-  type Built = {
-    walks: { screens: { id: string; languages: Record<string, { fingerprint: string }> }[] }[];
-  };
 
-  /** The page of one real build, made once for this file: drawing every screen of every walk takes
-   * minutes under load, and the words of a screen are the same in every build. */
-  let built: Promise<Report> | undefined;
-  const builtPage = () =>
-    (built ??= (async () => {
-      const { worktree } = makeRoot();
-      const folder = await report(worktree, () => {});
-      return JSON.parse(readFileSync(join(folder, 'walks.json'), 'utf8')) as Report;
-    })());
-
-  /** The fingerprints the page of a real build holds, to answer on as the human's block does. */
-  async function pageFingerprints() {
-    const page = (await builtPage()) as unknown as Built;
-    return (id: string, language: string) =>
-      page.walks[0].screens.find((screen) => screen.id === id)!.languages[language].fingerprint;
-  }
+  /** The fingerprints the file's one build holds, to answer on as the human's block does. */
+  const fingerprint = (id: string, language: 'vi' | 'en') =>
+    built.page.walks[0].screens.find((screen) => screen.id === id)!.languages[language].fingerprint;
 
   it('writes the answers that hold into the file, on the words the screens draw now, dated in Vietnam’s day, and says what it took and refused', async () => {
-    const fingerprint = await pageFingerprints();
     const file = FILE();
     writeFileSync(file, '{}');
     const lines: string[] = [];
@@ -196,7 +186,6 @@ describe('pnpm answers', () => {
   });
 
   it('With partners, takes a partner’s Share post under their label, refuses a human’s block among them, and the plain command refuses the partner’s', async () => {
-    const fingerprint = await pageFingerprints();
     const print = fingerprint('1-sign-in', 'vi');
     const key = 'admin-setup:1-sign-in:vi';
     const paste = [
@@ -227,10 +216,15 @@ describe('pnpm answers', () => {
     expect(plain.at(-1)).toBe('0 written to answers.json, 1 refused');
   });
 
-  /** The page of the one build with every screen set waiting and “Yes to all” pressed. */
-  async function yesToAll() {
+  /**
+   * The page of the one build with every screen set waiting and “Yes to all” pressed. `answer`
+   * would draw every screen again to hold a block of all of them, which is the cost of a whole
+   * build, so the two tests below hold the whole message by parsing it, and `answer` on a few of
+   * its keys.
+   */
+  function yesToAll() {
     // a copy: this sets every screen waiting, and the others read the page as it was built
-    const page = structuredClone(await builtPage());
+    const page = structuredClone(built.page);
     for (const walk of page.walks) {
       for (const screen of walk.screens) {
         for (const language of ['vi', 'en'] as const) {
@@ -243,33 +237,66 @@ describe('pnpm answers', () => {
     return { page, next };
   }
 
-  // Two tests, not one: each answer command draws every screen, which is the cost of a whole
-  // build, and a test that ran both would pay it twice and grow twice as fast with the screens.
+  /**
+   * A message with all its lines but a few answers: the first, the middle and the last, and the
+   * lines of the keys in `also`.
+   */
+  function fewOf(text: string, also: ReadonlySet<string> = new Set()) {
+    const lines = text.split('\n');
+    const answers = lines.filter((line) => / \| (yes|no) \| [0-9a-f]{12}$/.test(line));
+    const keep = new Set([
+      answers[0],
+      answers[Math.floor(answers.length / 2)],
+      answers.at(-1)!,
+      ...answers.filter((line) => also.has(line.split(' | ')[0])),
+    ]);
+    return {
+      text: lines.filter((line) => !answers.includes(line) || keep.has(line)).join('\n'),
+      keys: [...keep].map((line) => line.split(' | ')[0]),
+    };
+  }
+
   it('takes a block made by “Yes to all” with plain pnpm answers', async () => {
-    const { page, next } = await yesToAll();
+    const { page, next } = yesToAll();
+    const { text } = blockOf(page, next);
     const file = FILE();
     writeFileSync(file, '{}');
 
-    expect(await answer(blockOf(page, next).text, () => {}, { file, now: NOW })).toBe(0);
+    // all of it parses, every key once and none refused
+    const all = parseBlock(text);
+    expect(all.refused).toEqual([]);
+    expect(all.entries.map((entry) => entry.key).sort()).toEqual([...allKeys(WALKS)].sort());
+    expect(all.entries.filter((entry) => entry.by !== '')).toEqual([]);
+    // and a few of its keys, drawn now, hold against the words of the screens: the first four walks
+    // (the operator's and the first admin's), which no other test draws a second time, and three more
+    const few = fewOf(text, new Set(allKeys(WALKS.slice(0, 4))));
+    expect(few.keys).toHaveLength(allKeys(WALKS.slice(0, 4)).length + 2);
+    expect(await answer(few.text, () => {}, { file, now: NOW })).toBe(0);
 
     expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
-      [...allKeys(WALKS)].sort(),
+      few.keys.sort(),
     );
   });
 
   it('takes a Share message made by “Yes to all” with --partners, every key under the partner’s label', async () => {
-    const { page, next } = await yesToAll();
+    const { page, next } = yesToAll();
+    const { text } = shareOf(page, next, 'p1');
     const file = FILE();
     writeFileSync(file, '{}');
 
-    expect(
-      await answer(shareOf(page, next, 'p1').text, () => {}, { file, now: NOW, partners: true }),
-    ).toBe(0);
-
-    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
+    const all = parseBlock(text, { partners: true });
+    expect(all.refused).toEqual([]);
+    expect(all.entries.map((entry) => `${entry.key}@${entry.by}`).sort()).toEqual(
       allKeys(WALKS)
         .map((key) => `${key}@p1`)
         .sort(),
+    );
+    const few = fewOf(text);
+    expect(few.keys).toHaveLength(3);
+    expect(await answer(few.text, () => {}, { file, now: NOW, partners: true })).toBe(0);
+
+    expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
+      few.keys.map((key) => `${key}@p1`).sort(),
     );
   });
 

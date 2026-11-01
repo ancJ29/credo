@@ -2,7 +2,7 @@ import { Modal } from './modal';
 
 /**
  * The guide: what the keys do, what the blue button is, the many-at-once actions, the paste, the
- * toggle, and where this page's answers go. It opens from the "?" and the ? key, and by itself on a
+ * toggle, and where this page's answers go. It opens from the "?" and the ? and H keys, and by itself on a
  * first visit.
  */
 export function Guide({
@@ -19,15 +19,15 @@ export function Guide({
       <div className="w-guide">
         <h3>Keys</h3>
         <dl>
-          <dt>J · K</dt>
-          <dd>next screen · previous screen</dd>
+          <dt>← · →</dt>
+          <dd>previous screen · next screen</dd>
           <dt>Y · N</dt>
           <dd>Yes · No for the language shown (a No opens its reason box)</dd>
           <dt>L</dt>
           <dd>the other language</dd>
           <dt>U</dt>
           <dd>next unanswered</dd>
-          <dt>?</dt>
+          <dt>H · ?</dt>
           <dd>this guide</dd>
           <dt>Esc</dt>
           <dd>close it</dd>

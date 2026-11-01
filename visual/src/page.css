@@ -227,6 +227,16 @@ html.walks :focus-visible {
   display: grid;
   gap: 12px;
 }
+.w-map-fold > summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.w-map-fold > summary > h2 {
+  display: inline;
+}
+.w-map-fold[open] > summary {
+  margin-bottom: 12px;
+}
 .w-map {
   display: grid;
   grid-template-columns: 160px repeat(var(--parts), minmax(0, 1fr));

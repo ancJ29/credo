@@ -35,6 +35,8 @@ function Segmented<T extends string>({
               name={name}
               checked={value === option.value}
               onChange={() => onChange(option.value)}
+              // Let go of the focus once clicked, so ↑ and ↓ scroll and never change the choice.
+              onClick={(event) => event.currentTarget.blur()}
             />
             <span className="w-face">{option.label}</span>
           </label>

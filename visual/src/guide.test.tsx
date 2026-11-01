@@ -76,6 +76,19 @@ describe('the guide opens', () => {
     expect(guide().open).toBe(true);
   });
 
+  it('from the H key as from the ? key, and Escape shuts it', async () => {
+    localStorage.setItem(SEEN, 'yes');
+    render(<Page report={await report()} />);
+    expect(guide().open).toBe(false);
+
+    key('h');
+    expect(guide().open).toBe(true);
+    fireEvent.keyDown(guide(), { key: 'Escape' });
+    expect(guide().open).toBe(false);
+    key('H');
+    expect(guide().open).toBe(true);
+  });
+
   it('from the header’s “How this page works” button, when the browser has seen it already', async () => {
     localStorage.setItem(SEEN, 'yes');
     render(<Page report={await report()} />);
@@ -96,10 +109,11 @@ describe('the guide opens', () => {
     const text = guide().textContent;
 
     for (const words of [
-      'J · K',
+      '← · →',
       'Y · N',
       'L',
       'U',
+      'H · ?',
       'Esc',
       'The blue button is the next thing to do',
       'Undo',
@@ -108,6 +122,7 @@ describe('the guide opens', () => {
     ]) {
       expect(text).toContain(words);
     }
+    expect(text).not.toContain('J · K');
     expect(text).toContain('Press “Copy my answers”, then paste the text into the chat');
     expect(text).not.toContain('Slack');
   });
@@ -185,14 +200,14 @@ describe('the guide is a modal dialog', () => {
     render(<Page report={await report()} />);
     key('?');
 
-    for (const name of ['j', 'k', 'y', 'n', 'l', 'u']) key(name);
+    for (const name of ['ArrowRight', 'ArrowLeft', 'y', 'n', 'l', 'u', 'h']) key(name);
 
     expect(number()).toBe('1');
     expect(document.querySelector('.w-place')!.textContent).toContain('Tiếng Việt');
     expect(screen.queryByLabelText<HTMLInputElement>('Yes')).toBeTruthy();
     expect(document.querySelector('.w-tocopy')!.textContent).toBe('none chosen yet');
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    key('j');
+    key('ArrowRight');
     expect(number()).toBe('2');
   });
 });

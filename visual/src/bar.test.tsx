@@ -285,13 +285,13 @@ describe('the dialog of a copy is modal', () => {
 
     await press('Copy my answers');
     expect(document.querySelector('dialog[open]')).toBeTruthy();
-    fireEvent.keyDown(document.body, { key: 'j' });
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
     expect(number()).toBe('1');
     fireEvent.keyDown(document.querySelector('dialog[open]')!, { key: 'Escape' });
 
     expect(document.querySelector('dialog[open]')).toBeNull();
     expect(document.activeElement).toBe(copy);
-    fireEvent.keyDown(document.body, { key: 'j' });
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
     expect(number()).toBe('2');
   });
 

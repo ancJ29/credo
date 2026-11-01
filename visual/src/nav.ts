@@ -29,7 +29,7 @@ export function leftIn(place: Place, choices: Choices, whose: Whose): Language[]
 }
 
 /**
- * The screens the list, Prev, Next, J and K walk. With only the unanswered, those with a language
+ * The screens the list, Prev, Next, ← and → walk. With only the unanswered, those with a language
  * left, and the screen in view whatever it holds: one answered while in view stays until the person
  * moves.
  */

@@ -124,6 +124,47 @@ describe('the walks page: the map', () => {
     expect(question).toHaveLength(1);
   });
 
+  it('The map of the day folds: open on a first visit, and a fold is kept in this browser, so a reload finds it as it was', async () => {
+    localStorage.setItem('credo-walks-guide-seen', 'yes');
+    const fold = () => document.querySelector<HTMLDetailsElement>('details.w-map-fold')!;
+    const toggle = (open: boolean) => {
+      fold().open = open;
+      fireEvent(fold(), new Event('toggle'));
+    };
+    const first = render(<Page report={await reportWith()} />);
+
+    expect(document.querySelector('details.w-map-fold')).not.toBeNull();
+    expect(fold().open).toBe(true);
+    expect(within(fold()).getByRole('heading', { name: 'The map of the day' })).toBeTruthy();
+    expect(fold().querySelector('summary')!.contains(screen.getByText('The map of the day'))).toBe(
+      true,
+    );
+    toggle(false);
+    first.unmount();
+
+    const second = render(<Page report={await reportWith()} />);
+    expect(fold().open).toBe(false);
+    toggle(true);
+    second.unmount();
+
+    render(<Page report={await reportWith()} />);
+    expect(fold().open).toBe(true);
+  });
+
+  it('The map is open at each load when the browser keeps nothing, and folds all the same', async () => {
+    localStorage.setItem('credo-walks-guide-seen', 'yes');
+    const blocked = () => {
+      throw new Error('blocked');
+    };
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked });
+    render(<Page report={await reportWith()} />);
+    const fold = document.querySelector<HTMLDetailsElement>('details.w-map-fold')!;
+
+    expect(fold.open).toBe(true);
+    fold.open = false;
+    expect(() => fireEvent(fold, new Event('toggle'))).not.toThrow();
+  });
+
   it('counts one screen in the singular', async () => {
     const report = await reportWith();
     report.walks[0].screens = report.walks[0].screens.slice(0, 1);

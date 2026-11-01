@@ -9,12 +9,14 @@ import {
   loadGuideSeen,
   loadLabel,
   loadMade,
+  loadMapOpen,
   loadOnly,
   type Made,
   saveChoices,
   saveGuideSeen,
   saveLabel,
   saveMade,
+  saveMapOpen,
   saveOnly,
 } from './choices';
 import type { Fill } from './fill';
@@ -90,51 +92,60 @@ function WalkSection({
 
 /** The map of the day: the parts across, the people down; a walk is a card, an empty cell hatched. */
 function DayMap({ report, onOpen }: { report: Report; onOpen: (walkId: string) => void }) {
+  const [open] = useState(loadMapOpen);
   return (
     <section className="w-map-section" aria-labelledby="map-title">
-      <h2 id="map-title">The map of the day</h2>
-      <div className="w-map" style={{ ['--parts' as string]: report.parts.length }}>
-        <span aria-hidden="true" />
-        {report.parts.map((part) => (
-          <span key={part.id} className="w-colhead">
-            {part.name.en}
-          </span>
-        ))}
-        {report.people.map((person) => (
-          <div key={person.id} className="w-row">
-            <div className="w-person">
-              <b>{person.name.en}</b>
-              <span>{DEVICE_LABEL[person.device]}</span>
+      <details
+        className="w-map-fold"
+        open={open}
+        onToggle={(event) => saveMapOpen(event.currentTarget.open)}
+      >
+        <summary>
+          <h2 id="map-title">The map of the day</h2>
+        </summary>
+        <div className="w-map" style={{ ['--parts' as string]: report.parts.length }}>
+          <span aria-hidden="true" />
+          {report.parts.map((part) => (
+            <span key={part.id} className="w-colhead">
+              {part.name.en}
+            </span>
+          ))}
+          {report.people.map((person) => (
+            <div key={person.id} className="w-row">
+              <div className="w-person">
+                <b>{person.name.en}</b>
+                <span>{DEVICE_LABEL[person.device]}</span>
+              </div>
+              {report.parts.map((part) => {
+                const walks = report.walks.filter(
+                  (walk) => walk.person === person.id && walk.part === part.id,
+                );
+                return walks.length === 0 ? (
+                  <div key={part.id} className="w-cell w-empty" title="Not built yet" />
+                ) : (
+                  <div key={part.id} className="w-cell-group">
+                    {walks.map((walk) => (
+                      <a
+                        key={walk.id}
+                        className="w-cell"
+                        href={`#${walk.id}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onOpen(walk.id);
+                        }}
+                      >
+                        <b>{walk.title.en}</b>
+                        <span className="w-sub">{plural(walk.screens.length, 'screen')}</span>
+                        <TallyPills tally={walk.tally} />
+                      </a>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
-            {report.parts.map((part) => {
-              const walks = report.walks.filter(
-                (walk) => walk.person === person.id && walk.part === part.id,
-              );
-              return walks.length === 0 ? (
-                <div key={part.id} className="w-cell w-empty" title="Not built yet" />
-              ) : (
-                <div key={part.id} className="w-cell-group">
-                  {walks.map((walk) => (
-                    <a
-                      key={walk.id}
-                      className="w-cell"
-                      href={`#${walk.id}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        onOpen(walk.id);
-                      }}
-                    >
-                      <b>{walk.title.en}</b>
-                      <span className="w-sub">{plural(walk.screens.length, 'screen')}</span>
-                      <TallyPills tally={walk.tally} />
-                    </a>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </details>
     </section>
   );
 }
@@ -207,7 +218,7 @@ function Where({
         )}
       </div>
       <p className="w-keys">
-        Keys: J next · K previous · Y yes · N no · L other language · U next unanswered
+        Keys: ← previous · → next · Y yes · N no · L other language · U next unanswered · H guide
       </p>
       <p className="w-moved" aria-live="polite">
         {said}
@@ -217,7 +228,10 @@ function Where({
   );
 }
 
-/** A key typed where text is typed, or with a modifier, is the browser's, not the page's. */
+/**
+ * A key typed where text is typed, or with a modifier, is the browser's, not the page's, but for
+ * Tab (above).
+ */
 function isTyping(event: KeyboardEvent) {
   const target = event.target as HTMLElement;
   return (
@@ -394,23 +408,29 @@ export function Page({ report, partner = false }: { report: Report; partner?: bo
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
+      // The page is click-only: Tab moves the focus nowhere, in a text field too. A modifier keeps
+      // the browser's own (switching tabs), and an open dialog (above) keeps its focus inside.
+      if (event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        return;
+      }
       if (isTyping(event)) return;
       const mine = choices[key] ?? NO_CHOICE;
       const step = (by: 1 | -1) => {
         const to = neighbour(shown, current, by);
         if (to) go(to.id);
       };
-      if (document.querySelector('dialog[open]')) return;
       const typed = event.key.toLowerCase();
-      if (typed === '?') {
+      if (typed === '?' || typed === 'h') {
         event.preventDefault();
         setGuideOpen(true);
         return;
       }
       if (none && ['y', 'n', 'l'].includes(typed)) return;
       const keys: Record<string, () => void> = {
-        j: () => step(1),
-        k: () => step(-1),
+        arrowright: () => step(1),
+        arrowleft: () => step(-1),
         y: () => choose(key, { ...mine, answer: 'yes' }),
         n: () => choose(key, { ...mine, answer: 'no' }),
         l: () => setView((before) => ({ ...before, language: otherLanguage(before.language) })),
