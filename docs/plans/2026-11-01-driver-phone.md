@@ -1,15 +1,10 @@
 # Slice 3: the driver's phone, with a photo; the order fulfilled
 
-**Where it stands — 2026-11-01 09:46 +07:** steps 1 to 4 done, on the fake; **the human's preview (step 5) is next**,
-the walks page `pnpm report` built, 16 waiting and 4 asked again (`orders-1-list`, `orders-5-requests`,
-each in two languages, whose past orders now read Fulfilled and one of today's Delivered). Model files
-followed: slice 2's `DeliveriesPage.tsx`, `DeliveryPage.tsx`, `OrderParts.tsx`, `fake.ts` calls, `walks.ts`
-orders walk and `walk/specs/orders.spec.ts`; piece 2's `PhotoPanel.tsx`/`photo.ts` for the shrink and its
-phone walk's QR link. Surprises for the open list: (a) the plan's "no menu moves" was wrong for the data
-set's drivers `EMP-0005` and `EMP-0006`, whom piece 2's "allowed nothing" screen and tests used: they now
-hold My deliveries, so those use `noDrivers` (the right taken away; same picture); (b) `scripts/` generator
-and its test read red until step 6, since the data set now holds delivered requests the generator still
-makes waiting.
+**Where it stands — 2026-11-01 10:34 +07:** steps 1 to 6 done; **step 7, the one review (another model), is next**, after
+the one whole `pnpm check` the orchestrator calls for. The preview answered 20 of 20 yes (step 5). The BFF
+holds the driver's list, Delivered with its photo, the photo's read and the order's cancel refusal; the
+stack's generator delivers the data set's requests. Open: the two surprises named at step 4 stand
+((a) piece 2's "allowed nothing" people now use `noDrivers`; (b) the generator, now done).
 
 > **Drafted** 2026-11-01 by the machine, for lane A's third demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 3; part 6, amended 10-31; Decides 42, 44 and 45 for this slice, and
@@ -259,11 +254,16 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `/my-deliveries` in a window 390 px wide. Done when: each answered yes or no; a no becomes a case
   here and its fix lands before step 6. **Then stop.**
   *Evidence:* 20 of 20 answers yes on 2026-11-01 about 10:2x, for build `driver-phone`@`d60486b27`; `pnpm answers` wrote 20 to `visual/answers.json`, 0 refused (the 4 asked again replaced, 16 new); no case added.
-- [ ] **6. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 5 (the contract as the preview left
+- [x] **6. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 5 (the contract as the preview left
   it), about ½ day: the three routes and the deliver in `bff/src/orders.ts`, the order's shown request
   and its cancel's refusal of a fulfilled order, the stack's generator delivering the data set's. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1, 2 and 4 to 8 each seen red once;
   `pnpm check` exit 0 at 100 %, no warning.
+  *Evidence (no whole check, as ordered):* BFF rows 2, 4 to 8 and 15 seen red once from their assertions
+  (`20261101-1030-driver-phone-red-bff-rows.log`, `…-red-bff-fulfil.log`); bff, ui and scripts tests at 100 %
+  (`generator.test.ts` green with the delivered week and each photo), typecheck of bff, shared, ui, scripts,
+  eslint and prettier exit 0; c-storage unchanged. The route tree in `operator.route.test.ts` lists the
+  three new routes.
 - [ ] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 4 and 6 with the case table, about ¼ day with its
   fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason;
