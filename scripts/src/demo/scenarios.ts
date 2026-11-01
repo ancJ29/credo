@@ -63,12 +63,66 @@ type ListsProfile = {
   services: ServiceProfile[];
 };
 
+/** A span of whole numbers, both ends included. */
+type Span = [from: number, to: number];
+
+/** Minutes after midnight, Vietnam's. */
+const at = (hour: number, minute = 0) => hour * 60 + minute;
+
+/** The company's orders: how many a working day, what is in them and how each ends. */
+type OrdersProfile = {
+  /** Orders a working day, on average; a day varies by a fifth either way. */
+  perDay: number;
+  /** An order is made between these minutes of the day. */
+  made: Span;
+  /** The lines of an order, drawn from the stocked products. */
+  lines: Span;
+  /** The chance that an order also carries one of the company's services (a transport fee). */
+  serviceLine: number;
+  /** The quantity of a line by the product's unit; any other unit takes `otherQuantity`. */
+  quantities: Partial<Record<string, Span>>;
+  otherQuantity: Span;
+  /** The share left as drafts, and the share cancelled after they were sent. */
+  draft: number;
+  cancelled: number;
+  /** An order made by this minute is sent for its own day, unless it is held to the next working day. */
+  sameDayUntil: number;
+  heldToNextDay: number;
+  /** Minutes from saving to sending, and from sending to cancelling. */
+  toSend: Span;
+  toCancel: Span;
+};
+
+/** The company's deliveries: when the drivers deliver what was sent. */
+type DeliveriesProfile = {
+  /** A request sent for its own day is delivered this many minutes after it was sent. */
+  afterSending: Span;
+  /** A request sent for a later day is delivered between these minutes of that day. */
+  laterDay: Span;
+};
+
+/** The company's closing of each driver's day. */
+type ReconciliationProfile = {
+  /** The department whose manager closes the days. */
+  closer: string;
+  /** A day is closed from this minute, spread over this many. */
+  closeAt: number;
+  closeSpread: number;
+  /** The odds that a driver hands in less than the sum to collect, and by how much (đồng, in steps). */
+  short: { odds: number; by: Span; step: number };
+  /** The odds that a driver hands in more. */
+  over: { odds: number; by: Span; step: number };
+};
+
 export type Scenario = {
   id: ScenarioId;
   /** The trade, for a reader. */
   trade: string;
   staff: StaffProfile;
   lists: ListsProfile;
+  orders: OrdersProfile;
+  deliveries: DeliveriesProfile;
+  reconciliation: ReconciliationProfile;
 };
 
 /** The two positions every scenario shares: the manager of a department, and the ordinary ones. */
@@ -114,14 +168,18 @@ export const CUSTOM_FIELDS: CustomField[] = [
   },
 ];
 
-export const STAFF_FIELDS: StaffFields = { personalPhone: true, photo: false };
+export const STAFF_FIELDS: StaffFields = { personalPhone: true, photo: false, qr: true };
 
 const view: PermissionLayer = { 'staff.canView': true };
 const office: PermissionLayer = {
   'staff.canView': true,
   'staff.canCreate': true,
   'staff.canEdit': true,
+  'orders.canView': true,
+  'orders.canEdit': true,
 };
+/** The drivers: the office may name them on a delivery request, and they deliver it. */
+const driving: PermissionLayer = { 'deliveries.canDeliver': true };
 
 export const SCENARIOS: Record<ScenarioId, Scenario> = {
   S1: {
@@ -136,7 +194,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
         { name: 'Văn phòng bán hàng', permissions: office, share: 10, licences: [], plate: null },
         { name: 'Kế toán', permissions: view, share: 3, licences: [], plate: null },
         { name: 'Bãi vật liệu', permissions: view, share: 17, licences: [], plate: null },
-        { name: 'Lái xe tải', permissions: {}, share: 15, licences: ['c'], plate: 'car' },
+        { name: 'Lái xe tải', permissions: driving, share: 15, licences: ['c'], plate: 'car' },
       ],
       positions,
       numbering: { prefix: 'VL-', digits: 3 },
@@ -210,6 +268,35 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
         { name: 'Cắt sắt theo việc', unit: 'việc', price: 450000 },
       ],
     },
+    orders: {
+      perDay: 10,
+      made: [at(7, 30), at(17, 30)],
+      lines: [1, 4],
+      serviceLine: 0.3,
+      quantities: {
+        bao: [20, 150],
+        cây: [20, 200],
+        'nghìn viên': [1, 8],
+        'm³': [2, 20],
+        tấn: [1, 5],
+        chuyến: [1, 1],
+      },
+      otherQuantity: [1, 2],
+      draft: 0.05,
+      cancelled: 0.04,
+      sameDayUntil: at(14),
+      heldToNextDay: 0.15,
+      toSend: [2, 30],
+      toCancel: [10, 120],
+    },
+    deliveries: { afterSending: [45, 164], laterDay: [at(8), at(17, 30)] },
+    reconciliation: {
+      closer: 'Văn phòng bán hàng',
+      closeAt: at(17, 45),
+      closeSpread: 30,
+      short: { odds: 0.2, by: [5000, 50000], step: 5000 },
+      over: { odds: 0.04, by: [5000, 20000], step: 5000 },
+    },
   },
   S2: {
     id: 'S2',
@@ -222,7 +309,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
       departments: [
         { name: 'Kinh doanh tuyến', permissions: view, share: 22, licences: [], plate: 'moto' },
         { name: 'Kho', permissions: view, share: 16, licences: [], plate: null },
-        { name: 'Giao hàng', permissions: {}, share: 14, licences: ['b2', 'c'], plate: 'car' },
+        { name: 'Giao hàng', permissions: driving, share: 14, licences: ['b2', 'c'], plate: 'car' },
         { name: 'Văn phòng', permissions: office, share: 8, licences: [], plate: null },
       ],
       positions,
@@ -386,6 +473,28 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
         },
       ],
       services: [{ name: 'Phí giao hàng theo chuyến', unit: 'chuyến', price: 150000 }],
+    },
+    orders: {
+      perDay: 30,
+      made: [at(7, 30), at(17, 30)],
+      lines: [2, 6],
+      serviceLine: 0.1,
+      quantities: { thùng: [2, 24], chuyến: [1, 1] },
+      otherQuantity: [1, 2],
+      draft: 0.05,
+      cancelled: 0.04,
+      sameDayUntil: at(14),
+      heldToNextDay: 0.15,
+      toSend: [2, 30],
+      toCancel: [10, 120],
+    },
+    deliveries: { afterSending: [45, 164], laterDay: [at(8), at(17, 30)] },
+    reconciliation: {
+      closer: 'Văn phòng',
+      closeAt: at(17, 45),
+      closeSpread: 30,
+      short: { odds: 0.2, by: [5000, 50000], step: 5000 },
+      over: { odds: 0.04, by: [5000, 20000], step: 5000 },
     },
   },
 };
