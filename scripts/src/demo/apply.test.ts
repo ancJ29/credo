@@ -869,6 +869,7 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     let confirms = 0;
     let cancels = 0;
     let closes = 0;
+    let delivers = 0;
     const moving: CStorageClient = hooked(other, {
       beforePut: async (key, data, ifTag) => {
         const state = (data as { state?: string }).state;
@@ -876,6 +877,9 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
           await other.putRecord(key, data, ifTag);
         }
         if (key.includes('.order.') && ifTag && state === 'cancelled' && cancels++ === 0) {
+          await other.putRecord(key, data, ifTag);
+        }
+        if (key.includes('.delivery.') && ifTag && state === 'delivered' && delivers++ === 0) {
           await other.putRecord(key, data, ifTag);
         }
         if (key.includes('.reconciliation.') && closes++ === 0) {
@@ -897,9 +901,28 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
         /^DH-\d+ was changed by its users before it was cancelled$/.test(line),
       ),
     ).toBe(true);
+    expect(report.skipped.some((line) => /^GH-\d+ was changed by its users$/.test(line))).toBe(
+      true,
+    );
+    expect(report.skipped.some((line) => /^GH-\d+ was changed by its users$/.test(line))).toBe(
+      true,
+    );
     expect(
       report.skipped.some((line) => /'s 2026-10-\d+ was changed by its users, left$/.test(line)),
     ).toBe(true);
+  });
+
+  it('row 27: a refusal of a call that is not a 404 or a 409 stops the run red, never a skip', async () => {
+    const other = await fresh();
+    await make(other, A1);
+    const failing = hooked(other, {
+      beforePut: (key, data) =>
+        key.includes('.delivery.') && (data as { state?: string }).state === 'delivered'
+          ? Promise.reject(down())
+          : Promise.resolve(),
+    });
+
+    await expect(applyCopy(failing, A1, TODAY)).rejects.toThrow(/POST .*\/deliver answered 5\d\d/);
   });
 
   it('row 27: a copy with no drivers who deliver leaves its sent orders drafts, a copy with no customers or products leaves its orders, each named', async () => {

@@ -99,8 +99,13 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     return { status: reply.statusCode, json: () => reply.json<unknown>() };
   }
   /** A call that must succeed: any other answer stops the run. */
-  async function must<T>(method: 'GET' | 'POST' | 'PUT', url: string, payload?: unknown) {
-    const reply = await send(method, url, payload);
+  async function must<T>(
+    method: 'GET' | 'POST' | 'PUT',
+    url: string,
+    payload?: unknown,
+    as?: string,
+  ) {
+    const reply = await send(method, url, payload, as);
     if (reply.status >= 300) {
       throw new Error(`the seed's ${method} ${url} answered ${reply.status}`);
     }
@@ -307,7 +312,7 @@ async function unlessChanged<T>(
   what: string,
 ) {
   const reply = await call;
-  if (reply.status === 404 || reply.status === 409) return null;
+  if ([404, 409].includes(reply.status)) return null;
   if (reply.status >= 300) throw new Error(`the seed's ${what} answered ${reply.status}`);
   return reply.json() as T;
 }
@@ -474,21 +479,16 @@ async function dayDeliveries(
     if (as === null) throw new Error(`the seed found no sign-in record for ${request.driver.code}`);
     const photo = photos[Math.floor(plan.photoDraw * photos.length)];
     const url = deliveryRoutes.one(day, request.id);
-    const read = await unlessChanged<DeliveryDoc>(
-      driver.send('GET', url, undefined, as),
-      `GET ${url}`,
+    const read = await driver.must<DeliveryDoc>('GET', url, undefined, as);
+    const done = await unlessChanged<DeliveryDoc>(
+      driver.send(
+        'POST',
+        deliveryRoutes.deliver(day, request.id),
+        { version: read.version, photo },
+        as,
+      ),
+      `POST ${deliveryRoutes.deliver(day, request.id)}`,
     );
-    const done = read
-      ? await unlessChanged<DeliveryDoc>(
-          driver.send(
-            'POST',
-            deliveryRoutes.deliver(day, request.id),
-            { version: read.version, photo },
-            as,
-          ),
-          `POST ${deliveryRoutes.deliver(day, request.id)}`,
-        )
-      : null;
     if (done === null) {
       skipped.push(`${request.number} was changed by its users`);
       log(`${copy.code}: ${request.number} was changed by its users, left`);
@@ -541,7 +541,7 @@ async function dayCloses(
         .filter((one) => one.state !== 'cancelled')
         .map((one) => [one.driver.id, one.driver]),
     ).values(),
-  ].sort((a, b) => (a.code < b.code ? -1 : 1));
+  ].sort((a, b) => a.code.localeCompare(b.code));
   let closed = 0;
   let gaps = 0;
   for (const one of drivers) {

@@ -4,7 +4,7 @@ import { SCENARIOS, type ScenarioId } from './scenarios';
 import { type Stream, streamOf } from './stream';
 
 /** How an order ends: left a draft, sent to a driver, or sent and then cancelled. */
-export type Outcome = 'draft' | 'confirmed' | 'cancelled';
+type Outcome = 'draft' | 'confirmed' | 'cancelled';
 
 /** An order of a day as the generator plans it, before any record is written: codes for the
  * customer and the products (the BFF mints their ids), and every time in milliseconds. */
