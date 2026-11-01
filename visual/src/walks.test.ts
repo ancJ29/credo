@@ -440,6 +440,7 @@ describe('the walks', () => {
     expect(shot('lists.spec.ts')).toEqual(WALKS[8].screens.map((screen) => screen.id));
     expect(shot('orders.spec.ts')).toEqual(WALKS[9].screens.map((screen) => screen.id));
     expect(shot('driver.spec.ts')).toEqual(WALKS[10].screens.map((screen) => screen.id));
+    expect(shot('reconcile.spec.ts')).toEqual(WALKS[11].screens.map((screen) => screen.id));
     expect(shot('operator-passkeys.spec.ts')).toEqual(WALKS[2].screens.map((screen) => screen.id));
     expect(shot('operator-services.spec.ts')).toEqual(WALKS[3].screens.map((screen) => screen.id));
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
@@ -468,6 +469,7 @@ describe('the walks', () => {
       "'lists.spec.ts'",
       "'orders.spec.ts'",
       "'driver.spec.ts'",
+      "'reconcile.spec.ts'",
       "'operator.spec.ts'",
       "'operator-passkeys.spec.ts'",
       "'operator-services.spec.ts'",
@@ -481,6 +483,9 @@ describe('the walks', () => {
     expect(config).toContain("name: 'driver-fake'");
     expect(config).toContain("name: 'driver-full'");
     expect(config).toContain("testMatch: 'driver.spec.ts'");
+    expect(config).toContain("name: 'reconcile-fake'");
+    expect(config).toContain("name: 'reconcile-full'");
+    expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
   it('puts the customers and products from Excel in one walk of the admin’s set-up, eight screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
@@ -631,6 +636,58 @@ describe('the walks', () => {
       );
     }
     // the browser's clock is fixed before each opening, at the day the fake build and a scene take
+    expect(spec).toContain('await page.clock.setFixedTime(CLOCK);');
+    expect(spec).toContain('DEMO_TODAY.split');
+  });
+  it('Each driver’s day settled is one walk of the office in a part of its own, the day’s end: eight screens, each a scene of the office’s manager, the two failures cued and on the wrong path', () => {
+    const walk = WALKS[11];
+
+    expect(walk).toMatchObject({ id: 'office-reconcile', person: 'office', part: 'day-end' });
+    expect(PARTS.map((part) => part.id).at(-1)).toBe('day-end');
+    expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['reconcile-1-requests', 1, 'main'],
+      ['reconcile-2-day', 2, 'main'],
+      ['reconcile-3-cash', 3, 'main'],
+      ['reconcile-4-check', 4, 'main'],
+      ['reconcile-5-closed', 5, 'main'],
+      ['reconcile-6-yesterday', 6, 'main'],
+      ['reconcile-7-moved', 7, 'wrong'],
+      ['reconcile-8-failed', 8, 'wrong'],
+    ]);
+    expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(8).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'closeDay:409',
+      'closeDay:503',
+    ]);
+    // the cash is typed short of what is to be collected, then the close asked, then confirmed
+    expect(walk.screens[2].scene!.steps).toEqual([
+      { fill: 'reconcile.cash', text: expect.stringMatching(/^\d+$/) as string },
+    ]);
+    expect(walk.screens[3].scene!.steps!.at(-1)).toEqual({ press: 'reconcile.close' });
+    expect(walk.screens[4].scene!.steps!.at(-1)).toEqual({ press: 'reconcile.closeConfirm' });
+    expect(walk.screens[5].scene!.path).toBe('/deliveries?day=2026-11-03');
+  });
+
+  it('Each day’s end screen opens in the walk spec as its scene does: the cue it names, and the clock at the data set’s today', () => {
+    const spec = read('specs/reconcile.spec.ts');
+    const parts = spec.slice(spec.indexOf('async function walk(')).split(/await at\('([^']+)'/);
+    const before = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2)
+      before.set(parts[index], parts[index - 1]);
+
+    for (const screen of WALKS[11].screens) {
+      const { cue } = screen.scene!;
+      const steps = before.get(screen.id)!;
+      const opened = [...steps.matchAll(/(?:asked|typed|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';
+      expect(opened.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
+    }
     expect(spec).toContain('await page.clock.setFixedTime(CLOCK);');
     expect(spec).toContain('DEMO_TODAY.split');
   });

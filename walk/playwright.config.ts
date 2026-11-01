@@ -35,6 +35,7 @@ export default defineConfig({
         'lists.spec.ts',
         'orders.spec.ts',
         'driver.spec.ts',
+        'reconcile.spec.ts',
         'operator.spec.ts',
         'operator-passkeys.spec.ts',
         'operator-services.spec.ts',
@@ -58,6 +59,9 @@ export default defineConfig({
     // The driver's walk of a delivery with a photo, on the phone's widths, the same two ways.
     { name: 'driver-fake', testMatch: 'driver.spec.ts', timeout: 120_000 },
     { name: 'driver-full', testMatch: 'driver.spec.ts', timeout: 120_000 },
+    // The office's walk of each driver's day settled, the same two ways.
+    { name: 'reconcile-fake', testMatch: 'reconcile.spec.ts', timeout: 120_000 },
+    { name: 'reconcile-full', testMatch: 'reconcile.spec.ts', timeout: 120_000 },
     // The operator's walk, the same two ways: the fake, and the full run on a stack of its own for
     // each language and width.
     { name: 'operator-fake', testMatch: 'operator.spec.ts', timeout: 120_000 },

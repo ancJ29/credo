@@ -1,4 +1,4 @@
-import { LANGUAGES, type Language } from '@credo/shared';
+import { addDays, driverDay, LANGUAGES, type Language } from '@credo/shared';
 import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -110,6 +110,7 @@ export const PARTS: Part[] = [
   { id: 'stock', name: { en: 'Stock', vi: 'Kho hàng' } },
   { id: 'orders', name: { en: 'Orders', vi: 'Đơn hàng' } },
   { id: 'delivery', name: { en: 'Delivery', vi: 'Giao hàng' } },
+  { id: 'day-end', name: { en: 'The day’s end', vi: 'Cuối ngày' } },
 ];
 
 /** A data-set person's page, by their code. */
@@ -206,6 +207,22 @@ const PHOTO_TAKEN: Step[] = [
   { attach: 'myDeliveries.photoField', file: 'photo' },
 ];
 const SENT: Step[] = [...PHOTO_TAKEN, { press: 'myDeliveries.send' }];
+
+/** The day's end walk's data, by the data set: the driver `EMP-0005`'s day today (one delivered, one
+ * waiting), the cash typed short of what is to be collected, and yesterday's page of requests. */
+const DRIVER_ID = DEMO_EMPLOYEES.find((one) => one.code === DRIVER)!.id;
+const DRIVER_DAY_PATH = `/deliveries/${DEMO_TODAY}/drivers/${DRIVER_ID}`;
+const SHORT_BY = 20_000;
+const CASH_SHORT = String(
+  driverDay(
+    DEMO_DELIVERIES.filter((one) => one.day === DEMO_TODAY),
+    DRIVER_ID,
+  ).toCollect - SHORT_BY,
+);
+/** The cash typed, the day's close asked, and then confirmed. */
+const CASH_TYPED: Step[] = [{ fill: 'reconcile.cash', text: CASH_SHORT }];
+const CLOSE_ASKED: Step[] = [...CASH_TYPED, { press: 'reconcile.close' }];
+const CLOSE_CONFIRMED: Step[] = [...CLOSE_ASKED, { press: 'reconcile.closeConfirm' }];
 
 /** One's own password typed: the current one, the new one, and the new one again. */
 const NEW_PASSWORD: Step[] = [
@@ -1464,6 +1481,114 @@ export const WALKS: Walk[] = [
           vi: 'Văn phòng đã hủy trước',
         },
         question: 'Would the driver know not to deliver it?',
+      },
+    ],
+  },
+  {
+    id: 'office-reconcile',
+    person: 'office',
+    part: 'day-end',
+    title: { en: 'Each driver’s day settled', vi: 'Đối soát ngày của từng tài xế' },
+    screens: [
+      {
+        id: 'reconcile-1-requests',
+        number: 1,
+        path: 'main',
+        scene: { path: '/deliveries', as: 'EMP-0001' },
+        sentence: {
+          en: 'Delivery requests: each driver’s cash to bring back, delivered n of m, the day open',
+          vi: 'Yêu cầu giao hàng: tiền mặt tài xế cần mang về, đã giao n trên m, ngày chưa chốt',
+        },
+        question:
+          'Would the office know whose day is still to settle, and what each should bring back?',
+      },
+      {
+        id: 'reconcile-2-day',
+        number: 2,
+        path: 'main',
+        scene: { path: DRIVER_DAY_PATH, as: 'EMP-0001' },
+        sentence: {
+          en: 'A driver’s day: the delivered requests and their sum, the one still waiting apart',
+          vi: 'Ngày của một tài xế: các yêu cầu đã giao và tổng của chúng, yêu cầu còn chờ để riêng',
+        },
+        question:
+          'Would the office know how much this driver should hand in, and for which deliveries?',
+      },
+      {
+        id: 'reconcile-3-cash',
+        number: 3,
+        path: 'main',
+        scene: { path: DRIVER_DAY_PATH, as: 'EMP-0001', steps: CASH_TYPED },
+        sentence: {
+          en: 'The cash typed: short by 20,000 đồng',
+          vi: 'Đã nhập tiền mặt: thiếu 20.000 đồng',
+        },
+        question: 'Would the office see at once what is missing?',
+      },
+      {
+        id: 'reconcile-4-check',
+        number: 4,
+        path: 'main',
+        scene: { path: DRIVER_DAY_PATH, as: 'EMP-0001', steps: CLOSE_ASKED },
+        sentence: {
+          en: 'Close the day: the check names the cash, the gap and the request still waiting',
+          vi: 'Chốt ngày: bước kiểm tra nêu tiền mặt, chênh lệch và yêu cầu còn chờ',
+        },
+        question: 'Would the office know what closing the day does?',
+      },
+      {
+        id: 'reconcile-5-closed',
+        number: 5,
+        path: 'main',
+        scene: { path: DRIVER_DAY_PATH, as: 'EMP-0001', steps: CLOSE_CONFIRMED },
+        sentence: {
+          en: 'Closed: to collect, handed in, the gap and who closed it',
+          vi: 'Đã chốt: cần thu, đã nộp, chênh lệch và người chốt',
+        },
+        question: 'Would the office know this day is settled for good?',
+      },
+      {
+        id: 'reconcile-6-yesterday',
+        number: 6,
+        path: 'main',
+        scene: { path: `/deliveries?day=${addDays(DEMO_TODAY, -1)}`, as: 'EMP-0001' },
+        sentence: {
+          en: 'Yesterday: every driver’s day closed, one short',
+          vi: 'Hôm qua: ngày của mọi tài xế đã chốt, một ngày thiếu tiền',
+        },
+        question: 'Would the office trust that the past days are settled?',
+      },
+      {
+        id: 'reconcile-7-moved',
+        number: 7,
+        path: 'wrong',
+        scene: {
+          path: DRIVER_DAY_PATH,
+          as: 'EMP-0001',
+          cue: 'closeDay:409',
+          steps: CLOSE_CONFIRMED,
+        },
+        sentence: {
+          en: 'A delivery made meanwhile: the new figures, nothing closed',
+          vi: 'Có yêu cầu vừa được giao: số liệu mới, chưa chốt gì',
+        },
+        question: 'Would the office know to count again before closing?',
+      },
+      {
+        id: 'reconcile-8-failed',
+        number: 8,
+        path: 'wrong',
+        scene: {
+          path: DRIVER_DAY_PATH,
+          as: 'EMP-0001',
+          cue: 'closeDay:503',
+          steps: CLOSE_CONFIRMED,
+        },
+        sentence: {
+          en: 'A close that failed, the cash kept',
+          vi: 'Chốt không thành công, tiền mặt đã nhập vẫn còn',
+        },
+        question: 'Would the office know nothing was closed, and to try again?',
       },
     ],
   },

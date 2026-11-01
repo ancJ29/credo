@@ -158,6 +158,12 @@ const DELIVERED = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'delivered',
 )!;
 
+/** A number as a language writes it, and an amount of đồng with the language's unit. */
+const numberIn = (w: (typeof DICTIONARIES)['en'], amount: number) =>
+  new Intl.NumberFormat(w === DICTIONARIES.vi ? 'vi' : 'en').format(amount);
+const moneyIn = (w: (typeof DICTIONARIES)['en'], amount: number) =>
+  w.orders.money.replace('{{amount}}', numberIn(w, amount));
+
 /** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
 const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
@@ -234,6 +240,19 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'driver-deliveries:driver-4-delivered': (w) => `alert: ${w.myDeliveries.done}`,
   'driver-deliveries:driver-5-send-failed': (w) => `alert: ${w.myDeliveries.sendFailed}`,
   'driver-deliveries:driver-6-cancelled': (w) => `alert: ${w.myDeliveries.cancelled}`,
+  'office-reconcile:reconcile-1-requests': (w) =>
+    `link: ${w.reconcile.openFor.replace('{{name}}', 'Võ Thanh Tùng')}`,
+  'office-reconcile:reconcile-2-day': (w) => `heading: ${w.reconcile.waitingTitle}`,
+  // the cash typed (the sum to collect less 20,000), as the language writes a number
+  'office-reconcile:reconcile-3-cash': (w) =>
+    `textbox "${w.reconcile.cash}" = "${numberIn(w, 47_380_000)}"`,
+  // the button of the check exists only once Close the day was pressed
+  'office-reconcile:reconcile-4-check': (w) => `button: ${w.reconcile.closeConfirm}`,
+  'office-reconcile:reconcile-5-closed': (w) => `alert: ${w.reconcile.closedNow}`,
+  'office-reconcile:reconcile-6-yesterday': (w) =>
+    `main: ${w.reconcile.dayClosedGap.replace('{{gap}}', w.reconcile.gapShort.replace('{{amount}}', moneyIn(w, 20_000)))}`,
+  'office-reconcile:reconcile-7-moved': (w) => `alert: ${w.reconcile.moved}`,
+  'office-reconcile:reconcile-8-failed': (w) => `alert: ${w.reconcile.failed}`,
 };
 
 /** What each passkeys screen must say, in either language: the line that makes it that screen. */
