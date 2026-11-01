@@ -1,6 +1,6 @@
 # The walks page: its keys, and a map of the day that folds
 
-**Where it stands — 2026-11-01 13:19 +07:** built on `walks-keys` from `main`@`b170d07`, checked,
+**Where it stands — 2026-11-01 13:29 +07:** built on `walks-keys` from `main`@`b170d07`, checked,
 tried by the human ("perfect now") and reviewed (Opus); the review's fixes are in. The steps below
 are ticked; the open list at the foot is the human's.
 
@@ -80,7 +80,8 @@ Every other row stands as written.
 - [x] **5. The human's look** at that page, between 13:02 and 13:16: "perfect now".
 - [x] **6. The review** (Opus, `20261101-1316-walks-keys-review.md`): findings 1 and 3 to 6 fixed (rows 13 and 14,
   the three comments, row 10, this section); 2, 7, 8 and 9 in the open list.
-- [ ] **7. The whole check and the report build again** after the fixes (logs in the recap of the session).
+- [x] **7. The whole check and the report build again** at `bc3d0d9`: `20261101-1322-walks-keys-check-2.log`, `== exit 0`,
+  every package at 100 %; `20261101-1322-walks-keys-report-2.log`, page `walks/2026-11-01-132725-bc3d0d972`.
 
 ## Open
 
