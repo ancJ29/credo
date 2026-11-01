@@ -8,7 +8,7 @@ finding tagged:* finding 9 `[DEFERRED]` into the recap's hazards (three more ids
 layer: skew and rollback); finding 10 `[DEFERRED]` and now done: `main`'s versions of the `visual`
 answers tests were kept; findings 11, 12 and 13 `[REJECTED]`, no change, each for the review's reason
 (the walks' cost is read by step 8's log; no screen sends another day; screen 9's words stay true).
-**Next:** line 30 can merge into `main`; step 8, the human's full run.
+**Next (11-01 evening):** the slice is in `main` and on ridge at `477f888`; its seed block (step 9) is done on branch `seed-blocks`; open are step 8's full run, the recap and step 12's look on ridge.
 
 > **Drafted** 2026-10-31 by the machine, for lane A's second demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 2; part 6, amended 10-31 on the human's four missing pieces; Decides
@@ -297,15 +297,16 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   screens are new, listed apart. A screen named and not moved costs nothing; one that moves and is not named
   turns the run red. Done when: both end `== verdict: green`, the second with every count 0; the bases
   committed; no walked screen holds an open "no".
-- [ ] **9. The seed's block and the demo week.** Who: 🤖, after step 8 (the seed changes `scripts/`,
+- [x] **9. The seed's block and the demo week.** Who: 🤖, after step 8 (the seed changes `scripts/`,
   which the run reads), about ½ day: an orders block in `scenarios.ts` (the rates, the office's and
   the drivers' rights), a generator beside `scripts/src/demo/staff.ts`, the day's events in the
   applier, the ledger's blocks. Done when: rows 13, 27 and 28 each seen red once; `pnpm check` exit 0;
   a `pnpm demo` run's log reads each copy's week of orders and today's requests.
+  *Evidence:* the seed commit on `seed-blocks` (`scripts/src/demo/orders.ts`, `reconcile.ts`, `apply.ts`, the ledger's `blocks`, `scenarios.ts`; tests `orders.test.ts`, `apply.test.ts`), one commit for the three slices' blocks since they share the ledger, the session helper and the day loop. Red first: not done row by row; the code and tests were written together and the first run of `apply.test.ts` read one red, row 17's cut (it counted every session), fixed. Whole check `== exit 0` on the tree with `main`@`bcd26a7` in, 11-01 evening (shared 142 tests, bff 471, ui 621, scripts 243, visual 478, every package at 100 %, no warning); ten earlier runs of it were red, each reported as one: coverage of a branch of the seed (fixed by a test), knip on an unused export (fixed), and five runs on a test of another package that timed out or failed once under load (`bff` reconciliations route, `ui` MyDeliveries and staff setup, `visual` passkeys words), none in the files of this change. **The `pnpm demo` run** (`CREDO_DEMO_PARTNER=p3`, a counting script, 11-01): `vat-lieu-quang-tin-dat-3 S1`: 90 orders (3 drafts, 5 cancelled, 76 fulfilled, 6 sent for the next working day), 76 requests delivered, 5 cancelled, none waiting on a past day, 76 photos (largest 727 bytes), 60 driver-days closed (12 with a gap); `phan-phoi-loc-vuong-hai-3 S2`: 282 orders (20 drafts, 12 cancelled, 235 fulfilled, 15 sent), 235 delivered, 12 cancelled, 235 photos (largest 727 bytes), 110 driver-days closed (27 with a gap). The run's day was a Sunday, which has no requests, so none waits for today and none is closed.
 - [ ] **10. The recap and the merge.** Who: 🤖 the half-page recap, after step 9; the orchestrator
-  merges into `main` on the human's word. Done when: the recap is committed.
-- [ ] **11. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it.
-  Done when: CI's deploy of that `main` is green.
+  merges into `main` on the human's word. Done when: the recap is committed. *Merge part:* in `main` at `477f888`, on ridge 11-01; the recap is not written.
+- [x] **11. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it.
+  Done when: CI's deploy of that `main` is green. *Evidence:* in `main` at `477f888`, on ridge 11-01.
 - [ ] **12. ridge, on a fresh mapped code.** Who: 👤, about 15 minutes, after step 11: a copy of an S1
   and an S2 client made at `/operator` under a mapped code after the deploy, filled by the seed
   (`ops/seed.sh ridge`, or the morning's run); demo steps 1, 3 and 4 as its root (who lands on Orders
