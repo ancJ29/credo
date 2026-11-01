@@ -1,5 +1,5 @@
 import { type TenantConfig } from '@credo/shared';
-import { DEMO_DELIVERIES, DEMO_ORDERS } from '@credo/shared/demo';
+import { DEMO_DELIVERIES, DEMO_DELIVERY_PHOTOS, DEMO_ORDERS } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
 import { ApiError, createApi } from './api';
 
@@ -671,6 +671,54 @@ describe('the API client', () => {
         ['POST', `/api/deliveries/${request.day}/${request.id}/cancel`],
       ]);
       expect(calls[5]?.path).toBe('/api/drivers');
+    });
+
+    it('lists the driver’s own requests of a day, delivers one over the version read with its photo (a 409 being a conflict, with the request as it is now when the answer holds one) and reads its photo', async () => {
+      const photo =
+        DEMO_DELIVERY_PHOTOS[DEMO_DELIVERIES.find((one) => one.state === 'delivered')!.id];
+      const { calls, api } = fake(
+        json({ deliveries: [request] }),
+        json({}, 403),
+        json(requestDoc),
+        json({ error: 'moved', current: requestDoc }, 409),
+        json({ error: 'moved' }, 409),
+        json({}, 403),
+        json({ photo }),
+        json({}, 404),
+      );
+
+      expect(await api.myDeliveries(request.day)).toEqual([request]);
+      await expect(api.myDeliveries(request.day)).rejects.toMatchObject({ status: 403 });
+      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+        kind: 'done',
+        doc: requestDoc,
+      });
+      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+        kind: 'conflict',
+        current: requestDoc,
+      });
+      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+        kind: 'conflict',
+        current: null,
+      });
+      await expect(api.deliver(request.day, request.id, { version, photo })).rejects.toMatchObject({
+        status: 403,
+      });
+      expect(await api.getDeliveryPhoto(request.day, request.id)).toEqual({ photo });
+      await expect(api.getDeliveryPhoto(request.day, request.id)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/my-deliveries?day=${request.day}`],
+        ['GET', `/api/my-deliveries?day=${request.day}`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/deliver`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/deliver`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/deliver`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/deliver`],
+        ['GET', `/api/deliveries/${request.day}/${request.id}/photo`],
+        ['GET', `/api/deliveries/${request.day}/${request.id}/photo`],
+      ]);
+      expect(calls[2]?.init.body).toBe(JSON.stringify({ version, photo }));
     });
   });
 });

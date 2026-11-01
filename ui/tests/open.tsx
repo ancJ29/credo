@@ -24,6 +24,8 @@ type Options = {
   /** No one is allowed to deliver yet. */
   noDrivers?: boolean;
   language?: 'en' | 'vi';
+  /** What makes a delivery's photo small: the scene's stand-in unless given. */
+  shrink?: (file: File) => Promise<string>;
   /** Changes a call before the app draws, given the fake as it was before the spies. */
   override?: (api: Spied, original: Api) => void;
 };
@@ -35,9 +37,9 @@ export type Spied = { [K in keyof Api]: Mock<Api[K]> };
  * code); each call of the fake is a spy. */
 export function openApp(
   path: string,
-  { as, cue, operator, signIns, out, noDrivers, language = 'en', override }: Options = {},
+  { as, cue, operator, signIns, out, noDrivers, language = 'en', shrink, override }: Options = {},
 ) {
-  const { api, device, today } = sceneParts({
+  const parts = sceneParts({
     as,
     cue,
     operator,
@@ -46,6 +48,7 @@ export function openApp(
     noDrivers,
     language,
   });
+  const { api, device, today } = parts;
   const original = { ...api };
   for (const name of Object.keys(api) as (keyof Api)[]) vi.spyOn(api, name);
   const spied = api as unknown as Spied;
@@ -53,6 +56,9 @@ export function openApp(
   return {
     api: spied,
     device,
-    ...drawApp(<App api={api} device={device} today={today} test />, path),
+    ...drawApp(
+      <App api={api} device={device} today={today} shrink={shrink ?? parts.shrink} test />,
+      path,
+    ),
   };
 }

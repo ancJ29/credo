@@ -57,7 +57,12 @@ describe('the orders list', () => {
         day(one.day),
         one.customer.name,
         money(one.total),
-        { draft: 'Draft', confirmed: 'Confirmed', cancelled: 'Cancelled' }[one.state],
+        {
+          draft: 'Draft',
+          confirmed: 'Confirmed',
+          fulfilled: 'Fulfilled',
+          cancelled: 'Cancelled',
+        }[one.state],
         one.request?.driver.name ?? '',
       ]),
     );

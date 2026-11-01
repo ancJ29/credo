@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Group,
+  Image,
   NativeSelect,
   Paper,
   Stack,
@@ -27,8 +28,10 @@ export function useMoney() {
 const STATE_COLOUR: Record<OrderState | RequestState, string> = {
   draft: 'gray',
   confirmed: 'teal',
+  fulfilled: 'green',
   cancelled: 'red',
   waiting: 'blue',
+  delivered: 'green',
 };
 
 /** A state in words, in a badge. */
@@ -266,5 +269,21 @@ export function OutcomeAlert<Doc>({
         </Button>
       </Stack>
     </Alert>
+  );
+}
+
+/** A delivered request's photo, read from its own route. */
+export function ProofPhoto({ page, day, id }: { page: PageProps; day: string; id: string }) {
+  const { t } = useTranslation();
+  const loaded = useLoad(() => page.api.getDeliveryPhoto(day, id), page, [page.api, day, id]);
+  return (
+    <Paper withBorder p="md">
+      <Stack gap="sm">
+        <Title order={3}>{t('orders.proofTitle')}</Title>
+        <Loaded status={loaded.status} onRetry={loaded.reload}>
+          {loaded.data && <Image src={loaded.data.photo} alt={t('orders.proofAlt')} radius="md" />}
+        </Loaded>
+      </Stack>
+    </Paper>
   );
 }

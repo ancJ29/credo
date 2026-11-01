@@ -119,7 +119,7 @@ function Probe() {
 describe('the list’s address', () => {
   const root = { name: 'root', root: true, permissions: {} };
   const drawn = () => {
-    const { api } = sceneParts({ language: 'en' });
+    const { api, shrink } = sceneParts({ language: 'en' });
     return draw(
       <>
         <StaffListPage
@@ -128,6 +128,7 @@ describe('the list’s address', () => {
           onSignedOut={() => {}}
           onForbidden={() => {}}
           today={() => ''}
+          shrink={shrink}
         />
         <Probe />
       </>,

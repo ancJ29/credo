@@ -18,10 +18,13 @@ import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './DeliveriesPage';
 import { DeliveryPage } from './DeliveryPage';
+import { MyDeliveriesPage } from './MyDeliveriesPage';
+import { MyDeliveryPage } from './MyDeliveryPage';
 import { ImportPage } from './ImportPage';
 import { ListImportPage } from './ListImportPage';
 import { ListPage } from './ListPage';
 import { type PageProps } from './page';
+import { shrinkToProof } from './photo';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
 import { mayOpen, type Page, pagesOf } from './nav';
@@ -46,6 +49,8 @@ type Props = {
   look?: Look;
   /** The office's day now; the data set's on the fake, the browser's own otherwise. */
   today?: () => string;
+  /** Makes a delivery's photo small enough to send; the browser's own by default. */
+  shrink?: (file: File) => Promise<string>;
 };
 
 const SIGNED_OUT = 401;
@@ -95,7 +100,14 @@ async function boot(api: Api, device: DeviceStore, linked: string | null) {
  * anyone out; any other failure says the service is unavailable and offers a retry. An address
  * that names no company we know shows one screen in credo's colour and nothing of any client's.
  */
-export function ClientApp({ api, device, test, look, today = localToday }: Props) {
+export function ClientApp({
+  api,
+  device,
+  test,
+  look,
+  today = localToday,
+  shrink = shrinkToProof,
+}: Props) {
   const [phase, setPhase] = useState<'loading' | 'unavailable' | 'unknown'>('loading');
   const [doc, setDoc] = useState<ConfigDoc | null>(null);
   const [user, setUser] = useState<UserView | null>(null);
@@ -228,6 +240,7 @@ export function ClientApp({ api, device, test, look, today = localToday }: Props
     onSignedOut: signedOut,
     onForbidden: () => void readAgain(),
     today,
+    shrink,
   });
 
   const landing = !user && qr !== null && qrStatus !== 'done';
@@ -259,6 +272,14 @@ export function ClientApp({ api, device, test, look, today = localToday }: Props
           {first ? (
             <Routes>
               {ownPassword(user)}
+              <Route
+                path="/my-deliveries"
+                element={guarded(user, 'my-deliveries', <MyDeliveriesPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/my-deliveries/:day/:id"
+                element={guarded(user, 'my-deliveries', <MyDeliveryPage {...pageFor(user)} />)}
+              />
               <Route
                 path="/orders"
                 element={guarded(user, 'orders', <OrdersPage {...pageFor(user)} />)}

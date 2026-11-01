@@ -5,6 +5,7 @@ import {
   IconPackage,
   IconSettings,
   IconSitemap,
+  IconTruck,
   IconTruckDelivery,
   IconUsers,
 } from '@tabler/icons-react';
@@ -24,6 +25,14 @@ type Person = { root: boolean; permissions: PermissionLayer };
  * person's menu only when `allowed` says so; the BFF checks the same on every call, so this is a
  * view of it, never the guard. */
 export const PAGES = [
+  {
+    id: 'my-deliveries',
+    path: '/my-deliveries',
+    label: 'nav.myDeliveries',
+    icon: IconTruck,
+    // The root holds no employee, and no request names it: it is never a driver.
+    allowed: (user: Person) => !user.root && can(user, 'deliveries.canDeliver'),
+  },
   {
     id: 'orders',
     path: '/orders',

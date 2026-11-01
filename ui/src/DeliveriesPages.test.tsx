@@ -1,5 +1,5 @@
 import { addDays } from '@credo/shared';
-import { DEMO_DELIVERIES, DEMO_TODAY } from '@credo/shared/demo';
+import { DEMO_DELIVERIES, DEMO_DELIVERY_PHOTOS, DEMO_ORDERS, DEMO_TODAY } from '@credo/shared/demo';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -44,7 +44,7 @@ describe('the delivery requests', () => {
         one.customer.extra['address'],
         one.order.number,
         money(one.total),
-        one.state === 'waiting' ? 'Waiting' : 'Cancelled',
+        { waiting: 'Waiting', delivered: 'Delivered', cancelled: 'Cancelled' }[one.state],
       ]),
     ]);
 
@@ -167,6 +167,50 @@ describe('a delivery request opened', () => {
 
     openApp(`/deliveries/${DEMO_TODAY}/00000000-0000-4000-8000-000000000999`, { as: LAN });
     expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
+  });
+});
+
+describe('a delivered request', () => {
+  const delivered = today.find((one) => one.state === 'delivered')!;
+
+  it('The office sees a delivered request in Orders, Delivery requests, the request with its photo and its order Fulfilled, when it next opens or reloads one', async () => {
+    openApp(at(delivered), { as: LAN });
+
+    expect(await heading(`Delivery request ${delivered.number}`)).toBeTruthy();
+    expect(screen.getByText('Delivered')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: 'Proof of delivery' })).toBeTruthy();
+    const proof = await screen.findByRole('img', {
+      name: 'The goods as the driver delivered them',
+    });
+    expect(proof.getAttribute('src')).toBe(DEMO_DELIVERY_PHOTOS[delivered.id]);
+    // no cancel is offered after it
+    expect(screen.queryByRole('heading', { level: 3, name: 'Cancel the request' })).toBeNull();
+    document.body.innerHTML = '';
+
+    // its order reads Fulfilled, with the request it names
+    const order = DEMO_ORDERS.find((one) => one.id === delivered.order.id)!;
+    openApp(`/orders/${order.day}/${order.id}`, { as: LAN });
+    expect(await heading(`Order ${order.number}`)).toBeTruthy();
+    expect(screen.getByText('Fulfilled')).toBeTruthy();
+    expect(screen.getByRole('link', { name: delivered.number })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 3, name: 'Cancel the order' })).toBeNull();
+  });
+
+  it('says the photo could not be loaded, and tries again', async () => {
+    openApp(at(delivered), {
+      as: LAN,
+      override: (spied, original) => {
+        spied.getDeliveryPhoto.mockRejectedValueOnce(new ApiError(503));
+        spied.getDeliveryPhoto.mockImplementation((day, id) => original.getDeliveryPhoto(day, id));
+      },
+    });
+
+    await heading('Proof of delivery', 3);
+    expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByRole('img', { name: 'The goods as the driver delivered them' }),
+    ).toBeTruthy();
   });
 });
 

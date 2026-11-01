@@ -13,9 +13,12 @@ import {
   configDocSchema,
   type Customer,
   customerListReplySchema,
+  type DeliverRequest,
   type DeliveryDoc,
   deliveryDocSchema,
   deliveryListReplySchema,
+  type DeliveryPhotoReply,
+  deliveryPhotoReplySchema,
   deliveryRoutes,
   type DeliveryRequest,
   type Driver,
@@ -115,7 +118,7 @@ export type SavePhotoResult =
  * allow): a conflict is a result, carrying the order as it is now when the answer held one. */
 export type OrderResult =
   { kind: 'done'; doc: OrderDoc } | { kind: 'conflict'; current: OrderDoc | null };
-/** A request cancelled, or the version moved. */
+/** A request cancelled or delivered, or the version moved (or a step its state does not allow). */
 export type DeliveryResult =
   { kind: 'done'; doc: DeliveryDoc } | { kind: 'conflict'; current: DeliveryDoc | null };
 
@@ -386,6 +389,30 @@ export function createApi({
       }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'done', doc: await read(response, deliveryDocSchema) };
+    },
+
+    /** The signed-in driver's own requests of one day. */
+    async myDeliveries(day: string): Promise<DeliveryRequest[]> {
+      const response = await send('GET', deliveryRoutes.mine(day));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, deliveryListReplySchema)).deliveries;
+    },
+
+    /** A request marked delivered with its photo, by its own driver; a 409 carries it as it is now. */
+    async deliver(day: string, id: string, request: DeliverRequest): Promise<DeliveryResult> {
+      const response = await send('POST', deliveryRoutes.deliver(day, id), request);
+      if (response.status === 409) {
+        return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'done', doc: await read(response, deliveryDocSchema) };
+    },
+
+    /** A delivered request's photo. */
+    async getDeliveryPhoto(day: string, id: string): Promise<DeliveryPhotoReply> {
+      const response = await send('GET', deliveryRoutes.photo(day, id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, deliveryPhotoReplySchema);
     },
 
     /** The people the office may name as a driver: active, and allowed to deliver. */

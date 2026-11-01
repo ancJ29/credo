@@ -11,14 +11,15 @@ import {
   LinesTable,
   type Outcome,
   OutcomeAlert,
+  ProofPhoto,
   StateBadge,
   useMoney,
 } from './OrderParts';
 import { type PageProps, refusal, useLoad } from './page';
 
 /** A delivery request opened to be read: its number, day and driver, the order it came from, the
- * customer with their phone and address, the lines and the total to collect. The office cancels a
- * waiting one after a check; its order then offers to send it again. */
+ * customer with their phone and address, the lines and the total to collect, and for a delivered one
+ * its photo. The office cancels a waiting one after a check; its order then offers to send it again. */
 export function DeliveryPage(page: PageProps) {
   const { api } = page;
   const { day = '', id = '' } = useParams();
@@ -102,6 +103,9 @@ export function DeliveryPage(page: PageProps) {
             </Paper>
             <LinesTable lines={doc.request.lines} total={doc.request.total} />
             <Text fw={600}>{t('orders.collect', { total: money(doc.request.total) })}</Text>
+            {doc.request.state === 'delivered' && (
+              <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
+            )}
             {doc.request.state === 'waiting' && can(page.user, 'orders.canEdit') && (
               <CancelPanel
                 title={t('orders.cancelRequest')}

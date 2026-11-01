@@ -10,7 +10,7 @@ import { sceneParts } from './scene';
 import { StaffListPage } from './StaffListPage';
 import { shrinkToPhoto } from './photo';
 
-vi.mock('./photo', () => ({ shrinkToPhoto: vi.fn() }));
+vi.mock('./photo', () => ({ shrinkToPhoto: vi.fn(), shrinkToProof: vi.fn() }));
 
 /** One user for the file, with no wait on the event loop between the actions it makes: the default
  * `delay: 0` hands control back to the loop after every key and click, which a loaded machine
@@ -898,7 +898,7 @@ describe('the list and its address', () => {
   });
 
   it('Two narrowings before the router commits the first keep both', async () => {
-    const { api } = sceneParts({ language: 'en' });
+    const { api, shrink } = sceneParts({ language: 'en' });
     const root = { name: 'root', root: true, permissions: {} };
     draw(
       <>
@@ -908,6 +908,7 @@ describe('the list and its address', () => {
           onSignedOut={() => {}}
           onForbidden={() => {}}
           today={() => ''}
+          shrink={shrink}
         />
         <Probe />
       </>,

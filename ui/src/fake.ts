@@ -27,6 +27,7 @@ import {
   type PermissionId,
   type PhotoReply,
   priceLines,
+  proofIsValid,
   normaliseEmployeeCode,
   normaliseSignInName,
   passwordIsValid,
@@ -49,6 +50,8 @@ import {
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
+  DEMO_DRIVER_QR_SECRET,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
@@ -140,14 +143,17 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
   );
   const orderVersions = new Map(DEMO_ORDERS.map((one) => [one.id, 1]));
   const requestVersions = new Map(DEMO_DELIVERIES.map((one) => [one.id, 1]));
+  /** Each delivered request's photo, by the request's id; the data set's, then any sent since. */
+  const proofs = new Map(Object.entries(DEMO_DELIVERY_PHOTOS));
   let lastOrder = DEMO_ORDERS.length;
   let lastRequest = DEMO_DELIVERIES.length;
   /** How many QR codes have been minted: each one's secret is its number. */
   let minted = 0;
   /** The QR code each person was last shown, by the secret it signs in with; spending one removes it.
-   * The data set holds one, a warehouse member's, for the phone's walk. */
+   * The data set holds two, a warehouse member's and the driver's, for the phone's walks. */
   const qrs = new Map<string, string>([
     [DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!.id, DEMO_QR_SECRET],
+    [DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0005')!.id, DEMO_DRIVER_QR_SECRET],
   ]);
 
   /** Runs `answer`, unless the cue names `call` and has not fired: then its status instead, as
@@ -204,12 +210,28 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
   const mayOnly = (id: PermissionId) => {
     if (!isRoot() && !can(signedInUser(device.authId()!), id)) throw new ApiError(403);
   };
+  /** The signed-in driver: a staff member whom their layers allow to deliver, never the root (it
+   * holds no employee, and no request names it). */
+  const mayDeliver = () => {
+    mayOnly('deliveries.canDeliver');
+    if (isRoot()) throw new ApiError(403);
+    return person(device.authId()!.slice(STAFF_HANDLE.length));
+  };
   /** The people the office may name as a driver: not left, and allowed to deliver by their layers. */
   const driversNow = (): Driver[] =>
     [...people.values()]
       .filter((one) => !one.archived && staffUser(one).permissions['deliveries.canDeliver'])
       .map(({ id, code, name }) => ({ id, code, name }))
       .sort(byCode);
+  /** A request its reader may see: the office (who may see orders), or the request's own driver. */
+  const readable = (day: string, id: string) => {
+    const office = isRoot() || can(signedInUser(device.authId()!), 'orders.canView');
+    // Anyone but the office must be allowed to deliver before the request is looked for.
+    const driver = office ? null : mayDeliver();
+    const found = requestAt(day, id);
+    if (driver && found.driver.id !== driver.id) throw new ApiError(403);
+    return found;
+  };
   const orderAt = (day: string, id: string) => {
     const found = orders.get(id);
     if (!found || found.day !== day) throw notFound();
@@ -228,6 +250,9 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
     request: structuredClone(found),
     version: `g${requestVersions.get(found.id)}`,
   });
+  /** An order whose request was delivered: its cancel is refused. */
+  const deliveredOf = (found: Order) =>
+    found.request !== null && requests.get(found.request.id)!.state === 'delivered';
   const orderMoved = (found: Order) => {
     orderVersions.set(found.id, (orderVersions.get(found.id) as number) + 1);
     return { kind: 'done' as const, doc: orderDoc(found) };
@@ -249,6 +274,18 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
     version !== `o${orderVersions.get(found.id)}` || !allowed
       ? { kind: 'conflict' as const, current: orderDoc(found) }
       : null;
+  /** The office's cancel of an order: its request is cancelled first, then the order, as the BFF
+   * writes them. */
+  const withdraw = (found: Order): OrderResult => {
+    const live = found.request && requests.get(found.request.id);
+    if (live) {
+      live.state = 'cancelled';
+      requestMoved(live);
+    }
+    found.state = 'cancelled';
+    found.request = null;
+    return orderMoved(found);
+  };
   /** Confirming a draft and sending a confirmed order again make a request the same way. */
   const issue = (
     day: string,
@@ -605,17 +642,13 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
         (): OrderResult => {
           mayOnly('orders.canEdit');
           const found = orderAt(day, id);
-          const stale = orderStale(found, request.version, found.state !== 'cancelled');
+          const stale = orderStale(
+            found,
+            request.version,
+            found.state === 'draft' || (found.state === 'confirmed' && !deliveredOf(found)),
+          );
           if (stale) return stale;
-          // The request is cancelled first, then the order, as the BFF writes them.
-          const live = found.request && requests.get(found.request.id);
-          if (live) {
-            live.state = 'cancelled';
-            requestMoved(live);
-          }
-          found.state = 'cancelled';
-          found.request = null;
-          return orderMoved(found);
+          return withdraw(found);
         },
         () => ({ kind: 'conflict' as const, current: orderDoc(orderAt(day, id)) }),
       ),
@@ -634,8 +667,57 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
 
     getDelivery: (day, id) =>
       call('getDelivery', () => {
-        mayOnly('orders.canView');
-        return requestDoc(requestAt(day, id));
+        const found = readable(day, id);
+        return requestDoc(found);
+      }),
+
+    myDeliveries: (day) =>
+      call('myDeliveries', () => {
+        const driver = mayDeliver();
+        const rank = (one: DeliveryRequest) => (one.state === 'waiting' ? 0 : 1);
+        return [...requests.values()]
+          .filter((one) => one.day === day && one.driver.id === driver.id)
+          .filter((one) => one.state !== 'cancelled')
+          .map((one) => structuredClone(one))
+          .sort((a, b) => rank(a) - rank(b) || a.number.localeCompare(b.number));
+      }),
+
+    deliver: (day, id, request) =>
+      call<DeliveryResult>(
+        'deliver',
+        () => {
+          const driver = mayDeliver();
+          const found = requestAt(day, id);
+          if (found.driver.id !== driver.id) throw new ApiError(403);
+          if (!proofIsValid(request.photo)) throw new ApiError(400);
+          if (request.version !== `g${requestVersions.get(id)}` || found.state !== 'waiting') {
+            return { kind: 'conflict', current: requestDoc(found) };
+          }
+          // The photo, then the request, then the order, as the BFF writes them.
+          proofs.set(found.id, request.photo);
+          found.state = 'delivered';
+          found.deliveredAt = Date.now();
+          requestMoved(found);
+          const order = orders.get(found.order.id)!;
+          // A waiting request's order is confirmed and names it, so the order is fulfilled with it.
+          order.state = 'fulfilled';
+          orderMoved(order);
+          return { kind: 'done', doc: requestDoc(found) };
+        },
+        // The office cancels the order, and so the request, before the driver's send arrives.
+        () => {
+          const found = requestAt(day, id);
+          withdraw(orders.get(found.order.id)!);
+          return { kind: 'conflict', current: requestDoc(found) };
+        },
+      ),
+
+    getDeliveryPhoto: (day, id) =>
+      call('getDeliveryPhoto', () => {
+        const found = readable(day, id);
+        const photo = proofs.get(found.id);
+        if (found.state !== 'delivered' || photo === undefined) throw notFound();
+        return { photo };
       }),
 
     cancelDelivery: (day, id, request: CancelRequest) =>

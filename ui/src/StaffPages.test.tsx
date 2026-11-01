@@ -103,7 +103,8 @@ describe('the staff list', () => {
     add.unmount();
 
     // no page at all: one page says there is nothing yet
-    openApp('/staff', { as: 'EMP-0005' });
+    // the data set's drivers hold a page of their own, so the right to deliver is taken away first
+    openApp('/staff', { as: 'EMP-0005', noDrivers: true });
     expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
       'Nothing for you here yet',
     );
@@ -682,7 +683,7 @@ describe('the words', () => {
     }
     for (const language of ['vi', 'en'] as const) {
       for (const as of ['EMP-0005']) {
-        const drawn = openApp('/staff', { language, as });
+        const drawn = openApp('/staff', { language, as, noDrivers: true });
         await screen.findByRole('status');
         expect(missingKey()).toBeNull();
         drawn.unmount();

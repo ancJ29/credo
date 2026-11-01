@@ -4,6 +4,7 @@ import {
   DEMO_IMPORT_ROWS,
   DEMO_PRODUCT_IMPORT_ROWS,
   DEMO_STAFF_SETUP,
+  DEMO_WALK_PROOF,
 } from '@credo/shared/demo';
 import { readFirstSheet, writeWorkbook } from './importFile';
 import { columnsOf, headingOf } from './importSheet';
@@ -21,13 +22,18 @@ const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 /** The files the demo company's root chooses: the staff file (`import`, or `import-no-name`
  * without the name column), the customers' (`customers`, or `customers-no-code` without the code
- * column) and the products'. */
-export type DemoFile = 'import' | 'import-no-name' | 'customers' | 'customers-no-code' | 'products';
+ * column) and the products'; `photo` is the picture a driver's camera gives, a drawn PNG. */
+export type DemoFile =
+  'import' | 'import-no-name' | 'customers' | 'customers-no-code' | 'products' | 'photo';
 
 /** A demo file as an Excel file in a language: its headings and the data set's rows. It is what the
  * walks page and the walk spec both put in the file picker. */
 export async function demoImportFile(language: Language, which: DemoFile) {
   let rows: string[][];
+  if (which === 'photo') {
+    const bytes = Uint8Array.from(atob(DEMO_WALK_PROOF.split(',')[1]), (c) => c.charCodeAt(0));
+    return new File([bytes], 'photo.png', { type: 'image/png' });
+  }
   if (which === 'import' || which === 'import-no-name') {
     const columns = columnsOf(DEMO_STAFF_SETUP).filter(
       (column) => which === 'import' || column.key !== 'name',

@@ -35,5 +35,8 @@ export const staffCalls = {
   getDelivery: down,
   cancelDelivery: down,
   listDrivers: down,
+  myDeliveries: down,
+  deliver: down,
+  getDeliveryPhoto: down,
   listClients: down,
 };

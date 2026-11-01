@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listFile, readListFile } from './importDemo';
+import { demoImportFile, listFile, readListFile } from './importDemo';
 import { readFirstSheet } from './importFile';
 
 describe('a list file made from rows', () => {
@@ -30,5 +30,15 @@ describe('a list file made from rows', () => {
     await expect(readListFile('customers', file, new Set())).rejects.toThrow(
       'refused as a whole: no-code',
     );
+  });
+});
+
+describe('the camera’s file', () => {
+  it('is the data set’s drawn picture as a PNG file, the one a walk chooses as the photo of a delivery', async () => {
+    const file = await demoImportFile('en', 'photo');
+
+    expect(file.name).toBe('photo.png');
+    expect(file.type).toBe('image/png');
+    expect([...new Uint8Array(await file.arrayBuffer()).slice(1, 4)]).toEqual([80, 78, 71]);
   });
 });

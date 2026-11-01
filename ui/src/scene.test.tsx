@@ -31,6 +31,14 @@ describe('a scene’s parts', () => {
     expect(sceneParts({ language: 'en' }).device.operatorAuthId()).toBeNull();
   });
 
+  it('hand a chosen picture back as it is, as a data URL: the stand-in for what makes a photo small', async () => {
+    const { shrink } = sceneParts({ language: 'en' });
+    const bytes = [137, 80, 78, 71, 13, 10, 26, 10];
+    const file = new File([new Uint8Array(bytes)], 'photo.png', { type: 'image/png' });
+
+    expect(await shrink(file)).toBe(`data:image/png;base64,${btoa(String.fromCharCode(...bytes))}`);
+  });
+
   it('refuse a code the data set does not hold, naming it', () => {
     expect(() => sceneParts({ as: 'EMP-9999', language: 'en' })).toThrow(
       'no EMP-9999 in the data set',

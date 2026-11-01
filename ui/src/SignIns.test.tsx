@@ -345,7 +345,7 @@ describe('one’s own password', () => {
   });
 
   it('C: Someone allowed nothing still changes their own password', async () => {
-    openApp('/staff', { as: 'EMP-0005' });
+    openApp('/staff', { as: 'EMP-0005', noDrivers: true });
     await screen.findByRole('heading', { level: 2, name: 'Nothing for you here yet' });
     await openUserMenu('Võ Thanh Tùng');
     await userEvent.click(screen.getByRole('menuitem', { name: 'Change password' }));

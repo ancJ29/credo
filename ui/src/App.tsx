@@ -14,6 +14,8 @@ type Props = {
   look?: Look;
   /** The office's day now, for a client's pages; the browser's own when none is given. */
   today?: () => string;
+  /** Makes a delivery's photo small enough to send; the browser's own when none is given. */
+  shrink?: (file: File) => Promise<string>;
 };
 
 /** The operator's door is `/operator`; it is drawn outside the client's boot, which asks a

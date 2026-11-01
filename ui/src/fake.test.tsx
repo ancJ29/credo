@@ -8,6 +8,7 @@ import {
   customerListReplySchema,
   deliveryDocSchema,
   deliveryListReplySchema,
+  deliveryPhotoReplySchema,
   driverListReplySchema,
   orderDocSchema,
   orderListReplySchema,
@@ -34,6 +35,8 @@ import {
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
+  DEMO_DRIVER_QR_SECRET,
   DEMO_EMPLOYEES,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
@@ -42,6 +45,7 @@ import {
   DEMO_QR_SECRET,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
+  DEMO_WALK_PROOF,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 import { screen } from '@testing-library/react';
@@ -187,6 +191,20 @@ describe('the fake Api', () => {
       day: DEMO_TODAY,
     });
     parses('sendOrder', orderDocSchema, sent0.kind === 'done' ? sent0.doc : null);
+    const mine = fake('', { client: `fake.session.${DEMO_EMPLOYEES[4]?.id}` });
+    const listedMine = await mine.myDeliveries(DEMO_TODAY);
+    parses('myDeliveries', deliveryListReplySchema, { deliveries: listedMine });
+    const toDeliver = listedMine.find((one) => one.state === 'waiting')!;
+    const delivered0 = await mine.deliver(DEMO_TODAY, toDeliver.id, {
+      version: 'g1',
+      photo: DEMO_WALK_PROOF,
+    });
+    parses('deliver', deliveryDocSchema, delivered0.kind === 'done' ? delivered0.doc : null);
+    parses(
+      'getDeliveryPhoto',
+      deliveryPhotoReplySchema,
+      await mine.getDeliveryPhoto(DEMO_TODAY, toDeliver.id),
+    );
     const cancelledOrder = await shop.cancelOrder(draft.day, draft.id, { version: read0.version });
     parses(
       'cancelOrder',
@@ -269,6 +287,9 @@ describe('the fake Api', () => {
         'getDelivery',
         'cancelDelivery',
         'listDrivers',
+        'myDeliveries',
+        'deliver',
+        'getDeliveryPhoto',
         'saveEmployee',
         'setPassword',
         'changeCode',
@@ -1291,5 +1312,189 @@ describe('the fake Api’s orders and delivery requests', () => {
 
     expect(parts?.today()).toBe(DEMO_TODAY);
     expect(await parts?.api.listDrivers()).toEqual([]);
+  });
+});
+
+describe('the fake Api’s deliveries', () => {
+  const as = (code: string) => ({
+    client: `fake.session.${DEMO_EMPLOYEES.find((one) => one.code === code)!.id}`,
+  });
+  const tung = as('EMP-0005');
+  const nam = as('EMP-0006');
+  const todays = (code: string) =>
+    DEMO_DELIVERIES.filter((one) => one.day === DEMO_TODAY && one.driver.code === code);
+  const waiting = todays('EMP-0005').find((one) => one.state === 'waiting')!;
+  const photo = DEMO_WALK_PROOF;
+
+  it('My deliveries lists the driver’s own requests of a day, those waiting first and then those delivered, each by number; the office’s cancelled one is not listed, and another driver’s never is', async () => {
+    const api = fake('', tung);
+
+    const mine = await api.myDeliveries(DEMO_TODAY);
+
+    expect(mine.map((one) => [one.number, one.state])).toEqual([
+      [waiting.number, 'waiting'],
+      ...todays('EMP-0005')
+        .filter((one) => one.state === 'delivered')
+        .map((one) => [one.number, 'delivered']),
+    ]);
+    expect(mine.every((one) => one.driver.code === 'EMP-0005')).toBe(true);
+    expect(mine.some((one) => one.state === 'cancelled')).toBe(false);
+    expect((await fake('', nam).myDeliveries(DEMO_TODAY)).map((one) => one.driver.code)).toEqual([
+      'EMP-0006',
+      'EMP-0006',
+    ]);
+    expect(await api.myDeliveries(addDays(DEMO_TODAY, 9))).toEqual([]);
+  });
+
+  it('Only someone allowed to deliver, never the root, has deliveries: anyone else is a 403', async () => {
+    const office = as('EMP-0001');
+    const root = { client: 'fake.session' };
+    for (const held of [root, office]) {
+      const api = fake('', held);
+      for (const answer of [
+        api.myDeliveries(DEMO_TODAY),
+        api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo }),
+      ]) {
+        expect(await status(answer)).toBe(403);
+      }
+    }
+  });
+
+  it('Delivered is the whole request, once, by its own driver only: another driver, the office and the root are refused, and a photo the shared schema refuses is a 400', async () => {
+    const api = fake('', tung);
+
+    expect(
+      await status(fake('', nam).deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo })),
+    ).toBe(403);
+    expect(await status(api.deliver(DEMO_TODAY, 'nope', { version: 'g1', photo }))).toBe(404);
+    expect(
+      await status(api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo: 'not a photo' })),
+    ).toBe(400);
+    expect((await api.getDelivery(DEMO_TODAY, waiting.id)).request.state).toBe('waiting');
+
+    const done = await api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo });
+    expect(done).toMatchObject({ kind: 'done', doc: { request: { state: 'delivered' } } });
+    expect(done.kind === 'done' && typeof done.doc.request.deliveredAt).toBe('number');
+    // a second send finds it delivered: a conflict carrying it as it is, nothing written over
+    expect(await api.deliver(DEMO_TODAY, waiting.id, { version: 'g2', photo })).toMatchObject({
+      kind: 'conflict',
+      current: { request: { state: 'delivered' } },
+    });
+  });
+
+  it('A send over a version that moved is a conflict that carries the request as it is, and nothing is delivered', async () => {
+    const api = fake('', tung);
+
+    expect(await api.deliver(DEMO_TODAY, waiting.id, { version: 'g9', photo })).toMatchObject({
+      kind: 'conflict',
+      current: { request: { id: waiting.id, state: 'waiting' } },
+    });
+    expect((await api.getDelivery(DEMO_TODAY, waiting.id)).request.state).toBe('waiting');
+  });
+
+  it('The order is fulfilled when its request is delivered, and a delivered request and its order are not changed, sent again or cancelled after', async () => {
+    // one fake whose person changes: the driver delivers, then the office reads and tries to change
+    let held = tung.client;
+    const api = createFakeApi({
+      device: { authId: () => held, operatorAuthId: () => null },
+      cue: null,
+    });
+    const order = DEMO_ORDERS.find((one) => one.id === waiting.order.id)!;
+    const read = await api.getDelivery(DEMO_TODAY, waiting.id);
+
+    await api.deliver(DEMO_TODAY, waiting.id, { version: read.version, photo });
+
+    held = as('EMP-0001').client;
+    const fulfilled = await api.getOrder(order.day, order.id);
+    expect(fulfilled.order).toMatchObject({ state: 'fulfilled', request: { id: waiting.id } });
+    expect(
+      await api.cancelOrder(order.day, order.id, { version: fulfilled.version }),
+    ).toMatchObject({ kind: 'conflict', current: { order: { state: 'fulfilled' } } });
+    expect(
+      await api.cancelDelivery(DEMO_TODAY, waiting.id, {
+        version: (await api.getDelivery(DEMO_TODAY, waiting.id)).version,
+      }),
+    ).toMatchObject({ kind: 'conflict', current: { request: { state: 'delivered' } } });
+    expect(
+      await api.sendOrder(order.day, order.id, {
+        version: fulfilled.version,
+        driverId: waiting.driver.id,
+        day: DEMO_TODAY,
+      }),
+    ).toMatchObject({ kind: 'conflict' });
+    // the office cannot mark it, whatever it sends
+    expect(await status(api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo }))).toBe(403);
+  });
+
+  it('A delivery’s photo is read by those who may see orders and by its own driver, by no one else; the photo of a request not delivered is a 404', async () => {
+    const delivered = DEMO_DELIVERIES.find(
+      (one) => one.state === 'delivered' && one.driver.code === 'EMP-0005',
+    )!;
+
+    for (const held of [as('EMP-0001'), tung, { client: 'fake.session' }]) {
+      expect(await fake('', held).getDeliveryPhoto(delivered.day, delivered.id)).toEqual({
+        photo: DEMO_DELIVERY_PHOTOS[delivered.id],
+      });
+    }
+    for (const held of [nam, as('EMP-0004')]) {
+      expect(await status(fake('', held).getDeliveryPhoto(delivered.day, delivered.id))).toBe(403);
+      expect(await status(fake('', held).getDelivery(delivered.day, delivered.id))).toBe(403);
+    }
+    expect(await fake('', tung).getDelivery(delivered.day, delivered.id)).toMatchObject({
+      request: { id: delivered.id },
+    });
+    expect(await status(fake('', tung).getDeliveryPhoto(DEMO_TODAY, waiting.id))).toBe(404);
+    // a photo sent is read back as sent
+    const api = fake('', tung);
+    await api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo });
+    expect(await api.getDeliveryPhoto(DEMO_TODAY, waiting.id)).toEqual({ photo });
+  });
+
+  it('answer a cue’s 403, 409 or 503 once; `deliver:409` has the office cancel the request first, so the driver meets it cancelled', async () => {
+    const calls: Record<string, (api: ReturnType<typeof fake>) => Promise<unknown>> = {
+      myDeliveries: (api) => api.myDeliveries(DEMO_TODAY),
+      getDeliveryPhoto: (api) =>
+        api.getDeliveryPhoto(
+          DEMO_TODAY,
+          DEMO_DELIVERIES.find((one) => one.day === DEMO_TODAY && one.state === 'delivered')!.id,
+        ),
+    };
+    for (const [name, call] of Object.entries(calls)) {
+      for (const code of [403, 503]) {
+        const cued = fake(`${name}:${code}`, tung);
+        expect(await status(call(cued)), `${name} ${code}`).toBe(code);
+        expect(await status(call(cued)), `${name} again`).toBe('answered');
+      }
+    }
+    expect(
+      await status(
+        fake('deliver:503', tung).deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo }),
+      ),
+    ).toBe(503);
+    expect(
+      await status(
+        fake('deliver:403', tung).deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo }),
+      ),
+    ).toBe(403);
+
+    const api = fake('deliver:409', tung);
+    const answer = await api.deliver(DEMO_TODAY, waiting.id, { version: 'g1', photo });
+    expect(answer).toMatchObject({
+      kind: 'conflict',
+      current: { request: { state: 'cancelled' } },
+    });
+    // the driver's list no longer holds it
+    expect((await api.myDeliveries(DEMO_TODAY)).some((one) => one.id === waiting.id)).toBe(false);
+    expect((await api.getDelivery(DEMO_TODAY, waiting.id)).request.state).toBe('cancelled');
+  });
+
+  it('The data set holds a QR code for the driver, which signs them in once', async () => {
+    const api = fake('', { client: 'fake.session' }, true);
+    const tungPerson = DEMO_EMPLOYEES.find((one) => one.code === 'EMP-0005')!;
+
+    expect((await api.signInQr(tungPerson.id, DEMO_DRIVER_QR_SECRET)).user.name).toBe(
+      tungPerson.name,
+    );
+    expect(await status(api.signInQr(tungPerson.id, DEMO_DRIVER_QR_SECRET))).toBe(401);
   });
 });

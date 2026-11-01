@@ -11,6 +11,8 @@ export type PageProps = {
   onForbidden: () => void;
   /** The office's day now, `YYYY-MM-DD`: the day a new order is filed under. */
   today: () => string;
+  /** A photo chosen or taken, made small enough to send: the browser's canvas on a phone. */
+  shrink: (file: File) => Promise<string>;
 };
 
 /** What a refusal needs of its page: a 401 signs out, and a 403, where the page has one to answer,

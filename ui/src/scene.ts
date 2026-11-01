@@ -31,6 +31,16 @@ type SceneOptions = {
   language: Language;
 };
 
+/** A delivery's photo as the walks page, `pnpm report` and the tests make it: the file as chosen, read
+ * as it is into a data URL. The browser's canvas, which makes a real photo small, is not in jsdom, and a
+ * `FileReader` would refuse a file made by another realm (`pnpm report` draws on a jsdom window in plain
+ * Node), so the bytes are read from the file itself. */
+const asChosen = async (file: File) => {
+  let binary = '';
+  for (const byte of new Uint8Array(await file.arrayBuffer())) binary += String.fromCharCode(byte);
+  return `data:${file.type};base64,${btoa(binary)}`;
+};
+
 /**
  * The fake `Api` and the device it answers for, on the demo company, already signed in as the
  * root, as a data-set person or as the operator (or not signed in at all) and speaking `language`:
@@ -53,5 +63,7 @@ export function sceneParts({ as, cue, operator, signIns, out, noDrivers, languag
     device,
     /** The data set's today, whatever day the page is drawn on. */
     today: () => DEMO_TODAY,
+    /** What makes a delivery's photo small: the file itself, as chosen. */
+    shrink: asChosen,
   };
 }
