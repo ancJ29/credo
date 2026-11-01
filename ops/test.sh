@@ -1666,8 +1666,9 @@ refuses_edge "  an /api/* answer from a cache is red" cached "with no cache in f
 refuses_edge "  a handle that outlives sign-out is red" no-sign-out "the handle is refused after"
 refuses_edge "  the operator's door open without a session is red" operator-open "the operator's door without a session"
 refuses_edge "  a sign-in whose relying party is not the app's host is red" rp-from-request "relying party is the app's host"
-# built like the deploy's run: logged, the app's host masked as app_load does, then the reads. The
-# host is what the relying party is, so a check that prints it turns a green deploy red (row 37).
+# built like the deploy's run: logged, the app's host masked (the bare host, stricter than app_load's
+# host with its port), then the reads. The host is what the relying party is, so a check that prints
+# it turns a green deploy red (row 37). The log must also hold the check's own line, as a yes.
 cat >"$WORK/edge-log.sh" <<'CHILD'
 set -euo pipefail
 . "$OPS_DIR/lib.sh"
@@ -1675,17 +1676,19 @@ log_start edgelog x
 mask 127.0.0.1
 edge_reads "http://127.0.0.1:$1" check-t "$FAKE_EDGE_PASS" "$FAKE_EDGE_NAME"
 CHILD
-eport_log=$(free_port)
-FAKE_EDGE_MODE='' python3 -I "$WORK/edge.py" "$eport_log" >/dev/null 2>&1 &
-PID=$!
-for _ in $(seq 1 50); do if port_taken "$eport_log"; then break; fi; sleep 0.1; done
 rm -rf "$WORK/logs" "$WORK/tmp"
 mkdir -p "$WORK/tmp"
-OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp bash "$WORK/edge-log.sh" "$eport_log" >/dev/null 2>&1 || true
-kill "$PID" 2>/dev/null || true
-PID=''
-check "the edge reads, logged with the app's host masked: the log holds no key and the run exits 0" \
-  "ok   no key in this log == exit 0" "$(tail -n 2 "$WORK"/logs/*.log | tr '\n' ' ' | sed 's/ $//')"
+(
+  eport_log=$(free_port)
+  FAKE_EDGE_MODE='' python3 -I "$WORK/edge.py" "$eport_log" >/dev/null 2>&1 &
+  epid=$!
+  for _ in $(seq 1 50); do if port_taken "$eport_log"; then break; fi; sleep 0.1; done
+  OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp bash "$WORK/edge-log.sh" "$eport_log" >/dev/null 2>&1 || true
+  kill "$epid" 2>/dev/null || true
+)
+check "the edge reads, logged with the app's host masked: the host's line says yes, no key, exit 0" \
+  "1 ok   no key in this log == exit 0" \
+  "$(grep -c "the sign-in options' relying party is the app's host, never the request's: 200 yes" "$WORK"/logs/*.log || true) $(tail -n 2 "$WORK"/logs/*.log | tr '\n' ' ' | sed 's/ $//')"
 cport_edge=$(free_port)
 check "  an address that answers nothing is red, and the address is not in what is printed" "no" \
   "$( (REDS=''; edge_reads "http://127.0.0.1:$cport_edge" check-t x y 2>&1 | grep -c "127.0.0.1:$cport_edge" | sed 's/^0$/no/'))"

@@ -1,10 +1,11 @@
-import { daySchema, type DeliveryRequest } from '@credo/shared';
-import { Anchor, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { daySchema, type DeliveryRequest, driverDay } from '@credo/shared';
+import { Anchor, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { Loaded } from './Loaded';
 import { StateBadge, useMoney } from './OrderParts';
 import { type PageProps, useLoad } from './page';
+import { useGapText } from './ReconcileParts';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -20,8 +21,13 @@ export function DeliveriesPage(page: PageProps) {
   const [params, setParams] = useSearchParams();
   const asked = daySchema.safeParse(params.get('day'));
   const day = asked.success ? asked.data : page.today();
-  const loaded = useLoad(() => page.api.listDeliveries(day), page, [page.api, day]);
-  const rows = loaded.data ?? [];
+  const gapText = useGapText();
+  const loaded = useLoad(
+    () => Promise.all([page.api.listDeliveries(day), page.api.listReconciliations(day)]),
+    page,
+    [page.api, day],
+  );
+  const [rows, closedDays] = loaded.data ?? [[], []];
   const drivers = [...new Map(rows.map((row) => [row.driver.id, row.driver])).values()];
 
   return (
@@ -44,6 +50,8 @@ export function DeliveriesPage(page: PageProps) {
         ) : (
           drivers.map((driver) => {
             const mine = rows.filter((row) => row.driver.id === driver.id);
+            const figures = driverDay(rows, driver.id);
+            const closed = closedDays.find((one) => one.driver.id === driver.id);
             return (
               <Paper key={driver.id} withBorder p="md">
                 <Stack gap="sm">
@@ -53,6 +61,31 @@ export function DeliveriesPage(page: PageProps) {
                       {t('orders.requestCount', { n: mine.length })}
                     </Text>
                   </Title>
+                  <Group justify="space-between" align="flex-end">
+                    <Stack gap={2}>
+                      <Text>
+                        {t('reconcile.bringBack', { total: money(figures.toCollect) })}
+                        {' · '}
+                        {t('reconcile.deliveredOf', {
+                          n: figures.delivered.length,
+                          m: figures.delivered.length + figures.waiting.length,
+                        })}
+                      </Text>
+                      <Text c="dimmed">
+                        {closed
+                          ? t('reconcile.dayClosedGap', { gap: gapText(closed.difference) })
+                          : t('reconcile.dayOpen')}
+                      </Text>
+                    </Stack>
+                    <Button
+                      component={Link}
+                      to={`/deliveries/${day}/drivers/${driver.id}`}
+                      variant="default"
+                      aria-label={t('reconcile.openFor', { name: driver.name })}
+                    >
+                      {t('reconcile.open')}
+                    </Button>
+                  </Group>
                   <Table.ScrollContainer minWidth={720}>
                     <Table highlightOnHover aria-label={driver.name}>
                       <Table.Thead>

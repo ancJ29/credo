@@ -79,7 +79,7 @@ describe('the walks page: the map', () => {
       'Set up the company: its name, colour and languages',
     ]);
     const map = screen.getByRole('region', { name: 'The map of the day' });
-    for (const part of ['Set up', 'Staff', 'Stock', 'Orders', 'Delivery']) {
+    for (const part of ['Set up', 'Staff', 'Stock', 'Orders', 'Delivery', 'The day’s end']) {
       expect(within(map).getByText(part)).toBeTruthy();
     }
     expect(within(map).getByText('The client’s admin').parentElement!.textContent).toContain('PC');
@@ -89,8 +89,8 @@ describe('the walks page: the map', () => {
     expect(cell.textContent).toContain('Set up the company: its name, colour and languages');
     expect(cell.textContent).toContain('9 screens');
     expect(cell.textContent).toContain('18 waiting');
-    // One cell of twenty is filled; nineteen are hatched.
-    expect(within(map).getAllByTitle('Not built yet')).toHaveLength(19);
+    // One cell of twenty-four is filled; twenty-three are hatched.
+    expect(within(map).getAllByTitle('Not built yet')).toHaveLength(23);
   });
 
   it('puts the operator’s walk on its own row, above the client’s admin, with its nine screens and its questions', async () => {
@@ -103,7 +103,7 @@ describe('the walks page: the map', () => {
     expect(operator.textContent).toContain('9 screens');
     expect(admin.getAttribute('href')).toBe('#admin-setup');
     expect(within(map).getByText('The operator').parentElement!.textContent).toContain('PC');
-    expect(within(map).getAllByTitle('Not built yet')).toHaveLength(18);
+    expect(within(map).getAllByTitle('Not built yet')).toHaveLength(22);
 
     fireEvent.click(operator);
     const walk = document.querySelector('#operator-setup')!;

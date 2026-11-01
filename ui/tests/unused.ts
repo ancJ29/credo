@@ -34,6 +34,8 @@ export const staffCalls = {
   listDeliveries: down,
   getDelivery: down,
   cancelDelivery: down,
+  listReconciliations: down,
+  closeDay: down,
   listDrivers: down,
   myDeliveries: down,
   deliver: down,

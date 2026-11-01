@@ -2,6 +2,8 @@ import {
   addDays,
   addEmployeeReplySchema,
   clientListReplySchema,
+  closeRequestFor,
+  driverDay,
   importEmployeesReplySchema,
   importCustomersReplySchema,
   importProductsReplySchema,
@@ -13,6 +15,9 @@ import {
   orderDocSchema,
   orderListReplySchema,
   productListReplySchema,
+  reconciliationListReplySchema,
+  reconciliationSchema,
+  TOTAL_MAX,
   configDocSchema,
   createClientReplySchema,
   employeeDocSchema,
@@ -264,6 +269,21 @@ describe('the fake Api', () => {
       deliveryPhotoReplySchema,
       await mine.getDeliveryPhoto(DEMO_TODAY, toDeliver.id),
     );
+    parses('listReconciliations', reconciliationListReplySchema, {
+      reconciliations: await shop.listReconciliations(addDays(DEMO_TODAY, -1)),
+    });
+    const settling = fake('', { client: 'fake.session' });
+    const tungId = DEMO_EMPLOYEES.find((one) => one.code === 'EMP-0005')!.id;
+    const closing = await settling.closeDay(
+      DEMO_TODAY,
+      tungId,
+      closeRequestFor(driverDay(await settling.listDeliveries(DEMO_TODAY), tungId), 1),
+    );
+    parses(
+      'closeDay',
+      reconciliationSchema,
+      closing.kind === 'closed' ? closing.reconciliation : null,
+    );
     const cancelledOrder = await shop.cancelOrder(draft.day, draft.id, { version: read0.version });
     parses(
       'cancelOrder',
@@ -356,6 +376,8 @@ describe('the fake Api', () => {
         'listDeliveries',
         'getDelivery',
         'cancelDelivery',
+        'listReconciliations',
+        'closeDay',
         'listDrivers',
         'myDeliveries',
         'deliver',
@@ -1788,5 +1810,187 @@ describe('the fake Api’s deliveries', () => {
       tungPerson.name,
     );
     expect(await status(api.signInQr(tungPerson.id, DEMO_DRIVER_QR_SECRET))).toBe(401);
+  });
+});
+
+describe('the fake Api’s days settled', () => {
+  const as = (code: string) => ({
+    client: `fake.session.${DEMO_EMPLOYEES.find((one) => one.code === code)!.id}`,
+  });
+  const office = as('EMP-0001');
+  const tung = DEMO_EMPLOYEES.find((one) => one.code === 'EMP-0005')!;
+  const nam = DEMO_EMPLOYEES.find((one) => one.code === 'EMP-0006')!;
+  const YESTERDAY = addDays(DEMO_TODAY, -1);
+  /** The close a page makes of a driver's day as the fake now holds it. */
+  const askFor = async (api: ReturnType<typeof fake>, driverId: string, handedIn: number) =>
+    closeRequestFor(driverDay(await api.listDeliveries(DEMO_TODAY), driverId), handedIn);
+
+  it('The fake’s two calls answer as the BFF does: a day’s closed days by driver code, and a close that cancels what waits, frees its orders, and writes the closed day once, as the person or the root who closed it', async () => {
+    const api = fake('', office);
+
+    const past = await api.listReconciliations(YESTERDAY);
+    expect(past.map((one) => [one.driver.code, one.difference])).toEqual([['EMP-0006', -20_000]]);
+    expect(await api.listReconciliations(DEMO_TODAY)).toEqual([]);
+    // two drivers closed on one day come in code order
+    expect(
+      (await api.listReconciliations(addDays(DEMO_TODAY, -6))).map((one) => one.driver.code),
+    ).toEqual(['EMP-0005', 'EMP-0006']);
+    const waiting = (await api.listDeliveries(DEMO_TODAY)).find(
+      (one) => one.driver.id === tung.id && one.state === 'waiting',
+    )!;
+
+    const closed = await api.closeDay(DEMO_TODAY, tung.id, await askFor(api, tung.id, 47_380_000));
+
+    expect(closed).toMatchObject({
+      kind: 'closed',
+      reconciliation: {
+        day: DEMO_TODAY,
+        toCollect: 47_400_000,
+        handedIn: 47_380_000,
+        difference: -20_000,
+        closedBy: { code: 'EMP-0001' },
+      },
+    });
+    // the request that waited is cancelled over its tag, its order freed to be sent again
+    expect((await api.getDelivery(DEMO_TODAY, waiting.id)).request.state).toBe('cancelled');
+    expect((await api.getOrder(waiting.order.day, waiting.order.id)).order.request).toBeNull();
+    expect((await api.listReconciliations(DEMO_TODAY)).map((one) => one.driver.code)).toEqual([
+      'EMP-0005',
+    ]);
+    // closed once: a second close, or the same set again, closes nothing
+    expect(await api.closeDay(DEMO_TODAY, tung.id, await askFor(api, tung.id, 47_400_000))).toEqual(
+      {
+        kind: 'moved',
+      },
+    );
+    // the root closes without a person: its sign-in name stands in
+    const root = fake('', { client: 'fake.session' });
+    const byRoot = await root.closeDay(DEMO_TODAY, nam.id, await askFor(root, nam.id, 0));
+    expect(byRoot).toMatchObject({
+      kind: 'closed',
+      reconciliation: { closedBy: { id: null, code: null, name: DEMO_ROOT_NAME }, toCollect: 0 },
+    });
+  });
+
+  it('Anyone who may not see orders is refused the list, and anyone who may not edit them the close; a driver with no request that day is a 404, and cash that is no whole đồng a 400', async () => {
+    const request = { delivered: [], waiting: [], handedIn: 0 };
+    const warehouse = fake('', as('EMP-0004'));
+
+    expect(await status(warehouse.listReconciliations(DEMO_TODAY))).toBe(403);
+    expect(await status(warehouse.closeDay(DEMO_TODAY, tung.id, request))).toBe(403);
+    const api = fake('', office);
+    expect(await status(api.closeDay(DEMO_TODAY, DEMO_EMPLOYEES[0].id, request))).toBe(404);
+    expect(await status(api.closeDay(addDays(DEMO_TODAY, 1), tung.id, request))).toBe(404);
+    for (const handedIn of [-1, 0.5, TOTAL_MAX + 1]) {
+      expect(await status(api.closeDay(DEMO_TODAY, tung.id, { ...request, handedIn }))).toBe(400);
+    }
+  });
+
+  it('A close that names another set of requests than the day holds closes nothing and cancels nothing', async () => {
+    const api = fake('', office);
+    const ask = await askFor(api, tung.id, 5);
+
+    for (const wrong of [
+      { ...ask, delivered: [] },
+      { ...ask, waiting: [] },
+      { ...ask, waiting: [...ask.waiting, ask.delivered[0]] },
+    ]) {
+      expect(await api.closeDay(DEMO_TODAY, tung.id, wrong)).toEqual({ kind: 'moved' });
+    }
+    expect(await api.listReconciliations(DEMO_TODAY)).toEqual([]);
+    expect(
+      (await api.listDeliveries(DEMO_TODAY)).filter(
+        (one) => one.driver.id === tung.id && one.state === 'waiting',
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('A day past the most a day can hold cannot be closed: a 400, and nothing is cancelled', async () => {
+    let who = office.client;
+    const api = createFakeApi({
+      device: { authId: () => who, operatorAuthId: () => null },
+      cue: null,
+    });
+    const products = await api.listProducts();
+    const customer = (await api.listCustomers())[0];
+    const lines = products.map((one) => ({ productId: one.id, quantity: 100_000 }));
+    // the most an order of the data set's products comes to, delivered over and over
+    for (let count = 0; count < 500; count += 1) {
+      who = office.client;
+      const made = await api.createOrder({
+        day: DEMO_TODAY,
+        customerId: customer.id,
+        lines,
+        extra: {},
+      });
+      const sent = await api.confirmOrder(DEMO_TODAY, made.order.id, {
+        version: made.version,
+        driverId: nam.id,
+        day: DEMO_TODAY,
+      });
+      const request = sent.kind === 'done' ? sent.doc.order.request! : null;
+      who = as('EMP-0006').client;
+      await api.deliver(DEMO_TODAY, request!.id, { version: 'g1', photo: DEMO_WALK_PROOF });
+    }
+    who = office.client;
+
+    expect(await status(api.closeDay(DEMO_TODAY, nam.id, await askFor(api, nam.id, 0)))).toBe(400);
+    // the two waiting requests it had are delivered or still waiting, but none cancelled by the refusal
+    expect(await api.listReconciliations(DEMO_TODAY)).toEqual([]);
+  });
+
+  it('A driver whose day is closed is sent nothing more for it, and the driver’s phone no longer lists the requests the close cancelled', async () => {
+    let who = office.client;
+    const api = createFakeApi({
+      device: { authId: () => who, operatorAuthId: () => null },
+      cue: null,
+    });
+    const draft = DEMO_ORDERS.find((one) => one.state === 'draft' && one.day === DEMO_TODAY)!;
+    const send = { version: 'o1', driverId: tung.id, day: DEMO_TODAY };
+    who = as('EMP-0005').client;
+    expect((await api.myDeliveries(DEMO_TODAY)).map((one) => one.state)).toEqual([
+      'waiting',
+      'delivered',
+    ]);
+    who = office.client;
+    await api.closeDay(DEMO_TODAY, tung.id, await askFor(api, tung.id, 47_400_000));
+
+    // confirm refuses the closed driver and day, and still sends another day
+    expect(await status(api.confirmOrder(draft.day, draft.id, send))).toBe(400);
+    expect(
+      await status(api.confirmOrder(draft.day, draft.id, { ...send, day: addDays(DEMO_TODAY, 1) })),
+    ).toBe('answered');
+    who = as('EMP-0005').client;
+    expect((await api.myDeliveries(DEMO_TODAY)).map((one) => one.state)).toEqual(['delivered']);
+  });
+
+  it('The fake’s two calls answer a cue’s 403, 409 or 503 once, and `closeDay:409` has the driver deliver the waiting request first, as the full run does', async () => {
+    for (const code of [403, 503]) {
+      for (const name of ['listReconciliations', 'closeDay']) {
+        const cued = fake(`${name}:${code}`, office);
+        const call = async () =>
+          name === 'closeDay'
+            ? await cued.closeDay(DEMO_TODAY, tung.id, await askFor(cued, tung.id, 5))
+            : await cued.listReconciliations(DEMO_TODAY);
+        expect(await status(call()), `${name} ${code}`).toBe(code);
+        expect(await status(call()), `${name} again`).toBe('answered');
+      }
+    }
+    const api = fake('closeDay:409', office);
+    const ask = await askFor(api, tung.id, 5);
+
+    expect(await api.closeDay(DEMO_TODAY, tung.id, ask)).toEqual({ kind: 'moved' });
+    // nothing is closed, the waiting request is delivered, its order fulfilled and its photo held
+    expect(await api.listReconciliations(DEMO_TODAY)).toEqual([]);
+    const now = driverDay(await api.listDeliveries(DEMO_TODAY), tung.id);
+    expect(now.waiting).toEqual([]);
+    expect(now.delivered).toHaveLength(2);
+    expect((await api.getDeliveryPhoto(DEMO_TODAY, ask.waiting[0])).photo).toBe(DEMO_WALK_PROOF);
+    const freed = now.delivered.find((one) => one.id === ask.waiting[0])!;
+    expect((await api.getOrder(freed.order.day, freed.order.id)).order.state).toBe('fulfilled');
+    // the cue came once: the same close, over the new set, goes through
+    expect((await api.closeDay(DEMO_TODAY, tung.id, closeRequestFor(now, 51_180_000))).kind).toBe(
+      'closed',
+    );
   });
 });

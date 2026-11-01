@@ -15,6 +15,7 @@ import {
   REQUEST_PREFIX,
   type RequestState,
 } from './orders';
+import { driverDay, type Reconciliation } from './reconciliations';
 import type { Employee, StaffSetup, UnitLink } from './staff';
 
 const logo = `data:image/svg+xml;base64,${btoa(
@@ -749,3 +750,47 @@ export const DEMO_DELIVERY_PHOTOS: Record<string, string> = WEEK.photos;
 
 /** The picture the walks choose as the camera's file when a driver delivers: the first of the three. */
 export const DEMO_WALK_PROOF: string = DEMO_PROOFS[0];
+
+/** The hour the data set's office closes each driver's day, in Vietnam. */
+const CLOSED_AT = '17:45';
+/** The one day of the past that was closed short: yesterday's, `EMP-0006`'s, by this many đồng. */
+const SHORT_BY = 20_000;
+
+/** Every driver's day before `DEMO_TODAY` closed by `EMP-0001` at the day's end, with the cash
+ * exactly what it was to collect but yesterday's `EMP-0006`, short `SHORT_BY`. Today's are open. A
+ * driver whose only request of a day was cancelled has nothing to collect, and closes with 0. */
+export const DEMO_RECONCILIATIONS: Reconciliation[] = (() => {
+  const manager = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0001')!;
+  const days = [...new Set(DEMO_DELIVERIES.map((one) => one.day))]
+    .filter((day) => day < DEMO_TODAY)
+    .sort();
+  return days.flatMap((day) => {
+    const drivers = [
+      ...new Map(
+        DEMO_DELIVERIES.filter((one) => one.day === day).map((one) => [one.driver.id, one.driver]),
+      ).values(),
+    ].sort((a, b) => a.code.localeCompare(b.code));
+    return drivers.map((driver): Reconciliation => {
+      const { delivered, toCollect } = driverDay(
+        DEMO_DELIVERIES.filter((one) => one.day === day),
+        driver.id,
+      );
+      const short = day === addDays(DEMO_TODAY, -1) && driver.code === 'EMP-0006' ? SHORT_BY : 0;
+      const handedIn = toCollect - short;
+      return {
+        day,
+        driver,
+        requests: delivered.map(({ id: requestId, number, total }) => ({
+          id: requestId,
+          number,
+          total,
+        })),
+        toCollect,
+        handedIn,
+        difference: handedIn - toCollect,
+        closedBy: { id: manager.id, code: manager.code, name: manager.name },
+        closedAt: atVietnam(day, CLOSED_AT),
+      };
+    });
+  });
+})();

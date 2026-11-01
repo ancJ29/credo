@@ -6,13 +6,17 @@ import {
   can,
   type CancelRequest,
   type ClientListItem,
+  type CloseDayRequest,
   customerSchema,
   clientLinkPath,
+  driverDay,
   type DeliveryRequest,
   deliveryRequestSchema,
   type Driver,
   type Employee,
   type EmployeeDoc,
+  gapOf,
+  handedInSchema,
   type ImportResult,
   keptSetupParts,
   layersOf,
@@ -34,8 +38,11 @@ import {
   productSchema,
   QR_MINUTES,
   qrLink,
+  type Reconciliation,
+  reconciliationSchema,
   REQUEST_PREFIX,
   resolvePermissions,
+  sameIds,
   type SaveOrderRequest,
   type SendOrderRequest,
   sendableOn,
@@ -55,6 +62,7 @@ import {
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
+  DEMO_WALK_PROOF,
   DEMO_QR_SECRET,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
@@ -62,6 +70,7 @@ import {
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
   DEMO_PHOTOS,
+  DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
   DEMO_SERVICES,
   DEMO_STAFF_SETUP,
@@ -71,6 +80,7 @@ import {
   type Api,
   ApiError,
   type ChangePasswordResult,
+  type CloseDayResult,
   type DeliveryResult,
   type OrderResult,
 } from './api';
@@ -220,6 +230,13 @@ export function createFakeApi({
   const requestVersions = new Map(DEMO_DELIVERIES.map((one) => [one.id, 1]));
   /** Each delivered request's photo, by the request's id; the data set's, then any sent since. */
   const proofs = new Map(Object.entries(DEMO_DELIVERY_PHOTOS));
+  /** The drivers' days closed, by the day and the driver; the data set's past days, then any closed since. */
+  const closed = new Map(
+    DEMO_RECONCILIATIONS.map((one) => [
+      `${one.day}.${one.driver.id}`,
+      reconciliationSchema.parse(one),
+    ]),
+  );
   let lastOrder = DEMO_ORDERS.length;
   let lastRequest = DEMO_DELIVERIES.length;
   /** How many QR codes have been minted: each one's secret is its number. */
@@ -343,6 +360,25 @@ export function createFakeApi({
   const requestMoved = (found: DeliveryRequest) => {
     requestVersions.set(found.id, (requestVersions.get(found.id) as number) + 1);
   };
+  /** A waiting request cancelled, then its order freed of it, as the BFF writes them. */
+  const cancelRequest = (found: DeliveryRequest) => {
+    found.state = 'cancelled';
+    requestMoved(found);
+    const order = orders.get(found.order.id)!;
+    order.request = null;
+    orderMoved(order);
+  };
+  /** A waiting request marked delivered with its photo; its order is fulfilled with it. */
+  const deliverRequest = (found: DeliveryRequest, photo: string) => {
+    proofs.set(found.id, photo);
+    found.state = 'delivered';
+    found.deliveredAt = Date.now();
+    requestMoved(found);
+    // A waiting request's order is confirmed and names it, so the order is fulfilled with it.
+    const order = orders.get(found.order.id)!;
+    order.state = 'fulfilled';
+    orderMoved(order);
+  };
   /** A save's customer and lines as the BFF prices them: a customer or a product the lists lack
    * is a 400. */
   const priced = (request: SaveOrderRequest) => {
@@ -386,6 +422,8 @@ export function createFakeApi({
     if (stale) return stale;
     const driver = driversNow().find((one) => one.id === request.driverId);
     if (!driver || !sendableOn(found.day, request.day)) throw new ApiError(400);
+    // A driver whose day is closed is sent nothing more for it.
+    if (closed.has(`${request.day}.${driver.id}`)) throw new ApiError(400);
     lastRequest += 1;
     const made: DeliveryRequest = {
       id: crypto.randomUUID(),
@@ -405,6 +443,47 @@ export function createFakeApi({
     found.state = 'confirmed';
     found.request = { id: made.id, number: made.number, day: made.day, driver };
     return orderMoved(found);
+  };
+  /** A driver's day closed as the BFF closes it: the cash is whole đồng, the request has to name
+   * the day as it is, and those still waiting are cancelled before the closed day is written. */
+  const closeDay = (day: string, driverId: string, request: CloseDayRequest): CloseDayResult => {
+    mayOnly('orders.canEdit');
+    const asked = [...requests.values()].filter((one) => one.day === day);
+    const driver = asked.find((one) => one.driver.id === driverId)?.driver;
+    if (!driver) throw notFound();
+    if (!handedInSchema.safeParse(request.handedIn).success) throw new ApiError(400);
+    const key = `${day}.${driverId}`;
+    const now = driverDay(asked, driverId);
+    if (
+      closed.has(key) ||
+      !sameIds(
+        request.delivered,
+        now.delivered.map((one) => one.id),
+      ) ||
+      !sameIds(
+        request.waiting,
+        now.waiting.map((one) => one.id),
+      )
+    ) {
+      return { kind: 'moved' };
+    }
+    if (now.tooLarge) throw new ApiError(400);
+    for (const one of now.waiting) cancelRequest(one);
+    const by = isRoot() ? null : person(device.authId()!.slice(STAFF_HANDLE.length));
+    const made: Reconciliation = {
+      day,
+      driver,
+      requests: now.delivered.map(({ id, number, total }) => ({ id, number, total })),
+      toCollect: now.toCollect,
+      handedIn: request.handedIn,
+      difference: gapOf(now.toCollect, request.handedIn),
+      closedBy: by
+        ? { id: by.id, code: by.code, name: by.name }
+        : { id: null, code: null, name: ROOT.name },
+      closedAt: Date.now(),
+    };
+    closed.set(key, made);
+    return { kind: 'closed', reconciliation: structuredClone(made) };
   };
   /** A list in code order, as the BFF answers it. */
   const inOrder = <T extends { code: string }>(held: Map<string, T>) =>
@@ -855,14 +934,7 @@ export function createFakeApi({
             return { kind: 'conflict', current: requestDoc(found) };
           }
           // The photo, then the request, then the order, as the BFF writes them.
-          proofs.set(found.id, request.photo);
-          found.state = 'delivered';
-          found.deliveredAt = Date.now();
-          requestMoved(found);
-          const order = orders.get(found.order.id)!;
-          // A waiting request's order is confirmed and names it, so the order is fulfilled with it.
-          order.state = 'fulfilled';
-          orderMoved(order);
+          deliverRequest(found, request.photo);
           return { kind: 'done', doc: requestDoc(found) };
         },
         // The office cancels the order, and so the request, before the driver's send arrives.
@@ -890,15 +962,35 @@ export function createFakeApi({
           if (request.version !== `g${requestVersions.get(id)}` || found.state !== 'waiting') {
             return { kind: 'conflict', current: requestDoc(found) };
           }
-          found.state = 'cancelled';
-          requestMoved(found);
           // The request is cancelled first; the order then names no live request.
-          const order = orders.get(found.order.id)!;
-          order.request = null;
-          orderMoved(order);
+          cancelRequest(found);
           return { kind: 'done', doc: requestDoc(found) };
         },
         () => ({ kind: 'conflict', current: requestDoc(requestAt(day, id)) }),
+      ),
+
+    listReconciliations: (day) =>
+      call('listReconciliations', () => {
+        mayOnly('orders.canView');
+        return [...closed.values()]
+          .filter((one) => one.day === day)
+          .map((one) => structuredClone(one))
+          .sort((a, b) => a.driver.code.localeCompare(b.driver.code));
+      }),
+
+    closeDay: (day, driverId, request) =>
+      call<CloseDayResult>(
+        'closeDay',
+        () => closeDay(day, driverId, request),
+        // The driver delivers what still waits before the close arrives, as the full run does it.
+        () => {
+          for (const one of requests.values()) {
+            if (one.day === day && one.driver.id === driverId && one.state === 'waiting') {
+              deliverRequest(one, DEMO_WALK_PROOF);
+            }
+          }
+          return { kind: 'moved' };
+        },
       ),
 
     listDrivers: () =>

@@ -24,6 +24,7 @@ export const ROUTES = {
   orders: '/api/orders',
   deliveries: '/api/deliveries',
   drivers: '/api/drivers',
+  reconciliations: '/api/reconciliations',
   myDeliveries: '/api/my-deliveries',
 } as const;
 
@@ -57,6 +58,12 @@ export const deliveryRoutes = {
   photo: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/photo`,
   /** The driver's own requests of a day. */
   mine: (day: string) => `${ROUTES.myDeliveries}?day=${day}`,
+};
+
+/** A driver's day closed, under `ROUTES.reconciliations`: the day's closed ones are listed by day. */
+export const reconciliationRoutes = {
+  list: (day: string) => `${ROUTES.reconciliations}?day=${day}`,
+  close: (day: string, driverId: string) => `${ROUTES.reconciliations}/${day}/${driverId}/close`,
 };
 
 /** The client's code, on every call of a client's: it scopes the call to a tenant and proves
