@@ -1,7 +1,8 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 14:05 +07:** steps 1 to 4 done, the preview 62 yes and 0 no; **step 5, the BFF,
-is in hand.** The contract stands as the preview left it.
+**Where it stands — 2026-11-01 14:14 +07:** steps 1 to 5 done; **step 6, the one review by another model,
+is next**, then 7 (`main` taken in), 8 (the human's full run of `office-orders` and `office-reconcile`),
+9 (the seed's block), 10 and on. Nothing runs.
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -229,11 +230,19 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   *Evidence:* the human answered 62 yes, 0 no (2026-11-01 14:03, build `driver-reconcile`@`fd9789618`): the 16
   `office-reconcile` answers, `orders-5-requests` again (2), and 44 more on `admin-setup`, `admin-staff`,
   `office-staff` and `phone-sign-in`. `pnpm answers` wrote 62 to `visual/answers.json`, 0 refused (`== exit 0`).
-- [ ] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4 (the contract as the preview left it),
+- [x] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4 (the contract as the preview left it),
   about ½ day: the two routes and the close's writes in a new `bff/src/reconciliations.ts`, the refusal
   in `issue`, the stack's generator closing the data set's past days. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1 and 4 to 7 each seen red once; each touched
   package at 100 %, no warning.
+  *Evidence:* `bff/src/reconciliations.ts` (the two routes and the close's writes), the refusal in `issue`
+  (`bff/src/orders.ts`), `recordTools` shared by both route files, the generator's `closeWeek`
+  (`scripts/src/generator.ts`). `bff` 471 tests and `scripts` 217, each at 100 % (`== exit 0`); typecheck,
+  prettier and eslint of the touched files exit 0. Red once each at its own assertion, logs
+  `20261101-1411-driver-reconcile-red-row{1,4,5,6,7}-bff*.log` (row 5 twice: the close and the refusal in
+  `issue`). `pnpm report` after the answers: "0 waiting, 0 asked again, 0 no, 192 yes". The 409 body
+  carries `{ delivered, waiting, reconciliation }`, the day as it now is; the page still reads the lists
+  again (parked 5). Not run: the stack's walk (step 8).
 - [ ] **6. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By` line
   ([QA](../conventions/qa.md) rule 5), on steps 3 and 5 with the case table, about ¼ day with its fixes.
   Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason; one whole
