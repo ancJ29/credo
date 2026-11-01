@@ -1831,6 +1831,10 @@ describe('the fake Api’s days settled', () => {
     const past = await api.listReconciliations(YESTERDAY);
     expect(past.map((one) => [one.driver.code, one.difference])).toEqual([['EMP-0006', -20_000]]);
     expect(await api.listReconciliations(DEMO_TODAY)).toEqual([]);
+    // two drivers closed on one day come in code order
+    expect(
+      (await api.listReconciliations(addDays(DEMO_TODAY, -6))).map((one) => one.driver.code),
+    ).toEqual(['EMP-0005', 'EMP-0006']);
     const waiting = (await api.listDeliveries(DEMO_TODAY)).find(
       (one) => one.driver.id === tung.id && one.state === 'waiting',
     )!;

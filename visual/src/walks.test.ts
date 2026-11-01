@@ -428,6 +428,7 @@ describe('the walks', () => {
       'EMP-0001',
       ...Array<string>(12).fill('EMP-0001'),
       ...Array<string>(5).fill('EMP-0005'),
+      ...Array<string>(8).fill('EMP-0001'),
     ]);
   });
 
