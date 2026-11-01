@@ -296,6 +296,10 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   - **12, Info, the gate's timing: `[DEFERRED]`** to item 27 (one line).
   - **13, Info, step 9's `--moved` list: `[FIXED]`**, written into step 9.
   - **14, Info, two concurrent delivers and `withoutDriversAllowed` twice: `[DEFERRED]`** to item 39.
+  - **The check after the fixes:** `pnpm check` at the root, exit 0, no warning
+    (`logs/20261101-1056-driver-phone-check.log`, `== exit 0`): shared 115 tests, bff 376, ui 493, scripts
+    206 (91 s of 120 s), visual 452 (215 s of 240 s), each package at 100 % statements, branches,
+    functions and lines.
 - [ ] **8. `main` taken in, once slice 2 has merged.** Who: 🤖, after slice 2's merge into `main` (its
   walk's bases and `walk/run.sh` row, which step 9 runs on; its seed block, which step 10 extends),
   ¼ hour. Done when: merged, its conflicts named; `pnpm install --offline` exit 0; `pnpm check` exit 0
