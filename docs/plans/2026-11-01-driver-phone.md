@@ -254,10 +254,11 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   under load on one run, green on rerun (reported as a red, `…-red-ui-two-timeouts.log`); `scripts/`
   generator test and one `apply.test.ts` timeout (`…-red-scripts-generator-and-apply-timeout.log`), the
   first step 6's to turn green. The walk spec was not run (the human's terminal).
-- [ ] **5. The human's preview.** Who: 👤, about 20 minutes, after step 4: the 8 screens and those
+- [x] **5. The human's preview.** Who: 👤, about 20 minutes, after step 4: the 8 screens and those
   asked again on the walks page (the driver's on the phone's width), or on `pnpm fake` at
   `/my-deliveries` in a window 390 px wide. Done when: each answered yes or no; a no becomes a case
   here and its fix lands before step 6. **Then stop.**
+  *Evidence:* 20 of 20 answers yes on 2026-11-01 about 10:2x, for build `driver-phone`@`d60486b27`; `pnpm answers` wrote 20 to `visual/answers.json`, 0 refused (the 4 asked again replaced, 16 new); no case added.
 - [ ] **6. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 5 (the contract as the preview left
   it), about ½ day: the three routes and the deliver in `bff/src/orders.ts`, the order's shown request
   and its cancel's refusal of a fulfilled order, the stack's generator delivering the data set's. c-storage does not change, so
