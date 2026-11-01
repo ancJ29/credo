@@ -44,6 +44,11 @@ export const recordKeys = {
      * `deliveryDayPrefix`, so a day's list never reads a photo. */
     deliveryPhoto: (day: string, requestId: string) =>
       `tenant.${id}.delivery-photo.${day}.${requestId}`,
+    /** A driver's closed day, by the day and the driver's minted id: written once, and a day's are one
+     * prefix read. */
+    reconciliation: (day: string, driverId: string) =>
+      `tenant.${id}.reconciliation.${day}.${driverId}`,
+    reconciliationDayPrefix: (day: string) => `tenant.${id}.reconciliation.${day}.`,
     /** The last number given to an order and to a request: its own record, raised over its tag. */
     documentNumbering: `tenant.${id}.document-numbering`,
     staffSetup: `tenant.${id}.staff-setup`,

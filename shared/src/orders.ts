@@ -32,7 +32,7 @@ export const REQUEST_PREFIX = 'GH-';
 export const numberText = (prefix: string, count: number) =>
   `${prefix}${String(count).padStart(5, '0')}`;
 const orderNumberSchema = z.string().regex(/^DH-\d{5,}$/);
-const requestNumberSchema = z.string().regex(/^GH-\d{5,}$/);
+export const requestNumberSchema = z.string().regex(/^GH-\d{5,}$/);
 
 /** The last number given of each kind. A number lost to a failed write is never given again. */
 export const documentNumberingSchema = z.strictObject({
