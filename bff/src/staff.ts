@@ -74,6 +74,8 @@ const IMPORT_REASONS: Partial<Record<number, Exclude<ImportResult, { kind: 'adde
 
 /** Who is calling, with the setup the check read when it had to (never for the root). */
 type Who = {
+  /** The person's name, or the root's sign-in name. */
+  name: string;
   root: boolean;
   permissions: Record<PermissionId, boolean>;
   /** The person's id; none for the root. */

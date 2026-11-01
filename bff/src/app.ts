@@ -50,6 +50,7 @@ import {
 import { registerOperatorAuth } from './operator-auth';
 import { registerListRoutes } from './lists';
 import { registerOrderRoutes } from './orders';
+import { registerReconciliationRoutes } from './reconciliations';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -379,6 +380,7 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
   registerStaffRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
   registerListRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
   registerOrderRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
+  registerReconciliationRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
 
   return app;
 }

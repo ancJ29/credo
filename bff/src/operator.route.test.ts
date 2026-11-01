@@ -395,7 +395,9 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│       ├── /deliver (POST)',
         '│       └── /cancel (POST)',
         '├── /api/drivers (GET, HEAD)',
-        '└── /api/my-deliveries (GET, HEAD)',
+        '├── /api/my-deliveries (GET, HEAD)',
+        '└── /api/reconciliations (GET, HEAD)',
+        '    └── /:day/:driverId/close (POST)',
       ].join('\n')}\n`,
     );
   });

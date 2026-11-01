@@ -4,6 +4,7 @@ import {
   byCode,
   cancelRequestSchema,
   CStorageError,
+  type CStorageClient,
   customerSchema,
   type DeliveryDoc,
   type DeliveryRequest,
@@ -49,13 +50,8 @@ const forbidden = () => new HttpError(403, 'Forbidden');
 
 const idSchema = z.uuid();
 
-/** The orders' and the delivery requests' routes. An order and a request are each one record under
- * their day and id; confirm and send write the order first and then the request, and cancel writes
- * the request first, so a stop between leaves a state the next read shows as it is: an order that
- * names a request which is not there, or not waiting, reads as having none. */
-export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
-  const { storage, now, forClient, signedIn, mustCan } = deps;
-
+/** The three reads and writes the record routes share, over one storage client. */
+export function recordTools(storage: CStorageClient) {
   /** A record read under its schema; one that does not parse is a fault naming its kind. */
   function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: unknown }) {
     const result = schema.safeParse(stored.data);
@@ -72,6 +68,31 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
       tag: stored.tag,
     }));
   }
+
+  /** One record written once under its fresh key. The write may have landed while its answer was
+   * lost: the record is there, or the failure stands. */
+  async function writeNew(key: string, record: unknown) {
+    let written: 'saved' | 'moved';
+    try {
+      written = await storage.putRecord(key, record, null);
+    } catch (error) {
+      if (!(await storage.getRecord(key))) throw error;
+      written = 'saved';
+    }
+    if (written === 'moved') throw new CStorageError(412, 'a record already sat under a fresh id');
+  }
+
+  return { parsed, every, writeNew };
+}
+
+/** The orders' and the delivery requests' routes. An order and a request are each one record under
+ * their day and id; confirm and send write the order first and then the request, and cancel writes
+ * the request first, so a stop between leaves a state the next read shows as it is: an order that
+ * names a request which is not there, or not waiting, reads as having none. */
+export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
+  const { storage, now, forClient, signedIn, mustCan } = deps;
+
+  const { parsed, every, writeNew } = recordTools(storage);
 
   /** A request, with its tag. */
   async function readRequest(tenantId: string, day: string, id: string) {
@@ -134,19 +155,6 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     >;
     return { request: found.request, version: found.tag };
   };
-
-  /** One record written once under its fresh key. The write may have landed while its answer was
-   * lost: the record is there, or the failure stands. */
-  async function writeNew(key: string, record: unknown) {
-    let written: 'saved' | 'moved';
-    try {
-      written = await storage.putRecord(key, record, null);
-    } catch (error) {
-      if (!(await storage.getRecord(key))) throw error;
-      written = 'saved';
-    }
-    if (written === 'moved') throw new CStorageError(412, 'a record already sat under a fresh id');
-  }
 
   /** The next number of a kind, raised in the numbering record over the tag it was read at before
    * any record carries it; a record that moved is read again, a few times at most (503). A number
@@ -312,6 +320,12 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
       });
     }
     const keys = recordKeys.tenant(request.tenantId);
+    // A driver whose day is closed is sent nothing more for it.
+    if (await storage.getRecord(keys.reconciliation(body.day, driver.id))) {
+      throw new HttpError(400, 'Bad request', {
+        details: 'a driver whose day is not closed for that day',
+      });
+    }
     const made: DeliveryRequest = {
       id: randomUUID(),
       number: numberText(REQUEST_PREFIX, await nextNumber(request.tenantId, 'requests')),
