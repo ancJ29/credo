@@ -856,8 +856,9 @@ edge_reads() {
   edge GET /api/operator/me
   expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
   edge POST /api/operator/passkey/options
-  expect "the sign-in options' relying party is the app's host, never the request's" "200 $(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" \
-    "$EDGE_STATUS $(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)"
+  # yes or no, so the log never holds the app's host, which the deploy masks like a key
+  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
+    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" ] && echo yes || echo no)"
   edge GET /api/health
   expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
 }

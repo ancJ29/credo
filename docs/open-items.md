@@ -419,3 +419,9 @@ Found by the line 32 review; only its Medium finding is fixed under the demo's c
 - **Finding 14, `walk/specs/piece-2.spec.ts#L125` and `walk/specs/orders.spec.ts#L126`:** `withoutDriversAllowed` is written twice with two signatures. *Fix:* fold it into `walk/support.ts` when either spec is next touched.
 
 *Trigger:* after the 11-04 demo, the deliveries next touched, a cancel and a delivery seen racing, or the human's phone at step 13 showing a picture refused.
+
+## 40. The four address masks carry no label — the machine; *parked* (check-host-yes-no, line 37, 2026-11-01)
+
+`app_load` masks the app's and the API's address and host with no label (`ops/lib.sh`, the four `mask` calls), so a match in a log reads "a key is in this log: delete it and replace the key" when the value is an address. *Fix:* pass a label such as "the app's host" as `mask`'s second argument, so the red reads "redact it in this log; nothing to replace"; a test case holds the words.
+
+*Trigger:* the next red that names a key where an address matched.
