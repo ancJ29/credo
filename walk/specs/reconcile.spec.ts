@@ -90,8 +90,21 @@ async function open(page: Page, language: Language, opening: Opening): Promise<S
       [language, client.code, authId],
     ),
   );
-  await page.goto(opening.path);
+  await page.goto(await onStack(page, client, authId, opening.path));
   return client;
+}
+
+/** The address as the stack knows it: the BFF mints every employee id, so the data set's id of the
+ * driver in a path is replaced by the one the office reads from the BFF's list of drivers. */
+async function onStack(page: Page, client: Seeded, authId: string, path: string) {
+  if (!path.includes(driver.id)) return path;
+  const headers = { 'x-client-code': client.code, 'x-auth-id': authId };
+  const listed = (await (await page.request.get('/api/drivers', { headers })).json()) as {
+    drivers: { id: string; code: string }[];
+  };
+  const minted = listed.drivers.find((one) => one.code === DRIVER)?.id;
+  expect(minted, `the stack's drivers hold ${DRIVER}`).toBeDefined();
+  return path.replace(driver.id, minted!);
 }
 
 /** The driver delivers the waiting request, through the real API as the phone does, while the office
