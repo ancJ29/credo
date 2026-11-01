@@ -17,6 +17,7 @@ import { BEFORE_CONFIG } from './brand';
 import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './DeliveriesPage';
+import { DriverDayPage } from './DriverDayPage';
 import { DeliveryPage } from './DeliveryPage';
 import { MyDeliveriesPage } from './MyDeliveriesPage';
 import { MyDeliveryPage } from './MyDeliveryPage';
@@ -301,6 +302,10 @@ export function ClientApp({
               <Route
                 path="/deliveries"
                 element={guarded(user, 'deliveries', <DeliveriesPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/deliveries/:day/drivers/:driverId"
+                element={guarded(user, 'deliveries', <DriverDayPage {...pageFor(user)} />)}
               />
               <Route
                 path="/deliveries/:day/:id"

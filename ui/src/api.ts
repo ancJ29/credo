@@ -24,6 +24,7 @@ import {
   type Driver,
   driverListReplySchema,
   type CancelRequest,
+  type CloseDayRequest,
   type CreateClientReply,
   createClientReplySchema,
   DEVICE_HEADER,
@@ -71,6 +72,10 @@ import {
   passkeyListReplySchema,
   type PasskeySignInRequest,
   passkeyRoutes,
+  type Reconciliation,
+  reconciliationListReplySchema,
+  reconciliationRoutes,
+  reconciliationSchema,
   ROUTES,
   type SaveEmployeeRequest,
   type SaveOrderRequest,
@@ -154,6 +159,10 @@ export type OrderResult =
 /** A request cancelled or delivered, or the version moved (or a step its state does not allow). */
 export type DeliveryResult =
   { kind: 'done'; doc: DeliveryDoc } | { kind: 'conflict'; current: DeliveryDoc | null };
+
+/** A driver's day closed, or the day moved under the page (another set of requests, or closed
+ * already): a 409 is a result, and the page reads the day again. */
+export type CloseDayResult = { kind: 'closed'; reconciliation: Reconciliation } | { kind: 'moved' };
 
 /** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
@@ -540,6 +549,25 @@ export function createApi({
       const response = await send('GET', deliveryRoutes.photo(day, id));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, deliveryPhotoReplySchema);
+    },
+
+    /** The drivers' days closed on one day. */
+    async listReconciliations(day: string): Promise<Reconciliation[]> {
+      const response = await send('GET', reconciliationRoutes.list(day));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, reconciliationListReplySchema)).reconciliations;
+    },
+
+    /** A driver's day closed with the requests the page showed and the cash handed in. */
+    async closeDay(
+      day: string,
+      driverId: string,
+      request: CloseDayRequest,
+    ): Promise<CloseDayResult> {
+      const response = await send('POST', reconciliationRoutes.close(day, driverId), request);
+      if (response.status === 409) return { kind: 'moved' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'closed', reconciliation: await read(response, reconciliationSchema) };
     },
 
     /** The people the office may name as a driver: active, and allowed to deliver. */

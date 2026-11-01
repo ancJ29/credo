@@ -1,5 +1,10 @@
 import { type TenantConfig } from '@credo/shared';
-import { DEMO_DELIVERIES, DEMO_DELIVERY_PHOTOS, DEMO_ORDERS } from '@credo/shared/demo';
+import {
+  DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
+  DEMO_ORDERS,
+  DEMO_RECONCILIATIONS,
+} from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
 import { ApiError, createApi, hopOf } from './api';
 
@@ -691,6 +696,45 @@ describe('the API client', () => {
         ['POST', `/api/deliveries/${request.day}/${request.id}/cancel`],
       ]);
       expect(calls[5]?.path).toBe('/api/drivers');
+    });
+
+    it('lists a day’s closed days and closes a driver’s day with the requests the page showed and the cash (a 409 being a day that moved, any other refusal an error), and reads nothing that is not a closed day', async () => {
+      const closed = DEMO_RECONCILIATIONS[0];
+      const ask = { delivered: [request.id], waiting: [], handedIn: closed.handedIn };
+      const { calls, api } = fake(
+        json({ reconciliations: [closed] }),
+        json({}, 403),
+        json({ reconciliations: [{ day: 'nope' }] }),
+        json(closed),
+        json({ error: 'moved' }, 409),
+        json({}, 503),
+        json({ nope: true }),
+      );
+
+      expect(await api.listReconciliations(closed.day)).toEqual([closed]);
+      await expect(api.listReconciliations(closed.day)).rejects.toMatchObject({ status: 403 });
+      await expect(api.listReconciliations(closed.day)).rejects.toMatchObject({ status: null });
+      expect(await api.closeDay(closed.day, closed.driver.id, ask)).toEqual({
+        kind: 'closed',
+        reconciliation: closed,
+      });
+      expect(await api.closeDay(closed.day, closed.driver.id, ask)).toEqual({ kind: 'moved' });
+      await expect(api.closeDay(closed.day, closed.driver.id, ask)).rejects.toMatchObject({
+        status: 503,
+      });
+      await expect(api.closeDay(closed.day, closed.driver.id, ask)).rejects.toMatchObject({
+        status: null,
+      });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/reconciliations?day=${closed.day}`],
+        ['GET', `/api/reconciliations?day=${closed.day}`],
+        ['GET', `/api/reconciliations?day=${closed.day}`],
+        ['POST', `/api/reconciliations/${closed.day}/${closed.driver.id}/close`],
+        ['POST', `/api/reconciliations/${closed.day}/${closed.driver.id}/close`],
+        ['POST', `/api/reconciliations/${closed.day}/${closed.driver.id}/close`],
+        ['POST', `/api/reconciliations/${closed.day}/${closed.driver.id}/close`],
+      ]);
+      expect(JSON.parse(calls[3]?.init.body as string)).toEqual(ask);
     });
 
     it('lists the driver’s own requests of a day, delivers one over the version read with its photo (a 409 being a conflict, with the request as it is now when the answer holds one) and reads its photo', async () => {
