@@ -4,6 +4,7 @@ import {
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
   DEMO_ORDERS,
+  DEMO_DRIVER_QR_SECRET,
   DEMO_PRODUCTS,
   DEMO_QR_SECRET,
   DEMO_TODAY,
@@ -178,9 +179,27 @@ const CHANGED_DRAFT: Step[] = [
 ];
 const DRAFT_PATH = `/orders/${DRAFT_TODAY.day}/${DRAFT_TODAY.id}`;
 
-/** The link a QR code opens, for a warehouse member of the data set and the secret given. */
-const qrLinkWith = (secret: string) =>
-  `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === 'EMP-0004')!.id}.${secret}`;
+/** The link a QR code opens, for a data-set person (a warehouse member unless another is named) and
+ * the secret given. */
+const qrLinkWith = (secret: string, code = 'EMP-0004') =>
+  `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}.${secret}`;
+
+/** The driver's walk's data, by the data set: the driver `EMP-0005`, the request of theirs that waits
+ * today, and the request the data set delivered, with its order fulfilled. */
+const DRIVER = 'EMP-0005';
+const WAITING_OF_DRIVER = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === DRIVER,
+)!;
+const DELIVERED_TODAY = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'delivered',
+)!;
+const FULFILLED_PATH = `/orders/${DELIVERED_TODAY.order.day}/${DELIVERED_TODAY.order.id}`;
+/** The driver taking the picture of the goods: Delivered, then the camera's file. */
+const PHOTO_TAKEN: Step[] = [
+  { press: 'myDeliveries.deliver' },
+  { attach: 'myDeliveries.photoField', file: 'photo' },
+];
+const SENT: Step[] = [...PHOTO_TAKEN, { press: 'myDeliveries.send' }];
 
 /** One's own password typed: the current one, the new one, and the new one again. */
 const NEW_PASSWORD: Step[] = [
@@ -816,7 +835,7 @@ export const WALKS: Walk[] = [
         id: 'office-4-nothing',
         number: 4,
         path: 'wrong',
-        scene: { path: '/staff', as: 'EMP-0005' },
+        scene: { path: '/staff', as: 'EMP-0005', noDrivers: true },
         sentence: {
           en: 'Someone allowed nothing: nothing to work on yet',
           vi: 'Người chưa được phép làm gì: chưa có việc nào',
@@ -1160,6 +1179,126 @@ export const WALKS: Walk[] = [
           vi: 'Chưa ai được phép giao hàng',
         },
         question: 'Would the office know to ask the admin?',
+      },
+      {
+        id: 'orders-11-fulfilled',
+        number: 11,
+        path: 'main',
+        scene: { path: FULFILLED_PATH, as: 'EMP-0001' },
+        sentence: {
+          en: 'An order fulfilled: its request delivered',
+          vi: 'Một đơn hàng đã hoàn tất: yêu cầu giao hàng của nó đã được giao',
+        },
+        question: 'Would the office know this order is delivered and done?',
+      },
+      {
+        id: 'orders-12-proof',
+        number: 12,
+        path: 'main',
+        scene: {
+          path: `/deliveries/${DELIVERED_TODAY.day}/${DELIVERED_TODAY.id}`,
+          as: 'EMP-0001',
+        },
+        sentence: {
+          en: 'A delivered request, with the driver’s photo',
+          vi: 'Một yêu cầu đã giao, kèm ảnh của tài xế',
+        },
+        question: 'Would the office take this photo as proof of delivery?',
+      },
+    ],
+  },
+  {
+    id: 'driver-deliveries',
+    person: 'driver',
+    part: 'delivery',
+    title: { en: 'Delivering with a photo', vi: 'Giao hàng kèm ảnh' },
+    screens: [
+      {
+        id: 'driver-1-today',
+        number: 1,
+        path: 'main',
+        scene: { path: qrLinkWith(DEMO_DRIVER_QR_SECRET, DRIVER), signIns: true, out: true },
+        sentence: {
+          en: 'Signed in by the code: today’s deliveries, those waiting first',
+          vi: 'Đăng nhập bằng mã: các đơn giao hôm nay, đơn đang chờ lên trước',
+        },
+        question: 'Would the driver know what to deliver today, and where?',
+      },
+      {
+        id: 'driver-2-request',
+        number: 2,
+        path: 'main',
+        scene: {
+          path: `/my-deliveries/${WAITING_OF_DRIVER.day}/${WAITING_OF_DRIVER.id}`,
+          as: DRIVER,
+        },
+        sentence: {
+          en: 'A request opened: customer, phone, address, goods, money to collect',
+          vi: 'Một yêu cầu: khách hàng, điện thoại, địa chỉ, hàng hóa, số tiền cần thu',
+        },
+        question: 'Would the driver know what to hand over and what to collect?',
+      },
+      {
+        id: 'driver-3-photo',
+        number: 3,
+        path: 'main',
+        scene: {
+          path: `/my-deliveries/${WAITING_OF_DRIVER.day}/${WAITING_OF_DRIVER.id}`,
+          as: DRIVER,
+          steps: PHOTO_TAKEN,
+        },
+        sentence: {
+          en: 'The photo taken, before it is sent',
+          vi: 'Ảnh đã chụp, trước khi gửi',
+        },
+        question: 'Would the driver know to send it, or to take it again?',
+      },
+      {
+        id: 'driver-4-delivered',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: `/my-deliveries/${WAITING_OF_DRIVER.day}/${WAITING_OF_DRIVER.id}`,
+          as: DRIVER,
+          steps: SENT,
+        },
+        sentence: {
+          en: 'Delivered: the request with its photo',
+          vi: 'Đã giao: yêu cầu kèm ảnh của nó',
+        },
+        question: 'Would the driver know it is done?',
+      },
+      {
+        id: 'driver-5-send-failed',
+        number: 5,
+        path: 'wrong',
+        scene: {
+          path: `/my-deliveries/${WAITING_OF_DRIVER.day}/${WAITING_OF_DRIVER.id}`,
+          as: DRIVER,
+          cue: 'deliver:503',
+          steps: SENT,
+        },
+        sentence: {
+          en: 'A send that failed, the photo kept',
+          vi: 'Gửi không thành công, ảnh vẫn còn',
+        },
+        question: 'Would the driver know nothing was lost, and to try again?',
+      },
+      {
+        id: 'driver-6-cancelled',
+        number: 6,
+        path: 'wrong',
+        scene: {
+          path: `/my-deliveries/${WAITING_OF_DRIVER.day}/${WAITING_OF_DRIVER.id}`,
+          as: DRIVER,
+          cue: 'deliver:409',
+          steps: SENT,
+        },
+        sentence: {
+          en: 'The office cancelled it first',
+          vi: 'Văn phòng đã hủy trước',
+        },
+        question: 'Would the driver know not to deliver it?',
       },
     ],
   },

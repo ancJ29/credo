@@ -30,7 +30,13 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'orders.spec.ts', 'operator.spec.ts'],
+      testIgnore: [
+        'piece-2.spec.ts',
+        'lists.spec.ts',
+        'orders.spec.ts',
+        'driver.spec.ts',
+        'operator.spec.ts',
+      ],
     },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
     { name: 'fake', testMatch: 'piece-2.spec.ts', timeout: 120_000 },
@@ -47,6 +53,9 @@ export default defineConfig({
     // The office's walk of an order sent to a driver, the same two ways.
     { name: 'orders-fake', testMatch: 'orders.spec.ts', timeout: 120_000 },
     { name: 'orders-full', testMatch: 'orders.spec.ts', timeout: 120_000 },
+    // The driver's walk of a delivery with a photo, on the phone's widths, the same two ways.
+    { name: 'driver-fake', testMatch: 'driver.spec.ts', timeout: 120_000 },
+    { name: 'driver-full', testMatch: 'driver.spec.ts', timeout: 120_000 },
     // The operator's walk, the same two ways: the fake, and the full run on a stack of its own for
     // each language and width.
     { name: 'operator-fake', testMatch: 'operator.spec.ts', timeout: 120_000 },

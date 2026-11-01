@@ -17,13 +17,16 @@ import { required, shot, WIDTHS } from '../support';
 /** Where a screen opens: the address, the data-set person signed in (the root when none, or nobody
  * for a phone that opens a QR code's link) and the failure the fake answers once, which the full run
  * provokes in its own way. `signIns` has the company use sign-in by email and by QR code. The address
- * of a QR code's link is made once the client is, since the full run issues its own. */
+ * of a QR code's link is made once the client is, since the full run issues its own. `noDrivers` has the
+ * root's setup lack the right to deliver, which the data set's drivers hold: the person is then allowed
+ * nothing. */
 type Opening = {
   path: string | ((client: Seeded | null) => Promise<string>);
   as?: string;
   cue?: string;
   signIns?: true;
   out?: true;
+  noDrivers?: true;
 };
 
 /** What the stack's seed door answers: a client made from the data set, with its first passwords. */
@@ -65,7 +68,7 @@ const setups = new WeakMap<Page, Awaited<ReturnType<Page['addInitScript']>>>();
  * stack: a client of its own with those switches saved through the real API, the language and the
  * person's handle kept on the device (none for a phone that is signed out), and the address as it is. */
 async function open(page: Page, language: Language, opening: Opening) {
-  const { as, cue, signIns, out } = opening;
+  const { as, cue, signIns, out, noDrivers } = opening;
   // Only this opening's setup may run: an earlier one would run again on every navigation, in no set order.
   await setups.get(page)?.dispose();
   if (!FULL()) {
@@ -80,11 +83,14 @@ async function open(page: Page, language: Language, opening: Opening) {
     setups.set(page, setup);
     const path = typeof opening.path === 'string' ? opening.path : await opening.path(null);
     const glue = path.includes('?') ? '&' : '?';
-    await page.goto(`${path}${glue}fake${cue ? `&cue=${cue}` : ''}${signIns ? '&sign-ins' : ''}`);
+    await page.goto(
+      `${path}${glue}fake${cue ? `&cue=${cue}` : ''}${signIns ? '&sign-ins' : ''}${noDrivers ? '&no-drivers' : ''}`,
+    );
     return null;
   }
   const client = await seed();
   if (signIns) await switchSignInsOn(page, client);
+  if (noDrivers) await withoutDriversAllowed(page, client);
   const handle = out ? '' : await signedIn(page, client, as);
   const setup = await page.addInitScript(
     ([chosen, code, kept]) => {
@@ -112,6 +118,28 @@ async function switchSignInsOn(page: Page, client: Seeded) {
     data: { setup: { ...setup, fields: { ...setup.fields, email: true, qr: true } }, version },
   });
   expect(saved.ok(), 'the sign-in switches are saved').toBe(true);
+}
+
+/** The root saves the staff setup with the right to deliver taken from every department, through the
+ * real API: the data set's drivers are then allowed nothing. */
+async function withoutDriversAllowed(page: Page, client: Seeded) {
+  const root = await signedIn(page, client);
+  const headers = { 'x-client-code': client.code, 'x-auth-id': root };
+  const { setup, version } = (await (
+    await page.request.get('/api/staff-setup', { headers })
+  ).json()) as {
+    setup: { departments: { permissions: Record<string, boolean> }[] };
+    version: string;
+  };
+  const departments = setup.departments.map((unit) => ({
+    ...unit,
+    permissions: { ...unit.permissions, 'deliveries.canDeliver': false },
+  }));
+  const saved = await page.request.put('/api/staff-setup', {
+    headers,
+    data: { setup: { ...setup, departments }, version },
+  });
+  expect(saved.ok(), 'the setup is saved without the right to deliver').toBe(true);
 }
 
 /** The address of a QR code's link for a warehouse member of the data set: on the fake its stand-in
@@ -444,7 +472,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(title(words.forbidden.title)).toBeVisible();
   await at('office-3-forbidden');
 
-  await open(page, language, { path: '/staff', as: 'EMP-0005' });
+  await open(page, language, { path: '/staff', as: 'EMP-0005', noDrivers: true });
   await expect(title(words.nothing.title)).toBeVisible();
   await at('office-4-nothing');
 

@@ -12,8 +12,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * An order, sent to a driver: the office's walk of ten screens, each in Vietnamese and in English at
- * the three widths (10 × 2 × 3 = 60). The `orders-fake` project runs it on `pnpm fake -- …` and the
+ * An order, sent to a driver: the office's walk of twelve screens, each in Vietnamese and in English at
+ * the three widths (12 × 2 × 3 = 72). The `orders-fake` project runs it on `pnpm fake -- …` and the
  * `orders-full` project on the stack (`pnpm stack -- …`); both write their pictures for `walk/run.sh`
  * to compare, raw. Each screen opens on a client of its own, signed in as the office's manager of the
  * data set, and the browser's clock is fixed at the data set's today, so the day an order is filed
@@ -35,6 +35,10 @@ const productChoice = (code: string) => {
 const draft = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.state === 'draft')!;
 const waiting = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+)!;
+/** The request the data set delivered today, and the order it fulfilled. */
+const delivered = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'delivered',
 )!;
 /** The data set's today at ten in the morning, in this Mac's time zone. */
 const [YEAR, MONTH, DAY] = DEMO_TODAY.split('-').map(Number) as [number, number, number];
@@ -274,6 +278,26 @@ async function walk(page: Page, language: Language, width: number) {
   await openDraft();
   await expect(page.getByRole('alert')).toContainText(words.orders.noDrivers);
   await at('orders-10-no-drivers');
+
+  // 11. An order fulfilled, its request delivered.
+  await open(page, language, { path: '/orders' });
+  await page.getByRole('link', { name: delivered.order.number, exact: true }).click();
+  await expect(
+    title(words.orders.orderTitle.replace('{{number}}', delivered.order.number)),
+  ).toBeVisible();
+  await expect(page.getByText(words.orders.state.fulfilled, { exact: true })).toBeVisible();
+  await at('orders-11-fulfilled');
+
+  // 12. A delivered request, with its photo.
+  await open(page, language, { path: '/deliveries' });
+  await page.getByRole('link', { name: delivered.number, exact: true }).click();
+  await expect(
+    title(words.orders.requestTitle.replace('{{number}}', delivered.number)),
+  ).toBeVisible();
+  const proof = page.getByRole('img', { name: words.orders.proofAlt });
+  await expect(proof).toBeVisible();
+  await expect(proof).toHaveJSProperty('complete', true);
+  await at('orders-12-proof');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -284,7 +308,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all ten screens in ${name}`, async ({ page }) => {
+      test(`walks all twelve screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

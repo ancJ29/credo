@@ -144,6 +144,14 @@ const WAITING = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
 
+/** The request the driver's scenes open, and the one the data set delivered, which the office's scenes open. */
+const WAITING_OF_DRIVER = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0005',
+)!;
+const DELIVERED = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'delivered',
+)!;
+
 /** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
 const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
@@ -209,6 +217,17 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-orders:orders-8-conflict': (w) => `alert: ${w.orders.conflict}`,
   'office-orders:orders-9-confirm-failed': (w) => `alert: ${w.orders.stepFailed}`,
   'office-orders:orders-10-no-drivers': (w) => `alert: ${w.orders.noDrivers}`,
+  'office-orders:orders-11-fulfilled': (w) =>
+    `heading: ${w.orders.orderTitle.replace('{{number}}', DELIVERED.order.number)}`,
+  'office-orders:orders-12-proof': (w) => `heading: ${w.orders.proofTitle}`,
+  'driver-deliveries:driver-1-today': (w) => `heading: ${w.nav.myDeliveries}`,
+  'driver-deliveries:driver-2-request': (w) =>
+    `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING_OF_DRIVER.number)}`,
+  // the preview and its buttons exist only once the photo was chosen
+  'driver-deliveries:driver-3-photo': (w) => `heading: ${w.myDeliveries.photoTitle}`,
+  'driver-deliveries:driver-4-delivered': (w) => `alert: ${w.myDeliveries.done}`,
+  'driver-deliveries:driver-5-send-failed': (w) => `alert: ${w.myDeliveries.sendFailed}`,
+  'driver-deliveries:driver-6-cancelled': (w) => `alert: ${w.myDeliveries.cancelled}`,
 };
 
 describe('the app’s own scenes, drawn', () => {

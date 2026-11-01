@@ -73,6 +73,7 @@ export function SceneView({
           api={parts.api}
           device={parts.device}
           today={parts.today}
+          shrink={parts.shrink}
           test={test}
           look={{ scheme: 'light', root: () => host.ownerDocument.documentElement }}
         />

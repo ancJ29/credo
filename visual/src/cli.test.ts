@@ -24,7 +24,7 @@ describe('pnpm report', () => {
     expect(lines[0]).toBe(`walks page: ${folder}`);
     expect(lines).toHaveLength(2);
     const counts = /^(\d+) waiting, (\d+) asked again, (\d+) no, (\d+) yes$/.exec(lines[1])!;
-    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(138);
+    expect(counts.slice(1).reduce((sum, n) => sum + Number(n), 0)).toBe(154);
     type Language = { words: string[]; shown: { kind: string } };
     type Screen = {
       id: string;
@@ -58,6 +58,12 @@ describe('pnpm report', () => {
     const added = piece2[1].screens.find((screen) => screen.id === 'staff-3-added')!;
     expect(added.languages['en'].words).toContain('textbox "First password" = "Fake-password-1!"');
     expect(piece2[1].screens[1].languages['vi'].words).toContain('textbox "Tên" = "Mai Linh"');
+    // The driver's walk, drawn there too: the photo is chosen and shown, with no refusal in its place.
+    const driver = walks.walks.find((walk) => walk.id === 'driver-deliveries')!;
+    expect(driver.screens).toHaveLength(6);
+    const photo = driver.screens.find((screen) => screen.id === 'driver-3-photo')!;
+    expect(photo.languages['en'].words).toContain('heading: Your photo');
+    expect(photo.languages['en'].words.filter((line) => line.startsWith('alert'))).toEqual([]);
     // The process has its own globals back.
     expect('document' in globalThis).toBe(false);
   });

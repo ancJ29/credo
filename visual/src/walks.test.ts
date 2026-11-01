@@ -23,7 +23,7 @@ describe('the walks', () => {
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 
-    expect(states.size).toBe(69);
+    expect(states.size).toBe(77);
     expect(states.get('admin-setup:8-save-conflict')!.id).toBe('conflict');
     expect(states.get('admin-setup:7-save-failed')!.id).toBe('save-failed');
     expect(states.get('admin-setup:1-sign-in')!.id).toBe('empty');
@@ -125,9 +125,9 @@ describe('the walks', () => {
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
   });
 
-  it('keys an answer by walk, screen and language, a hundred and thirty-eight for the sixty-nine screens', () => {
+  it('keys an answer by walk, screen and language, a hundred and fifty-four for the seventy-seven screens', () => {
     expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(138);
+    expect(allKeys(WALKS)).toHaveLength(154);
     expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
@@ -312,7 +312,7 @@ describe('the walks', () => {
     const codes = new Set(DEMO_EMPLOYEES.map((person) => person.code));
     const scenes = WALKS.flatMap((walk) => walk.screens).flatMap((s) => (s.scene ? [s.scene] : []));
 
-    expect(scenes).toHaveLength(60);
+    expect(scenes).toHaveLength(68);
     for (const scene of scenes) {
       if (scene.as !== undefined) expect(codes.has(scene.as), scene.as).toBe(true);
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
@@ -325,7 +325,8 @@ describe('the walks', () => {
       'EMP-0003',
       'EMP-0001',
       'EMP-0001',
-      ...Array<string>(10).fill('EMP-0001'),
+      ...Array<string>(12).fill('EMP-0001'),
+      ...Array<string>(5).fill('EMP-0005'),
     ]);
   });
 
@@ -337,6 +338,7 @@ describe('the walks', () => {
     expect(shot('piece-2.spec.ts')).toEqual(piece2);
     expect(shot('lists.spec.ts')).toEqual(WALKS[6].screens.map((screen) => screen.id));
     expect(shot('orders.spec.ts')).toEqual(WALKS[7].screens.map((screen) => screen.id));
+    expect(shot('driver.spec.ts')).toEqual(WALKS[8].screens.map((screen) => screen.id));
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),
@@ -347,7 +349,7 @@ describe('the walks', () => {
     expect(config).toContain("name: 'operator-fake'");
     expect(config).toContain("name: 'operator-full'");
     expect(config).toContain(
-      "testIgnore: ['piece-2.spec.ts', 'lists.spec.ts', 'orders.spec.ts', 'operator.spec.ts']",
+      "'orders.spec.ts',\n        'driver.spec.ts',\n        'operator.spec.ts',",
     );
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");
@@ -355,6 +357,9 @@ describe('the walks', () => {
     expect(config).toContain("name: 'orders-fake'");
     expect(config).toContain("name: 'orders-full'");
     expect(config).toContain("testMatch: 'orders.spec.ts'");
+    expect(config).toContain("name: 'driver-fake'");
+    expect(config).toContain("name: 'driver-full'");
+    expect(config).toContain("testMatch: 'driver.spec.ts'");
   });
 
   it('puts the customers and products from Excel in one walk of the admin’s set-up, eight screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
@@ -399,7 +404,7 @@ describe('the walks', () => {
     }
   });
 
-  it('puts an order sent to a driver in one walk of the office’s orders, ten screens, each a scene and none from the mock, the three failures on the wrong path', () => {
+  it('puts an order sent to a driver in one walk of the office’s orders, twelve screens, each a scene and none from the mock, the three failures on the wrong path', () => {
     const walk = WALKS[7];
 
     expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
@@ -414,10 +419,12 @@ describe('the walks', () => {
       ['orders-8-conflict', 8, 'wrong'],
       ['orders-9-confirm-failed', 9, 'wrong'],
       ['orders-10-no-drivers', 10, 'wrong'],
+      ['orders-11-fulfilled', 11, 'main'],
+      ['orders-12-proof', 12, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     // every screen is the office manager's, and the failures are cued or provoked as the spec does
-    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(10).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(12).fill('EMP-0001'));
     expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
       undefined,
       undefined,
@@ -429,8 +436,61 @@ describe('the walks', () => {
       'saveOrder:409',
       'confirmOrder:503',
       undefined,
+      undefined,
+      undefined,
     ]);
     expect(walk.screens[9].scene!.noDrivers).toBe(true);
+  });
+
+  it('The driver’s walk: the phone’s six screens, the first from the QR link with nobody signed in, the rest the data set’s driver, the failures cued as the spec cues them and on the wrong path', () => {
+    const walk = WALKS[8];
+
+    expect(walk).toMatchObject({ id: 'driver-deliveries', person: 'driver', part: 'delivery' });
+    expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['driver-1-today', 1, 'main'],
+      ['driver-2-request', 2, 'main'],
+      ['driver-3-photo', 3, 'main'],
+      ['driver-4-delivered', 4, 'main'],
+      ['driver-5-send-failed', 5, 'wrong'],
+      ['driver-6-cancelled', 6, 'wrong'],
+    ]);
+    expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
+    expect(walk.screens[0].scene).toMatchObject({ out: true, signIns: true });
+    expect(walk.screens[0].scene!.path).toContain(`qr=${DEMO_EMPLOYEES[4].id}.`);
+    expect(walk.screens.slice(1).map((screen) => screen.scene!.as)).toEqual(
+      Array(5).fill('EMP-0005'),
+    );
+    expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'deliver:503',
+      'deliver:409',
+    ]);
+    // the photo is chosen as the camera's file, then sent
+    expect(walk.screens[2].scene!.steps).toEqual([
+      { press: 'myDeliveries.deliver' },
+      { attach: 'myDeliveries.photoField', file: 'photo' },
+    ]);
+    expect(walk.screens[3].scene!.steps!.at(-1)).toEqual({ press: 'myDeliveries.send' });
+  });
+
+  it('Each driver screen opens in the walk spec as its scene does: signed in by the QR link for the first, the cue the scene names for the others', () => {
+    const spec = read('specs/driver.spec.ts');
+    const parts = spec.slice(spec.indexOf('async function walk(')).split(/await at\('([^']+)'/);
+    const before = new Map<string, string>();
+    for (let index = 1; index < parts.length; index += 2)
+      before.set(parts[index], parts[index - 1]);
+
+    for (const screen of WALKS[8].screens) {
+      const { cue, out } = screen.scene!;
+      const steps = before.get(screen.id)!;
+      const opened = [...steps.matchAll(/(?:opened|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';
+      expect(opened.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
+      expect(opened.includes('qr: true'), `${screen.id}: qr`).toBe(out === true);
+    }
+    expect(spec).toContain('await page.clock.setFixedTime(CLOCK);');
   });
 
   it('Each orders screen opens in the walk spec as its scene does: the cue, the right taken from the drivers, and the clock at the data set’s today', () => {
