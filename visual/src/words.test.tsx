@@ -212,11 +212,18 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
 };
 
 describe('the app’s own scenes, drawn', () => {
-  it('Each piece-2 walk screen is drawn on the walks page as a fake scene; a step that finds nothing stops the build, naming the walk, the screen and the step', async () => {
-    const drawn = resolveDrawn(WALKS.slice(2), SCREENS);
-    expect([...drawn.keys()].sort()).toEqual(Object.keys(PROOF).sort());
+  // One test a screen: the cost of a screen is its own, so a walk added never moves another test
+  // toward its budget, and a red names the screen.
+  const DRAWN = resolveDrawn(WALKS.slice(2), SCREENS);
 
-    for (const [key, what] of drawn) {
+  it('The piece-2 walks hold exactly the screens the proofs below name', () => {
+    expect([...DRAWN.keys()].sort()).toEqual(Object.keys(PROOF).sort());
+  });
+
+  it.each(Object.keys(PROOF))(
+    'Each piece-2 walk screen is drawn on the walks page as a fake scene, in both languages, and again the same: %s',
+    async (key) => {
+      const what = DRAWN.get(key)!;
       for (const language of LANGUAGES) {
         const navigation = [
           'office-staff:office-1-menu',
@@ -241,8 +248,10 @@ describe('the app’s own scenes, drawn', () => {
           key,
         ).toEqual([]);
       }
-    }
+    },
+  );
 
+  it('a step that finds nothing stops the build, naming the walk, the screen and the step', async () => {
     const lacking = {
       id: 'x-1-nothing',
       walk: 'a-walk',
