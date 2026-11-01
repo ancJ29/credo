@@ -54,6 +54,25 @@ describe('Row 1: the permissions to see orders, to make and send them, and to de
     expect(writes.map((reply) => reply.statusCode)).toEqual([403, 403, 403, 403]);
   });
 
+  it('refuses whoever may only see orders the confirm, the send and a request’s cancel, and lets them open a request', async () => {
+    const w = await ordersTenant(cs);
+    const draft = await w.made();
+    const sent = await w.confirmed(await w.made());
+    const request = await w.requestDoc(DAY, sent.order.request!.id);
+
+    const writes = await Promise.all([
+      w.viewer.call.send('POST', orderRoutes.confirm(DAY, draft.order.id), w.sendBody(draft)),
+      w.viewer.call.send('POST', orderRoutes.send(DAY, draft.order.id), w.sendBody(draft)),
+      w.viewer.call.send('POST', deliveryRoutes.cancel(DAY, request.request.id), {
+        version: request.version,
+      }),
+    ]);
+    const opened = await w.viewer.call.get(deliveryRoutes.one(DAY, request.request.id));
+
+    expect(writes.map((reply) => reply.statusCode)).toEqual([403, 403, 403]);
+    expect(opened.statusCode).toBe(200);
+  });
+
   it('lets a person who may deliver, and no more, do none of it: they are only offered in Confirm', async () => {
     const w = await ordersTenant(cs);
     const driver = await w.t.staff('DRV-3', { department: { 'deliveries.canDeliver': true } });
