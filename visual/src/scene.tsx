@@ -43,6 +43,7 @@ export function SceneView({
         operator: scene.operator,
         signIns: scene.signIns,
         out: scene.out,
+        noDrivers: scene.noDrivers,
         language,
       }),
     [scene, language],
@@ -71,6 +72,7 @@ export function SceneView({
         <App
           api={parts.api}
           device={parts.device}
+          today={parts.today}
           test={test}
           look={{ scheme: 'light', root: () => host.ownerDocument.documentElement }}
         />

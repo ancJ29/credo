@@ -20,6 +20,9 @@ describe('permissions', () => {
       'staff.canEdit': false,
       'staff.canDelete': false,
       'settings.canEdit': false,
+      'orders.canView': false,
+      'orders.canEdit': false,
+      'deliveries.canDeliver': false,
     });
     expect(resolvePermissions([department, position])).toEqual({
       'staff.canView': true,
@@ -27,6 +30,9 @@ describe('permissions', () => {
       'staff.canEdit': false,
       'staff.canDelete': false,
       'settings.canEdit': false,
+      'orders.canView': false,
+      'orders.canEdit': false,
+      'deliveries.canDeliver': false,
     });
     expect(resolvePermissions([department, position, person])['staff.canEdit']).toBe(true);
     // a refusal at the person's layer beats an allowance above it
@@ -51,6 +57,38 @@ describe('permissions', () => {
     expect(layersOf(setup, { own })).toEqual([{}, {}, own]);
   });
 
+  it('The root sets three new permissions at a department, a position or a person, as piece 2’s: to see orders and delivery requests with the customer and product lists, to make and send orders, and to deliver goods; office staff do what theirs allow', () => {
+    const office = { 'orders.canView': true, 'orders.canEdit': true };
+    const driver = { 'deliveries.canDeliver': true };
+
+    expect(PERMISSIONS.slice(-3)).toEqual([
+      'orders.canView',
+      'orders.canEdit',
+      'deliveries.canDeliver',
+    ]);
+    // each level gives each one, and a later refusal takes it away
+    for (const id of ['orders.canView', 'orders.canEdit', 'deliveries.canDeliver'] as const) {
+      const given = { [id]: true };
+      for (const layers of [
+        [given, {}, {}],
+        [{}, given, {}],
+        [{}, {}, given],
+      ]) {
+        expect(can({ root: false, permissions: resolvePermissions(layers) }, id), id).toBe(true);
+      }
+      expect(resolvePermissions([given, { [id]: false }])[id], id).toBe(false);
+      expect(can({ root: false, permissions: {} }, id), id).toBe(false);
+    }
+    // the office does what its layer allows: it sees and makes orders, and is no driver
+    const staff = { root: false, permissions: resolvePermissions([office]) };
+    expect(can(staff, 'orders.canView')).toBe(true);
+    expect(can(staff, 'orders.canEdit')).toBe(true);
+    expect(can(staff, 'deliveries.canDeliver')).toBe(false);
+    expect(can({ root: false, permissions: resolvePermissions([driver]) }, 'orders.canView')).toBe(
+      false,
+    );
+  });
+
   it('Piece 2’s permissions are to see the staff list, to add a person, to change a person’s name and details, and to archive a person; the root sets them at any of the three levels', () => {
     expect(PERMISSIONS).toEqual([
       'staff.canView',
@@ -58,6 +96,9 @@ describe('permissions', () => {
       'staff.canEdit',
       'staff.canDelete',
       'settings.canEdit',
+      'orders.canView',
+      'orders.canEdit',
+      'deliveries.canDeliver',
     ]);
     // each of the three levels takes any of them, and nothing the catalogue lacks
     const everything = Object.fromEntries(PERMISSIONS.map((id) => [id, true]));

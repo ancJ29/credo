@@ -6,7 +6,7 @@ import {
 } from '@credo/shared';
 import { Badge, Checkbox, Group, SegmentedControl, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { NEEDS_SEEING, PERMISSION_LABEL } from './permissionLabels';
+import { NEEDS, PERMISSION_LABEL } from './permissionLabels';
 
 type Props = {
   layer: PermissionLayer;
@@ -35,9 +35,12 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
   // a position's page cannot say what the department above gives.
   const given = (id: PermissionId) =>
     mode === 'allow' ? layer[id] === true : (layer[id] ?? inherited?.[id]);
-  /** A line under a permission that is granted while seeing the staff list is refused. */
-  const needsSeeing = (id: PermissionId) =>
-    NEEDS_SEEING.includes(id) && given(id) === true && given('staff.canView') === false;
+  /** A line under a permission that is granted while the one it needs is refused. */
+  const needs = (id: PermissionId) => {
+    const need = NEEDS[id];
+    if (need === undefined || given(id) !== true || given(need) !== false) return undefined;
+    return t('permissions.needs', { what: t(PERMISSION_LABEL[need]) });
+  };
   return (
     <Stack gap="xs" role="group" aria-label={label}>
       {PERMISSIONS.map((id) =>
@@ -46,7 +49,7 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
             key={id}
             label={t(PERMISSION_LABEL[id])}
             checked={layer[id] === true}
-            description={needsSeeing(id) ? t('permissions.needsSeeing') : undefined}
+            description={needs(id)}
             onChange={(event) => onChange(withValue(layer, id, event.currentTarget.checked))}
           />
         ) : (
@@ -59,9 +62,9 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
                   {t(inherited[id] ? 'permissions.allowed' : 'permissions.refused')}
                 </Text>
               )}
-              {needsSeeing(id) && (
+              {needs(id) !== undefined && (
                 <Text size="xs" c="orange">
-                  {t('permissions.needsSeeing')}
+                  {needs(id)}
                 </Text>
               )}
             </div>

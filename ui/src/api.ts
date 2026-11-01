@@ -13,6 +13,14 @@ import {
   configDocSchema,
   type Customer,
   customerListReplySchema,
+  type DeliveryDoc,
+  deliveryDocSchema,
+  deliveryListReplySchema,
+  deliveryRoutes,
+  type DeliveryRequest,
+  type Driver,
+  driverListReplySchema,
+  type CancelRequest,
   type CreateClientReply,
   createClientReplySchema,
   DEVICE_HEADER,
@@ -31,6 +39,11 @@ import {
   listImportRoute,
   meReplySchema,
   type MeReply,
+  type Order,
+  type OrderDoc,
+  orderDocSchema,
+  orderListReplySchema,
+  orderRoutes,
   type IssueQrReply,
   issueQrReplySchema,
   type PhotoReply,
@@ -43,6 +56,8 @@ import {
   operatorSessionReplySchema,
   ROUTES,
   type SaveEmployeeRequest,
+  type SaveOrderRequest,
+  type SendOrderRequest,
   type SavePhotoRequest,
   type SaveStaffSetupRequest,
   type SessionReply,
@@ -96,6 +111,15 @@ export type SavePhotoResult =
   { kind: 'saved'; reply: PhotoReply } | { kind: 'conflict'; current: PhotoReply | null };
 
 /** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
+/** An order saved, sent, confirmed or cancelled, or the version moved (or a step its state does not
+ * allow): a conflict is a result, carrying the order as it is now when the answer held one. */
+export type OrderResult =
+  { kind: 'done'; doc: OrderDoc } | { kind: 'conflict'; current: OrderDoc | null };
+/** A request cancelled, or the version moved. */
+export type DeliveryResult =
+  { kind: 'done'; doc: DeliveryDoc } | { kind: 'conflict'; current: DeliveryDoc | null };
+
+/** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
@@ -147,6 +171,23 @@ export function createApi({
     const parsed = schema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ApiError(null);
     return parsed.data;
+  }
+
+  /** The record a 409 carries as it is now, or null when the answer holds none the schema reads. */
+  async function currentOf<T>(response: Response, schema: Schema<T>) {
+    const body = (await response.json().catch(() => null)) as { current?: unknown } | null;
+    const current = schema.safeParse(body?.current);
+    return current.success ? current.data : null;
+  }
+
+  /** A write to an order: a 409 is a result and keeps the order as it is now. */
+  async function orderWrite(method: string, path: string, body: unknown): Promise<OrderResult> {
+    const response = await send(method, path, body);
+    if (response.status === 409) {
+      return { kind: 'conflict', current: await currentOf(response, orderDocSchema) };
+    }
+    if (!response.ok) throw new ApiError(response.status);
+    return { kind: 'done', doc: await read(response, orderDocSchema) };
   }
 
   return {
@@ -284,6 +325,74 @@ export function createApi({
       const response = await send('POST', listImportRoute('products'), { rows });
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, importProductsReplySchema);
+    },
+
+    /** The orders of the days `from` to `to` (at most a week), newest first. */
+    async listOrders(from: string, to: string): Promise<Order[]> {
+      const response = await send('GET', orderRoutes.list(from, to));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, orderListReplySchema)).orders;
+    },
+
+    async getOrder(day: string, id: string): Promise<OrderDoc> {
+      const response = await send('GET', orderRoutes.one(day, id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, orderDocSchema);
+    },
+
+    /** A first save: the BFF gives the order its number. */
+    async createOrder(request: SaveOrderRequest): Promise<OrderDoc> {
+      const response = await send('POST', ROUTES.orders, request);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, orderDocSchema);
+    },
+
+    /** A draft saved again over the version read. */
+    async saveOrder(day: string, id: string, request: SaveOrderRequest): Promise<OrderResult> {
+      return await orderWrite('PUT', orderRoutes.one(day, id), request);
+    },
+
+    /** A draft confirmed with its driver and day: the order and its request are made together. */
+    async confirmOrder(day: string, id: string, request: SendOrderRequest): Promise<OrderResult> {
+      return await orderWrite('POST', orderRoutes.confirm(day, id), request);
+    },
+
+    /** A confirmed order whose request was cancelled, sent again as a new request. */
+    async sendOrder(day: string, id: string, request: SendOrderRequest): Promise<OrderResult> {
+      return await orderWrite('POST', orderRoutes.send(day, id), request);
+    },
+
+    async cancelOrder(day: string, id: string, request: CancelRequest): Promise<OrderResult> {
+      return await orderWrite('POST', orderRoutes.cancel(day, id), request);
+    },
+
+    /** The requests of one day. */
+    async listDeliveries(day: string): Promise<DeliveryRequest[]> {
+      const response = await send('GET', deliveryRoutes.list(day));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, deliveryListReplySchema)).deliveries;
+    },
+
+    async getDelivery(day: string, id: string): Promise<DeliveryDoc> {
+      const response = await send('GET', deliveryRoutes.one(day, id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, deliveryDocSchema);
+    },
+
+    async cancelDelivery(day: string, id: string, request: CancelRequest): Promise<DeliveryResult> {
+      const response = await send('POST', deliveryRoutes.cancel(day, id), request);
+      if (response.status === 409) {
+        return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'done', doc: await read(response, deliveryDocSchema) };
+    },
+
+    /** The people the office may name as a driver: active, and allowed to deliver. */
+    async listDrivers(): Promise<Driver[]> {
+      const response = await send('GET', ROUTES.drivers);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, driverListReplySchema)).drivers;
     },
 
     async saveEmployee(id: string, request: SaveEmployeeRequest): Promise<SaveEmployeeResult> {

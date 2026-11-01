@@ -48,6 +48,7 @@ export async function staffTenant(cs: RunningCStorage, options: TenantOptions = 
       own?: PermissionLayer;
     } = {},
     extra: Partial<Employee> = {},
+    options: { signedIn?: boolean } = {},
   ) => {
     const before = (await as(root).get('/api/staff-setup')).json<{ setup: StaffSetup }>().setup;
     const seeded = await setup({
@@ -69,6 +70,8 @@ export async function staffTenant(cs: RunningCStorage, options: TenantOptions = 
       permissions: layers.own ?? {},
       ...extra,
     });
+    // A person who only needs to be there is not signed in: no handle, and a call with it is a 401.
+    if (options.signedIn === false) return { ...person, authId: '', call: as('') };
     const session = await signIn(t.app, { name: code, password: person.password as string });
     return { ...person, authId: session.body.authId, call: as(session.body.authId) };
   };

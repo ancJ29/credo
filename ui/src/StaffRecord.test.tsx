@@ -319,30 +319,38 @@ describe('the company’s own fields', () => {
     const saveButton = screen.getByRole('button', { name: 'Save' });
     const save = () => user.click(saveButton);
     const refusedAs = 'A field needs a key nobody else has';
+    // text set in one change event: this case is about what the editor refuses, not about keystrokes
+    const set = (field: HTMLElement, value: string) =>
+      fireEvent.change(field, { target: { value } });
+    // the alert is read off the DOM: a role query walks the whole page's accessibility tree, and
+    // does it again at every poll
+    const alertText = () =>
+      waitFor(() => {
+        const alert = document.querySelector('[role="alert"]');
+        expect(alert).not.toBeNull();
+        return alert?.textContent ?? '';
+      });
 
-    await user.click(screen.getByRole('button', { name: 'Add a field' }));
+    await user.click(screen.getByText('Add a field'));
     await save();
-    expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
+    expect(await alertText()).toContain(refusedAs);
 
     // the same key as another
-    await enter(lastOf(/^Key/), 'plate');
-    await enter(lastOf(/^Name in Vietnamese/), 'Biển');
-    await enter(lastOf(/^Name in English/), 'Plate');
+    set(lastOf(/^Key/), 'plate');
+    set(lastOf(/^Name in Vietnamese/), 'Biển');
+    set(lastOf(/^Name in English/), 'Plate');
     await save();
-    expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
+    expect(await alertText()).toContain(refusedAs);
 
     // a choice with an option, then without
-    await user.clear(lastOf(/^Key/));
-    await enter(lastOf(/^Key/), 'colour');
+    set(lastOf(/^Key/), 'colour');
     await user.selectOptions(lastOf('Kind'), 'A choice from a list');
     await save();
-    expect((await screen.findByRole('alert')).textContent).toContain(refusedAs);
-    await user.click(
-      screen.getAllByRole('button', { name: 'Add an option' }).at(-1) as HTMLElement,
-    );
-    await enter(lastOf('Option key'), 'red');
-    await enter(lastOf('Option in Vietnamese'), 'Đỏ');
-    await enter(lastOf('Option in English'), 'Red');
+    expect(await alertText()).toContain(refusedAs);
+    await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
+    set(lastOf('Option key'), 'red');
+    set(lastOf('Option in Vietnamese'), 'Đỏ');
+    set(lastOf('Option in English'), 'Red');
     expect(api.saveStaffSetup).not.toHaveBeenCalled();
     await save();
     await screen.findByText('Saved.');
@@ -351,9 +359,9 @@ describe('the company’s own fields', () => {
     ]);
 
     // an option and a field are removed
-    await user.click(screen.getByRole('button', { name: 'Remove the option red' }));
+    await user.click(screen.getByLabelText('Remove the option red'));
     expect(screen.queryByDisplayValue('red')).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Remove colour' }));
+    await user.click(screen.getByLabelText('Remove colour'));
     expect(screen.queryByDisplayValue('colour')).toBeNull();
   });
 
@@ -894,7 +902,13 @@ describe('the list and its address', () => {
     const root = { name: 'root', root: true, permissions: {} };
     draw(
       <>
-        <StaffListPage api={api} user={root} onSignedOut={() => {}} onForbidden={() => {}} />
+        <StaffListPage
+          api={api}
+          user={root}
+          onSignedOut={() => {}}
+          onForbidden={() => {}}
+          today={() => ''}
+        />
         <Probe />
       </>,
     );

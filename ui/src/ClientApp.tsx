@@ -14,7 +14,10 @@ import { AddPersonPage } from './AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
+import { localToday } from './day';
 import type { DeviceStore } from './device';
+import { DeliveriesPage } from './DeliveriesPage';
+import { DeliveryPage } from './DeliveryPage';
 import { ImportPage } from './ImportPage';
 import { ListImportPage } from './ListImportPage';
 import { ListPage } from './ListPage';
@@ -23,6 +26,8 @@ import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
 import { mayOpen, type Page, pagesOf } from './nav';
 import { Notice } from './Notice';
+import { NewOrderPage, OrderPage } from './OrderPage';
+import { OrdersPage } from './OrdersPage';
 import { OwnPasswordPage } from './OwnPasswordPage';
 import { QrLanding } from './QrLanding';
 import { SettingsPage } from './SettingsPage';
@@ -39,6 +44,8 @@ type Props = {
   test?: boolean;
   /** Where the app is drawn inside another page's window: its colour scheme and root element. */
   look?: Look;
+  /** The office's day now; the data set's on the fake, the browser's own otherwise. */
+  today?: () => string;
 };
 
 const SIGNED_OUT = 401;
@@ -88,7 +95,7 @@ async function boot(api: Api, device: DeviceStore, linked: string | null) {
  * anyone out; any other failure says the service is unavailable and offers a retry. An address
  * that names no company we know shows one screen in credo's colour and nothing of any client's.
  */
-export function ClientApp({ api, device, test, look }: Props) {
+export function ClientApp({ api, device, test, look, today = localToday }: Props) {
   const [phase, setPhase] = useState<'loading' | 'unavailable' | 'unknown'>('loading');
   const [doc, setDoc] = useState<ConfigDoc | null>(null);
   const [user, setUser] = useState<UserView | null>(null);
@@ -220,6 +227,7 @@ export function ClientApp({ api, device, test, look }: Props) {
     user: who,
     onSignedOut: signedOut,
     onForbidden: () => void readAgain(),
+    today,
   });
 
   const landing = !user && qr !== null && qrStatus !== 'done';
@@ -251,6 +259,32 @@ export function ClientApp({ api, device, test, look }: Props) {
           {first ? (
             <Routes>
               {ownPassword(user)}
+              <Route
+                path="/orders"
+                element={guarded(user, 'orders', <OrdersPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/orders/new"
+                element={
+                  can(user, 'orders.canEdit') ? (
+                    <NewOrderPage {...pageFor(user)} />
+                  ) : (
+                    <Notice kind="forbidden" />
+                  )
+                }
+              />
+              <Route
+                path="/orders/:day/:id"
+                element={guarded(user, 'orders', <OrderPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/deliveries"
+                element={guarded(user, 'deliveries', <DeliveriesPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/deliveries/:day/:id"
+                element={guarded(user, 'deliveries', <DeliveryPage {...pageFor(user)} />)}
+              />
               <Route
                 path="/settings"
                 element={guarded(
@@ -305,7 +339,14 @@ export function ClientApp({ api, device, test, look }: Props) {
                 <Route
                   key={kind}
                   path={`/${kind}/import`}
-                  element={guarded(user, kind, <ListImportPage kind={kind} {...pageFor(user)} />)}
+                  element={
+                    // Only the root imports (case-table row 22): no permission allows it.
+                    user.root ? (
+                      <ListImportPage kind={kind} {...pageFor(user)} />
+                    ) : (
+                      <Notice kind="forbidden" />
+                    )
+                  }
                 />
               ))}
               <Route path="*" element={<Navigate to={first.path} replace />} />

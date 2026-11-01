@@ -1,9 +1,11 @@
 import { can, type PermissionLayer } from '@credo/shared';
 import {
   IconAddressBook,
+  IconClipboardList,
   IconPackage,
   IconSettings,
   IconSitemap,
+  IconTruckDelivery,
   IconUsers,
 } from '@tabler/icons-react';
 import type { ParseKeys } from 'i18next';
@@ -22,6 +24,20 @@ type Person = { root: boolean; permissions: PermissionLayer };
  * person's menu only when `allowed` says so; the BFF checks the same on every call, so this is a
  * view of it, never the guard. */
 export const PAGES = [
+  {
+    id: 'orders',
+    path: '/orders',
+    label: 'nav.orders',
+    icon: IconClipboardList,
+    allowed: (user: Person) => can(user, 'orders.canView'),
+  },
+  {
+    id: 'deliveries',
+    path: '/deliveries',
+    label: 'nav.deliveries',
+    icon: IconTruckDelivery,
+    allowed: (user: Person) => can(user, 'orders.canView'),
+  },
   {
     id: 'settings',
     path: '/settings',
@@ -48,14 +64,14 @@ export const PAGES = [
     path: '/customers',
     label: 'nav.customers',
     icon: IconAddressBook,
-    allowed: (user: Person) => user.root,
+    allowed: (user: Person) => can(user, 'orders.canView'),
   },
   {
     id: 'products',
     path: '/products',
     label: 'nav.products',
     icon: IconPackage,
-    allowed: (user: Person) => user.root,
+    allowed: (user: Person) => can(user, 'orders.canView'),
   },
 ] as const;
 

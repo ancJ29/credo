@@ -2,7 +2,7 @@ import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import type { Answers } from './answers';
 import { fingerprintOf } from './fingerprint';
-import { makeReport, type ReadWords } from './report';
+import { currentWords, makeReport, type ReadWords } from './report';
 import { PARTS, PEOPLE, WALKS } from './walks';
 
 const source = {
@@ -163,7 +163,7 @@ describe('the report', () => {
     expect('mock' in drawn).toBe(false);
     expect(drawn.scene!.steps!.at(-1)).toEqual({ press: 'addPerson.submit' });
     expect(drawn.languages.en.words).toEqual(['text: staff-3-added en']);
-    expect(report.tally.waiting).toBe(118);
+    expect(report.tally.waiting).toBe(138);
   });
 
   it('waits for a reader that answers later, as a scene’s does', async () => {
@@ -173,5 +173,31 @@ describe('the report', () => {
     });
 
     expect(report.walks[0].screens[0].languages.vi.words).toEqual(['text: vi']);
+  });
+});
+
+describe('the words now', () => {
+  it('draws every screen in both languages, or with `only` just the screens under those keys', async () => {
+    const drawn: string[] = [];
+    const read: ReadWords = (what, language) => {
+      drawn.push(`${'scene' in what ? what.id : 'mock'}:${language}`);
+      return [`text: ${language}`];
+    };
+
+    const all = await currentWords(WALKS.slice(0, 2), SCREENS, read);
+    expect(all.size).toBe(36);
+    drawn.length = 0;
+    const some = await currentWords(
+      WALKS.slice(0, 2),
+      SCREENS,
+      read,
+      new Set(['admin-setup:1-sign-in:vi', 'operator-setup:op-4-code-taken:en']),
+    );
+
+    expect([...some.keys()]).toEqual([
+      'admin-setup:1-sign-in:vi',
+      'operator-setup:op-4-code-taken:en',
+    ]);
+    expect(drawn).toHaveLength(2);
   });
 });

@@ -86,32 +86,37 @@ async function codesOf(t: Tenant, list: List) {
   return body[list.name].map((one) => one.code);
 }
 
-describe.each(LISTS)('The $name: only the root reads the list and imports into it', (list) => {
-  it('refuses a person who holds every staff permission, 403, and one not signed in, 401, on the list and on the import, and adds nothing', async () => {
-    const t = await staffTenant(cs);
-    const office = await t.staff('OFFICE', {
-      own: Object.fromEntries(PERMISSIONS.map((id) => [id, true])),
-    });
+describe.each(LISTS)(
+  'The $name: whoever may see orders reads the list, only the root imports into it',
+  (list) => {
+    it('refuses a person who holds every permission but the sight of orders, 403, on the list, and the person who has it, 403, on the import, and one not signed in, 401, on both, and adds nothing', async () => {
+      const t = await staffTenant(cs);
+      const blind = await t.staff('BLIND', {
+        own: Object.fromEntries(PERMISSIONS.map((id) => [id, id !== 'orders.canView'])),
+      });
+      const sighted = await t.staff('SIGHTED', { own: { 'orders.canView': true } });
 
-    const read = await office.call.get(list.route);
-    const send = await office.call.send('POST', list.importRoute, { rows: [list.row()] });
-    const unsignedRead = await t.app.inject({
-      method: 'GET',
-      url: list.route,
-      headers: { 'x-client': 'acme-co' },
-    });
-    const unsignedSend = await t.app.inject({
-      method: 'POST',
-      url: list.importRoute,
-      payload: { rows: [list.row()] },
-      headers: { 'x-client': 'acme-co' },
-    });
+      const read = await blind.call.get(list.route);
+      const seen = await sighted.call.get(list.route);
+      const send = await sighted.call.send('POST', list.importRoute, { rows: [list.row()] });
+      const unsignedRead = await t.app.inject({
+        method: 'GET',
+        url: list.route,
+        headers: { 'x-client': 'acme-co' },
+      });
+      const unsignedSend = await t.app.inject({
+        method: 'POST',
+        url: list.importRoute,
+        payload: { rows: [list.row()] },
+        headers: { 'x-client': 'acme-co' },
+      });
 
-    expect([read.statusCode, send.statusCode]).toEqual([403, 403]);
-    expect([unsignedRead.statusCode, unsignedSend.statusCode]).toEqual([401, 401]);
-    expect(await codesOf(t, list)).toEqual([]);
-  });
-});
+      expect([read.statusCode, seen.statusCode, send.statusCode]).toEqual([403, 200, 403]);
+      expect([unsignedRead.statusCode, unsignedSend.statusCode]).toEqual([401, 401]);
+      expect(await codesOf(t, list)).toEqual([]);
+    });
+  },
+);
 
 describe.each(LISTS)('The $name list is the company’s own, in code order, never short', (list) => {
   it('lists every record of the company in code order, and none of another company’s', async () => {

@@ -1,6 +1,19 @@
 import type { TenantConfig } from './config';
 import type { CustomField } from './fields';
 import type { Customer, Product } from './lists';
+import {
+  addDays,
+  type DeliveryRequest,
+  type Driver,
+  type Order,
+  type OrderState,
+  numberText,
+  ORDER_PREFIX,
+  type Priced,
+  priceLines,
+  REQUEST_PREFIX,
+  type RequestState,
+} from './orders';
 import type { Employee, StaffSetup, UnitLink } from './staff';
 
 const logo = `data:image/svg+xml;base64,${btoa(
@@ -82,10 +95,21 @@ export const DEMO_STAFF_SETUP: StaffSetup = {
     {
       id: DEPARTMENTS.office,
       name: 'Văn phòng',
-      permissions: { 'staff.canView': true, 'staff.canCreate': true, 'staff.canEdit': true },
+      permissions: {
+        'staff.canView': true,
+        'staff.canCreate': true,
+        'staff.canEdit': true,
+        'orders.canView': true,
+        'orders.canEdit': true,
+      },
       extra: {},
     },
-    { id: DEPARTMENTS.delivery, name: 'Giao hàng', permissions: {}, extra: {} },
+    {
+      id: DEPARTMENTS.delivery,
+      name: 'Giao hàng',
+      permissions: { 'deliveries.canDeliver': true },
+      extra: {},
+    },
   ],
   positions: [
     { id: POSITIONS.manager, name: 'Quản lý', permissions: { 'staff.canDelete': true }, extra: {} },
@@ -427,3 +451,243 @@ export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
   { code: 'VT-002', name: 'Cát xây tô', unit: 'm³', price: '320000' },
   { code: 'VT-011', name: 'Đá mi bụi', unit: 'm³', price: 'thương lượng' },
 ];
+
+/** The day the data set's week ends on, the office's today: a Wednesday, the day of the demo. The
+ * fake build and a scene take it as the page's today, and the walk fixes the browser's clock at
+ * it, so no screen holds a day the run was made on. */
+export const DEMO_TODAY = '2026-11-04';
+
+/** One order of the week: a day (counted back from today), the hour it was made, the customer and
+ * the products by code, its state, and for a confirmed one the driver by code, the day it was sent
+ * for (counted from today) and whether its request was cancelled since. */
+type OrderSpec = {
+  back: number;
+  time: string;
+  customer: string;
+  lines: [string, number][];
+  state: OrderState;
+  driver?: string;
+  sentFor?: number;
+  requestState?: RequestState;
+};
+
+const WEEK_OF_ORDERS: OrderSpec[] = [
+  {
+    back: 6,
+    time: '08:10',
+    customer: 'KH-001',
+    lines: [
+      ['VT-001', 40],
+      ['VT-002', 3],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: -6,
+  },
+  {
+    back: 6,
+    time: '10:45',
+    customer: 'KH-003',
+    lines: [['VT-004', 2]],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: -6,
+  },
+  {
+    back: 5,
+    time: '07:55',
+    customer: 'KH-002',
+    lines: [
+      ['VT-005', 2],
+      ['VT-003', 6],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: -5,
+  },
+  {
+    back: 5,
+    time: '14:20',
+    customer: 'KH-005',
+    lines: [['VT-006', 4]],
+    state: 'cancelled',
+    driver: 'EMP-0006',
+    sentFor: -5,
+    requestState: 'cancelled',
+  },
+  {
+    back: 4,
+    time: '09:05',
+    customer: 'KH-004',
+    lines: [['VT-005', 5]],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: -4,
+  },
+  {
+    back: 3,
+    time: '08:30',
+    customer: 'KH-006',
+    lines: [
+      ['VT-001', 100],
+      ['DV-001', 1],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: -3,
+  },
+  { back: 3, time: '15:40', customer: 'KH-001', lines: [['VT-003', 4]], state: 'draft' },
+  {
+    back: 2,
+    time: '10:15',
+    customer: 'KH-002',
+    lines: [
+      ['VT-004', 6],
+      ['DV-001', 1],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: -2,
+  },
+  {
+    back: 1,
+    time: '09:40',
+    customer: 'KH-003',
+    lines: [['VT-002', 8]],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: -1,
+  },
+  {
+    back: 1,
+    time: '16:05',
+    customer: 'KH-005',
+    lines: [['VT-006', 2]],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: 0,
+  },
+  {
+    back: 1,
+    time: '17:10',
+    customer: 'KH-004',
+    lines: [
+      ['VT-001', 60],
+      ['VT-003', 5],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: 0,
+  },
+  {
+    back: 0,
+    time: '07:45',
+    customer: 'KH-006',
+    lines: [['VT-005', 3]],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: 0,
+  },
+  {
+    back: 0,
+    time: '09:20',
+    customer: 'KH-001',
+    lines: [
+      ['VT-002', 5],
+      ['VT-001', 20],
+    ],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: 0,
+  },
+  {
+    back: 0,
+    time: '10:50',
+    customer: 'KH-002',
+    lines: [['VT-004', 3]],
+    state: 'confirmed',
+    driver: 'EMP-0005',
+    sentFor: 0,
+    requestState: 'cancelled',
+  },
+  { back: 0, time: '11:30', customer: 'KH-003', lines: [['VT-006', 2]], state: 'draft' },
+  {
+    back: 0,
+    time: '13:05',
+    customer: 'KH-005',
+    lines: [['VT-001', 30]],
+    state: 'confirmed',
+    driver: 'EMP-0006',
+    sentFor: 1,
+  },
+];
+
+/** The minutes after an order that its request is made, in the data set. */
+const SENT_AFTER_MINUTES = 20;
+/** A time of day in Vietnam (UTC+7), as milliseconds since the epoch, fixed. */
+const atVietnam = (day: string, time: string) => {
+  const [year, month, date] = day.split('-').map(Number) as [number, number, number];
+  const [hour, minute] = time.split(':').map(Number) as [number, number];
+  return Date.UTC(year, month - 1, date, hour - 7, minute);
+};
+
+const driverOf = (code: string): Driver => {
+  const found = DEMO_EMPLOYEES.find((person) => person.code === code)!;
+  return { id: found.id, code: found.code, name: found.name };
+};
+
+/** A week of the demo company's orders and their delivery requests at fixed times, ending on
+ * `DEMO_TODAY`, numbered DH- and GH- in the order they were made. One data set for the fake and
+ * the stack's generator; a request is made for each confirmed order, and one is cancelled since. */
+const WEEK = (() => {
+  const orders: Order[] = [];
+  const requests: DeliveryRequest[] = [];
+  WEEK_OF_ORDERS.forEach((spec, index) => {
+    const day = addDays(DEMO_TODAY, -spec.back);
+    const customer = DEMO_CUSTOMERS.find((one) => one.code === spec.customer)!;
+    const priced = priceLines(
+      spec.lines.map(([code, quantity]) => ({
+        productId: DEMO_PRODUCTS.find((one) => one.code === code)!.id,
+        quantity,
+      })),
+      DEMO_PRODUCTS,
+    ) as Extract<Priced, { kind: 'priced' }>; // every code is in the data set's lists, as its test reads
+    const madeAt = atVietnam(day, spec.time);
+    const order: Order = {
+      id: id(401 + index),
+      number: numberText(ORDER_PREFIX, index + 1),
+      day,
+      state: spec.state,
+      customer: structuredClone(customer),
+      lines: priced.lines,
+      total: priced.total,
+      request: null,
+      madeAt,
+      extra: {},
+    };
+    orders.push(order);
+    if (spec.driver === undefined) return;
+    const request: DeliveryRequest = {
+      id: id(501 + index),
+      number: numberText(REQUEST_PREFIX, requests.length + 1),
+      day: addDays(DEMO_TODAY, spec.sentFor as number),
+      state: spec.requestState ?? 'waiting',
+      driver: driverOf(spec.driver),
+      order: { id: order.id, day: order.day, number: order.number },
+      customer: structuredClone(order.customer),
+      lines: structuredClone(order.lines),
+      total: order.total,
+      madeAt: madeAt + SENT_AFTER_MINUTES * 60_000,
+      extra: {},
+    };
+    requests.push(request);
+    if (request.state === 'waiting') {
+      const { id: requestId, number, day: sentDay, driver } = request;
+      order.request = { id: requestId, number, day: sentDay, driver };
+    }
+  });
+  return { orders, requests };
+})();
+
+export const DEMO_ORDERS: Order[] = WEEK.orders;
+export const DEMO_DELIVERIES: DeliveryRequest[] = WEEK.requests;

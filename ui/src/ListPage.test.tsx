@@ -109,22 +109,31 @@ describe('the customers and the products', () => {
     expect(await screen.findByText('VT-001')).toBeTruthy();
   });
 
-  it('Only the company’s root sees the two lists and imports into them: office staff have no menu entry, and the page by its address says they may not open it', async () => {
+  it('Whoever may see orders sees the two lists in the menu and opens them; only the root imports, and someone who may not see orders has neither', async () => {
     const office = openApp('/customers', { as: 'EMP-0001' });
 
+    expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
+    await screen.findByText('KH-001');
+    expect(office.api.listCustomers).toHaveBeenCalledOnce();
+    const menu = within(screen.getByRole('navigation', { name: 'Menu' }));
+    expect(menu.getByText('Customers')).toBeTruthy();
+    expect(menu.getByText('Products')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+    office.unmount();
+
+    const imports = openApp('/products/import', { as: 'EMP-0001' });
     expect(
       await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
     ).toBeTruthy();
-    expect(office.api.listCustomers).not.toHaveBeenCalled();
+    imports.unmount();
+
+    const warehouse = openApp('/customers', { as: 'EMP-0004' });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+    ).toBeTruthy();
+    expect(warehouse.api.listCustomers).not.toHaveBeenCalled();
     expect(
       within(screen.getByRole('navigation', { name: 'Menu' })).queryByText('Customers'),
     ).toBeNull();
-    office.unmount();
-
-    const products = openApp('/products/import', { as: 'EMP-0001' });
-    expect(
-      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
-    ).toBeTruthy();
-    expect(products.api.listProducts).not.toHaveBeenCalled();
   });
 });

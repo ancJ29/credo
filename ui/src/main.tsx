@@ -14,7 +14,7 @@ const fake =
   import.meta.env.MODE === 'fake'
     ? (await import('./fake')).fakeParts(location.search, sessionStorage)
     : null;
-const { api, device } = fake ?? realParts();
+const { api, device, today } = fake ?? realParts();
 
 function realParts() {
   const device = createDeviceStore(localStorage);
@@ -24,11 +24,11 @@ function realParts() {
     authId: device.authId,
     operatorAuthId: device.operatorAuthId,
   });
-  return { api, device };
+  return { api, device, today: undefined };
 }
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <App api={api} device={device} />
+    <App api={api} device={device} today={today} />
   </BrowserRouter>,
 );

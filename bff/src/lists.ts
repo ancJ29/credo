@@ -57,11 +57,11 @@ const PRODUCTS: ListKind<z.infer<typeof productSchema>> = {
 type Result<Record> =
   { kind: 'added'; record: Record } | { kind: 'refused'; reason: 'taken' | 'invalid' | 'busy' };
 
-/** The customers' and the products' routes: the company's root alone reads a list and imports into
- * it, checked on the server. A list is read in code order, never short; an import adds each row as
+/** The customers' and the products' routes: whoever may see orders reads a list, and the company's
+ * root alone imports into it, checked on the server. A list is read in code order, never short; an import adds each row as
  * one add, one after another, and answers one result for each row. */
 export function registerListRoutes(app: FastifyInstance, deps: Deps) {
-  const { storage, forClient, signedIn, mustBeRoot } = deps;
+  const { storage, forClient, signedIn, mustBeRoot, mustCan } = deps;
 
   function registerList<Record extends { id: string; code: string }>(kind: ListKind<Record>) {
     /** Every record of the list. Never a short list that looks whole: more than c-storage returns,
@@ -93,7 +93,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
     }
 
     app.get(kind.route, forClient, async (request) => {
-      mustBeRoot(await signedIn(request));
+      mustCan(await signedIn(request), 'orders.canView');
       const records = await everyone(request.tenantId);
       records.sort(byCode);
       return { [kind.field]: records };

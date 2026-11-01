@@ -50,6 +50,7 @@ import {
   readSignIn,
 } from './staff-records';
 import { registerListRoutes } from './lists';
+import { registerOrderRoutes } from './orders';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -396,6 +397,7 @@ export function buildApp({ storage, now, logger }: AppDeps) {
 
   registerStaffRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
   registerListRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
+  registerOrderRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
 
   return app;
 }

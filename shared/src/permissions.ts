@@ -2,13 +2,19 @@ import { z } from 'zod';
 
 /** The catalogue: what a person may do on each page built, in the order the editors list it.
  * Setting a password, issuing a QR code and keeping the staff setup are the root's alone and in no
- * catalogue. `settings.canEdit` lets someone who is not the root keep the company's settings. */
+ * catalogue. `settings.canEdit` lets someone who is not the root keep the company's settings.
+ * `orders.canView` sees the orders, the delivery requests and the customer and product lists;
+ * `orders.canEdit` makes, saves, confirms and cancels orders and sends and cancels requests;
+ * `deliveries.canDeliver` marks a person the office may name as a request's driver. */
 export const PERMISSIONS = [
   'staff.canView',
   'staff.canCreate',
   'staff.canEdit',
   'staff.canDelete',
   'settings.canEdit',
+  'orders.canView',
+  'orders.canEdit',
+  'deliveries.canDeliver',
 ] as const;
 export type PermissionId = (typeof PERMISSIONS)[number];
 

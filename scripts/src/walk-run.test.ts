@@ -339,6 +339,18 @@ describe('walk/run.sh --checks', () => {
     expect(out).toMatch(/== verdict: checks only: nothing was run/);
   });
 
+  it('knows the orders’ walk by its name, its own two projects and its own folder of bases', () => {
+    const l = layout();
+    writeFileSync(l.ps, '  1     0 /sbin/launchd\n');
+
+    const { code, out } = run(l, ['office-orders', '--checks']);
+
+    expect(code).toBe(0);
+    expect(out).toContain('office-orders: orders-fake lists 2 tests');
+    expect(out).toContain('office-orders: orders-full lists 2 tests');
+    expect(out).toMatch(/== verdict: checks only: nothing was run/);
+  });
+
   it('reads everything, names a stray it would stop, acts on nothing and logs every line', () => {
     const l = layout();
     writeFileSync(

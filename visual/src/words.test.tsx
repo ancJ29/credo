@@ -1,4 +1,5 @@
 import { LANGUAGES } from '@credo/shared';
+import { DEMO_DELIVERIES, DEMO_EMPLOYEES, DEMO_TODAY } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { DICTIONARIES } from '@credo/ui/words';
 import { describe, expect, it, vi } from 'vitest';
@@ -137,6 +138,12 @@ describe('the app’s own screens, drawn', () => {
   });
 });
 
+/** The driver the orders' scenes choose, by the id the fake's choice holds, and the request they cancel. */
+const DRIVER_ID = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0005')!.id;
+const WAITING = DEMO_DELIVERIES.find(
+  (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+)!;
+
 /** A line only a scene whose steps ran can hold, for each piece-2 screen, in a language's words. */
 const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff-setup:setup-1-departments-positions': (w) => `heading: ${w.setup.title}`,
@@ -189,14 +196,34 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-6-products': (w) => `heading: ${w.nav.products}`,
   'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
+  'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
+  // the second line is the one added by the steps; the form's own list holds the product too, as an option
+  'office-orders:orders-2-new': () => 'cell: Cát xây tô',
+  'office-orders:orders-3-confirm': (w) => `combobox "${w.orders.driver}" = "${DRIVER_ID}"`,
+  'office-orders:orders-4-confirmed': (w) =>
+    `alert: ${w.orders.done.confirmed.replace('{{number}}', 'GH-00015')}`,
+  'office-orders:orders-5-requests': (w) => `heading: ${w.nav.deliveries}`,
+  'office-orders:orders-6-request': (w) =>
+    `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING.number)}`,
+  'office-orders:orders-7-cancelled': (w) => `heading: ${w.orders.sendAgain}`,
+  'office-orders:orders-8-conflict': (w) => `alert: ${w.orders.conflict}`,
+  'office-orders:orders-9-confirm-failed': (w) => `alert: ${w.orders.stepFailed}`,
+  'office-orders:orders-10-no-drivers': (w) => `alert: ${w.orders.noDrivers}`,
 };
 
 describe('the app’s own scenes, drawn', () => {
-  it('Each piece-2 walk screen is drawn on the walks page as a fake scene; a step that finds nothing stops the build, naming the walk, the screen and the step', async () => {
-    const drawn = resolveDrawn(WALKS.slice(2), SCREENS);
-    expect([...drawn.keys()].sort()).toEqual(Object.keys(PROOF).sort());
+  // One test a screen: the cost of a screen is its own, so a walk added never moves another test
+  // toward its budget, and a red names the screen.
+  const DRAWN = resolveDrawn(WALKS.slice(2), SCREENS);
 
-    for (const [key, what] of drawn) {
+  it('The piece-2 walks hold exactly the screens the proofs below name', () => {
+    expect([...DRAWN.keys()].sort()).toEqual(Object.keys(PROOF).sort());
+  });
+
+  it.each(Object.keys(PROOF))(
+    'Each piece-2 walk screen is drawn on the walks page as a fake scene, in both languages, and again the same: %s',
+    async (key) => {
+      const what = DRAWN.get(key)!;
       for (const language of LANGUAGES) {
         const navigation = [
           'office-staff:office-1-menu',
@@ -221,8 +248,10 @@ describe('the app’s own scenes, drawn', () => {
           key,
         ).toEqual([]);
       }
-    }
+    },
+  );
 
+  it('a step that finds nothing stops the build, naming the walk, the screen and the step', async () => {
     const lacking = {
       id: 'x-1-nothing',
       walk: 'a-walk',

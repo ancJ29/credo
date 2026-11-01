@@ -1,4 +1,5 @@
 import { type TenantConfig } from '@credo/shared';
+import { DEMO_DELIVERIES, DEMO_ORDERS } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
 import { ApiError, createApi } from './api';
 
@@ -540,6 +541,136 @@ describe('the API client', () => {
       await expect(api.getPhoto(id)).rejects.toMatchObject({ status: 404 });
       expect(calls[0]?.path).toBe(`/api/employees/${id}/photo`);
       expect(calls[2]?.init).toMatchObject({ method: 'PUT' });
+    });
+  });
+
+  describe('the orders’ and the delivery requests’ calls', () => {
+    const order = DEMO_ORDERS[0];
+    const request = DEMO_DELIVERIES[0];
+    const orderDoc = { order, version: 'o1' };
+    const requestDoc = { request, version: 'g1' };
+    const version = 'a'.repeat(64);
+    const save = {
+      day: order.day,
+      customerId: order.customer.id,
+      lines: [{ productId: order.lines[0].productId, quantity: 1 }],
+      extra: {},
+    };
+    const send = { version, driverId: request.driver.id, day: request.day };
+
+    it('lists a range of orders and reads one by its day and id; a refusal is an error with the BFF’s status', async () => {
+      const { calls, api } = fake(
+        json({ orders: [order] }),
+        json(orderDoc),
+        json({}, 404),
+        json({}, 403),
+        json({}, 404),
+        json({}, 403),
+      );
+
+      expect(await api.listOrders('2026-10-29', '2026-11-04')).toEqual([order]);
+      expect(await api.getOrder(order.day, order.id)).toEqual(orderDoc);
+      await expect(api.getOrder(order.day, order.id)).rejects.toMatchObject({ status: 404 });
+      await expect(api.listOrders('2026-10-29', '2026-11-04')).rejects.toMatchObject({
+        status: 403,
+      });
+      await expect(api.getDelivery(request.day, request.id)).rejects.toMatchObject({ status: 404 });
+      await expect(api.listDeliveries(request.day)).rejects.toMatchObject({ status: 403 });
+      expect(calls.slice(0, 3).map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/orders?from=2026-10-29&to=2026-11-04'],
+        ['GET', `/api/orders/${order.day}/${order.id}`],
+        ['GET', `/api/orders/${order.day}/${order.id}`],
+      ]);
+    });
+
+    it('makes an order with a POST, and saves, confirms, sends again and cancels one over the version read, each to its own route', async () => {
+      const { calls, api } = fake(
+        json(orderDoc, 201),
+        json(orderDoc),
+        json(orderDoc),
+        json(orderDoc),
+        json(orderDoc),
+        json({}, 400),
+        json({}, 403),
+      );
+
+      expect(await api.createOrder(save)).toEqual(orderDoc);
+      expect(await api.saveOrder(order.day, order.id, { ...save, version })).toEqual({
+        kind: 'done',
+        doc: orderDoc,
+      });
+      expect((await api.confirmOrder(order.day, order.id, send)).kind).toBe('done');
+      expect((await api.sendOrder(order.day, order.id, send)).kind).toBe('done');
+      expect((await api.cancelOrder(order.day, order.id, { version })).kind).toBe('done');
+      await expect(api.createOrder(save)).rejects.toMatchObject({ status: 400 });
+      await expect(api.cancelOrder(order.day, order.id, { version })).rejects.toMatchObject({
+        status: 403,
+      });
+      const path = `/api/orders/${order.day}/${order.id}`;
+      expect(calls.slice(0, 5).map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/orders'],
+        ['PUT', path],
+        ['POST', `${path}/confirm`],
+        ['POST', `${path}/send`],
+        ['POST', `${path}/cancel`],
+      ]);
+      expect(JSON.parse(calls[1]?.init.body as string)).toEqual({ ...save, version });
+    });
+
+    it('a 409 on an order is a conflict that carries the order as it is now when the answer holds one the schema reads, and none otherwise', async () => {
+      const { api } = fake(
+        json({ error: 'moved', current: orderDoc }, 409),
+        json({ error: 'moved', current: { order: 'nope' } }, 409),
+        new Response('not json', { status: 409 }),
+      );
+
+      expect(await api.saveOrder(order.day, order.id, { ...save, version })).toEqual({
+        kind: 'conflict',
+        current: orderDoc,
+      });
+      expect(await api.confirmOrder(order.day, order.id, send)).toEqual({
+        kind: 'conflict',
+        current: null,
+      });
+      expect(await api.sendOrder(order.day, order.id, send)).toEqual({
+        kind: 'conflict',
+        current: null,
+      });
+    });
+
+    it('lists a day’s requests, reads one, cancels one over the version read (a 409 being a conflict) and lists the drivers', async () => {
+      const driver = request.driver;
+      const { calls, api } = fake(
+        json({ deliveries: [request] }),
+        json(requestDoc),
+        json(requestDoc),
+        json({ error: 'moved', current: requestDoc }, 409),
+        json({}, 500),
+        json({ drivers: [driver] }),
+        json({}, 403),
+      );
+
+      expect(await api.listDeliveries(request.day)).toEqual([request]);
+      expect(await api.getDelivery(request.day, request.id)).toEqual(requestDoc);
+      expect(await api.cancelDelivery(request.day, request.id, { version })).toEqual({
+        kind: 'done',
+        doc: requestDoc,
+      });
+      expect(await api.cancelDelivery(request.day, request.id, { version })).toEqual({
+        kind: 'conflict',
+        current: requestDoc,
+      });
+      await expect(api.cancelDelivery(request.day, request.id, { version })).rejects.toMatchObject({
+        status: 500,
+      });
+      expect(await api.listDrivers()).toEqual([driver]);
+      await expect(api.listDrivers()).rejects.toMatchObject({ status: 403 });
+      expect(calls.slice(0, 3).map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/deliveries?day=${request.day}`],
+        ['GET', `/api/deliveries/${request.day}/${request.id}`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/cancel`],
+      ]);
+      expect(calls[5]?.path).toBe('/api/drivers');
     });
   });
 });

@@ -3,6 +3,13 @@ import { createClient, ROOT_NAME } from '@credo/bff/clients';
 import { hashPassword, newPassword } from '@credo/bff/password';
 import {
   type AddEmployeeReply,
+  type Customer,
+  type DeliveryDoc,
+  deliveryRoutes,
+  type Driver,
+  type OrderDoc,
+  orderRoutes,
+  type Product,
   CLIENT_HEADER,
   type CStorageClient,
   IMPORT_CALL_ROWS,
@@ -24,6 +31,8 @@ import {
   DEMO_CODE,
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
+  DEMO_DELIVERIES,
+  DEMO_ORDERS,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
@@ -65,7 +74,9 @@ export async function seedClient(
   });
   if (made === 'taken') throw new Error('the service already holds data: not seeded over');
 
-  const app = buildApp({ storage, now: () => Date.now(), logger: false });
+  // The clock is the BFF's `madeAt` alone; the week's replay sets it at each record's own time.
+  let clock: number | null = null;
+  const app = buildApp({ storage, now: () => clock ?? Date.now(), logger: false });
   const call = async <T>(
     method: 'GET' | 'POST' | 'PUT',
     url: string,
@@ -171,7 +182,67 @@ export async function seedClient(
       }
     }
   }
+
+  await replayWeek(call, root, (time) => {
+    clock = time;
+  });
+  clock = null;
   return { code, rootPassword: made.password, people };
+}
+
+type Call = <T>(
+  method: 'GET' | 'POST' | 'PUT',
+  url: string,
+  authId: string | null,
+  payload?: unknown,
+) => Promise<T>;
+
+/**
+ * The data set's week of orders and requests, made through the BFF's own routes as the root, in
+ * the order they were made and with the clock at each one's time: an order is saved, confirmed to
+ * its driver for the day it was sent for, and cancelled (the order, or only its request) as the
+ * data set says. The BFF mints every id and number, so the numbers meet the data set's only because
+ * the order of the calls does.
+ */
+async function replayWeek(call: Call, root: string, setClock: (time: number) => void) {
+  const customers = await call<{ customers: Customer[] }>('GET', ROUTES.customers, root);
+  const products = await call<{ products: Product[] }>('GET', ROUTES.products, root);
+  const drivers = await call<{ drivers: Driver[] }>('GET', ROUTES.drivers, root);
+  const idOf = <T extends { id: string; code: string }>(held: T[], code: string) =>
+    held.find((one) => one.code === code)!.id;
+  for (const order of DEMO_ORDERS) {
+    setClock(order.madeAt);
+    const saved = await call<OrderDoc>('POST', ROUTES.orders, root, {
+      day: order.day,
+      customerId: idOf(customers.customers, order.customer.code),
+      lines: order.lines.map((line) => ({
+        productId: idOf(products.products, line.code),
+        quantity: line.quantity,
+      })),
+      extra: order.extra,
+    });
+    const request = DEMO_DELIVERIES.find((one) => one.order.id === order.id);
+    let doc = saved;
+    if (request) {
+      setClock(request.madeAt);
+      doc = await call<OrderDoc>('POST', orderRoutes.confirm(order.day, saved.order.id), root, {
+        version: saved.version,
+        driverId: idOf(drivers.drivers, request.driver.code),
+        day: request.day,
+      });
+    }
+    if (order.state === 'cancelled') {
+      await call<OrderDoc>('POST', orderRoutes.cancel(order.day, saved.order.id), root, {
+        version: doc.version,
+      });
+    } else if (request?.state === 'cancelled') {
+      const { id } = doc.order.request!;
+      const sent = await call<DeliveryDoc>('GET', deliveryRoutes.one(request.day, id), root);
+      await call<DeliveryDoc>('POST', deliveryRoutes.cancel(request.day, id), root, {
+        version: sent.version,
+      });
+    }
+  }
 }
 
 /**

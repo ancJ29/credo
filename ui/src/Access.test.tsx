@@ -104,7 +104,10 @@ describe('Settings by permission', () => {
 
     expect(await screen.findByText('Saved.')).toBeTruthy();
     const saved = (await api.getStaffSetup()).setup.departments[2];
-    expect(saved?.permissions).toEqual({ 'settings.canEdit': true });
+    expect(saved?.permissions).toEqual({
+      'deliveries.canDeliver': true,
+      'settings.canEdit': true,
+    });
   });
 });
 
@@ -119,7 +122,13 @@ describe('the list’s address', () => {
     const { api } = sceneParts({ language: 'en' });
     return draw(
       <>
-        <StaffListPage api={api} user={root} onSignedOut={() => {}} onForbidden={() => {}} />
+        <StaffListPage
+          api={api}
+          user={root}
+          onSignedOut={() => {}}
+          onForbidden={() => {}}
+          today={() => ''}
+        />
         <Probe />
       </>,
     );

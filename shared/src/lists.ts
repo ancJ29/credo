@@ -18,7 +18,7 @@ export type Customer = z.infer<typeof customerSchema>;
 export const UNIT_MAX = 20;
 /** A price in whole đồng, above zero and no more than 10¹². */
 export const PRICE_MAX = 10 ** 12;
-const unitSchema = z.string().trim().min(1).max(UNIT_MAX);
+export const unitSchema = z.string().trim().min(1).max(UNIT_MAX);
 export const priceSchema = z.number().int().min(1).max(PRICE_MAX);
 
 export const productSchema = z.strictObject({
