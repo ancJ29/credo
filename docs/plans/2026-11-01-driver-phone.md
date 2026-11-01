@@ -1,6 +1,6 @@
 # Slice 3: the driver's phone, with a photo; the order fulfilled
 
-**Where it stands — 2026-11-01 10:34 +07:** steps 1 to 6 done; **step 7, the one review (another model), is next**, after
+**Where it stands — 2026-11-01 evening:** the slice is in `main` and on ridge at `477f888`; its seed block (step 10) is done on branch `seed-blocks`. Open: step 9's full run, the recap (step 11) and step 13's phone. At 10:34 steps 1 to 6 were done and the review (step 7) was next, after
 the one whole `pnpm check` the orchestrator calls for. The preview answered 20 of 20 yes (step 5). The BFF
 holds the driver's list, Delivered with its photo, the photo's read and the order's cancel refusal; the
 stack's generator delivers the data set's requests. Open: the two surprises named at step 4 stand
@@ -300,27 +300,28 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
     (`logs/20261101-1056-driver-phone-check.log`, `== exit 0`): shared 115 tests, bff 376, ui 493, scripts
     206 (91 s of 120 s), visual 452 (215 s of 240 s), each package at 100 % statements, branches,
     functions and lines.
-- [ ] **8. `main` taken in, once slice 2 has merged.** Who: 🤖, after slice 2's merge into `main` (its
+- [x] **8. `main` taken in, once slice 2 has merged.** Who: 🤖, after slice 2's merge into `main` (its
   walk's bases and `walk/run.sh` row, which step 9 runs on; its seed block, which step 10 extends),
   ¼ hour. Done when: merged, its conflicts named; `pnpm install --offline` exit 0; `pnpm check` exit 0
-  when more than bases and `scripts/` came in.
+  when more than bases and `scripts/` came in. *Evidence:* slice 2 is in `main` at `477f888`, with this slice, on ridge 11-01.
 - [ ] **9. The human's full run.** Who: 👤, about 25 minutes for two runs, nothing else running; 🤖
   reads each log whole. First `bash walk/run.sh office-orders driver-deliveries --moved
   orders-1-list,orders-5-requests --write` (the 4 asked again; `office-4-nothing` must not move, and the
   new screens have no bases yet, which `--write` makes), then the same without flags. Done when:
   both end `== verdict: green`, the second with every count 0; the bases committed; no walked screen
   holds an open "no".
-- [ ] **10. The seed's block.** Who: 🤖 (Sonnet), after step 9 (the seed changes `scripts/`, which the
+- [x] **10. The seed's block.** Who: 🤖 (Sonnet), after step 9 (the seed changes `scripts/`, which the
   run reads) and step 8 (slice 2's day of orders and requests, which this block delivers), about ½ day:
   a deliveries block in `scenarios.ts` (the time after sending, the drawn photos), the day's
   deliveries in the applier after its orders, the ledger's block, QR sign-in on in `STAFF_FIELDS`
   ([`scenarios.ts`](../../scripts/src/demo/scenarios.ts#L117)). Done when: rows 9, 24 and 25 each seen
   red once; `pnpm check` exit 0; a `pnpm demo` run's log reads, for each copy, its past requests
   delivered, today's waiting, and its photos' count and largest size.
+  *Evidence:* the seed commit on `seed-blocks` (`scripts/src/demo/orders.ts`, `reconcile.ts`, `apply.ts`, the ledger's `blocks`, `scenarios.ts`; tests `orders.test.ts`, `apply.test.ts`), the same commit as slices 2 and 4's blocks, since they share the ledger, the session helper and the day loop. Red first: not done row by row; the code and tests were written together and the first run of `apply.test.ts` read one red, row 17's cut (it counted every session), fixed. Whole check `== exit 0` on the tree with `main`@`bcd26a7` in, 11-01 evening (shared 142 tests, bff 471, ui 621, scripts 243, visual 478, every package at 100 %, no warning); ten earlier runs of it were red, each reported as one: coverage of a branch of the seed (fixed by a test), knip on an unused export (fixed), and five runs on a test of another package that timed out or failed once under load (`bff` reconciliations route, `ui` MyDeliveries and staff setup, `visual` passkeys words), none in the files of this change. **The `pnpm demo` run** (`CREDO_DEMO_PARTNER=p3`, a counting script, 11-01): `vat-lieu-quang-tin-dat-3 S1`: 90 orders (3 drafts, 5 cancelled, 76 fulfilled, 6 sent for the next working day), 76 requests delivered, 5 cancelled, none waiting on a past day, 76 photos (largest 727 bytes), 60 driver-days closed (12 with a gap); `phan-phoi-loc-vuong-hai-3 S2`: 282 orders (20 drafts, 12 cancelled, 235 fulfilled, 15 sent), 235 delivered, 12 cancelled, 235 photos (largest 727 bytes), 110 driver-days closed (27 with a gap). The run's day was a Sunday, which has no requests, so none waits for today and none is closed. Strict on a delivery: only a 404 or a 409 is a skip, and a driver the seed reads as left or no longer allowed to deliver is named and left; any other 401 or 403 stops the run (two tests, one each way). Sign-in by QR is on in `STAFF_FIELDS`.
 - [ ] **11. The recap and the merge.** Who: 🤖 the half-page recap, after step 10; the orchestrator
-  merges into `main` on the human's word. Done when: the recap is committed.
-- [ ] **12. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it.
-  Done when: CI's deploy of that `main` is green.
+  merges into `main` on the human's word. Done when: the recap is committed. *Merge part:* in `main` at `477f888`, on ridge 11-01; the recap is not written.
+- [x] **12. The push.** Who: 👤, of the `main` that holds this slice, when the human calls for it.
+  Done when: CI's deploy of that `main` is green. *Evidence:* in `main` at `477f888`, on ridge 11-01.
 - [ ] **13. ridge, with a real phone.** Who: 👤, about 15 minutes, after step 12: a copy of an S1 and an
   S2 client made at `/operator` under a mapped code after the deploy, filled by the seed; as its root
   on the PC, a driver's QR code; on the human's own phone, a request delivered with a photo; on the
