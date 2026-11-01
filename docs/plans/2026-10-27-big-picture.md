@@ -38,7 +38,8 @@ and login, the employee list, products and inventory, goods receipts, sales orde
 ([the first feature](#the-first-feature)).
 
 The new app **replaces the old one** ([the old app](#the-old-app)). **Not yet:** anything past
-the six pieces, đối soát, a client's server, the import right after the demo is sales-ready
+the six pieces, a client's server, the import right after the demo is sales-ready, and the money rules
+of đối soát (đối soát per driver per day is built, [slice 4](../recaps/2026-11-01-driver-reconcile.md))
 ([not yet](#not-yet)).
 
 ## The goal
@@ -127,7 +128,11 @@ Each comes back at a review (the human, 10-27).
 - **Nothing past the six pieces** until the first client has run its first month: "no polish, no
   extension", the memo's rule (the human, 10-27 23:05 +07; it read "the core flow").
 - **Đối soát**, the settling, comes back at a review after the six pieces (the human, 10-27
-  23:05 +07).
+  23:05 +07). *Amended 2026-11-01:* đối soát per driver per day is built, the demo's fourth slice
+  ([recap](../recaps/2026-11-01-driver-reconcile.md)): the office types the cash a driver hands in, sees the
+  gap, and closes the day for good. What stays here is the money rules a client sets (rounding, part
+  hand-ins, who approves a gap, reopening a closed day), debts per customer, transfers, expenses, returns
+  and an export.
 - **No page for vendors:** the demo's generator writes them until the import (the human, 10-27
   23:05 +07). *Amended 2026-10-31:* customers and products have their list pages and their Excel
   import now, as [slice 1 of the road to 11-04](2026-10-31-customers-products.md) builds them.
