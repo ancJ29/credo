@@ -1,12 +1,7 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 13:58 +07:** steps 1, 2 and 3 done; **step 4, the human's preview, is next**:
-the walks page `walks/2026-11-01-135535-fd9789618` (8 new screens, 16 waiting, and `orders-5-requests` asked
-again, 2 answers) or `pnpm fake` at `/deliveries`. Nothing runs. *Model files followed:* slice 2's
-`DeliveriesPage.tsx` and `DeliveryPage.tsx` (the groups, the check before a write, the outcome alerts),
-`OrderPage.tsx`'s `NumberInput` (the cash), slice 3's delivery calls in `fake.ts` (`deliverRequest` and
-`cancelRequest` were taken out of them), slice 3's office screens `orders-11-fulfilled` and
-`orders-12-proof` in `walks.ts` and `orders.spec.ts` (the walk).
+**Where it stands — 2026-11-01 14:05 +07:** steps 1 to 4 done, the preview 62 yes and 0 no; **step 5, the BFF,
+is in hand.** The contract stands as the preview left it.
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -228,9 +223,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   in the credo root's `logs/`: shared rows 2, 3, 7; ui rows 1 (count and offered), 2, 3, 4, 5, 6, 7, 8; the
   fake's row 5; the `walk/run.sh` row. `pnpm report`: "16 waiting, 2 asked again, 0 no, 174 yes", the page
   `walks/2026-11-01-135535-fd9789618`; the 2 asked again are `orders-5-requests` in vi and en.
-- [ ] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens and those asked
+- [x] **4. The human's preview.** Who: 👤, about 20 minutes, after step 3: the 8 screens and those asked
   again on the walks page, or on `pnpm fake` at `/deliveries`. Done when: each answered yes or no; a no
   becomes a case here and its fix lands before step 5. **Then stop.**
+  *Evidence:* the human answered 62 yes, 0 no (2026-11-01 14:03, build `driver-reconcile`@`fd9789618`): the 16
+  `office-reconcile` answers, `orders-5-requests` again (2), and 44 more on `admin-setup`, `admin-staff`,
+  `office-staff` and `phone-sign-in`. `pnpm answers` wrote 62 to `visual/answers.json`, 0 refused (`== exit 0`).
 - [ ] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4 (the contract as the preview left it),
   about ½ day: the two routes and the close's writes in a new `bff/src/reconciliations.ts`, the refusal
   in `issue`, the stack's generator closing the data set's past days. c-storage does not change, so
