@@ -312,16 +312,22 @@ describe('the company’s own fields', () => {
     expect(Object.keys(extra ?? {})).not.toContain('plate');
   });
 
-  it('The editor refuses fields it cannot take and says so: a field with no key, the same key twice, a choice with no options', async () => {
-    const { api } = openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-    // the button is looked up once: a role query walks the whole page's accessibility tree
-    const saveButton = screen.getByRole('button', { name: 'Save' });
-    const save = () => user.click(saveButton);
+  describe('The staff setup editor refuses fields it cannot take', () => {
     const refusedAs = 'A field needs a key nobody else has';
-    // text set in one change event: this case is about what the editor refuses, not about keystrokes
+
+    /** The setup page, opened once; its Save button is looked up once, since a role query walks
+     * the whole page's accessibility tree. */
+    const openSetup = async () => {
+      const { api } = openApp('/staff-setup');
+      await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      return { api, save: () => user.click(saveButton) };
+    };
+
+    // text set in one change event: these cases are about what the editor refuses, not keystrokes
     const set = (field: HTMLElement, value: string) =>
       fireEvent.change(field, { target: { value } });
+
     // the alert is read off the DOM: a role query walks the whole page's accessibility tree, and
     // does it again at every poll
     const alertText = () =>
@@ -331,38 +337,60 @@ describe('the company’s own fields', () => {
         return alert?.textContent ?? '';
       });
 
-    await user.click(screen.getByText('Add a field'));
-    await save();
-    expect(await alertText()).toContain(refusedAs);
+    /** A new field with its key and both names filled in. */
+    const addNamedField = async (key: string) => {
+      await user.click(screen.getByText('Add a field'));
+      set(lastOf(/^Key/), key);
+      set(lastOf(/^Name in Vietnamese/), 'Tên');
+      set(lastOf(/^Name in English/), 'Name');
+    };
 
-    // the same key as another
-    set(lastOf(/^Key/), 'plate');
-    set(lastOf(/^Name in Vietnamese/), 'Biển');
-    set(lastOf(/^Name in English/), 'Plate');
-    await save();
-    expect(await alertText()).toContain(refusedAs);
+    it('A field with no key is refused, and the page says so', async () => {
+      const { api, save } = await openSetup();
+      // both names are given, so the missing key is the one thing wrong
+      await addNamedField('');
+      await save();
+      expect(await alertText()).toContain(refusedAs);
+      expect(api.saveStaffSetup).not.toHaveBeenCalled();
+    });
 
-    // a choice with an option, then without
-    set(lastOf(/^Key/), 'colour');
-    await user.selectOptions(lastOf('Kind'), 'A choice from a list');
-    await save();
-    expect(await alertText()).toContain(refusedAs);
-    await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
-    set(lastOf('Option key'), 'red');
-    set(lastOf('Option in Vietnamese'), 'Đỏ');
-    set(lastOf('Option in English'), 'Red');
-    expect(api.saveStaffSetup).not.toHaveBeenCalled();
-    await save();
-    await screen.findByText('Saved.');
-    expect((await api.getStaffSetup()).setup.customFields?.at(-1)?.options).toEqual([
-      { value: 'red', label: { vi: 'Đỏ', en: 'Red' } },
-    ]);
+    it('The same key twice is refused, and the page says so', async () => {
+      const { api, save } = await openSetup();
+      await addNamedField('plate');
+      await save();
+      expect(await alertText()).toContain(refusedAs);
+      expect(api.saveStaffSetup).not.toHaveBeenCalled();
+    });
 
-    // an option and a field are removed
-    await user.click(screen.getByLabelText('Remove the option red'));
-    expect(screen.queryByDisplayValue('red')).toBeNull();
-    await user.click(screen.getByLabelText('Remove colour'));
-    expect(screen.queryByDisplayValue('colour')).toBeNull();
+    it('A choice with no options is refused, and saved once it has one', async () => {
+      const { api, save } = await openSetup();
+      await addNamedField('colour');
+      await user.selectOptions(lastOf('Kind'), 'A choice from a list');
+      await save();
+      expect(await alertText()).toContain(refusedAs);
+      await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
+      set(lastOf('Option key'), 'red');
+      set(lastOf('Option in Vietnamese'), 'Đỏ');
+      set(lastOf('Option in English'), 'Red');
+      expect(api.saveStaffSetup).not.toHaveBeenCalled();
+      await save();
+      await screen.findByText('Saved.');
+      expect((await api.getStaffSetup()).setup.customFields?.at(-1)?.options).toEqual([
+        { value: 'red', label: { vi: 'Đỏ', en: 'Red' } },
+      ]);
+    });
+
+    it('An option and a field are removed from the editor', async () => {
+      await openSetup();
+      await addNamedField('colour');
+      await user.selectOptions(lastOf('Kind'), 'A choice from a list');
+      await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
+      set(lastOf('Option key'), 'red');
+      await user.click(screen.getByLabelText('Remove the option red'));
+      expect(screen.queryByDisplayValue('red')).toBeNull();
+      await user.click(screen.getByLabelText('Remove colour'));
+      expect(screen.queryByDisplayValue('colour')).toBeNull();
+    });
   });
 
   it('An option is renamed in the language shown, and a company with no field of its own says so', async () => {
