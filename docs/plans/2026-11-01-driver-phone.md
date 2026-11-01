@@ -1,8 +1,15 @@
 # Slice 3: the driver's phone, with a photo; the order fulfilled
 
-**Where it stands — 2026-11-01 08:41 +07:** step 1 done, this plan; nothing built. **Next:** the
-human's read of the 👤 rows (step 2), which needs nothing of slice 2; then step 3 waits for slice 2's
-review to close.
+**Where it stands — 2026-11-01 09:46 +07:** steps 1 to 4 done, on the fake; **the human's preview (step 5) is next**,
+the walks page `pnpm report` built, 16 waiting and 4 asked again (`orders-1-list`, `orders-5-requests`,
+each in two languages, whose past orders now read Fulfilled and one of today's Delivered). Model files
+followed: slice 2's `DeliveriesPage.tsx`, `DeliveryPage.tsx`, `OrderParts.tsx`, `fake.ts` calls, `walks.ts`
+orders walk and `walk/specs/orders.spec.ts`; piece 2's `PhotoPanel.tsx`/`photo.ts` for the shrink and its
+phone walk's QR link. Surprises for the open list: (a) the plan's "no menu moves" was wrong for the data
+set's drivers `EMP-0005` and `EMP-0006`, whom piece 2's "allowed nothing" screen and tests used: they now
+hold My deliveries, so those use `noDrivers` (the right taken away; same picture); (b) `scripts/` generator
+and its test read red until step 6, since the data set now holds delivered requests the generator still
+makes waiting.
 
 > **Drafted** 2026-11-01 by the machine, for lane A's third demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 3; part 6, amended 10-31; Decides 42, 44 and 45 for this slice, and
@@ -224,11 +231,13 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   it consumes nothing of slice 2. Done when: each 👤 row kept or corrected here. **Then stop.**
   *Evidence:* the human answered yes to all 10 👤 rows on 2026-11-01 about 09:0x, in the
   orchestrator's chat; none corrected, so rows 1 to 10 stand as drafted.
-- [ ] **3. Slice 2 taken in.** Who: 🤖, after slice 2's review (its step 7: its contract in
+- [x] **3. Slice 2 taken in.** Who: 🤖, after slice 2's review (its step 7: its contract in
   `shared/src/orders.ts`, its pages, its fake and its walk as the review's fixes leave them), on the
   orchestrator's word; or `main`, if slice 2 has merged by then; ¼ hour. Done when: merged, its
   conflicts named; `pnpm install --offline` exit 0. *Price:* a second merge at step 8.
-- [ ] **4. The phone's pages on the fake.** Who: 🤖 (Sonnet), after step 3, about ¾ day. The wire above
+  *Evidence:* `orders-delivery` merged at its HEAD `d31b8ae` (merge commit `9d086e8`), no conflicts;
+  `pnpm install --offline --frozen-lockfile` finished "Done", no `ERR_PNPM_NO_OFFLINE_META`.
+- [x] **4. The phone's pages on the fake.** Who: 🤖 (Sonnet), after step 3, about ¾ day. The wire above
   in `shared/`, the data set's deliveries and drawn photos; in `ui/`: My deliveries, the driver's
   request page with the camera, the preview and the send, the office's request with its photo and the
   order fulfilled, the states' words in vi and en, the menu's page, the fake's three calls; the 8
@@ -237,6 +246,14 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `WALKS`, seen red first in `scripts/src/walk-run.test.ts`. Done when: the UI half of rows 1 to 8
   each seen red once; `pnpm check` exit 0 at 100 %, no warning; `pnpm report` reads 16 waiting and
   the screens asked again, each named here.
+  *Evidence:* the UI half of rows 1 to 6 and 8 seen red once from their assertions (logs
+  `20261101-0925-driver-phone-red-ui-rows.log` and `…-red-rows-proof-and-run-row.log`, the shared photo
+  limit and the `walk/run.sh` row there too); row 7 is the BFF's alone. Per package at 100 %: shared, ui,
+  visual tests, `typecheck` of shared, ui, visual, walk, scripts, eslint and prettier on the touched files
+  exit 0; `pnpm report` exit 0, "16 waiting, 4 asked again, 0 no, 134 yes". *Not green:* two ui timeouts
+  under load on one run, green on rerun (reported as a red, `…-red-ui-two-timeouts.log`); `scripts/`
+  generator test and one `apply.test.ts` timeout (`…-red-scripts-generator-and-apply-timeout.log`), the
+  first step 6's to turn green. The walk spec was not run (the human's terminal).
 - [ ] **5. The human's preview.** Who: 👤, about 20 minutes, after step 4: the 8 screens and those
   asked again on the walks page (the driver's on the phone's width), or on `pnpm fake` at
   `/my-deliveries` in a window 390 px wide. Done when: each answered yes or no; a no becomes a case
