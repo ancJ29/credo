@@ -16,8 +16,8 @@ import { allKeys, WALKS } from './walks';
 /**
  * The file's one whole-page draw, made in `beforeAll`: drawing every screen of every walk in both
  * languages takes minutes under load, so it is paid once, here, with the budget of its own, and
- * never charged to whichever test runs first. Every test below reads this build: the report test
- * its folder and its two lines, the others the page it wrote (`walks.json`).
+ * never charged to whichever test runs first. The report test reads its folder and two lines, and
+ * the answers tests that answer on a real screen read the page it wrote (`walks.json`).
  */
 let built: { root: string; folder: string; lines: string[]; page: Report };
 beforeAll(async () => {
@@ -237,12 +237,19 @@ describe('pnpm answers', () => {
     return { page, next };
   }
 
-  /** A message with all its lines but three answers: the first, the middle and the last. */
-  function fewOf(text: string) {
+  /**
+   * A message with all its lines but a few answers: the first, the middle and the last, and the
+   * lines of the keys in `also`.
+   */
+  function fewOf(text: string, also: ReadonlySet<string> = new Set()) {
     const lines = text.split('\n');
     const answers = lines.filter((line) => / \| (yes|no) \| [0-9a-f]{12}$/.test(line));
-    const keep = new Set([answers[0], answers[Math.floor(answers.length / 2)], answers.at(-1)!]);
-    expect(keep.size).toBe(3);
+    const keep = new Set([
+      answers[0],
+      answers[Math.floor(answers.length / 2)],
+      answers.at(-1)!,
+      ...answers.filter((line) => also.has(line.split(' | ')[0])),
+    ]);
     return {
       text: lines.filter((line) => !answers.includes(line) || keep.has(line)).join('\n'),
       keys: [...keep].map((line) => line.split(' | ')[0]),
@@ -260,8 +267,10 @@ describe('pnpm answers', () => {
     expect(all.refused).toEqual([]);
     expect(all.entries.map((entry) => entry.key).sort()).toEqual([...allKeys(WALKS)].sort());
     expect(all.entries.filter((entry) => entry.by !== '')).toEqual([]);
-    // and a few of its keys, drawn now, hold against the words of the screens
-    const few = fewOf(text);
+    // and a few of its keys, drawn now, hold against the words of the screens: the first four walks
+    // (the operator's and the first admin's), which no other test draws a second time, and three more
+    const few = fewOf(text, new Set(allKeys(WALKS.slice(0, 4))));
+    expect(few.keys).toHaveLength(allKeys(WALKS.slice(0, 4)).length + 2);
     expect(await answer(few.text, () => {}, { file, now: NOW })).toBe(0);
 
     expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(
@@ -283,6 +292,7 @@ describe('pnpm answers', () => {
         .sort(),
     );
     const few = fewOf(text);
+    expect(few.keys).toHaveLength(3);
     expect(await answer(few.text, () => {}, { file, now: NOW, partners: true })).toBe(0);
 
     expect(Object.keys(JSON.parse(readFileSync(file, 'utf8')) as object).sort()).toEqual(

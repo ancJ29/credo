@@ -9,7 +9,8 @@ export default defineConfig({
     setupFiles: ['src/setup.ts'],
     // `cli.test.ts` draws every screen of every walk in both languages once, in its `beforeAll`
     // (about 38 s alone, about 140 s on GitHub's runner, and it grows with the screens); that hook
-    // names its 240 s itself, and the budget below is the same 240 s for every test (open item 27).
+    // names its 240 s itself; Decide 48 (a) keeps the same 240 s for every test until open item 37's
+    // finer budget.
     testTimeout: 240_000,
     coverage: {
       provider: 'v8',
