@@ -44,6 +44,10 @@ const delivered = DEMO_DELIVERIES.find(
 const [YEAR, MONTH, DAY] = DEMO_TODAY.split('-').map(Number) as [number, number, number];
 const CLOCK = new Date(YEAR, MONTH - 1, DAY, 10, 0, 0);
 
+/** A field's whole label, the star Mantine adds to a required one allowed. */
+const exactly = (label: string) =>
+  new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`);
+
 /** What the stack's seed door answers: a client made from the data set, with its first passwords. */
 type Seeded = { code: string; rootPassword: string; people: Record<string, string> };
 
@@ -179,7 +183,7 @@ async function walk(page: Page, language: Language, width: number) {
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
   const choose = (label: string, option: string) =>
-    page.getByLabel(label, { exact: true }).selectOption({ label: option });
+    page.getByLabel(exactly(label)).selectOption({ label: option });
   /** The order form's product line: the product chosen, its quantity typed, and the line added. */
   const line = async (option: string, quantity: string) => {
     await choose(words.orders.product, option);

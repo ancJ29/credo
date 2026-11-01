@@ -140,7 +140,9 @@ async function officeCancels(page: Page, client: Client) {
   const office = await signIn(page, client.code, OFFICE, client.people[OFFICE]);
   const headers = { 'x-client-code': client.code, 'x-auth-id': office };
   const listed = (await (
-    await page.request.get(`/api/orders?from=${DEMO_TODAY}&to=${DEMO_TODAY}`, { headers })
+    await page.request.get(`/api/orders?from=${waiting.order.day}&to=${waiting.order.day}`, {
+      headers,
+    })
   ).json()) as { orders: { id: string; day: string; number: string }[] };
   const order = listed.orders.find((one) => one.number === waiting.order.number)!;
   const read = (await (
