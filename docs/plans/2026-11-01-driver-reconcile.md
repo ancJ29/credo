@@ -1,8 +1,8 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 14:14 +07:** steps 1 to 5 done; **step 6, the one review by another model,
-is next**, then 7 (`main` taken in), 8 (the human's full run of `office-orders` and `office-reconcile`),
-9 (the seed's block), 10 and on. Nothing runs.
+**Where it stands — 2026-11-01 14:36 +07:** steps 1 to 6 done, `main`@`1ddb8b8` in, the whole check green.
+Step 7 is ticked with it; **step 8, the human's full run** of `office-orders` and
+`office-reconcile`, is next, then 9 (the seed's block). Nothing runs.
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -252,11 +252,16 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   demo's exception, finding 3 also noted in item 35. Row 5's two clauses are held by the reviewer's runs in
   `logs/20261101-1424-driver-reconcile-review-runs.log`: its BFF half red at run 1 (`bff/src/reconciliations.route.test.ts#L220`,
   "expected 200 to be 409") and its UI half red at run 3 (`ui/src/Reconcile.test.tsx#L379`). The whole
-  `pnpm check` after `main` is in is owed (the line below it).
-- [ ] **7. `main` taken in, once slice 3 has merged whole.** Who: 🤖, after slice 2's and slice 3's
+  `pnpm check` after `main` is in: `main`@`1ddb8b8` merged clean (7799ff7, no conflict), then one whole
+  `pnpm check` `== exit 0` (`logs/20261101-1430-driver-reconcile-check.log`, 14:30 to 14:33, started at
+  load 7.64): shared 142 tests, bff 471, ui 621, scripts 217, visual 478 (114 s), each at 100 %; typecheck,
+  eslint, prettier and knip without a finding or a warning. `cli.test.ts` prints no time of its own.
+- [x] **7. `main` taken in, once slice 3 has merged whole.** Who: 🤖, after slice 2's and slice 3's
   merges into `main` (`office-orders`' bases, one of which step 8 moves; slice 3's deliveries block,
   whose delivered days step 9 closes), ¼ hour. Done when: merged, its conflicts named;
   `pnpm install --offline` exit 0; `pnpm check` exit 0 when more than bases and docs came in.
+  *Evidence:* merge 7799ff7 of `main`@`1ddb8b8` (lines 33, 34, 36), no conflict; `pnpm install --offline --frozen-lockfile`
+  exit 0 and `pnpm check` exit 0, both in `logs/20261101-1430-driver-reconcile-check.log`.
 - [ ] **8. The human's full run.** Who: 👤, about 25 minutes for two runs, nothing else running; 🤖 reads
   each log whole. First
   `bash walk/run.sh office-orders office-reconcile --moved orders-5-requests --write`
