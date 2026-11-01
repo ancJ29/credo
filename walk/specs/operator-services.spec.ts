@@ -44,18 +44,22 @@ async function walk(page: Page, language: Language, width: number) {
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const service = (name: string) => page.getByLabel(name, { exact: true });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
+  // The "Check now" button's loader fades out in Mantine's 150 ms transition: the picture waits for it.
+  const loaderGone = () => expect(page.locator('.mantine-Button-loader')).toHaveCount(0);
 
   // 1. All three answer, one build.
   await open(page, language, { path: '/operator/services', operator: true });
   await expect(title(words.nav.services)).toBeVisible();
   await expect(page.getByRole('status')).toHaveText(words.services.oneBuild);
   await expect(service(words.services.storage).getByText(words.services.answers)).toBeVisible();
+  await loaderGone();
   await at('sv-1-all-well');
 
   // 2. Two builds: c-storage runs the newer one.
   await open(page, language, { path: '/operator/services', operator: true, drift: true });
   await expect(page.getByRole('status')).toHaveText(words.services.twoBuilds);
   await expect(service(words.services.storage).getByText(words.services.differs)).toBeVisible();
+  await loaderGone();
   await at('sv-2-two-builds');
 
   // 3. c-storage does not answer: the BFF's own 503.
@@ -110,6 +114,12 @@ async function walkFull(page: Page, language: Language, width: number) {
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const service = (name: string) => page.getByLabel(name, { exact: true });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
+  // The clock is paused, so Mantine's 150 ms loader transition on "Check now" never finishes by
+  // itself: the clock runs on, and the picture waits for the loader to be gone.
+  const settled = async () => {
+    await page.clock.runFor(500);
+    await expect(page.locator('.mantine-Button-loader')).toHaveCount(0);
+  };
 
   // The browser's clock stands at the moment the call begins and moves only when told: the page
   // reads it before it sends and after the answer, so a call that took 42 milliseconds is the
@@ -149,6 +159,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   await expect(title(words.nav.services)).toBeVisible();
   await expect(page.getByRole('status')).toHaveText(words.services.oneBuild);
   await expect(service(words.services.storage).getByText(words.services.answers)).toBeVisible();
+  await settled();
   await picture('sv-1-all-well');
   await page.unroute(SERVICES);
 
@@ -157,6 +168,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   await openFull(page, language, handle, '/operator/services');
   await expect(page.getByRole('status')).toHaveText(words.services.twoBuilds);
   await expect(service(words.services.storage).getByText(words.services.differs)).toBeVisible();
+  await settled();
   await picture('sv-2-two-builds');
   await page.unroute(SERVICES);
 
