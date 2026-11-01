@@ -17,6 +17,7 @@ import {
   type DeliveryRequest,
   type Employee,
   type Order,
+  type Reconciliation,
   type StaffSetupDoc,
   tenantConfigSchema,
 } from '@credo/shared';
@@ -34,6 +35,7 @@ import {
   DEMO_ORDERS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
+  DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
   DEMO_TODAY,
@@ -394,6 +396,35 @@ describe('the demo generator', () => {
         ).json<{ photo: string }>().photo;
         expect(photo, request.number).toBe(DEMO_DELIVERY_PHOTOS[mine.id]);
       }
+    });
+
+    it('The data set’s past days are closed through the route, as EMP-0001 at the time the data set gives, with its cash and its requests, and today’s are open', async () => {
+      const { storage } = memoryStorage();
+      const { code, rootPassword } = await seedClient(storage, 'walk-1');
+      const { call, signIn } = bff(storage, code);
+      const root = (await signIn(ROOT_NAME, rootPassword))!;
+      const closed: Reconciliation[] = [];
+      for (let back = 6; back >= 0; back--) {
+        const day = addDays(DEMO_TODAY, -back);
+        closed.push(
+          ...(await call('GET', `/api/reconciliations?day=${day}`, root)).json<{
+            reconciliations: Reconciliation[];
+          }>().reconciliations,
+        );
+      }
+      const shape = (one: Reconciliation) => ({
+        day: one.day,
+        driver: one.driver.code,
+        requests: one.requests.map((request) => [request.number, request.total]),
+        toCollect: one.toCollect,
+        handedIn: one.handedIn,
+        difference: one.difference,
+        closedBy: one.closedBy.code,
+        closedAt: one.closedAt,
+      });
+
+      expect(closed.map(shape)).toEqual(DEMO_RECONCILIATIONS.map(shape));
+      expect(closed.some((one) => one.day === DEMO_TODAY)).toBe(false);
     });
 
     it('Each photo the data set holds is on its person, and no one else has one', async () => {

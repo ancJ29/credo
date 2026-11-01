@@ -12,6 +12,9 @@ import {
   type OrderDoc,
   orderRoutes,
   type Product,
+  type DeliveryRequest,
+  type Reconciliation,
+  reconciliationRoutes,
   CLIENT_HEADER,
   type CStorageClient,
   IMPORT_CALL_ROWS,
@@ -37,6 +40,7 @@ import {
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
   DEMO_ORDERS,
+  DEMO_RECONCILIATIONS,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
   DEMO_OPERATOR_ID,
@@ -199,6 +203,9 @@ export async function seedClient(
     },
     (driverCode) => signIn(driverCode, people[driverCode]),
   );
+  await closeWeek(call, signIn, people, (time) => {
+    clock = time;
+  });
   clock = null;
   return { code, rootPassword: made.password, people };
 }
@@ -288,6 +295,39 @@ async function replayWeek(
         version: sent.version,
       });
     }
+  }
+}
+
+/** The office person who closes the data set's past days at the day's end. */
+const CLOSER = 'EMP-0001';
+
+/**
+ * The data set's past days closed, through the route as `EMP-0001`, signed in, at each closed day's
+ * time: the requests of the day are read for their ids (the BFF minted them, and the numbers meet
+ * the data set's), and the close names the delivered ones and the cash the data set gives.
+ */
+async function closeWeek(
+  call: Call,
+  signIn: (code: string, password: string) => Promise<string>,
+  people: Record<string, string>,
+  setClock: (time: number) => void,
+) {
+  const office = await signIn(CLOSER, people[CLOSER]);
+  for (const closed of DEMO_RECONCILIATIONS) {
+    setClock(closed.closedAt);
+    const { deliveries } = await call<{ deliveries: DeliveryRequest[] }>(
+      'GET',
+      deliveryRoutes.list(closed.day),
+      office,
+    );
+    const driver = deliveries.find((one) => one.driver.code === closed.driver.code)!.driver;
+    await call<Reconciliation>('POST', reconciliationRoutes.close(closed.day, driver.id), office, {
+      delivered: closed.requests.map(
+        (one) => deliveries.find((request) => request.number === one.number)!.id,
+      ),
+      waiting: [],
+      handedIn: closed.handedIn,
+    });
   }
 }
 
