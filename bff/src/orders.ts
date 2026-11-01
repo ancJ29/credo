@@ -7,6 +7,8 @@ import {
   customerSchema,
   type DeliveryDoc,
   type DeliveryRequest,
+  deliverRequestSchema,
+  deliveryPhotoReplySchema,
   deliveryRequestSchema,
   deliveryRoutes,
   type Driver,
@@ -43,6 +45,7 @@ const ATTEMPTS = 3;
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 const notFound = () => new HttpError(404, 'Not found');
+const forbidden = () => new HttpError(403, 'Forbidden');
 
 const idSchema = z.uuid();
 
@@ -78,11 +81,22 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
       : null;
   }
 
-  /** The order as the page shows it: its request only while that request is there and waiting. */
+  /** The order as the page shows it, given the request it names (if that is there): the request
+   * only while it waits or is delivered, and a confirmed order whose request is delivered reads
+   * fulfilled, whether or not the write that fulfils it was made. */
+  const asShown = (order: Order, live: DeliveryRequest | undefined): Order => {
+    if (!order.request) return order;
+    if (live?.state === 'waiting') return order;
+    if (live?.state === 'delivered') {
+      return order.state === 'confirmed' ? { ...order, state: 'fulfilled' } : order;
+    }
+    return { ...order, request: null };
+  };
+
   async function shown(tenantId: string, order: Order): Promise<Order> {
     if (!order.request) return order;
     const live = await readRequest(tenantId, order.request.day, order.request.id);
-    return live?.request.state === 'waiting' ? order : { ...order, request: null };
+    return asShown(order, live?.request);
   }
 
   async function readOrder(tenantId: string, day: string, id: string) {
@@ -215,18 +229,16 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     }
     // A request is looked up once for each day orders name, not once for each order.
     const days = [...new Set(orders.flatMap((one) => (one.request ? [one.request.day] : [])))];
-    const waiting = new Set<string>();
+    const lives = new Map<string, DeliveryRequest>();
     for (const day of days) {
       const dayList = await every(
         recordKeys.tenant(request.tenantId).deliveryDayPrefix(day),
         deliveryRequestSchema,
         'delivery request',
       );
-      for (const { record } of dayList) if (record.state === 'waiting') waiting.add(record.id);
+      for (const { record } of dayList) lives.set(record.id, record);
     }
-    const shownOrders = orders.map((one) =>
-      one.request && !waiting.has(one.request.id) ? { ...one, request: null } : one,
-    );
+    const shownOrders = orders.map((one) => asShown(one, lives.get(one.request?.id ?? '')));
     return { orders: shownOrders.sort(newestOrdersFirst) };
   });
 
@@ -332,18 +344,24 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     const body = parse(cancelRequestSchema, request.body);
     const found = await mustFindOrder(request);
     const { order } = found;
-    if (found.tag !== body.version || order.state === 'cancelled') {
+    const live = order.request
+      ? await readRequest(request.tenantId, order.request.day, order.request.id)
+      : null;
+    // A fulfilled order, or a confirmed one whose request is delivered, is not cancelled.
+    if (
+      found.tag !== body.version ||
+      order.state === 'cancelled' ||
+      order.state === 'fulfilled' ||
+      live?.request.state === 'delivered'
+    ) {
       throw conflict(await orderDoc(request.tenantId, order.day, order.id));
     }
     const keys = recordKeys.tenant(request.tenantId);
     // The request is cancelled first, then the order: a stop between leaves a confirmed order whose
     // request is cancelled, which reads as having none.
-    if (order.request) {
-      const live = await readRequest(request.tenantId, order.request.day, order.request.id);
-      if (live?.request.state === 'waiting') {
-        const key = keys.delivery(live.request.day, live.request.id);
-        await storage.putRecord(key, { ...live.request, state: 'cancelled' }, live.tag);
-      }
+    if (live?.request.state === 'waiting') {
+      const key = keys.delivery(live.request.day, live.request.id);
+      await storage.putRecord(key, { ...live.request, state: 'cancelled' }, live.tag);
     }
     const cancelled: Order = { ...order, state: 'cancelled', request: null };
     if (
@@ -370,10 +388,100 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     return { deliveries };
   });
 
+  /** Who may read a request and its photo: those who may see orders, and the request's own driver
+   * (allowed to deliver, never the root); anyone else is a 403 before anything is looked for. */
+  async function mustReadRequest(request: FastifyRequest) {
+    const who = await signedIn(request);
+    const office = who.root || who.permissions['orders.canView'];
+    if (!office) mustCan(who, 'deliveries.canDeliver');
+    const found = await mustFindRequest(request);
+    if (!office && found.request.driver.id !== who.employeeId) throw forbidden();
+    return found;
+  }
+
   app.get(deliveryRoutes.one(':day', ':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'orders.canView');
-    const { request: found, tag } = await mustFindRequest(request);
+    const { request: found, tag } = await mustReadRequest(request);
     return { request: found, version: tag };
+  });
+
+  app.get(deliveryRoutes.photo(':day', ':id'), forClient, async (request) => {
+    const { request: found } = await mustReadRequest(request);
+    const stored =
+      found.state === 'delivered'
+        ? await storage.getRecord(
+            recordKeys.tenant(request.tenantId).deliveryPhoto(found.day, found.id),
+          )
+        : null;
+    if (!stored) throw notFound();
+    return parsed(deliveryPhotoReplySchema, 'a delivery photo', stored);
+  });
+
+  /** The signed-in driver: allowed to deliver, and a person (the root holds none, so it is a 403). */
+  async function mustBeDriver(request: FastifyRequest) {
+    const who = await signedIn(request);
+    mustCan(who, 'deliveries.canDeliver');
+    if (who.root || !who.employeeId) throw forbidden();
+    return who.employeeId;
+  }
+
+  app.get(ROUTES.myDeliveries, forClient, async (request) => {
+    const driverId = await mustBeDriver(request);
+    const query = parse(z.strictObject({ day: daySchema }), request.query);
+    const dayList = await every(
+      recordKeys.tenant(request.tenantId).deliveryDayPrefix(query.day),
+      deliveryRequestSchema,
+      'delivery request',
+    );
+    const rank = (one: DeliveryRequest) => (one.state === 'waiting' ? 0 : 1);
+    const deliveries = dayList
+      .map((one) => one.record)
+      .filter((one) => one.driver.id === driverId && one.state !== 'cancelled')
+      .sort((a, b) => rank(a) - rank(b) || a.number.localeCompare(b.number));
+    return { deliveries };
+  });
+
+  /** The photo written over any an earlier try left: a record that moved is read again, a few times. */
+  async function writePhoto(tenantId: string, day: string, id: string, photo: string) {
+    const key = recordKeys.tenant(tenantId).deliveryPhoto(day, id);
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const held = await storage.getRecord(key);
+      if ((await storage.putRecord(key, { photo }, held?.tag ?? null)) === 'saved') return;
+    }
+    throw new HttpError(503, 'Service unavailable');
+  }
+
+  app.post(deliveryRoutes.deliver(':day', ':id'), forClient, async (request) => {
+    const driverId = await mustBeDriver(request);
+    const body = parse(deliverRequestSchema, request.body);
+    const found = await mustFindRequest(request);
+    const { day, id, order: named } = found.request;
+    if (found.request.driver.id !== driverId) throw forbidden();
+    if (found.tag !== body.version || found.request.state !== 'waiting') {
+      throw conflict(await requestDoc(request.tenantId, day, id));
+    }
+    const keys = recordKeys.tenant(request.tenantId);
+    // The photo, then the request delivered over its tag, then the order fulfilled over its tag: a
+    // stop after the photo leaves a waiting request, a stop after the request a confirmed order
+    // whose request is delivered, which reads fulfilled.
+    await writePhoto(request.tenantId, day, id, body.photo);
+    const delivered: DeliveryRequest = { ...found.request, state: 'delivered', deliveredAt: now() };
+    if ((await storage.putRecord(keys.delivery(day, id), delivered, found.tag)) === 'moved') {
+      throw conflict(await requestDoc(request.tenantId, day, id));
+    }
+    // The order is fulfilled while it is confirmed and still names this request, read again when it
+    // moved; after a few tries it is left, and still reads fulfilled.
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const ordered = await readOrder(request.tenantId, named.day, named.id);
+      if (ordered?.order.state !== 'confirmed' || ordered.order.request?.id !== id) break;
+      const key = keys.order(named.day, named.id);
+      if (
+        (await storage.putRecord(key, { ...ordered.order, state: 'fulfilled' }, ordered.tag)) ===
+        'saved'
+      ) {
+        break;
+      }
+    }
+    return await requestDoc(request.tenantId, day, id);
   });
 
   app.post(deliveryRoutes.cancel(':day', ':id'), forClient, async (request) => {

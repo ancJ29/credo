@@ -23,6 +23,7 @@ import {
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
   DEMO_EMPLOYEES,
   DEMO_ORDERS,
   DEMO_PHOTOS,
@@ -328,6 +329,7 @@ describe('the demo generator', () => {
         order: request.order.number,
         total: request.total,
         madeAt: request.madeAt,
+        deliveredAt: request.deliveredAt,
       });
       const byNumber = <T extends { number: string }>(a: T, b: T) =>
         a.number.localeCompare(b.number);
@@ -337,6 +339,14 @@ describe('the demo generator', () => {
       expect(requests.map(requestShape).sort(byNumber)).toEqual(
         DEMO_DELIVERIES.map(requestShape).sort(byNumber),
       );
+      // each delivered request holds its drawn photo, read back through the route
+      for (const request of requests.filter((one) => one.state === 'delivered')) {
+        const mine = DEMO_DELIVERIES.find((one) => one.number === request.number)!;
+        const photo = (
+          await call('GET', `/api/deliveries/${request.day}/${request.id}/photo`, root)
+        ).json<{ photo: string }>().photo;
+        expect(photo, request.number).toBe(DEMO_DELIVERY_PHOTOS[mine.id]);
+      }
     });
 
     it('Each photo the data set holds is on its person, and no one else has one', async () => {

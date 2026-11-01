@@ -32,6 +32,7 @@ import {
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
+  DEMO_DELIVERY_PHOTOS,
   DEMO_ORDERS,
   DEMO_EMPLOYEES,
   DEMO_PHOTOS,
@@ -183,9 +184,14 @@ export async function seedClient(
     }
   }
 
-  await replayWeek(call, root, (time) => {
-    clock = time;
-  });
+  await replayWeek(
+    call,
+    root,
+    (time) => {
+      clock = time;
+    },
+    (driverCode) => signIn(driverCode, people[driverCode]),
+  );
   clock = null;
   return { code, rootPassword: made.password, people };
 }
@@ -201,10 +207,16 @@ type Call = <T>(
  * The data set's week of orders and requests, made through the BFF's own routes as the root, in
  * the order they were made and with the clock at each one's time: an order is saved, confirmed to
  * its driver for the day it was sent for, and cancelled (the order, or only its request) as the
- * data set says. The BFF mints every id and number, so the numbers meet the data set's only because
+ * data set says; a request the data set delivered is then delivered through the route by its driver,
+ * signed in, at the time the data set gives, with its drawn photo. The BFF mints every id and number, so the numbers meet the data set's only because
  * the order of the calls does.
  */
-async function replayWeek(call: Call, root: string, setClock: (time: number) => void) {
+async function replayWeek(
+  call: Call,
+  root: string,
+  setClock: (time: number) => void,
+  signInAs: (code: string) => Promise<string>,
+) {
   const customers = await call<{ customers: Customer[] }>('GET', ROUTES.customers, root);
   const products = await call<{ products: Product[] }>('GET', ROUTES.products, root);
   const drivers = await call<{ drivers: Driver[] }>('GET', ROUTES.drivers, root);
@@ -234,6 +246,15 @@ async function replayWeek(call: Call, root: string, setClock: (time: number) => 
     if (order.state === 'cancelled') {
       await call<OrderDoc>('POST', orderRoutes.cancel(order.day, saved.order.id), root, {
         version: doc.version,
+      });
+    } else if (request?.state === 'delivered') {
+      const { id } = doc.order.request!;
+      setClock(request.deliveredAt!);
+      const driver = await signInAs(request.driver.code);
+      const sent = await call<DeliveryDoc>('GET', deliveryRoutes.one(request.day, id), driver);
+      await call<DeliveryDoc>('POST', deliveryRoutes.deliver(request.day, id), driver, {
+        version: sent.version,
+        photo: DEMO_DELIVERY_PHOTOS[request.id],
       });
     } else if (request?.state === 'cancelled') {
       const { id } = doc.order.request!;

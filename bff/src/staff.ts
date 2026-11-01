@@ -76,6 +76,8 @@ const IMPORT_REASONS: Partial<Record<number, Exclude<ImportResult, { kind: 'adde
 type Who = {
   root: boolean;
   permissions: Record<PermissionId, boolean>;
+  /** The person's id; none for the root. */
+  employeeId?: string | null;
   setup?: { setup: StaffSetup; version: string };
 };
 

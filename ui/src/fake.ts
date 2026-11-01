@@ -687,9 +687,9 @@ export function createFakeApi({ device, cue, signIns = false, noDrivers = false 
         'deliver',
         () => {
           const driver = mayDeliver();
+          if (!proofIsValid(request.photo)) throw new ApiError(400);
           const found = requestAt(day, id);
           if (found.driver.id !== driver.id) throw new ApiError(403);
-          if (!proofIsValid(request.photo)) throw new ApiError(400);
           if (request.version !== `g${requestVersions.get(id)}` || found.state !== 'waiting') {
             return { kind: 'conflict', current: requestDoc(found) };
           }

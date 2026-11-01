@@ -72,6 +72,9 @@ describe('Row 22: every route answers 401 unsigned and 403 without its permissio
       ['GET', deliveryRoutes.list(DAY)],
       ['GET', deliveryRoutes.one(DAY, request.id)],
       ['POST', deliveryRoutes.cancel(DAY, request.id)],
+      ['POST', deliveryRoutes.deliver(DAY, request.id)],
+      ['GET', deliveryRoutes.photo(DAY, request.id)],
+      ['GET', ROUTES.myDeliveries],
       ['GET', ROUTES.drivers],
     ];
 
