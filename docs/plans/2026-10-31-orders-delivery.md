@@ -1,6 +1,6 @@
 # Slice 2: an order, sent to a driver
 
-**Where it stands — 2026-11-01 09:08 +07:** steps 1 to 6 done, step 6 ticked, the review (step 7) done: `main` (line 31) is
+**Where it stands — 2026-11-01 09:08 +07:** steps 1 to 7 done, 6 and 7 ticked: `main` (line 31) is
 taken in at `a71961a` and one whole check reads `== exit 0` on this tree
 (`logs/20261101-0903-orders-delivery-check.log`, after two reds, each reported as one). The review's
 Medium findings are fixed; the rest sit in open items 35 and 36. *Review notes for the recap, each
@@ -275,10 +275,17 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `logs/20261101-0903-orders-delivery-check.log`, `== exit 0`: shared 111 tests, bff 363, ui 468,
   scripts 205, visual 442, every package at 100 % statements, branches, functions and lines; its only
   note is vitest's `isolate: false` hint.
-- [ ] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
+- [x] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 4 and 6 with the case table, about ¼ day with
   its fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its
   reason; `pnpm check` exit 0 after the fixes. No re-review.
+  *Evidence:* Opus, 2026-11-01 08:37, in `review-a`@`8c3c536`; the review is
+  `logs/20261101-0822-orders-delivery-review.md`, its rule-2 run
+  `logs/20261101-0832-orders-delivery-review-rule2.log`. `[FIXED]`: finding 1 (`1592608`), findings 2
+  and 15 (`ab6626f`). `[DEFERRED]`: findings 3 to 8 to open item 36, 14 to item 35, 9 and 10 as the
+  where-it-stands lists them (10 now done by taking `main` in). `[REJECTED]`: 11, 12 and 13, each for
+  the review's reason. `pnpm check` exit 0 after the fixes: step 6's
+  `logs/20261101-0903-orders-delivery-check.log`.
 - [ ] **8. The human's full run.** Who: 👤, about 25 minutes for two runs, nothing else running; 🤖
   reads each log whole. First `bash walk/run.sh piece-1 piece-2 admin-lists office-orders --moved
   3-settings,4-saved,5-language-menu,7-save-failed,8-save-conflict,lists-1-customers,lists-2-customers-import,lists-3-customers-preview,lists-4-customers-added,lists-5-no-code,lists-6-products,lists-7-products-preview,lists-8-products-added,setup-1-departments-positions,setup-2-fields,staff-1-list,staff-2-add,staff-3-added,staff-4-person,staff-5-permissions,staff-6-password,staff-7-archive,staff-8-left,staff-9-code-taken,staff-10-save-conflict,staff-11-save-failed,staff-12-own-fields,staff-13-photo,staff-14-search,staff-15-code-changed,staff-16-field-refused,staff-17-email,staff-18-qr,staff-19-import,staff-20-preview,staff-21-imported,staff-22-no-name,office-1-menu,office-2-add,office-3-forbidden,office-5-settings,office-6-password,office-7-password-wrong,phone-1-signed-in --write`, then the same without flags. *The list:* 44 screens, every
