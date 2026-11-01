@@ -1,7 +1,17 @@
 # Slice 4: đối soát, each driver's day settled
 
-**Where it stands — 2026-11-01 13:14 +07:** steps 1 and 2 done; **step 3, the office's pages on the
-fake, is in hand.** Nothing is built yet.
+**Where it stands — 2026-11-01 13:33 +07:** steps 1 and 2 done. **Step 3 is written and NOT yet run:** the
+gate lock was held by other runs from 13:15 to 13:32, so no test, typecheck beyond `shared`, `ui` and `visual`,
+red run or `pnpm report` has been read back for it, and step 3 stays unticked. Built: the wire and the data
+set's closed days in `shared/`; the fake's `listReconciliations` and `closeDay`, `DriverDayPage`, the
+driver lines in `DeliveriesPage`, the words in vi and en; the walk `office-reconcile` (8 screens),
+`walk/specs/reconcile.spec.ts`, its two projects and its `walk/run.sh` row. **Next, in order:** run the
+`shared`, `ui`, `visual` and `scripts` tests and fix what they read; the red runs for rows 1 to 8's
+shared and UI halves (each breaks the rule's line, logs under the credo root's `logs/`, puts it back);
+`pnpm report`; then tick step 3. *Model files followed:* slice 2's `DeliveriesPage.tsx` and `DeliveryPage.tsx`
+(the groups, the check before a write, the outcome alerts), `OrderPage.tsx`'s `NumberInput` (the cash),
+slice 3's `fake.ts` delivery calls (`deliverRequest`, `cancelRequest` were taken out of them), slice 3's
+office screens `orders-11-fulfilled` and `orders-12-proof` in `walks.ts` and `orders.spec.ts` (the walk).
 
 > **Drafted** 2026-11-01 by the machine, for lane A's fourth and last demo slice of the road to 11-04 (the
 > orchestrator's plan: part 1, row 4, and the demo's step 7; part 3; part 6, amended 10-31; Decide 43 for
@@ -269,6 +279,13 @@ The demo's step 7 needs none of these; each waits for its trigger.
 3. **The driver's own total on the phone,** what to hand in today. *Trigger:* a driver who asks.
 4. **Debts per customer, transfers, expenses, returns, an export** (the road's skips for this slice).
    *Trigger:* a real client.
+
+5. **Found at step 3, left as built** (a demo slice builds through and polishes nothing past the plan):
+   the close's 409 carries no body the page reads, so the page reads both lists again and shows the day
+   as it now is (row 15 asks the BFF for "the day as it now is"; the page needs none of it); the plural of
+   "requests still waiting" in the check is one sentence with the count, not two words; a driver whose only
+   request of a past day was cancelled is closed in the data set with nothing to collect and 0 handed in,
+   so no past driver's line reads open. *Trigger:* a no at step 4, or step 5's route.
 
 ## Hazards no gate catches
 
