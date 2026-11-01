@@ -240,20 +240,51 @@ are fixed; these stay.
 
 *Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
 
-## 35. Orders and requests: five small things left under the demo's ceremony — the machine; *parked* until the orders are next touched (orders-delivery, step 6, 2026-10-31)
+## 35. Orders and requests: four small things left under the demo's ceremony — the machine; *parked* until the orders are next touched (orders-delivery, step 6, 2026-10-31)
 
 Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
 - **A first save that carries a `version`** is accepted and the version ignored; the create route
   could refuse it (400). Nothing sends one.
 - **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
   request's cancel): a moved order is left as it is and the page reads the request as none, so the
-  order offers to send again either way; no test moves the order between the two writes.
+  order offers to send again either way; no test moves the order between the two writes. Also a
+  false conflict (`bff/src/orders.ts#L388-L406`): a send pressed on a page read between the two
+  writes meets a 409 though nothing the page showed has moved, in a window of milliseconds; a
+  re-read that compares the shown order would recover it.
 - **The orders list reads each day of the span and each day its requests name**, one list read a day:
   at S2's busiest, a week is at most 14 reads. A report over a longer span would need an index.
 - **`GET /api/drivers` asks `orders.canEdit`**, as the fake does, not `orders.canView`; a viewer who
   opens Confirm has none to see. Right while only an editor confirms.
-- **The `--moved` list of the full run** is given as `all` for the first run (the office-orders bases
-  do not exist yet, so nothing is guarded); step 8 narrows it to the screens the menu and the
-  catalogue move once the bases are made.
 
 *Trigger:* the orders get a second caller (a report, a driver's phone), or a reader of a test names one.
+
+## 36. Orders, review findings 3 to 8, deferred under the 11-04 demo's exception — the machine; *parked* until the orders are next touched, and worked after the demo (orders-delivery, step 7, 2026-11-01)
+
+Found by the line 30 review; only its High and Medium findings are fixed under the demo's ceremony
+(Decide 46). None breaks a demo step or the gate.
+- **Finding 3, `bff/src/orders.ts#L341-L347`:** the order's cancel drops the request write's `moved`
+  result, so from slice 3 a request delivered between the read and the write leaves a cancelled order
+  beside a delivered request. *Fix (slice 3):* on `moved`, re-read the request; if still waiting, retry
+  a bounded number of times; if delivered, answer 409 with the order.
+- **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
+  included, and the BFF stores it as given (`bff/src/orders.ts#L274`); nothing writes an order's
+  `extra` yet, so nothing is lost today. *Fix:* send `existing?.doc.order.extra ?? {}`, as
+  `ui/src/PersonPage.tsx#L328` merges into the stored one.
+- **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
+  saved draft from today's lists, but Confirm copies the saved lines, so after a price change the
+  page's total and the request's total to collect differ. *Fix:* draw a saved draft at its saved
+  prices and mark a line whose product's price has since moved, so that a save reprices it.
+- **Finding 6, `bff/src/orders-records.route.test.ts#L338-L347`:** row 18's second half ends at the
+  503, so a numbering that hands out the lost number again would stay green. *Fix:* one more `made()`
+  after the 503, expecting `DH-00002`.
+- **Finding 7, `bff/src/orders.ts#L367-L369` and `ui/src/fake.ts#L629-L632`:** requests sort by number
+  as text, so the order breaks past 99,999 requests. *Fix:* one shared comparator for both, as
+  `newestOrdersFirst` (`shared/src/orders.ts#L183-L186`) compares the length first, the next time
+  either is touched.
+- **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
+  `version: z.string().min(1)`, outside `shared/` and looser than `tagSchema`, so a malformed version
+  reads as a moved one (409), not a 400. *Fix:* a re-save schema in `shared/src/orders.ts`, beside
+  item 35's first bullet.
+
+*Trigger:* the orders are next touched, a price changes in a demo (5), a real client's order volume
+(7), or a reader of a test names one.
