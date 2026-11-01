@@ -259,22 +259,51 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   and its cancel's refusal of a fulfilled order, the stack's generator delivering the data set's. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1, 2 and 4 to 8 each seen red once;
   `pnpm check` exit 0 at 100 %, no warning.
-  *Evidence (no whole check, as ordered):* BFF rows 2, 4 to 8 and 15 seen red once from their assertions
-  (`20261101-1030-driver-phone-red-bff-rows.log`, `…-red-bff-fulfil.log`); bff, ui and scripts tests at 100 %
-  (`generator.test.ts` green with the delivered week and each photo), typecheck of bff, shared, ui, scripts,
-  eslint and prettier exit 0; c-storage unchanged. The route tree in `operator.route.test.ts` lists the
-  three new routes.
-- [ ] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
+  *Evidence (no whole check, as ordered):* the BFF half of each row seen red once from its own
+  assertion, one break at a time, each put back, each in its own log (`bff/src/deliveries.route.test.ts`):
+  row 1 (`mustCan` dropped from `mustBeDriver`): `logs/20261101-1055-driver-phone-red-row1.log`, `#L105`
+  200, not 403; row 6 (`asShown` returns the order unchanged for a delivered request):
+  `logs/20261101-1055-driver-phone-red-row6.log`, `#L246` 'confirmed', not 'fulfilled' (`#L250` is the next
+  assertion in the same test, not reached); row 8 (the request-state check made `false`):
+  `logs/20261101-1055-driver-phone-red-row8.log`, `#L356` 200, not 409; rows 2, 4, 5, 7 and 14 from
+  `logs/20261101-1030-driver-phone-red-bff-rows.log`, and row 15 (the order's cancel of a delivered
+  request) from `logs/20261101-1031-driver-phone-red-bff-fulfil.log`. The first attempts at rows 1, 6 and 8
+  (`logs/20261101-1053-driver-phone-red-row1.log`, `…-1054-driver-phone-red-row6.log` and `…-row8.log`)
+  ended `== exit 127`, `timeout` not found: no test ran, so they show nothing. bff, ui and scripts tests
+  at 100 % (`generator.test.ts` green with the delivered week and each photo), typecheck of bff, shared,
+  ui, scripts, eslint and prettier exit 0; c-storage unchanged. The route tree in `operator.route.test.ts`
+  lists the three new routes. Not run red, read as red by the review: row 1's root line, rows 11 to 13
+  and 18; row 17's `#L396` check is held by no test (item 39).
+- [x] **7. One review.** Who: 🤖, a model other than the one in the code commits' `Co-Authored-By`
   line ([QA](../conventions/qa.md) rule 5), on steps 4 and 6 with the case table, about ¼ day with its
   fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here with its reason;
   `pnpm check` exit 0 after the fixes. No re-review.
+  *Evidence:* Opus (Claude Opus 5.5), 2026-11-01 10:49, in the scratch copy `review-a` at `a2739bf`; the
+  review is `logs/20261101-1049-driver-phone-review.md`: no High, one Medium, five Low, eight Info.
+  - **1, Medium, step 6's red evidence: `[FIXED]`.** Three red runs, `logs/20261101-1055-driver-phone-red-row1.log`,
+    `…-row6.log` and `…-row8.log`, each `== exit 1` from its own assertion; step 6's evidence rewritten.
+  - **2, Low, the cancel racing a delivery: `[DEFERRED]`** to item 39 (the plan's parked 6).
+  - **3, Low, `#L396`'s check held by no test: `[DEFERRED]`** to item 39.
+  - **4, Low, a failed fulfil write answers 503: `[DEFERRED]`** to item 39.
+  - **5, Low, the 1 MiB body read first: `[DEFERRED]`** to item 39.
+  - **6, Low, `imageOrientation` on old browsers: `[DEFERRED]`** to item 39 (step 13's phone settles it).
+  - **7, Info, "never the root" against row 7: `[REJECTED]`.** No change: row 7 and the who-may table
+    hold the root as the office.
+  - **8, Info, the `photo.ts` hint's wording: `[DEFERRED]`** to item 39.
+  - **9, Info, skew and rollback: `[DEFERRED]`** to item 39 (a line for the recap's hazards).
+  - **10, Info, the module comment and the fake's clock: `[DEFERRED]`** to item 39.
+  - **11, Info, one sign-in per driver in the seed: `[DEFERRED]`** to item 39.
+  - **12, Info, the gate's timing: `[DEFERRED]`** to item 27 (one line).
+  - **13, Info, step 9's `--moved` list: `[FIXED]`**, written into step 9.
+  - **14, Info, two concurrent delivers and `withoutDriversAllowed` twice: `[DEFERRED]`** to item 39.
 - [ ] **8. `main` taken in, once slice 2 has merged.** Who: 🤖, after slice 2's merge into `main` (its
   walk's bases and `walk/run.sh` row, which step 9 runs on; its seed block, which step 10 extends),
   ¼ hour. Done when: merged, its conflicts named; `pnpm install --offline` exit 0; `pnpm check` exit 0
   when more than bases and `scripts/` came in.
 - [ ] **9. The human's full run.** Who: 👤, about 25 minutes for two runs, nothing else running; 🤖
-  reads each log whole. First `bash walk/run.sh office-orders driver-deliveries --moved <every screen
-  the data set moves, listed by the machine here> --write`, then the same without flags. Done when:
+  reads each log whole. First `bash walk/run.sh office-orders driver-deliveries --moved
+  orders-1-list,orders-5-requests --write` (the 4 asked again; `office-4-nothing` must not move, and the
+  new screens have no bases yet, which `--write` makes), then the same without flags. Done when:
   both end `== verdict: green`, the second with every count 0; the bases committed; no walked screen
   holds an open "no".
 - [ ] **10. The seed's block.** Who: 🤖 (Sonnet), after step 9 (the seed changes `scripts/`, which the
