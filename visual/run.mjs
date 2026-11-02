@@ -1,43 +1,24 @@
-// `pnpm report` and `pnpm answers [--partners] <file>`. The screens are the app's own components, with CSS
-// modules and TSX, which Node cannot import alone: a Vite server loads them as the mock's build
-// and the tests do.
+// `pnpm report`. The screens are the app's own components, with CSS modules and TSX, which Node
+// cannot import alone: a Vite server loads `src/capture.ts`, as the tests' own runner loads it.
 import console from 'node:console';
-import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { createServer } from 'vite';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
-async function pasted(file) {
-  if (file === undefined) {
-    process.stdin.setEncoding('utf8');
-    let text = '';
-    for await (const chunk of process.stdin) text += chunk;
-    return text;
-  }
-  // pnpm runs a script in the package's folder; a relative path is the caller's.
-  return readFile(resolve(process.env.INIT_CWD ?? process.cwd(), file), 'utf8');
-}
-
 const server = await createServer({
   root,
-  configFile: `${root}vite.config.ts`,
+  configFile: false,
+  plugins: [(await import('@vitejs/plugin-react')).default()],
   logLevel: 'warn',
   appType: 'custom',
   server: { middlewareMode: true, ws: false },
   optimizeDeps: { noDiscovery: true },
 });
 try {
-  const cli = await server.ssrLoadModule('/src/cli.ts');
-  const { command, file, partners } = cli.parseArgs(process.argv.slice(2));
-  if (command === 'answers') {
-    if ((await cli.answer(await pasted(file), console.log, { partners })) > 0) process.exitCode = 1;
-  } else {
-    const { report } = await import('./capture.mjs');
-    await report(server, process.cwd(), console.log);
-  }
+  const { report } = await server.ssrLoadModule('/src/capture.ts');
+  await report(process.cwd(), console.log);
 } finally {
   await server.close();
 }

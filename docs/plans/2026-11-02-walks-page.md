@@ -67,10 +67,11 @@ Rows 1 to 3 held in `capture.test.ts`, 4 to 11 in `page.test.ts`, 12 in `tokens.
   `index.html` under 8 MB; round 5's jsdom check
   (`$ROOT_DIR/one-off/20261102-2340-walks-mock-round-5/check.mjs`), less its switches, all PASS.
   Then point 1.
-- [ ] **2. Hardened.** The script as typed modules; the old page, `pnpm answers`, `answers.json`
+- [x] **2. Hardened.** The script as typed modules; the old page, `pnpm answers`, `answers.json`
   and their tests removed; the version narrowed to the matching rules. Done when: each case red
   once from its own assertion; `@credo/visual` at 100 %; `pnpm check` exit 0;
   `git grep 'display: contents' visual/src` empty; `git diff --stat main -- ui walk` empty.
+  Done 2026-11-03, evidence in [the recap](../recaps/2026-11-03-walks-page.md).
 - [ ] **3. QA's rule 7 amended** (`docs/conventions/qa.md#L122-L128`): a yes holds until the
   screen's version moves, one answer a screen; *Rejected:* a yes keyed to the words, which kept a
   changed look's yes unseen. Its line at a glance, and the stamp (Decides 56, 57). Done when:

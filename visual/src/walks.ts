@@ -1,4 +1,4 @@
-import { addDays, driverDay, LANGUAGES, type Language } from '@credo/shared';
+import { addDays, driverDay, type Language } from '@credo/shared';
 import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -1593,18 +1593,6 @@ export const WALKS: Walk[] = [
     ],
   },
 ];
-
-/** The key an answer is kept under. */
-export const answerKey = (walk: string, screen: string, language: Language) =>
-  `${walk}:${screen}:${language}`;
-
-/** Every key the walks can be answered under, in the walks' order. */
-export const allKeys = (walks: readonly Walk[]) =>
-  walks.flatMap((walk) =>
-    walk.screens.flatMap((screen) =>
-      LANGUAGES.map((language) => answerKey(walk.id, screen.id, language)),
-    ),
-  );
 
 type DrawnState = MockScreen['states'][number];
 

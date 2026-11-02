@@ -1,6 +1,6 @@
 // The page's own words, in Tiếng Việt and English: every string the page draws around the screens.
-// The walks' titles, people, stages, questions and sentences come from walks.js in both languages.
-window.WALKS_WORDS = {
+// The walks' titles, people, stages, questions and sentences come from walks.ts in both languages.
+export const WORDS: Record<'vi' | 'en', Record<string, string>> = {
   vi: {
     brand: 'Credo walks',
     toMap: '← Bản đồ',
@@ -8,7 +8,8 @@ window.WALKS_WORDS = {
     listToggle: 'Các màn hình của luồng này (S)',
     mapWhere: 'Bản đồ của ngày',
     mapTitle: 'Một ngày của doanh nghiệp trong Credo',
-    mapSumLeft: 'Còn {left} trên {all} màn hình cần trả lời: {fresh} mới với bạn, {changed} đã đổi từ lần bạn trả lời. Mỗi luồng mở ở màn hình đầu tiên còn lại.',
+    mapSumLeft:
+      'Còn {left} trên {all} màn hình cần trả lời: {fresh} mới với bạn, {changed} đã đổi từ lần bạn trả lời. Mỗi luồng mở ở màn hình đầu tiên còn lại.',
     mapSumDone: 'Đã trả lời đủ {all} màn hình. Hãy sao chép và dán vào cuộc trò chuyện.',
     blBranch: 'Nhánh ',
     blCommit: ', commit ',
@@ -76,7 +77,6 @@ window.WALKS_WORDS = {
     memoNeed: 'Trả lời “Không” cần ghi chú: sai ở đâu, rồi nhấn Enter',
     memoLabel: 'Ghi chú',
     saved: 'Đã lưu “{answer}” cho màn hình {n} bằng {lang}.',
-    blankNote: 'Màn hình {n}: build này chưa vẽ màn hình này.',
     frameTitle: 'Màn hình {n} bằng {lang}, {device} {width}',
     badgeTail: '. F hoặc bấm vào đây để hiện lại các thanh.',
     blockH: 'Câu trả lời của bạn',
@@ -85,7 +85,8 @@ window.WALKS_WORDS = {
     blockText: 'Đoạn để dán',
     done: 'Xong',
     helpH: 'Cách dùng trang này',
-    helpP: 'Bản đồ cho thấy mọi luồng. Một luồng mở ở màn hình đầu tiên còn phải trả lời: mới với bạn, hoặc đã đổi từ lần bạn trả lời. Mỗi màn hình chỉ trả lời một lần, bằng ngôn ngữ mà người của nó đọc; phím L cho xem ngôn ngữ kia. Câu trả lời được giữ trong trình duyệt này, theo tên của bạn.',
+    helpP:
+      'Bản đồ cho thấy mọi luồng. Một luồng mở ở màn hình đầu tiên còn phải trả lời: mới với bạn, hoặc đã đổi từ lần bạn trả lời. Mỗi màn hình chỉ trả lời một lần, bằng ngôn ngữ mà người của nó đọc; phím L cho xem ngôn ngữ kia. Câu trả lời được giữ trong trình duyệt này, theo tên của bạn.',
     hY: 'Có, rồi sang màn hình còn lại tiếp theo',
     hN: 'Không, kèm ghi chú; Enter để lưu, Esc để hủy',
     hM: 'Một ghi chú, kèm “Có” hoặc “Không”',
@@ -102,7 +103,8 @@ window.WALKS_WORDS = {
     allYesDone: 'Đã trả lời “Có” cho {n} màn hình.',
     allYesNone: 'Luồng này không còn màn hình nào để trả lời “Có” cho tất cả.',
     undo: 'Hoàn tác',
-    hAllYes: 'Có cho mọi màn hình còn lại của luồng, sau một câu hỏi; “Không” và ghi chú được giữ nguyên',
+    hAllYes:
+      'Có cho mọi màn hình còn lại của luồng, sau một câu hỏi; “Không” và ghi chú được giữ nguyên',
   },
   en: {
     brand: 'Credo walks',
@@ -111,7 +113,8 @@ window.WALKS_WORDS = {
     listToggle: 'The screens of this walk (S)',
     mapWhere: 'The map of the day',
     mapTitle: 'A business’s day in Credo',
-    mapSumLeft: '{left} of {all} screens left to answer: {fresh} new to you, {changed} changed since your answer. A walk opens at its first one.',
+    mapSumLeft:
+      '{left} of {all} screens left to answer: {fresh} new to you, {changed} changed since your answer. A walk opens at its first one.',
     mapSumDone: 'All {all} screens answered. Copy the answers, and paste the text into the chat.',
     blBranch: 'Branch ',
     blCommit: ', commit ',
@@ -179,7 +182,6 @@ window.WALKS_WORDS = {
     memoNeed: 'A No needs its memo: what is wrong, then Enter',
     memoLabel: 'Memo',
     saved: '{answer} saved for screen {n} in {lang}.',
-    blankNote: 'Screen {n}: this build did not draw it.',
     frameTitle: 'Screen {n} in {lang}, {device} {width}',
     badgeTail: '. F or a click brings the bars back.',
     blockH: 'Your answers',
@@ -188,7 +190,8 @@ window.WALKS_WORDS = {
     blockText: 'The text to paste',
     done: 'Done',
     helpH: 'How this page works',
-    helpP: 'The map shows every walk. A walk opens at its first screen left to answer: new to you, or changed since your answer. Each screen is answered once, in the language its person reads; L shows the other. Your answers stay in this browser, under your name.',
+    helpP:
+      'The map shows every walk. A walk opens at its first screen left to answer: new to you, or changed since your answer. Each screen is answered once, in the language its person reads; L shows the other. Your answers stay in this browser, under your name.',
     hY: 'Yes, and on to the next screen left',
     hN: 'No, with a memo; Enter saves, Esc cancels',
     hM: 'A memo, with a yes or a no',

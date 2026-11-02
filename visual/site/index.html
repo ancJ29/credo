@@ -6,8 +6,9 @@
 <title>Credo Day Walks</title>
 <!--
   The walks page: one file, opening from disk with no server and no network. The build puts the
-  walks, every screen as the app drew it and the build line into the data script below; words.js
-  holds the page's own words in Tiếng Việt and English.
+  walks, every screen as the app drew it and the build line into the data script below, and the
+  page's script, typed in page.ts, into the last one; words.ts holds its own words in Tiếng Việt and
+  English.
 -->
 <style>
 :root {
@@ -254,13 +255,6 @@ body.list-folded .walk-list, body.look .walk-list { display: none; }
 }
 .frame-wrap iframe { display: block; border: 0; transform-origin: 0 0; pointer-events: none; background: #fff; }
 .frame-wrap.phone, .frame-wrap.tablet { border-radius: 14px; outline: 6px solid var(--paper); }
-.blank {
-  margin: 0 auto; display: grid; place-content: center; gap: 6px; text-align: center; padding: 24px;
-  height: calc(100% - 4px); min-height: 280px;
-  background: repeating-linear-gradient(135deg, var(--paper) 0 9px, var(--soft) 9px 10px);
-  border: 1px dashed var(--line); border-radius: 6px; color: var(--muted);
-}
-.blank b { color: var(--ink); font-size: 17px; }
 .stamp {
   position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
   font-size: 40px; font-weight: 700; color: var(--yes); background: rgb(255 255 255 / 0.5); opacity: 0;
@@ -438,7 +432,6 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
   </nav>
   <div class="pic" id="pic">
     <div class="frame-wrap" id="frame-wrap"><span class="stamp" id="stamp"></span></div>
-    <div class="blank" id="blank" hidden></div>
   </div>
 </main>
 <button type="button" class="badge" id="badge" hidden></button>
@@ -510,7 +503,6 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 </div>
 
 <script>/*DATA*/</script>
-<script>/*WORDS*/</script>
 <script>/*PAGE*/</script>
 </body>
 </html>

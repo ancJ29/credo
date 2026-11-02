@@ -74,16 +74,6 @@ the child: `waitUntilUp` also needs the child's own log to say it is listening
 (`scripts/src/processes.ts`). The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
 
-## 11. Two places inline a Vite build into one HTML file — the machine; *parked* until a third caller (the visual report plan, step 4, 2026-10-28)
-
-`ui/vite.mock.config.ts` (a plugin, for `pnpm mock`) and `visual/src/build.ts` (`onePage`, for
-`pnpm report`) each fold Vite's script and styles into the one HTML file a browser opens from
-`file://`, with the same two patterns. They differ in where they run: the plugin inside the
-bundle's own write, `onePage` on the in-memory output so it can add the report's data. A shared
-helper would make `visual` depend on `ui`'s config, or `ui` on `visual`. Join them when a third
-page needs it, in a package both already depend on, or when Vite changes the tags it emits and the
-two patterns must be fixed twice.
-
 ## 12. A lockfile for Bruno CLI in CI — the machine; *parked* until the CLI's dependencies are a problem (the ridge plan, step 12, 2026-10-28)
 
 Home: [the ridge plan](plans/2026-10-28-ridge.md#deploys-from-github-actions). `npm install -g
@@ -530,3 +520,10 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two ui tests failed in files the change did not touch, and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times. *Fix:* find what each waits on that load starves, and hold it by the test's own signal, not a time.
 
 *Trigger:* the next red of either, or a quiet machine's whole check.
+
+## 57. `ui/src/MyDeliveries.test.tsx` failed once in a whole `pnpm check` at load about 12 — the machine; *parked* until after the 11-04 demo (walks page step 2, 2026-11-03)
+
+The driver's landing test expected `myDeliveries` called once with the demo day and saw no call;
+nothing in `ui` had changed and the next whole run was green. A flaky red is a defect, not a pass:
+the test reads the call before the page's effect ran under load. Log: `logs/20261103-walks-page-step2-gate-run3-red-ui.log`.
+

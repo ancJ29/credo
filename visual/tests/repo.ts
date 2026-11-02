@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-export const AUTHOR = { name: 'Zed Quux', email: 'zed.quux@example.test' };
+const AUTHOR = { name: 'Zed Quux', email: 'zed.quux@example.test' };
 
 const git = (cwd: string, args: string[], committedAt?: number) =>
   execFileSync('git', args, {
