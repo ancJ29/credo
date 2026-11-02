@@ -4,8 +4,9 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  // c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2).
-  { ignores: ['**/dist/', '**/node_modules/', '**/coverage/', 'c-storage/'] },
+  // c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). visual/mock/ is a
+  // static look for the human to judge, its data captured from a build: no product code.
+  { ignores: ['**/dist/', '**/node_modules/', '**/coverage/', 'c-storage/', 'visual/mock/'] },
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {

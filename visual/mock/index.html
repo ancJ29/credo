@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credo walks mock</title>
+<!--
+  A static mock of the walks page's next look, for one yes or no before the real page is rebuilt.
+  Opens from disk: no server, no network. walks.js holds the walks' words from a build of main;
+  screens.js holds a few screens as that build drew them, and the app's CSS they need.
+-->
+<style>
+:root {
+  --table: #e3e7eb;
+  --paper: #ffffff;
+  --ink: #16202b;
+  --muted: #5a6673;
+  --line: #c9d0d7;
+  --soft: #f1f4f6;
+  --hi: #f7e36a;
+  --hi-ink: #3a3000;
+  --yes: #1d7349;
+  --yes-ink: #ffffff;
+  --no: #a8362c;
+  --no-ink: #ffffff;
+  --focus: #2f5fd0;
+  --shade: 0 1px 2px rgb(22 32 43 / 0.12), 0 8px 28px rgb(22 32 43 / 0.10);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --table: #161b20;
+    --paper: #222a32;
+    --ink: #e7ecf1;
+    --muted: #9ba7b3;
+    --line: #38424c;
+    --soft: #2a333c;
+    --hi: #e9cf3b;
+    --hi-ink: #231d00;
+    --yes: #3c9f70;
+    --yes-ink: #08160f;
+    --no: #df6a5e;
+    --no-ink: #1f0805;
+    --focus: #86a6ff;
+    --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --table: #161b20;
+  --paper: #222a32;
+  --ink: #e7ecf1;
+  --muted: #9ba7b3;
+  --line: #38424c;
+  --soft: #2a333c;
+  --hi: #e9cf3b;
+  --hi-ink: #231d00;
+  --yes: #3c9f70;
+  --yes-ink: #08160f;
+  --no: #df6a5e;
+  --no-ink: #1f0805;
+  --focus: #86a6ff;
+  --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--table);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* The top bar: where you are, what is left, and the few tools. */
+.top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 24px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; }
+.crumb { display: flex; gap: 10px; min-width: 0; color: var(--muted); }
+.crumb b { color: var(--ink); font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb span { white-space: nowrap; }
+.tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.left { color: var(--muted); white-space: nowrap; margin-right: 6px; }
+.left b { color: var(--ink); }
+.btn {
+  border: 1px solid var(--line); background: var(--paper);
+  border-radius: 7px; padding: 6px 12px; white-space: nowrap;
+}
+.btn:hover { background: var(--soft); }
+.btn.main { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.round { width: 32px; padding: 6px 0; text-align: center; border-radius: 50%; }
+.label-box { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.label-box input {
+  width: 74px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--soft);
+}
+.meter { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; }
+.meter i { display: block; height: 100%; background: var(--yes); width: 0; transition: width 240ms ease; }
+
+/* The stage: the one screen, drawn at the person's width, as large as the room allows. */
+.stage { flex: 1; padding: 18px 24px 24px; }
+.view {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  max-width: 1280px; margin: 0 auto 12px;
+}
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.seg button { border: 0; background: none; padding: 5px 12px; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.view .theirs { color: var(--muted); font-size: 13px; }
+.frame-wrap {
+  margin: 0 auto; position: relative;
+  background: #fff; box-shadow: var(--shade); border-radius: 6px; overflow: hidden;
+}
+.frame-wrap iframe {
+  display: block; border: 0; transform-origin: 0 0; pointer-events: none; background: #fff;
+}
+.frame-wrap.phone, .frame-wrap.tablet { border-radius: 18px; outline: 8px solid var(--paper); outline-offset: 0; }
+.blank {
+  max-width: 640px; margin: 40px auto; padding: 28px; text-align: center;
+  background: var(--paper); border: 1px dashed var(--line); border-radius: 8px; color: var(--muted);
+}
+.stamp {
+  position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+  font-size: 44px; font-weight: 700; color: var(--yes); background: rgb(255 255 255 / 0.55);
+  opacity: 0;
+}
+.stamp.go { animation: stamp 520ms ease-out; }
+.stamp.no { color: var(--no); }
+@keyframes stamp { 0% { opacity: 0; transform: scale(1.15); } 35% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+
+/* The sign-off strip: the question, and Yes or No. */
+.ask {
+  position: sticky; bottom: 0; z-index: 4;
+  background: var(--paper); border-top: 1px solid var(--line);
+  box-shadow: 0 -6px 18px rgb(22 32 43 / 0.06);
+}
+.ask-in {
+  max-width: 1280px; margin: 0 auto; padding: 14px 24px 16px;
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 28px; align-items: center;
+}
+.tagline { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; color: var(--muted); font-size: 13px; }
+.lang-name { color: var(--ink); font-weight: 600; }
+.hi {
+  background: linear-gradient(transparent 12%, var(--hi) 12%, var(--hi) 88%, transparent 88%);
+  color: var(--hi-ink); padding: 0 4px; border-radius: 2px;
+}
+.question { grid-column: 1; margin: 0; font-size: 26px; line-height: 1.22; font-weight: 600; letter-spacing: -0.015em; max-width: 62ch; }
+.sentence { grid-column: 1; margin: 0; color: var(--muted); max-width: 80ch; }
+.answer { grid-column: 2; grid-row: 1 / span 3; display: flex; gap: 10px; }
+.answer button {
+  min-width: 132px; padding: 14px 22px; border-radius: 10px; font-size: 18px; font-weight: 650;
+  border: 2px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+}
+.answer .yes { background: var(--yes); color: var(--yes-ink); }
+.answer .no { background: var(--paper); color: var(--no); border-color: var(--no); }
+.answer .yes:hover { filter: brightness(1.08); }
+.answer .no:hover { background: color-mix(in srgb, var(--no) 8%, var(--paper)); }
+kbd {
+  font: 12px/1 system-ui, sans-serif; padding: 3px 5px; border-radius: 4px;
+  border: 1px solid currentColor; opacity: 0.7;
+}
+.reason { grid-column: 1 / -1; display: flex; gap: 10px; align-items: flex-start; }
+.reason textarea {
+  flex: 1; min-height: 64px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--no); background: var(--soft); resize: vertical;
+}
+.reason .btn.main { background: var(--no); border-color: var(--no); color: var(--no-ink); }
+.said { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; min-height: 1em; }
+
+/* Nothing left: the one thing to do next. */
+.done {
+  max-width: 560px; margin: 56px auto; padding: 32px; background: var(--paper);
+  border-radius: 10px; box-shadow: var(--shade);
+}
+.done h2 { margin: 0 0 8px; font-size: 26px; letter-spacing: -0.015em; }
+.done p { margin: 0 0 20px; color: var(--muted); }
+.done .row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* The drawer: every walk, out of the way until asked for. */
+.scrim { position: fixed; inset: 0; background: rgb(10 14 18 / 0.32); z-index: 8; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(460px, 100vw); z-index: 9;
+  background: var(--paper); border-left: 1px solid var(--line); overflow: auto;
+  padding: 18px 20px 40px; box-shadow: var(--shade);
+}
+.drawer header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.drawer h2 { margin: 0; font-size: 18px; }
+.drawer header .btn { margin-left: auto; }
+.drawer h3 { margin: 18px 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.walk { border-top: 1px solid var(--line); }
+.walk > button {
+  width: 100%; text-align: left; border: 0; background: none; padding: 10px 2px;
+  display: flex; gap: 10px; align-items: baseline;
+}
+.walk > button .t { flex: 1; }
+.walk > button .n { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.walk > button .n.hi { color: var(--hi-ink); }
+.walk ol { list-style: none; margin: 0 0 10px; padding: 0; }
+.walk li button {
+  width: 100%; text-align: left; border: 0; background: none; border-radius: 6px;
+  padding: 6px 8px; display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline;
+}
+.walk li button:hover { background: var(--soft); }
+.walk li button[aria-current="true"] { background: var(--soft); box-shadow: inset 3px 0 0 var(--ink); }
+.walk li .num { color: var(--muted); text-align: right; }
+.walk li .marks { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.mark-yes { color: var(--yes); }
+.mark-no { color: var(--no); }
+
+.dialog {
+  position: fixed; inset: 0; z-index: 12; display: grid; place-items: center; background: rgb(10 14 18 / 0.4);
+}
+.dialog > div {
+  width: min(640px, calc(100vw - 32px)); background: var(--paper); border-radius: 10px; padding: 20px; box-shadow: var(--shade);
+}
+.dialog h2 { margin: 0 0 6px; font-size: 18px; }
+.dialog p { margin: 0 0 12px; color: var(--muted); }
+.dialog textarea {
+  width: 100%; height: 220px; font: 12px/1.5 ui-monospace, Menlo, monospace; padding: 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--soft);
+}
+.dialog .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.help dt { text-align: right; }
+
+/* Mock only: switches the human's look takes, never part of the page. */
+.mockctl {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 10px; font-size: 12px;
+  max-width: 1280px; margin: 0 auto 14px;
+  background: var(--paper); border: 1px dashed var(--muted); border-radius: 8px; color: var(--muted);
+}
+.mockctl .seg button { padding: 3px 8px; font-size: 12px; }
+
+@media (max-width: 760px) {
+  .top { padding: 8px 16px; gap: 8px; flex-wrap: wrap; }
+  .brand { display: none; }
+  .crumb { order: 3; width: 100%; font-size: 13px; }
+  .crumb .walk-t { display: none; }
+  .left { font-size: 13px; margin-right: 0; }
+  .left .wide { display: none; }
+  .tools { gap: 6px; margin-left: 0; width: 100%; }
+  .tools .left { margin-right: auto; }
+  .btn { padding: 6px 10px; font-size: 14px; }
+  .label-box span { display: none; }
+  .stage { padding: 12px 16px 16px; }
+  .view { gap: 8px; }
+  .view .theirs { width: 100%; }
+  .ask-in { grid-template-columns: 1fr; padding: 12px 16px 14px; }
+  .question { font-size: 20px; }
+  .answer { grid-column: 1; grid-row: auto; }
+  .answer button { flex: 1; min-width: 0; padding: 12px; }
+  .answer kbd { display: none; }
+  .frame-wrap.phone, .frame-wrap.tablet { outline-width: 4px; border-radius: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stamp.go { animation: none; }
+  .meter i { transition: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">Credo walks</span>
+  <span class="crumb" id="crumb"></span>
+  <span class="tools">
+    <span class="left" id="left"></span>
+    <button type="button" class="btn" id="open-list">All walks</button>
+    <span class="label-box partner-only" hidden><span>Your label</span><input id="label" value="p1" aria-label="Label from the invite"></span>
+    <button type="button" class="btn main partner-only" id="share" hidden>Share</button>
+    <button type="button" class="btn main human-only" id="copy">Copy my answers</button>
+    <button type="button" class="btn round" id="help" aria-label="How this page works">?</button>
+  </span>
+  <span class="meter"><i id="meter"></i></span>
+</header>
+
+<main class="stage" id="stage">
+  <div class="mockctl" id="mockctl" aria-label="Mock only">
+    <span>Mock only</span>
+    <span class="seg" id="who">
+      <button type="button" data-who="human" aria-pressed="true">Your view</button>
+      <button type="button" data-who="partner" aria-pressed="false">A partner’s</button>
+    </span>
+    <span class="seg" id="theme">
+      <button type="button" data-theme="" aria-pressed="true">System</button>
+      <button type="button" data-theme="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme="dark" aria-pressed="false">Dark</button>
+    </span>
+  </div>
+  <div class="view" id="view">
+    <span class="seg" id="widths" role="group" aria-label="Width"></span>
+    <span class="seg" id="langs" role="group" aria-label="Language"></span>
+    <span class="theirs" id="theirs"></span>
+  </div>
+  <div class="frame-wrap" id="frame-wrap"><span class="stamp" id="stamp">Yes</span></div>
+  <div class="blank" id="blank" hidden></div>
+  <section class="done" id="done" hidden>
+    <h2>Every changed screen is answered</h2>
+    <p id="done-text"></p>
+    <div class="row">
+      <button type="button" class="btn main human-only" id="copy-2">Copy my answers</button>
+      <button type="button" class="btn main partner-only" id="share-2" hidden>Share</button>
+      <button type="button" class="btn" id="open-list-2">Look through all walks</button>
+    </div>
+  </section>
+</main>
+
+<footer class="ask" id="ask">
+  <div class="ask-in">
+    <p class="tagline" id="tagline"></p>
+    <h1 class="question" id="question"></h1>
+    <p class="sentence" id="sentence"></p>
+    <div class="answer">
+      <button type="button" class="no" id="no">No <kbd>N</kbd></button>
+      <button type="button" class="yes" id="yes">Yes <kbd>Y</kbd></button>
+    </div>
+    <div class="reason" id="reason" hidden>
+      <textarea id="reason-text" aria-label="What is wrong" placeholder="What is wrong on this screen, in a few words"></textarea>
+      <button type="button" class="btn main" id="save-no">Save the No</button>
+    </div>
+    <p class="said" id="said" aria-live="polite"></p>
+  </div>
+</footer>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-label="All walks">
+  <header>
+    <h2>All walks</h2>
+    <span class="seg" id="only" role="group" aria-label="Which screens">
+      <button type="button" data-only="asked" aria-pressed="true">Asked</button>
+      <button type="button" data-only="all" aria-pressed="false">All</button>
+    </span>
+    <button type="button" class="btn" id="close-list">Close</button>
+  </header>
+  <div id="walk-list"></div>
+</aside>
+
+<div class="dialog" id="block" hidden role="dialog" aria-modal="true" aria-labelledby="block-h">
+  <div>
+    <h2 id="block-h">Your answers</h2>
+    <p id="block-p"></p>
+    <textarea id="block-text" readonly aria-label="The text to paste"></textarea>
+    <div class="row"><button type="button" class="btn main" id="block-done">Done</button></div>
+  </div>
+</div>
+
+<div class="dialog help" id="helpbox" hidden role="dialog" aria-modal="true" aria-labelledby="help-h">
+  <div>
+    <h2 id="help-h">How this page works</h2>
+    <p>It asks only the screens whose words changed since your last yes, one at a time, in each language. Every other screen is in All walks, to look at again.</p>
+    <dl>
+      <dt><kbd>Y</kbd></dt><dd>Yes, and on to the next</dd>
+      <dt><kbd>N</kbd></dt><dd>No, with a reason</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>The previous or next asked screen</dd>
+      <dt><kbd>L</kbd></dt><dd>The other language</dd>
+      <dt><kbd>W</kbd></dt><dd>The next width</dd>
+    </dl>
+    <div class="row"><button type="button" class="btn main" id="help-done">Close</button></div>
+  </div>
+</div>
+
+
+
+<script src="walks.js"></script>
+<script src="screens.js"></script>
+<script src="mock.js"></script>
+</body>
+</html>
