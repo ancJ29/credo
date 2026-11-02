@@ -18,6 +18,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
+| a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -187,6 +188,30 @@ GitHub's job and without a terminal.
    The address is in the local log of `ops/stack.sh env ridge` (never in a committed file or a
    public log).
 
+## The demo copies' root password
+
+`ops/root-password.sh ridge <code>…` gives the root of each named demo copy a new password: typed
+here twice, never shown, never in the log and never kept. Every session of that root ends at its next
+click; nothing else of the copy changes. The six demo copies of `scripts/src/demo/mapping.ts` only: a
+client's own stack is the console's. The why is
+[the plan](../docs/plans/2026-11-02-ridge-root-password.md).
+
+1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs
+   (06:00 in Vietnam), naming the codes of the copies one person holds, for example
+   `ops/root-password.sh ridge <code> <code>`. Type the password at each prompt (8 to 128 characters, a
+   capital, a small letter, a digit, one of `@$!%*?&`, no space at either end). Send it to the person
+   by your own channel; the script never shows it again.
+2. Read the log: each code's company, then `<code>: set` and `<code>: signs in` per root,
+   `ok   no key in this log` and `== exit 0`.
+   - **== refused: ...:** nothing was changed. The line names why: another environment, GitHub's job,
+     no terminal, no code, `ops/` or this commit not `origin/main`'s, the two typings differ, the
+     password breaks the rule, a code outside the six, a taken port, a box below its floor, or `/health`
+     naming no commit of main.
+   - **error: the run stopped:** the lines above name the roots set and the roots not reached; those
+     keep their old password. Run it again for the same codes.
+   - **<code> is not on this service:** that copy was never made at `/operator`; nothing was written.
+   - **the new password is in this log:** redact the log; nothing to replace.
+
 ## The seed
 
 The demo copies on ridge get a day each morning from `.github/workflows/seed.yml` (06:00 in Vietnam,
@@ -287,7 +312,7 @@ state, so release first.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among
-them), `app.sh`, `operator.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
+them), `app.sh`, `operator.sh`, `root-password.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
 the real c-storage, built there, so Go must be installed. The guards also need Ruby (reads `env.yml`
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:

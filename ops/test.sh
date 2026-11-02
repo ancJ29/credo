@@ -1847,6 +1847,241 @@ rc=0
 out=$(GITHUB_ACTIONS=true bash "$E2E/repo/ops/operator.sh" ridge 2>&1) || rc=$?
 check "in GitHub's job it refuses before anything else" "1 1" "$rc $(grep -c "never in a job's log" <<<"$out" || true)"
 
+echo "== ops/root-password.sh run whole (rows 1, 2, 3, 6, 8, 15, 16, 17: ridge's demo copies alone; the password typed twice and in no log, call or screen; every refusal before a write)"
+# The password is typed at a terminal: a pseudo-terminal where the machine can open one (GitHub's runner
+# can), the typing sent once each prompt shows, so nothing is echoed; elsewhere the typing is a file on
+# the script's input and the script is told so for this test (OPS_TEST_NO_TTY).
+cat >"$WORK/rp-driver.py" <<'DRIVER'
+import os, pty, select, sys, time
+answers = open(sys.argv[1]).read().split("\n")
+if answers and answers[-1] == "":
+    answers.pop()
+prompts = [b"(not shown): ", b"Again: "]
+pid, fd = pty.fork()
+if pid == 0:
+    os.execvp(sys.argv[2], sys.argv[2:])
+seen, consumed, said = b"", 0, 0
+while True:
+    ready, _, _ = select.select([fd], [], [], 0.2)
+    if ready:
+        try:
+            data = os.read(fd, 4096)
+        except OSError:
+            break
+        if not data:
+            break
+        sys.stdout.buffer.write(data)
+        sys.stdout.buffer.flush()
+        seen += data
+    if said < len(prompts) and said < len(answers):
+        at = seen.find(prompts[said], consumed)
+        if at >= 0:
+            consumed = at + len(prompts[said])
+            time.sleep(0.3)
+            os.write(fd, b"\x04" if answers[said] == "^D" else answers[said].encode() + b"\n")
+            said += 1
+_, status = os.waitpid(pid, 0)
+sys.exit(os.waitstatus_to_exitcode(status))
+DRIVER
+rp_run() { # <the typing, one line a prompt (^D for none)> <args...>: root-password.sh whole, typed to; its transcript in the run's out file
+  local typed=$1
+  shift
+  printf '%s\n' "$typed" >"$S/typed"
+  if [ "$have_pty" = 1 ]; then
+    (cd "$E2E/repo" && exec python3 -I "$WORK/rp-driver.py" "$S/typed" bash ops/root-password.sh "$@") >"$S/out" 2>&1 </dev/null &
+  else
+    grep -vx -e '\^D' "$S/typed" >"$S/typed.file" || true
+    (cd "$E2E/repo" && OPS_TEST_NO_TTY=1 exec bash ops/root-password.sh "$@") >"$S/out" 2>&1 <"$S/typed.file" &
+  fi
+  LPID=$!
+  e2e_reap 60
+}
+rp_status() { # <code> <password> → the status of that root's sign-in through the product's own routes, on this state's database
+  local port pid result
+  port=$(free_port)
+  env -i PATH="$PATH" PORT="$port" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    "$FAKE_CS" >>"$S/server.log" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.1; done
+  result=$(cd "$REPO_DIR/scripts" && RP_CODE=$1 RP_PASSWORD=$2 C_STORAGE_URL=http://127.0.0.1:$port INTERNAL_ACCESS_KEY=$FAKE_IKEY SERVICE_CODE=bff SERVICE_ACCESS_KEY=$FAKE_SKEY \
+    node --import tsx -e "
+Promise.all([import('@credo/bff'), import('@credo/shared')]).then(async ([bff, shared]) => {
+  const e = process.env;
+  const storage = shared.createCStorageClient({ baseUrl: e.C_STORAGE_URL, internalAccessKey: e.INTERNAL_ACCESS_KEY, serviceCode: e.SERVICE_CODE, accessKey: e.SERVICE_ACCESS_KEY });
+  const app = bff.buildApp({ storage, now: Date.now, origin: 'http://localhost', serviceKey: 'the test', logger: false });
+  const reply = await app.inject({ method: 'POST', url: shared.ROUTES.signIn, headers: { [shared.CLIENT_HEADER]: e.RP_CODE, [shared.DEVICE_HEADER]: 'device-test-0001' }, payload: { name: 'root', password: e.RP_PASSWORD } });
+  console.log(reply.statusCode);
+});")
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  echo "$result"
+}
+rp_make_copy() { # <code>: the operator's own create on this state's database; prints the root's first password
+  local port pid
+  port=$(free_port)
+  env -i PATH="$PATH" PORT="$port" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    "$FAKE_CS" >>"$S/server.log" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.1; done
+  INTERNAL_ACCESS_KEY=$FAKE_IKEY SERVICE_CODE=bff SERVICE_ACCESS_KEY=$FAKE_SKEY C_STORAGE_URL=http://127.0.0.1:$port ridge_cli tenant "$1" "A demo copy"
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+}
+rp_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+rp_calls() { cat "$S/aws.calls" "$S/ssh.calls" 2>/dev/null | wc -l | tr -d ' '; }
+rp_exits() { grep -c -e '-O exit' "$S/ssh.calls" || true; }
+rp_seen() { # <text>: how many times the text is in this run's log, terminal and the stand-ins' calls
+  cat "$OPS_LOG_DIR"/*.log "$S/out" "$S/aws.calls" "$S/ssh.calls" | grep -cF -e "$1" || true
+}
+rport_default=$(free_port)
+export ROOT_PASSWORD_LOCAL_PORT=$rport_default
+NEWPW='Invented-New1!'
+DIFFPW='Invented-Other2@'
+# shellcheck disable=SC2207 # the six codes have no space
+rp_codes=($(cd "$REPO_DIR/scripts" && node --import tsx -e "import('./src/demo/mapping.ts').then((m) => console.log(m.allCopies().map((c) => c.code).join(' ')))"))
+c1=${rp_codes[0]} c2=${rp_codes[1]} c3=${rp_codes[2]} c6=${rp_codes[5]}
+
+e2e_fresh rootpw
+export OPS_LOG_DIR=$E2E/logs-rp-app
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the box, for the copies to be made with it" 0 "$RC"
+old1=$(rp_make_copy "$c1")
+old2=$(rp_make_copy "$c2")
+old3=$(rp_make_copy "$c3")
+check "three demo copies exist, each with its first root password" "16 16 16" "${#old1} ${#old2} ${#old3}"
+check "  and each root signs in with it" "200 200 200" "$(rp_status "$c1" "$old1") $(rp_status "$c2" "$old2") $(rp_status "$c3" "$old3")"
+
+# refused before the box is opened: no aws call, no ssh, and no root changed
+refused_untouched() { # <name> <text the refusal names> <command run already>: RC 2, the line, no call made since <calls before>, the roots as they were
+  check "$1" "2 1 0 1" \
+    "$RC $(rp_lines "^== refused: .*$2") $(($(rp_calls) - calls_before)) $(rp_lines '^== exit 2$')"
+}
+calls_before=$(rp_calls)
+export OPS_LOG_DIR=$E2E/logs-rp-other-env
+rp_run "$NEWPW"$'\n'"$NEWPW" other "$c1"
+refused_untouched "another environment than ridge is refused before any aws call, naming why" "root-password.sh holds ridge's demo copies alone"
+export OPS_LOG_DIR=$E2E/logs-rp-job
+GITHUB_ACTIONS=true rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+refused_untouched "in GitHub's job it refuses before anything else" "typed on a terminal, never in a job"
+export OPS_LOG_DIR=$E2E/logs-rp-pipe
+e2e_run root-password.sh ridge "$c1"
+refused_untouched "without a terminal it refuses, before anything is asked or written" "needs a terminal to type the password on"
+export OPS_LOG_DIR=$E2E/logs-rp-nocode
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge
+refused_untouched "no code named is refused" "name at least one demo copy's code"
+rc=0
+out=$(bash "$E2E/repo/ops/root-password.sh" 2>&1) || rc=$?
+check "no environment at all prints the usage and exits 2" "2 usage: ops/root-password.sh ridge <code>…" "$rc $out"
+export OPS_LOG_DIR=$E2E/logs-rp-ops
+printf '# touched\n' >>"$E2E/repo/ops/README.md"
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+git -C "$E2E/repo" checkout -q -- ops/README.md
+refused_untouched "an ops/ that is not origin/main's is refused" "ops/ here differs from origin/main's"
+export OPS_LOG_DIR=$E2E/logs-rp-head
+printf 'a note\n' >"$E2E/repo/NOTES-ROOT-PASSWORD.md"
+git -C "$E2E/repo" add NOTES-ROOT-PASSWORD.md
+git -C "$E2E/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m 'docs: not pushed'
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+git -C "$E2E/repo" reset -q --hard "$e2e_sha"
+refused_untouched "a HEAD that is no commit of main is refused" "is not a commit of main"
+export OPS_LOG_DIR=$E2E/logs-rp-dirty
+printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+refused_untouched "a tree that differs from its commit is refused" "this tree differs from"
+export OPS_LOG_DIR=$E2E/logs-rp-modules
+RIDGE_SCRIPTS_DIR='' rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+refused_untouched "a checkout with no pnpm install is refused" "needs pnpm install done"
+export OPS_LOG_DIR=$E2E/logs-rp-differ
+rp_run "$NEWPW"$'\n'"$DIFFPW" ridge "$c1"
+refused_untouched "two typings that differ are refused, before the box is opened" "the two typings differ"
+check "  the log holds neither typing" "0 0" "$(rp_seen "$NEWPW") $(rp_seen "$DIFFPW")"
+export OPS_LOG_DIR=$E2E/logs-rp-none
+rp_run '^D' ridge "$c1"
+refused_untouched "no typing at all is refused" "no password was typed"
+for weak in 'weak' 'ALLUPPERCASE1!' 'NoDigits!!' 'NoSymbol123a' 'Short1!'; do
+  export OPS_LOG_DIR=$E2E/logs-rp-weak
+  rm -rf "${OPS_LOG_DIR:?}"
+  rp_run "$weak"$'\n'"$weak" ridge "$c1"
+  refused_untouched "a password that breaks piece 2's rule ($weak) is refused before the box is opened" "the password or a code is refused"
+  check "  the log names the rule and not the password" "1 0" "$(rp_lines 'the password breaks the rule') $(rp_seen "$weak")"
+done
+export OPS_LOG_DIR=$E2E/logs-rp-foreign
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1" some-real-client
+refused_untouched "a code outside the six demo copies is refused before the box is opened, nothing changed" "the password or a code is refused"
+check "  and the log names it" 1 "$(rp_lines 'some-real-client is not one of the demo copies')"
+check "no root was changed by any refusal above" "200 200 200" "$(rp_status "$c1" "$old1") $(rp_status "$c2" "$old2") $(rp_status "$c3" "$old3")"
+
+# refused after the box is opened, still before any write
+calls_before=$(rp_calls)
+sends_before=$(grep -c 'send-ssh-public-key' "$S/aws.calls" || true)
+export OPS_LOG_DIR=$E2E/logs-rp-port
+rport=$(free_port)
+hold_port "$rport"
+ROOT_PASSWORD_LOCAL_PORT=$rport rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+stop_server
+check "a taken port is refused before the box is opened, naming it" "2 1 $sends_before" \
+  "$RC $(rp_lines "^== refused: something already answers on 127.0.0.1:$rport") $(grep -c 'send-ssh-public-key' "$S/aws.calls" || true)"
+export OPS_LOG_DIR=$E2E/logs-rp-disk
+exits_before=$(rp_exits)
+FAKE_BOX='2048 2048 100' rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+check "a box below the disk floor stops the run before /health is read, nothing written, the tunnel closed" "2 1 0 0 1" \
+  "$RC $(rp_lines "^== refused: disk: 100 MiB free, below the floor of $FLOOR_DISK_MB") $(rp_lines '^ok   /health names') $(rp_lines ': set$') $(($(rp_exits) - exits_before))"
+export OPS_LOG_DIR=$E2E/logs-rp-dev
+FAKE_CS=$WORK/server-dev rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+check "an unstamped ridge (dev) stops the run, naming why, nothing written" "2 1 0" \
+  "$RC $(rp_lines '^== refused: /health names no commit') $(rp_lines ': set$')"
+export OPS_LOG_DIR=$E2E/logs-rp-unknown
+rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1" "$c6"
+check "a demo copy nobody made is refused after the box is opened and before any write, the one beside it unchanged" "2 1 0 200" \
+  "$RC $(rp_lines "^error: $c6 is not on this service") $(rp_lines ': set$') $(rp_status "$c1" "$old1")"
+export OPS_LOG_DIR=$E2E/logs-rp-key
+FAKE_SKEY=00000000000000000000000000000000 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
+check "a run that fails (the BFF's key refused) ends red with error:, exit 1, and says nothing was set" "1 1 0 0" \
+  "$RC $(rp_lines '^error: the run stopped') $(rp_lines '^== refused') $(rp_lines ': set$')"
+check "  the unchanged root still has its first password" 200 "$(rp_status "$c1" "$old1")"
+
+# the run itself: two of the three copies
+export OPS_LOG_DIR=$E2E/logs-rp-run
+exits_before=$(rp_exits)
+# a node that keeps what it is given, its arguments and its environment, and runs the real one
+mkdir -p "$E2E/argsbin"
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\necho "$*" >>"%s/node.calls"\nenv >>"%s/node.env"\nexec "%s" "$@"\n' "$S" "$S" "$(command -v node)" >"$E2E/argsbin/node"
+chmod +x "$E2E/argsbin/node"
+PATH="$E2E/argsbin:$PATH" rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1" "$c2"
+check "the run ends 0 and the log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  five steps with the time" 5 "$(grep -cE '^\[[1-5]/5\] .* \([0-9]+m[0-9]{2}s\)$' "$OPS_LOG_DIR"/*.log || true)"
+check "  each code's company named, before the first write" "yes" \
+  "$(awk -v a="$c1: A demo copy" -v b="$c2: A demo copy" -v s="$c1: set" '$0 == a {x = NR} $0 == b {y = NR} $0 == s {z = NR} END {print (x && y && z && x < z && y < z) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
+check "  each root set, then signs in" "1 1 1 1" "$(rp_lines "^$c1: set$") $(rp_lines "^$c1: signs in$") $(rp_lines "^$c2: set$") $(rp_lines "^$c2: signs in$")"
+check "  the log's search ran, and the tunnel was closed once" "1 1" "$(rp_lines '^ok   no key in this log') $(($(rp_exits) - exits_before))"
+check "the named roots take the new password, and refuse their old one" "200 200 401 401" \
+  "$(rp_status "$c1" "$NEWPW") $(rp_status "$c2" "$NEWPW") $(rp_status "$c1" "$old1") $(rp_status "$c2" "$old2")"
+check "  the copy not named keeps its password" "200 401" "$(rp_status "$c3" "$old3") $(rp_status "$c3" "$NEWPW")"
+check "the password is in no log, on no screen and in no call of aws or ssh" 0 "$(rp_seen "$NEWPW")"
+check "  nor is a key, or the box's address, in the log" "0 0" \
+  "$(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.40 || true)"
+check "  nor in node's arguments or environment, which name the command and the codes" "0 0 2" \
+  "$(grep -cF -e "$NEWPW" "$S/node.calls" || true) $(grep -cF -e "$NEWPW" "$S/node.env" || true) $(grep -c -e "root-password.* $c1 $c2\$" "$S/node.calls" || true)"
+
+# the run again, with another typing: the same end state shape
+export OPS_LOG_DIR=$E2E/logs-rp-again
+rp_run "$DIFFPW"$'\n'"$DIFFPW" ridge "$c2"
+check "a second run on one root sets it again, and only it" "0 200 401 200" \
+  "$RC $(rp_status "$c2" "$DIFFPW") $(rp_status "$c2" "$NEWPW") $(rp_status "$c1" "$NEWPW")"
+
+# the log is searched for the password: a node that echoes what it is given makes the run red
+export OPS_LOG_DIR=$E2E/logs-rp-leak
+mkdir -p "$E2E/leakbin"
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\nif [ "${1:-}" = --import ]; then cat >"%s/leaked"; cat "%s/leaked"; exec "%s" "$@" <"%s/leaked"; fi\nexit 0\n' "$S" "$S" "$REAL_NODE" "$S" >"$E2E/leakbin/node"
+chmod +x "$E2E/leakbin/node"
+PATH="$E2E/leakbin:$PATH" rp_run "$DIFFPW"$'\n'"$DIFFPW" ridge "$c3"
+check "a password that reached the log makes the run red, naming it, and the exit 1" "1 1" \
+  "$RC $(rp_lines '^RED  the new password is in this log')"
+unset ROOT_PASSWORD_LOCAL_PORT
+
 echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"
 build "$WORK/server-newer" "$desc_newer"
 # seed_copy: makes the first mapped copy as the operator's page would, through a c-storage on this

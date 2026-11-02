@@ -8,6 +8,7 @@
     "./clients": "./src/clients.ts",
     "./operators": "./src/operators.ts",
     "./sessions": "./src/sessions.ts",
+    "./staff-records": "./src/staff-records.ts",
     "./env": "./src/env.ts",
     "./tests/build": "./tests/build.ts",
     "./tests/authenticator": "./tests/authenticator.ts",

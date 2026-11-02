@@ -1,7 +1,6 @@
 # The demo copies' root passwords, set anew on ridge from the human's terminal
 
-**Where it stands — 2026-11-02 10:40 +07:** step 1, this plan, done. **Step 2, the human's read of the 👤 rows and
-the three questions**, is next.
+**Where it stands — 2026-11-02 11:32 +0700:** steps 1, 2 and 3 done (the human's "yes to all" of 11-02 10:4x, then the build). **Step 4, the review by another model (`claude-opus-5-5`), is next**, then the merge, the push and the human's run (steps 5 to 7). The human's step 7 is also the first time `read -s` meets a real terminal.
 
 > **Drafted** 2026-11-02 by the machine, on `main`@`5eda430`, for the human's need of 11-02: the six demo copies'
 > root passwords, shown once at `/operator` on 11-01, are lost. A door beside the console's part D (its plan on
@@ -109,12 +108,27 @@ at 100 %.
 
 - [x] **1. This plan.** Who: 🤖, 11-02. Done when: committed on `ridge-root-password`, the path grep clean, no
   person named. *Evidence:* this file's commit.
-- [ ] **2. The human's read.** Who: 👤, about 10 minutes: rows 1 to 8 and Q1 to Q3. Done when: each kept or corrected
-  here, dated. **Then stop.**
-- [ ] **3. Built, red first.** Who: 🤖 (`claude-sonnet-5-5`), after step 2, about 4 hours: the lift and its export;
+- [x] **2. The human's read.** Who: 👤, about 10 minutes: rows 1 to 8 and Q1 to Q3. Done when: each kept or corrected
+  here, dated. **Then stop.** *Evidence:* 2026-11-02 10:4x +07, the human: "yes to all" (via the orchestrator): rows 1 to 8
+  kept as written; Q1 the ridge-only door, Q2 the password typed twice, Q3 the six demo copies only (Decide 54).
+- [x] **3. Built, red first.** Who: 🤖 (`claude-sonnet-5-5`), after step 2, about 4 hours: the lift and its export;
   `root-password` in `ridge.ts`, stdin in `ridge-main.ts`; `ops/root-password.sh`, its section in `ops/test.sh`
   beside operator.sh's (#L1809); the runbook. Done when: rows 1 to 8 each seen red once; bff and scripts at 100 %,
   typecheck, eslint, knip exit 0, no warning; `bash ops/test.sh` exit 0; `shellcheck -x ops/*.sh` clean. **Then stop.**
+  *Evidence:* 2026-11-02 11:32 +0700, `claude-sonnet-5-5`. Model files followed: `ops/seed.sh` and `ops/operator.sh` for
+  `ops/root-password.sh`; `scripts/src/demo/apply.ts`'s driver (the BFF's own `buildApp` and `app.inject`) for
+  `scripts/src/root-password.ts`, a file of its own beside `ridge.ts` (which only routes the command and the
+  exit 2); `scripts/src/ridge-seed.test.ts` for `scripts/src/ridge-root-password.test.ts`; `ops/test.sh`'s
+  seed section for its new section (placed between the operator's and the seed's). The lift is
+  `setSignInPassword` in `bff/src/staff-records.ts`, exported as `@credo/bff/staff-records`; the person route
+  calls it with `employeeId` as `owns`, the door with `root`. Rows 1 to 8 each seen red once from their own
+  assertion: scripts 1, 2, 4, 5, 6, 7 by a changed line each (the write skipped, the rule check, the
+  generation kept, the read-back's sign-out, the mapping check, the set-list), restored after; ops 2, 3, 6, 8 by
+  the typings check, a line that logs the password, the ridge-only line and the job, terminal and
+  `origin/main` guards removed, restored after. The whole check (typecheck, eslint, prettier, every package's tests at 100 %, knip) exit 0, with
+  `ops/test.sh` exit 0 and `shellcheck -x ops/*.sh` clean. The pseudo-terminal path of the new `ops/test.sh`
+  section (a driver that types at each prompt) could not run here (no pty in the sandbox); the section ran on
+  its no-terminal path (`OPS_TEST_NO_TTY`), as the operator's does where a pty is missing.
 - [ ] **4. One review.** Who: 🤖, a model other than the builder's (`claude-opus-5-5`), with this table, about an
   hour with its fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here; step 3's gate
   exit 0 again.

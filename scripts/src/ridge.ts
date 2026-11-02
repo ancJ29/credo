@@ -11,6 +11,7 @@ import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll } from './demo/apply';
 import { vietnamToday } from './demo/days';
 import { ensureService } from './register';
+import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
 export type RidgeIo = {
   /** A line for the caller's output: a log, or a command substitution. */
@@ -19,11 +20,14 @@ export type RidgeIo = {
   show: (line: string) => void;
   err: (line: string) => void;
   fetch?: typeof fetch;
-  /** The clock `seed` reads the day from; the real one when none. */
+  /** The clock `seed` and `root-password` read the day and the time from; the real one when none. */
   now?: () => number;
+  /** Everything on the standard input, which `root-password` reads the new password from. */
+  stdin?: () => Promise<string>;
 };
 
-const USAGE = 'usage: register | operator [--replace] [<name>] | tenant <code> <name> | seed';
+const USAGE =
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | seed | root-password [--check] <code>…';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
@@ -33,7 +37,9 @@ const USAGE = 'usage: register | operator [--replace] [<name>] | tenant <code> <
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
  * copy it had to leave (used first, or too far behind) ends it red after the others are done.
- * Returns the exit status.
+ * `root-password` sets the named demo copies' roots to the password on the standard input and
+ * prints no password; `--check` needs no connection. Returns the exit status: 2 for what was
+ * refused before anything was written, 1 for a failure.
  */
 export async function runRidge(
   argv: string[],
@@ -42,6 +48,12 @@ export async function runRidge(
 ): Promise<number> {
   const [command, ...rest] = argv;
   try {
+    if (command === 'root-password' && rest[0] === '--check') {
+      const password = passwordFrom((await io.stdin?.()) ?? '');
+      const codes = checkRootPassword(rest.slice(1), password);
+      io.out(`checked: the password follows the rule, ${codes.length} demo copies named`);
+      return 0;
+    }
     const storage = readStorageEnv(env);
     const connection = {
       baseUrl: storage.C_STORAGE_URL,
@@ -117,9 +129,15 @@ export async function runRidge(
       return 0;
     }
 
+    if (command === 'root-password') {
+      const password = passwordFrom((await io.stdin?.()) ?? '');
+      await setRootPasswords(client(), rest, password, { out: io.out, now: io.now ?? Date.now });
+      return 0;
+    }
+
     throw new Error(USAGE);
   } catch (error) {
     io.err(`error: ${(error as Error).message}`);
-    return 1;
+    return error instanceof Refused ? 2 : 1;
   }
 }

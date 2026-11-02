@@ -1,4 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import {
+  CStorageError,
   type CStorageClient,
   type Employee,
   employeeSchema,
@@ -50,6 +52,41 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
   const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
   const parsed = found ? storedUserSchema.safeParse(found.data) : null;
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
+}
+
+/** How often a write on a record that moved without cause is re-read and tried again. */
+export const ATTEMPTS = 3;
+
+/**
+ * Gives a sign-in record a new password hash, the one write that ends every session of it: a fresh
+ * `generation` is minted, which each call compares, and `passwordAt` is now. The record is read
+ * with its tag and nothing is written unless `owns` says it is the caller's (a person's route: that
+ * person's; the root's door: the root); the answer is then `'not owned'`, also for a record that
+ * is gone. A claim's takeover writes this record too, so a moved tag may be a real change of owner:
+ * it is read again, {@link ATTEMPTS} times at most, and a record still the caller's is written
+ * over. The hash is made by the caller, once.
+ */
+export async function setSignInPassword(
+  storage: CStorageClient,
+  tenantId: string,
+  name: string,
+  owns: (user: StoredUser) => boolean,
+  passwordHash: string,
+  now: () => number,
+): Promise<'set' | 'not owned'> {
+  const key = recordKeys.tenant(tenantId).user(name);
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const signIn = await readSignIn(storage, tenantId, name);
+    if (!signIn || !owns(signIn.user)) return 'not owned';
+    const changed: StoredUser = {
+      ...signIn.user,
+      passwordHash,
+      passwordAt: now(),
+      generation: randomUUID(),
+    };
+    if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') return 'set';
+  }
+  throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
 }
 
 /** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500

@@ -47,6 +47,7 @@ import { z } from 'zod';
 import { HttpError, parse, replyFor } from './errors';
 import { hashPassword, madePassword } from './password';
 import {
+  ATTEMPTS,
   namesBack,
   NO_SETUP_VERSION,
   readEmailClaim,
@@ -54,10 +55,8 @@ import {
   readQr,
   readSetup,
   readSignIn,
+  setSignInPassword,
 } from './staff-records';
-
-/** How often a write on a record that moved without cause is re-read and tried again. */
-const ATTEMPTS = 3;
 
 /** The longest an add can run: the BFF's or Lambda's timeout. A sign-in claim its person does not
  * name back is a failed add's, to be taken over, only once it is older than this; before that
@@ -486,25 +485,17 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const password = body.password ?? madePassword();
     const passwordHash = await hashPassword(password);
     const name = normaliseSignInName(found.employee.code);
-    const key = recordKeys.tenant(request.tenantId).user(name);
-    // A claim's takeover writes this record too, so a moved tag may be a real change of owner: read
-    // it again, a few times at most. The person check then answers 409 for another's record, and a
-    // record still this person's is written over.
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const signIn = await readSignIn(storage, request.tenantId, name);
-      if (!signIn || signIn.user.employeeId !== found.employee.id) {
-        throw new HttpError(409, 'Conflict');
-      }
-      // A new generation, so every session issued before is refused whatever the clock reads.
-      const changed: StoredUser = {
-        ...signIn.user,
-        passwordHash,
-        passwordAt: now(),
-        generation: randomUUID(),
-      };
-      if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') return { password };
-    }
-    throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
+    const set = await setSignInPassword(
+      storage,
+      request.tenantId,
+      name,
+      (user) => user.employeeId === found.employee.id,
+      passwordHash,
+      now,
+    );
+    // Another's record, or none: the person check answers 409.
+    if (set === 'not owned') throw new HttpError(409, 'Conflict');
+    return { password };
   });
 
   /** A new code: a sign-in record under the new name, holding the password the person has, is
