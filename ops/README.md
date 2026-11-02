@@ -19,6 +19,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
+| your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([the walks preview](#the-walks-preview)) | about 2 minutes |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -250,6 +251,27 @@ no password: the human makes each copy at `/operator` first, under its mapped co
    by hand (`gh workflow run seed`, or Actions, "Run workflow", on `main`).
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
    - **a key is in this log:** as in [the check](#the-check).
+
+## The walks preview
+
+`ops/walks-preview.sh [<built folder>]` puts the walks page you built on this Mac on Cloudflare Pages as a
+preview deploy of the branch its build line names, behind Access. It never touches production, and
+refuses a page built on `main` or on the project's production branch. The folder defaults to the newest
+under `walks/` in the credo root that does not end in `-changes`.
+
+1. From any worktree, with the page built, set `CLOUDFLARE_PAGES_PROJECT` (the Pages project's name) and
+   either `CLOUDFLARE_API_TOKEN` with `CLOUDFLARE_ACCOUNT_ID` (the walks workflow's secrets) or neither
+   after a `wrangler login`; `CLOUDFLARE_PAGES_PRODUCTION_BRANCH` only if it is not `main`. Run
+   `ops/walks-preview.sh`. It needs Node 26, `npm`, `curl` and `jq`, and installs wrangler 4.151.0
+   (the workflow's) into a temp folder.
+2. Read the terminal, where the two addresses show (never in the log, `logs/<YYYYMMDD-HHMM>-walks-preview.log`
+   in the credo root). A good ending is `refused: a redirect to Access's sign-in` twice,
+   `== verdict: good` and `== done`.
+   - **== refused: ...:** nothing was changed; the line names why (no folder, a build line naming `main`
+     or the production branch, no project name, no credential, a missing tool, or a preview address that
+     answers a visitor: turn Access on for the project's previews first).
+   - **FAIL: an address ANSWERS the page without Access:** the terminal shows the command that takes
+     the deployment down; run it now.
 
 ## The check
 
