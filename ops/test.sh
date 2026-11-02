@@ -741,7 +741,7 @@ seed_guards() {
   block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  grep -qxF -- '    - cron: "0 23 * * *"' "$1" || missing="${missing}[the schedule: 23:00 UTC, 06:00 in Vietnam] "
+  grep -qxF -- '    - cron: "17 20 * * *"' "$1" || missing="${missing}[the schedule: 20:17 UTC, 03:17 in Vietnam, so the run ends before 07:00 even started 3 hours late] "
   grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
   if grep -qE '^  (push|pull_request|pull_request_target|workflow_run):' "$1"; then missing="${missing}[no trigger but the schedule and the manual run] "; fi
   need "    if: github.ref == 'refs/heads/main'"
@@ -753,6 +753,10 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
+  # A normal day is 8 to 10 minutes: the Seed step has 15 and the job 25, and the role's session
+  # (role-duration-seconds) outlasts the step it is taken for.
+  need "    timeout-minutes: 25"
+  grep -qxF -- '        timeout-minutes: 15' <<<"$block" || missing="${missing}[the Seed step's 15 minutes] "
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
   steps=$(grep -c '^      - ' <<<"$block" || true)
@@ -779,8 +783,12 @@ seed_guards() {
   [ -z "$missing" ] || die "the seed workflow lacks: $missing"
 }
 passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
-sed 's/- cron: "0 23 \* \* \*"/- cron: "0 22 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
-refuses "a seed that no longer runs at 06:00 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
+sed 's/- cron: "17 20 \* \* \*"/- cron: "0 23 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
+refuses "a seed that no longer starts at 03:17 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
+sed 's/^    timeout-minutes: 25$/    timeout-minutes: 20/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
+refuses "a seed job with less than 25 minutes is refused" "timeout-minutes: 25" seed_guards "$WORK/seed-jobtime.yml"
+sed 's/^        timeout-minutes: 15$/        timeout-minutes: 10/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
+refuses "a Seed step with less than 15 minutes is refused" "the Seed step's 15 minutes" seed_guards "$WORK/seed-steptime.yml"
 sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
 refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
 awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"

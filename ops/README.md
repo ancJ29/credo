@@ -189,7 +189,7 @@ GitHub's job and without a terminal.
 
 ## The seed
 
-The demo copies on ridge get a day each morning from `.github/workflows/seed.yml` (06:00 in Vietnam,
+The demo copies on ridge get a day each night from `.github/workflows/seed.yml` (03:17 in Vietnam,
 and a manual run), which runs `ops/seed.sh ridge` under the deploy role. The script makes no client and
 no password: the human makes each copy at `/operator` first, under its mapped code. The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
