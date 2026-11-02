@@ -10,7 +10,7 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   comment, or committing any path, and [QA](docs/conventions/qa.md) before writing any test or
   feature plan.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
-  the plan read first, one step, the tick with its evidence, then the stop.
+  the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
   is the trunk and only receives merges; each piece works on its own branch in its own worktree.
   The worktrees share one stash stack, so never run a bare `git stash`. The `orchestrator` branch

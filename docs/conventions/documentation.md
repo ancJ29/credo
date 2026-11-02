@@ -6,6 +6,8 @@
 > opens with its human version. Read this before writing any doc, `CLAUDE.md` or code comment,
 > or committing any path. **Amended** 2026-10-27 by the human: rules picked from the old repo's
 > standing preferences. **Amended** 2026-10-28 by the human: the runbook, in what earns a line.
+> **Amended** 2026-11-02 by the human: the plan, one short page, each of its human points told;
+> its evidence in the recap.
 
 ## At a glance
 
@@ -25,8 +27,8 @@ without it, would get the next change wrong.
   ([what earns a line](#what-earns-a-line)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
-- Progress lives in three files: the plan, the to-do log and the recap
-  ([where progress lives](#where-progress-lives-three-files-one-job-each)).
+- Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
+  holds the evidence ([where progress lives](#where-progress-lives-three-files-one-job-each)).
 - Never written down: what was deployed or checked by eye ([never in a doc](#never-in-a-doc));
   a path on one machine, or a person's name
   ([nothing machine-local](#nothing-machine-local-or-personal-in-a-committed-file)).
@@ -88,12 +90,44 @@ to rot, because the change that breaks it touches no line there.
 
 | File | Job | Rule |
 | --- | --- | --- |
-| `docs/plans/<date>-<slug>.md` | the checklist | Each step is a checkbox with its done-when (something read back). Once ticked, its evidence goes in the same edit. Its "Where it stands — <date>" is rewritten, never appended to |
+| `docs/plans/<date>-<slug>.md` | what to build | [One short page](#the-plan-one-short-page). Each step is a checkbox, ticked only once its check reads back; the ticks are the plan's one status |
 | `docs/open-items.md` | the log | Numbered, never renumbered. One entry per thing still to do, naming who does it, or marked *parked* until a review. An entry is deleted when done |
-| `docs/recaps/<date>-<slug>.md` | the history | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's. Append-only, and never a status source |
+| `docs/recaps/<date>-<slug>.md` | the history and the evidence | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's, in half a page the human reads; below it, the evidence, what each step's check read. Append-only, and never a status source |
 
 These names are fixed, so one `grep` finds every one of them. A directory is added once it has
 content, never ahead of it.
+
+### The plan: one short page
+
+**A plan is about 1,000 words at most, its case table included**, in this order:
+
+1. **The purpose**, as its `## At a glance`: what the piece is for, who sees it, and the cheapest
+   safe path there, what exists picked over a design from zero, the price in one line.
+2. **The slice**: one, walkable end to end when the plan ends. A second slice is a second plan.
+3. **The steps**, each with its done-when: a check the machine runs, named as a command or a
+   count. The first is the cheap end-to-end build: where the piece has a screen, its fake
+   (`pnpm fake`) first, then the slice through the stack at its thinnest. The hardened build
+   follows, each case seen red once ([QA](qa.md)'s rule 2) and coverage at 100 % (rule 8),
+   before the merge into `main`.
+4. **The human's points**, up to five, the ones [QA](qa.md#at-a-glance) names, each at the step
+   that needs it. **Each point reads on its own, in plain words:** a few sentences, about 60 words,
+   that say what the human will see, why it matters, and what a yes and a no each start. A sha, a
+   line number or a label follows the words and never stands in for them. Five told points take
+   about 300 of the page's words, beside about 500 for the purpose, the cases and the steps of the
+   shortest plan so far. *Rejected:* a point in one line. The human cannot picture the whole
+   story from it, and digging for the rest costs the speed the short page buys. The human gave
+   that correction twice on 2026-11-02, of a plan's points and of the orchestrator's day list.
+
+Nothing the builder finds in the repo or in git goes in: no status block, no list of the files it
+was drawn from, no evidence. Where a piece stands is its ticks, and across pieces the
+orchestrator's board. *Rejected:* the plan as status, provenance, spec, checklist and evidence log
+in one, the shape these conventions asked for until 2026-11-02, against the one short page
+[pacing](collaboration.md#pacing-one-piece-at-a-time) asks of a page. Those plans ran from 716 to
+27,036 words, every reader paid for the four other files to reach the steps, and the best of the
+six reviewed on 2026-11-02 was the shortest. A rewritten "Where it stands" was one more copy of what
+the ticks and the board already said. *Hazard no gate catches:* the page grows back, one step's
+evidence at a time. *Guard:* `wc -w` on the plan before its commit; well over 1,000 words, the
+slice is cut in two.
 
 ## Never in a doc
 
