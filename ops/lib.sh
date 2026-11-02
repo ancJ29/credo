@@ -114,6 +114,7 @@ on_exit() {
       sleep 0.1
     done
   fi
+  if declare -F search_extra >/dev/null; then search_extra || rc=1; fi
   if [ -n "$SECRETS" ] && [ -n "$LOG" ]; then
     local s leaked_key=0 leaked_what=''
     local i=1 label

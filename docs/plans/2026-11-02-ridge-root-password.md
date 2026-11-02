@@ -1,6 +1,6 @@
 # The demo copies' root passwords, set anew on ridge from the human's terminal
 
-**Where it stands — 2026-11-02 11:32 +0700:** steps 1, 2 and 3 done (the human's "yes to all" of 11-02 10:4x, then the build). **Step 4, the review by another model (`claude-opus-5-5`), is next**, then the merge, the push and the human's run (steps 5 to 7). The human's step 7 is also the first time `read -s` meets a real terminal.
+**Where it stands — 2026-11-02 13:06 +0700:** steps 1 to 4 done (the review's M1 and L2 fixed, the rest parked as items 46 to 55; the recap is written). **Step 5, the merge into `main`**, is next (the orchestrator's), then the push and the human's run (steps 6 and 7). The human's step 7 is also the first time `read -s` meets a real terminal.
 
 > **Drafted** 2026-11-02 by the machine, on `main`@`5eda430`, for the human's need of 11-02: the six demo copies'
 > root passwords, shown once at `/operator` on 11-01, are lost. A door beside the console's part D (its plan on
@@ -129,9 +129,12 @@ at 100 %.
   `ops/test.sh` exit 0 and `shellcheck -x ops/*.sh` clean. The pseudo-terminal path of the new `ops/test.sh`
   section (a driver that types at each prompt) could not run here (no pty in the sandbox); the section ran on
   its no-terminal path (`OPS_TEST_NO_TTY`), as the operator's does where a pty is missing.
-- [ ] **4. One review.** Who: 🤖, a model other than the builder's (`claude-opus-5-5`), with this table, about an
+- [x] **4. One review.** Who: 🤖, a model other than the builder's (`claude-opus-5-5`), with this table, about an
   hour with its fixes. Done when: each finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here; step 3's gate
   exit 0 again.
+  *Evidence:* 2026-11-02 13:06 +0700, Opus on `d53d53b`: M1 [FIXED] (red first: the grep stand-in's argument list held the password, then
+  `search_extra` on a pipe), L2 [FIXED]; L3 to L5 and I1 to I7 [DEFERRED] to open items 46 to 55; see
+  [the recap](../recaps/2026-11-02-ridge-root-password.md). Plain `pnpm check` exit 0, `bash ops/test.sh` exit 0.
 - [ ] **5. Into `main`.** Who: 🤖 the orchestrator, about ¼ hour. Done when: merged, conflicts named;
   `pnpm install --offline` exit 0 in `main`'s checkout.
 - [ ] **6. The push**, one with the seed's change. Who: 👤, a few minutes. `main_synced` needs `ops/root-password.sh`
@@ -143,7 +146,7 @@ at 100 %.
   companies named, "set" and "signs in" twice, `ok   no key in this log`, `== exit 0`; 🤖 reads the log whole. Done
   when: the human's yes to "did the `-3` root sign in with the password you typed?" Later, about 3 minutes each, the
   same for `p1` (both `-1`) and `p2` (both `-2`), each with its own password.
-- [ ] **8. The recap.** Who: 🤖, about ½ hour. Done when: committed.
+- [x] **8. The recap.** Who: 🤖, about ½ hour. Done when: committed.
 
 **Machine hours:** 4 + 1 + ¼ + ½, about 6. **The human's:** 10 + 3 + 5 + 6 minutes. **The four stages:** the command
 is the slice; step 3 verifies it locally (real c-storage, stand-ins for aws and ssh); no screen changes, so the

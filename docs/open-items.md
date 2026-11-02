@@ -464,3 +464,63 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 - A close between `closedFor` and the confirm still answers 400; negligible at 03:17.
 - `ops/test.sh#L759`: the 15-minute check matches any step, and `#L754` is now redundant.
 - `docs/plans/2026-11-02-seed-demo-safe.md#L5`: "10:4x" reads 10:47.
+
+## 46. The root-password door's read-back ignores its sign-out reply — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding L3)
+
+`scripts/src/root-password.ts#L94-L98` sends the sign-out and never reads its status, so a session the read-back left is not noticed. *Fix:* read the 204, name the code if not.
+
+*Trigger:* a session record seen left after a run.
+
+## 47. A failure before the first write is reported as if roots might be set — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding L4)
+
+`scripts/src/root-password.ts#L116` and `ops/root-password.sh#L107-L109`: any status but 2 sets `WRITTEN=1`, and lib.sh's ssh reads under `set -e` end exit 1 with no `== refused`. *Fix:* tell "before the first write" from "after" by what node printed, and trap the ssh reads into a refusal.
+
+*Trigger:* a failed read of the box seen reported as a possible partial set.
+
+## 48. The test's `rp_run` job is not a process-group leader and its driver has no deadline — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding L5)
+
+`ops/test.sh`, `rp_run` (`#L1886-L1897` before the merge): `e2e_launch` starts its job in its own session so `e2e_reap` can kill the group; `rp_run` does not, and `rp-driver.py` waits for a prompt for ever. *Fix:* the same `setsid` launch, and a deadline in the driver.
+
+*Trigger:* a hung ops test run.
+
+## 49. PASSWORD and SECRETS are never unset — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I1)
+
+`ops/root-password.sh` keeps `PASSWORD` for the process's life, and lib.sh keeps `SECRETS`. *Fix:* unset each when its last use has passed.
+
+*Trigger:* the next change to either file.
+
+## 50. Every ops run's keys go through grep's argv and bash 3.2 here-strings — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I2)
+
+`ops/lib.sh#L121`, `#L126`, `#L164`, `#L497-L498`, `#L702-L703`: the keys the end-of-run search looks for are on grep's argument list, and a here-string is written to a temp file by bash 3.2 (the Mac's). *Fix:* one lib.sh change: split without here-strings and `grep -f /dev/stdin` on a pipe, as `search_extra` in `ops/root-password.sh` does.
+
+*Trigger:* the next lib.sh change.
+
+## 51. The leak advice "nothing to replace" is wrong for a password — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I3)
+
+`ops/lib.sh#L132` and the runbook's last bullet say "nothing to replace" for any labelled secret; a password in a log is replaced by choosing another. `search_extra` says so for its own; the shared words do not. *Fix:* word the label's advice per secret.
+
+*Trigger:* the next red naming a labelled secret.
+
+## 52. The guards step's 5 minutes against about 1 to 2 minutes more — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I4)
+
+`.github/workflows/ci.yml#L203`: `ops/test.sh` grew by about 1 to 2 minutes with the root-password section. *Fix:* read the step's real time in CI and raise the limit if it nears 5.
+
+*Trigger:* the first push's CI run.
+
+## 53. A Ctrl-C at a prompt under bash 3.2 may leave the terminal's echo off — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I5)
+
+`ops/root-password.sh` `type_password`: `read -s` is interrupted. *Fix:* `stty echo` in a cleanup (`stty sane` restores by hand).
+
+*Trigger:* the human's first run.
+
+## 54. `bash -x` or SHELLOPTS xtrace would trace the password — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I6)
+
+`ops/root-password.sh` runs under whatever xtrace the caller set. *Fix:* `set +x` near the top.
+
+*Trigger:* the next change to the script.
+
+## 55. `OPS_TEST_NO_TTY` or `RIDGE_SCRIPTS_DIR` in the environment bypass two checks — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I7)
+
+`ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
+
+*Trigger:* the next change to either script.

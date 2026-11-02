@@ -2057,6 +2057,10 @@ mkdir -p "$E2E/argsbin"
 # shellcheck disable=SC2016 # the stand-in's literal text
 printf '#!/bin/sh\necho "$*" >>"%s/node.calls"\nenv >>"%s/node.env"\nexec "%s" "$@"\n' "$S" "$S" "$(command -v node)" >"$E2E/argsbin/node"
 chmod +x "$E2E/argsbin/node"
+# ...and a grep that keeps its arguments: the end-of-run search must not put the password on grep's argv
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\necho "$*" >>"%s/grep.calls"\nexec "%s" "$@"\n' "$S" "$(command -v grep)" >"$E2E/argsbin/grep"
+chmod +x "$E2E/argsbin/grep"
 PATH="$E2E/argsbin:$PATH" rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1" "$c2"
 check "the run ends 0 and the log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
 check "  five steps with the time" 5 "$(grep -cE '^\[[1-5]/5\] .* \([0-9]+m[0-9]{2}s\)$' "$OPS_LOG_DIR"/*.log || true)"
@@ -2072,6 +2076,8 @@ check "  nor is a key, or the box's address, in the log" "0 0" \
   "$(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.40 || true)"
 check "  nor in node's arguments or environment, which name the command and the codes" "0 0 2" \
   "$(grep -cF -e "$NEWPW" "$S/node.calls" || true) $(grep -cF -e "$NEWPW" "$S/node.env" || true) $(grep -c -e "root-password.* $c1 $c2\$" "$S/node.calls" || true)"
+check "  nor on the argument list of the grep that searches the log for it" "0 yes" \
+  "$(grep -cF -e "$NEWPW" "$S/grep.calls" || true) $([ -s "$S/grep.calls" ] && echo yes || echo no)"
 
 # the run again, with another typing: the same end state shape
 export OPS_LOG_DIR=$E2E/logs-rp-again
@@ -2087,7 +2093,7 @@ printf '#!/bin/sh\nif [ "${1:-}" = --import ]; then cat >"%s/leaked"; cat "%s/le
 chmod +x "$E2E/leakbin/node"
 PATH="$E2E/leakbin:$PATH" rp_run "$DIFFPW"$'\n'"$DIFFPW" ridge "$c3"
 check "a password that reached the log makes the run red, naming it, and the exit 1" "1 1" \
-  "$RC $(rp_lines '^RED  the new password is in this log')"
+  "$RC $(rp_lines '^RED  the new password is in this log: redact it in this log, and run again with another password')"
 unset ROOT_PASSWORD_LOCAL_PORT
 
 echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"

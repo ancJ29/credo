@@ -197,7 +197,7 @@ client's own stack is the console's. The why is
 [the plan](../docs/plans/2026-11-02-ridge-root-password.md).
 
 1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs
-   (06:00 in Vietnam), naming the codes of the copies one person holds, for example
+   (from 03:17 in Vietnam, and GitHub may start it up to about 3 hours late), naming the codes of the copies one person holds, for example
    `ops/root-password.sh ridge <code> <code>`. Type the password at each prompt (8 to 128 characters, a
    capital, a small letter, a digit, one of `@$!%*?&`, no space at either end). Send it to the person
    by your own channel; the script never shows it again.

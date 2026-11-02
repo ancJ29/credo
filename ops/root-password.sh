@@ -44,20 +44,32 @@ die() {
   exit 2
 }
 
+# An exported PASSWORD from the caller would keep its export flag and reach every child's environment.
+unset PASSWORD
 PASSWORD=''
 # type_password: the new password, typed twice at the terminal and not shown. The prompts go to the
-# terminal past the log (fd 3); the password goes nowhere but the variable, and the log is searched
-# for it at the end.
+# terminal past the log (fd 3); the password goes nowhere but the variable, and search_extra (lib.sh's
+# on_exit) searches the log for it at the end. It is not mask()ed: that puts it on grep's argv and in a
+# here-string, which bash 3.2 writes to a file; a job, where ::add-mask:: would matter, is refused.
 type_password() {
   local again
   printf 'New password (not shown): ' >&3
   IFS= read -rs PASSWORD || die "no password was typed"
   printf '\n' >&3
-  mask "$PASSWORD" "the new password"
   printf 'Again: ' >&3
   IFS= read -rs again || die "no password was typed"
   printf '\n' >&3
   [ "$PASSWORD" = "$again" ] || die "the two typings differ: nothing was changed"
+}
+
+# search_extra: the end-of-run search for the password. The rule: the builtin printf on a pipe, grep -f
+# reading the pattern from it; never argv, a here-string or a file.
+search_extra() {
+  [ -n "$PASSWORD" ] || return 0
+  if printf '%s\n' "$PASSWORD" | grep -qF -f /dev/stdin -- "$LOG"; then
+    final "RED  the new password is in this log: redact it in this log, and run again with another password"
+    return 1
+  fi
 }
 
 log_start root-password "$ENVNAME"
