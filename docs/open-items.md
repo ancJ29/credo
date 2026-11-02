@@ -524,3 +524,9 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 `ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
 
 *Trigger:* the next change to either script.
+
+## 56. Two ui tests failed once in a whole `pnpm check` at load 12.6 — the machine; *parked* until after the 11-04 demo (2026-11-02)
+
+In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two ui tests failed in files the change did not touch, and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times. *Fix:* find what each waits on that load starves, and hold it by the test's own signal, not a time.
+
+*Trigger:* the next red of either, or a quiet machine's whole check.
