@@ -15,58 +15,71 @@
   /* The chrome around the picture, kept small: the top line and the closed answer bar. */
   --top-h: 40px;
   --bar-h: 64px;
-  --table: #e3e7eb;
+  --table: #e5ecf4;
   --paper: #ffffff;
-  --ink: #16202b;
-  --muted: #5a6673;
-  --line: #c9d0d7;
-  --soft: #f1f4f6;
-  --hatch: rgb(22 32 43 / 0.08);
+  --ink: #13243b;
+  --muted: #4d5f76;
+  --line: #c4d2e3;
+  --soft: #eef3fa;
+  --hatch: rgb(19 36 59 / 0.08);
+  /* The page's own blue: fills, blue text, tints and focus. Text on --accent is --accent-ink. */
+  --accent: #1f5aa6;
+  --accent-ink: #ffffff;
+  --accent-text: #1c4f91;
+  --accent-soft: #dce8f7;
   --hi: #f7e36a;
   --hi-ink: #3a3000;
   --yes: #1d7349;
   --yes-ink: #ffffff;
   --no: #a8362c;
   --no-ink: #ffffff;
-  --focus: #2f5fd0;
-  --shade: 0 1px 2px rgb(22 32 43 / 0.12), 0 8px 28px rgb(22 32 43 / 0.10);
+  --focus: #2563c4;
+  --shade: 0 1px 2px rgb(19 36 59 / 0.12), 0 8px 28px rgb(19 36 59 / 0.10);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --table: #161b20;
-    --paper: #222a32;
-    --ink: #e7ecf1;
-    --muted: #9ba7b3;
-    --line: #38424c;
-    --soft: #2a333c;
+    --table: #0e1621;
+    --paper: #172231;
+    --ink: #e2eaf4;
+    --muted: #94a6bc;
+    --line: #2f3f55;
+    --soft: #1e2c3e;
     --hatch: rgb(255 255 255 / 0.06);
+    --accent: #76aeed;
+    --accent-ink: #0a1626;
+    --accent-text: #8dbcf2;
+    --accent-soft: #1c3250;
     --hi: #e9cf3b;
     --hi-ink: #231d00;
     --yes: #3c9f70;
     --yes-ink: #08160f;
     --no: #df6a5e;
     --no-ink: #1f0805;
-    --focus: #86a6ff;
+    --focus: #8dbcf2;
     --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --table: #161b20;
-  --paper: #222a32;
-  --ink: #e7ecf1;
-  --muted: #9ba7b3;
-  --line: #38424c;
-  --soft: #2a333c;
+  --table: #0e1621;
+  --paper: #172231;
+  --ink: #e2eaf4;
+  --muted: #94a6bc;
+  --line: #2f3f55;
+  --soft: #1e2c3e;
   --hatch: rgb(255 255 255 / 0.06);
+  --accent: #76aeed;
+  --accent-ink: #0a1626;
+  --accent-text: #8dbcf2;
+  --accent-soft: #1c3250;
   --hi: #e9cf3b;
   --hi-ink: #231d00;
   --yes: #3c9f70;
   --yes-ink: #08160f;
   --no: #df6a5e;
   --no-ink: #1f0805;
-  --focus: #86a6ff;
+  --focus: #8dbcf2;
   --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
@@ -97,10 +110,11 @@ kbd {
   border-radius: 6px; white-space: nowrap; font-size: 13px;
   display: inline-flex; align-items: center; gap: 6px;
 }
-.btn:hover { background: var(--soft); }
-.btn.main { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn:hover { background: var(--accent-soft); }
+.btn.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.main:hover { filter: brightness(1.08); }
 .btn.round { width: 28px; padding: 0; justify-content: center; border-radius: 50%; }
-.btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .hi {
   background: linear-gradient(transparent 10%, var(--hi) 10%, var(--hi) 90%, transparent 90%);
   color: var(--hi-ink); padding: 0 4px; border-radius: 2px;
@@ -116,7 +130,7 @@ kbd {
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
-.brand { font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; border: 0; background: none; padding: 0; }
+.brand { color: var(--accent-text); font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; border: 0; background: none; padding: 0; }
 .where { display: flex; gap: 8px; align-items: baseline; min-width: 0; color: var(--muted); white-space: nowrap; }
 .where b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .spacer { flex: 1; }
@@ -124,7 +138,7 @@ kbd {
 .left b { color: var(--ink); }
 .build-short { color: var(--muted); font: 12px/1 ui-monospace, Menlo, monospace; white-space: nowrap; cursor: help; }
 .meter { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
-.meter i { display: block; height: 100%; background: var(--yes); width: 0; transition: width 240ms ease; }
+.meter i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 240ms ease; }
 
 /* The view menu: width, language, and the mock's own switches, out of the picture's way. */
 .menu {
@@ -137,6 +151,7 @@ kbd {
 .menu h3:first-child { margin-top: 0; }
 .menu .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
 .menu .mock-only { border-top: 1px dashed var(--muted); margin-top: 10px; padding-top: 8px; }
+.menu #menu-walk[hidden] + .mock-only { border-top: 0; margin-top: 0; padding-top: 0; }
 .menu .note { color: var(--muted); margin: 2px 0 6px; font-size: 12px; }
 
 /* The map of the day: people down, the day's stages across. */
@@ -165,7 +180,7 @@ kbd {
   padding: 10px 12px; border: 0; border-radius: 6px; border-left: 3px solid var(--yes);
   background: var(--paper); box-shadow: var(--shade); text-align: left;
 }
-.card.has-left { border-left-color: var(--hi-ink); }
+.card.has-left { border-left-color: var(--accent); }
 .card.nomock { border-left-color: var(--line); }
 .card b { font-size: 14px; line-height: 1.35; font-weight: 600; }
 .card:hover b { text-decoration: underline; text-underline-offset: 3px; }
@@ -173,7 +188,7 @@ kbd {
 .card .part { display: none; color: var(--muted); font-size: 12px; }
 .pills { display: flex; flex-wrap: wrap; gap: 4px; }
 .pill { font-size: 12px; padding: 1px 7px; border-radius: 999px; background: var(--soft); color: var(--muted); }
-.pill.left { background: var(--ink); color: var(--paper); }
+.pill.left { background: var(--accent); color: var(--accent-ink); }
 .pill.changed { background: var(--hi); color: var(--hi-ink); }
 .pill.done { color: var(--yes); }
 .pill.nomock { background: none; border: 1px dashed var(--muted); }
@@ -192,20 +207,20 @@ kbd {
   display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; line-height: 1.3;
 }
 .walk-list li button:hover { background: var(--soft); }
-.walk-list li button[aria-current="true"] { background: var(--soft); box-shadow: inset 3px 0 0 var(--ink); font-weight: 600; }
+.walk-list li button[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
 .walk-list .num { color: var(--muted); text-align: right; font-weight: 400; }
-.st { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--muted); color: var(--muted); white-space: nowrap; font-weight: 600; }
+.st { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--accent-text); color: var(--accent-text); white-space: nowrap; font-weight: 600; }
 .st.s-changed { background: var(--hi); color: var(--hi-ink); border-color: var(--hi-ink); }
 .st.s-yes { background: var(--yes); color: var(--yes-ink); border-color: var(--yes); }
 .st.s-no { background: var(--no); color: var(--no-ink); border-color: var(--no); }
 body.list-folded .walk-list, body.look .walk-list { display: none; }
-#list-btn[aria-expanded="true"] { background: var(--soft); }
+#list-btn[aria-expanded="true"] { background: var(--accent-soft); }
 
 /* Who is answering: asked at every open, the last name used here filled in. */
 .who-view { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
 .who-card {
   width: min(420px, 100%); background: var(--paper); border-radius: 10px; box-shadow: var(--shade);
-  padding: 24px; display: grid; gap: 10px;
+  padding: 24px; display: grid; gap: 10px; border-top: 3px solid var(--accent);
 }
 .who-card h1 { margin: 0; font-size: 22px; letter-spacing: -0.015em; }
 .who-card p { margin: 0; color: var(--muted); }
@@ -220,7 +235,7 @@ body.list-folded .walk-list, body.look .walk-list { display: none; }
 .ui-langs { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .ui-langs button { height: 26px; border: 0; background: var(--paper); padding: 0 8px; font-size: 12px; color: var(--muted); }
 .ui-langs button + button { border-left: 1px solid var(--line); }
-.ui-langs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.ui-langs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .frame-wrap {
   margin: 0 auto; position: relative;
   background: #fff; box-shadow: var(--shade); border-radius: 4px; overflow: hidden;
@@ -291,8 +306,8 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 .badge {
   position: fixed; top: 8px; right: 8px; z-index: 7; height: 24px; padding: 0 9px;
   border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 600;
-  background: color-mix(in srgb, var(--paper) 85%, transparent); color: var(--muted);
-  display: inline-flex; gap: 5px; align-items: center; opacity: 0.85;
+  background: var(--paper); color: var(--accent-text); border-color: var(--accent-text);
+  display: inline-flex; gap: 5px; align-items: center; opacity: 0.9;
 }
 .badge:hover { opacity: 1; }
 .badge.s-changed { background: var(--hi); color: var(--hi-ink); border-color: var(--hi-ink); }
@@ -359,12 +374,14 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 </header>
 
 <div class="menu" id="menu" hidden data-t-aria-label="view">
+  <div id="menu-walk">
   <h3 data-t="widthH">Width</h3>
   <div class="row" id="widths" role="group" data-t-aria-label="widthH"></div>
   <p class="note" id="theirs"></p>
   <h3 data-t="screenLangH">The screens’ language</h3>
   <div class="row" id="langs" role="group" data-t-aria-label="screenLangH"></div>
-  <p class="note" data-t="screenLangNote">Follows the page’s language until you change it here or with L.</p>
+  <p class="note" data-t="screenLangNote">A walk opens in the language its person reads; change it here or with L.</p>
+  </div>
   <div class="mock-only">
     <h3 data-t="mockOnlyH">Mock only</h3>
     <div class="row" id="theme" role="group">

@@ -13,7 +13,8 @@
   const person = (id) => W.people.find((p) => p.id === id);
   const walkOf = (id) => W.walks.find((w) => w.id === id);
   const screenOf = (walk, id) => walk.screens.find((s) => s.id === id);
-  const keyOf = (item) => `${item.walk}/${item.screen}/${item.lang}`;
+  // One answer a screen, whichever language it was given on.
+  const keyOf = (item) => `${item.walk}/${item.screen}`;
   const captured = (walk) =>
     walk.screens.some((s) => Object.keys(S.screens).some((k) => k.startsWith(`${walk.id}/${s.id}/`)));
 
@@ -49,7 +50,7 @@
     },
   };
 
-  // The page's own words, Tiếng Việt first; the screens' language follows it until changed.
+  // The page's own words, Tiếng Việt first. The screens open in the language their person reads.
   let ui = LANGS.includes(store.get('page-lang', 'vi')) ? store.get('page-lang', 'vi') : 'vi';
   function t(key, vars) {
     const text = WORDS[ui][key];
@@ -71,8 +72,8 @@
     for (const e of document.querySelectorAll('[data-t-aria-label]')) e.setAttribute('aria-label', t(e.dataset.tAriaLabel));
   }
 
-  // A picture's version: an opaque id, one per screen and language. The mock makes its own; what
-  // the real page computes it from is not settled here.
+  // A screen's version: an opaque id, one per screen. The mock makes its own; what the real page
+  // computes it from is not settled here.
   function opaque(text) {
     let h = 0x811c9dc5;
     for (let i = 0; i < text.length; i++) {
@@ -93,7 +94,6 @@
     view: 'who',
     name: '', // as typed
     at: null,
-    screenLang: null, // null follows the page's language
     show: null, // a device id; null is the person's own
     look: false,
     memo: null, // null, 'no' or 'memo'
@@ -113,13 +113,10 @@
     const k = statusOf(item).kind;
     return k === 'new' || k === 'changed';
   };
-  const screenLang = () => state.screenLang || ui;
-  const itemsOf = (walk) => {
-    const order = [screenLang(), ...LANGS.filter((l) => l !== screenLang())];
-    const out = [];
-    for (const screen of walk.screens) for (const lang of order) out.push({ walk: walk.id, screen: screen.id, lang });
-    return out;
-  };
+  // The language each person reads: the demo company's people all read Vietnamese.
+  const READS = { operator: 'vi', admin: 'vi', office: 'vi', driver: 'vi' };
+  const readsOf = (walk) => READS[walk.person] || 'vi';
+  const itemsOf = (walk) => walk.screens.map((screen) => ({ walk: walk.id, screen: screen.id }));
   const allItems = () => W.walks.flatMap(itemsOf);
 
   // The build line, in full and in short, from the build's own record.
@@ -297,7 +294,8 @@
   function openWalk(id) {
     const walk = walkOf(id);
     const items = itemsOf(walk);
-    state.at = { ...(items.find(isLeft) || items[0]) };
+    // A walk opens in the language its person reads; L or View changes it for the rest of the walk.
+    state.at = { ...(items.find(isLeft) || items[0]), lang: readsOf(walk) };
     state.view = 'walk';
     state.memo = null;
     state.look = false;
@@ -418,7 +416,7 @@
     $('wl-items').replaceChildren(
       ...walk.screens.map((s) => {
         const item = { walk: walk.id, screen: s.id, lang: state.at.lang };
-        const st = statusOf(item);
+        const st = statusOf(item); // the screen's one answer, whichever language is on view
         const li = el('li');
         const btn = el('button');
         btn.type = 'button';
@@ -443,11 +441,10 @@
     });
     $('theirs').textContent = who
       ? t('theirsWalk', { who: who.name[ui], device: deviceName(W.devices.find((d) => d.id === who.device)) })
-      : t('theirsMap');
-    segment($('langs'), LANGS.map((l) => ({ id: l, label: langName(l) })), walk ? state.at.lang : screenLang(), (lang) => {
-      state.screenLang = lang;
+      : '';
+    $('menu-walk').hidden = !walk;
+    segment($('langs'), LANGS.map((l) => ({ id: l, label: langName(l) })), walk ? state.at.lang : null, (lang) => {
       if (walk) go({ ...state.at, lang });
-      else render();
     });
     const newer = newerScreens();
     $('newer').setAttribute('aria-pressed', String(Boolean(newer)));
@@ -458,12 +455,11 @@
     ui = lang;
     store.set('page-lang', lang);
     say('');
-    if (!state.screenLang && state.at) state.at = { ...state.at, lang };
     render();
   }
 
   function go(item) {
-    state.at = { ...item };
+    state.at = { ...item, lang: item.lang || state.at.lang };
     state.memo = null;
     $('memo-text').value = '';
     render();
@@ -500,6 +496,7 @@
     const items = itemsOf(walk);
     const at = items.findIndex((i) => keyOf(i) === keyOf(state.at));
     const next = items.slice(at + 1).concat(items.slice(0, at)).find(isLeft);
+    const lang = state.at.lang;
     const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     state.memo = null;
     $('memo-text').value = '';
@@ -507,7 +504,7 @@
     render();
     setTimeout(() => {
       if (state.view !== 'walk') return;
-      if (next) go(next);
+      if (next) go({ ...next, lang });
       else toMap();
     }, still ? 0 : 420);
   }
@@ -548,12 +545,11 @@
     if (to) go({ ...state.at, screen: to.id });
   }
 
-  // The block pasted into the chat: the build, the name, then one line an answer with its version.
-  // Its form is fixed whatever the page's language, since the machine reads it.
+  // The block pasted into the chat: the build, the name, then one line a screen answered, with its
+  // version and the language it was answered on. Its form is fixed, since the machine reads it.
   function blockText() {
     const all = answers();
-    const lines = W.walks
-      .flatMap((walk) => walk.screens.flatMap((s) => LANGS.map((lang) => ({ walk: walk.id, screen: s.id, lang }))))
+    const lines = allItems()
       .filter((item) => all[keyOf(item)])
       .map((item) => {
         const a = all[keyOf(item)];
@@ -687,10 +683,7 @@
       s: toggleList,
       arrowright: () => step(1),
       arrowleft: () => step(-1),
-      l: () => {
-        state.screenLang = state.at.lang === 'vi' ? 'en' : 'vi';
-        go({ ...state.at, lang: state.screenLang });
-      },
+      l: () => go({ ...state.at, lang: state.at.lang === 'vi' ? 'en' : 'vi' }),
       w: () => {
         const ids = W.devices.map((d) => d.id);
         const next = ids[(ids.indexOf(deviceFor(walk).id) + 1) % ids.length];
