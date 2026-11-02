@@ -925,6 +925,60 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     await expect(applyCopy(failing, A1, TODAY)).rejects.toThrow(/POST .*\/deliver answered 5\d\d/);
   });
 
+  it('row 27: a driver whose day its users closed is sent nothing more by the seed, the order goes to another driver and the run goes on green', async () => {
+    const other = await fresh();
+    const made = await make(other, A1);
+    await applyCopy(other, A1, addDays(TODAY, -1));
+    const last = addDays(TODAY, -1);
+    const sent = plannedOrders(A1.client, A1.scenario, last).filter(
+      (plan) => plan.outcome !== 'draft',
+    );
+    const first = sent[0];
+    const root = await asRoot(other, A1.code, made.password);
+    const { drivers } = (await root('GET', ROUTES.drivers)).json<{
+      drivers: { id: string; code: string; name: string }[];
+    }>();
+    const leaving = new Set(
+      dayEvents(A1.client, A1.scenario, first.sendFor).flatMap((e) =>
+        e.kind === 'leave' ? [e.code] : [],
+      ),
+    );
+    const eligible = drivers.filter((one) => !leaving.has(one.code));
+    const drawn = eligible[Math.floor(first.driverDraw * eligible.length)];
+    // The office closed the drawn driver's day for the day the order is sent for.
+    await other.putRecord(
+      recordKeys.tenant(await tenantOf(other, A1.code)).reconciliation(first.sendFor, drawn.id),
+      {
+        day: first.sendFor,
+        driver: drawn,
+        requests: [],
+        toCollect: 0,
+        handedIn: 0,
+        difference: 0,
+        closedBy: { id: null, code: null, name: ROOT_NAME },
+        closedAt: Date.now(),
+      },
+      null,
+    );
+    const lines: string[] = [];
+
+    const report = await applyCopy(other, A1, TODAY, (line) => lines.push(line));
+
+    expect(report.status).toBe('ok');
+    const requests = (await root('GET', deliveryRoutes.list(first.sendFor))).json<{
+      deliveries: { customer: { code: string }; madeAt: number; driver: { id: string } }[];
+    }>().deliveries;
+    const mine = requests.find(
+      (one) => one.customer.code === first.customer && one.madeAt === first.sentAt,
+    );
+    expect(mine).toBeDefined();
+    expect(mine!.driver.id).not.toBe(drawn.id);
+    expect(
+      requests.filter((one) => one.driver.id === drawn.id && one.madeAt >= atMinute(last, 0)),
+    ).toEqual([]);
+    expect(lines).toContain(`${A1.code}: ${drawn.code}'s ${first.sendFor} is closed, sent nothing`);
+  });
+
   it('row 27: a copy with no drivers who deliver leaves its sent orders drafts, a copy with no customers or products leaves its orders, each named', async () => {
     const noDrivers = await fresh();
     const made = await make(noDrivers, A1);

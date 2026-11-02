@@ -347,6 +347,21 @@ async function dayOrders(
     }
     return leaving.get(date)!;
   };
+  // The ids of the drivers whose day is closed, by the day an order is sent for: read once, named once.
+  const closedOn = new Map<string, Set<string>>();
+  const closedFor = async (date: string) => {
+    if (!closedOn.has(date)) {
+      const { reconciliations } = await driver.must<{ reconciliations: Reconciliation[] }>(
+        'GET',
+        reconciliationRoutes.list(date),
+      );
+      for (const one of reconciliations) {
+        log(`${copy.code}: ${one.driver.code}'s ${date} is closed, sent nothing`);
+      }
+      closedOn.set(date, new Set(reconciliations.map((one) => one.driver.id)));
+    }
+    return closedOn.get(date)!;
+  };
   for (const plan of planned) {
     const customer = customers.find((one) => one.code === plan.customer);
     const lines = plan.lines.map((line) => ({
@@ -379,7 +394,12 @@ async function dayOrders(
       stats.drafts++;
       continue;
     }
-    const eligible = drivers.filter((one) => !leaversOn(plan.sendFor).has(one.code));
+    // A driver whose day is closed is sent nothing more for it (the BFF refuses with a 400): left
+    // out, so the order goes to another driver, and the draw is as it was where nothing is closed.
+    const closed = await closedFor(plan.sendFor);
+    const eligible = drivers.filter(
+      (one) => !leaversOn(plan.sendFor).has(one.code) && !closed.has(one.id),
+    );
     if (eligible.length === 0) {
       skipped.push(`${saved.order.number}: no driver who delivers, left a draft`);
       log(`${copy.code}: ${saved.order.number}: no driver who delivers, left a draft`);

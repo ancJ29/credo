@@ -442,3 +442,25 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 - **Finding 11, `visual/src/cli.test.ts`:** `main` in adds 16 (screen, language) pairs to its single draw, 176 to 192, about 9 %. *Fix:* none; its time is read in the whole check.
 
 *Trigger:* after the 11-04 demo, the day's end next touched, or a close seen stopping part way.
+
+## 42. The seed's closed-day check runs after the order is saved — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
+
+`scripts/src/demo/apply.ts#L399` `closedFor` runs after the order's save (`#L386`), so a failed GET leaves that order a draft for good. *Fix:* call `closedFor(plan.sendFor)` before the save. *Severity:* Low.
+
+## 43. The closed-day test sends for the order's own day — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
+
+`scripts/src/demo/apply.test.ts#L928`: the order's day equals its `sendFor` day, so a wrong `closedFor(day)` would still pass. *Fix:* add a case sent for the next working day. *Severity:* Low.
+
+## 44. Time wording left from the 06:00 run — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
+
+`ops/seed.sh#L13` "Runs each morning" and `#L15` "about a minute" (now 8 to 10); `.github/workflows/seed.yml#L6-L7`, `ops/README.md#L199` and `#L214` "next morning" and "the morning's run". *Fix:* say night, 03:17 +07, and the run's real length. *Severity:* Low.
+
+## 45. The closed-day change: small things — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
+
+*Severity:* Info.
+- `scripts/src/demo/apply.ts#L404`: when every driver is closed the draft is named "no driver who delivers".
+- `apply.ts#L359`: the "closed, sent nothing" line is logged for every closed driver, is not in `report.skipped`, and is absent from the log lines `ops/README.md` lists.
+- `scripts/src/demo/apply.test.ts#L949`: the closed record is written straight to storage, so that driver's requests stay waiting.
+- A close between `closedFor` and the confirm still answers 400; negligible at 03:17.
+- `ops/test.sh#L759`: the 15-minute check matches any step, and `#L754` is now redundant.
+- `docs/plans/2026-11-02-seed-demo-safe.md#L5`: "10:4x" reads 10:47.

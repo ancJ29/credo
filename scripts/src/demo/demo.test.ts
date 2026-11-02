@@ -61,6 +61,8 @@ describe('the stream and the days', () => {
     expect(new Date(atMinute('2026-10-30', 450)).toISOString()).toBe('2026-10-30T00:30:00.000Z');
     expect(vietnamToday(Date.parse('2026-10-28T16:59:00Z'))).toBe('2026-10-28');
     expect(vietnamToday(Date.parse('2026-10-28T17:00:00Z'))).toBe('2026-10-29');
+    // The night's run, 20:17 UTC on 11-03, is 03:17 on 11-04 in Vietnam: today is 11-04, filled through 11-03.
+    expect(vietnamToday(Date.parse('2026-11-03T20:17:00Z'))).toBe('2026-11-04');
     expect(() => addDays('2026-02-30', 1)).toThrow('not a day');
     expect(() => addDays('30/10/2026', 1)).toThrow('not a day');
   });

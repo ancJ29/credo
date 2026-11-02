@@ -1,4 +1,5 @@
-# The demo copies on ridge get a day each morning: 06:00 in Vietnam (23:00 UTC), and by hand. The job
+# The demo copies on ridge get a day each night: 03:17 in Vietnam (20:17 UTC), and by hand. GitHub starts a
+# scheduled run up to about 3 hours late, so the run ends before 07:00 and never lands in a morning demo. The job
 # runs ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy
 # up to yesterday, through the BFF's own code over the tunnel. It writes nothing unless /health
 # names this commit, or an earlier one that differs from it in no path ci.yml deploys on, and the
@@ -9,7 +10,7 @@ name: seed
 
 on:
   schedule:
-    - cron: "0 23 * * *"
+    - cron: "17 20 * * *"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +21,7 @@ jobs:
     # A manual run from a branch is refused here, and the environment admits main alone as well.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     environment: ridge
     # Its own group, never `ridge`: a run waiting in a group replaces the one waiting before it, so
     # a seed queued in the deploy's group would cancel a waiting deploy. A seed that overlaps a
@@ -69,5 +70,5 @@ jobs:
       # The script masks the keys itself, before anything is printed.
       - name: Seed
         if: ${{ !env.ACT }}
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: bash ops/seed.sh ridge
