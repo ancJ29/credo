@@ -72,10 +72,11 @@ Rows 1 to 3 held in `capture.test.ts`, 4 to 11 in `page.test.ts`, 12 in `tokens.
   once from its own assertion; `@credo/visual` at 100 %; `pnpm check` exit 0;
   `git grep 'display: contents' visual/src` empty; `git diff --stat main -- ui walk` empty.
   Done 2026-11-03, evidence in [the recap](../recaps/2026-11-03-walks-page.md).
-- [ ] **3. QA's rule 7 amended** (`docs/conventions/qa.md#L122-L128`): a yes holds until the
+- [x] **3. QA's rule 7 amended** (`docs/conventions/qa.md#L122-L128`): a yes holds until the
   screen's version moves, one answer a screen; *Rejected:* a yes keyed to the words, which kept a
   changed look's yes unseen. Its line at a glance, and the stamp (Decides 56, 57). Done when:
   `git grep 'words change' docs/conventions/qa.md` finds nothing.
+  Done 2026-11-03, evidence in [the recap](../recaps/2026-11-03-walks-page.md).
 - [ ] **4. Review and merge.** Another model reviews (rule 5); the merge; the human's push. Done
   when: every finding tagged in the recap; the walks workflow green on GitHub. Then point 2.
 

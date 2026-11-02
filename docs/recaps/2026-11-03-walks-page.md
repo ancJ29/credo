@@ -47,3 +47,13 @@ and its code still stand beside it until step 2.
 - `pnpm report`: 96 screens, 192 captures, 5.3 MB; a second build moved 0 versions; jsdom check of the
   built file (`logs/20261103-walks-page-step2-jsdom.log`): 8 PASS.
 
+## Step 3, QA's rule 7 amended (2026-11-03)
+
+- [QA's rule 7](../conventions/qa.md#the-rules) amended as step 3 says, with its line at a glance
+  and the stamp; the old rejection of the pixels is now the history of the rejected words.
+- `git grep 'words change' docs/conventions/qa.md`: nothing. `git grep 'keying a yes to the
+  pixels'`: one line, inside the rewritten rejection. The path and name check over the diff:
+  nothing.
+- Open item 57 (the `MyDeliveries.test.tsx` red above) is folded into item 56 as its second
+  sighting, and deleted.
+

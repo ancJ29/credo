@@ -519,11 +519,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two ui tests failed in files the change did not touch, and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times. *Fix:* find what each waits on that load starves, and hold it by the test's own signal, not a time.
 
+Seen again on 2026-11-03 at load about 12, in the walks page's step 2: `MyDeliveries.test.tsx` alone, the same no call, with nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
+
 *Trigger:* the next red of either, or a quiet machine's whole check.
-
-## 57. `ui/src/MyDeliveries.test.tsx` failed once in a whole `pnpm check` at load about 12 — the machine; *parked* until after the 11-04 demo (walks page step 2, 2026-11-03)
-
-The driver's landing test expected `myDeliveries` called once with the demo day and saw no call;
-nothing in `ui` had changed and the next whole run was green. A flaky red is a defect, not a pass:
-the test reads the call before the page's effect ran under load. Log: `logs/20261103-walks-page-step2-gate-run3-red-ui.log`.
 
