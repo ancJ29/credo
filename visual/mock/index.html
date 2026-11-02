@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,7 +7,8 @@
 <!--
   A static mock of the walks page's next look, for one yes or no before the real page is rebuilt.
   Opens from disk: no server, no network. walks.js holds the walks' words and the build line of one
-  build; screens.js holds a few screens as that build drew them, and the app's CSS they need.
+  build; screens.js holds a few screens as that build drew them, and the app's CSS they need;
+  words.js holds the page's own words in Tiếng Việt and English.
 -->
 <style>
 :root {
@@ -118,24 +119,10 @@ kbd {
 .brand { font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; border: 0; background: none; padding: 0; }
 .where { display: flex; gap: 8px; align-items: baseline; min-width: 0; color: var(--muted); white-space: nowrap; }
 .where b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.dots { display: flex; gap: 3px; align-items: center; }
-.dots button {
-  width: 10px; height: 10px; padding: 0; border-radius: 50%;
-  border: 1.5px solid var(--muted); background: transparent;
-}
-.dots button.s-changed { border-color: var(--hi-ink); background: var(--hi); }
-.dots button.s-yes { border-color: var(--yes); background: var(--yes); }
-.dots button.s-no { border-color: var(--no); background: var(--no); }
-.dots button[aria-current="true"] { outline: 2px solid var(--ink); outline-offset: 1px; }
 .spacer { flex: 1; }
 .left { color: var(--muted); white-space: nowrap; }
 .left b { color: var(--ink); }
 .build-short { color: var(--muted); font: 12px/1 ui-monospace, Menlo, monospace; white-space: nowrap; cursor: help; }
-.label-box { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.label-box input {
-  width: 56px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 6px;
-  background: var(--soft); font-size: 13px;
-}
 .meter { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
 .meter i { display: block; height: 100%; background: var(--yes); width: 0; transition: width 240ms ease; }
 
@@ -191,8 +178,49 @@ kbd {
 .pill.done { color: var(--yes); }
 .pill.nomock { background: none; border: 1px dashed var(--muted); }
 
-/* The walk: the picture, as large as the window allows between the top line and the bar. */
-.stage { flex: 1; min-height: 0; overflow: auto; padding: 10px 12px; }
+/* The walk: its screens listed beside the picture, the picture as large as the room allows. */
+.stage { flex: 1; min-height: 0; display: flex; position: relative; }
+.pic { flex: 1; min-width: 0; overflow: auto; padding: 10px 12px; }
+.walk-list {
+  flex: none; width: 248px; overflow: auto; background: var(--paper); border-right: 1px solid var(--line);
+  font-size: 13px;
+}
+.wl-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 12px; color: var(--muted); }
+.walk-list ol { list-style: none; margin: 0; padding: 0 6px 12px; }
+.walk-list li button {
+  width: 100%; border: 0; background: none; text-align: left; border-radius: 6px; padding: 5px 6px;
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; line-height: 1.3;
+}
+.walk-list li button:hover { background: var(--soft); }
+.walk-list li button[aria-current="true"] { background: var(--soft); box-shadow: inset 3px 0 0 var(--ink); font-weight: 600; }
+.walk-list .num { color: var(--muted); text-align: right; font-weight: 400; }
+.st { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--muted); color: var(--muted); white-space: nowrap; font-weight: 600; }
+.st.s-changed { background: var(--hi); color: var(--hi-ink); border-color: var(--hi-ink); }
+.st.s-yes { background: var(--yes); color: var(--yes-ink); border-color: var(--yes); }
+.st.s-no { background: var(--no); color: var(--no-ink); border-color: var(--no); }
+body.list-folded .walk-list, body.look .walk-list { display: none; }
+#list-btn[aria-expanded="true"] { background: var(--soft); }
+
+/* Who is answering: asked at every open, the last name used here filled in. */
+.who-view { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+.who-card {
+  width: min(420px, 100%); background: var(--paper); border-radius: 10px; box-shadow: var(--shade);
+  padding: 24px; display: grid; gap: 10px;
+}
+.who-card h1 { margin: 0; font-size: 22px; letter-spacing: -0.015em; }
+.who-card p { margin: 0; color: var(--muted); }
+.who-field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.who-field input {
+  height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--soft);
+  font-size: 16px; color: var(--ink);
+}
+.who-note { font-size: 13px; min-height: 1.2em; }
+.who-card .btn { height: 36px; justify-self: start; font-size: 14px; }
+.btn.name { font-weight: 600; }
+.ui-langs { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.ui-langs button { height: 26px; border: 0; background: var(--paper); padding: 0 8px; font-size: 12px; color: var(--muted); }
+.ui-langs button + button { border-left: 1px solid var(--line); }
+.ui-langs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .frame-wrap {
   margin: 0 auto; position: relative;
   background: #fff; box-shadow: var(--shade); border-radius: 4px; overflow: hidden;
@@ -255,7 +283,7 @@ kbd {
 /* Look: every bar hidden, the picture alone. One small badge in the corner says the screen's
    answer and brings the bars back; a memo opened in Look floats over the picture's foot. */
 body.look .top, body.look .bar { display: none; }
-body.look .stage { padding: 0; }
+body.look .pic { padding: 0; }
 body.look.memo-open .bar {
   display: block; position: fixed; left: 0; right: 0; bottom: 0; box-shadow: var(--shade);
 }
@@ -295,9 +323,11 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 }
 @media (max-width: 760px) {
   .top { gap: 6px; padding: 0 8px; }
-  .top .brand.on-walk, .build-short, .dots, .where .walk-t, .where .person-t, .top kbd, .label-box span { display: none; }
+  .top .brand.on-walk, .build-short, .where .walk-t, .where .person-t, .top kbd { display: none; }
   .copy-wide { display: none; }
   .map-view { padding: 14px 16px 32px; }
+  .walk-list { position: absolute; top: 0; bottom: 0; left: 0; z-index: 3; width: min(280px, 85vw); box-shadow: var(--shade); }
+  .btn.name { max-width: 72px; overflow: hidden; text-overflow: ellipsis; }
   .bar-in { grid-template-columns: 1fr; padding: 8px 12px; }
   .ask-text p { white-space: normal; }
   .answer button.yes, .answer button.no { flex: 1; }
@@ -312,50 +342,59 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 </head>
 <body>
 <header class="top" id="top">
-  <button type="button" class="btn" id="to-map" hidden aria-label="Back to the map of the day">← Map</button>
-  <button type="button" class="brand" id="brand">Credo walks</button>
+  <button type="button" class="btn" id="to-map" hidden data-t="toMap" data-t-aria-label="toMapLabel">← Map</button>
+  <button type="button" class="btn" id="list-btn" hidden aria-keyshortcuts="S" data-t-title="listToggle" data-t-aria-label="listToggle">☰</button>
+  <button type="button" class="brand" id="brand" data-t="brand">Credo walks</button>
   <span class="where" id="where"></span>
-  <span class="dots" id="dots" aria-label="This walk's screens"></span>
   <span class="spacer"></span>
   <span class="left" id="left"></span>
   <span class="build-short" id="build-short" hidden></span>
-  <button type="button" class="btn" id="look" hidden aria-keyshortcuts="F">Look <kbd>F</kbd></button>
-  <span class="label-box partner-only" hidden><span>Your label</span><input id="label" value="p1" aria-label="Label from the invite"></span>
-  <button type="button" class="btn main partner-only" id="share" hidden>Share</button>
-  <button type="button" class="btn main human-only" id="copy">Copy<span class="copy-wide"> my answers</span></button>
-  <button type="button" class="btn round" id="help" aria-label="How this page works">?</button>
-  <button type="button" class="btn" id="menu-btn" aria-expanded="false" aria-controls="menu">View ▾</button>
+  <button type="button" class="btn" id="look" hidden aria-keyshortcuts="F"><span data-t="look">Look</span> <kbd>F</kbd></button>
+  <button type="button" class="btn main" id="copy" hidden><span data-t="copy">Copy</span><span class="copy-wide" data-t="copyWide"> my answers</span></button>
+  <button type="button" class="btn name" id="who-btn" hidden data-t-title="changeName"></button>
+  <span class="ui-langs" id="ui-langs" role="group" data-t-aria-label="pageLang"></span>
+  <button type="button" class="btn round" id="help" data-t-aria-label="helpLabel">?</button>
+  <button type="button" class="btn" id="menu-btn" hidden aria-expanded="false" aria-controls="menu"><span data-t="view">View</span> ▾</button>
   <span class="meter"><i id="meter"></i></span>
 </header>
 
-<div class="menu" id="menu" hidden aria-label="View">
-  <h3>Width</h3>
-  <div class="row" id="widths" role="group" aria-label="Width"></div>
+<div class="menu" id="menu" hidden data-t-aria-label="view">
+  <h3 data-t="widthH">Width</h3>
+  <div class="row" id="widths" role="group" data-t-aria-label="widthH"></div>
   <p class="note" id="theirs"></p>
-  <h3>Language</h3>
-  <div class="row" id="langs" role="group" aria-label="Language"></div>
+  <h3 data-t="screenLangH">The screens’ language</h3>
+  <div class="row" id="langs" role="group" data-t-aria-label="screenLangH"></div>
+  <p class="note" data-t="screenLangNote">Follows the page’s language until you change it here or with L.</p>
   <div class="mock-only">
-    <h3>Mock only</h3>
-    <div class="row" id="who" role="group" aria-label="Whose view">
-      <button type="button" class="btn" data-who="human" aria-pressed="true">Your view</button>
-      <button type="button" class="btn" data-who="partner" aria-pressed="false">A partner’s</button>
-    </div>
-    <div class="row" id="theme" role="group" aria-label="Theme">
-      <button type="button" class="btn" data-theme="" aria-pressed="true">System</button>
-      <button type="button" class="btn" data-theme="light" aria-pressed="false">Light</button>
-      <button type="button" class="btn" data-theme="dark" aria-pressed="false">Dark</button>
+    <h3 data-t="mockOnlyH">Mock only</h3>
+    <div class="row" id="theme" role="group">
+      <button type="button" class="btn" data-theme="" aria-pressed="true" data-t="themeSystem">System</button>
+      <button type="button" class="btn" data-theme="light" aria-pressed="false" data-t="themeLight">Light</button>
+      <button type="button" class="btn" data-theme="dark" aria-pressed="false" data-t="themeDark">Dark</button>
     </div>
     <div class="row">
-      <button type="button" class="btn" id="newer" aria-pressed="false">Pretend a newer build</button>
-      <button type="button" class="btn" id="forget">Forget my answers</button>
+      <button type="button" class="btn" id="newer" aria-pressed="false" data-t="newer">Pretend a newer build</button>
+      <button type="button" class="btn" id="forget" data-t="forget">Forget my answers</button>
     </div>
     <p class="note" id="mock-note"></p>
   </div>
 </div>
 
-<main class="map-view" id="map-view">
+<main class="who-view" id="who-view">
+  <form class="who-card" id="who-form" autocomplete="off">
+    <h1 data-t="whoH">Who is answering?</h1>
+    <p data-t="whoP">Your answers are kept in this browser under this name. Type the label from your invite.</p>
+    <label class="who-field"><span data-t="whoLabel">Name</span>
+      <input id="who-name" name="who" placeholder="p1" spellcheck="false" autocapitalize="off">
+    </label>
+    <p class="who-note" id="who-note" aria-live="polite"></p>
+    <button type="submit" class="btn main" id="who-go"><span data-t="whoGo">Go on</span> <kbd>⏎</kbd></button>
+  </form>
+</main>
+
+<main class="map-view" id="map-view" hidden>
   <header class="map-head">
-    <h1>A business’s day in Credo</h1>
+    <h1 data-t="mapTitle">A business’s day in Credo</h1>
     <p class="lede" id="map-sum"></p>
     <p class="build-line" id="build-line"></p>
   </header>
@@ -363,8 +402,17 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 </main>
 
 <main class="stage" id="stage" hidden>
-  <div class="frame-wrap" id="frame-wrap"><span class="stamp" id="stamp">Yes</span></div>
-  <div class="blank" id="blank" hidden></div>
+  <nav class="walk-list" id="walk-list" data-t-aria-label="whoseScreens">
+    <div class="wl-head">
+      <b data-t="listH">Screens</b>
+      <button type="button" class="btn round" id="list-fold" data-t-title="listFold" data-t-aria-label="listFold">«</button>
+    </div>
+    <ol id="wl-items"></ol>
+  </nav>
+  <div class="pic" id="pic">
+    <div class="frame-wrap" id="frame-wrap"><span class="stamp" id="stamp"></span></div>
+    <div class="blank" id="blank" hidden></div>
+  </div>
 </main>
 <button type="button" class="badge" id="badge" hidden></button>
 
@@ -375,15 +423,15 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
       <p class="sub" id="sub"></p>
     </div>
     <div class="answer">
-      <button type="button" class="btn" id="memo-btn" aria-keyshortcuts="M">Memo <kbd>M</kbd></button>
-      <button type="button" class="no" id="no" aria-keyshortcuts="N">No <kbd>N</kbd></button>
-      <button type="button" class="yes" id="yes" aria-keyshortcuts="Y">Yes <kbd>Y</kbd></button>
+      <button type="button" class="btn" id="memo-btn" aria-keyshortcuts="M"><span data-t="memo">Memo</span> <kbd>M</kbd></button>
+      <button type="button" class="no" id="no" aria-keyshortcuts="N"><span data-t="no">No</span> <kbd>N</kbd></button>
+      <button type="button" class="yes" id="yes" aria-keyshortcuts="Y"><span data-t="yes">Yes</span> <kbd>Y</kbd></button>
     </div>
     <div class="memo" id="memo" hidden>
-      <textarea id="memo-text" rows="1" aria-label="Memo"></textarea>
-      <button type="button" class="btn main" id="memo-save">Save <kbd>⏎</kbd></button>
-      <button type="button" class="btn" id="memo-no" hidden>Save as No</button>
-      <button type="button" class="btn" id="memo-cancel">Cancel <kbd>Esc</kbd></button>
+      <textarea id="memo-text" rows="1" data-t-aria-label="memoLabel"></textarea>
+      <button type="button" class="btn main" id="memo-save"><span id="memo-save-t"></span> <kbd>⏎</kbd></button>
+      <button type="button" class="btn" id="memo-no" hidden data-t="memoAsNo">Save as No</button>
+      <button type="button" class="btn" id="memo-cancel"><span data-t="cancel">Cancel</span> <kbd>Esc</kbd></button>
     </div>
     <p class="said-line" id="said" aria-live="polite"></p>
   </div>
@@ -391,32 +439,34 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
 
 <div class="dialog" id="block" hidden role="dialog" aria-modal="true" aria-labelledby="block-h">
   <div>
-    <h2 id="block-h">Your answers</h2>
+    <h2 id="block-h" data-t="blockH">Your answers</h2>
     <p id="block-p"></p>
-    <textarea id="block-text" readonly aria-label="The text to paste"></textarea>
-    <div class="row"><button type="button" class="btn main" id="block-done">Done</button></div>
+    <textarea id="block-text" readonly data-t-aria-label="blockText"></textarea>
+    <div class="row"><button type="button" class="btn main" id="block-done" data-t="done">Done</button></div>
   </div>
 </div>
 
 <div class="dialog help" id="helpbox" hidden role="dialog" aria-modal="true" aria-labelledby="help-h">
   <div>
-    <h2 id="help-h">How this page works</h2>
-    <p>The map shows every walk. A walk opens at its first screen left to answer: new to you, or changed since your answer. Each screen is asked in each language. Your answers stay in this browser.</p>
+    <h2 id="help-h" data-t="helpH">How this page works</h2>
+    <p data-t="helpP"></p>
     <dl>
-      <dt><kbd>Y</kbd></dt><dd>Yes, and on to the next screen left</dd>
-      <dt><kbd>N</kbd></dt><dd>No, with a memo; <kbd>⏎</kbd> saves, <kbd>Esc</kbd> cancels</dd>
-      <dt><kbd>M</kbd></dt><dd>A memo, with a yes or a no</dd>
-      <dt><kbd>F</kbd></dt><dd>Look: the picture alone, its answer in the corner; <kbd>Y</kbd>, <kbd>N</kbd> and <kbd>M</kbd> still answer; <kbd>F</kbd> or <kbd>Esc</kbd> brings the bars back</dd>
-      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>The previous or next screen of the walk</dd>
-      <dt><kbd>L</kbd></dt><dd>The other language</dd>
-      <dt><kbd>W</kbd></dt><dd>The next width</dd>
+      <dt><kbd>Y</kbd></dt><dd data-t="hY"></dd>
+      <dt><kbd>N</kbd></dt><dd data-t="hN"></dd>
+      <dt><kbd>M</kbd></dt><dd data-t="hM"></dd>
+      <dt><kbd>F</kbd></dt><dd data-t="hF"></dd>
+      <dt><kbd>S</kbd></dt><dd data-t="hS"></dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-t="hArrows"></dd>
+      <dt><kbd>L</kbd></dt><dd data-t="hL"></dd>
+      <dt><kbd>W</kbd></dt><dd data-t="hW"></dd>
     </dl>
-    <div class="row"><button type="button" class="btn main" id="help-done">Close</button></div>
+    <div class="row"><button type="button" class="btn main" id="help-done" data-t="close">Close</button></div>
   </div>
 </div>
 
 <script src="walks.js"></script>
 <script src="screens.js"></script>
+<script src="words.js"></script>
 <script src="mock.js"></script>
 </body>
 </html>

@@ -1,19 +1,15 @@
-// The walks page's next look, as a static mock: the map of the day first; a walk opens at its first
-// screen left to answer, drawn large, with its one question in a slim bar, or alone in Look.
-// Answers stay in this browser. Classic script, so it runs from file://.
+// The walks page's next look, as a static mock: who is answering first, then the map of the day; a
+// walk opens at its first screen left to answer, its screens listed beside the picture, its one
+// question in a slim bar, or the picture alone in Look. Answers stay in this browser, one set a
+// name. Classic script, so it runs from file://.
 (function () {
   'use strict';
   const W = window.MOCK_WALKS;
   const S = window.MOCK_SCREENS;
+  const WORDS = window.MOCK_WORDS;
   const $ = (id) => document.getElementById(id);
   const LANGS = ['vi', 'en'];
-  const LANG_NAME = { vi: 'Tiếng Việt', en: 'English' };
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const DEVICE = { pc: 'PC', tablet: 'tablet', phone: 'phone' };
-  const day = (iso) => {
-    const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? '' : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  };
   const person = (id) => W.people.find((p) => p.id === id);
   const walkOf = (id) => W.walks.find((w) => w.id === id);
   const screenOf = (walk, id) => walk.screens.find((s) => s.id === id);
@@ -53,6 +49,28 @@
     },
   };
 
+  // The page's own words, Tiếng Việt first; the screens' language follows it until changed.
+  let ui = LANGS.includes(store.get('page-lang', 'vi')) ? store.get('page-lang', 'vi') : 'vi';
+  function t(key, vars) {
+    const text = WORDS[ui][key];
+    return text.replace(/\{(\w+)\}/g, (all, name) => (vars && name in vars ? String(vars[name]) : all));
+  }
+  const answerWord = (kind) => t(`st_${kind}`);
+  const inline = (kind) => t(`ans_${kind}`); // an answer inside a sentence
+  const langName = (l) => t(`lang_${l}`);
+  const deviceName = (d) => `${t(`dev_${d.id}`)} ${d.width}`;
+  const day = (iso) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return ui === 'vi' ? `${d.getDate()}/${d.getMonth() + 1}` : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  };
+  function applyWords() {
+    document.documentElement.lang = ui;
+    for (const e of document.querySelectorAll('[data-t]')) e.textContent = t(e.dataset.t);
+    for (const e of document.querySelectorAll('[data-t-title]')) e.title = t(e.dataset.tTitle);
+    for (const e of document.querySelectorAll('[data-t-aria-label]')) e.setAttribute('aria-label', t(e.dataset.tAriaLabel));
+  }
+
   // A picture's version: an opaque id, one per screen and language. The mock makes its own; what
   // the real page computes it from is not settled here.
   function opaque(text) {
@@ -71,7 +89,20 @@
     return opaque(`${W.build.commit}/${keyOf(item)}${moved ? '/newer' : ''}`);
   }
 
-  const answers = () => store.get('answers', {});
+  const state = {
+    view: 'who',
+    name: '', // as typed
+    at: null,
+    screenLang: null, // null follows the page's language
+    show: null, // a device id; null is the person's own
+    look: false,
+    memo: null, // null, 'no' or 'memo'
+    listOpen: store.get('list-open', !(window.matchMedia && window.matchMedia('(max-width: 760px)').matches)),
+  };
+  // Answers are kept under the name, trimmed and compared without case.
+  const nameKey = () => state.name.trim().toLowerCase();
+  const answers = () => store.get(`answers:${nameKey()}`, {});
+
   function statusOf(item) {
     const mine = answers()[keyOf(item)];
     if (!mine) return { kind: 'new' };
@@ -82,35 +113,28 @@
     const k = statusOf(item).kind;
     return k === 'new' || k === 'changed';
   };
+  const screenLang = () => state.screenLang || ui;
   const itemsOf = (walk) => {
+    const order = [screenLang(), ...LANGS.filter((l) => l !== screenLang())];
     const out = [];
-    for (const screen of walk.screens) for (const lang of LANGS) out.push({ walk: walk.id, screen: screen.id, lang });
+    for (const screen of walk.screens) for (const lang of order) out.push({ walk: walk.id, screen: screen.id, lang });
     return out;
   };
   const allItems = () => W.walks.flatMap(itemsOf);
 
-  const state = {
-    view: 'map',
-    at: null,
-    show: null, // a device id; null is the person's own
-    look: false,
-    memo: null, // null, 'no' or 'memo'
-    who: 'human',
-  };
-
   // The build line, in full and in short, from the build's own record.
   const b = W.build;
-  const buildFull = `Branch ${b.branch}, commit ${b.commit}${b.changed ? ' with changes' : ''}, committed ${b.committed}; built ${b.built}.`;
+  const buildFull = () =>
+    `${t('blBranch')}${b.branch}${t('blCommit')}${b.commit}${b.changed ? t('blWithChanges') : ''}${t('blTimes', b)}`;
   const buildShort = `${b.branch} · ${b.commit}`;
 
-  // The screen, in a frame of its own at the device's width, scaled to the room the stage has.
+  // The screen, in a frame of its own at the device's width, scaled to the room the picture has.
   let frame = null;
   let drawnKey = '';
   function deviceFor(walk) {
     const id = state.show || person(walk.person).device;
     return W.devices.find((d) => d.id === id);
   }
-  const deviceName = (d) => `${d.label === 'PC' ? 'PC' : d.label[0].toUpperCase() + d.label.slice(1)} ${d.width}`;
   function draw() {
     const wrap = $('frame-wrap');
     const blank = $('blank');
@@ -124,10 +148,10 @@
       wrap.hidden = true;
       blank.hidden = false;
       blank.style.maxWidth = `${device.width}px`;
-      blank.replaceChildren(
-        el('b', '', screen.sentence[state.at.lang] || screen.sentence.en),
-        el('span', '', `Screen ${screen.number}: not captured in the mock. The real page draws it here, this large.`),
-      );
+      // The sentence stands in for the picture, so it is in the screen's language.
+      const words = el('b', '', screen.sentence[state.at.lang] || screen.sentence.en);
+      words.lang = state.at.lang;
+      blank.replaceChildren(words, el('span', '', t('blankNote', { n: screen.number })));
       drawnKey = '';
       if (frame) frame.remove();
       frame = null;
@@ -135,11 +159,14 @@
     }
     wrap.hidden = false;
     blank.hidden = true;
-    if (drawnKey === key) return fit();
+    if (drawnKey === key) {
+      frame.title = t('frameTitle', { n: screen.number, lang: langName(state.at.lang), device: t(`dev_${device.id}`), width: device.width });
+      return fit();
+    }
     drawnKey = key;
     if (frame) frame.remove();
     frame = document.createElement('iframe');
-    frame.title = `Screen ${screen.number} in ${LANG_NAME[state.at.lang]}, ${device.label} ${device.width}`;
+    frame.title = t('frameTitle', { n: screen.number, lang: langName(state.at.lang), device: t(`dev_${device.id}`), width: device.width });
     frame.setAttribute('tabindex', '-1');
     frame.style.width = `${device.width}px`;
     frame.style.height = `${device.id === 'phone' ? 844 : device.id === 'tablet' ? 1024 : 800}px`;
@@ -166,9 +193,9 @@
   function fit() {
     if (!frame || !state.at || state.view !== 'walk') return;
     const device = deviceFor(walkOf(state.at.walk));
-    const stage = $('stage');
-    const pad = parseFloat(getComputedStyle(stage).paddingLeft) || 0;
-    const room = stage.clientWidth - pad * 2;
+    const pic = $('pic');
+    const pad = parseFloat(getComputedStyle(pic).paddingLeft) || 0;
+    const room = pic.clientWidth - pad * 2;
     const scale = room > 0 ? Math.min(1, room / device.width) : 1;
     frame.style.transform = `scale(${scale})`;
     const wrap = $('frame-wrap');
@@ -182,11 +209,12 @@
     if (text !== undefined) e.textContent = text;
     return e;
   }
-  function segment(host, items, current, pick) {
+  function segment(host, items, current, pick, cls) {
     host.replaceChildren(
       ...items.map((item) => {
-        const btn = el('button', 'btn', item.label);
+        const btn = el('button', cls === undefined ? 'btn' : cls, item.label);
         btn.type = 'button';
+        if (item.title) btn.title = item.title;
         btn.setAttribute('aria-pressed', String(item.id === current));
         btn.addEventListener('click', () => pick(item.id));
         return btn;
@@ -199,15 +227,15 @@
     const map = $('map');
     map.style.setProperty('--parts', W.parts.length);
     map.replaceChildren(el('span', 'corner'));
-    for (const part of W.parts) map.append(el('span', 'colhead', part.name.en));
+    for (const part of W.parts) map.append(el('span', 'colhead', part.name[ui]));
     for (const p of W.people) {
       const who = el('div', 'person');
-      who.append(el('b', '', p.name.en), el('span', '', DEVICE[p.device]));
+      who.append(el('b', '', p.name[ui]), el('span', '', t(`dev_${p.device}`)));
       map.append(who);
       for (const part of W.parts) {
         const walks = W.walks.filter((w) => w.person === p.id && w.part === part.id);
         const cell = el('div', walks.length ? 'cell' : 'cell empty');
-        if (!walks.length) cell.title = 'Not built yet';
+        if (!walks.length) cell.title = t('emptyCell');
         for (const walk of walks) cell.append(card(walk, part));
         map.append(cell);
       }
@@ -216,9 +244,13 @@
     const left = items.filter(isLeft).length;
     const changed = items.filter((i) => statusOf(i).kind === 'changed').length;
     $('map-sum').textContent = left
-      ? `${left} of ${items.length} answers left (each screen in two languages): ${left - changed} new to you, ${changed} changed since your answer. A walk opens at its first one.`
-      : `All ${items.length} answers given. Copy them, and paste the text into the chat.`;
-    $('build-line').replaceChildren(buildLineNode());
+      ? t('mapSumLeft', { left, all: items.length, fresh: left - changed, changed })
+      : t('mapSumDone', { all: items.length });
+    const line = el('span');
+    line.append(t('blBranch'), el('code', '', b.branch), t('blCommit'), el('code', '', b.commit));
+    line.append(`${b.changed ? t('blWithChanges') : ''}${t('blTimes', b)}`);
+    if (newerScreens()) line.append(el('br'), el('span', 'mock-tag', t('mockNewerTag')));
+    $('build-line').replaceChildren(line);
   }
   function card(walk, part) {
     const items = itemsOf(walk);
@@ -228,22 +260,38 @@
     const btn = el('button', `card${left ? ' has-left' : ''}${inMock ? '' : ' nomock'}`);
     btn.type = 'button';
     btn.dataset.walk = walk.id;
-    btn.append(el('span', 'part', part.name.en), el('b', '', walk.title.en), el('span', 'sub', `${walk.screens.length} screens`));
+    btn.append(el('span', 'part', part.name[ui]), el('b', '', walk.title[ui]), el('span', 'sub', t('screens', { n: walk.screens.length })));
     const pills = el('span', 'pills');
-    if (left) pills.append(el('span', 'pill left', `${left} left`));
-    if (changed) pills.append(el('span', 'pill changed', `${changed} changed`));
-    if (!left) pills.append(el('span', 'pill done', 'All answered'));
-    if (!inMock) pills.append(el('span', 'pill nomock', 'Not in the mock'));
+    if (left) pills.append(el('span', 'pill left', t('pillLeft', { n: left })));
+    if (changed) pills.append(el('span', 'pill changed', t('pillChanged', { n: changed })));
+    if (!left) pills.append(el('span', 'pill done', t('pillDone')));
+    if (!inMock) pills.append(el('span', 'pill nomock', t('pillNoMock')));
     btn.append(pills);
     btn.addEventListener('click', () => openWalk(walk.id));
     return btn;
   }
-  function buildLineNode() {
-    const span = el('span');
-    span.append('Branch ', el('code', '', b.branch), ', commit ', el('code', '', b.commit));
-    span.append(`${b.changed ? ' with changes' : ''}, committed ${b.committed}; built ${b.built}.`);
-    if (newerScreens()) span.append(el('br'), el('span', 'mock-tag', 'Mock: a newer build pretended'));
-    return span;
+
+  // Who is answering: asked at every open, the last name used on this browser filled in.
+  function showWho() {
+    state.view = 'who';
+    state.look = false;
+    state.memo = null;
+    closeMenu();
+    $('who-name').value = state.name || store.get('last-name', '');
+    render();
+    $('who-name').focus();
+  }
+  function enterName() {
+    const name = $('who-name').value.trim();
+    if (!name) {
+      $('who-note').textContent = t('whoNeed');
+      $('who-name').focus();
+      return;
+    }
+    state.name = name;
+    store.set('last-name', name);
+    $('who-name').blur();
+    toMap();
   }
 
   function openWalk(id) {
@@ -266,35 +314,52 @@
   }
 
   function render() {
-    const inWalk = state.view === 'walk';
+    applyWords();
+    const view = state.view;
+    const inWalk = view === 'walk';
     document.body.classList.toggle('in-walk', inWalk);
     document.body.classList.toggle('look', inWalk && state.look);
-    for (const e of document.querySelectorAll('.partner-only')) e.hidden = state.who !== 'partner';
-    for (const e of document.querySelectorAll('.human-only')) e.hidden = state.who === 'partner';
-    $('map-view').hidden = inWalk;
+    document.body.classList.toggle('memo-open', inWalk && Boolean(state.memo));
+    document.body.classList.toggle('list-folded', !state.listOpen);
+    $('who-view').hidden = view !== 'who';
+    $('map-view').hidden = view !== 'map';
     $('stage').hidden = !inWalk;
     $('bar').hidden = !inWalk;
     $('to-map').hidden = !inWalk;
+    $('list-btn').hidden = !inWalk;
+    $('list-btn').setAttribute('aria-expanded', String(state.listOpen));
     $('brand').classList.toggle('on-walk', inWalk);
     $('look').hidden = !inWalk;
-    document.body.classList.toggle('memo-open', inWalk && Boolean(state.memo));
     $('badge').hidden = !(inWalk && state.look);
     $('build-short').hidden = !inWalk;
     $('build-short').textContent = buildShort;
-    $('build-short').title = buildFull;
+    $('build-short').title = buildFull();
+    for (const id of ['left', 'copy', 'who-btn', 'menu-btn']) $(id).hidden = view === 'who';
+    $('who-btn').textContent = state.name;
+    segment(
+      $('ui-langs'),
+      LANGS.map((l) => ({ id: l, label: t(l === 'vi' ? 'uiVi' : 'uiEn'), title: langName(l) })),
+      ui,
+      setPageLang,
+      '',
+    );
+
+    if (view === 'who') {
+      const last = store.get('last-name', '');
+      $('who-note').textContent = last ? t('whoSeen', { name: last }) : '';
+      $('where').replaceChildren();
+      return;
+    }
 
     const items = allItems();
     const left = items.filter(isLeft).length;
-    $('left').innerHTML = `<b>${left}</b> left`;
-    $('left').title = `${left} of ${items.length} answers left to give`;
+    $('left').textContent = t('leftTop', { n: left });
+    $('left').title = t('leftTitle', { n: left, all: items.length });
     $('meter').style.width = `${(100 * (items.length - left)) / items.length}%`;
-    const given = Object.keys(answers()).length;
-    $('share').textContent = `Share${given ? ` (${given})` : ''}`;
     renderMenu();
 
-    if (!inWalk) {
-      $('where').replaceChildren(el('span', '', 'The map of the day'));
-      $('dots').replaceChildren();
+    if (view === 'map') {
+      $('where').replaceChildren(el('span', '', t('mapWhere')));
       renderMap();
       return;
     }
@@ -303,54 +368,70 @@
     const screen = screenOf(walk, state.at.screen);
     const who = person(walk.person);
     $('where').replaceChildren(
-      el('span', 'person-t', who.name.en),
-      el('b', 'walk-t', walk.title.en),
+      el('span', 'person-t', who.name[ui]),
+      el('b', 'walk-t', walk.title[ui]),
       el('span', '', `${screen.number}/${walk.screens.length}`),
     );
-    $('dots').replaceChildren(
-      ...walk.screens.map((s) => {
-        const item = { walk: walk.id, screen: s.id, lang: state.at.lang };
-        const kind = statusOf(item).kind;
-        const dot = el('button', `s-${kind}`);
-        dot.type = 'button';
-        dot.title = `Screen ${s.number}: ${kind === 'new' ? 'new to you' : kind === 'changed' ? 'changed since your answer' : `your ${kind}`}`;
-        dot.setAttribute('aria-current', String(s.id === screen.id));
-        dot.addEventListener('click', () => go(item));
-        return dot;
-      }),
-    );
+    renderList(walk, screen);
 
     const st = statusOf(state.at);
     const memoMark = st.was && st.was.memo ? ' ✎' : '';
     const badge = $('badge');
     badge.className = `badge s-${st.kind}`;
-    badge.textContent = `${{ new: 'New', changed: 'Changed', yes: 'Yes', no: 'No' }[st.kind]}${memoMark}`;
-    badge.title = `${st.kind === 'new' ? 'New to you' : st.kind === 'changed' ? `Changed since your ${st.was.answer}` : `Your ${st.kind}`}${st.was && st.was.memo ? `: “${st.was.memo}”` : ''}. F or a click brings the bars back.`;
+    badge.textContent = `${answerWord(st.kind)}${memoMark}`;
+    badge.title = `${statusTitle(st)}${st.was && st.was.memo ? `: “${st.was.memo}”` : ''}${t('badgeTail')}`;
     const mark = $('mark');
     if (st.kind === 'changed') {
       mark.className = 'mark hi';
-      mark.textContent = `Changed since your ${st.was.answer} of ${day(st.was.at)}`;
+      mark.textContent = t('markChanged', { answer: inline(st.was.answer), day: day(st.was.at) });
     } else if (st.kind === 'yes' || st.kind === 'no') {
       mark.className = `mark said ${st.kind}`;
-      mark.textContent = st.was.memo ? `Your ${st.kind}: “${st.was.memo}”` : `Your ${st.kind}`;
+      mark.textContent = st.was.memo
+        ? t('markSaidMemo', { answer: inline(st.kind), memo: st.was.memo })
+        : t('markSaid', { answer: inline(st.kind) });
     } else {
       mark.className = 'mark';
       mark.textContent = '';
     }
-    $('question').textContent = screen.question;
+    $('question').textContent = screen.question[ui];
     const device = deviceFor(walk);
-    const own = device.id === who.device ? '' : ` (not their width: they work at ${DEVICE[who.device]})`;
-    $('sub').textContent = `${screen.sentence[state.at.lang] || screen.sentence.en} · ${LANG_NAME[state.at.lang]} · ${deviceName(device)}${own}`;
+    const own = device.id === who.device ? '' : t('notTheirWidth', { device: t(`dev_${who.device}`) });
+    $('sub').textContent = `${screen.sentence[ui] || screen.sentence.en} · ${langName(state.at.lang)} · ${deviceName(device)}${own}`;
 
     $('memo').hidden = !state.memo;
     $('memo').classList.toggle('for-no', state.memo === 'no');
     $('memo-no').hidden = state.memo !== 'memo';
-    $('memo-save').firstChild.textContent = state.memo === 'no' ? 'Save the No ' : 'Save with Yes ';
-    $('memo-text').placeholder =
-      state.memo === 'no' ? 'What is wrong on this screen, in a few words' : 'A note for this screen';
-    $('memo-text').classList.remove('need');
+    $('memo-save-t').textContent = state.memo === 'no' ? t('memoNo') : t('memoYes');
+    if (!$('memo-text').classList.contains('need'))
+      $('memo-text').placeholder = state.memo === 'no' ? t('memoPhNo') : t('memoPhMemo');
     $('no').setAttribute('aria-expanded', String(state.memo === 'no'));
     draw();
+  }
+  function statusTitle(st) {
+    if (st.kind === 'new') return t('stTitle_new');
+    if (st.kind === 'changed') return t('stTitle_changed', { answer: inline(st.was.answer) });
+    return t('stTitle_said', { answer: inline(st.kind) });
+  }
+
+  // The walk's screens beside the picture: each one's name, its answer in the screen's language.
+  function renderList(walk, current) {
+    $('wl-items').replaceChildren(
+      ...walk.screens.map((s) => {
+        const item = { walk: walk.id, screen: s.id, lang: state.at.lang };
+        const st = statusOf(item);
+        const li = el('li');
+        const btn = el('button');
+        btn.type = 'button';
+        btn.dataset.screen = s.id;
+        btn.setAttribute('aria-current', String(s.id === current.id));
+        const mark = el('span', `st s-${st.kind}`, `${answerWord(st.kind)}${st.was && st.was.memo ? ' ✎' : ''}`);
+        mark.title = statusTitle(st);
+        btn.append(el('span', 'num', String(s.number)), el('span', 'nm', s.sentence[ui] || s.sentence.en), mark);
+        btn.addEventListener('click', () => go(item));
+        li.append(btn);
+        return li;
+      }),
+    );
   }
 
   function renderMenu() {
@@ -361,16 +442,24 @@
       render();
     });
     $('theirs').textContent = who
-      ? `${who.name.en} works at ${deviceName(W.devices.find((d) => d.id === who.device))}.`
-      : 'Each walk opens at the width its person works at.';
-    segment($('langs'), LANGS.map((l) => ({ id: l, label: LANG_NAME[l] })), walk ? state.at.lang : null, (lang) => {
+      ? t('theirsWalk', { who: who.name[ui], device: deviceName(W.devices.find((d) => d.id === who.device)) })
+      : t('theirsMap');
+    segment($('langs'), LANGS.map((l) => ({ id: l, label: langName(l) })), walk ? state.at.lang : screenLang(), (lang) => {
+      state.screenLang = lang;
       if (walk) go({ ...state.at, lang });
+      else render();
     });
     const newer = newerScreens();
     $('newer').setAttribute('aria-pressed', String(Boolean(newer)));
-    $('mock-note').textContent = newer
-      ? `A newer build changed ${newer.length} screens: ${newer.join(', ')}.`
-      : 'Answers are kept in this browser, under the credo-walks-mock: keys.';
+    $('mock-note').textContent = newer ? t('newerNote', { n: newer.length, list: newer.join(', ') }) : t('storeNote');
+  }
+
+  function setPageLang(lang) {
+    ui = lang;
+    store.set('page-lang', lang);
+    say('');
+    if (!state.screenLang && state.at) state.at = { ...state.at, lang };
+    render();
   }
 
   function go(item) {
@@ -382,7 +471,7 @@
 
   function stamp(kind) {
     const s = $('stamp');
-    s.textContent = kind === 'yes' ? 'Yes' : 'No';
+    s.textContent = answerWord(kind);
     s.classList.toggle('no', kind === 'no');
     s.classList.remove('go');
     void s.offsetWidth;
@@ -404,10 +493,10 @@
       memo: memo || '',
       at: new Date().toISOString(),
     };
-    store.set('answers', all);
+    store.set(`answers:${nameKey()}`, all);
     stamp(kind);
     const walk = walkOf(state.at.walk);
-    say(`${kind === 'yes' ? 'Yes' : 'No'} saved for screen ${screenOf(walk, state.at.screen).number} in ${LANG_NAME[state.at.lang]}.`);
+    say(t('saved', { answer: answerWord(kind), n: screenOf(walk, state.at.screen).number, lang: langName(state.at.lang) }));
     const items = itemsOf(walk);
     const at = items.findIndex((i) => keyOf(i) === keyOf(state.at));
     const next = items.slice(at + 1).concat(items.slice(0, at)).find(isLeft);
@@ -427,6 +516,7 @@
     state.memo = kind;
     const mine = answers()[keyOf(state.at)];
     $('memo-text').value = mine && mine.memo ? mine.memo : '';
+    $('memo-text').classList.remove('need');
     render();
     $('memo-text').focus();
   }
@@ -434,17 +524,19 @@
     const memo = $('memo-text').value.trim();
     const as = kind || (state.memo === 'no' ? 'no' : 'yes');
     if (as === 'no' && !memo) {
-      say('A No needs its memo: say what is wrong, then save.');
-      $('memo-text').placeholder = 'A No needs its memo: what is wrong, then Enter';
+      say(t('memoNeed'));
+      $('memo-text').placeholder = t('memoNeed');
       $('memo-text').classList.add('need');
       $('memo-text').focus();
       return;
     }
+    $('memo-text').classList.remove('need');
     answer(as, memo);
   }
   function cancelMemo() {
     state.memo = null;
     $('memo-text').value = '';
+    $('memo-text').classList.remove('need');
     $('memo-text').blur();
     render();
   }
@@ -456,30 +548,24 @@
     if (to) go({ ...state.at, screen: to.id });
   }
 
-  // The block the human pastes, or the partner's Share message: one line an answer, with its version.
+  // The block pasted into the chat: the build, the name, then one line an answer with its version.
+  // Its form is fixed whatever the page's language, since the machine reads it.
   function blockText() {
     const all = answers();
-    const label = state.who === 'partner' ? $('label').value.trim().toLowerCase() : '';
-    const lines = allItems()
+    const lines = W.walks
+      .flatMap((walk) => walk.screens.flatMap((s) => LANGS.map((lang) => ({ walk: walk.id, screen: s.id, lang }))))
       .filter((item) => all[keyOf(item)])
       .map((item) => {
         const a = all[keyOf(item)];
         const memo = a.memo.replace(/\s+/g, ' ').trim();
         return `${a.screen} | ${a.lang} | version ${a.version} | ${a.answer} | ${memo} | ${a.at.slice(0, 16).replace('T', ' ')} UTC`;
       });
-    const head = ['Credo walks answers', buildFull];
-    if (label) head.push(`By: ${label}`);
-    return head.concat(lines).join('\n');
+    const line = `Branch ${b.branch}, commit ${b.commit}${b.changed ? ' with changes' : ''}, committed ${b.committed}; built ${b.built}.`;
+    return ['Credo walks answers', line, `By: ${state.name}`].concat(lines).join('\n');
   }
   function openBlock() {
     const text = blockText();
-    const partner = state.who === 'partner';
-    $('block-h').textContent = partner ? 'Your answers, to share' : 'Your answers';
-    $('block-p').textContent = Object.keys(answers()).length
-      ? partner
-        ? 'Copied. Post it where your invite says.'
-        : 'Copied. Paste it into the chat.'
-      : 'Nothing answered yet: the text holds the build only.';
+    $('block-p').textContent = Object.keys(answers()).length ? t('blockCopied') : t('blockEmpty');
     $('block-text').value = text;
     $('block').hidden = false;
     try {
@@ -506,7 +592,7 @@
     render();
   }
   function forget() {
-    store.drop('answers');
+    store.drop(`answers:${nameKey()}`);
     render();
   }
 
@@ -524,9 +610,22 @@
     state.memo = null;
     render();
   }
+  function toggleList() {
+    if (state.view !== 'walk' || state.look) return;
+    state.listOpen = !state.listOpen;
+    store.set('list-open', state.listOpen);
+    render();
+  }
 
+  $('who-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    enterName();
+  });
+  $('who-btn').addEventListener('click', showWho);
   $('to-map').addEventListener('click', toMap);
-  $('brand').addEventListener('click', toMap);
+  $('brand').addEventListener('click', () => (state.view === 'who' ? null : toMap()));
+  $('list-btn').addEventListener('click', toggleList);
+  $('list-fold').addEventListener('click', toggleList);
   $('yes').addEventListener('click', () => answer('yes', ''));
   $('no').addEventListener('click', () => (state.memo === 'no' ? cancelMemo() : openMemo('no')));
   $('memo-btn').addEventListener('click', () => (state.memo === 'memo' ? cancelMemo() : openMemo('memo')));
@@ -549,18 +648,9 @@
   $('newer').addEventListener('click', toggleNewer);
   $('forget').addEventListener('click', forget);
   $('copy').addEventListener('click', openBlock);
-  $('share').addEventListener('click', openBlock);
   $('block-done').addEventListener('click', () => ($('block').hidden = true));
   $('help').addEventListener('click', () => ($('helpbox').hidden = false));
   $('help-done').addEventListener('click', () => ($('helpbox').hidden = true));
-  $('label').value = store.get('label', 'p1');
-  $('label').addEventListener('change', () => store.set('label', $('label').value.trim()));
-  for (const btn of $('who').querySelectorAll('button'))
-    btn.addEventListener('click', () => {
-      state.who = btn.dataset.who;
-      for (const o of $('who').querySelectorAll('button')) o.setAttribute('aria-pressed', String(o === btn));
-      render();
-    });
   for (const btn of $('theme').querySelectorAll('button'))
     btn.addEventListener('click', () => {
       if (btn.dataset.theme) document.documentElement.dataset.theme = btn.dataset.theme;
@@ -594,28 +684,32 @@
     const walk = walkOf(state.at.walk);
     const acts = {
       f: toggleLook,
+      s: toggleList,
       arrowright: () => step(1),
       arrowleft: () => step(-1),
-      l: () => go({ ...state.at, lang: state.at.lang === 'vi' ? 'en' : 'vi' }),
+      l: () => {
+        state.screenLang = state.at.lang === 'vi' ? 'en' : 'vi';
+        go({ ...state.at, lang: state.screenLang });
+      },
       w: () => {
         const ids = W.devices.map((d) => d.id);
         const next = ids[(ids.indexOf(deviceFor(walk).id) + 1) % ids.length];
         state.show = next === person(walk.person).device ? null : next;
         render();
       },
+      // Look answers too: Y at once, N and M by the memo floating over the picture's foot.
+      y: () => answer('yes', ''),
+      n: () => openMemo('no'),
+      m: () => openMemo('memo'),
     };
-    // Look answers too: Y at once, N and M by the memo floating over the picture's foot.
-    acts.y = () => answer('yes', '');
-    acts.n = () => openMemo('no');
-    acts.m = () => openMemo('memo');
     if (acts[k]) {
       event.preventDefault();
       acts[k]();
     }
   });
 
-  if ('ResizeObserver' in window) new ResizeObserver(fit).observe($('stage'));
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe($('pic'));
   else window.addEventListener('resize', fit);
 
-  render();
+  showWho();
 })();
