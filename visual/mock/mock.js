@@ -396,6 +396,11 @@
     const own = device.id === who.device ? '' : t('notTheirWidth', { device: t(`dev_${who.device}`) });
     $('sub').textContent = `${screen.sentence[ui] || screen.sentence.en} · ${langName(state.at.lang)} · ${deviceName(device)}${own}`;
 
+    const targets = allYesTargets(walk).length;
+    for (const id of ['all-yes', 'all-yes-bar']) {
+      $(id).disabled = !targets;
+      $(id).title = targets ? t('allYesAsk', { n: targets }) : t('allYesNone');
+    }
     $('memo').hidden = !state.memo;
     $('memo').classList.toggle('for-no', state.memo === 'no');
     $('memo-no').hidden = state.memo !== 'memo';
@@ -545,6 +550,59 @@
     if (to) go({ ...state.at, screen: to.id });
   }
 
+  // Yes to all: every screen of the walk still left, new or changed, unless its last answer was a No
+  // or carried a memo. It asks once, then offers an Undo that puts each screen back as it was.
+  function allYesTargets(walk) {
+    return itemsOf(walk).filter((item) => {
+      const st = statusOf(item);
+      if (st.kind === 'new') return true;
+      return st.kind === 'changed' && st.was.answer !== 'no' && !st.was.memo;
+    });
+  }
+  function askAllYes() {
+    if (state.view !== 'walk') return;
+    const n = allYesTargets(walkOf(state.at.walk)).length;
+    if (!n) {
+      say(t('allYesNone'));
+      return;
+    }
+    $('all-h').textContent = t('allYesAsk', { n });
+    $('all-box').hidden = false;
+    $('all-go').focus();
+  }
+  let undoTimer = null;
+  function allYes() {
+    $('all-box').hidden = true;
+    const walk = walkOf(state.at.walk);
+    const all = answers();
+    const before = {};
+    const at = new Date().toISOString();
+    for (const item of allYesTargets(walk)) {
+      const k = keyOf(item);
+      before[k] = all[k] || null;
+      all[k] = { screen: k, lang: state.at.lang, version: versionOf(item), answer: 'yes', memo: '', at };
+    }
+    store.set(`answers:${nameKey()}`, all);
+    const n = Object.keys(before).length;
+    say(t('allYesDone', { n }));
+    $('undo-t').textContent = t('allYesDone', { n });
+    $('undo').hidden = false;
+    $('undo-btn').onclick = () => {
+      const now = answers();
+      for (const [k, was] of Object.entries(before)) {
+        if (was) now[k] = was;
+        else delete now[k];
+      }
+      store.set(`answers:${nameKey()}`, now);
+      clearTimeout(undoTimer);
+      $('undo').hidden = true;
+      render();
+    };
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => ($('undo').hidden = true), 8000);
+    render();
+  }
+
   // The block pasted into the chat: the build, the name, then one line a screen answered, with its
   // version and the language it was answered on. Its form is fixed, since the machine reads it.
   function blockText() {
@@ -638,6 +696,10 @@
       cancelMemo();
     }
   });
+  $('all-yes').addEventListener('click', askAllYes);
+  $('all-yes-bar').addEventListener('click', askAllYes);
+  $('all-go').addEventListener('click', allYes);
+  $('all-cancel').addEventListener('click', () => ($('all-box').hidden = true));
   $('look').addEventListener('click', toggleLook);
   $('badge').addEventListener('click', toggleLook);
   $('menu-btn').addEventListener('click', () => ($('menu').hidden ? openMenu() : closeMenu()));
@@ -659,12 +721,13 @@
 
   document.addEventListener('keydown', (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const dialogs = !$('block').hidden || !$('helpbox').hidden;
+    const dialogs = !$('block').hidden || !$('helpbox').hidden || !$('all-box').hidden;
     if (event.key === 'Escape') {
       if (dialogs || !$('menu').hidden) {
         closeMenu();
         $('block').hidden = true;
         $('helpbox').hidden = true;
+        $('all-box').hidden = true;
       } else if (state.memo) cancelMemo();
       else if (state.look) toggleLook();
       return;
@@ -695,7 +758,10 @@
       n: () => openMemo('no'),
       m: () => openMemo('memo'),
     };
-    if (acts[k]) {
+    if (k === 'y' && event.shiftKey) {
+      event.preventDefault();
+      askAllYes();
+    } else if (acts[k]) {
       event.preventDefault();
       acts[k]();
     }

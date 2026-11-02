@@ -22,18 +22,20 @@
   --line: #c4d2e3;
   --soft: #eef3fa;
   --hatch: rgb(19 36 59 / 0.08);
-  /* The page's own blue: fills, blue text, tints and focus. Text on --accent is --accent-ink. */
-  --accent: #1f5aa6;
+  /* The page's own blue, every value a shade of the Steel scale (0 lightest, 9 darkest): the fill,
+     text on it, blue text, a tint, and edges and marks. */
+  --accent: #4a76a9; /* steel 6 */
   --accent-ink: #ffffff;
-  --accent-text: #1c4f91;
-  --accent-soft: #dce8f7;
+  --accent-text: #3e618c; /* steel 7 */
+  --accent-soft: #d6e6f7; /* steel 1 */
+  --accent-line: #4a76a9; /* steel 6 */
   --hi: #f7e36a;
   --hi-ink: #3a3000;
   --yes: #1d7349;
   --yes-ink: #ffffff;
   --no: #a8362c;
   --no-ink: #ffffff;
-  --focus: #2563c4;
+  --focus: #4a76a9; /* steel 6 */
   --shade: 0 1px 2px rgb(19 36 59 / 0.12), 0 8px 28px rgb(19 36 59 / 0.10);
   color-scheme: light;
 }
@@ -46,17 +48,18 @@
     --line: #2f3f55;
     --soft: #1e2c3e;
     --hatch: rgb(255 255 255 / 0.06);
-    --accent: #76aeed;
-    --accent-ink: #0a1626;
-    --accent-text: #8dbcf2;
-    --accent-soft: #1c3250;
+    --accent: #324e71; /* steel 8 */
+    --accent-ink: #ffffff;
+    --accent-text: #9bc1e7; /* steel 3 */
+    --accent-soft: #273c59; /* steel 9 */
+    --accent-line: #5f91c6; /* steel 5 */
     --hi: #e9cf3b;
     --hi-ink: #231d00;
     --yes: #3c9f70;
     --yes-ink: #08160f;
     --no: #df6a5e;
     --no-ink: #1f0805;
-    --focus: #8dbcf2;
+    --focus: #79aadb; /* steel 4 */
     --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
     color-scheme: dark;
   }
@@ -69,17 +72,18 @@
   --line: #2f3f55;
   --soft: #1e2c3e;
   --hatch: rgb(255 255 255 / 0.06);
-  --accent: #76aeed;
-  --accent-ink: #0a1626;
-  --accent-text: #8dbcf2;
-  --accent-soft: #1c3250;
+  --accent: #324e71; /* steel 8 */
+  --accent-ink: #ffffff;
+  --accent-text: #9bc1e7; /* steel 3 */
+  --accent-soft: #273c59; /* steel 9 */
+  --accent-line: #5f91c6; /* steel 5 */
   --hi: #e9cf3b;
   --hi-ink: #231d00;
   --yes: #3c9f70;
   --yes-ink: #08160f;
   --no: #df6a5e;
   --no-ink: #1f0805;
-  --focus: #8dbcf2;
+  --focus: #79aadb; /* steel 4 */
   --shade: 0 1px 2px rgb(0 0 0 / 0.5), 0 10px 30px rgb(0 0 0 / 0.35);
   color-scheme: dark;
 }
@@ -111,10 +115,10 @@ kbd {
   display: inline-flex; align-items: center; gap: 6px;
 }
 .btn:hover { background: var(--accent-soft); }
-.btn.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent-line); }
 .btn.main:hover { filter: brightness(1.08); }
 .btn.round { width: 28px; padding: 0; justify-content: center; border-radius: 50%; }
-.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent-line); }
 .hi {
   background: linear-gradient(transparent 10%, var(--hi) 10%, var(--hi) 90%, transparent 90%);
   color: var(--hi-ink); padding: 0 4px; border-radius: 2px;
@@ -138,7 +142,7 @@ kbd {
 .left b { color: var(--ink); }
 .build-short { color: var(--muted); font: 12px/1 ui-monospace, Menlo, monospace; white-space: nowrap; cursor: help; }
 .meter { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
-.meter i { display: block; height: 100%; background: var(--accent); width: 0; transition: width 240ms ease; }
+.meter i { display: block; height: 100%; background: var(--accent-line); width: 0; transition: width 240ms ease; }
 
 /* The view menu: width, language, and the mock's own switches, out of the picture's way. */
 .menu {
@@ -180,7 +184,7 @@ kbd {
   padding: 10px 12px; border: 0; border-radius: 6px; border-left: 3px solid var(--yes);
   background: var(--paper); box-shadow: var(--shade); text-align: left;
 }
-.card.has-left { border-left-color: var(--accent); }
+.card.has-left { border-left-color: var(--accent-line); }
 .card.nomock { border-left-color: var(--line); }
 .card b { font-size: 14px; line-height: 1.35; font-weight: 600; }
 .card:hover b { text-decoration: underline; text-underline-offset: 3px; }
@@ -201,13 +205,25 @@ kbd {
   font-size: 13px;
 }
 .wl-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 4px 12px; color: var(--muted); }
+.wl-tools { display: flex; gap: 4px; align-items: center; }
+/* Yes to all: in the list's head, or in the bar while the list is folded. */
+#all-yes-bar { display: none; }
+body.list-folded #all-yes-bar { display: inline-flex; height: 36px; }
+.all-yes { color: var(--yes); border-color: var(--yes); }
+.all-yes:disabled { opacity: 0.45; cursor: default; }
+.undo {
+  position: fixed; left: 50%; bottom: calc(var(--bar-h) + 12px); transform: translateX(-50%); z-index: 11;
+  display: flex; gap: 12px; align-items: center; padding: 8px 10px 8px 14px; border-radius: 8px;
+  background: var(--ink); color: var(--paper); box-shadow: var(--shade); font-size: 13px;
+}
+.undo .btn { background: transparent; color: var(--paper); border-color: var(--paper); }
 .walk-list ol { list-style: none; margin: 0; padding: 0 6px 12px; }
 .walk-list li button {
   width: 100%; border: 0; background: none; text-align: left; border-radius: 6px; padding: 5px 6px;
   display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; line-height: 1.3;
 }
 .walk-list li button:hover { background: var(--soft); }
-.walk-list li button[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.walk-list li button[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent-line); font-weight: 600; }
 .walk-list .num { color: var(--muted); text-align: right; font-weight: 400; }
 .st { font-size: 11px; padding: 0 6px; border-radius: 999px; border: 1px solid var(--accent-text); color: var(--accent-text); white-space: nowrap; font-weight: 600; }
 .st.s-changed { background: var(--hi); color: var(--hi-ink); border-color: var(--hi-ink); }
@@ -220,7 +236,7 @@ body.list-folded .walk-list, body.look .walk-list { display: none; }
 .who-view { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
 .who-card {
   width: min(420px, 100%); background: var(--paper); border-radius: 10px; box-shadow: var(--shade);
-  padding: 24px; display: grid; gap: 10px; border-top: 3px solid var(--accent);
+  padding: 24px; display: grid; gap: 10px; border-top: 3px solid var(--accent-line);
 }
 .who-card h1 { margin: 0; font-size: 22px; letter-spacing: -0.015em; }
 .who-card p { margin: 0; color: var(--muted); }
@@ -235,7 +251,7 @@ body.list-folded .walk-list, body.look .walk-list { display: none; }
 .ui-langs { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
 .ui-langs button { height: 26px; border: 0; background: var(--paper); padding: 0 8px; font-size: 12px; color: var(--muted); }
 .ui-langs button + button { border-left: 1px solid var(--line); }
-.ui-langs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.ui-langs button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: inset 0 0 0 1px var(--accent-line); }
 .frame-wrap {
   margin: 0 auto; position: relative;
   background: #fff; box-shadow: var(--shade); border-radius: 4px; overflow: hidden;
@@ -422,7 +438,10 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
   <nav class="walk-list" id="walk-list" data-t-aria-label="whoseScreens">
     <div class="wl-head">
       <b data-t="listH">Screens</b>
-      <button type="button" class="btn round" id="list-fold" data-t-title="listFold" data-t-aria-label="listFold">«</button>
+      <span class="wl-tools">
+        <button type="button" class="btn all-yes" id="all-yes" aria-keyshortcuts="Shift+Y"><span data-t="allYes">Yes to all</span> <kbd>⇧Y</kbd></button>
+        <button type="button" class="btn round" id="list-fold" data-t-title="listFold" data-t-aria-label="listFold">«</button>
+      </span>
     </div>
     <ol id="wl-items"></ol>
   </nav>
@@ -440,6 +459,7 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
       <p class="sub" id="sub"></p>
     </div>
     <div class="answer">
+      <button type="button" class="btn all-yes" id="all-yes-bar" aria-keyshortcuts="Shift+Y"><span data-t="allYes">Yes to all</span> <kbd>⇧Y</kbd></button>
       <button type="button" class="btn" id="memo-btn" aria-keyshortcuts="M"><span data-t="memo">Memo</span> <kbd>M</kbd></button>
       <button type="button" class="no" id="no" aria-keyshortcuts="N"><span data-t="no">No</span> <kbd>N</kbd></button>
       <button type="button" class="yes" id="yes" aria-keyshortcuts="Y"><span data-t="yes">Yes</span> <kbd>Y</kbd></button>
@@ -463,6 +483,22 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
   </div>
 </div>
 
+<div class="dialog" id="all-box" hidden role="dialog" aria-modal="true" aria-labelledby="all-h">
+  <div>
+    <h2 id="all-h"></h2>
+    <p data-t="allYesNote">A No or a memo is never overwritten.</p>
+    <div class="row">
+      <button type="button" class="btn" id="all-cancel"><span data-t="cancel">Cancel</span> <kbd>Esc</kbd></button>
+      <button type="button" class="btn main" id="all-go"><span data-t="allYes">Yes to all</span> <kbd>⏎</kbd></button>
+    </div>
+  </div>
+</div>
+
+<div class="undo" id="undo" hidden role="status">
+  <span id="undo-t"></span>
+  <button type="button" class="btn" id="undo-btn" data-t="undo">Undo</button>
+</div>
+
 <div class="dialog help" id="helpbox" hidden role="dialog" aria-modal="true" aria-labelledby="help-h">
   <div>
     <h2 id="help-h" data-t="helpH">How this page works</h2>
@@ -470,6 +506,7 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
     <dl>
       <dt><kbd>Y</kbd></dt><dd data-t="hY"></dd>
       <dt><kbd>N</kbd></dt><dd data-t="hN"></dd>
+      <dt><kbd>⇧</kbd> <kbd>Y</kbd></dt><dd data-t="hAllYes"></dd>
       <dt><kbd>M</kbd></dt><dd data-t="hM"></dd>
       <dt><kbd>F</kbd></dt><dd data-t="hF"></dd>
       <dt><kbd>S</kbd></dt><dd data-t="hS"></dd>
