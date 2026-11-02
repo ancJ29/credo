@@ -39,7 +39,7 @@ describe('the walks page’s capture', () => {
       draw: (_drawn: Drawn, language: string) =>
         `<div id=":r${react}:" class="a __m__-_r_${react}_"><label for="mantine-${mantine}">x ${language}</label>` +
         `<input id="mantine-${mantine}-inherit" name="mantine-${mantine}" aria-controls="123e4567-e89b-12d3-a456-4266141${uuid}">` +
-        `<p class="mantine-visible-from-md" data-resizing="true">${language}</p>` +
+        `<p class="mantine-visible-from-md" style="padding: var(--mantine-spacing-xs); box-shadow: var(--mantine-shadow-md)" data-resizing="true">${language}</p>` +
         `<style data-mantine-styles="inline">.__m__-_r_${react}_{--x:1}:root:not(.a){--y:2}</style></div>`,
     });
     const first = await build(draw('5p', '1ab2c3d4e', '00000'));
@@ -55,6 +55,10 @@ describe('the walks page’s capture', () => {
     expect(markup).toContain('for="id-3"');
     expect(markup).toContain('id="id-3-inherit" name="id-3" aria-controls="id-2"');
     expect(markup).toContain('class="mantine-visible-from-md"');
+    // a theme token in a style is not an id
+    expect(markup).toContain(
+      'style="padding: var(--mantine-spacing-xs); box-shadow: var(--mantine-shadow-md)"',
+    );
     expect(markup).not.toContain('data-resizing');
   });
 
@@ -161,6 +165,16 @@ describe('the walks page’s capture', () => {
       [screenWalk('w', 's1')],
     );
     expect(other.walks[0].screens[0].version).not.toBe(captured.walks[0].screens[0].version);
+  });
+
+  it('holds a Vietnamese question for every question of every walk', () => {
+    const questions = JSON.parse(
+      readFileSync(join(import.meta.dirname, '../site/questions-vi.json'), 'utf8'),
+    ) as Record<string, string>;
+    const asked = WALKS.flatMap((walk) => walk.screens.map((screen) => screen.question));
+
+    expect(asked.length).toBeGreaterThan(0);
+    for (const question of asked) expect(questions[question], question).toBeTruthy();
   });
 
   it('keeps each distinct run-time style block of the app once, and a capture points at it', () => {

@@ -120,7 +120,7 @@ export function steadied(markup: string) {
       .replace(/ ([a-z-]+)="([^"]*)"/g, (all, name: string, value: string) =>
         name === 'class'
           ? all
-          : ` ${name}="${value.replace(/:r[0-9a-z]+:|mantine-[0-9a-z]{6,9}(?![0-9a-z])/g, renumbered)}"`,
+          : ` ${name}="${value.replace(/:r[0-9a-z]+:|(?<![\w-])mantine-[0-9a-z]{6,9}(?![0-9a-z])/g, renumbered)}"`,
       )
   );
 }

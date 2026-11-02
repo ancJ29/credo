@@ -92,18 +92,6 @@ then ridge's c-storage is reached through the tunnel from the human's Mac
 machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
 or tool outside AWS.
 
-## 16. A partner's post that loses its title and `By:` outside a code fence joins the one above — the machine; *parked* until the real copy of Slack's text is read (the sharing plan, step 6, 2026-10-29)
-
-`pnpm answers --partners` ends a block at a title or a code fence's end. When a post's title and
-its `By:` line are both lost and no fence stands between, its answer lines read under the previous
-post's label; only a chat name-and-time line separates them, and no pattern for it is sound before
-the real copy of Slack's text is read. *Trigger:* that copy, from the step 6 round trip.
-
-The case it does not cover, the other way: in `--partners` mode, if Slack's copy loses the fences, a
-chat line that starts `by:` inside a block now spoils a valid partner's block, since any
-`By:`-looking line inside one counts as a `By:` line. The refusal is loud, by line, and nothing is
-misattributed; it waits for the same copy.
-
 ## 18. The stack's seed door answers any process on the machine — the machine; *parked* until a stack runs on a machine others log into (the employee list plan, step 9, 2026-10-29)
 
 `scripts/src/seeding.ts` serves `POST /seed` on loopback for as long as a stack stands, so the full
@@ -132,37 +120,6 @@ With a prefix of `EMP-` and a last number of 16 digits, `nextCode` makes a code 
 The BFF now parses the person before any write and answers 400, so no record the list cannot read is stored.
 The add page reads that 400 as a failed save and says to try again, which never works. The human: "EMP-9999999999999999
 never happen" (customers do not reach 1000). If it ever does, `nextCode` refuses at the limit and the add page says why.
-
-## 26. `visual/src/cli.test.ts` times out at 60 s under load — the machine, at the next review of `visual`; *parked* until then (the operator console plan, step 6, 2026-10-30)
-
-The first whole `pnpm check` of the operator console's step 6 went red in `visual/src/cli.test.ts`:
-"Test timed out in 60000ms" in the `pnpm answers` tests (and the test after the first). The
-one-minute load was about 10, with two agents' whole gates running at once. That file alone then
-passed (7 tests), and the next whole run, at load about 4, was green. Nothing in `visual/` had
-changed in that step. [QA](conventions/qa.md) rule 6 holds: a flaky red is a defect, so the test
-and its bound are left as they are, and a longer timeout would hide the cause.
-
-**Seen again, 2026-10-30 12:28 +0700** (the operator console's warning fix): the whole `pnpm check`
-went red in the same file, with a second symptom. `logs/20261030-1224-operator-console-warning-check.log`,
-lines 116 to 158: the file took 219976 ms; "With partners, takes a partner’s Share post under their
-label, refuses a human’s block among them, and the plain command refuses the partner’s" timed out at
-60000 ms; "stops on an answers file that does not parse, and puts the process back" threw `window is not
-defined`, and react-dom raised two unhandled errors after the timeout. The one-minute load was 12.02.
-Nothing in `visual/` had changed. The rerun
-(`logs/20261030-1229-operator-console-warning-check-2.log`) was green on the whole check at load 7.52,
-with no verdict on the red ([QA](conventions/qa.md) rule 6).
-
-To look into: each `pnpm answers` test first calls `pageFingerprints`, which makes a root and
-builds the whole walks page with `report` (a Vite production build, with all the walks' screens
-drawn) before it answers on it. How long does that take alone, and how much of it is the build
-and how much the drawing of the screens? Is it near 60 s only because the machine was busy, or does
-each test build the page again when one built page would do, so that the work, and the chance of
-the bound, is a multiple of what it needs?
-
-Answered (line 31 and line 34, 2026-11-01): `answer` draws only the screens a block answers (line 31), and the file's tests share one
-build made in a `beforeAll` (line 34), so the timeouts came from the build's cost landing on whichever test ran first and from a
-timed-out test leaving `report()` running with `installDom`'s globals; the file alone is 150.7 s down to 40.1 s. Left open until
-GitHub's next green run.
 
 ## 27. The whole gate goes red under load on tests that pass alone, and a test seems to outlive its jsdom — the machine, at the next review; *parked* until then (the employee list plan, step 19, 2026-10-30)
 
@@ -344,10 +301,7 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
 ## 37. `visual`'s tests: review findings 4 and 6 of line 31 and a finer budget, deferred under the 11-04 demo's exception — the machine; *parked* until after the demo (ci-timeouts, step 3, 2026-11-01)
 
 The review of line 31 fixed its High and Medium findings; these stay.
-- **Finding 4, `visual/src/cli.ts#L70-L73`:** no test holds that `answer` draws only the screens a block answers; passing `undefined`
-  for `asked` leaves the cheap answers tests green and slower (20 ms to 27 s). Fix: a test of `answer` that counts what it draws,
-  through a words reader passed in or a `vi.mock('./words', …)` wrapper in a small file of its own.
-- **Finding 6, `visual/src/take.ts#L16`:** a comment says "every screen" where it is now "the screens asked". Fix: reword it at the next touch.
+- **Findings 4 and 6 (`cli.ts`, `take.ts`):** retired with `pnpm answers` and `cli.test.ts` (the walks page, step 2).
 - **The finer budget (Decide 48's (b), done honestly):** the build's readers under one `describe` with 240 s on that block alone,
   then `visual/vitest.config.ts`'s default lowered to what the other tests need (the slowest takes about 35 s on GitHub).
   Line 34's review adds: the five tests that read the build go under that `describe`, and the four that do not (the process put back,
@@ -522,4 +476,23 @@ In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two 
 Seen again on 2026-11-03 at load about 12, in the walks page's step 2: `MyDeliveries.test.tsx` alone, the same no call, with nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
 
 *Trigger:* the next red of either, or a quiet machine's whole check.
+
+## 58. `appStyles` and `pageScript` save and restore `NODE_ENV` at once — the machine; *parked* until after the 11-04 demo (the walks page, review of step 2, 2026-11-03)
+
+`visual/src/capture.ts#L40-L48` sets and restores `process.env['NODE_ENV']` around each Vite build,
+and `#L342-L346` runs the two under `Promise.all`: the second saves the first's `production`, so after
+both end `NODE_ENV` may stay `production` instead of what it was. Fix: run them one after the other,
+or set it once around both.
+
+## 59. Undo puts back a saved copy and writes under the name active at Undo — the machine; *parked* until after the 11-04 demo (the walks page, review of step 2, 2026-11-03)
+
+`visual/site/page.ts#L642-L648`: Undo restores the copy of each screen taken when Yes to all ran, so
+a No given within the 8 seconds is deleted, and the write goes under the name active at Undo, not
+the one at Yes to all. Fix: restore only a screen still holding the Yes to all's own answer, under
+the name it was given under.
+
+## 60. `READS` names the four people the page knows — the machine; *parked* until after the 11-04 demo (the walks page, review of step 2, 2026-11-03)
+
+`visual/site/page.ts#L130-L131`: a person added to `PEOPLE` has no entry, so a walk opens with `lang`
+undefined. Fix: take the language from the build's data, or fall back to `vi`.
 
