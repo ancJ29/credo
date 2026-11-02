@@ -35,7 +35,8 @@ try {
   if (command === 'answers') {
     if ((await cli.answer(await pasted(file), console.log, { partners })) > 0) process.exitCode = 1;
   } else {
-    await cli.report(process.cwd(), console.log);
+    const { report } = await import('./capture.mjs');
+    await report(server, process.cwd(), console.log);
   }
 } finally {
   await server.close();

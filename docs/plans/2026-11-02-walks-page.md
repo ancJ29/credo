@@ -60,7 +60,7 @@ Rows 1 to 3 held in `capture.test.ts`, 4 to 11 in `page.test.ts`, 12 in `tokens.
 
 ## Steps
 
-- [ ] **1. The mock's page on the build's data.** `pnpm report` keeps each screen's markup, the
+- [x] **1. The mock's page on the build's data.** `pnpm report` keeps each screen's markup, the
   stylesheet once, a version a screen (the whole stylesheet in it for now) and the mock's
   Vietnamese questions; the page is the mock's three files, its test switches gone. Done when:
   `walks.json` reads 96 screens and 192 captures, none empty; a second build moves 0 versions;

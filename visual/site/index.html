@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Credo walks mock</title>
+<title>Credo Day Walks</title>
 <!--
-  A static mock of the walks page's next look, for one yes or no before the real page is rebuilt.
-  Opens from disk: no server, no network. walks.js holds the walks' words and the build line of one
-  build; screens.js holds a few screens as that build drew them, and the app's CSS they need;
-  words.js holds the page's own words in Tiếng Việt and English.
+  The walks page: one file, opening from disk with no server and no network. The build puts the
+  walks, every screen as the app drew it and the build line into the data script below; words.js
+  holds the page's own words in Tiếng Việt and English.
 -->
 <style>
 :root {
@@ -144,7 +143,7 @@ kbd {
 .meter { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
 .meter i { display: block; height: 100%; background: var(--accent-line); width: 0; transition: width 240ms ease; }
 
-/* The view menu: width, language, and the mock's own switches, out of the picture's way. */
+/* The view menu: width, language, and the colour, out of the picture's way. */
 .menu {
   position: fixed; top: calc(var(--top-h) + 4px); right: 8px; z-index: 9;
   width: min(340px, calc(100vw - 16px));
@@ -154,8 +153,8 @@ kbd {
 .menu h3 { margin: 8px 0 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .menu h3:first-child { margin-top: 0; }
 .menu .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-.menu .mock-only { border-top: 1px dashed var(--muted); margin-top: 10px; padding-top: 8px; }
-.menu #menu-walk[hidden] + .mock-only { border-top: 0; margin-top: 0; padding-top: 0; }
+.menu .menu-colour { border-top: 1px dashed var(--muted); margin-top: 10px; padding-top: 8px; }
+.menu #menu-walk[hidden] + .menu-colour { border-top: 0; margin-top: 0; padding-top: 0; }
 .menu .note { color: var(--muted); margin: 2px 0 6px; font-size: 12px; }
 
 /* The map of the day: people down, the day's stages across. */
@@ -165,7 +164,6 @@ kbd {
 .map-head .lede { margin: 0; color: var(--muted); grid-column: 1; }
 .build-line { margin: 0; color: var(--muted); font-size: 13px; text-align: right; grid-column: 2; grid-row: 1 / span 2; max-width: 46ch; }
 .build-line code { font: 12px ui-monospace, Menlo, monospace; color: var(--ink); }
-.mock-tag { display: inline-block; margin-top: 4px; padding: 1px 6px; border: 1px dashed var(--muted); border-radius: 4px; font-size: 12px; }
 .map {
   display: grid;
   grid-template-columns: 128px repeat(var(--parts), minmax(0, 1fr));
@@ -185,7 +183,6 @@ kbd {
   background: var(--paper); box-shadow: var(--shade); text-align: left;
 }
 .card.has-left { border-left-color: var(--accent-line); }
-.card.nomock { border-left-color: var(--line); }
 .card b { font-size: 14px; line-height: 1.35; font-weight: 600; }
 .card:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .card .sub { color: var(--muted); font-size: 13px; }
@@ -195,7 +192,6 @@ kbd {
 .pill.left { background: var(--accent); color: var(--accent-ink); }
 .pill.changed { background: var(--hi); color: var(--hi-ink); }
 .pill.done { color: var(--yes); }
-.pill.nomock { background: none; border: 1px dashed var(--muted); }
 
 /* The walk: its screens listed beside the picture, the picture as large as the room allows. */
 .stage { flex: 1; min-height: 0; display: flex; position: relative; }
@@ -398,18 +394,13 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
   <div class="row" id="langs" role="group" data-t-aria-label="screenLangH"></div>
   <p class="note" data-t="screenLangNote">A walk opens in the language its person reads; change it here or with L.</p>
   </div>
-  <div class="mock-only">
-    <h3 data-t="mockOnlyH">Mock only</h3>
+  <div class="menu-colour">
+    <h3 data-t="themeH">Colour</h3>
     <div class="row" id="theme" role="group">
       <button type="button" class="btn" data-theme="" aria-pressed="true" data-t="themeSystem">System</button>
       <button type="button" class="btn" data-theme="light" aria-pressed="false" data-t="themeLight">Light</button>
       <button type="button" class="btn" data-theme="dark" aria-pressed="false" data-t="themeDark">Dark</button>
     </div>
-    <div class="row">
-      <button type="button" class="btn" id="newer" aria-pressed="false" data-t="newer">Pretend a newer build</button>
-      <button type="button" class="btn" id="forget" data-t="forget">Forget my answers</button>
-    </div>
-    <p class="note" id="mock-note"></p>
   </div>
 </div>
 
@@ -518,9 +509,8 @@ body.look .bar .ask-text, body.look .bar .answer { display: none; }
   </div>
 </div>
 
-<script src="walks.js"></script>
-<script src="screens.js"></script>
-<script src="words.js"></script>
-<script src="mock.js"></script>
+<script>/*DATA*/</script>
+<script>/*WORDS*/</script>
+<script>/*PAGE*/</script>
 </body>
 </html>

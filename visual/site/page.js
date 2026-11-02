@@ -1,12 +1,11 @@
-// The walks page's next look, as a static mock: who is answering first, then the map of the day; a
+// The walks page: who is answering first, then the map of the day; a
 // walk opens at its first screen left to answer, its screens listed beside the picture, its one
 // question in a slim bar, or the picture alone in Look. Answers stay in this browser, one set a
 // name. Classic script, so it runs from file://.
 (function () {
   'use strict';
-  const W = window.MOCK_WALKS;
-  const S = window.MOCK_SCREENS;
-  const WORDS = window.MOCK_WORDS;
+  const W = window.WALKS_DATA;
+  const WORDS = window.WALKS_WORDS;
   const $ = (id) => document.getElementById(id);
   const LANGS = ['vi', 'en'];
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -15,12 +14,10 @@
   const screenOf = (walk, id) => walk.screens.find((s) => s.id === id);
   // One answer a screen, whichever language it was given on.
   const keyOf = (item) => `${item.walk}/${item.screen}`;
-  const captured = (walk) =>
-    walk.screens.some((s) => Object.keys(S.screens).some((k) => k.startsWith(`${walk.id}/${s.id}/`)));
 
   // Storage: every read and write may throw (a private window, a blocked site, an opaque origin),
   // and the page works without it, its answers then living until the page closes.
-  const PREFIX = 'credo-walks-mock:';
+  const PREFIX = 'credo-walks:';
   const memory = {};
   const store = {
     get(name, fallback) {
@@ -72,23 +69,8 @@
     for (const e of document.querySelectorAll('[data-t-aria-label]')) e.setAttribute('aria-label', t(e.dataset.tAriaLabel));
   }
 
-  // A screen's version: an opaque id, one per screen. The mock makes its own; what the real page
-  // computes it from is not settled here.
-  function opaque(text) {
-    let h = 0x811c9dc5;
-    for (let i = 0; i < text.length; i++) {
-      h ^= text.charCodeAt(i);
-      h = Math.imul(h, 0x01000193) >>> 0;
-    }
-    return h.toString(16).padStart(8, '0');
-  }
-  const FIXED_NEWER = ['office-orders/orders-4-confirmed', 'driver-deliveries/driver-2-request', 'office-reconcile/reconcile-3-cash'];
-  const newerScreens = () => store.get('newer-build', null);
-  function versionOf(item) {
-    const newer = newerScreens();
-    const moved = newer && newer.includes(`${item.walk}/${item.screen}`);
-    return opaque(`${W.build.commit}/${keyOf(item)}${moved ? '/newer' : ''}`);
-  }
+  // A screen's version: the build's own, twelve hex digits over what the screen draws.
+  const versionOf = (item) => screenOf(walkOf(item.walk), item.screen).version;
 
   const state = {
     view: 'who',
@@ -139,7 +121,7 @@
     const screen = screenOf(walk, state.at.screen);
     const device = deviceFor(walk);
     const key = `${state.at.walk}/${state.at.screen}/${state.at.lang}/${device.id}`;
-    const html = S.screens[key];
+    const html = W.captures[`${state.at.walk}/${state.at.screen}/${state.at.lang}`];
     wrap.className = `frame-wrap ${device.id}`;
     if (!html) {
       wrap.hidden = true;
@@ -173,7 +155,7 @@
     doc.open();
     doc.write(
       `<!doctype html><html lang="${state.at.lang}" data-mantine-color-scheme="light"><head><meta charset="utf-8">` +
-        `<style>${S.css}</style><style>body{margin:0}</style></head><body>${html}</body></html>`,
+        `<style>${W.css}</style><style>body{margin:0}</style></head><body>${html.replace(/<!--style:(\d+)-->/g, (_tag, n) => `<style data-mantine-styles="true">${W.styles[n]}</style>`)}</body></html>`,
     );
     doc.close();
     const mine = frame;
@@ -246,15 +228,13 @@
     const line = el('span');
     line.append(t('blBranch'), el('code', '', b.branch), t('blCommit'), el('code', '', b.commit));
     line.append(`${b.changed ? t('blWithChanges') : ''}${t('blTimes', b)}`);
-    if (newerScreens()) line.append(el('br'), el('span', 'mock-tag', t('mockNewerTag')));
     $('build-line').replaceChildren(line);
   }
   function card(walk, part) {
     const items = itemsOf(walk);
     const left = items.filter(isLeft).length;
     const changed = items.filter((i) => statusOf(i).kind === 'changed').length;
-    const inMock = captured(walk);
-    const btn = el('button', `card${left ? ' has-left' : ''}${inMock ? '' : ' nomock'}`);
+    const btn = el('button', `card${left ? ' has-left' : ''}`);
     btn.type = 'button';
     btn.dataset.walk = walk.id;
     btn.append(el('span', 'part', part.name[ui]), el('b', '', walk.title[ui]), el('span', 'sub', t('screens', { n: walk.screens.length })));
@@ -262,7 +242,6 @@
     if (left) pills.append(el('span', 'pill left', t('pillLeft', { n: left })));
     if (changed) pills.append(el('span', 'pill changed', t('pillChanged', { n: changed })));
     if (!left) pills.append(el('span', 'pill done', t('pillDone')));
-    if (!inMock) pills.append(el('span', 'pill nomock', t('pillNoMock')));
     btn.append(pills);
     btn.addEventListener('click', () => openWalk(walk.id));
     return btn;
@@ -451,9 +430,6 @@
     segment($('langs'), LANGS.map((l) => ({ id: l, label: langName(l) })), walk ? state.at.lang : null, (lang) => {
       if (walk) go({ ...state.at, lang });
     });
-    const newer = newerScreens();
-    $('newer').setAttribute('aria-pressed', String(Boolean(newer)));
-    $('mock-note').textContent = newer ? t('newerNote', { n: newer.length, list: newer.join(', ') }) : t('storeNote');
   }
 
   function setPageLang(lang) {
@@ -630,26 +606,6 @@
     $('block-done').focus();
   }
 
-  // Mock only: pretend a newer build changed three screens, so the changed mark shows. It takes the
-  // screens answered last, topped up with fixed ones, so an answered screen moves whenever there is one.
-  function toggleNewer() {
-    if (newerScreens()) store.drop('newer-build');
-    else {
-      const recent = Object.values(answers())
-        .sort((x, y) => (x.at < y.at ? 1 : -1))
-        .map((a) => a.screen)
-        .filter((s, i, list) => list.indexOf(s) === i);
-      const pick = recent.slice(0, 3);
-      for (const s of FIXED_NEWER) if (pick.length < 3 && !pick.includes(s)) pick.push(s);
-      store.set('newer-build', pick);
-    }
-    render();
-  }
-  function forget() {
-    store.drop(`answers:${nameKey()}`);
-    render();
-  }
-
   function openMenu() {
     $('menu').hidden = false;
     $('menu-btn').setAttribute('aria-expanded', 'true');
@@ -703,8 +659,6 @@
   $('look').addEventListener('click', toggleLook);
   $('badge').addEventListener('click', toggleLook);
   $('menu-btn').addEventListener('click', () => ($('menu').hidden ? openMenu() : closeMenu()));
-  $('newer').addEventListener('click', toggleNewer);
-  $('forget').addEventListener('click', forget);
   $('copy').addEventListener('click', openBlock);
   $('block-done').addEventListener('click', () => ($('block').hidden = true));
   $('help').addEventListener('click', () => ($('helpbox').hidden = false));

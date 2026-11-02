@@ -6,7 +6,7 @@
     "scripts": { "entry": ["src/ridge-main.ts"] },
     "shared": {},
     "ui": {},
-    "visual": { "entry": ["src/cli.ts"], "ignore": ["mock/**"] },
+    "visual": { "entry": ["src/cli.ts"], "ignore": ["site/**"] },
     "walk": {}
   }
 }
