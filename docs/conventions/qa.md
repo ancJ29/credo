@@ -5,17 +5,19 @@
 > human: rules picked from the old repo's standing preferences. **Amended** 2026-10-27 by the
 > human: the gate's scope and cadence, in rule 6. **Amended** 2026-10-28 by the human: a review's
 > findings tagged, in rule 5. **Amended** 2026-10-31 by the human: rule 7, a moved pixel counted
-> raw. Binds every feature's plan, every test and every merge into `main`.
+> raw. **Amended** 2026-11-02 by the human: rule 1, the case table the machine's whole and the
+> human's points visual, up to five, each told. Binds every feature's plan, every test and every
+> merge into `main`.
 
 ## At a glance
 
-**The human does two steps of each feature:** reads its business cases before any code, and
-walks its screens, yes or no. The machine does the rest.
+**The human has up to five points in a feature, each a look:** its walk, a page or a diagram,
+told in a few sentences and answered yes or no. The machine does the rest.
 
 ```mermaid
 flowchart LR
-  table["case table<br/>🤖 drafts"] --> business["business rows<br/>👤 reads"]
-  business --> red["red<br/>🤖 breaks each case once"]
+  table["case table<br/>🤖"] --> cheap["cheap end-to-end build<br/>🤖 fake first"]
+  cheap --> look["fake walk, page or diagram<br/>👤"] --> red["red<br/>🤖 breaks each case once"]
   red --> green["green · coverage 100 %<br/>🤖"]
   green --> review["review<br/>🤖 another model"]
   review --> walks["walks<br/>👤 yes or no a screen"]
@@ -26,7 +28,7 @@ flowchart LR
 
 The eight rules, numbered as [below](#the-rules):
 
-1. Each feature starts with a table of cases, one behaviour a line.
+1. Each feature starts with a table of cases, one behaviour a line, all of it the machine's.
 2. A test counts only if it fails when its behaviour breaks, so each is seen failing once; a
    route only a test calls is dead.
 3. Each case is tested as close to its code as it can be.
@@ -41,12 +43,12 @@ The eight rules, numbered as [below](#the-rules):
 
 ## The shapes, from an invented feature
 
-The case table, before any code. 👤 marks a business row; the test's name is the sentence.
+The case table, before any code, the machine's alone; the test's name is the sentence.
 
-| # | 👤 | The case: one behaviour, one sentence | Held by |
-| --- | --- | --- | --- |
-| 1 | 👤 | A name already in the list is refused, and the list stays as it was | BFF route, `items.route.test.ts` |
-| 2 | | A name is stored without the spaces around it | unit, `item-name.test.ts` |
+| # | The case: one behaviour, one sentence | Held by |
+| --- | --- | --- |
+| 1 | A name already in the list is refused, and the list stays as it was | BFF route, `items.route.test.ts` |
+| 2 | A name is stored without the spaces around it | unit, `item-name.test.ts` |
 
 The map of walks. A dash is a part of the day not built yet.
 
@@ -57,12 +59,20 @@ The map of walks. A dash is a part of the day not built yet.
 
 ## The rules
 
-1. **A feature's plan carries a case table.** Each case is one behaviour in one sentence, beside
-   the test that holds it. Its business rows say what the feature must do for its user, or what
-   it is missing that a user will need; the human reads them before any code. Every other row
-   is the machine's, as [collaboration](collaboration.md)'s hand-off 2 draws the line.
-   *Rejected:* the human reading every row. Technical rows, read without the code's facts, come
-   back as guesses.
+1. **A feature's plan carries a case table, and every row is the machine's.** Each case is one
+   behaviour in one sentence, beside the test that holds it. The machine drafts and holds them all,
+   among them those that say what the feature must do for its user, or what it lacks that a user
+   will need. **The human's points are looks, up to five:** the walk of rule 7, a page or a
+   diagram, each told in a few sentences the human can picture and answered yes or no at the step
+   that needs it. A product choice with a stake (a client, money, data or production) is asked
+   there as one recommendation, as [collaboration](collaboration.md)'s hand-off 2 draws the line;
+   an ask the human makes on their own becomes a case. *Rejected:* the human reading the business
+   rows before any code. Of the 85 the human read in the plans up to 2026-11-02, none came back
+   corrected, while every real change came from the human's own asks. A kind of row that never
+   comes back corrected is the machine's. *Rejected:* the human reading every row. Technical rows,
+   read without the code's facts, come back as guesses. *Rejected:* two points at most, each in
+   one line. The human's cost was never the count but a point too thin to picture: on 2026-11-02
+   the human set five as still fine, and asked for each to be explained, not given in one line.
 2. **A case is held only when breaking its rule turns its test red**, so each case is broken
    once before it passes: run red before its code exists, or with its rule's line changed and
    then put back. The red must come from the assertion on that rule; a missing import or an
