@@ -1,6 +1,6 @@
 # The seed made safe for the demo: room in its limits, a closed day passed, a start off the demo hour
 
-**Where it stands — 2026-11-02 10:53 +07:** steps 1 to 3 built and read back; step 4, the whole `pnpm check`, is running. (a) was chosen for the closed day.
+**Where it stands — 2026-11-02 10:53 +07:** steps 1 to 3 built and read back; step 4: the whole `pnpm check` read exit 0, at the commit below; ready for review. (a) was chosen for the closed day.
 
 > **Drafted** 2026-11-02 by the machine, on the human's yes of 10:4x +07 (Decide 53 amended), from
 > `.github/workflows/seed.yml`, `scripts/src/demo/apply.ts`, `bff/src/orders.ts` and
@@ -44,4 +44,4 @@ no call but leaves a draft the demo would show, and it also swallows a 400 for a
 - [x] **2. The closed day.** Red first (the run throws a 400 on a closed driver's day), then `dayOrders` skips
   closed drivers. Done when: the new test is seen failing from its own assertion, then green, scripts at 100 %. Read: failed once with the BFF's 400 on the confirm, green after `dayOrders` leaves a closed driver out.
 - [x] **3. Today.** A test at 20:17 UTC. Done when green. Read: green.
-- [ ] **4. The gate, the commit, the stop.** Whole `pnpm check` exit 0, then stop for review.
+- [x] **4. The gate, the commit, the stop.** Whole `pnpm check` exit 0, then stop for review. Read: exit 0, scripts at 100 %.
