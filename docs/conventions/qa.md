@@ -6,7 +6,8 @@
 > human: the gate's scope and cadence, in rule 6. **Amended** 2026-10-28 by the human: a review's
 > findings tagged, in rule 5. **Amended** 2026-10-31 by the human: rule 7, a moved pixel counted
 > raw. **Amended** 2026-11-02 by the human: rule 1, the case table the machine's whole and the
-> human's points visual, up to five, each told. Binds every feature's plan, every test and every
+> human's points visual, up to five, each told. **Amended** 2026-11-03 by the human: rule 7, a
+> yes held until its screen's version moves. Binds every feature's plan, every test and every
 > merge into `main`.
 
 ## At a glance
@@ -37,8 +38,8 @@ The eight rules, numbered as [below](#the-rules):
    deferred, with its reason.
 6. A test that fails only sometimes is a bug, never rerun until it passes; and only the gate that
    can change a conclusion is run.
-7. The screens are the final check: each person's day, on their device, yes or no; the machine
-   counts every moved pixel, raw.
+7. The screens are the final check: each person's day, on their device, yes or no a screen
+   until its look changes; the machine counts every moved pixel, raw.
 8. Every line is tested, or says why not, as in "we choose not to test this".
 
 ## The shapes, from an invented feature
@@ -119,13 +120,20 @@ The map of walks. A dash is a part of the day not built yet.
    pixels for every comparison it makes. *Rejected:* a tolerance, a threshold or a comparator that
    skips anti-aliased pixels: it hides a picture that is not steady, and the next real move of one
    shade inside it. *Rejected:* a mask over what moves, such as a card's frame: the human judges the
-   frame. The human answers yes or no for the business, from the picture and one short question;
-   a yes holds until the screen's words change. A "no" becomes a case in the table, and a
-   feature is done when none of its walks holds an open "no". *Rejected:* a gallery of every
-   screen that asks nothing. It makes the human read, and finds nothing missing: a picture shows
-   only what was built. *Rejected:* a base image per captured case, hundreds of them, rewritten
-   by any layout change. *Rejected:* keying a yes to the pixels. A new value would re-ask an
-   answered screen; its words re-ask only on a changed label or rule.
+   frame. The human answers yes or no for the business, from the picture and one short question,
+   one answer a screen; a yes holds until the screen's version moves. The version is computed
+   from the screen's own markup, in both languages, and the style rules that match it; its one
+   home is `versionOf` in `visual/src/capture.ts`. The answers are kept in the answerer's browser,
+   under the name typed there, and reach the machine as the block the answerer copies into the
+   chat. A "no" becomes a case in the table, and a feature is done when none of its walks holds
+   an open "no". *Rejected:* a gallery of every screen that asks nothing. It makes the human read,
+   and finds nothing missing: a picture shows only what was built. *Rejected:* a base image per
+   captured case, hundreds of them, rewritten by any layout change. *Rejected:* keying a yes to
+   the screen's words, this rule before 2026-11-03. Its price: a screen whose look changed under
+   the same words kept its yes, unseen, and each screen was asked once a language. It rested on
+   an earlier rejection, keying a yes to the pixels, as a new value would re-ask an answered
+   screen; that no longer holds: a date or a name is fixed at its source (above), and two builds
+   of one commit give every screen the same version, as `visual/src/capture.test.ts` holds.
 8. **Coverage is 100 %, and every line left out says why.** The gate is 100 % of statements,
    lines, functions and branches. A line the tests do not run is tested, or carries the coverage
    tool's ignore hint, its reason starting with one of three words: `unreachable`, no input in

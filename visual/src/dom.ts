@@ -5,7 +5,7 @@ import { JSDOM } from 'jsdom';
  * parts the page uses, as a browser's modal dialog has them: `showModal` opens it, `close` shuts it
  * and says so with a `close` event. The page behind and Escape are the browser's, not stubbed.
  */
-export function stubDialog(win: Window & typeof globalThis) {
+function stubDialog(win: Window & typeof globalThis) {
   const dialog = win.HTMLDialogElement.prototype;
   Object.defineProperty(dialog, 'open', {
     configurable: true,

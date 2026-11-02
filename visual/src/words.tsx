@@ -66,6 +66,9 @@ export function wordsOf(root: Element, { navigation = false } = {}): string[] {
   return lines;
 }
 
+/** The markup of the screen drawn last, as the build keeps it: read right after `wordsOf` ran. */
+export const lastDrawn = { markup: '' };
+
 /** One mock screen drawn on the page's own DOM, as ui's tests draw one, and its words read. */
 export function drawnWords(
   screen: ReactNode,
@@ -83,6 +86,7 @@ export function drawnWords(
         </Stage>,
       );
     });
+    lastDrawn.markup = container.innerHTML;
     return wordsOf(container, options);
   } finally {
     act(() => root.unmount());
@@ -120,7 +124,10 @@ export async function drawnSceneWords(
     const began = Date.now();
     for (;;) {
       const phase = container.querySelector('[data-scene]')?.getAttribute('data-scene');
-      if (phase === 'done') return wordsOf(container, options);
+      if (phase === 'done') {
+        lastDrawn.markup = container.innerHTML;
+        return wordsOf(container, options);
+      }
       if (phase === 'failed') {
         const why = container.querySelector('[data-scene-failed]')!.textContent;
         throw new Error(`walk ${walk}, screen ${id}: ${why}`);

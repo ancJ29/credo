@@ -3,17 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
-import {
-  allKeys,
-  answerKey,
-  DEVICE_WIDTH,
-  PARTS,
-  PEOPLE,
-  resolveDrawn,
-  type Step,
-  type Walk,
-  WALKS,
-} from './walks';
+import { DEVICE_WIDTH, PARTS, PEOPLE, resolveDrawn, type Step, type Walk, WALKS } from './walks';
 import { stepWords } from './scene';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
@@ -129,12 +119,6 @@ describe('the walks', () => {
     expect(PARTS.map((part) => part.id)).toContain(walk.part);
     expect(PEOPLE.find((person) => person.id === walk.person)!.device).toBe('pc');
     expect(DEVICE_WIDTH).toEqual({ pc: 1280, tablet: 768, phone: 390 });
-  });
-
-  it('keys an answer by walk, screen and language, two for each screen', () => {
-    expect(answerKey('w', '1-a', 'vi')).toBe('w:1-a:vi');
-    expect(allKeys(WALKS)).toHaveLength(WALKS.flatMap((walk) => walk.screens).length * 2);
-    expect(allKeys(WALKS)[0]).toBe('admin-setup:1-sign-in:vi');
   });
 
   it('names every screen of every walk as the walk specs do, which makes their base images', () => {

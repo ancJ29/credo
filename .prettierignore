@@ -10,3 +10,5 @@ coverage/
 .github/
 # ridge's infrastructure: shell, CloudFormation and test data, with its own gate (ops/check.sh).
 ops/
+# A static look for the human to judge, its data captured from a build: no product code.
+visual/site/index.html
