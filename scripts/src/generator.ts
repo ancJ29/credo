@@ -1,7 +1,7 @@
 import { generateKeyPairSync } from 'node:crypto';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
-import { createOperator } from '@credo/bff/operators';
+import { createOperator, makeLink } from '@credo/bff/operators';
 import { createSessions, OPERATOR_SESSION } from '@credo/bff/sessions';
 import {
   type AddEmployeeReply,
@@ -47,11 +47,15 @@ import {
   DEMO_PASSKEYS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
+  DEMO_TEAM,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 
 export { ROOT_NAME };
+
+/** The id the colleague's adder had, an operator since deleted: no roster line holds it. */
+const DELETED_ADDER_ID = '00000000-0000-4000-8000-000000000204';
 
 /** The generator drives a client's routes alone, through the BFF's own functions: it signs no
  * operator in, so no passkey is ever checked against this address or challenge signed under this key. */
@@ -350,6 +354,7 @@ async function closeWeek(
 async function seedOperators(storage: CStorageClient, now: number) {
   const taken = () => new Error('the service already holds data: not seeded over');
   const first = DEMO_PASSKEYS[0].addedAt;
+  const [operator, colleague, newest] = DEMO_TEAM;
   const walkPair = mintedKeyPair();
   const account: StoredAccount = {
     passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }, index) => ({
@@ -362,6 +367,24 @@ async function seedOperators(storage: CStorageClient, now: number) {
     })),
     linkHash: null,
     generation: 0,
+    signedInAt: operator.signedInAt,
+    spent: [],
+  };
+  // The colleague an operator since deleted added: active, with a passkey of their own.
+  const colleagueAccount: StoredAccount = {
+    passkeys: [
+      {
+        id: 'demo-passkey-colleague',
+        publicKey: forgottenPublicKey(),
+        counter: 0,
+        transports: ['internal'],
+        addedAt: colleague.addedAt,
+        lastUsedAt: colleague.signedInAt,
+      },
+    ],
+    linkHash: null,
+    generation: 0,
+    signedInAt: colleague.signedInAt,
     spent: [],
   };
   const line: StoredRoster = {
@@ -374,6 +397,14 @@ async function seedOperators(storage: CStorageClient, now: number) {
         addedAt: first,
         joinedAt: first,
       },
+      {
+        id: colleague.id,
+        name: colleague.name,
+        state: 'active',
+        addedBy: DELETED_ADDER_ID,
+        addedAt: colleague.addedAt,
+        joinedAt: colleague.addedAt,
+      },
     ],
   };
   if ((await storage.putRecord(recordKeys.operatorRoster, line, null)) === 'moved') throw taken();
@@ -383,13 +414,29 @@ async function seedOperators(storage: CStorageClient, now: number) {
   ) {
     throw taken();
   }
+  if (
+    (await storage.putRecord(recordKeys.operatorAccount(colleague.id), colleagueAccount, null)) ===
+    'moved'
+  ) {
+    throw taken();
+  }
+  // Made at the data set's fixed time, so the list reads the same on every stack; that time also
+  // ends its first link, so the link is made again from the stack's own clock.
   const invited = await createOperator(storage, {
     name: DEMO_INVITED_NAME,
     addedBy: DEMO_OPERATOR_ID,
-    now,
+    now: newest.addedAt,
   });
   /* v8 ignore next -- unreachable: the roster was read empty and written a moment ago */
   if (invited === 'taken') throw taken();
+  const invitedToken = await makeLink(storage, {
+    operatorId: invited.id,
+    kind: 'join',
+    madeBy: DEMO_OPERATOR_ID,
+    now,
+  });
+  /* v8 ignore next -- unreachable: the account was written a moment ago */
+  if (!invitedToken) throw taken();
   const { authId } = await createSessions({
     storage,
     now: () => now,
@@ -401,7 +448,7 @@ async function seedOperators(storage: CStorageClient, now: number) {
     privateKey: walkPair.privateKey,
     userHandle: Buffer.from(DEMO_OPERATOR_ID).toString('base64url'),
   };
-  return { invitedToken: invited.token, operatorHandle: authId, operatorPasskey };
+  return { invitedToken, operatorHandle: authId, operatorPasskey };
 }
 
 /**

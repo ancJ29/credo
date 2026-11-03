@@ -115,11 +115,14 @@ export type StoredPasskey = z.infer<typeof storedPasskeySchema>;
 
 /** An operator's account. `generation` moves when a new-passkey link replaces every passkey: the
  * sessions issued before it are refused. `spent` holds the challenges answered in the last five
- * minutes, so the same answer sent twice is refused. */
+ * minutes, so the same answer sent twice is refused. `signedInAt` is the last sign-in or join, written
+ * by those two alone (never by a touch for an act, as a passkey's `lastUsedAt` is); an account
+ * written before it reads null. */
 export const storedAccountSchema = z.strictObject({
   passkeys: z.array(storedPasskeySchema),
   linkHash: z.string().nullable(),
   generation: z.number(),
+  signedInAt: z.number().nullable().default(null),
   spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
 });
 export type StoredAccount = z.infer<typeof storedAccountSchema>;

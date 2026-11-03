@@ -204,13 +204,15 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
   /** A passkey's answer to a challenge, checked against the operator's own passkeys, the origin
    * and the relying party, with user verification; the passkey's counter and last use move on and
    * the challenge is spent in the account, in one write with its tag. Each try reads the account
-   * again: a replay that lost the race finds its challenge spent. Returns the account as written.
+   * again: a replay that lost the race finds its challenge spent. Only a sign-in (`signsIn`) moves
+   * the account's `signedInAt`; a touch for an act leaves it. Returns the account as written.
    * Anything the library refuses is `refuse`'s error, and says no more. */
   async function spendTouch(
     operatorId: string,
     answer: AuthenticationResponseJSON,
     challenge: string,
     refuse: () => HttpError,
+    signsIn = false,
   ): Promise<StoredAccount> {
     const spentHash = await sha256Hex(challenge);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
@@ -240,6 +242,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       }
       const account: StoredAccount = {
         ...held.account,
+        signedInAt: signsIn ? now() : held.account.signedInAt,
         passkeys: held.account.passkeys.map((candidate) =>
           candidate === passkey ? { ...candidate, counter, lastUsedAt: now() } : candidate,
         ),
@@ -289,7 +292,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       (operator) => operator.id === id && operator.state === 'active',
     );
     if (!challenge || !line) throw unauthorized();
-    const account = await spendTouch(line.id, answer, challenge, unauthorized);
+    const account = await spendTouch(line.id, answer, challenge, unauthorized, true);
     return await session(request, { id: line.id, name: line.name }, account.generation);
   });
 
@@ -324,7 +327,14 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     const generation = await updateAccount(live.link.operatorId, gone(), (account) => {
       const next = live.link.kind === 'replace' ? account.generation + 1 : account.generation;
       return {
-        account: { ...account, passkeys: [passkey], linkHash: null, spent: [], generation: next },
+        account: {
+          ...account,
+          passkeys: [passkey],
+          linkHash: null,
+          spent: [],
+          generation: next,
+          signedInAt: now(),
+        },
         result: next,
       };
     });

@@ -68,11 +68,21 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   match: step 3. The BFF gained one line, the touch's purpose `confirm-add-operator` in its type, since the act is in
   the wire. A first run of the scripts tests missed 100 % at `scripts/src/processes.ts#L83` (a rerun, with the BFF
   type fixed, passed): logged in `docs/open-items.md#L517`.
-- [ ] **3. The routes on the real c-storage.** 🤖 Sonnet, about 28 minutes: the routes, `signedInAt`, the act, the
+- [x] **3. The routes on the real c-storage.** 🤖 Sonnet, about 28 minutes: the routes, `signedInAt`, the act, the
   generator; `team-full` written, not run. Done when: rows 1 to 4's BFF halves red once; bff at 100 %; live, in one
   `pnpm stack -- <command>`: three operators listed; a create touched by `CREDO_OPERATOR_PASSKEY` 201, its link's join
   options naming the new one, listed invited, the creator's last sign-in unmoved; the name in capitals 409; no touch
   403; no handle 401.
+  *Done* (2026-11-03): `bff/src/operator-team.ts` (the list and the add); `signedInAt` on the account, written by the
+  sign-in and the join alone; `createOperator` compares names by `sameOperatorName`; the generator seeds three
+  operators (the invited one made at its fixed time, its link made again by `makeLink`). Twelve route tests seen red
+  first (the routes out, 12 failed), then green, plus the missing-account line; shared, bff and scripts at 100 %,
+  typecheck, eslint, prettier and knip, `== exit 0` in one run (`logs/20261103-1450-b1-step3-check5.log`; the red
+  logs `…-1427-b1-step3-red.log`). Live, one `pnpm stack` run (`…-1437-b1-step3-live.log`): three operators listed;
+  the create touched by `CREDO_OPERATOR_PASSKEY` 201, its link's join options naming the new one, listed invited with
+  the creator's last sign-in unmoved; the name in capitals 409; a touch for another act 403; no handle 401 on both
+  routes. `team-full` expects the stack's colleague too, typechecked, never run (step 6). The route list test in
+  `operator.route.test.ts` gained the new path.
 - [ ] **4. The gate.** 🤖, about 17 minutes (D's): `main` taken in if moved; the whole `pnpm check` under the lock,
   `== exit 0`.
 - [ ] **5. One review.** 🤖 Opus, about 7 minutes (D's): what the touch is tied to; what a failure claims after a

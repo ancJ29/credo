@@ -1,5 +1,5 @@
 import { type Language } from '@credo/shared';
-import { DEMO_INVITED_NAME } from '@credo/shared/demo';
+import { DEMO_INVITED_NAME, DEMO_TEAM } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Page, test } from '@playwright/test';
 import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
@@ -72,6 +72,8 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, LIST);
   await expect(title(words.nav.operators)).toBeVisible();
   await expect(page.getByRole('cell', { name: DEMO_INVITED_NAME })).toBeVisible();
+  // The stack's three operators are the fake's: the colleague whose adder is deleted too.
+  await expect(page.getByRole('cell', { name: DEMO_TEAM[1].name })).toBeVisible();
   await at('tm-1-list');
 
   // 2. Creating an operator: a name.

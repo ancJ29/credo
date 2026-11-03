@@ -3,6 +3,7 @@ import {
   type CStorageClient,
   CStorageError,
   recordKeys,
+  sameOperatorName,
   type RosterOperator,
   sha256Hex,
   type StoredAccount,
@@ -19,7 +20,13 @@ export const LINK_MS = 24 * 60 * 60 * 1000;
 /** How often a write on a moved record is re-read and tried again before giving up. */
 export const ATTEMPTS = 3;
 
-const NO_PASSKEYS: StoredAccount = { passkeys: [], linkHash: null, generation: 0, spent: [] };
+const NO_PASSKEYS: StoredAccount = {
+  passkeys: [],
+  linkHash: null,
+  generation: 0,
+  signedInAt: null,
+  spent: [],
+};
 
 /** The roster with the tag it was read at; an empty one, with no tag, before the first operator. */
 export async function readRoster(storage: CStorageClient) {
@@ -109,7 +116,8 @@ export async function createOperator(
   storage: CStorageClient,
   { name, addedBy, now }: { name: string; addedBy: string | null; now: number },
 ): Promise<Created | 'taken'> {
-  if ((await readRoster(storage)).roster.operators.some((op) => op.name === name)) return 'taken';
+  if ((await readRoster(storage)).roster.operators.some((op) => sameOperatorName(op.name, name)))
+    return 'taken';
   const id = randomUUID();
   const { token, hash } = await newToken();
   const link: StoredLink = { operatorId: id, kind: 'join', madeBy: addedBy, endsAt: now + LINK_MS };
@@ -126,7 +134,7 @@ export async function createOperator(
   };
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const { roster, tag } = await readRoster(storage);
-    if (roster.operators.some((op) => op.name === name)) return 'taken';
+    if (roster.operators.some((op) => sameOperatorName(op.name, name))) return 'taken';
     const saved = await storage.putRecord(
       recordKeys.operatorRoster,
       { operators: [...roster.operators, line] },

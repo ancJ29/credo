@@ -38,6 +38,7 @@ import {
   DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
   DEMO_STAFF_SETUP,
+  DEMO_TEAM,
   DEMO_TODAY,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -168,15 +169,30 @@ describe('the demo generator', () => {
         addedBy: null,
       }),
       expect.objectContaining({
+        id: DEMO_TEAM[1].id,
+        name: DEMO_TEAM[1].name,
+        state: 'active',
+        addedAt: DEMO_TEAM[1].addedAt,
+      }),
+      expect.objectContaining({
         name: DEMO_INVITED_NAME,
         state: 'invited',
         addedBy: DEMO_OPERATOR_ID,
+        addedAt: DEMO_TEAM[2].addedAt,
       }),
     ]);
     const held = storedAccountSchema.parse(
       records.get(recordKeys.operatorAccount(DEMO_OPERATOR_ID)),
     );
     expect(held.linkHash).toBeNull();
+    expect(held.signedInAt).toBe(DEMO_TEAM[0].signedInAt);
+    const colleague = storedAccountSchema.parse(
+      records.get(recordKeys.operatorAccount(DEMO_TEAM[1].id)),
+    );
+    expect([colleague.passkeys.length, colleague.signedInAt]).toEqual([
+      DEMO_TEAM[1].passkeys,
+      DEMO_TEAM[1].signedInAt,
+    ]);
     expect(
       held.passkeys.map(({ id, addedAt, lastUsedAt }) => ({ id, addedAt, lastUsedAt })),
     ).toEqual(DEMO_PASSKEYS);
@@ -185,15 +201,20 @@ describe('the demo generator', () => {
       expect([key.length, key[0]]).toEqual([77, 0xa5]);
     }
     const invited = storedAccountSchema.parse(
-      records.get(recordKeys.operatorAccount(roster.operators[1].id)),
+      records.get(recordKeys.operatorAccount(roster.operators[2].id)),
     );
     expect(invited.passkeys).toEqual([]);
+    expect(invited.signedInAt).toBeNull();
     const hash = await sha256Hex(invitedToken);
     expect(invited.linkHash).toBe(hash);
     expect(storedLinkSchema.parse(records.get(recordKeys.operatorLink(hash)))).toMatchObject({
-      operatorId: roster.operators[1].id,
+      operatorId: roster.operators[2].id,
       madeBy: DEMO_OPERATOR_ID,
     });
+    // Made at the data set's fixed time, its link still ends after the stack's own clock.
+    expect(
+      storedLinkSchema.parse(records.get(recordKeys.operatorLink(hash))).endsAt,
+    ).toBeGreaterThan(Date.now());
   });
 
   it('The active operator is signed in by the handle the seed gives, and its passkeys read through the BFF as the fake’s do', async () => {
@@ -234,14 +255,21 @@ describe('the demo generator', () => {
     records.delete(recordKeys.operatorRoster);
     await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
 
-    // the operator's account gone too, the demo client still there
+    // the operator's account gone too, the colleague's account still there
     records.delete(recordKeys.operatorRoster);
     records.delete(recordKeys.operatorAccount(DEMO_OPERATOR_ID));
+    await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
+
+    // the colleague's account gone too, the demo client still there
+    records.delete(recordKeys.operatorRoster);
+    records.delete(recordKeys.operatorAccount(DEMO_OPERATOR_ID));
+    records.delete(recordKeys.operatorAccount(DEMO_TEAM[1].id));
     await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
 
     // the demo client gone too, one of the data set's other clients still there
     records.delete(recordKeys.operatorRoster);
     records.delete(recordKeys.operatorAccount(DEMO_OPERATOR_ID));
+    records.delete(recordKeys.operatorAccount(DEMO_TEAM[1].id));
     records.delete(recordKeys.client(DEMO_CODE));
     await expect(seedDemo(storage)).rejects.toThrow('not seeded over');
   });
