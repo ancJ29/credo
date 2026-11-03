@@ -105,9 +105,10 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   - **L5, Low:** a BFF rolled back past B1 cannot read the accounts B1 writes (`signedInAt`, the strict schema,
     `shared/src/records.ts#L125`) and answers 503 to those operators; the precedent is `docs/open-items.md#L359`.
     `[DEFERRED]` to open item 69, and a line in B1's recap's hazards.
-- [ ] **6. The full run** (👤 2), about 12 minutes (D's two walks: 8.5); 🤖 reads each log whole. Done when: both green;
+- [x] **6. The full run** (👤 2), about 12 minutes (D's two walks: 8.5); 🤖 reads each log whole. Done when: both green;
   the first adds 24 bases, `operator` and `passkeys` moving none; the second every count 0; the bases committed.
-- [ ] **7. The recap.** 🤖, about 7 minutes (what D's last 38 left), half a page. Done when: committed, `wc -w` under 400; then the squash.
+  Done 11-03, the human's terminal, 12.5 minutes: `logs/20261103-1453-b1-full-run.log`; run 1 wrote 24 bases (operator's 54 and passkeys' 36 unmoved), committed `8337d81`; run 2 every count 0; 6 of 6 each walk.
+- [x] **7. The recap.** 🤖, about 7 minutes (what D's last 38 left), half a page. Done when: committed, `wc -w` under 400; then the squash. Done 11-03: `docs/recaps/2026-11-03-console-operators.md`, evidence by sha and log name; the grep over `main...HEAD` clean.
 
 Ridge waits for B2 (console plan step 26).
 
