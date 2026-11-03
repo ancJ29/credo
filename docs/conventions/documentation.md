@@ -7,7 +7,8 @@
 > or committing any path. **Amended** 2026-10-27 by the human: rules picked from the old repo's
 > standing preferences. **Amended** 2026-10-28 by the human: the runbook, in what earns a line.
 > **Amended** 2026-11-02 by the human: the plan, one short page, each of its human points told;
-> its evidence in the recap.
+> its evidence in the recap. **Amended** 2026-11-03 by the human: a piece's recap keeps its row in
+> `docs/products.md` true.
 
 ## At a glance
 
@@ -28,7 +29,8 @@ without it, would get the next change wrong.
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
-  holds the evidence ([where progress lives](#where-progress-lives-three-files-one-job-each)).
+  holds the evidence and keeps the piece's row in `docs/products.md` true
+  ([where progress lives](#where-progress-lives-three-files-one-job-each)).
 - Never written down: what was deployed or checked by eye ([never in a doc](#never-in-a-doc));
   a path on one machine, or a person's name
   ([nothing machine-local](#nothing-machine-local-or-personal-in-a-committed-file)).
@@ -92,7 +94,7 @@ to rot, because the change that breaks it touches no line there.
 | --- | --- | --- |
 | `docs/plans/<date>-<slug>.md` | what to build | [One short page](#the-plan-one-short-page). Each step is a checkbox, ticked only once its check reads back; the ticks are the plan's one status |
 | `docs/open-items.md` | the log | Numbered, never renumbered. One entry per thing still to do, naming who does it, or marked *parked* until a review. An entry is deleted when done |
-| `docs/recaps/<date>-<slug>.md` | the history and the evidence | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's, in half a page the human reads; below it, the evidence, what each step's check read. Append-only, and never a status source |
+| `docs/recaps/<date>-<slug>.md` | the history and the evidence | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's, in half a page the human reads; below it, the evidence, what each step's check read. Append-only, and never a status source. The piece's recap adds or changes its row in [`docs/products.md`](../products.md), the products on hand, in the same commit |
 
 These names are fixed, so one `grep` finds every one of them. A directory is added once it has
 content, never ahead of it.
