@@ -58,6 +58,8 @@ function setup(
     makeClient: vi.fn(() => Promise.reject(new ApiError(null))),
     listOperators: vi.fn(() => Promise.reject(new ApiError(null))),
     addOperator: vi.fn(() => Promise.reject(new ApiError(null))),
+    newOperatorLink: vi.fn(() => Promise.reject(new ApiError(null))),
+    deleteOperator: vi.fn(() => Promise.reject(new ApiError(null))),
     setRootPassword: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
     ...staffCalls,

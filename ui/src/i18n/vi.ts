@@ -140,13 +140,37 @@ export const vi: Dictionary = {
     touch: 'Khi thêm, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
     make: 'Thêm người vận hành',
     taken: 'Đã có một người vận hành mang tên này và chưa có gì thay đổi. Hãy chọn một tên khác.',
-    failed: 'Chưa thêm được người vận hành. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
+    failed:
+      'Người vận hành có thể chưa được thêm. Những gì bạn đã nhập vẫn còn đây: hãy xem danh sách, rồi thử lại.',
     addedTitle: 'Đã thêm người vận hành',
     addedIntro:
       'Hãy gửi cho {{name}} đường dẫn này bằng kênh riêng của bạn. Đường dẫn chỉ hiện lúc này và sẽ không hiện lại. Họ tham gia qua đó bằng khóa truy cập của riêng họ.',
     link: 'Đường dẫn tham gia',
     another: 'Thêm người vận hành khác',
     back: 'Về danh sách người vận hành',
+    newLink: 'Đường dẫn mới',
+    delete: 'Xóa',
+    unknown:
+      'Không có đồng nghiệp này ở đây: họ có thể đã bị xóa, hoặc đó là chính bạn. Chưa có gì thay đổi.',
+    linkTitle: 'Đường dẫn mới cho {{name}}',
+    linkIntroActive:
+      'Dành cho {{name}}, người đã mất khóa truy cập. Bạn nhận được một đường dẫn để gửi cho họ, chỉ một lần, và nó thay thế mọi đường dẫn đã cấp trước đó. Các khóa truy cập của họ vẫn dùng được cho đến khi họ mở đường dẫn: khi đó họ tạo khóa truy cập của riêng mình, mọi khóa cũ ngừng hoạt động và mọi phiên đăng nhập của họ kết thúc.',
+    linkIntroInvited:
+      'Dành cho {{name}}, người chưa tham gia. Bạn nhận được một đường dẫn mới để gửi cho họ, chỉ một lần, và đường dẫn đã gửi trước đó ngừng hoạt động ngay khi đường dẫn này được tạo.',
+    linkTouch: 'Khi tạo đường dẫn, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    linkMake: 'Tạo đường dẫn',
+    linkMadeTitle: 'Đã tạo đường dẫn mới',
+    linkMadeIntro:
+      'Hãy gửi cho {{name}} đường dẫn này bằng kênh riêng của bạn. Đường dẫn chỉ hiện lúc này và sẽ không hiện lại. Khi mở nó, họ tạo khóa truy cập của riêng mình và mọi khóa họ có trước đó ngừng hoạt động.',
+    linkFailed:
+      'Đường dẫn mới có thể chưa được tạo. Hãy thử lại: đường dẫn mới thay thế mọi đường dẫn tạo trước đó.',
+    deleteTitle: 'Xóa {{name}}',
+    deleteIntro:
+      'Thao tác này xóa {{name}} khỏi danh sách người vận hành: tài khoản và khóa truy cập của họ, đường dẫn họ chưa dùng và các đường dẫn họ đã tạo. Họ bị đăng xuất ở bước tiếp theo và chỉ quay lại được bằng một lời mời mới. Không giữ lại gì. Những người họ đã thêm vẫn ở lại, không còn hiện người thêm.',
+    deleteTouch: 'Khi xóa, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    deleteMake: 'Xóa người vận hành',
+    deleteFailed:
+      'Người vận hành có thể chưa bị xóa. Hãy xem danh sách, rồi thử lại nếu họ vẫn còn.',
   },
   passkey: {
     signInButton: 'Đăng nhập bằng khóa truy cập',

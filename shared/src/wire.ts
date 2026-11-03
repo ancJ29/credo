@@ -197,6 +197,12 @@ export const newestFirst = (a: ClientListItem, b: ClientListItem) =>
   // A time is positive, so -1 stands for none and falls after every real one.
   (b.madeAt ?? -1) - (a.madeAt ?? -1) || a.code.localeCompare(b.code);
 
+/** A colleague's own routes, under `ROUTES.operatorOperators`. */
+export const operatorRoutes = {
+  one: (id: string) => `${ROUTES.operatorOperators}/${id}`,
+  link: (id: string) => `${ROUTES.operatorOperators}/${id}/link`,
+};
+
 /** The route that sets a client's root password anew, by the client's code. */
 export const rootPasswordRoute = (code: string) =>
   `${ROUTES.operatorClients}/${code}/root-password`;
@@ -303,9 +309,17 @@ export const joinRequestSchema = z.strictObject({
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
 /** What a touch is asked for: an add or a remove of one's own passkeys, or a client's root password
- * set anew, or a new operator added. A session alone does none of them, so a stolen session cannot
- * put the thief's passkey in, take the owner's out, take a client's root, or let in a stranger. */
-export const confirmActSchema = z.enum(['add', 'remove', 'root-password', 'add-operator']);
+ * set anew, or a new operator added, a colleague's new link made, or a colleague deleted. A session
+ * alone does none of them, so a stolen session cannot put the thief's passkey in, take the owner's
+ * out, take a client's root, let in a stranger, take a colleague's place or empty the roster. */
+export const confirmActSchema = z.enum([
+  'add',
+  'remove',
+  'root-password',
+  'add-operator',
+  'operator-link',
+  'delete-operator',
+]);
 export type ConfirmAct = z.infer<typeof confirmActSchema>;
 export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
 
@@ -384,3 +398,15 @@ export type AddOperatorRequest = z.infer<typeof addOperatorRequestSchema>;
 /** What adding an operator answers, once: their id and the join link's path and fragment. */
 export const addOperatorReplySchema = z.strictObject({ id: z.uuid(), link: z.string() });
 export type AddOperatorReply = z.infer<typeof addOperatorReplySchema>;
+
+/** A new link for a colleague, with the touch that allows it. */
+export const operatorLinkRequestSchema = z.strictObject({ confirm: confirmationSchema });
+export type OperatorLinkRequest = z.infer<typeof operatorLinkRequestSchema>;
+
+/** What a new link answers, once: its path and fragment, as an add's. */
+export const operatorLinkReplySchema = z.strictObject({ link: z.string() });
+export type OperatorLinkReply = z.infer<typeof operatorLinkReplySchema>;
+
+/** A colleague deleted, with the touch that allows it. */
+export const deleteOperatorRequestSchema = z.strictObject({ confirm: confirmationSchema });
+export type DeleteOperatorRequest = z.infer<typeof deleteOperatorRequestSchema>;

@@ -6,6 +6,7 @@ import {
   DEMO_CONFIG,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
+  DEMO_COLLEAGUE_ID,
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
@@ -111,6 +112,7 @@ describe('the demo operator', () => {
       [DEMO_INVITED_NAME, 'invited', 0],
     ]);
     expect(DEMO_TEAM[0]?.id).toBe(DEMO_OPERATOR_ID);
+    expect(DEMO_TEAM[1]?.id).toBe(DEMO_COLLEAGUE_ID);
     // the command line's, a deleted operator's (no adder, not the terminal's), an operator's
     expect(DEMO_TEAM.map((one) => [one.addedBy, one.addedByTerminal])).toEqual([
       [null, true],

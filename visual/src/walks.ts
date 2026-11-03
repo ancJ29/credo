@@ -1,13 +1,14 @@
 import { addDays, driverDay, type Language } from '@credo/shared';
 import {
   DEMO_CODE,
+  DEMO_COLLEAGUE_ID,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
+  DEMO_DRIVER_QR_SECRET,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
   DEMO_JOIN_TOKEN,
   DEMO_ORDERS,
-  DEMO_DRIVER_QR_SECRET,
   DEMO_PRODUCTS,
   DEMO_QR_SECRET,
   DEMO_TODAY,
@@ -1699,11 +1700,11 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: '/operator/operators', operator: true },
         sentence: {
-          en: 'The operators: name, state, added by whom (“—” once that one is deleted) and when, passkeys, last sign-in; you marked',
-          vi: 'Các người vận hành: tên, trạng thái, ai thêm (“—” khi người đó đã bị xóa) và khi nào, khóa truy cập, lần đăng nhập gần nhất; bạn được đánh dấu',
+          en: 'The operators: name, state, added by whom (“—” once that one is deleted) and when, passkeys, last sign-in; you marked; every other row offers New link and Delete',
+          vi: 'Các người vận hành: tên, trạng thái, ai thêm (“—” khi người đó đã bị xóa) và khi nào, khóa truy cập, lần đăng nhập gần nhất; bạn được đánh dấu; mỗi dòng còn lại có Đường dẫn mới và Xóa',
         },
         question:
-          'Is this who you expect may sign in, with who added each one and when they last came in?',
+          'Is this who you expect may sign in, and does every row but yours offer a new link and a delete?',
       },
       {
         id: 'tm-2-name',
@@ -1735,6 +1736,34 @@ export const WALKS: Walk[] = [
         },
         question:
           'Would you know to send the link to your colleague, and that it is not shown again?',
+      },
+      {
+        id: 'tm-4-link',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: `/operator/operators/${DEMO_COLLEAGUE_ID}/link`,
+          operator: true,
+          steps: [{ press: 'team.linkMake' }],
+        },
+        sentence: {
+          en: 'A new link for a colleague who lost their passkeys: shown once, their old passkeys stop when they use it',
+          vi: 'Đường dẫn mới cho đồng nghiệp đã mất khóa truy cập: chỉ hiện một lần, khóa cũ của họ ngừng hoạt động khi họ dùng nó',
+        },
+        question:
+          'Would you know that their old passkeys stop only when they use the link, and that it is not shown again?',
+      },
+      {
+        id: 'tm-5-delete',
+        number: 5,
+        path: 'main',
+        scene: { path: `/operator/operators/${DEMO_COLLEAGUE_ID}/delete`, operator: true },
+        sentence: {
+          en: 'Deleting a colleague: what goes, and that they are signed out at their next step',
+          vi: 'Xóa một đồng nghiệp: những gì sẽ mất, và họ bị đăng xuất ở bước tiếp theo',
+        },
+        question:
+          'Would you know they are signed out at their next step, and come back only by a new invite?',
       },
       {
         id: 'tm-6-taken',

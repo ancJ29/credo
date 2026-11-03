@@ -32,11 +32,12 @@ describe('the operators of the console', () => {
       'Added on',
       'Passkeys',
       'Last sign-in',
+      '',
     ]);
     expect(rows()).toEqual([
-      ['Lan Anh', 'Invited', 'operator', '29 Oct 2026', '0', '—'],
-      ['Minh Quân', 'Active', '—', '12 Oct 2026', '1', '27 Oct 2026'],
-      ['operatoryou', 'Active', 'the command line', '5 Oct 2026', '2', '30 Oct 2026'],
+      ['Lan Anh', 'Invited', 'operator', '29 Oct 2026', '0', '—', 'New linkDelete'],
+      ['Minh Quân', 'Active', '—', '12 Oct 2026', '1', '27 Oct 2026', 'New linkDelete'],
+      ['operatoryou', 'Active', 'the command line', '5 Oct 2026', '2', '30 Oct 2026', ''],
     ]);
     expect(screen.getAllByText('you')).toHaveLength(1);
     expect(api.listOperators).toHaveBeenCalledOnce();
@@ -49,7 +50,14 @@ describe('the operators of the console', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Người vận hành' })).toBeTruthy();
     await screen.findAllByRole('row');
-    expect(rows()[0]).toEqual(['Lan Anh', 'Đã mời', 'operator', '29/10/2026', '0', '—']);
+    expect(rows()[0]?.slice(0, 6)).toEqual([
+      'Lan Anh',
+      'Đã mời',
+      'operator',
+      '29/10/2026',
+      '0',
+      '—',
+    ]);
     expect(rows()[2]?.[0]).toBe('operatorbạn');
     expect(rows()[2]?.[2]).toBe('dòng lệnh');
   });

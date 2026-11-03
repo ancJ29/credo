@@ -243,6 +243,33 @@ describe('the API client', () => {
     expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
   });
 
+  it('B2: A colleague’s new link is a POST of the touch to their link route and answers the path once; their delete is a DELETE of the touch to their route; any refusal, a 404 included, or a wrong shape an error', async () => {
+    const id = '00000000-0000-4000-8000-000000000203';
+    const { calls, api } = fake(
+      json({ link: '/operator/join#abc' }, 201),
+      json({}, 403),
+      json({ link: 1 }, 201),
+      new Response(null, { status: 204 }),
+      json({}, 404),
+      json({}, 401),
+    );
+
+    expect(await api.newOperatorLink(id, { confirm })).toEqual({ link: '/operator/join#abc' });
+    await expect(api.newOperatorLink(id, { confirm })).rejects.toMatchObject({ status: 403 });
+    await expect(api.newOperatorLink(id, { confirm })).rejects.toMatchObject({ status: null });
+    await api.deleteOperator(id, { confirm });
+    await expect(api.deleteOperator(id, { confirm })).rejects.toMatchObject({ status: 404 });
+    await expect(api.deleteOperator(id, { confirm })).rejects.toMatchObject({ status: 401 });
+    expect(calls.slice(0, 1).map((call) => [call.init.method, call.path])).toEqual([
+      ['POST', `/api/operator/operators/${id}/link`],
+    ]);
+    expect(calls[3]?.init.method).toBe('DELETE');
+    expect(calls[3]?.path).toBe(`/api/operator/operators/${id}`);
+    expect(JSON.parse(calls[3]?.init.body as string)).toEqual({ confirm });
+    expect(headersOf(calls[3]).has('x-client-code')).toBe(false);
+    expect(headersOf(calls[3]).get('x-auth-id')).toBe('device-0001.operator');
+  });
+
   it('The operator’s list is read with the operator’s handle and no client code, and returns the clients as answered; a refusal or a reply of the wrong shape is an error', async () => {
     const clients = [
       { code: 'binh-an', name: 'Bình An', madeAt: 5, link: '/login?client-code=binh-an' },

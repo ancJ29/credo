@@ -6,6 +6,7 @@ import { type Api, ApiError, type Hop, hopOf } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import { ClientsPage } from './ClientsPage';
+import { DeleteOperatorPage } from './DeleteOperatorPage';
 import type { DeviceStore } from './device';
 import { JoinPage } from './JoinPage';
 import { OperatorPage } from './OperatorPage';
@@ -13,6 +14,7 @@ import { OPERATOR_PAGES, SOON_PAGES } from './operatorNav';
 import { AddOperatorPage } from './AddOperatorPage';
 import { OperatorSignIn } from './OperatorSignIn';
 import type { Passkeys } from './passkeys';
+import { OperatorLinkPage } from './OperatorLinkPage';
 import { OperatorsPage } from './OperatorsPage';
 import { PasskeysPage } from './PasskeysPage';
 import { Providers } from './Providers';
@@ -184,6 +186,26 @@ function Console({ api, device, passkeys, build, test }: Props) {
               path="/operator/operators/new"
               element={
                 <AddOperatorPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
+            />
+            <Route
+              path="/operator/operators/:id/link"
+              element={
+                <OperatorLinkPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
+            />
+            <Route
+              path="/operator/operators/:id/delete"
+              element={
+                <DeleteOperatorPage
                   api={api}
                   passkeys={passkeys}
                   onSignedOut={() => setEnded('idle')}

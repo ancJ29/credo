@@ -9,7 +9,9 @@ export type Purpose =
   | 'confirm-add'
   | 'confirm-remove'
   | 'confirm-root-password'
-  | 'confirm-add-operator';
+  | 'confirm-add-operator'
+  | 'confirm-operator-link'
+  | 'confirm-delete-operator';
 
 /** How long a challenge may wait for the device's answer. */
 export const CHALLENGE_MS = 5 * 60 * 1000;

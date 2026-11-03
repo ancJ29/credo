@@ -71,6 +71,8 @@ function setup(
     makeClient: vi.fn(() => Promise.resolve({ kind: 'made' as const, client: made })),
     listOperators: vi.fn(() => Promise.resolve([])),
     addOperator: vi.fn(() => Promise.resolve({ kind: 'taken' as const })),
+    newOperatorLink: vi.fn(() => Promise.resolve({ link: '/operator/join#x' })),
+    deleteOperator: vi.fn(() => Promise.resolve()),
     setRootPassword: vi.fn(() => Promise.resolve({ made: null })),
     ...staffCalls,
     listClients: vi.fn(() => Promise.resolve(CLIENTS)),

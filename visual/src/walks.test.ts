@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { readdirSync, readFileSync } from 'node:fs';
-import { DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_COLLEAGUE_ID, DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import { DEVICE_WIDTH, PARTS, PEOPLE, resolveDrawn, type Step, type Walk, WALKS } from './walks';
@@ -320,7 +320,7 @@ describe('the walks', () => {
     expect(spec).toContain('status: 503');
   });
 
-  it('B1: puts the operators walk last: four screens numbered 1, 2, 3 and 6, each a scene for the operator, the list, the form, the link once on the main path, the name taken on the wrong one', () => {
+  it('B1: puts the operators walk last: six screens numbered 1 to 6, each a scene for the operator, the list, the form, the link once, a colleague’s new link and their delete on the main path, the name taken on the wrong one', () => {
     const walk = WALKS[13];
 
     expect(walk.id).toBe('operator-team');
@@ -330,6 +330,8 @@ describe('the walks', () => {
       ['tm-1-list', 1, 'main'],
       ['tm-2-name', 2, 'main'],
       ['tm-3-added', 3, 'main'],
+      ['tm-4-link', 4, 'main'],
+      ['tm-5-delete', 5, 'main'],
       ['tm-6-taken', 6, 'wrong'],
     ]);
     expect(walk.screens.every((screen) => screen.scene?.operator === true)).toBe(true);
@@ -337,10 +339,14 @@ describe('the walks', () => {
       '/operator/operators',
       '/operator/operators/new',
       '/operator/operators/new',
+      `/operator/operators/${DEMO_COLLEAGUE_ID}/link`,
+      `/operator/operators/${DEMO_COLLEAGUE_ID}/delete`,
       '/operator/operators/new',
     ]);
     // the name taken is the invited operator's, typed in other capitals: no cue is needed
     expect(walk.screens.map((screen) => screen.scene?.cue)).toEqual([
+      undefined,
+      undefined,
       undefined,
       undefined,
       undefined,
@@ -490,7 +496,10 @@ describe('the walks', () => {
     expect(shot('operator-root-password.spec.ts')).toEqual(
       WALKS[12].screens.map((screen) => screen.id),
     );
-    expect(shot('operator-team.spec.ts')).toEqual(WALKS[13].screens.map((screen) => screen.id));
+    // the team spec shoots screen 6 before 5, since the delete is its last act: compared unordered
+    expect(shot('operator-team.spec.ts').sort()).toEqual(
+      WALKS[13].screens.map((screen) => screen.id).sort(),
+    );
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),

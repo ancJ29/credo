@@ -7,6 +7,11 @@ import {
   type AddOperatorReply,
   addOperatorReplySchema,
   type AddOperatorRequest,
+  type DeleteOperatorRequest,
+  type OperatorLinkReply,
+  operatorLinkReplySchema,
+  type OperatorLinkRequest,
+  operatorRoutes,
   AUTH_HEADER,
   type ClientListItem,
   clientListReplySchema,
@@ -412,6 +417,30 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', ...(await read(response, addOperatorReplySchema)) };
+    },
+
+    /** A colleague's new link, with the operator's fresh touch: its path, once. A 404 (they are
+     * gone) or a 403 (oneself) is an error, as is any other refusal. */
+    async newOperatorLink(id: string, request: OperatorLinkRequest): Promise<OperatorLinkReply> {
+      const response = await send(
+        'POST',
+        operatorRoutes.link(encodeURIComponent(id)),
+        request,
+        'operator',
+      );
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, operatorLinkReplySchema);
+    },
+
+    /** A colleague deleted, with the operator's fresh touch: nothing comes back. */
+    async deleteOperator(id: string, request: DeleteOperatorRequest): Promise<void> {
+      const response = await send(
+        'DELETE',
+        operatorRoutes.one(encodeURIComponent(id)),
+        request,
+        'operator',
+      );
+      if (!response.ok) throw new ApiError(response.status);
     },
 
     /** A client's root password set anew, with the operator's fresh touch: the answer holds the

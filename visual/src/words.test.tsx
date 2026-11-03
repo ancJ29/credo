@@ -384,6 +384,11 @@ const TEAM_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> =
     `textbox "${w.team.nameLabel}" = "Thu Hà"`,
   ],
   'operator-team:tm-3-added': (w) => [`heading: ${w.team.addedTitle}`],
+  'operator-team:tm-4-link': (w) => [`heading: ${w.team.linkMadeTitle}`],
+  'operator-team:tm-5-delete': (w) => [
+    `heading: ${w.team.deleteTitle.replace('{{name}}', 'Minh Quân')}`,
+    `button: ${w.team.deleteMake}`,
+  ],
   'operator-team:tm-6-taken': (w) => [`alert: ${w.team.taken}`],
 };
 

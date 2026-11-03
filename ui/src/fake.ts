@@ -3,6 +3,8 @@ import {
   addDays,
   addedNewestFirst,
   addOperatorRequestSchema,
+  deleteOperatorRequestSchema,
+  operatorLinkRequestSchema,
   addProductRequestSchema,
   byCode,
   can,
@@ -288,6 +290,7 @@ export function createFakeApi({
   /** The operators the roster shows: the data set's, then any added since the page loaded. */
   let team: Omit<OperatorItem, 'you'>[] = DEMO_TEAM.map((one) => ({ ...one }));
   let addedOperators = 0;
+  let addedLinks = 0;
 
   const signedOut = () => new ApiError(401);
   const notFound = () => new ApiError(404);
@@ -1204,6 +1207,39 @@ export function createFakeApi({
         },
         () => ({ kind: 'taken' as const }),
       ),
+
+    newOperatorLink: (id, request) =>
+      call('newOperatorLink', () => {
+        const handle = device.operatorAuthId();
+        if (!handle) throw signedOut();
+        if (!operatorLinkRequestSchema.safeParse(request).success) throw new ApiError(400, true);
+        const me = handle === JOINED_HANDLE ? INVITED_OPERATOR : DEMO_OPERATOR;
+        if (!team.some((one) => one.id === id)) throw notFound();
+        if (id === me.id) throw new ApiError(403, true);
+        addedLinks += 1;
+        return {
+          link: joinLinkPath(
+            `fake-new-link-${String(addedLinks).padStart(2, '0')}`.padEnd(43, '0'),
+          ),
+        };
+      }),
+
+    deleteOperator: (id, request) =>
+      call('deleteOperator', () => {
+        const handle = device.operatorAuthId();
+        if (!handle) throw signedOut();
+        if (!deleteOperatorRequestSchema.safeParse(request).success) throw new ApiError(400, true);
+        const me = handle === JOINED_HANDLE ? INVITED_OPERATOR : DEMO_OPERATOR;
+        const gone = team.find((one) => one.id === id);
+        if (!gone) throw notFound();
+        if (id === me.id) throw new ApiError(403, true);
+        // The ones they added read no adder, as the BFF's roster reads a deleted one's name.
+        team = team
+          .filter((one) => one.id !== id)
+          .map((one) =>
+            one.addedBy === gone.name && !one.addedByTerminal ? { ...one, addedBy: null } : one,
+          );
+      }),
 
     setRootPassword: (code, request) =>
       call('setRootPassword', () => {

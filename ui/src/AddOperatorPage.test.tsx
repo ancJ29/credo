@@ -117,6 +117,11 @@ describe('adding an operator', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(words.team.failed);
   });
 
+  it('B2 row 5: a failure says the operator may not have been added, since the service may have written the roster line before it failed', () => {
+    expect(words.team.failed).toMatch(/may not have been added/);
+    expect(DICTIONARIES.vi.team.failed).toMatch(/có thể chưa được thêm/);
+  });
+
   it('B1 row 8: a service that fails says no one was added, and keeps the name', async () => {
     open({ cue: 'addOperator:503' });
     await typeName('Thu Hà');

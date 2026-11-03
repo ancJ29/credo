@@ -11,7 +11,8 @@ type Props = { api: Api; onSignedOut: () => void };
 
 /** Everyone who may sign in to the console, the one added last first: their name (the reader marked
  * "you"), whether they are invited or active, who added them and when ("—" once that operator is
- * deleted), how many passkeys they hold and when they last signed in. No secret is shown. */
+ * deleted), how many passkeys they hold and when they last signed in. Each row but the reader's
+ * offers a new link and a delete, each its own page. No secret is shown. */
 export function OperatorsPage({ api, onSignedOut }: Props) {
   const { t, i18n } = useTranslation();
   const language = i18n.language as Language;
@@ -38,6 +39,7 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
                 <Table.Th>{t('team.colAddedOn')}</Table.Th>
                 <Table.Th>{t('team.colPasskeys')}</Table.Th>
                 <Table.Th>{t('team.colSignedIn')}</Table.Th>
+                <Table.Th />
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -58,6 +60,31 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
                   <Table.Td>{dayOf(one.addedAt, language)}</Table.Td>
                   <Table.Td>{one.passkeys}</Table.Td>
                   <Table.Td>{dayOf(one.signedInAt, language)}</Table.Td>
+                  <Table.Td ta="right">
+                    {!one.you && (
+                      <Group gap="xs" justify="flex-end" wrap="nowrap">
+                        <Button
+                          component={Link}
+                          to={`/operator/operators/${one.id}/link`}
+                          variant="default"
+                          size="xs"
+                          aria-label={`${t('team.newLink')}: ${one.name}`}
+                        >
+                          {t('team.newLink')}
+                        </Button>
+                        <Button
+                          component={Link}
+                          to={`/operator/operators/${one.id}/delete`}
+                          variant="default"
+                          size="xs"
+                          color="red"
+                          aria-label={`${t('team.delete')}: ${one.name}`}
+                        >
+                          {t('team.delete')}
+                        </Button>
+                      </Group>
+                    )}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

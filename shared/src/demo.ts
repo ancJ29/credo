@@ -38,6 +38,8 @@ export const DEMO_ROOT_NAME = 'root';
 export const OPERATOR_NAME = 'operator';
 /** The operator's minted id, which a passkey's answer names. */
 export const DEMO_OPERATOR_ID = '00000000-0000-4000-8000-000000000201';
+/** The data set's active colleague, whose new link and delete the walk shows. */
+export const DEMO_COLLEAGUE_ID = '00000000-0000-4000-8000-000000000203';
 /** The operator the join link in the data set is for: invited, with no passkey yet. */
 export const DEMO_INVITED_NAME = 'Lan Anh';
 /** That link's token, 43 characters in the token's form. */
@@ -80,7 +82,7 @@ export const DEMO_TEAM: {
     signedInAt: Date.UTC(2026, 9, 30, 12),
   },
   {
-    id: '00000000-0000-4000-8000-000000000203',
+    id: DEMO_COLLEAGUE_ID,
     name: 'Minh Quân',
     state: 'active',
     addedBy: null,

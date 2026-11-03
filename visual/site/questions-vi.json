@@ -87,8 +87,10 @@
   "Would you know whose password this changes, that their root is signed out, and that leaving it empty makes one?": "Bạn có biết mật khẩu của ai sẽ đổi, rằng tài khoản gốc của họ sẽ bị đăng xuất, và để trống thì hệ thống tự tạo một mật khẩu không?",
   "Would you know to send it to the root, and that it is not shown again?": "Bạn có biết cần gửi mật khẩu cho tài khoản gốc, và mật khẩu sẽ không hiện lại không?",
   "Would you know nothing changed, and to try again?": "Bạn có biết chưa có gì thay đổi, và cần thử lại không?",
-  "Is this who you expect may sign in, with who added each one and when they last came in?": "Đây có đúng là những người bạn mong đợi được đăng nhập, kèm người đã thêm họ và lần gần nhất họ vào không?",
   "Would you know that a name is all you give, and that your passkey is asked?": "Bạn có biết chỉ cần đặt một cái tên, và rằng khóa truy cập của bạn sẽ được yêu cầu không?",
   "Would you know to send the link to your colleague, and that it is not shown again?": "Bạn có biết cần gửi đường dẫn cho đồng nghiệp, và đường dẫn sẽ không hiện lại không?",
-  "Would you know the name is taken, that no one was added, and to choose another?": "Bạn có biết tên đã có người dùng, chưa có ai được thêm, và cần chọn tên khác không?"
+  "Would you know the name is taken, that no one was added, and to choose another?": "Bạn có biết tên đã có người dùng, chưa có ai được thêm, và cần chọn tên khác không?",
+  "Is this who you expect may sign in, and does every row but yours offer a new link and a delete?": "Đây có đúng là những người bạn mong đợi được đăng nhập, và mỗi dòng trừ dòng của bạn có cho tạo đường dẫn mới và xóa không?",
+  "Would you know that their old passkeys stop only when they use the link, and that it is not shown again?": "Bạn có biết khóa cũ của họ chỉ ngừng hoạt động khi họ dùng đường dẫn, và đường dẫn sẽ không hiện lại không?",
+  "Would you know they are signed out at their next step, and come back only by a new invite?": "Bạn có biết họ bị đăng xuất ở bước tiếp theo, và chỉ quay lại được bằng một lời mời mới không?"
 }

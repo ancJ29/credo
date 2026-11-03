@@ -3,6 +3,10 @@ import {
   addedNewestFirst,
   addOperatorReplySchema,
   addOperatorRequestSchema,
+  deleteOperatorRequestSchema,
+  operatorLinkReplySchema,
+  operatorLinkRequestSchema,
+  operatorRoutes,
   bffErrorSchema,
   type ClientListItem,
   clientLinkPath,
@@ -267,11 +271,28 @@ describe('the operator’s passkey ceremonies', () => {
     expect(confirmOptionsRequestSchema.safeParse({ act: 'remove' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'root-password' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'add-operator' }).success).toBe(true);
+    expect(confirmOptionsRequestSchema.safeParse({ act: 'operator-link' }).success).toBe(true);
+    expect(confirmOptionsRequestSchema.safeParse({ act: 'delete-operator' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'delete' }).success).toBe(false);
     expect(confirmOptionsRequestSchema.safeParse({}).success).toBe(false);
     expect(passkeyRemoveRequestSchema.safeParse({ confirm }).success).toBe(true);
     expect(passkeyRemoveRequestSchema.safeParse({}).success).toBe(false);
     expect(passkeyRemoveRequestSchema.safeParse({ confirm, more: 1 }).success).toBe(false);
+  });
+
+  it('B2 row 4: A colleague’s new link and delete are each a touch named for the act and nothing more, at the routes under the operators’, the link answering its path once', () => {
+    const confirm = { token: 't.s', response: credential };
+    const id = '00000000-0000-4000-8000-000000000203';
+    expect(operatorRoutes.one(id)).toBe(`/api/operator/operators/${id}`);
+    expect(operatorRoutes.link(id)).toBe(`/api/operator/operators/${id}/link`);
+    for (const schema of [operatorLinkRequestSchema, deleteOperatorRequestSchema]) {
+      expect(schema.safeParse({ confirm }).success).toBe(true);
+      expect(schema.safeParse({}).success).toBe(false);
+      expect(schema.safeParse({ confirm, more: 1 }).success).toBe(false);
+    }
+    expect(operatorLinkReplySchema.safeParse({ link: '/operator/join#abc' }).success).toBe(true);
+    expect(operatorLinkReplySchema.safeParse({}).success).toBe(false);
+    expect(operatorLinkReplySchema.safeParse({ link: 'x', id }).success).toBe(false);
   });
 
   it('A client’s root password is set at a route named by the code, and answers the made one or none', () => {

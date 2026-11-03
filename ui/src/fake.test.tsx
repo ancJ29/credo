@@ -36,6 +36,7 @@ import {
   sessionReplySchema,
   rootPasswordReplySchema,
   addOperatorReplySchema,
+  operatorLinkReplySchema,
   operatorListReplySchema,
   setPasswordReplySchema,
   newestOrdersFirst,
@@ -46,6 +47,7 @@ import {
 import {
   DEMO_CLIENTS,
   DEMO_CODE,
+  DEMO_COLLEAGUE_ID,
   DEMO_CONFIG,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -348,6 +350,13 @@ describe('the fake Api', () => {
       colleague.kind === 'made' ? { id: colleague.id, link: colleague.link } : null,
     );
     parses(
+      'newOperatorLink',
+      operatorLinkReplySchema,
+      await api.newOperatorLink(DEMO_COLLEAGUE_ID, { confirm: CONFIRM }),
+    );
+    await api.deleteOperator(DEMO_COLLEAGUE_ID, { confirm: CONFIRM });
+    checked['deleteOperator'] = true;
+    parses(
       'setRootPassword',
       rootPasswordReplySchema,
       await api.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM }),
@@ -412,6 +421,8 @@ describe('the fake Api', () => {
         'setRootPassword',
         'listOperators',
         'addOperator',
+        'newOperatorLink',
+        'deleteOperator',
         'listClients',
         'signOut',
         'operatorSignOut',
@@ -478,6 +489,55 @@ describe('the fake Api', () => {
     expect(await status(api.addOperator({ name: ' ', confirm: CONFIRM }))).toBe(400);
     expect(await status(fake().listOperators())).toBe(401);
     expect(await status(fake().addOperator({ name: 'Zed', confirm: CONFIRM }))).toBe(401);
+  });
+
+  it('B2 row 9: The fake makes a colleague’s new link, the same for an invited one, and deletes one: gone from the roster, the ones they added reading no adder, their name free; never oneself, never one not there', async () => {
+    const api = fake('', { operator: 'fake.operator' });
+    const invited = '00000000-0000-4000-8000-000000000202';
+    const first = await api.newOperatorLink(DEMO_COLLEAGUE_ID, { confirm: CONFIRM });
+    const second = await api.newOperatorLink(invited, { confirm: CONFIRM });
+    expect(first.link).toMatch(/^\/operator\/join#.{43}$/);
+    expect(second.link).not.toBe(first.link);
+    expect(await status(api.newOperatorLink(DEMO_OPERATOR_ID, { confirm: CONFIRM }))).toBe(403);
+    expect(await status(api.newOperatorLink('nobody', { confirm: CONFIRM }))).toBe(404);
+    expect(await status(api.deleteOperator(DEMO_OPERATOR_ID, { confirm: CONFIRM }))).toBe(403);
+    expect(await status(api.deleteOperator('nobody', { confirm: CONFIRM }))).toBe(404);
+    expect(await status(api.newOperatorLink(invited, {} as never))).toBe(400);
+    expect(await status(api.deleteOperator(invited, {} as never))).toBe(400);
+    expect(await status(fake().deleteOperator(invited, { confirm: CONFIRM }))).toBe(401);
+    expect(await status(fake().newOperatorLink(invited, { confirm: CONFIRM }))).toBe(401);
+
+    await api.addOperator({ name: 'Thu Hà', confirm: CONFIRM });
+    await api.deleteOperator(DEMO_COLLEAGUE_ID, { confirm: CONFIRM });
+    expect((await api.listOperators()).map((one) => one.name)).not.toContain('Minh Quân');
+    expect(await status(api.deleteOperator(DEMO_COLLEAGUE_ID, { confirm: CONFIRM }))).toBe(404);
+    expect(await api.addOperator({ name: 'minh quân', confirm: CONFIRM })).toMatchObject({
+      kind: 'made',
+    });
+  });
+
+  it('B2 row 2: the operators an operator deleted added read no adder; the fake’s joined operator deletes the data set’s first, whom Lan Anh was added by', async () => {
+    const api = fake('', { operator: 'fake.operator.joined' });
+    // the joined operator is Lan Anh: never their own link or delete, a colleague's yes
+    expect(
+      await status(
+        api.newOperatorLink('00000000-0000-4000-8000-000000000202', { confirm: CONFIRM }),
+      ),
+    ).toBe(403);
+    expect(
+      await status(
+        api.deleteOperator('00000000-0000-4000-8000-000000000202', { confirm: CONFIRM }),
+      ),
+    ).toBe(403);
+    expect(await api.newOperatorLink(DEMO_OPERATOR_ID, { confirm: CONFIRM })).toHaveProperty(
+      'link',
+    );
+    await api.deleteOperator(DEMO_OPERATOR_ID, { confirm: CONFIRM });
+    const listed = await api.listOperators();
+    expect(listed.find((one) => one.name === 'Lan Anh')).toMatchObject({
+      addedBy: null,
+      addedByTerminal: false,
+    });
   });
 
   it('B1: A cue makes the roster’s calls answer once as asked, then the fake goes on; the joined operator reads active, themselves', async () => {

@@ -141,13 +141,37 @@ export const en = {
     make: 'Add the operator',
     taken:
       'An operator with that name is already here, and nothing was changed. Choose a different name.',
-    failed: 'The operator was not added. What you typed is still here: try again.',
+    failed:
+      'The operator may not have been added. What you typed is still here: check the list, then try again.',
     addedTitle: 'Operator added',
     addedIntro:
       'Send {{name}} this link, by your own channel. It is shown now and never again. They join on it with a passkey of their own.',
     link: 'Join link',
     another: 'Add another operator',
     back: 'Back to the operators',
+    newLink: 'New link',
+    delete: 'Delete',
+    unknown:
+      'There is no such colleague here: they may have been deleted, or this is you. Nothing was changed.',
+    linkTitle: 'A new link for {{name}}',
+    linkIntroActive:
+      'For {{name}}, who has lost their passkeys. You get a link to send them, once, and it replaces any link they were given before. Their passkeys keep working until they open it: then they make a passkey of their own, every old one stops, and any sign-in of theirs ends.',
+    linkIntroInvited:
+      'For {{name}}, who has not joined yet. You get a new link to send them, once, and the link they were sent stops working as soon as this one is made.',
+    linkTouch: 'Making a link asks for your passkey.',
+    linkMake: 'Make the link',
+    linkMadeTitle: 'New link made',
+    linkMadeIntro:
+      'Send {{name}} this link, by your own channel. It is shown now and never again. When they open it they make a passkey of their own, and any passkey they had before stops working.',
+    linkFailed:
+      'A new link may not have been made. Try again: a new link replaces any link made before it.',
+    deleteTitle: 'Delete {{name}}',
+    deleteIntro:
+      'This removes {{name}} from the operators: their account and passkeys, the link they have not used, and the links they made. They are signed out at their next step and come back only by a new invite. Nothing is kept. Operators they added stay, with no adder shown.',
+    deleteTouch: 'Deleting asks for your passkey.',
+    deleteMake: 'Delete the operator',
+    deleteFailed:
+      'The operator may not have been deleted. Look at the list, then try again if they are still there.',
   },
   passkey: {
     signInButton: 'Sign in with a passkey',
