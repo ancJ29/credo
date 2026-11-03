@@ -21,6 +21,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
+| a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -285,6 +286,27 @@ root). A good ending is `project found`, `refused: a redirect to Access's sign-i
   address that answers a visitor: turn Access on for the project's previews first).
 - **FAIL: an address ANSWERS the page without Access:** the terminal shows the command that takes the deployment
   down; run it now.
+
+## The full run
+
+`ops/full-run.sh` is the one body of a piece's full run, in your terminal on the Mac: it runs `walk/run.sh` twice in the
+piece's worktree, run 1 with `--write` (the new and moved bases), run 2 plain, every count 0. Between them it makes one
+local commit of the base pictures alone (`walk/specs/*-snapshots/*.png`; anything else in the tree is a stop), since
+`walk/run.sh` refuses a dirty tree. Nothing is pushed. A piece's one-off in `one-off/` only calls it:
+
+```
+bash <credo root>/main/ops/full-run.sh --worktree <credo root>/wip-<piece> --branch <branch> --walks operator,passkeys,team --moved tm-1-list --subject "test(walk): the team walk's bases" --stem <piece>-full-run
+```
+
+Parameters: `--worktree`, `--branch` and `--walks` (comma separated, as `walk/run.sh` names them) are required;
+`--moved <screens|all>` is run 1's (default none); `--subject` the bases commit's subject; `--stem` the log's name
+(`logs/<YYYYMMDD-HHMM>-<stem>.log`, each run's text beside it as `…-run-<n>.out`); `--node` the Node it needs (default
+v26.12.1, from nvm); `--lock` the gate lock it refuses on (default `<credo root>/.gate-lock`); `--check` runs the
+refusals and shows the two commands, then stops. It never takes the lock: `walk/run.sh` refuses while it exists.
+- **== refused: ...:** nothing ran; the line names why (a missing parameter, no worktree, the wrong branch, a dirty tree,
+  the gate lock held with its owner, the wrong Node). It is in the log too.
+- **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
+  with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`.
 
 ## The check
 
