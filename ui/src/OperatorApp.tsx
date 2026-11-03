@@ -10,8 +10,10 @@ import type { DeviceStore } from './device';
 import { JoinPage } from './JoinPage';
 import { OperatorPage } from './OperatorPage';
 import { OPERATOR_PAGES, SOON_PAGES } from './operatorNav';
+import { AddOperatorPage } from './AddOperatorPage';
 import { OperatorSignIn } from './OperatorSignIn';
 import type { Passkeys } from './passkeys';
+import { OperatorsPage } from './OperatorsPage';
 import { PasskeysPage } from './PasskeysPage';
 import { Providers } from './Providers';
 import { RootPasswordPage } from './RootPasswordPage';
@@ -168,6 +170,20 @@ function Console({ api, device, passkeys, build, test }: Props) {
               path="/operator/clients/:code/root-password"
               element={
                 <RootPasswordPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
+            />
+            <Route
+              path="/operator/operators"
+              element={<OperatorsPage api={api} onSignedOut={() => setEnded('idle')} />}
+            />
+            <Route
+              path="/operator/operators/new"
+              element={
+                <AddOperatorPage
                   api={api}
                   passkeys={passkeys}
                   onSignedOut={() => setEnded('idle')}

@@ -309,7 +309,7 @@ describe('the walks', () => {
       undefined,
       'setRootPassword:503',
     ]);
-    expect(WALKS).toHaveLength(13);
+    expect(WALKS.slice(0, 13)).toHaveLength(13);
   });
 
   it('D: opens screen 4 on the fake with the cue the scene names, and the stack’s spec stubs the same route', () => {
@@ -318,6 +318,35 @@ describe('the walks', () => {
     expect(spec).toContain(`cue: '${WALKS[12].screens[3].scene!.cue}'`);
     expect(spec).toContain('/root-password`');
     expect(spec).toContain('status: 503');
+  });
+
+  it('B1: puts the operators walk last: four screens numbered 1, 2, 3 and 6, each a scene for the operator, the list, the form, the link once on the main path, the name taken on the wrong one', () => {
+    const walk = WALKS[13];
+
+    expect(walk.id).toBe('operator-team');
+    expect(walk.person).toBe('operator');
+    expect(PARTS.map((part) => part.id)).toContain(walk.part);
+    expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['tm-1-list', 1, 'main'],
+      ['tm-2-name', 2, 'main'],
+      ['tm-3-added', 3, 'main'],
+      ['tm-6-taken', 6, 'wrong'],
+    ]);
+    expect(walk.screens.every((screen) => screen.scene?.operator === true)).toBe(true);
+    expect(walk.screens.map((screen) => screen.scene?.path)).toEqual([
+      '/operator/operators',
+      '/operator/operators/new',
+      '/operator/operators/new',
+      '/operator/operators/new',
+    ]);
+    // the name taken is the invited operator's, typed in other capitals: no cue is needed
+    expect(walk.screens.map((screen) => screen.scene?.cue)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect(WALKS).toHaveLength(14);
   });
 
   it('puts piece 2’s groups A, B, C and D in four walks, thirty-three screens in all, each a scene and none from the mock', () => {
@@ -461,6 +490,7 @@ describe('the walks', () => {
     expect(shot('operator-root-password.spec.ts')).toEqual(
       WALKS[12].screens.map((screen) => screen.id),
     );
+    expect(shot('operator-team.spec.ts')).toEqual(WALKS[13].screens.map((screen) => screen.id));
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),
@@ -476,6 +506,8 @@ describe('the walks', () => {
     expect(config).toContain("name: 'services-full'");
     expect(config).toContain("name: 'root-password-fake'");
     expect(config).toContain("name: 'root-password-full'");
+    expect(config).toContain("name: 'team-fake'");
+    expect(config).toContain("name: 'team-full'");
     // the chromium project's whole ignore list, in order: a line that another project's testMatch also
     // holds cannot stand in for it
     const chromium = /name: 'chromium',\s*testIgnore: \[([^\]]*)\],/.exec(config);
@@ -494,6 +526,7 @@ describe('the walks', () => {
       "'operator-passkeys.spec.ts'",
       "'operator-services.spec.ts'",
       "'operator-root-password.spec.ts'",
+      "'operator-team.spec.ts'",
     ]);
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");

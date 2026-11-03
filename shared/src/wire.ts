@@ -16,6 +16,7 @@ export const ROUTES = {
   operatorJoin: '/api/operator/join',
   operatorPasskeys: '/api/operator/passkeys',
   operatorClients: '/api/operator/clients',
+  operatorOperators: '/api/operator/operators',
   operatorServices: '/api/operator/services',
   staffSetup: '/api/staff-setup',
   employees: '/api/employees',
@@ -302,9 +303,9 @@ export const joinRequestSchema = z.strictObject({
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
 /** What a touch is asked for: an add or a remove of one's own passkeys, or a client's root password
- * set anew. A session alone does none of them, so a stolen session cannot put the thief's passkey
- * in, take the owner's out, or take a client's root. */
-export const confirmActSchema = z.enum(['add', 'remove', 'root-password']);
+ * set anew, or a new operator added. A session alone does none of them, so a stolen session cannot
+ * put the thief's passkey in, take the owner's out, take a client's root, or let in a stranger. */
+export const confirmActSchema = z.enum(['add', 'remove', 'root-password', 'add-operator']);
 export type ConfirmAct = z.infer<typeof confirmActSchema>;
 export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
 
@@ -338,3 +339,48 @@ export type PasskeyItem = z.infer<typeof passkeyItemSchema>;
 
 export const passkeyListReplySchema = z.strictObject({ passkeys: z.array(passkeyItemSchema) });
 export type PasskeyListReply = z.infer<typeof passkeyListReplySchema>;
+
+/** One operator as the roster page shows them: invited until the first passkey is made, then
+ * active. `addedBy` is the name of who added them, null with `addedByTerminal` false once that
+ * operator is deleted, and null with it true for the one the command line made. `signedInAt` is
+ * the last sign-in or join, null for none; `you` marks the one reading. */
+export const operatorItemSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  state: z.enum(['invited', 'active']),
+  addedBy: z.string().nullable(),
+  addedByTerminal: z.boolean(),
+  addedAt: z.number(),
+  passkeys: z.number().int().nonnegative(),
+  signedInAt: z.number().nullable(),
+  you: z.boolean(),
+});
+export type OperatorItem = z.infer<typeof operatorItemSchema>;
+
+export const operatorListReplySchema = z.strictObject({ operators: z.array(operatorItemSchema) });
+export type OperatorListReply = z.infer<typeof operatorListReplySchema>;
+
+/** The longest name an operator is given. */
+export const OPERATOR_NAME_MAX = 60;
+
+/** An operator's name as typed: trimmed, 1 to 60 characters. */
+export const operatorNameSchema = z.string().trim().min(1).max(OPERATOR_NAME_MAX);
+
+/** Whether two names are one name: compared trimmed and without case. */
+export const sameOperatorName = (a: string, b: string) =>
+  a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** The roster's order: the one added last first, the same time by name. */
+export const addedNewestFirst = (a: OperatorItem, b: OperatorItem) =>
+  b.addedAt - a.addedAt || a.name.localeCompare(b.name);
+
+/** A new operator: a name, with the touch that allows it. */
+export const addOperatorRequestSchema = z.strictObject({
+  name: operatorNameSchema,
+  confirm: confirmationSchema,
+});
+export type AddOperatorRequest = z.infer<typeof addOperatorRequestSchema>;
+
+/** What adding an operator answers, once: their id and the join link's path and fragment. */
+export const addOperatorReplySchema = z.strictObject({ id: z.uuid(), link: z.string() });
+export type AddOperatorReply = z.infer<typeof addOperatorReplySchema>;

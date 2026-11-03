@@ -116,6 +116,38 @@ export const vi: Dictionary = {
     unavailableBff:
       'Ứng dụng trả lời, nhưng BFF không trả lời, nên không nhìn thấy gì phía sau nó từ đây. Hãy thử lại sau giây lát.',
   },
+  team: {
+    intro:
+      'Tất cả những người được đăng nhập vào bảng điều khiển này. Người vận hành mới được thêm bằng một cái tên và tham gia bằng đường dẫn chỉ hiện một lần, cùng khóa truy cập của riêng họ.',
+    add: 'Thêm người vận hành',
+    colName: 'Tên',
+    colState: 'Trạng thái',
+    colAddedBy: 'Người thêm',
+    colAddedOn: 'Ngày thêm',
+    colPasskeys: 'Khóa truy cập',
+    colSignedIn: 'Đăng nhập gần nhất',
+    you: 'bạn',
+    invited: 'Đã mời',
+    active: 'Đang hoạt động',
+    terminal: 'dòng lệnh',
+    newTitle: 'Thêm người vận hành',
+    newIntro:
+      'Đặt tên cho đồng nghiệp của bạn. Bạn nhận được một đường dẫn để gửi cho họ, chỉ một lần, và họ tham gia bằng khóa truy cập của riêng họ.',
+    nameLabel: 'Tên người vận hành',
+    nameHint:
+      'Từ 1 đến 60 ký tự. Hai người vận hành không được trùng tên, không phân biệt chữ hoa.',
+    nameInvalid: 'Hãy nhập tên từ 1 đến 60 ký tự.',
+    touch: 'Khi thêm, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    make: 'Thêm người vận hành',
+    taken: 'Đã có một người vận hành mang tên này và chưa có gì thay đổi. Hãy chọn một tên khác.',
+    failed: 'Chưa thêm được người vận hành. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
+    addedTitle: 'Đã thêm người vận hành',
+    addedIntro:
+      'Hãy gửi cho {{name}} đường dẫn này bằng kênh riêng của bạn. Đường dẫn chỉ hiện lúc này và sẽ không hiện lại. Họ tham gia qua đó bằng khóa truy cập của riêng họ.',
+    link: 'Đường dẫn tham gia',
+    another: 'Thêm người vận hành khác',
+    back: 'Về danh sách người vận hành',
+  },
   passkey: {
     signInButton: 'Đăng nhập bằng khóa truy cập',
     signInHint: 'Thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN của bạn.',

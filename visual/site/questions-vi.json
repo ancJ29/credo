@@ -86,5 +86,9 @@
   "Would the office know nothing was closed, and to try again?": "Văn phòng có biết chưa có gì được chốt, và cần thử lại không?",
   "Would you know whose password this changes, that their root is signed out, and that leaving it empty makes one?": "Bạn có biết mật khẩu của ai sẽ đổi, rằng tài khoản gốc của họ sẽ bị đăng xuất, và để trống thì hệ thống tự tạo một mật khẩu không?",
   "Would you know to send it to the root, and that it is not shown again?": "Bạn có biết cần gửi mật khẩu cho tài khoản gốc, và mật khẩu sẽ không hiện lại không?",
-  "Would you know nothing changed, and to try again?": "Bạn có biết chưa có gì thay đổi, và cần thử lại không?"
+  "Would you know nothing changed, and to try again?": "Bạn có biết chưa có gì thay đổi, và cần thử lại không?",
+  "Is this who you expect may sign in, with who added each one and when they last came in?": "Đây có đúng là những người bạn mong đợi được đăng nhập, kèm người đã thêm họ và lần gần nhất họ vào không?",
+  "Would you know that a name is all you give, and that your passkey is asked?": "Bạn có biết chỉ cần đặt một cái tên, và rằng khóa truy cập của bạn sẽ được yêu cầu không?",
+  "Would you know to send the link to your colleague, and that it is not shown again?": "Bạn có biết cần gửi đường dẫn cho đồng nghiệp, và đường dẫn sẽ không hiện lại không?",
+  "Would you know the name is taken, that no one was added, and to choose another?": "Bạn có biết tên đã có người dùng, chưa có ai được thêm, và cần chọn tên khác không?"
 }

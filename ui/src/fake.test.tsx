@@ -35,6 +35,8 @@ import {
   registrationResponseSchema,
   sessionReplySchema,
   rootPasswordReplySchema,
+  addOperatorReplySchema,
+  operatorListReplySchema,
   setPasswordReplySchema,
   newestOrdersFirst,
   numberText,
@@ -338,6 +340,13 @@ describe('the fake Api', () => {
     parses('operatorServices', servicesReplySchema, { build, storage });
     const made = await api.makeClient('another-one', 'Another One');
     parses('makeClient', createClientReplySchema, made.kind === 'made' ? made.client : null);
+    parses('listOperators', operatorListReplySchema, { operators: await api.listOperators() });
+    const colleague = await api.addOperator({ name: 'Thu Hà', confirm: CONFIRM });
+    parses(
+      'addOperator',
+      addOperatorReplySchema,
+      colleague.kind === 'made' ? { id: colleague.id, link: colleague.link } : null,
+    );
     parses(
       'setRootPassword',
       rootPasswordReplySchema,
@@ -401,6 +410,8 @@ describe('the fake Api', () => {
         'saveConfig',
         'makeClient',
         'setRootPassword',
+        'listOperators',
+        'addOperator',
         'listClients',
         'signOut',
         'operatorSignOut',
@@ -437,6 +448,69 @@ describe('the fake Api', () => {
         (await cued.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })).made,
       ).toBe('Fake-password-1!');
     }
+  });
+
+  it('B1: The fake lists the data set’s operators with the reader marked, and adds one by a name, invited, the name taken refused whatever its capitals', async () => {
+    const api = fake('', { operator: 'fake.operator' });
+    const first = await api.listOperators();
+    expect(first.map((one) => [one.name, one.state, one.you])).toEqual([
+      ['Lan Anh', 'invited', false],
+      ['Minh Quân', 'active', false],
+      ['operator', 'active', true],
+    ]);
+
+    const made = await api.addOperator({ name: ' Thu Hà ', confirm: CONFIRM });
+    const second = await api.addOperator({ name: 'Kim Ngân', confirm: CONFIRM });
+    expect(made).toMatchObject({ kind: 'made' });
+    expect(second).toMatchObject({ kind: 'made' });
+    expect(made.kind === 'made' && made.link).not.toBe(second.kind === 'made' && second.link);
+    const listed = await api.listOperators();
+    expect(listed).toHaveLength(5);
+    expect(listed.find((one) => one.name === 'Thu Hà')).toMatchObject({
+      state: 'invited',
+      addedBy: 'operator',
+      addedByTerminal: false,
+      passkeys: 0,
+      signedInAt: null,
+    });
+    expect(await api.addOperator({ name: 'THU hà', confirm: CONFIRM })).toEqual({ kind: 'taken' });
+    expect(await api.listOperators()).toHaveLength(5);
+    expect(await status(api.addOperator({ name: ' ', confirm: CONFIRM }))).toBe(400);
+    expect(await status(fake().listOperators())).toBe(401);
+    expect(await status(fake().addOperator({ name: 'Zed', confirm: CONFIRM }))).toBe(401);
+  });
+
+  it('B1: A cue makes the roster’s calls answer once as asked, then the fake goes on; the joined operator reads active, themselves', async () => {
+    for (const cue of ['listOperators:401', 'listOperators:503']) {
+      const cued = fake(cue, { operator: 'fake.operator' });
+      expect(await status(cued.listOperators())).toBe(Number(cue.split(':')[1]));
+      expect(await cued.listOperators()).toHaveLength(3);
+    }
+    const cued = fake('addOperator:409', { operator: 'fake.operator' });
+    expect(await cued.addOperator({ name: 'Zed', confirm: CONFIRM })).toEqual({ kind: 'taken' });
+    expect(await cued.addOperator({ name: 'Zed', confirm: CONFIRM })).toMatchObject({
+      kind: 'made',
+    });
+
+    // an operator who joined by the link adds one under their own name
+    const lanAnh = fake('', { operator: 'fake.operator.joined' });
+    await lanAnh.addOperator({ name: 'Zed', confirm: CONFIRM });
+    expect((await lanAnh.listOperators()).find((one) => one.name === 'Zed')?.addedBy).toBe(
+      'Lan Anh',
+    );
+
+    const joined = fake('', { operator: 'fake.operator' });
+    await joined.operatorJoin({ link: DEMO_JOIN_TOKEN, token: 'fake.token', response: CREDENTIAL });
+    const handle = fake('', { operator: 'fake.operator.joined' });
+    const lan = (await handle.listOperators()).find((one) => one.name === 'Lan Anh');
+    expect(lan).toMatchObject({ you: true });
+    const after = (await joined.listOperators()).find((one) => one.name === 'Lan Anh');
+    expect(after).toMatchObject({ state: 'active', passkeys: 1, you: false });
+    expect(after?.signedInAt).not.toBeNull();
+    expect((await joined.listOperators()).find((one) => one.name === 'Minh Quân')).toMatchObject({
+      state: 'active',
+      passkeys: 1,
+    });
   });
 
   it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {

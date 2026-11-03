@@ -7,7 +7,7 @@ import {
 } from '@tabler/icons-react';
 import type { MenuPage } from './nav';
 
-/** The operator's sections, top to bottom. Clients and Services are built; the other three are one
+/** The operator's sections, top to bottom. Clients, Operators and Services are built; the other two are one
  * empty page each ("coming soon") until a plan fills them. The BFF checks the operator's session
  * on every call, so this menu is a view, never the guard. */
 export const OPERATOR_PAGES = [
@@ -20,5 +20,5 @@ export const OPERATOR_PAGES = [
 
 /** The sections that have no page of their own yet. */
 export const SOON_PAGES = OPERATOR_PAGES.filter(
-  (page) => page.id !== 'clients' && page.id !== 'services',
+  (page) => page.id !== 'clients' && page.id !== 'operators' && page.id !== 'services',
 );

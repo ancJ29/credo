@@ -9,6 +9,7 @@ import {
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_TEAM,
   DEMO_PHOTOS,
   DEMO_SERVICES,
   DEMO_STAFF_SETUP,
@@ -18,7 +19,12 @@ import { fieldValueIsValid } from './fields';
 import { photoIsValid } from './photo';
 import { clientCodeSchema } from './records';
 import { employeeSchema, staffConfig, staffSetupSchema } from './staff';
-import { joinTokenSchema, passkeyListReplySchema, servicesReplySchema } from './wire';
+import {
+  joinTokenSchema,
+  operatorItemSchema,
+  passkeyListReplySchema,
+  servicesReplySchema,
+} from './wire';
 
 describe('the demo data set', () => {
   it('The demo company is a company’s settings the BFF would take, logo included', () => {
@@ -96,6 +102,26 @@ describe('the demo operator', () => {
     expect(joinTokenSchema.safeParse(DEMO_JOIN_TOKEN).success).toBe(true);
     expect(DEMO_OPERATOR_ID).not.toBe('');
     expect(DEMO_INVITED_NAME).not.toBe(OPERATOR_NAME);
+  });
+
+  it('B1: The roster holds the operator, a colleague whose adder is deleted and the invited one, each a line the roster’s schema parses, at noon UTC', () => {
+    expect(DEMO_TEAM.map((one) => [one.name, one.state, one.passkeys])).toEqual([
+      [OPERATOR_NAME, 'active', DEMO_PASSKEYS.length],
+      ['Minh Quân', 'active', 1],
+      [DEMO_INVITED_NAME, 'invited', 0],
+    ]);
+    expect(DEMO_TEAM[0]?.id).toBe(DEMO_OPERATOR_ID);
+    // the command line's, a deleted operator's (no adder, not the terminal's), an operator's
+    expect(DEMO_TEAM.map((one) => [one.addedBy, one.addedByTerminal])).toEqual([
+      [null, true],
+      [null, false],
+      [OPERATOR_NAME, false],
+    ]);
+    expect(DEMO_TEAM.find((one) => one.state === 'invited')?.signedInAt).toBeNull();
+    for (const one of DEMO_TEAM) {
+      expect(operatorItemSchema.safeParse({ ...one, you: false }).success, one.name).toBe(true);
+      expect(new Date(one.addedAt).getUTCHours(), one.name).toBe(12);
+    }
   });
 });
 

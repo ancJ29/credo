@@ -69,6 +69,8 @@ function setup(
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.resolve({ operator: ONE })),
     makeClient: vi.fn(() => Promise.resolve({ kind: 'made' as const, client: made })),
+    listOperators: vi.fn(() => Promise.resolve([])),
+    addOperator: vi.fn(() => Promise.resolve({ kind: 'taken' as const })),
     setRootPassword: vi.fn(() => Promise.resolve({ made: null })),
     ...staffCalls,
     listClients: vi.fn(() => Promise.resolve(CLIENTS)),
@@ -427,21 +429,22 @@ describe('the operator’s page', () => {
     expect(await screen.findByText(DICTIONARIES.vi.operator.signIn)).toBeTruthy();
   });
 
-  it('Each section has its own address, and the three not built are one page: the section’s name and “coming soon”, calling nothing', async () => {
+  it('Each section has its own address, and the two not built are one page: the section’s name and “coming soon”, calling nothing', async () => {
     const { api } = setup({}, signedIn, '/operator/usage');
     expect(await screen.findByRole('heading', { level: 2, name: 'Usage and costs' })).toBeTruthy();
     expect(screen.getByText('Coming soon')).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
 
-    for (const [section, title] of [
-      ['Operators', 'Operators'],
-      ['Activity', 'Activity'],
-    ]) {
-      await userEvent.click(screen.getByRole('link', { name: section }));
-      expect(await screen.findByRole('heading', { level: 2, name: title })).toBeTruthy();
-      expect(screen.getByText('Coming soon')).toBeTruthy();
-    }
+    await userEvent.click(screen.getByRole('link', { name: 'Activity' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Activity' })).toBeTruthy();
+    expect(screen.getByText('Coming soon')).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('link', { name: 'Operators' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Add an operator' })).toBeTruthy();
+    expect(api.listOperators).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Coming soon')).toBeNull();
 
     await userEvent.click(screen.getByRole('link', { name: 'Services status' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Services status' })).toBeTruthy();

@@ -1,6 +1,8 @@
 import {
   addCustomerRequestSchema,
   addDays,
+  addedNewestFirst,
+  addOperatorRequestSchema,
   addProductRequestSchema,
   byCode,
   can,
@@ -9,6 +11,7 @@ import {
   type CloseDayRequest,
   customerSchema,
   clientLinkPath,
+  joinLinkPath,
   driverDay,
   type DeliveryRequest,
   deliveryRequestSchema,
@@ -21,6 +24,8 @@ import {
   keptSetupParts,
   layersOf,
   newestFirst,
+  type OperatorItem,
+  sameOperatorName,
   newestOrdersFirst,
   nextCode,
   numberText,
@@ -76,6 +81,7 @@ import {
   DEMO_SERVICES,
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
+  DEMO_TEAM,
 } from '@credo/shared/demo';
 import {
   type Api,
@@ -279,6 +285,9 @@ export function createFakeApi({
   let passkeys = DEMO_PASSKEYS.map((passkey) => ({ ...passkey }));
   let added = 0;
   let joined = false;
+  /** The operators the roster shows: the data set's, then any added since the page loaded. */
+  let team: Omit<OperatorItem, 'you'>[] = DEMO_TEAM.map((one) => ({ ...one }));
+  let addedOperators = 0;
 
   const signedOut = () => new ApiError(401);
   const notFound = () => new ApiError(404);
@@ -605,6 +614,11 @@ export function createFakeApi({
         if (link !== DEMO_JOIN_TOKEN || joined) throw notFound();
         joined = true;
         passkeys = [{ id: 'fake-passkey-first', addedAt: Date.now(), lastUsedAt: null }];
+        team = team.map((one) =>
+          one.id === INVITED_OPERATOR.id
+            ? { ...one, state: 'active', passkeys: 1, signedInAt: Date.now() }
+            : one,
+        );
         return { authId: JOINED_HANDLE, expiresAt: Date.now() + HOUR, operator: INVITED_OPERATOR };
       }),
 
@@ -1144,6 +1158,52 @@ export function createFakeApi({
         if (!device.operatorAuthId()) throw signedOut();
         return [...clients.values()].map((client) => ({ ...client })).sort(newestFirst);
       }),
+
+    listOperators: () =>
+      call('listOperators', () => {
+        const handle = device.operatorAuthId();
+        if (!handle) throw signedOut();
+        const me = handle === JOINED_HANDLE ? INVITED_OPERATOR : DEMO_OPERATOR;
+        return team.map((one) => ({ ...one, you: one.id === me.id })).sort(addedNewestFirst);
+      }),
+
+    addOperator: (request) =>
+      call(
+        'addOperator',
+        () => {
+          const handle = device.operatorAuthId();
+          if (!handle) throw signedOut();
+          const parsed = addOperatorRequestSchema.safeParse(request);
+          if (!parsed.success) throw new ApiError(400, true);
+          const { name } = parsed.data;
+          if (team.some((one) => sameOperatorName(one.name, name)))
+            return { kind: 'taken' as const };
+          const me = handle === JOINED_HANDLE ? INVITED_OPERATOR : DEMO_OPERATOR;
+          addedOperators += 1;
+          const id = `00000000-0000-4000-8000-0000000003${String(addedOperators).padStart(2, '0')}`;
+          team = [
+            ...team,
+            {
+              id,
+              name,
+              state: 'invited',
+              addedBy: me.name,
+              addedByTerminal: false,
+              addedAt: Date.now(),
+              passkeys: 0,
+              signedInAt: null,
+            },
+          ];
+          return {
+            kind: 'made' as const,
+            id,
+            link: joinLinkPath(
+              `fake-join-link-${String(addedOperators).padStart(2, '0')}`.padEnd(43, '0'),
+            ),
+          };
+        },
+        () => ({ kind: 'taken' as const }),
+      ),
 
     setRootPassword: (code, request) =>
       call('setRootPassword', () => {

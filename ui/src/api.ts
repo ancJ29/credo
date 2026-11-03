@@ -4,6 +4,9 @@ import {
   type AddEmployeeReply,
   addEmployeeReplySchema,
   type AddEmployeeRequest,
+  type AddOperatorReply,
+  addOperatorReplySchema,
+  type AddOperatorRequest,
   AUTH_HEADER,
   type ClientListItem,
   clientListReplySchema,
@@ -58,6 +61,8 @@ import {
   type Product,
   productListReplySchema,
   type OperatorMeReply,
+  type OperatorItem,
+  operatorListReplySchema,
   operatorMeReplySchema,
   type OperatorSessionReply,
   operatorSessionReplySchema,
@@ -129,6 +134,9 @@ export type SaveResult = { kind: 'saved'; doc: ConfigDoc } | { kind: 'conflict' 
 
 /** A client made, or the code was already taken: the answer 409 is not an error to the form. */
 export type MakeResult = { kind: 'made'; client: CreateClientReply } | { kind: 'taken' };
+
+/** An operator added, with the join link to send, or the name was already there: a 409 is a result. */
+export type AddOperatorResult = ({ kind: 'made' } & AddOperatorReply) | { kind: 'taken' };
 
 /** A passkey removed, with those left, or it was the operator's last: a 409 is a result. */
 export type RemovePasskeyResult = { kind: 'removed'; passkeys: PasskeyItem[] } | { kind: 'last' };
@@ -388,6 +396,22 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };
+    },
+
+    /** Every operator who may sign in, the one added last first, as the operator is shown them. */
+    async listOperators(): Promise<OperatorItem[]> {
+      const response = await send('GET', ROUTES.operatorOperators, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, operatorListReplySchema)).operators;
+    },
+
+    /** An operator added by a name, with the operator's fresh touch: the join link, once. A name
+     * already there is a result, not an error: the form says so and keeps what was typed. */
+    async addOperator(request: AddOperatorRequest): Promise<AddOperatorResult> {
+      const response = await send('POST', ROUTES.operatorOperators, request, 'operator');
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'made', ...(await read(response, addOperatorReplySchema)) };
     },
 
     /** A client's root password set anew, with the operator's fresh touch: the answer holds the

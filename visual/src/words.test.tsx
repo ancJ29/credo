@@ -372,6 +372,41 @@ describe('the root password walk, drawn', () => {
   });
 });
 
+/** What each operators screen must say, in either language: the line that makes it that screen. */
+const TEAM_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
+  'operator-team:tm-1-list': (w) => [
+    `heading: ${w.nav.operators}`,
+    `columnheader: ${w.team.colAddedBy}`,
+    `cell: ${DEMO_INVITED_NAME}`,
+  ],
+  'operator-team:tm-2-name': (w) => [
+    `heading: ${w.team.newTitle}`,
+    `textbox "${w.team.nameLabel}" = "Thu Hà"`,
+  ],
+  'operator-team:tm-3-added': (w) => [`heading: ${w.team.addedTitle}`],
+  'operator-team:tm-6-taken': (w) => [`alert: ${w.team.taken}`],
+};
+
+describe('the operators walk, drawn', () => {
+  it('B1: Each operators screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
+    const drawn = resolveDrawn(WALKS.slice(13, 14), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(TEAM_PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const words = await readWords(what, language, false);
+        for (const line of TEAM_PROOF[key](DICTIONARIES[language])) {
+          expect(words, `${key} ${language}`).toContain(line);
+        }
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+  });
+});
+
 describe('the app’s own scenes, drawn', () => {
   // One test a screen: the cost of a screen is its own, so a walk added never moves another test
   // toward its budget, and a red names the screen.

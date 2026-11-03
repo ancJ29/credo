@@ -189,6 +189,60 @@ describe('the API client', () => {
     expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
   });
 
+  it('B1: The operators are read with the operator’s handle and no client code, as answered; a refusal or a reply of the wrong shape is an error', async () => {
+    const operators = [
+      {
+        id: '00000000-0000-4000-8000-000000000201',
+        name: 'operator',
+        state: 'active',
+        addedBy: null,
+        addedByTerminal: true,
+        addedAt: 5,
+        passkeys: 2,
+        signedInAt: null,
+        you: true,
+      },
+    ];
+    const { calls, api } = fake(
+      json({ operators }),
+      json({}, 401),
+      json({ operators: [{ name: 1 }] }),
+    );
+
+    expect(await api.listOperators()).toEqual(operators);
+    await expect(api.listOperators()).rejects.toMatchObject({ status: 401 });
+    await expect(api.listOperators()).rejects.toMatchObject({ status: null });
+    expect(calls[0]?.path).toBe('/api/operator/operators');
+    expect(calls[0]?.init.method).toBe('GET');
+    expect(headersOf(calls[0]).has('x-client-code')).toBe(false);
+    expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
+  });
+
+  it('B1: An operator is added by POST of a name and the touch; the id and link come back, a 409 is a result, any other refusal or a wrong shape an error', async () => {
+    const id = '00000000-0000-4000-8000-000000000301';
+    const { calls, api } = fake(
+      json({ id, link: '/operator/join#abc' }, 201),
+      json({ error: 'Conflict' }, 409),
+      json({}, 403),
+      json({ id: 'x' }, 201),
+    );
+    const request = { name: 'Thu Hà', confirm };
+
+    expect(await api.addOperator(request)).toEqual({
+      kind: 'made',
+      id,
+      link: '/operator/join#abc',
+    });
+    expect(await api.addOperator(request)).toEqual({ kind: 'taken' });
+    await expect(api.addOperator(request)).rejects.toMatchObject({ status: 403 });
+    await expect(api.addOperator(request)).rejects.toMatchObject({ status: null });
+    expect(calls[0]?.path).toBe('/api/operator/operators');
+    expect(calls[0]?.init.method).toBe('POST');
+    expect(JSON.parse(calls[0]?.init.body as string)).toEqual(request);
+    expect(headersOf(calls[0]).has('x-client-code')).toBe(false);
+    expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
+  });
+
   it('The operator’s list is read with the operator’s handle and no client code, and returns the clients as answered; a refusal or a reply of the wrong shape is an error', async () => {
     const clients = [
       { code: 'binh-an', name: 'Bình An', madeAt: 5, link: '/login?client-code=binh-an' },

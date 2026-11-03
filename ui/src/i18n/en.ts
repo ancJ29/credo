@@ -117,6 +117,38 @@ export const en = {
     unavailableBff:
       'The app answers, but the BFF does not, so nothing behind it can be seen from here. Try again in a moment.',
   },
+  team: {
+    intro:
+      'Everyone who may sign in to this console. A new operator is added by a name and joins with a link, shown once, and a passkey of their own.',
+    add: 'Add an operator',
+    colName: 'Name',
+    colState: 'State',
+    colAddedBy: 'Added by',
+    colAddedOn: 'Added on',
+    colPasskeys: 'Passkeys',
+    colSignedIn: 'Last sign-in',
+    you: 'you',
+    invited: 'Invited',
+    active: 'Active',
+    terminal: 'the command line',
+    newTitle: 'Add an operator',
+    newIntro:
+      'Give your colleague a name. You get a link to send them, once, and they join with a passkey of their own.',
+    nameLabel: 'Operator’s name',
+    nameHint: '1 to 60 characters. Two operators cannot share a name, capitals aside.',
+    nameInvalid: 'Enter a name of 1 to 60 characters.',
+    touch: 'Adding one asks for your passkey.',
+    make: 'Add the operator',
+    taken:
+      'An operator with that name is already here, and nothing was changed. Choose a different name.',
+    failed: 'The operator was not added. What you typed is still here: try again.',
+    addedTitle: 'Operator added',
+    addedIntro:
+      'Send {{name}} this link, by your own channel. It is shown now and never again. They join on it with a passkey of their own.',
+    link: 'Join link',
+    another: 'Add another operator',
+    back: 'Back to the operators',
+  },
   passkey: {
     signInButton: 'Sign in with a passkey',
     signInHint: 'Your device will ask for your fingerprint, face or PIN.',

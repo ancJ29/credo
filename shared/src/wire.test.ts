@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addedNewestFirst,
+  addOperatorReplySchema,
+  addOperatorRequestSchema,
   bffErrorSchema,
   type ClientListItem,
   clientLinkPath,
@@ -16,7 +19,11 @@ import {
   joinTokenSchema,
   meReplySchema,
   newestFirst,
+  operatorItemSchema,
+  operatorListReplySchema,
   operatorMeReplySchema,
+  OPERATOR_NAME_MAX,
+  operatorNameSchema,
   operatorSessionReplySchema,
   optionsReplySchema,
   confirmOptionsRequestSchema,
@@ -30,6 +37,7 @@ import {
   ROUTES,
   rootPasswordReplySchema,
   rootPasswordRoute,
+  sameOperatorName,
   saveConfigRequestSchema,
   servicesReplySchema,
   sessionReplySchema,
@@ -258,6 +266,7 @@ describe('the operator’s passkey ceremonies', () => {
     expect(confirmOptionsRequestSchema.safeParse({ act: 'add' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'remove' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'root-password' }).success).toBe(true);
+    expect(confirmOptionsRequestSchema.safeParse({ act: 'add-operator' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'delete' }).success).toBe(false);
     expect(confirmOptionsRequestSchema.safeParse({}).success).toBe(false);
     expect(passkeyRemoveRequestSchema.safeParse({ confirm }).success).toBe(true);
@@ -314,5 +323,64 @@ describe('the operator’s passkey ceremonies', () => {
     expect(bffErrorSchema.safeParse({ message: 'Service Unavailable' }).success).toBe(false);
     expect(bffErrorSchema.safeParse('<html>502</html>').success).toBe(false);
     expect(bffErrorSchema.safeParse(null).success).toBe(false);
+  });
+});
+
+describe('B1: the operators of the console', () => {
+  const ID = '00000000-0000-4000-8000-000000000201';
+  const item = (name: string, addedAt: number) => ({
+    id: ID,
+    name,
+    state: 'active' as const,
+    addedBy: null,
+    addedByTerminal: true,
+    addedAt,
+    passkeys: 1,
+    signedInAt: null,
+    you: false,
+  });
+  const confirm = {
+    token: 't.s',
+    response: {
+      id: 'c',
+      rawId: 'c',
+      type: 'public-key',
+      response: {},
+      clientExtensionResults: {},
+    },
+  };
+
+  it('The roster is read at /api/operator/operators; each line holds the name, state, adder, time, passkeys, last sign-in and who is you, and nothing more', () => {
+    expect(ROUTES.operatorOperators).toBe('/api/operator/operators');
+    const good = { operators: [item('A', 5), { ...item('B', 6), signedInAt: 9, addedBy: 'A' }] };
+    expect(operatorListReplySchema.safeParse(good).data).toEqual(good);
+    expect(operatorItemSchema.safeParse({ ...item('A', 5), more: 1 }).success).toBe(false);
+    expect(operatorItemSchema.safeParse({ ...item('A', 5), passkeys: -1 }).success).toBe(false);
+    expect(operatorItemSchema.safeParse({ ...item('A', 5), state: 'gone' }).success).toBe(false);
+  });
+
+  it('The roster runs the one added last first, the same time by name', () => {
+    const sorted = [item('b', 1), item('a', 1), item('c', 9)].sort(addedNewestFirst);
+    expect(sorted.map((one) => one.name)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('A name is trimmed and 1 to 60 characters; two names are one when equal trimmed and without case', () => {
+    expect(operatorNameSchema.parse('  Lan Anh ')).toBe('Lan Anh');
+    expect(operatorNameSchema.safeParse('   ').success).toBe(false);
+    expect(operatorNameSchema.safeParse('x'.repeat(OPERATOR_NAME_MAX)).success).toBe(true);
+    expect(operatorNameSchema.safeParse('x'.repeat(OPERATOR_NAME_MAX + 1)).success).toBe(false);
+    expect(sameOperatorName(' LAN anh', 'Lan Anh ')).toBe(true);
+    expect(sameOperatorName('Lan', 'Lan Anh')).toBe(false);
+  });
+
+  it('Adding one sends a name with the touch and nothing more, and answers the id and the link once', () => {
+    expect(addOperatorRequestSchema.safeParse({ name: 'Thu Hà', confirm }).success).toBe(true);
+    expect(addOperatorRequestSchema.safeParse({ name: '', confirm }).success).toBe(false);
+    expect(addOperatorRequestSchema.safeParse({ name: 'A' }).success).toBe(false);
+    expect(addOperatorRequestSchema.safeParse({ name: 'A', confirm, more: 1 }).success).toBe(false);
+    const reply = { id: ID, link: joinLinkPath('t'.repeat(43)) };
+    expect(addOperatorReplySchema.safeParse(reply).data).toEqual(reply);
+    expect(addOperatorReplySchema.safeParse({ id: 'x', link: 'l' }).success).toBe(false);
+    expect(addOperatorReplySchema.safeParse({ ...reply, more: 1 }).success).toBe(false);
   });
 });

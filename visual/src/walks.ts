@@ -4,6 +4,7 @@ import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
+  DEMO_INVITED_NAME,
   DEMO_JOIN_TOKEN,
   DEMO_ORDERS,
   DEMO_DRIVER_QR_SECRET,
@@ -146,6 +147,9 @@ const ROOT_TYPED: Step[] = [
   { fill: 'person.passwordNew', text: 'Mat-khau-moi-1!' },
   { fill: 'person.passwordAgain', text: 'Mat-khau-moi-1!' },
 ];
+
+/** The add-operator form's name, typed as the operator types it. */
+const NEW_OPERATOR_NAME: Step = { fill: 'team.nameLabel', text: 'Thu Hà' };
 
 /** The data set's join link, as the invited operator opens it: the token is in the fragment. */
 const JOIN_LINK = `/operator/join#${DEMO_JOIN_TOKEN}`;
@@ -1676,6 +1680,79 @@ export const WALKS: Walk[] = [
           vi: 'Chưa đặt được: dịch vụ lỗi, mật khẩu vẫn như cũ',
         },
         question: 'Would you know nothing changed, and to try again?',
+      },
+    ],
+  },
+
+  {
+    id: 'operator-team',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'Who else may sign in here',
+      vi: 'Ai khác được đăng nhập vào đây',
+    },
+    screens: [
+      {
+        id: 'tm-1-list',
+        number: 1,
+        path: 'main',
+        scene: { path: '/operator/operators', operator: true },
+        sentence: {
+          en: 'The operators: name, state, added by whom (“—” once that one is deleted) and when, passkeys, last sign-in; you marked',
+          vi: 'Các người vận hành: tên, trạng thái, ai thêm (“—” khi người đó đã bị xóa) và khi nào, khóa truy cập, lần đăng nhập gần nhất; bạn được đánh dấu',
+        },
+        question:
+          'Is this who you expect may sign in, with who added each one and when they last came in?',
+      },
+      {
+        id: 'tm-2-name',
+        number: 2,
+        path: 'main',
+        scene: {
+          path: '/operator/operators/new',
+          operator: true,
+          steps: [NEW_OPERATOR_NAME],
+        },
+        sentence: {
+          en: 'Creating an operator: a name',
+          vi: 'Tạo người vận hành: một cái tên',
+        },
+        question: 'Would you know that a name is all you give, and that your passkey is asked?',
+      },
+      {
+        id: 'tm-3-added',
+        number: 3,
+        path: 'main',
+        scene: {
+          path: '/operator/operators/new',
+          operator: true,
+          steps: [NEW_OPERATOR_NAME, { press: 'team.make' }],
+        },
+        sentence: {
+          en: 'Added: the join link, once, to send',
+          vi: 'Đã thêm: đường dẫn tham gia, chỉ một lần, để gửi đi',
+        },
+        question:
+          'Would you know to send the link to your colleague, and that it is not shown again?',
+      },
+      {
+        id: 'tm-6-taken',
+        number: 6,
+        path: 'wrong',
+        scene: {
+          path: '/operator/operators/new',
+          operator: true,
+          steps: [
+            { fill: 'team.nameLabel', text: DEMO_INVITED_NAME.toLowerCase() },
+            { press: 'team.make' },
+          ],
+        },
+        sentence: {
+          en: 'The name taken',
+          vi: 'Tên đã có người dùng',
+        },
+        question: 'Would you know the name is taken, that no one was added, and to choose another?',
       },
     ],
   },

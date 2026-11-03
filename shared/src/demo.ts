@@ -56,6 +56,51 @@ export const DEMO_PASSKEYS: { id: string; addedAt: number; lastUsedAt: number | 
   { id: 'demo-passkey-phone', addedAt: Date.UTC(2026, 9, 25, 12), lastUsedAt: null },
 ];
 
+/** The operators the roster page shows, as the operator is shown them: the operator themselves, made
+ * by the command line; a colleague added by an operator since deleted (no adder shown); and the
+ * invited one the join link is for. Each time is noon UTC, like every time here. */
+export const DEMO_TEAM: {
+  id: string;
+  name: string;
+  state: 'invited' | 'active';
+  addedBy: string | null;
+  addedByTerminal: boolean;
+  addedAt: number;
+  passkeys: number;
+  signedInAt: number | null;
+}[] = [
+  {
+    id: DEMO_OPERATOR_ID,
+    name: OPERATOR_NAME,
+    state: 'active',
+    addedBy: null,
+    addedByTerminal: true,
+    addedAt: Date.UTC(2026, 9, 5, 12),
+    passkeys: 2,
+    signedInAt: Date.UTC(2026, 9, 30, 12),
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000203',
+    name: 'Minh Quân',
+    state: 'active',
+    addedBy: null,
+    addedByTerminal: false,
+    addedAt: Date.UTC(2026, 9, 12, 12),
+    passkeys: 1,
+    signedInAt: Date.UTC(2026, 9, 27, 12),
+  },
+  {
+    id: '00000000-0000-4000-8000-000000000202',
+    name: DEMO_INVITED_NAME,
+    state: 'invited',
+    addedBy: OPERATOR_NAME,
+    addedByTerminal: false,
+    addedAt: Date.UTC(2026, 9, 29, 12),
+    passkeys: 0,
+    signedInAt: null,
+  },
+];
+
 /** The clients the operator's list shows: the demo company and two more invented ones, never a
  * real client's. Each time is noon UTC, so its day reads the same in every zone from UTC-11 to
  * UTC+11. */

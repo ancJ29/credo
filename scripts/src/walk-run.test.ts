@@ -470,6 +470,22 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(existsSync(join(folder, 's2-en-390-root-password-full-darwin.png'))).toBe(true);
   });
 
+  it('knows the operators walk by the name team, a stack to each test, and makes its folder of bases with --write', () => {
+    const l = layout();
+    const folder = join(l.tree, 'walk/specs/operator-team.spec.ts-snapshots');
+    expect(existsSync(folder)).toBe(false);
+
+    const first = run(l, ['team', '--moved', 'all', '--write']);
+
+    expect(first.out).toContain('team: team-fake lists 2 tests');
+    expect(first.out).toContain('team: team-full lists 2 tests');
+    expect(first.out).toContain('-- stack 2/2: full-1, team');
+    expect(first.out).toContain('team: 2 bases written');
+    expect(first.out).toMatch(/== verdict: green/);
+    expect(first.code).toBe(0);
+    expect(existsSync(join(folder, 's2-en-390-team-full-darwin.png'))).toBe(true);
+  });
+
   it('a picture that moves between the two stacks is red and nothing is written', () => {
     const l = layout();
 
