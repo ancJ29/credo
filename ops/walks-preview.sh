@@ -15,14 +15,23 @@
 #   build line's branch>, which refuses the rest (project, credential, tools, production branch, an open address), deploys, probes
 #   and gives the verdict: see its header. Log: logs/<YYYYMMDD-HHMM>-walks-preview.log in the credo root.
 #   Walks-only refusals: the folder is missing or has no index.html; the page's own build line is unreadable or names main.
+#   The script's own refusals are written to that log too.
 # Look for: "== deployed", the two addresses, "refused: a redirect to Access's sign-in" twice, "== verdict: good", "== done".
 set -uo pipefail
 
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
+logdir="${OPS_LOG_DIR:-$root/logs}"
+log="$logdir/$(date +%Y%m%d-%H%M)-walks-preview.log"
+mkdir -p "$logdir" 2>/dev/null || {
+  echo "== refused: cannot make the logs folder"
+  exit 2
+}
+# Each line of this script's own checks goes to the screen and the log; the helper then logs its own to the same file.
+say() { echo "$*" | tee -a "$log"; }
 refuse() {
-  echo "== refused: $1"
+  say "== refused: $1"
   exit 2
 }
 
@@ -41,7 +50,7 @@ branch=$(printf '%s' "$bline" | sed -n 's/.*"branch":"\([^"]*\)".*/\1/p')
 pcommit=$(printf '%s' "$bline" | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
 [ -n "$branch" ] || refuse "the page's build line is not readable in $folder/index.html"
 [ "$branch" != main ] || refuse "the build line names main: a preview is never main's"
-case "$bline" in *'"changed":true'*) echo "== note: the page was built with uncommitted changes" ;; esac
-echo "== build line: branch $branch, commit $pcommit"
+case "$bline" in *'"changed":true'*) say "== note: the page was built with uncommitted changes" ;; esac
+say "== build line: branch $branch, commit $pcommit"
 
 exec bash "$OPS_DIR/pages-preview.sh" --folder "$folder" --branch "$branch" --commit "$pcommit" --stem walks-preview
