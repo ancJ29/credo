@@ -2,7 +2,8 @@ import { createHmac, hkdfSync } from 'node:crypto';
 import { constantTimeEqual } from './constant-time';
 
 /** What a challenge is minted for. A token made for one purpose opens for no other. */
-export type Purpose = 'sign-in' | 'join' | 'add' | 'confirm-add' | 'confirm-remove';
+export type Purpose =
+  'sign-in' | 'join' | 'add' | 'confirm-add' | 'confirm-remove' | 'confirm-root-password';
 
 /** How long a challenge may wait for the device's answer. */
 export const CHALLENGE_MS = 5 * 60 * 1000;

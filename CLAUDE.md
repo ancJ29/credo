@@ -41,7 +41,9 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   client's), `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME`
   (the data set's active operator),
   `CREDO_OPERATOR_HANDLE` (the data set's active operator's session, kept on the device in place of a
-  sign-in, so no ceremony stamps today on the passkeys the list shows), `CREDO_OPERATOR_LINK` (the
+  sign-in, so no ceremony stamps today on the passkeys the list shows), `CREDO_OPERATOR_PASSKEY` (JSON: the
+  first of those passkeys as a walk can touch it, `{ id, privateKey, userHandle }`, a pair minted per stack and
+  never committed or printed), `CREDO_OPERATOR_LINK` (the
   invited operator's one-time join link, at `http://localhost:<port>`, since a
   passkey is bound to a name and no IP address has one), `CREDO_PEOPLE` (JSON: each data-set
   person's code to a first password) and `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client

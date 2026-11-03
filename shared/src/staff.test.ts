@@ -11,6 +11,7 @@ import {
   saveEmployeeRequestSchema,
   saveStaffSetupRequestSchema,
   setPasswordRequestSchema,
+  setRootPasswordRequestSchema,
   staffConfig,
   staffSetupSchema,
 } from './staff';
@@ -77,6 +78,30 @@ describe('staff', () => {
     expect(setPasswordRequestSchema.safeParse({ password: 'Abcdef1!' }).success).toBe(true);
     expect(setPasswordRequestSchema.safeParse({ password: null }).success).toBe(true);
     expect(setPasswordRequestSchema.safeParse({ password: 'weak' }).success).toBe(false);
+  });
+
+  it('A root’s password set anew holds a typed one under the rule or none, and the operator’s touch', () => {
+    const confirm = {
+      token: 't.s',
+      response: {
+        id: 'a',
+        rawId: 'a',
+        type: 'public-key',
+        response: {},
+        clientExtensionResults: {},
+      },
+    };
+    expect(setRootPasswordRequestSchema.safeParse({ password: 'Abcdef1!', confirm }).success).toBe(
+      true,
+    );
+    expect(setRootPasswordRequestSchema.safeParse({ password: null, confirm }).success).toBe(true);
+    expect(setRootPasswordRequestSchema.safeParse({ password: 'weak', confirm }).success).toBe(
+      false,
+    );
+    expect(setRootPasswordRequestSchema.safeParse({ password: null }).success).toBe(false);
+    expect(
+      setRootPasswordRequestSchema.safeParse({ password: null, confirm, more: 1 }).success,
+    ).toBe(false);
   });
 
   it('The staff list is in code order, by one comparison the BFF and the fake share', () => {

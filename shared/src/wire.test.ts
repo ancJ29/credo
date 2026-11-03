@@ -28,6 +28,8 @@ import {
   passkeySignInRequestSchema,
   employeeRoutes,
   ROUTES,
+  rootPasswordReplySchema,
+  rootPasswordRoute,
   saveConfigRequestSchema,
   servicesReplySchema,
   sessionReplySchema,
@@ -255,11 +257,20 @@ describe('the operator’s passkey ceremonies', () => {
     const confirm = { token: 't.s', response: credential };
     expect(confirmOptionsRequestSchema.safeParse({ act: 'add' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'remove' }).success).toBe(true);
+    expect(confirmOptionsRequestSchema.safeParse({ act: 'root-password' }).success).toBe(true);
     expect(confirmOptionsRequestSchema.safeParse({ act: 'delete' }).success).toBe(false);
     expect(confirmOptionsRequestSchema.safeParse({}).success).toBe(false);
     expect(passkeyRemoveRequestSchema.safeParse({ confirm }).success).toBe(true);
     expect(passkeyRemoveRequestSchema.safeParse({}).success).toBe(false);
     expect(passkeyRemoveRequestSchema.safeParse({ confirm, more: 1 }).success).toBe(false);
+  });
+
+  it('A client’s root password is set at a route named by the code, and answers the made one or none', () => {
+    expect(rootPasswordRoute('acme-vn')).toBe('/api/operator/clients/acme-vn/root-password');
+    expect(rootPasswordReplySchema.safeParse({ made: 'Abcdef1!' }).success).toBe(true);
+    expect(rootPasswordReplySchema.safeParse({ made: null }).success).toBe(true);
+    expect(rootPasswordReplySchema.safeParse({}).success).toBe(false);
+    expect(rootPasswordReplySchema.safeParse({ made: null, password: 'x' }).success).toBe(false);
   });
 
   it('The operator’s own passkeys are listed by when each was added and last used, none yet for a new one', () => {

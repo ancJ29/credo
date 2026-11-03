@@ -34,6 +34,7 @@ import {
   photoReplySchema,
   registrationResponseSchema,
   sessionReplySchema,
+  rootPasswordReplySchema,
   setPasswordReplySchema,
   newestOrdersFirst,
   numberText,
@@ -337,6 +338,11 @@ describe('the fake Api', () => {
     parses('operatorServices', servicesReplySchema, { build, storage });
     const made = await api.makeClient('another-one', 'Another One');
     parses('makeClient', createClientReplySchema, made.kind === 'made' ? made.client : null);
+    parses(
+      'setRootPassword',
+      rootPasswordReplySchema,
+      await api.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM }),
+    );
 
     expect(Object.entries(checked).filter(([, ok]) => !ok)).toEqual([]);
     // a method with no check above would answer unchecked
@@ -394,11 +400,43 @@ describe('the fake Api', () => {
         'archiveEmployee',
         'saveConfig',
         'makeClient',
+        'setRootPassword',
         'listClients',
         'signOut',
         'operatorSignOut',
       ].sort(),
     );
+  });
+
+  it('D: The fake makes the data set’s invented password when none is typed, answers a typed one with none, and refuses as the BFF does', async () => {
+    const api = fake('', { operator: 'fake.operator' });
+    const typed = 'Abcdef1!';
+
+    expect(await api.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })).toEqual({
+      made: 'Fake-password-1!',
+    });
+    expect(await api.setRootPassword('hoa-sen', { password: typed, confirm: CONFIRM })).toEqual({
+      made: null,
+    });
+    expect(
+      await status(api.setRootPassword('hoa-sen', { password: 'weak', confirm: CONFIRM })),
+    ).toBe(400);
+    expect(await status(api.setRootPassword('nobody', { password: null, confirm: CONFIRM }))).toBe(
+      404,
+    );
+    expect(
+      await status(fake().setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })),
+    ).toBe(401);
+    for (const cue of ['setRootPassword:401', 'setRootPassword:403', 'setRootPassword:503']) {
+      const cued = fake(cue, { operator: 'fake.operator' });
+      const expected = Number(cue.split(':')[1]);
+      expect(
+        await status(cued.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })),
+      ).toBe(expected);
+      expect(
+        (await cued.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })).made,
+      ).toBe('Fake-password-1!');
+    }
   });
 
   it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {

@@ -428,5 +428,5 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     },
   );
 
-  return { operatorSignedIn: whoIs };
+  return { operatorSignedIn: whoIs, confirmed };
 }

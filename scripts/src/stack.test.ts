@@ -249,6 +249,49 @@ describe('pnpm stack', () => {
     });
   });
 
+  it('D: The stack hands a walk the first of the operator’s two passkeys, whose private key signs the operator in, and its list stays the data set’s', async () => {
+    await withStack(artifacts, async (stack) => {
+      const held = JSON.parse(stack.operatorPasskey) as {
+        id: string;
+        privateKey: string;
+        userHandle: string;
+      };
+      expect(held.id).toBe(DEMO_PASSKEYS[0].id);
+      const device = new SoftwareAuthenticator(stack.url, undefined, held);
+      const options = optionsReplySchema.parse(
+        await (await post(stack.url, '/api/operator/passkey/options', undefined)).json(),
+      );
+
+      const signedIn = await post(stack.url, '/api/operator/passkey/sign-in', {
+        token: options.token,
+        response: device.authenticate(options.options),
+      });
+
+      expect(signedIn.status).toBe(200);
+      const listed = await fetch(`${stack.url}/api/operator/passkeys`, {
+        headers: { 'x-auth-id': stack.operatorHandle },
+      });
+      expect(
+        ((await listed.json()) as { passkeys: { id: string }[] }).passkeys.map(({ id }) => id),
+      ).toEqual(DEMO_PASSKEYS.map(({ id }) => id));
+    });
+  });
+
+  it('D: A stack’s private key is in neither its database nor a log, and each stack mints another', async () => {
+    const keys: string[] = [];
+    for (let run = 0; run < 2; run++) {
+      await withStack(artifacts, async (stack) => {
+        const { privateKey } = JSON.parse(stack.operatorPasskey) as { privateKey: string };
+        keys.push(privateKey);
+        for (const file of await readdir(stack.dataDir)) {
+          const bytes = await readFile(join(stack.dataDir, file)).catch(() => Buffer.alloc(0));
+          expect(bytes.includes(privateKey), file).toBe(false);
+        }
+      });
+    }
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
   it('The password route is gone: a name and password open no operator', async () => {
     await withStack(artifacts, async (stack) => {
       const reply = await post(stack.url, '/api/operator/sign-in', {
@@ -468,6 +511,7 @@ describe('pnpm stack -- <command>', () => {
         'CREDO_OPERATOR_HANDLE',
         'CREDO_OPERATOR_LINK',
         'CREDO_OPERATOR_NAME',
+        'CREDO_OPERATOR_PASSKEY',
         'CREDO_PEOPLE',
         'CREDO_ROOT_NAME',
         'CREDO_ROOT_PASSWORD',

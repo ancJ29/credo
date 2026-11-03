@@ -83,5 +83,8 @@
   "Would the office know this day is settled for good?": "Văn phòng có biết ngày này đã được đối soát xong hẳn không?",
   "Would the office trust that the past days are settled?": "Văn phòng có tin rằng những ngày trước đã được đối soát không?",
   "Would the office know to count again before closing?": "Văn phòng có biết cần đếm lại trước khi chốt không?",
-  "Would the office know nothing was closed, and to try again?": "Văn phòng có biết chưa có gì được chốt, và cần thử lại không?"
+  "Would the office know nothing was closed, and to try again?": "Văn phòng có biết chưa có gì được chốt, và cần thử lại không?",
+  "Would you know whose password this changes, that their root is signed out, and that leaving it empty makes one?": "Bạn có biết mật khẩu của ai sẽ đổi, rằng tài khoản gốc của họ sẽ bị đăng xuất, và để trống thì hệ thống tự tạo một mật khẩu không?",
+  "Would you know to send it to the root, and that it is not shown again?": "Bạn có biết cần gửi mật khẩu cho tài khoản gốc, và mật khẩu sẽ không hiện lại không?",
+  "Would you know nothing changed, and to try again?": "Bạn có biết chưa có gì thay đổi, và cần thử lại không?"
 }

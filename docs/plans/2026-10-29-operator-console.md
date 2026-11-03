@@ -1059,6 +1059,8 @@ passkey on the human's own device for ridge's address (step 26).
   9, D's 24 bases committed; with C's step 19 done, the walks page shows nothing waiting and no open
   "no". **Then stop:** D is done here, and the piece once C is too.
 
+> **Steps 20 to 24 are carried out in D's own plan,** [part D](2026-11-01-console-root-password.md#steps) (its steps 3 to 8), and its [recap](../recaps/2026-11-03-console-root-password.md); tick them here when D is squashed into `main`.
+
 **The close.**
 
 - [ ] **25. The recap and the merge.** Who: 🤖 the recap, about an hour; the orchestrator merges on

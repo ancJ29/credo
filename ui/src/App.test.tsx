@@ -56,6 +56,7 @@ function setup(
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.reject(new ApiError(401))),
     makeClient: vi.fn(() => Promise.reject(new ApiError(null))),
+    setRootPassword: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
     ...staffCalls,
     ...passkeyCalls,

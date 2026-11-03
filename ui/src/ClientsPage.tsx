@@ -29,7 +29,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
         {clients.length === 0 ? (
           <Text c="dimmed">{t('operator.empty')}</Text>
         ) : (
-          <Table.ScrollContainer minWidth={640}>
+          <Table.ScrollContainer minWidth={760}>
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -37,6 +37,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                   <Table.Th>{t('operator.colCode')}</Table.Th>
                   <Table.Th>{t('operator.colMade')}</Table.Th>
                   <Table.Th>{t('operator.colLink')}</Table.Th>
+                  <Table.Th />
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -51,6 +52,17 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                         label={t('operator.copyLink')}
                         about={client.code}
                       />
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <Button
+                        component={Link}
+                        to={`/operator/clients/${client.code}/root-password`}
+                        variant="default"
+                        size="xs"
+                        aria-label={`${t('operator.rootPassword')}: ${client.code}`}
+                      >
+                        {t('operator.rootPassword')}
+                      </Button>
                     </Table.Td>
                   </Table.Tr>
                 ))}

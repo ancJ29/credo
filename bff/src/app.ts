@@ -51,6 +51,7 @@ import { registerOperatorAuth } from './operator-auth';
 import { registerListRoutes } from './lists';
 import { registerOrderRoutes } from './orders';
 import { registerReconciliationRoutes } from './reconciliations';
+import { registerRootPasswordRoutes } from './root-password';
 import { registerStaffRoutes } from './staff';
 
 declare module 'fastify' {
@@ -348,7 +349,13 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
     user: userViewOf(await signedIn(request)),
   }));
 
-  const { operatorSignedIn } = registerOperatorAuth(app, { storage, now, origin, serviceKey });
+  const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
+    storage,
+    now,
+    origin,
+    serviceKey,
+  });
+  registerRootPasswordRoutes(app, { storage, now, operatorSignedIn, confirmed });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
     await operatorSignedIn(request);

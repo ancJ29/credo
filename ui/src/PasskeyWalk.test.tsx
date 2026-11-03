@@ -1,4 +1,9 @@
-import { DEMO_INVITED_NAME, DEMO_JOIN_TOKEN, OPERATOR_NAME } from '@credo/shared/demo';
+import {
+  DEMO_INVITED_NAME,
+  DEMO_JOIN_TOKEN,
+  DEMO_PASSKEYS,
+  OPERATOR_NAME,
+} from '@credo/shared/demo';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -83,7 +88,7 @@ describe.each(['en', 'vi'] as const)(
       });
       await title(words.passkey.title);
       expect(await screen.findAllByRole('row')).toHaveLength(1 + 2);
-      passkeys.hold('demo-passkey-laptop');
+      passkeys.hold(DEMO_PASSKEYS[0].id);
 
       await press(words.passkey.add);
 
@@ -94,7 +99,7 @@ describe.each(['en', 'vi'] as const)(
       const { passkeys } = open('/operator/passkeys', undefined, true);
       await title(words.passkey.title);
       expect(await screen.findAllByRole('row')).toHaveLength(1 + 2);
-      passkeys.hold('demo-passkey-laptop');
+      passkeys.hold(DEMO_PASSKEYS[0].id);
 
       await press(words.passkey.add);
 

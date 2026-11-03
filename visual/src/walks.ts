@@ -1,5 +1,6 @@
 import { addDays, driverDay, type Language } from '@credo/shared';
 import {
+  DEMO_CODE,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
@@ -133,6 +134,17 @@ const FILLED_ADD_BY_OFFICE: Step[] = FILLED_ADD.filter((step) => !('choose' in s
 const FILLED_CLIENT: Step[] = [
   { fill: 'operator.code', text: 'minh-phat' },
   { fill: 'operator.companyName', text: 'Minh Phát' },
+];
+
+/** A client's root password page: the data set's own client, whose root's first password the walk knows. */
+const ROOT_PASSWORD_PATH = `/operator/clients/${DEMO_CODE}/root-password`;
+
+/** The password page's form filled as the operator fills it: the client's code typed, and the password twice. */
+const ROOT_CODE: Step = { fill: 'operator.rootCodeLabel', text: DEMO_CODE };
+const ROOT_TYPED: Step[] = [
+  ROOT_CODE,
+  { fill: 'person.passwordNew', text: 'Mat-khau-moi-1!' },
+  { fill: 'person.passwordAgain', text: 'Mat-khau-moi-1!' },
 ];
 
 /** The data set's join link, as the invited operator opens it: the token is in the fragment. */
@@ -423,8 +435,8 @@ export const WALKS: Walk[] = [
         navigation: true,
         scene: { path: '/operator/clients', operator: true },
         sentence: {
-          en: 'The dashboard: the five sections, who is signed in, the clients newest first with the day each was made',
-          vi: 'Bảng điều khiển: năm mục, người đang đăng nhập, khách hàng mới nhất trước kèm ngày tạo',
+          en: 'The dashboard: the five sections, who is signed in, the clients newest first with the day each was made and a New root password button on each',
+          vi: 'Bảng điều khiển: năm mục, người đang đăng nhập, khách hàng mới nhất trước kèm ngày tạo và nút Mật khẩu root mới ở mỗi dòng',
         },
         question:
           'Is this what you need to see of your clients, and are these the sections you expect?',
@@ -1589,6 +1601,81 @@ export const WALKS: Walk[] = [
           vi: 'Chốt không thành công, tiền mặt đã nhập vẫn còn',
         },
         question: 'Would the office know nothing was closed, and to try again?',
+      },
+    ],
+  },
+
+  {
+    id: 'operator-root-password',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'Set a client’s root password anew',
+      vi: 'Đặt lại mật khẩu root của khách hàng',
+    },
+    screens: [
+      {
+        id: 'rp-1-form',
+        number: 1,
+        path: 'main',
+        scene: { path: ROOT_PASSWORD_PATH, operator: true, steps: ROOT_TYPED },
+        sentence: {
+          en: 'The page: the company, its code typed, the password twice, what it ends',
+          vi: 'Trang này: tên công ty, mã đã nhập, mật khẩu hai lần, điều nó chấm dứt',
+        },
+        question:
+          'Would you know whose password this changes, that their root is signed out, and that leaving it empty makes one?',
+      },
+      {
+        id: 'rp-2-rule',
+        number: 2,
+        path: 'wrong',
+        scene: {
+          path: ROOT_PASSWORD_PATH,
+          operator: true,
+          steps: [
+            ROOT_CODE,
+            { fill: 'person.passwordNew', text: 'weak' },
+            { fill: 'person.passwordAgain', text: 'weak' },
+            { press: 'operator.rootSet' },
+          ],
+        },
+        sentence: {
+          en: 'A typed password refused on the form, the rule said',
+          vi: 'Mật khẩu nhập bị từ chối ngay trên biểu mẫu, quy tắc được nêu rõ',
+        },
+        question: 'Does this say what to fix?',
+      },
+      {
+        id: 'rp-3-made',
+        number: 3,
+        path: 'main',
+        scene: {
+          path: ROOT_PASSWORD_PATH,
+          operator: true,
+          steps: [ROOT_CODE, { press: 'operator.rootSet' }],
+        },
+        sentence: {
+          en: 'Left empty, made: the new password, once, to copy and send',
+          vi: 'Để trống, ứng dụng tạo: mật khẩu mới, chỉ một lần, để sao chép và gửi',
+        },
+        question: 'Would you know to send it to the root, and that it is not shown again?',
+      },
+      {
+        id: 'rp-4-failed',
+        number: 4,
+        path: 'wrong',
+        scene: {
+          path: ROOT_PASSWORD_PATH,
+          operator: true,
+          cue: 'setRootPassword:503',
+          steps: [...ROOT_TYPED, { press: 'operator.rootSet' }],
+        },
+        sentence: {
+          en: 'Not set: the service failed, the password as it was',
+          vi: 'Chưa đặt được: dịch vụ lỗi, mật khẩu vẫn như cũ',
+        },
+        question: 'Would you know nothing changed, and to try again?',
       },
     ],
   },

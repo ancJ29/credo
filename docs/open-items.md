@@ -496,3 +496,20 @@ the name it was given under.
 `visual/site/page.ts#L130-L131`: a person added to `PEOPLE` has no entry, so a walk opens with `lang`
 undefined. Fix: take the language from the build's data, or fall back to `vi`.
 
+## 61. After a timeout the failure message says nothing changed, yet the write may have landed — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
+
+c-storage saves the root's record but its answer misses the BFF's 5-second timeout: the BFF answers 503 and the page says the password is as it was, while the root is signed out and holds the new one. A retry repairs it. Lines: `ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/root-password.ts#L50`. *Fix:* word it "may not have been set: set it again" in both languages and re-take screen 4; or `setSignInPassword` re-reads once after a write with no answer.
+
+*Trigger:* the first client's root, or the next change to the route.
+
+## 62. The root-password touch is not tied to the client — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
+
+Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
+
+*Trigger:* before a second operator or a client signs.
+
+## 63. No page test for the BFF refusing the touch (403) — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
+
+The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/RootPasswordPage.tsx#L61` (the catch), `ui/src/RootPasswordPage.test.tsx#L124` (the 503 test to copy). *Fix:* one test with the fake's `setRootPassword:403` cue, asserting the "not changed" alert and that the code and passwords are still typed.
+
+*Trigger:* the next change to the page.

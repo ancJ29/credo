@@ -39,6 +39,7 @@ export default defineConfig({
         'operator.spec.ts',
         'operator-passkeys.spec.ts',
         'operator-services.spec.ts',
+        'operator-root-password.spec.ts',
       ],
     },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
@@ -79,5 +80,9 @@ export default defineConfig({
     // c-storage under a running spec).
     { name: 'services-fake', testMatch: 'operator-services.spec.ts', timeout: 120_000 },
     { name: 'services-full', testMatch: 'operator-services.spec.ts', timeout: 120_000 },
+    // A client's root password set anew, the same two ways: the fake, and the full run on a stack of
+    // its own for each language and width (the walk changes the demo client's root).
+    { name: 'root-password-fake', testMatch: 'operator-root-password.spec.ts', timeout: 120_000 },
+    { name: 'root-password-full', testMatch: 'operator-root-password.spec.ts', timeout: 120_000 },
   ],
 });

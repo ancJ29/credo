@@ -135,6 +135,7 @@ export const runStack = (
         CREDO_ROOT_PASSWORD: stack.rootPassword,
         CREDO_OPERATOR_NAME: stack.operatorName,
         CREDO_OPERATOR_HANDLE: stack.operatorHandle,
+        CREDO_OPERATOR_PASSKEY: stack.operatorPasskey,
         CREDO_OPERATOR_LINK: stack.operatorLink,
         CREDO_PEOPLE: JSON.stringify(stack.people),
         CREDO_SEED_URL: stack.seedUrl,
@@ -204,6 +205,7 @@ export const runDemo = (
         CREDO_URL: demo.url,
         CREDO_OPERATOR_NAME: demo.operatorName,
         CREDO_OPERATOR_HANDLE: demo.operatorHandle,
+        CREDO_OPERATOR_PASSKEY: demo.operatorPasskey,
         CREDO_OPERATOR_LINK: demo.operatorLink,
         CREDO_COPIES: JSON.stringify(
           demo.copies.map(({ code, partner, client, scenario, company, rootPassword }) => ({

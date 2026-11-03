@@ -72,6 +72,10 @@ import {
   passkeyListReplySchema,
   type PasskeySignInRequest,
   passkeyRoutes,
+  type RootPasswordReply,
+  rootPasswordReplySchema,
+  rootPasswordRoute,
+  type SetRootPasswordRequest,
   type Reconciliation,
   reconciliationListReplySchema,
   reconciliationRoutes,
@@ -384,6 +388,17 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };
+    },
+
+    /** A client's root password set anew, with the operator's fresh touch: the answer holds the
+     * password the app made, or none for a typed one. */
+    async setRootPassword(
+      code: string,
+      request: SetRootPasswordRequest,
+    ): Promise<RootPasswordReply> {
+      const response = await send('POST', rootPasswordRoute(code), request, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, rootPasswordReplySchema);
     },
 
     /** Every client on this stack, newest first, as the operator is shown them. */

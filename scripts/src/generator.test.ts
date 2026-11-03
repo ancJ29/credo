@@ -150,9 +150,12 @@ describe('the demo generator', () => {
   it('The operators are the data set’s: the active one with its two passkeys at their fixed times, the invited one with a link the first made, and nothing readable stored: hashes alone', async () => {
     const { records, storage } = memoryStorage();
 
-    const { rootPassword, invitedToken, operatorHandle } = await seedDemo(storage);
+    const { rootPassword, invitedToken, operatorHandle, operatorPasskey } = await seedDemo(storage);
 
     const all = JSON.stringify([...records]);
+    expect(all).not.toContain(operatorPasskey.privateKey);
+    expect(operatorPasskey.id).toBe(DEMO_PASSKEYS[0].id);
+    expect(Buffer.from(operatorPasskey.userHandle, 'base64url').toString()).toBe(DEMO_OPERATOR_ID);
     expect(all).not.toContain(rootPassword);
     expect(all).not.toContain(invitedToken);
     expect(all).not.toContain(operatorHandle.split('.')[1]);

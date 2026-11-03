@@ -3,7 +3,7 @@
 #
 #   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks]
 #
-# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services (the table below). It takes every picture of each walk on the
+# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services, root-password (the table below). It takes every picture of each walk on the
 # fake UI (where the walk has one), then on the stack, then on fresh stacks again, and counts raw the
 # pixels that moved between the passes and against the committed base images: no threshold, no
 # comparator that skips softened edges. Green means fake = stack = stack again pixel for pixel, and
@@ -45,6 +45,7 @@ office-reconcile|reconcile.spec.ts|reconcile-fake|reconcile-full|pass|walk/specs
 operator|operator.spec.ts|operator-fake|operator-full|test|walk/specs/operator.spec.ts-snapshots|-operator-full-darwin
 passkeys|operator-passkeys.spec.ts|passkeys-fake|passkeys-full|test|walk/specs/operator-passkeys.spec.ts-snapshots|-passkeys-full-darwin
 services|operator-services.spec.ts|services-fake|services-full|pass|walk/specs/operator-services.spec.ts-snapshots|-services-full-darwin
+root-password|operator-root-password.spec.ts|root-password-fake|root-password-full|test|walk/specs/operator-root-password.spec.ts-snapshots|-root-password-full-darwin
 '
 walk_field() { # <walk> <column>
   printf '%s\n' "$WALKS" | awk -F'|' -v w="$1" -v c="$2" '$1 == w { print $c }'

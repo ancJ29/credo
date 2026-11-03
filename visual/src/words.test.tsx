@@ -1,5 +1,7 @@
 import { LANGUAGES } from '@credo/shared';
 import {
+  DEMO_CODE,
+  DEMO_CONFIG,
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
@@ -339,10 +341,41 @@ describe('the services walk, drawn', () => {
   });
 });
 
+/** What each root password screen must say, in either language: the line that makes it that screen. */
+const ROOT_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
+  'operator-root-password:rp-1-form': (w) => [
+    `heading: ${w.operator.rootTitle.replace('{{name}}', DEMO_CONFIG.name)}`,
+    `textbox "${w.operator.rootCodeLabel}" = "${DEMO_CODE}"`,
+  ],
+  'operator-root-password:rp-2-rule': (w) => [`alert: ${w.person.passwordInvalid}`],
+  'operator-root-password:rp-3-made': (w) => [`heading: ${w.operator.rootMadeTitle}`],
+  'operator-root-password:rp-4-failed': (w) => [`alert: ${w.operator.rootFailed}`],
+};
+
+describe('the root password walk, drawn', () => {
+  it('D: Each root password screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
+    const drawn = resolveDrawn(WALKS.slice(12, 13), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(ROOT_PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const words = await readWords(what, language, false);
+        for (const line of ROOT_PROOF[key](DICTIONARIES[language])) {
+          expect(words, `${key} ${language}`).toContain(line);
+        }
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+  });
+});
+
 describe('the app’s own scenes, drawn', () => {
   // One test a screen: the cost of a screen is its own, so a walk added never moves another test
   // toward its budget, and a red names the screen.
-  const DRAWN = resolveDrawn(WALKS.slice(4), SCREENS);
+  const DRAWN = resolveDrawn(WALKS.slice(4, 12), SCREENS);
 
   it('The piece-2 walks hold exactly the screens the proofs below name', () => {
     expect([...DRAWN.keys()].sort()).toEqual(Object.keys(PROOF).sort());

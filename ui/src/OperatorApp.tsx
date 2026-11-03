@@ -14,6 +14,7 @@ import { OperatorSignIn } from './OperatorSignIn';
 import type { Passkeys } from './passkeys';
 import { PasskeysPage } from './PasskeysPage';
 import { Providers } from './Providers';
+import { RootPasswordPage } from './RootPasswordPage';
 import { ServicesPage } from './ServicesPage';
 import { SessionEnded } from './SessionEnded';
 import { signInWithPasskey } from './signInWithPasskey';
@@ -162,6 +163,16 @@ function Console({ api, device, passkeys, build, test }: Props) {
             <Route
               path="/operator/clients/new"
               element={<AddClientPage api={api} onSignedOut={() => setEnded('idle')} />}
+            />
+            <Route
+              path="/operator/clients/:code/root-password"
+              element={
+                <RootPasswordPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
             />
             <Route
               path="/operator/passkeys"

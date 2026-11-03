@@ -162,6 +162,33 @@ describe('the API client', () => {
     ).rejects.toMatchObject({ status: 401 });
   });
 
+  it('A root’s password is set by POST with the operator’s handle and no client code, the touch in the body; the made one is returned, and a refusal or a wrong shape is an error', async () => {
+    const { calls, api } = fake(
+      json({ made: 'Abcdef1!' }),
+      json({ made: null }),
+      json({}, 403),
+      json({ password: 'x' }),
+    );
+
+    expect(await api.setRootPassword('binh-an', { password: null, confirm })).toEqual({
+      made: 'Abcdef1!',
+    });
+    expect(await api.setRootPassword('binh-an', { password: 'Abcdef1!', confirm })).toEqual({
+      made: null,
+    });
+    await expect(api.setRootPassword('binh-an', { password: null, confirm })).rejects.toMatchObject(
+      { status: 403 },
+    );
+    await expect(api.setRootPassword('binh-an', { password: null, confirm })).rejects.toMatchObject(
+      { status: null },
+    );
+    expect(calls[0]?.path).toBe('/api/operator/clients/binh-an/root-password');
+    expect(calls[0]?.init.method).toBe('POST');
+    expect(JSON.parse(calls[1]?.init.body as string)).toEqual({ password: 'Abcdef1!', confirm });
+    expect(headersOf(calls[0]).has('x-client-code')).toBe(false);
+    expect(headersOf(calls[0]).get('x-auth-id')).toBe('device-0001.operator');
+  });
+
   it('The operator’s list is read with the operator’s handle and no client code, and returns the clients as answered; a refusal or a reply of the wrong shape is an error', async () => {
     const clients = [
       { code: 'binh-an', name: 'Bình An', madeAt: 5, link: '/login?client-code=binh-an' },

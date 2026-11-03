@@ -1,5 +1,6 @@
 import type { LightMyRequestResponse } from 'fastify';
 import {
+  type ConfirmAct,
   type CStorageClient,
   joinOptionsReplySchema,
   operatorSessionReplySchema,
@@ -102,13 +103,13 @@ export async function operatorRecords(t: T) {
 export const session = (response: LightMyRequestResponse) =>
   operatorSessionReplySchema.parse(response.json());
 
-/** The fresh touch an add or a remove needs: the confirm options for the act, answered by
- * `authenticator` as a sign-in is. */
+/** The fresh touch an add, a remove or a client's root password needs: the confirm options for the
+ * act, answered by `authenticator` as a sign-in is. */
 export async function touchFor(
   t: T,
   authId: string,
   authenticator: SoftwareAuthenticator,
-  act: 'add' | 'remove',
+  act: ConfirmAct,
   claim: Parameters<SoftwareAuthenticator['authenticate']>[1] = {},
 ) {
   const reply = optionsReplySchema.parse(

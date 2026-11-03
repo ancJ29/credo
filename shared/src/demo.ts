@@ -47,7 +47,9 @@ export const DEMO_JOIN_TOKEN = 'demo-join-link-for-the-fake-run-00000000000';
  * so its day reads the same in every zone from UTC-11 to UTC+11. */
 export const DEMO_PASSKEYS: { id: string; addedAt: number; lastUsedAt: number | null }[] = [
   {
-    id: 'demo-passkey-laptop',
+    // The id is a credential's, base64url of 'demo-passkey-laptop', so a device that holds it answers
+    // with the id the BFF stored (a walk touches this one through the stack's `CREDO_OPERATOR_PASSKEY`).
+    id: 'ZGVtby1wYXNza2V5LWxhcHRvcA',
     addedAt: Date.UTC(2026, 9, 5, 12),
     lastUsedAt: Date.UTC(2026, 9, 28, 12),
   },

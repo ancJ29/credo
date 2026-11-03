@@ -46,6 +46,7 @@ import {
   type SaveOrderRequest,
   type SendOrderRequest,
   sendableOn,
+  setRootPasswordRequestSchema,
   staffConfig,
   type StaffSetup,
   type TenantConfig,
@@ -1142,6 +1143,15 @@ export function createFakeApi({
       call('listClients', () => {
         if (!device.operatorAuthId()) throw signedOut();
         return [...clients.values()].map((client) => ({ ...client })).sort(newestFirst);
+      }),
+
+    setRootPassword: (code, request) =>
+      call('setRootPassword', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        if (!clients.has(code)) throw notFound();
+        const parsed = setRootPasswordRequestSchema.safeParse(request);
+        if (!parsed.success) throw new ApiError(400, true);
+        return { made: parsed.data.password === null ? MADE_PASSWORD : null };
       }),
 
     makeClient: (code, name) =>

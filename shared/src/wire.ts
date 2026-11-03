@@ -196,6 +196,15 @@ export const newestFirst = (a: ClientListItem, b: ClientListItem) =>
   // A time is positive, so -1 stands for none and falls after every real one.
   (b.madeAt ?? -1) - (a.madeAt ?? -1) || a.code.localeCompare(b.code);
 
+/** The route that sets a client's root password anew, by the client's code. */
+export const rootPasswordRoute = (code: string) =>
+  `${ROUTES.operatorClients}/${code}/root-password`;
+
+/** What setting a root's password answers: the password the app made, shown once, or null when the
+ * operator typed one, which is never sent back. */
+export const rootPasswordReplySchema = z.strictObject({ made: z.string().nullable() });
+export type RootPasswordReply = z.infer<typeof rootPasswordReplySchema>;
+
 /** What a read of the operator's says in its query when it must not count as use: the status
  * page's timed read each minute, so a tab left in view does not hold a sign-in open. */
 export const NO_RENEW_QUERY = 'renew=0';
@@ -292,9 +301,10 @@ export const joinRequestSchema = z.strictObject({
 });
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
-/** What a touch is asked for: an add or a remove of one's own passkeys. A session alone does
- * neither, so a stolen session cannot put the thief's passkey in or take the owner's out. */
-export const confirmActSchema = z.enum(['add', 'remove']);
+/** What a touch is asked for: an add or a remove of one's own passkeys, or a client's root password
+ * set anew. A session alone does none of them, so a stolen session cannot put the thief's passkey
+ * in, take the owner's out, or take a client's root. */
+export const confirmActSchema = z.enum(['add', 'remove', 'root-password']);
 export type ConfirmAct = z.infer<typeof confirmActSchema>;
 export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
 

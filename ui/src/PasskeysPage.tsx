@@ -1,4 +1,4 @@
-import { type ConfirmAct, type Language, type PasskeyItem } from '@credo/shared';
+import { type Language, type PasskeyItem } from '@credo/shared';
 import { Alert, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { dayOf } from './day';
 import { Loaded } from './Loaded';
 import { PasskeyAlreadyHere, PasskeyNotGiven, type Passkeys } from './passkeys';
 import { refusal, useLoad } from './page';
+import { touch } from './touch';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -33,18 +34,11 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
   const [notice, setNotice] = useState<Notice>(null);
   const list = changed ?? loaded.data ?? [];
 
-  /** The fresh touch of a passkey one already holds, asked for before the act it allows: a session
-   * alone does not add or remove a passkey. */
-  async function touch(act: ConfirmAct) {
-    const { options, token } = await api.operatorPasskeyConfirmOptions(act);
-    return { token, response: await passkeys.authenticate(options) };
-  }
-
   async function add() {
     setBusy(true);
     setNotice(null);
     try {
-      const confirm = await touch('add');
+      const confirm = await touch(api, passkeys, 'add');
       const { options, token } = await api.operatorPasskeyAddOptions();
       const response = await passkeys.register(options);
       setChanged(await api.operatorPasskeyAdd({ token, response, confirm }));
@@ -61,7 +55,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
     setBusy(true);
     setNotice(null);
     try {
-      const result = await api.operatorPasskeyRemove(id, await touch('remove'));
+      const result = await api.operatorPasskeyRemove(id, await touch(api, passkeys, 'remove'));
       if (result.kind === 'removed') setChanged(result.passkeys);
       else setNotice('lastOne');
     } catch (error) {

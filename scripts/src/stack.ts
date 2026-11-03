@@ -47,6 +47,10 @@ export type RunningStack = {
   /** That operator's session, kept on a device in place of a sign-in: a passkey ceremony would
    * stamp today on a passkey the list shows. Known to this process and to whoever it hands it to. */
   operatorHandle: string;
+  /** One of that operator's two passkeys as a walk can touch it, minted per stack: the credential's id
+   * and user handle (base64url) and its private key (PKCS8, base64), as JSON. Handed to a command
+   * once, never printed, stored or committed. */
+  operatorPasskey: string;
   /** The invited operator's one-time link to make their first passkey,
    * `<address>/operator/join#<token>`, made by the active one. Known to this process and to whoever
    * it hands it to; stored only as its hash. */
@@ -135,7 +139,8 @@ export async function withStack<T>(
       serviceCode: service.code,
       accessKey: service.accessKey,
     });
-    const { rootPassword, people, invitedToken, operatorHandle } = await seedDemo(storage);
+    const { rootPassword, people, invitedToken, operatorHandle, operatorPasskey } =
+      await seedDemo(storage);
     let seeded = 0;
     const seeding = createSeeding(
       () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
@@ -181,6 +186,7 @@ export async function withStack<T>(
       rootPassword,
       operatorName: OPERATOR_NAME,
       operatorHandle,
+      operatorPasskey: JSON.stringify(operatorPasskey),
       operatorLink: `${appOrigin}${joinLinkPath(invitedToken)}`,
       people,
       seedUrl: `http://127.0.0.1:${seedPort}/seed`,

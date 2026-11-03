@@ -33,8 +33,8 @@ describe('ClientsPage', () => {
       ),
     ).toEqual([
       [],
-      ['Bình An', 'binh-an', '21 Oct 2026', 'Copy the link'],
-      ['Old One', 'old-one', '—', 'Copy the link'],
+      ['Bình An', 'binh-an', '21 Oct 2026', 'Copy the link', 'New root password'],
+      ['Old One', 'old-one', '—', 'Copy the link', 'New root password'],
     ]);
     expect(screen.getByRole('columnheader', { name: 'Name when made' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add a client' }).getAttribute('href')).toBe(

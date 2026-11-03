@@ -69,6 +69,7 @@ function setup(
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.resolve({ operator: ONE })),
     makeClient: vi.fn(() => Promise.resolve({ kind: 'made' as const, client: made })),
+    setRootPassword: vi.fn(() => Promise.resolve({ made: null })),
     ...staffCalls,
     listClients: vi.fn(() => Promise.resolve(CLIENTS)),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),

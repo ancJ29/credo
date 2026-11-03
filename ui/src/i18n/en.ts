@@ -90,6 +90,27 @@ export const en = {
     codeInvalid:
       'Use 3 to 32 lowercase letters, digits and hyphens, starting with a letter and ending with a letter or digit.',
     nameInvalid: 'Enter the company’s name.',
+    rootPassword: 'New root password',
+    rootTitle: 'New root password for {{name}}',
+    rootIntro:
+      'This gives the root of {{name}} a new password. The old one stops working and the root is signed out on every device, at the next step. Nothing is sent to the root: you send the password by your own channel.',
+    rootCodeLabel: 'Type the client’s code to confirm',
+    rootCodeHint: 'This client’s code is {{code}}.',
+    rootCodeWrong: 'That is not this client’s code.',
+    rootEmptyHint:
+      'Leave both password fields empty and the app makes a password and shows it once.',
+    rootTouch: 'Setting it asks for your passkey.',
+    rootSet: 'Set the root’s password',
+    rootFailed:
+      'The password was not changed: the root’s password is as it was. What you typed is still here: try again.',
+    rootMadeTitle: 'The root’s new password',
+    rootMadeIntro:
+      'Send it to the root by your own channel. It is shown now and never again, and the root was signed out on every device.',
+    rootMadePassword: 'New password',
+    rootDoneTitle: 'The root’s password is set',
+    rootDoneIntro:
+      'The password you typed is not shown again. Send it to the root by your own channel. The root was signed out on every device.',
+    rootUnknown: 'This client is not in the list.',
     back: 'Back to the clients',
     unavailableStorage:
       'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',

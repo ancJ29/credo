@@ -454,6 +454,22 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(existsSync(join(folder, 's2-en-390-passkeys-full-darwin.png'))).toBe(true);
   });
 
+  it('knows the root password walk by its name, a stack to each test, and makes its folder of bases with --write', () => {
+    const l = layout();
+    const folder = join(l.tree, 'walk/specs/operator-root-password.spec.ts-snapshots');
+    expect(existsSync(folder)).toBe(false);
+
+    const first = run(l, ['root-password', '--moved', 'all', '--write']);
+
+    expect(first.out).toContain('root-password: root-password-fake lists 2 tests');
+    expect(first.out).toContain('root-password: root-password-full lists 2 tests');
+    expect(first.out).toContain('-- stack 2/2: full-1, root-password');
+    expect(first.out).toContain('root-password: 2 bases written');
+    expect(first.out).toMatch(/== verdict: green/);
+    expect(first.code).toBe(0);
+    expect(existsSync(join(folder, 's2-en-390-root-password-full-darwin.png'))).toBe(true);
+  });
+
   it('a picture that moves between the two stacks is red and nothing is written', () => {
     const l = layout();
 

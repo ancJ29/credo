@@ -210,20 +210,30 @@ export async function seedClient(
   return { code, rootPassword: made.password, people };
 }
 
-/** A public key in the COSE form a passkey is stored in (EC2, ES256), made from a key pair whose
- * private half is dropped at once: nothing can sign in with the data set's passkeys, which the
- * list shows and no walk uses. */
-function forgottenPublicKey() {
-  const { x, y } = generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey.export({
-    format: 'jwk',
-  });
-  return Buffer.concat([
-    Buffer.from([0xa5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01, 0x21, 0x58, 0x20]),
-    Buffer.from(x!, 'base64url'),
-    Buffer.from([0x22, 0x58, 0x20]),
-    Buffer.from(y!, 'base64url'),
-  ]).toString('base64url');
+/** A passkey's public key in the COSE form it is stored in (EC2, ES256), with the private half of
+ * its pair as PKCS8, base64. */
+function mintedKeyPair() {
+  const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const { x, y } = publicKey.export({ format: 'jwk' });
+  return {
+    publicKey: Buffer.concat([
+      Buffer.from([0xa5, 0x01, 0x02, 0x03, 0x26, 0x20, 0x01, 0x21, 0x58, 0x20]),
+      Buffer.from(x!, 'base64url'),
+      Buffer.from([0x22, 0x58, 0x20]),
+      Buffer.from(y!, 'base64url'),
+    ]).toString('base64url'),
+    privateKey: privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64'),
+  };
 }
+
+/** A public key whose private half is dropped at once: nothing can sign in with the data set's
+ * passkeys, which the list shows, but the first. */
+const forgottenPublicKey = () => mintedKeyPair().publicKey;
+
+/** The one passkey of the data set's active operator that a walk can touch: the first, whose pair
+ * is minted per stack and handed over once, never stored beside the stack or committed. `id` is
+ * the credential's, `userHandle` the operator's id as the BFF's ceremonies bind it, both base64url. */
+type WalkPasskey = { id: string; privateKey: string; userHandle: string };
 
 /** The device the data set's operator session is kept for. */
 const OPERATOR_DEVICE = 'device-operator-seed';
@@ -340,10 +350,11 @@ async function closeWeek(
 async function seedOperators(storage: CStorageClient, now: number) {
   const taken = () => new Error('the service already holds data: not seeded over');
   const first = DEMO_PASSKEYS[0].addedAt;
+  const walkPair = mintedKeyPair();
   const account: StoredAccount = {
-    passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }) => ({
+    passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }, index) => ({
       id,
-      publicKey: forgottenPublicKey(),
+      publicKey: index === 0 ? walkPair.publicKey : forgottenPublicKey(),
       counter: 0,
       transports: ['internal'],
       addedAt,
@@ -385,7 +396,12 @@ async function seedOperators(storage: CStorageClient, now: number) {
     keyOf: recordKeys.operatorSession,
     sliding: OPERATOR_SESSION,
   }).issue(OPERATOR_DEVICE, DEMO_OPERATOR_ID, String(account.generation));
-  return { invitedToken: invited.token, operatorHandle: authId };
+  const operatorPasskey: WalkPasskey = {
+    id: DEMO_PASSKEYS[0].id,
+    privateKey: walkPair.privateKey,
+    userHandle: Buffer.from(DEMO_OPERATOR_ID).toString('base64url'),
+  };
+  return { invitedToken: invited.token, operatorHandle: authId, operatorPasskey };
 }
 
 /**
@@ -397,7 +413,7 @@ async function seedOperators(storage: CStorageClient, now: number) {
  * password was.
  */
 export async function seedDemo(storage: CStorageClient, now: number = Date.now()) {
-  const { invitedToken, operatorHandle } = await seedOperators(storage, now);
+  const { invitedToken, operatorHandle, operatorPasskey } = await seedOperators(storage, now);
   const demo = DEMO_CLIENTS.find((client) => client.code === DEMO_CODE)!;
   const { rootPassword, people } = await seedClient(storage, demo.code, demo.madeAt);
   // The operator's list shows three clients: the other two are only made, with their fixed times.
@@ -406,5 +422,5 @@ export async function seedDemo(storage: CStorageClient, now: number = Date.now()
       throw new Error('the service already holds data: not seeded over');
     }
   }
-  return { rootPassword, people, invitedToken, operatorHandle };
+  return { rootPassword, people, invitedToken, operatorHandle, operatorPasskey };
 }

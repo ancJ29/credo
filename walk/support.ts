@@ -98,6 +98,21 @@ export async function virtualAuthenticator(page: Page) {
           signCount: 0,
         },
       }),
+    /** Puts on the authenticator a passkey the stack handed over (`CREDO_OPERATOR_PASSKEY`, the first
+     * of the data set's operator): the credential's id and user handle in base64url, its private key
+     * as PKCS8 in base64. The BFF holds its public half, so a ceremony it answers is a real one. */
+    hold: (passkey: { id: string; privateKey: string; userHandle: string }) =>
+      cdp.send('WebAuthn.addCredential', {
+        authenticatorId,
+        credential: {
+          credentialId: Buffer.from(passkey.id, 'base64url').toString('base64'),
+          isResidentCredential: true,
+          rpId: 'localhost',
+          privateKey: passkey.privateKey,
+          userHandle: Buffer.from(passkey.userHandle, 'base64url').toString('base64'),
+          signCount: 0,
+        },
+      }),
     forget: () => cdp.send('WebAuthn.clearCredentials', { authenticatorId }),
   };
 }

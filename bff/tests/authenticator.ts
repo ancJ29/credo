@@ -1,5 +1,6 @@
 import {
   createHash,
+  createPrivateKey,
   createSign,
   generateKeyPairSync,
   randomBytes,
@@ -40,7 +41,7 @@ const FLAG = { userPresent: 0x01, userVerified: 0x04, attested: 0x40 };
  * verification an answer claims, to make each fault on purpose.
  */
 export class SoftwareAuthenticator {
-  readonly credentialId = randomBytes(16);
+  readonly credentialId: Buffer;
   private readonly privateKey: KeyObject;
   private readonly publicJwk: { x: string; y: string };
   /** The user handle the registration was made for, as the device keeps it. */
@@ -51,7 +52,23 @@ export class SoftwareAuthenticator {
     private readonly origin: string,
     /** The relying party an answer is made for; a test changes it to answer for another. */
     public rpId = new URL(origin).hostname,
+    /** A passkey already made elsewhere (the stack's walk passkey): its credential id and user
+     * handle in base64url and its private key as PKCS8, base64. It answers a ceremony, and never
+     * registers one, since its public half is not kept here. */
+    held?: { id: string; privateKey: string; userHandle: string },
   ) {
+    if (held) {
+      this.credentialId = Buffer.from(held.id, 'base64url');
+      this.privateKey = createPrivateKey({
+        key: Buffer.from(held.privateKey, 'base64'),
+        format: 'der',
+        type: 'pkcs8',
+      });
+      this.userHandle = held.userHandle;
+      this.publicJwk = { x: '', y: '' };
+      return;
+    }
+    this.credentialId = randomBytes(16);
     const pair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
     this.privateKey = pair.privateKey;
     this.publicJwk = pair.publicKey.export({ format: 'jwk' }) as { x: string; y: string };

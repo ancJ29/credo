@@ -11,7 +11,7 @@ import {
 } from './fields';
 import { permissionLayerSchema } from './permissions';
 import { emailSchema } from './records';
-import { tagSchema } from './wire';
+import { confirmationSchema, tagSchema } from './wire';
 
 /** A code is 2 to 20 of the letters A to Z, digits and hyphens, unique in any case: a code is
  * typed in any case and kept in capitals. */
@@ -113,6 +113,14 @@ export const setPasswordRequestSchema = z.strictObject({
 export type SetPasswordRequest = z.infer<typeof setPasswordRequestSchema>;
 export const setPasswordReplySchema = z.strictObject({ password: z.string() });
 export type SetPasswordReply = z.infer<typeof setPasswordReplySchema>;
+
+/** A client's root password set anew by an operator: `password` null asks the app to make one, and
+ * `confirm` is the operator's fresh touch, made for this act. */
+export const setRootPasswordRequestSchema = z.strictObject({
+  password: z.string().refine(passwordIsValid, 'a password').nullable(),
+  confirm: confirmationSchema,
+});
+export type SetRootPasswordRequest = z.infer<typeof setRootPasswordRequestSchema>;
 
 export const archiveEmployeeRequestSchema = z.strictObject({ version: tagSchema });
 

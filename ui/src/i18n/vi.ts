@@ -90,6 +90,26 @@ export const vi: Dictionary = {
     codeInvalid:
       'Dùng từ 3 đến 32 chữ thường, chữ số và dấu gạch ngang, bắt đầu bằng một chữ cái và kết thúc bằng chữ cái hoặc chữ số.',
     nameInvalid: 'Hãy nhập tên công ty.',
+    rootPassword: 'Mật khẩu root mới',
+    rootTitle: 'Mật khẩu root mới cho {{name}}',
+    rootIntro:
+      'Thao tác này đặt mật khẩu mới cho tài khoản root của {{name}}. Mật khẩu cũ hết hiệu lực và root bị đăng xuất khỏi mọi thiết bị ở bước kế tiếp. Ứng dụng không gửi gì cho root: bạn gửi mật khẩu bằng kênh riêng của bạn.',
+    rootCodeLabel: 'Nhập mã khách hàng để xác nhận',
+    rootCodeHint: 'Mã của khách hàng này là {{code}}.',
+    rootCodeWrong: 'Đây không phải mã của khách hàng này.',
+    rootEmptyHint: 'Để trống cả hai ô mật khẩu thì ứng dụng tạo một mật khẩu và chỉ hiện một lần.',
+    rootTouch: 'Khi đặt mật khẩu, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    rootSet: 'Đặt mật khẩu cho root',
+    rootFailed:
+      'Chưa đổi được mật khẩu: mật khẩu của root vẫn như cũ. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
+    rootMadeTitle: 'Mật khẩu mới của root',
+    rootMadeIntro:
+      'Hãy gửi cho root bằng kênh riêng của bạn. Mật khẩu chỉ hiện lúc này và sẽ không hiện lại, root đã bị đăng xuất khỏi mọi thiết bị.',
+    rootMadePassword: 'Mật khẩu mới',
+    rootDoneTitle: 'Đã đặt mật khẩu cho root',
+    rootDoneIntro:
+      'Mật khẩu bạn đã nhập sẽ không hiện lại. Hãy gửi cho root bằng kênh riêng của bạn. Root đã bị đăng xuất khỏi mọi thiết bị.',
+    rootUnknown: 'Khách hàng này không có trong danh sách.',
     back: 'Về danh sách khách hàng',
     unavailableStorage:
       'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',
