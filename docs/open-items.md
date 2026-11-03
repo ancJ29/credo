@@ -513,3 +513,12 @@ Within its 5 minutes and before it is spent, a touch made for client A, posted t
 The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/RootPasswordPage.tsx#L61` (the catch), `ui/src/RootPasswordPage.test.tsx#L124` (the 503 test to copy). *Fix:* one test with the fake's `setRootPassword:403` cue, asserting the "not changed" alert and that the code and passwords are still typed.
 
 *Trigger:* the next change to the page.
+
+## 64. The scripts' coverage missed 100 % once, at the wait's retry sleep — the machine; *parked* (B1, plan step 2, 2026-11-03)
+
+`scripts/src/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
+and the function around it showed uncovered in one whole run of the scripts' tests (263 pass, statements 99.92 %,
+branches 99.82 %), under a load near 8; the same tests passed at 100 % when run again with nothing else changed (the
+only change between the two runs was a type in `bff/src/challenge.ts`, which `scripts` does not run). So the retry is
+covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
+stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.

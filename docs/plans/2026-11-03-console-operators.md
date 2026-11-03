@@ -58,6 +58,16 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   pages, the words, `createApi` and the fake, four scenes, `walk/specs/operator-team.spec.ts`'s `team-fake`, the
   `walk/run.sh` row. *Models:* `ui/src/RootPasswordPage.tsx`, `ClientMade.tsx`. Done when: rows 1 to 3's UI halves red
   once; touched packages at 100 %, lint clean; `pnpm report` builds the four screens. Then 👤 1, while step 3 goes on.
+  *Ready for the human's look* (2026-11-03): `main` taken in (`f7719f5`, docs only); typecheck, eslint, prettier, the
+  shared, ui, visual and scripts tests at 100 % and knip, `== exit 0` in one run; the walks page built from `eb428d6`
+  with a clean tree: 104 screens and 208 captures (100 and 200 before), the four new ones in vi and en (`tm-1-list`,
+  `tm-2-name`, `tm-3-added`, `tm-6-taken`, numbered 1, 2, 3 and 6, each with its Vietnamese question). The preview is
+  `ops/walks-preview.sh` on that folder (its refusals and `bash -n` run; the deploy is the human's). *Not done:* the
+  new UI tests were written with the pages, then seen red once by taking the two routes out (16 failed); the walk
+  specs are typechecked, never run (step 6). `team-full` has the same screens opened on a stack, not yet shown to
+  match: step 3. The BFF gained one line, the touch's purpose `confirm-add-operator` in its type, since the act is in
+  the wire. A first run of the scripts tests missed 100 % at `scripts/src/processes.ts#L83` (a rerun, with the BFF
+  type fixed, passed): logged in `docs/open-items.md#L517`.
 - [ ] **3. The routes on the real c-storage.** 🤖 Sonnet, about 28 minutes: the routes, `signedInAt`, the act, the
   generator; `team-full` written, not run. Done when: rows 1 to 4's BFF halves red once; bff at 100 %; live, in one
   `pnpm stack -- <command>`: three operators listed; a create touched by `CREDO_OPERATOR_PASSKEY` 201, its link's join
