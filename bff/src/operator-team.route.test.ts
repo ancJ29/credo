@@ -1,5 +1,6 @@
 import {
   addOperatorReplySchema,
+  CStorageError,
   type CStorageClient,
   operatorLinkReplySchema,
   operatorListReplySchema,
@@ -700,6 +701,62 @@ describe('A colleague deleted, after a touch of the reader’s own passkey', () 
     lanRival.moved = 99;
     expect((await t.remove(kho.id)).statusCode).toBeGreaterThanOrEqual(500);
   });
+});
+
+describe('A delete that fails partway (review M1)', () => {
+  // Every point of one delete where a write can throw: each removal in turn, and the roster line.
+  const points = ['remove 1', 'remove 2', 'remove 3', 'roster'] as const;
+  it.each(points)(
+    'leaves no link of the deleted one, or of theirs, that still joins, and a retry finishes or finds nothing: failing at %s',
+    async (point) => {
+      const failing = { on: false, removals: 0 };
+      const t = await setup({
+        wrap: (client) => ({
+          ...client,
+          removeRecord: async (key, tag) => {
+            failing.removals++;
+            if (failing.on && point === `remove ${failing.removals}`)
+              throw new CStorageError(503, 'a removal failed');
+            return await client.removeRecord(key, tag);
+          },
+          putRecord: async (key, data, tag) => {
+            if (failing.on && point === 'roster' && key === recordKeys.operatorRoster)
+              throw new CStorageError(503, 'the roster write failed');
+            return await client.putRecord(key, data, tag);
+          },
+        }),
+      });
+      const lan = await joinedOperator(t, 'Lan Anh', t.op.id);
+      const kho = await inviteOperator(t, 'Kho', lan.id);
+      const lanLink = tokenOf(await t.link(lan.id));
+      failing.removals = 0;
+      failing.on = true;
+
+      expect((await t.remove(lan.id)).statusCode).toBeGreaterThanOrEqual(500);
+      failing.on = false;
+
+      const left = async () =>
+        (await t.client.listRecords('operator.link.')).records.map(({ data }) =>
+          storedLinkSchema.parse(data),
+        );
+      const listed = (await t.roster()).operators.some((one) => one.id === lan.id);
+      if (!listed)
+        expect(
+          (await left()).filter((one) => one.madeBy === lan.id || one.operatorId === lan.id),
+        ).toEqual([]);
+      const retried = (await t.remove(lan.id)).statusCode;
+      expect([204, 404]).toContain(retried);
+      expect(
+        (await left()).filter((one) => one.madeBy === lan.id || one.operatorId === lan.id),
+      ).toEqual([]);
+      expect(
+        await t.client.getRecord(recordKeys.operatorLink(await sha256Hex(lanLink))),
+      ).toBeNull();
+      expect(
+        await t.client.getRecord(recordKeys.operatorLink(await sha256Hex(kho.token))),
+      ).toBeNull();
+    },
+  );
 });
 
 describe('Two spellings of one name racing, and names in either Unicode form (items 66 and 67)', () => {

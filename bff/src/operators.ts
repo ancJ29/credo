@@ -157,12 +157,13 @@ async function removeIf(storage: CStorageClient, key: string, wanted: (data: unk
 }
 
 /**
- * Deletes an operator, by another who is signed in: the roster line first, with its tag, as its
- * write is what makes an operator, then the account, their live link and the links they made, each
- * removed with its tag. The roster is read again after a 412 and the actor and the target checked
- * again, three times at most: an actor gone is `'actor'`, a target gone is `'target'`. Sessions
- * are left: the roster check refuses them. A failure after the roster leaves records nothing
- * reaches.
+ * Deletes an operator, by another who is signed in: their live link and the links they made
+ * removed first, each with its tag, then the roster line with its tag, as its write is what makes
+ * an operator, and last their account. The roster is read again after a 412 and the actor and the
+ * target checked again, three times at most: an actor gone is `'actor'`, a target gone is
+ * `'target'`. Sessions are left: the roster check refuses them. A failure among the links leaves
+ * the operator listed, so a retry finishes; once the roster line is written no link of theirs or
+ * of their making is left, and an account a failure leaves cannot sign in, as the roster refuses it.
  */
 export async function deleteOperator(
   storage: CStorageClient,
@@ -174,10 +175,7 @@ export async function deleteOperator(
       return 'actor';
     if (!roster.operators.some((one) => one.id === targetId)) return 'target';
     const rest = roster.operators.filter((one) => one.id !== targetId);
-    const saved = await storage.putRecord(recordKeys.operatorRoster, { operators: rest }, tag);
-    if (saved !== 'saved') continue;
     const held = await readAccount(storage, targetId);
-    await removeIf(storage, recordKeys.operatorAccount(targetId), () => true);
     if (held?.account.linkHash)
       await removeIf(storage, recordKeys.operatorLink(held.account.linkHash), () => true);
     for (const one of rest) {
@@ -189,6 +187,9 @@ export async function deleteOperator(
           (data) => storedLinkSchema.parse(data).madeBy === targetId,
         );
     }
+    const saved = await storage.putRecord(recordKeys.operatorRoster, { operators: rest }, tag);
+    if (saved !== 'saved') continue;
+    await removeIf(storage, recordKeys.operatorAccount(targetId), () => true);
     return 'deleted';
   }
   throw new CStorageError(412, 'the roster moved on every attempt to delete an operator');
