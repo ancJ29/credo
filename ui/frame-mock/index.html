@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Credo: the app's frame, a mock</title>
+<title>The app's frame, a mock</title>
+<!-- The legacy app's font, embedded: Noto Sans, variable, weights 100 to 900 (fonts/OFL.txt). -->
+<link rel="stylesheet" href="fonts/noto-sans.css">
 <!-- A static look for the human to judge, not product code: it opens from disk, fetches nothing,
      and draws the legacy app's frame around the new app's menus and words (data.js). -->
 <style>
@@ -11,7 +13,7 @@
 [data-scheme=dark] { --ui-bg:#141517; --ui-surface:#1f2023; --ui-text:#e5e7eb; --ui-dim:#a1a1aa; --ui-border:#3f3f46; --ui-accent:#9bc1e7; --ui-on-accent:#141517; }
 * { box-sizing:border-box; }
 html, body { height:100%; }
-body { margin:0; font:14px/1.45 "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--ui-bg); color:var(--ui-text); display:flex; flex-direction:column; }
+body { margin:0; font:14px/1.45 "Noto Sans", sans-serif; background:var(--ui-bg); color:var(--ui-text); display:flex; flex-direction:column; }
 button { font:inherit; color:inherit; cursor:pointer; }
 a { color:inherit; }
 
@@ -61,7 +63,7 @@ a { color:inherit; }
 .app-header.white { background:var(--n0); color:var(--n8); border-bottom:1px solid var(--n2); }
 .app.phone .app-header { box-shadow:0 2px 8px rgba(0,0,0,.08); }
 .brand { display:flex; align-items:center; gap:12px; min-width:0; }
-.logo { width:36px; height:36px; flex:none; display:block; }
+.logo { width:36px; height:36px; flex:none; display:block; color:#fff; }
 .brand-name { font-size:18px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .badge { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.18); white-space:nowrap; }
 .app-header.white .badge { background:var(--badge-bg); color:var(--badge-text); }
@@ -97,6 +99,12 @@ a { color:inherit; }
 .app-menu.white a[aria-current=page] svg { color:var(--nav-accent); }
 .app-menu a[aria-current=page]::after { content:""; position:absolute; right:0; top:50%; margin-top:-7px; border:7px solid transparent; border-right-color:var(--body); }
 .app-menu.white a[aria-current=page]::after { border-right-color:var(--nav-accent); }
+/* The legacy's icon strip: the hidden menu 60 wide, icons 22, a page's name in a tip on hover. */
+.app.menu-icons .app-menu { width:60px; }
+.app.menu-icons .app-main { left:60px; }
+.app.menu-icons .app-menu a { justify-content:center; padding:0; }
+.app.menu-icons .app-menu a > span, .app.menu-icons .build { display:none; }
+.app-menu a[data-tip]:hover::before { content:attr(data-tip); position:absolute; left:calc(100% + 8px); top:50%; transform:translateY(-50%); z-index:5; white-space:nowrap; pointer-events:none; padding:4px 10px; border-radius:6px; background:#1f2937; color:#fff; font-size:13px; font-weight:500; box-shadow:0 4px 6px rgba(0,0,0,.15); }
 .build { margin-top:auto; padding:8px 16px 10px; font-size:11px; opacity:.8; font-family:ui-monospace, monospace; }
 
 .app-main { position:absolute; top:56px; left:250px; right:0; bottom:0; overflow:auto; padding:16px; }
@@ -133,7 +141,7 @@ a { color:inherit; }
 </head>
 <body>
 <header class="top">
-  <h1>Credo: the app's frame, mock round 1</h1>
+  <h1>The app's frame, mock round 2</h1>
   <div class="q" role="group" aria-label="The one question">
     <strong>Does this read as the old app?</strong>
     <span class="seg"><button type="button" class="yes" data-answer="yes" aria-pressed="false">Yes</button><button type="button" class="no" data-answer="no" aria-pressed="false">No</button></span>
