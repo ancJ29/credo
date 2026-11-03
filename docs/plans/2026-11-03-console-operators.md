@@ -87,8 +87,24 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   `== exit 0`. Done 11-03: `main` already in. First run `logs/20261103-1442-b1-step4-gate.log` `== exit 1` at load 21 to 29
   (the known flakes of open item 56: `SignIns.test.tsx` timed out, `MyDeliveries.test.tsx` landing); a rerun,
   `logs/20261103-1446-b1-step4-gate2.log`, ends `== exit 0` (a rerun's green, not a first pass).
-- [ ] **5. One review.** 🤖 Opus, about 7 minutes (D's): what the touch is tied to; what a failure claims after a
-  timeout. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
+- [x] **5. One review.** 🤖 Opus, about 7 minutes (D's): what the touch is tied to; what a failure claims after a
+  timeout. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here. Done 11-03: Opus at `5bae528`, no High and
+  no Medium, five Lows, its scratch worktree removed; by the rule "High and Medium fixed, the rest open items" none is fixed in B1.
+  - **L1, Low:** after a timeout the roster write may have landed, yet the page says "The operator was not added" and the
+    link is lost; a retry meets 409 and the invited operator is unreachable until B2's new link
+    (`bff/src/operators.ts#L138`, `ui/src/i18n/en.ts#L144`, `ui/src/i18n/vi.ts#L143`). `[DEFERRED]` to open item 65 (B2):
+    B2's new link reaches that operator.
+  - **L2, Low:** the race's re-check after the tagged write's retry is held by no test; `sameOperatorName` going back to
+    `===` leaves every test green (`bff/src/operators.ts#L137`, `bff/src/operator-passkeys.route.test.ts#L1062`).
+    `[DEFERRED]` to open item 66 (B2): B2's plan adds a race on two spellings of one name.
+  - **L3, Low:** names are compared without Unicode normalization, so a Vietnamese name with precomposed or combining
+    accents compares as different (`shared/src/wire.ts#L370`). `[DEFERRED]` to open item 67 (B2): B2's plan adds
+    `.normalize('NFC')` to the compare and to the stored name.
+  - **L4, Low:** the command line's `--replace` finds an operator by exact name, while create refuses the same name in other
+    capitals (`scripts/src/ridge.ts#L83`). `[DEFERRED]` to open item 68 (B2): B2's plan makes the command line use the same compare.
+  - **L5, Low:** a BFF rolled back past B1 cannot read the accounts B1 writes (`signedInAt`, the strict schema,
+    `shared/src/records.ts#L125`) and answers 503 to those operators; the precedent is `docs/open-items.md#L359`.
+    `[DEFERRED]` to open item 69, and a line in B1's recap's hazards.
 - [ ] **6. The full run** (👤 2), about 12 minutes (D's two walks: 8.5); 🤖 reads each log whole. Done when: both green;
   the first adds 24 bases, `operator` and `passkeys` moving none; the second every count 0; the bases committed.
 - [ ] **7. The recap.** 🤖, about 7 minutes (what D's last 38 left), half a page. Done when: committed, `wc -w` under 400; then the squash.

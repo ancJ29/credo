@@ -522,3 +522,33 @@ branches 99.82 %), under a load near 8; the same tests passed at 100 % when run 
 only change between the two runs was a type in `bff/src/challenge.ts`, which `scripts` does not run). So the retry is
 covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
 stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.
+
+## 65. After a timeout the roster write may have landed, yet the page says the operator was not added — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
+
+The page says "The operator was not added" and the link is lost, though the write may have landed; a retry meets 409 and the invited operator is unreachable until B2's new link. The same class as item 61. Lines: `bff/src/operators.ts#L138`, `ui/src/i18n/en.ts#L144`, `ui/src/i18n/vi.ts#L143`. *Fix:* B2's new link reaches that operator; word the failure as "may not have been added".
+
+*Trigger:* B2.
+
+## 66. The race's re-check after the tagged write's retry is held by no test — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
+
+If `sameOperatorName` at `bff/src/operators.ts#L137` went back to `===`, every test would stay green. The race test is `bff/src/operator-passkeys.route.test.ts#L1062`. *Fix:* B2's plan adds a race on two spellings of one name.
+
+*Trigger:* B2.
+
+## 67. Operator names are compared without Unicode normalization — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
+
+A Vietnamese name typed with precomposed or with combining accents compares as different (`shared/src/wire.ts#L370`). *Fix:* B2's plan adds `.normalize('NFC')` to the compare and to the stored name.
+
+*Trigger:* B2.
+
+## 68. The command line's `--replace` finds an operator by exact name — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
+
+Create refuses the same name in other capitals, but `--replace` matches exactly (`scripts/src/ridge.ts#L83`). *Fix:* B2's plan makes the command line use the same compare.
+
+*Trigger:* B2.
+
+## 69. A BFF rolled back past B1 cannot read the accounts B1 writes — the machine; `[DEFERRED]` (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
+
+`signedInAt` and the strict schema (`shared/src/records.ts#L125`) make an older BFF answer 503 to those operators. The precedent is `docs/open-items.md#L359`. *Fix:* none now; a line in B1's recap's hazards.
+
+*Trigger:* a rollback past B1.
