@@ -47,12 +47,6 @@ export async function shot(
   mask: Locator[] = [],
 ) {
   await page.mouse.move(0, 0);
-  // A table's scrollbar shows while the pointer was over it and hides a second after it left: a
-  // picture is taken only once it is hidden, or the fake and the stack catch it at different times.
-  await page.waitForSelector('[data-orientation][data-state="visible"]', {
-    state: 'detached',
-    timeout: 5_000,
-  });
   await page.evaluate('window.scrollTo(0, 0)');
   const name = `${screen}-${language}-${width}.png`;
   const dir = required('CREDO_SHOTS_DIR', 'walk/run.sh gives it the folder for the pictures');
