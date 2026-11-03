@@ -18,7 +18,7 @@ vi.mock('./photo', () => ({ shrinkToPhoto: vi.fn(), shrinkToProof: vi.fn() }));
 const user = userEvent.setup({ delay: null });
 
 const PHOTO = Object.values(DEMO_PHOTOS)[0];
-const menu = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 const at = (code: string) => `/staff/${person(code).id}`;
 
 /** The staff setup page's last field editor: the one a click on "Add a field" just made. */

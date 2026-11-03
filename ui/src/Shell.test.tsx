@@ -1,7 +1,8 @@
-import { cleanup, screen } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
+import { PAGES } from './nav';
 import { Shell } from './Shell';
 
 const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA' };
@@ -16,6 +17,9 @@ const shell = (
     </Shell>,
   );
 
+const sideMenu = () => screen.getAllByRole('navigation', { name: 'Menu' })[0];
+const bar = () => screen.getAllByRole('navigation', { name: 'Menu' })[1];
+
 describe('Shell', () => {
   it('shows the company’s name as the first heading, and a page in the middle', () => {
     shell(['en']);
@@ -24,55 +28,201 @@ describe('Shell', () => {
     expect(screen.getByText('the page')).toBeTruthy();
   });
 
-  it('lists Settings in the menu, marked as the page shown', () => {
+  it('10: The header shows the company’s name beside the stand-in logo, never the stored one', () => {
     shell(['en']);
 
-    const link = screen.getByRole('link', { name: 'Settings' });
+    const header = document.querySelector('header')!;
+    expect(header.querySelector('img')).toBeNull();
+    expect(header.querySelector('svg.tabler-icon-brand-adobe')?.getAttribute('width')).toBe('36');
+    expect(within(header).getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
+  });
+
+  it('1: The header is painted 135° from the brand’s shade 7 to 9 and the menu 180° from 9 to 8, in white text', () => {
+    shell(['en']);
+
+    const header = document.querySelector('header')!;
+    expect(header.getAttribute('style')).toContain(
+      'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',
+    );
+    expect(sideMenu().getAttribute('style')).toContain(
+      'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
+    );
+    expect(header.style.color).toBe('rgb(255, 255, 255)');
+    expect(sideMenu().style.color).toBe('rgb(255, 255, 255)');
+    // 250 pixels wide, 64 high for the phone's bar, as Mantine writes them: in rem.
+    const rules = [...document.querySelectorAll('style')]
+      .map((style) => style.textContent)
+      .join('');
+    expect(rules).toContain('--app-shell-navbar-width:calc(15.625rem');
+    expect(rules).toContain('--app-shell-footer-height:calc(4rem');
+  });
+
+  it('6: One navigation named Menu a width: the side menu from 768, the bar below; the open page washed', () => {
+    shell(['en']);
+
+    expect(sideMenu().className).toContain('mantine-visible-from-sm');
+    expect(bar().parentElement?.className).toContain('mantine-hidden-from-sm');
+    const link = within(sideMenu()).getByRole('link', { name: 'Settings' });
     expect(link.getAttribute('href')).toBe('/settings');
-    expect(link.getAttribute('data-active')).toBe('true');
+    expect(link.getAttribute('aria-current')).toBe('page');
+    expect(
+      within(sideMenu()).getByRole('link', { name: 'Orders' }).getAttribute('aria-current'),
+    ).toBe(null);
   });
 
-  it('opens and closes the menu on a phone', async () => {
+  it('2: The PC’s toggle is named by its act, hides and shows the menu, and tells the device', async () => {
+    const onShown = vi.fn();
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        onShown={onShown}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    const hide = screen.getByRole('button', { name: 'Hide the menu' });
+    expect(hide.getAttribute('aria-expanded')).toBe('true');
+    expect(hide.className).toContain('mantine-visible-from-sm');
+
+    await userEvent.click(hide);
+    const show = screen.getByRole('button', { name: 'Show the menu' });
+    expect(show.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+    expect(onShown).toHaveBeenLastCalledWith(false);
+
+    await userEvent.click(show);
+    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(2);
+    expect(onShown).toHaveBeenLastCalledWith(true);
+  });
+
+  it('2: The menu starts hidden when the device kept it hidden', () => {
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        shown={false}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Show the menu' }).getAttribute('aria-expanded'),
+    ).toBe('false');
+    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+  });
+
+  it('3: The bar holds the first four pages in the menu’s order and More, each named, the open page marked', () => {
     shell(['en']);
-    const burger = screen.getByRole('button', { name: 'Menu' });
 
-    await userEvent.click(burger);
-    expect(burger.getAttribute('aria-expanded')).toBe('true');
-
-    await userEvent.click(screen.getByRole('link', { name: 'Settings' }));
-    expect(burger.getAttribute('aria-expanded')).toBe('false');
+    const links = within(bar()).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
+      'My deliveries',
+      'Orders',
+      'Delivery requests',
+      'Settings',
+      'More',
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/my-deliveries',
+      '/orders',
+      '/deliveries',
+      '/settings',
+      '/more',
+    ]);
+    expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([
+      null,
+      null,
+      null,
+      'page',
+      null,
+    ]);
   });
 
-  it('offers the language switch only when the company offers both', async () => {
+  it('3: A page past the fourth marks More, and More itself is marked on its own page', () => {
+    const later = [...PAGES.filter((page) => page.id !== 'settings'), PAGES[3]];
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        pages={later}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    const links = within(bar()).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([
+      null,
+      null,
+      null,
+      null,
+      'page',
+    ]);
+  });
+
+  it('3: The bar’s More goes to the address the app gives it', () => {
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        morePath="/operator/more"
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+
+    expect(within(bar()).getByRole('link', { name: 'More' }).getAttribute('href')).toBe(
+      '/operator/more',
+    );
+  });
+
+  it('5: The language is a header button over the company’s languages, the current one marked', async () => {
     const onLanguage = vi.fn();
     shell(['vi', 'en'], { onLanguage, onSignOut: vi.fn() });
 
-    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    const button = screen.getByRole('button', { name: 'Language' });
+    expect(button.textContent).toBe('EN');
+    await userEvent.click(button);
+    expect(screen.getByRole('menuitem', { name: 'English' }).getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('menuitem', { name: 'Tiếng Việt' }).getAttribute('aria-current')).toBe(
+      'false',
+    );
     await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
 
     expect(onLanguage).toHaveBeenCalledExactlyOnceWith('vi');
   });
 
-  it('does not offer the language the screen is already in', async () => {
+  it('5: The user’s menu no longer holds the language, and one language gives no button', async () => {
     shell(['vi', 'en']);
-
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    expect(screen.queryByRole('menuitem', { name: 'Tiếng Việt' })).toBeNull();
+    cleanup();
 
-    expect(screen.getByRole('menuitem', { name: 'English' }).hasAttribute('disabled')).toBe(true);
-  });
-
-  it('has no language switch when the company offers one language', async () => {
     const onSignOut = vi.fn();
     shell(['en'], { onLanguage: vi.fn(), onSignOut });
+    expect(screen.queryByRole('button', { name: 'Language' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
-    expect(screen.queryByText('Language')).toBeNull();
-
     await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
     expect(onSignOut).toHaveBeenCalledOnce();
   });
 
-  it('starts with the user’s menu open when asked, and without a logo shows the name alone', () => {
+  it('starts with the user’s menu open when asked', () => {
     draw(
       <Shell
         brand={{ name: 'Minh Phát', logo: null }}
@@ -87,7 +237,6 @@ describe('Shell', () => {
     );
 
     expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeTruthy();
-    expect(document.querySelector('header img')).toBeNull();
   });
 
   it('shows a badge beside the brand only when it is given one, as the operator’s frame does', () => {

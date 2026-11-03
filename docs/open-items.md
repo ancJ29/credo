@@ -552,3 +552,10 @@ A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) an
 A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
 
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
+
+## 74. Eleven screens wear no frame, not the plan's nine — the machine; `[OPEN]` (legacy frame, step 2, 2026-11-03, Low)
+
+The built walks page draws 107 screens, 96 of them in the frame. Beside row 9's nine, `pk-3-not-given` and `sv-5-unavailable` also wear none (a join page and a boot page, never inside `Shell`). Step 5's "about 588 bases" is then 96 screens by six pictures, about 576, and the raw count of the full run names those eleven as unmoved.
+
+*Trigger:* the full run's first raw count.
+

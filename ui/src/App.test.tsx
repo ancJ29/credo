@@ -1,5 +1,5 @@
 import type { ConfigDoc, TenantConfig } from '@credo/shared';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { drawApp } from '../tests/render';
@@ -178,11 +178,11 @@ describe('the app', () => {
     expect(api.me).toHaveBeenCalledOnce();
   });
 
-  it('With both languages each user switches in their menu, kept on that device', async () => {
+  it('With both languages each user switches from the header’s button, kept on that device', async () => {
     const first = setup({}, signedIn);
     expect((await screen.findAllByText('Settings')).length).toBeGreaterThan(0);
 
-    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Language' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
 
     expect((await screen.findAllByText('Cài đặt')).length).toBeGreaterThan(0);
@@ -192,6 +192,32 @@ describe('the app', () => {
     const second = createDeviceStore(first.storage);
     drawApp(<App api={first.api} device={second} passkeys={noPasskeys} build="dev" test />);
     expect((await screen.findAllByText('Cài đặt')).length).toBeGreaterThan(0);
+  });
+
+  it('4: More opens at its own address with the other pages, the password and sign-out, and the toggle’s state is kept on the device', async () => {
+    const { device } = setup({}, signedIn, '/more');
+    const main = () => within(document.querySelector('main')!);
+    await screen.findByRole('heading', { level: 2, name: 'More' });
+    expect((await main().findAllByRole('link')).map((link) => link.getAttribute('href'))).toEqual([
+      '/staff-setup',
+      '/customers',
+      '/products',
+      '/password',
+    ]);
+    expect(device.menuShown()).toBe(true);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide the menu' }));
+    expect(device.menuShown()).toBe(false);
+  });
+
+  it('4: A person with no page still has More', async () => {
+    setup(
+      { me: vi.fn(() => Promise.resolve({ user: { name: 'x', root: false, permissions: {} } })) },
+      signedIn,
+      '/more',
+    );
+
+    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
   });
 
   it('Opens in the company’s default language when the device chose none', async () => {

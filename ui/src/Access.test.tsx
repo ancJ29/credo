@@ -8,7 +8,7 @@ import { draw } from '../tests/render';
 import { sceneParts } from './scene';
 import { StaffListPage } from './StaffListPage';
 
-const menu = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 const forbidden = () =>
   screen.findByRole('heading', { level: 2, name: 'You cannot open this page' });
 

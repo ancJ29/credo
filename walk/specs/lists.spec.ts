@@ -5,8 +5,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * The customers and products from Excel, one walk of eight screens, each in Vietnamese and in
- * English at the three widths (8 × 2 × 3 = 48). The `lists-fake` project runs it on `pnpm fake -- …`
+ * The customers and products from Excel, one walk of nine screens, each in Vietnamese and in
+ * English at the three widths (9 × 2 × 3 = 54). The `lists-fake` project runs it on `pnpm fake -- …`
  * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
  * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
@@ -156,6 +156,11 @@ async function walk(page: Page, language: Language, width: number) {
     page.getByText(words.lists.products.doneAdded.replace('{{count}}', '3')),
   ).toBeVisible();
   await at('lists-8-products-added');
+
+  // 9. More: the pages the phone's bar leaves out, then the password and sign-out.
+  await open(page, language, '/more');
+  await expect(title(words.nav.more)).toBeVisible();
+  await at('lists-9-more');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -166,7 +171,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all eight screens in ${name}`, async ({ page }) => {
+      test(`walks all nine screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

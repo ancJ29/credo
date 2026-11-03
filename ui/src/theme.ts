@@ -66,6 +66,10 @@ const RED: MantineColorsTuple = [
 export const BRAND_GRADIENT =
   'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)';
 
+/** The side menu's ground, from the brand's shade 9 down to its shade 8. */
+export const MENU_GRADIENT =
+  'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)';
+
 type Rgb = [number, number, number];
 
 const mix = (from: Rgb, to: Rgb, share: number) =>

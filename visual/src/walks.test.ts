@@ -551,7 +551,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, eight screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, nine screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -564,6 +564,7 @@ describe('the walks', () => {
       ['lists-6-products', 6, 'main'],
       ['lists-7-products-preview', 7, 'main'],
       ['lists-8-products-added', 8, 'main'],
+      ['lists-9-more', 9, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([

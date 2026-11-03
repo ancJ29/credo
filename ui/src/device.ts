@@ -7,13 +7,14 @@ const KEYS = {
   client: 'credo.client',
   language: 'credo.language',
   shown: 'credo.shown',
+  menu: 'credo.menu',
 };
 
 const languageOf = (kept: string | null) => LANGUAGES.find((language) => language === kept) ?? null;
 
 /** What this device keeps between visits: the id it minted once, the client it was linked to, the
- * session handle (a reload keeps the sign-in), the operator's own handle apart from it, the
- * language its user chose, and the language the last successful boot showed, which speaks before
+ * session handle (a reload keeps the sign-in), the operator's own handle apart from it, whether
+ * the side menu shows, the language its user chose, and the language the last successful boot showed, which speaks before
  * the settings load. */
 export function createDeviceStore(storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>) {
   return {
@@ -41,6 +42,9 @@ export function createDeviceStore(storage: Pick<Storage, 'getItem' | 'setItem' |
     /** The language the last successful boot showed on this device, if one did. */
     shownLanguage: (): Language | null => languageOf(storage.getItem(KEYS.shown)),
     setShownLanguage: (language: Language) => storage.setItem(KEYS.shown, language),
+    /** Whether the side menu shows on a PC: it does, until a person hides it. */
+    menuShown: () => storage.getItem(KEYS.menu) !== 'hidden',
+    setMenuShown: (shown: boolean) => storage.setItem(KEYS.menu, shown ? 'shown' : 'hidden'),
   };
 }
 

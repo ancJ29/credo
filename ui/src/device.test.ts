@@ -31,6 +31,18 @@ describe('what the device keeps', () => {
     expect(createDeviceStore(storage).authId()).toBeNull();
   });
 
+  it('keeps whether the side menu shows: it does until a person hides it', () => {
+    const storage = memory();
+    const device = createDeviceStore(storage);
+    expect(device.menuShown()).toBe(true);
+
+    device.setMenuShown(false);
+    expect(createDeviceStore(storage).menuShown()).toBe(false);
+
+    device.setMenuShown(true);
+    expect(createDeviceStore(storage).menuShown()).toBe(true);
+  });
+
   it('keeps the client it was linked to, apart from every handle', () => {
     const storage = memory();
     const device = createDeviceStore(storage);

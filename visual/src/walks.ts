@@ -1229,6 +1229,17 @@ export const WALKS: Walk[] = [
         },
         question: 'Would the admin know they are now in the list?',
       },
+      {
+        id: 'lists-9-more',
+        number: 9,
+        path: 'main',
+        scene: { path: '/more' },
+        sentence: {
+          en: 'More: the pages the phone’s bar leaves out, then the password and sign-out',
+          vi: 'Thêm: các trang thanh dưới của điện thoại không có, rồi đổi mật khẩu và đăng xuất',
+        },
+        question: 'Would a person on a phone find the other pages and sign-out here?',
+      },
     ],
   },
   {

@@ -1,7 +1,8 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
+import { MorePage } from './MorePage';
 import { OperatorPage } from './OperatorPage';
 
 const page = (handlers = { onLanguage: vi.fn(), onSignOut: vi.fn() }) =>
@@ -21,10 +22,11 @@ describe('OperatorPage', () => {
     expect(screen.getByRole('button', { name: 'operator' })).toBeTruthy();
   });
 
-  it('The menu holds Clients, Operators, Services status, Usage and costs and Activity, top to bottom, each at its own address', () => {
+  it('7: The menu holds Clients, Operators, Services status and Usage and costs, top to bottom, each at its own address, and the bar holds the four and More', () => {
     page();
 
-    const links = screen.getAllByRole('link');
+    const side = within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
+    const links = side.getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual([
       'Clients',
       'Operators',
@@ -39,13 +41,39 @@ describe('OperatorPage', () => {
       '/operator/usage',
       '/operator/activity',
     ]);
+    const bar = within(screen.getAllByRole('navigation', { name: 'Menu' })[1]);
+    expect(bar.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Clients',
+      'Operators',
+      'Services status',
+      'Usage and costs',
+      'More',
+    ]);
+    expect(bar.getByRole('link', { name: 'More' }).getAttribute('href')).toBe('/operator/more');
   });
 
-  it('holds the language and sign-out in the user’s menu', async () => {
+  it('7: The console’s More holds Activity, the operator’s passkeys and sign-out', async () => {
+    const handlers = { onLanguage: vi.fn(), onSignOut: vi.fn() };
+    draw(
+      <OperatorPage name="operator" {...handlers}>
+        <MorePage />
+      </OperatorPage>,
+    );
+
+    const main = within(document.querySelector('main')!);
+    expect(main.getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Activity',
+      'Your passkeys',
+    ]);
+    await userEvent.click(main.getByRole('button', { name: 'Sign out' }));
+    expect(handlers.onSignOut).toHaveBeenCalledOnce();
+  });
+
+  it('holds the language in the header’s own button and sign-out in the user’s menu', async () => {
     const handlers = { onLanguage: vi.fn(), onSignOut: vi.fn() };
     page(handlers);
 
-    await userEvent.click(screen.getByRole('button', { name: 'operator' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Language' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
     expect(handlers.onLanguage).toHaveBeenCalledExactlyOnceWith('vi');
 

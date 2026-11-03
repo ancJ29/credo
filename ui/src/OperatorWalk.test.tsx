@@ -1,5 +1,5 @@
 import { DEMO_JOIN_TOKEN } from '@credo/shared/demo';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { openApp } from '../tests/open';
@@ -19,7 +19,8 @@ describe.each(['en', 'vi'] as const)('the operator’s screens 5 to 7, in %s', (
 
     expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(await screen.findByRole('cell', { name: 'Bình An' })).toBeTruthy();
-    expect(screen.getByRole('navigation', { name: words.nav.menu })).toBeTruthy();
+    const menus = screen.getAllByRole('navigation', { name: words.nav.menu });
+    expect(within(menus[0]).getAllByRole('link')).toHaveLength(5);
     expect(screen.queryByText('minh-phat')).toBeNull();
     expect(screen.getAllByRole('row')).toHaveLength(1 + 3);
   });

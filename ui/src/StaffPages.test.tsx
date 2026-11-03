@@ -15,7 +15,7 @@ const rowOf = async (name: string) => {
   expect(rows).toHaveLength(1);
   return rows[0] as HTMLElement;
 };
-const menu = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 
 describe('the staff list', () => {
   it('The staff list shows each person’s name, code, department, position and phone, in code order; people who left are hidden, and a filter shows them', async () => {

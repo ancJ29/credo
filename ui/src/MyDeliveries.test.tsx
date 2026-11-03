@@ -12,7 +12,7 @@ import { ApiError } from './api';
 
 const TUNG = 'EMP-0005';
 const money = (amount: number) => `${new Intl.NumberFormat('en').format(amount)} VND`;
-const menu = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 const heading = (name: string | RegExp, level = 2) => screen.findByRole('heading', { level, name });
 
 const todays = DEMO_DELIVERIES.filter((one) => one.day === DEMO_TODAY && one.driver.code === TUNG);

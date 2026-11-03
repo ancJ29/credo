@@ -1,0 +1,168 @@
+/* The legacy app's frame: the header and the side menu wear the brand's colour with white text,
+   in the light scheme and the dark; the phone's bar stays on the page's own ground. */
+
+.header {
+  color: #fff;
+  border: 0;
+}
+
+.brand {
+  color: inherit;
+}
+
+/* The header's buttons: the toggle, the language and the user, on the coloured ground. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 4px;
+  border-radius: 6px;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: auto;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* A dropdown opened inside the header keeps the page's own text colour, not the header's white. */
+.dropdown {
+  color: var(--mantine-color-text);
+}
+
+.menu {
+  padding: 12px 0 0;
+  border: 0;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #fff;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* The open page: washed in white, with a notch at the menu's right edge opening onto the page. */
+.item[aria-current='page'] {
+  background: rgba(255, 255, 255, 0.16);
+  font-weight: 600;
+}
+
+.item[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  margin-top: -7px;
+  border: 7px solid transparent;
+  border-right-color: var(--mantine-color-body);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 100%;
+  padding: 0 8px;
+}
+
+.barLink {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  color: var(--mantine-color-gray-6);
+}
+
+.barIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+/* The open page on the brand's shade 1; in the dark scheme on its shade 9. */
+.barLink[aria-current='page'] .barIcon {
+  background: var(--mantine-color-brand-1);
+  color: var(--mantine-color-brand-7);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--mantine-color-brand-7) 25%, transparent);
+}
+
+[data-mantine-color-scheme='dark'] .barLink {
+  color: #9a9a9a;
+}
+
+[data-mantine-color-scheme='dark'] .barLink[aria-current='page'] .barIcon {
+  background: var(--mantine-color-brand-9);
+  color: var(--mantine-color-brand-1);
+}
+
+.moreRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  color: inherit;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+}
+
+.moreRow + .moreRow {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.moreRow:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.go {
+  margin-left: auto;
+  color: var(--mantine-color-dimmed);
+}

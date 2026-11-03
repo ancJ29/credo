@@ -29,6 +29,7 @@ import { shrinkToProof } from './photo';
 import { PersonPage } from './PersonPage';
 import { type Look, Providers } from './Providers';
 import { mayOpen, type Page, pagesOf } from './nav';
+import { MorePage } from './MorePage';
 import { Notice } from './Notice';
 import { NewOrderPage, OrderPage } from './OrderPage';
 import { OrdersPage } from './OrdersPage';
@@ -233,7 +234,13 @@ export function ClientApp({
     mayOpen(who, id) ? page : <Notice kind="forbidden" />;
   /** One's own password is the one page every signed-in person has, whatever else they may open. */
   const ownPassword = (who: UserView) => (
-    <Route path="/password" element={<OwnPasswordPage {...pageFor(who)} onSession={replaced} />} />
+    <>
+      <Route
+        path="/password"
+        element={<OwnPasswordPage {...pageFor(who)} onSession={replaced} />}
+      />
+      <Route path="/more" element={<MorePage />} />
+    </>
   );
   const pageFor = (who: UserView): PageProps => ({
     api,
@@ -263,6 +270,8 @@ export function ClientApp({
           user={user.name}
           pages={pages}
           passwordPath="/password"
+          shown={device.menuShown()}
+          onShown={device.setMenuShown}
           languages={config.languages}
           onLanguage={(next) => {
             device.setLanguage(next);

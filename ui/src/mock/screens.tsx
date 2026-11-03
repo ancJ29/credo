@@ -17,7 +17,7 @@ type SettingsProps = Parameters<typeof Settings>[0];
 const settings = (
   config: TenantConfig,
   more: Partial<SettingsProps> = {},
-  shell: { userMenuOpen?: boolean } = {},
+  shell: { userMenuOpen?: boolean; languageMenuOpen?: boolean } = {},
 ) => (
   <Shell
     brand={config}
@@ -153,13 +153,13 @@ export const SCREENS: MockScreen[] = [
   },
   {
     number: 5,
-    label: 'The language switched, from the user menu',
+    label: 'The language switched, from the header’s button',
     states: [
       {
         id: 'filled',
         label: 'filled: the menu open',
         colour: FILLED.colour,
-        screen: settings(FILLED, {}, { userMenuOpen: true }),
+        screen: settings(FILLED, {}, { languageMenuOpen: true }),
       },
     ],
   },

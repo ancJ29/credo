@@ -18,6 +18,9 @@ export const en = {
   },
   nav: {
     menu: 'Menu',
+    hideMenu: 'Hide the menu',
+    showMenu: 'Show the menu',
+    more: 'More',
     myDeliveries: 'My deliveries',
     orders: 'Orders',
     deliveries: 'Delivery requests',

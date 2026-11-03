@@ -65,10 +65,18 @@ Decided here:
 
 - [x] **1. This plan.** 🤖 Opus, 9 minutes (this kind: 12, 8, 9, 9, 7). Done when: committed, `wc -w` about 1,000, the
   path grep empty.
-- [ ] **2. The frame on the fake.** 🤖 Sonnet, about 27 minutes (B1's page on the fake 26, B2's 27): `Shell`, More,
+- [x] **2. The frame on the fake.** 🤖 Sonnet, about 27 minutes (B1's page on the fake 26, B2's 27): `Shell`, More,
   its paths and words, `lists-9-more` in the spec, the walks page and the mock screens. Done when: rows 1
   to 7 and 10 red once with the old `Shell`; ui and visual at 100 %, lint clean; `pnpm report` builds 107 screens (106
   before), each at 390 with the bar. Then 👤 1, while step 3 goes on.
+  *Done 2026-11-03, 18:08 to 18:31 (23 minutes).* Rows 1 to 7 and 10 red once with the old `Shell`
+  (`logs/20261103-1811-legacy-frame-ui-red.log`, 15 cases red; `…-1821-legacy-frame-visual-red.log`, 4 red for
+  `lists-9-more` and screen 5), then green: ui 689 cases at 100 % (`…-1828-legacy-frame-ui-final.log`, `== exit 0`),
+  visual 191 cases at 100 % (`…-1825-legacy-frame-visual-green2.log`, `== exit 0`); eslint, prettier, knip and the
+  three typechecks clean. `pnpm report` built 107 screens (`…-1829-legacy-frame-report.log`, `== exit 0`); 96 wear the
+  frame, each with the bar below 768. The font is the legacy's already (`ui/src/theme.ts#L11`): no package. The walk
+  is not run (a browser, the human's terminal); `5-language-menu` and `lists-9-more` were replayed in jsdom with the
+  real router. The nine screens of row 9 are eleven: `docs/open-items.md#L556`.
 - [ ] **3. The gate.** 🤖 Sonnet, about 11 minutes (B1's 10, B2's 12): `main` taken in if moved; the whole
   `pnpm check` under the lock, `== exit 0`.
 - [ ] **4. One review.** 🤖 Opus, about 4 minutes (B1's and B2's): the bar for each kind of person, a page opened by

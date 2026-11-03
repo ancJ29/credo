@@ -97,8 +97,6 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('button', { name: words.auth.submit }).click();
   // Signing in lands on the first page of the menu, the orders: Settings is opened from the menu.
   await expect(page.getByRole('heading', { level: 2, name: words.nav.orders })).toBeVisible();
-  const burger = page.getByRole('button', { name: words.nav.menu, exact: true });
-  if (await burger.isVisible()) await burger.click();
   await page
     .getByRole('navigation', { name: words.nav.menu })
     .getByRole('link', { name: words.nav.settings })
@@ -152,11 +150,11 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('heading', { level: 1, name: NEW_NAME })).toBeVisible();
   await at('4-saved');
 
-  // 5. The language switched, from the user menu.
-  await page.getByRole('button', { name: ROOT.name }).click();
-  await expect(page.getByRole('menuitem', { name: words.user.signOut })).toBeVisible();
-  await at('5-language-menu');
+  // 5. The language switched, from the header's button.
   const other: Language = language === 'vi' ? 'en' : 'vi';
+  await page.getByRole('button', { name: words.user.language, exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: LANGUAGE_NAMES[other] })).toBeVisible();
+  await at('5-language-menu');
   await page.getByRole('menuitem', { name: LANGUAGE_NAMES[other] }).click();
   await expect(
     page.getByRole('heading', { level: 2, name: DICTIONARIES[other].settings.title }),

@@ -88,6 +88,8 @@ function setup(
 
 const signedIn = { ...english, 'credo.operator': 'd.op' };
 
+const side = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
+
 async function signInAsOperator() {
   await userEvent.click(await screen.findByRole('button', { name: 'Sign in with a passkey' }));
 }
@@ -129,9 +131,7 @@ describe('the operator’s page', () => {
     expect(screen.getByText('Operator')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'operator' })).toBeTruthy();
     expect(
-      screen.getAllByRole('link', {
-        name: /^(Clients|Operators|Services status|Usage and costs|Activity)$/,
-      }),
+      within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).getAllByRole('link'),
     ).toHaveLength(5);
     expect(api.operatorPasskeyOptions).toHaveBeenCalledOnce();
     expect(passkeys.authenticate).toHaveBeenCalledExactlyOnceWith({ challenge: 'c' });
@@ -437,22 +437,22 @@ describe('the operator’s page', () => {
     expect(screen.getByText('Coming soon')).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole('link', { name: 'Activity' }));
+    await userEvent.click(side().getByRole('link', { name: 'Activity' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Activity' })).toBeTruthy();
     expect(screen.getByText('Coming soon')).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole('link', { name: 'Operators' }));
+    await userEvent.click(side().getByRole('link', { name: 'Operators' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add an operator' })).toBeTruthy();
     expect(api.listOperators).toHaveBeenCalledOnce();
     expect(screen.queryByText('Coming soon')).toBeNull();
 
-    await userEvent.click(screen.getByRole('link', { name: 'Services status' }));
+    await userEvent.click(side().getByRole('link', { name: 'Services status' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Services status' })).toBeTruthy();
     expect(screen.queryByText('Coming soon')).toBeNull();
 
-    await userEvent.click(screen.getByRole('link', { name: 'Clients' }));
+    await userEvent.click(side().getByRole('link', { name: 'Clients' }));
     expect(await screen.findByText('Bình An')).toBeTruthy();
   });
 
@@ -480,9 +480,20 @@ describe('the operator’s page', () => {
     expect(await screen.findByRole('button', { name: 'Ops Two' })).toBeTruthy();
   });
 
+  it('7: More opens at /operator/more with Activity, the passkeys and sign-out', async () => {
+    setup({}, signedIn, '/operator/more');
+
+    const main = () => within(document.querySelector('main')!);
+    await screen.findByRole('heading', { level: 2, name: 'More' });
+    expect((await main().findAllByRole('link')).map((link) => link.getAttribute('href'))).toEqual([
+      '/operator/activity',
+      '/operator/passkeys',
+    ]);
+  });
+
   it('The language chosen in the header is kept on the device and the page speaks it', async () => {
     const { device } = setup({}, signedIn);
-    await userEvent.click(await screen.findByRole('button', { name: 'operator' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Language' }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
 
     expect(device.language()).toBe('vi');

@@ -48,7 +48,11 @@ describe('the staff setup page', () => {
       expect(saved.setup.departments[0]?.id).toBe(DEMO_STAFF_SETUP.departments[0]?.id);
 
       // on the list: the rename follows each person, the removed one stays as it was saved
-      await user.click(screen.getByRole('link', { name: 'Staff' }));
+      await user.click(
+        within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).getByRole('link', {
+          name: 'Staff',
+        }),
+      );
       const warehouseStaff = (await screen.findByText('Phạm Quốc Bảo')).closest(
         'tr',
       ) as HTMLElement;

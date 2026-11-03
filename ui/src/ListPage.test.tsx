@@ -14,7 +14,7 @@ const cells = () =>
 describe('the customers and the products', () => {
   it('The root opens Customers and Products from the menu; each lists all of the company’s in code order: a customer’s code, name, phone and address; a product’s code, name, unit and price in đồng', async () => {
     const drawn = openApp('/staff');
-    const menu = within(await screen.findByRole('navigation', { name: 'Menu' }));
+    const menu = within((await screen.findAllByRole('navigation', { name: 'Menu' }))[0]);
 
     await userEvent.click(menu.getByRole('link', { name: 'Customers' }));
 
@@ -115,7 +115,7 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
     await screen.findByText('KH-001');
     expect(office.api.listCustomers).toHaveBeenCalledOnce();
-    const menu = within(screen.getByRole('navigation', { name: 'Menu' }));
+    const menu = within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
     expect(menu.getByText('Customers')).toBeTruthy();
     expect(menu.getByText('Products')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
@@ -133,7 +133,7 @@ describe('the customers and the products', () => {
     ).toBeTruthy();
     expect(warehouse.api.listCustomers).not.toHaveBeenCalled();
     expect(
-      within(screen.getByRole('navigation', { name: 'Menu' })).queryByText('Customers'),
+      within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).queryByText('Customers'),
     ).toBeNull();
   });
 });

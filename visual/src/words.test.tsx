@@ -130,12 +130,12 @@ describe('the app’s own screens, drawn', () => {
     );
   });
 
-  it('draws the open user menu of screen 5, which screen 3 lacks', () => {
+  it('draws the open language menu of screen 5, which screen 3 lacks', () => {
     const open = drawnWords(stateOf(5, 'filled').screen, '#2f7d6d', 'en');
     const closed = drawnWords(stateOf(3, 'filled').screen, '#2f7d6d', 'en');
 
-    expect(open).toContain('menuitem: Sign out');
-    expect(closed).not.toContain('menuitem: Sign out');
+    expect(open).toContain('menuitem: Tiếng Việt');
+    expect(closed).not.toContain('menuitem: Tiếng Việt');
   });
 
   it('leaves nothing drawn behind', () => {
@@ -218,6 +218,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-6-products': (w) => `heading: ${w.nav.products}`,
   'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
+  'admin-lists:lists-9-more': (w) => `heading: ${w.nav.more}`,
   'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
   // the second line is the one added by the steps; the form's own list holds the product too, as an option
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',

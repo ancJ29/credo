@@ -41,7 +41,8 @@ const heading = (name: string | RegExp, level = 2) => screen.findByRole('heading
 const formReady = () => screen.findByRole('button', { name: 'Save draft' });
 
 /** A form field by its label, the star of a required one allowed. */
-const field = (label: string) => screen.getByLabelText(new RegExp(`^${label}`));
+const field = (label: string) =>
+  screen.getByLabelText(new RegExp(`^${label}`), { selector: 'input, select, textarea' });
 
 describe('the orders list', () => {
   it('Someone who may see orders lands on them after signing in: the last 7 days’, newest first, each with its number, day, customer, total, state, and the driver of one sent; the 7 days before are one click away', async () => {
@@ -75,7 +76,7 @@ describe('the orders list', () => {
       screen.getByText(`Orders from ${day(addDays(DEMO_TODAY, -6))} to today, newest first.`),
     ).toBeTruthy();
     expect(
-      within(screen.getByRole('navigation', { name: 'Menu' }))
+      within(screen.getAllByRole('navigation', { name: 'Menu' })[0])
         .getAllByRole('link')
         .map((link) => link.textContent)
         .slice(0, 2),

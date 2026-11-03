@@ -64,7 +64,11 @@ describe('the operators of the console', () => {
 
   it('B1 row 1: the menu’s Operators opens it, and Add an operator leads to the create page', async () => {
     openApp('/operator/clients', { operator: true });
-    await userEvent.click(await screen.findByRole('link', { name: 'Operators' }));
+    await userEvent.click(
+      within((await screen.findAllByRole('navigation', { name: 'Menu' }))[0]).getByRole('link', {
+        name: 'Operators',
+      }),
+    );
 
     expect(await screen.findByRole('cell', { name: 'Minh Quân' })).toBeTruthy();
     await userEvent.click(screen.getByRole('link', { name: words.team.add }));

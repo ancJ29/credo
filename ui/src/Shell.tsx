@@ -1,14 +1,42 @@
 import type { Language } from '@credo/shared';
-import { AppShell, Avatar, Badge, Burger, Button, Group, Menu, NavLink, Text } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import { IconChevronDown } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import {
+  ActionIcon,
+  AppShell,
+  Badge,
+  Group,
+  Menu,
+  Text,
+  Title,
+  UnstyledButton,
+} from '@mantine/core';
+import {
+  IconBrandAdobe,
+  IconChevronDown,
+  IconDots,
+  IconLanguage,
+  IconMenu2,
+  IconX,
+} from '@tabler/icons-react';
+import { createContext, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import type { Brand } from './brand';
-import { BrandMark } from './BrandMark';
+import classes from './frame.module.css';
 import { LANGUAGE_NAMES } from './i18n';
 import { type MenuPage, PAGES } from './nav';
+import { BRAND_GRADIENT, MENU_GRADIENT } from './theme';
+
+/** How many pages the phone's bar holds before More. */
+export const BAR_PAGES = 4;
+
+/** What the frame knows for the More page, drawn inside it: the person's pages, their own links
+ * (the password, the console's passkeys) and the way to sign out. */
+export type FrameParts = {
+  pages: readonly MenuPage[];
+  links: readonly { to: string; label: string }[];
+  onSignOut: () => void;
+};
+export const FrameContext = createContext<FrameParts | null>(null);
 
 type Props = {
   brand: Brand;
@@ -19,6 +47,8 @@ type Props = {
   onSignOut: () => void;
   /** Starts with the user's menu open, for a mock of it. */
   userMenuOpen?: boolean;
+  /** Starts with the language menu open, for a mock of it. */
+  languageMenuOpen?: boolean;
   /** Where a person changes their own password; the user's menu lists it only when this is set. */
   passwordPath?: string;
   /** The pages this person's menu lists; every page, for a mock of the whole menu. */
@@ -27,10 +57,27 @@ type Props = {
   badge?: string;
   /** Pages of the user's own, listed in the user's menu above sign-out; a client's app has none. */
   menuLinks?: readonly { to: string; label: string }[];
+  /** The address of the page the phone's More opens. */
+  morePath?: string;
+  /** Whether the PC's side menu shows at first, as the device kept it; it shows when not said. */
+  shown?: boolean;
+  /** Told when a person hides or shows the side menu, so the device can keep it. */
+  onShown?: (shown: boolean) => void;
   children: ReactNode;
 };
 
-/** The signed-in frame: the company's brand, the menu of pages, the user's menu, and a page. */
+/** A name's initials, up to two, for the user's mark in the header. */
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join('')
+    .toUpperCase();
+
+/** The signed-in frame, in the old app's layout: the coloured header (the company's name beside a
+ * stand-in logo, the language, the user) over a coloured side menu on a PC that a button hides, and
+ * a bar of the first four pages and More on a phone; and a page. */
 export function Shell({
   brand,
   user,
@@ -38,96 +85,175 @@ export function Shell({
   onLanguage,
   onSignOut,
   userMenuOpen,
+  languageMenuOpen,
   passwordPath,
   pages = PAGES,
   badge,
   menuLinks = [],
+  morePath = '/more',
+  shown: shownAtFirst = true,
+  onShown,
   children,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const [opened, { toggle, close }] = useDisclosure();
+  const [shown, setShown] = useState(shownAtFirst);
   const { pathname } = useLocation();
+  const open = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+  const barPages = pages.slice(0, BAR_PAGES);
+  const links = [
+    ...(passwordPath === undefined ? [] : [{ to: passwordPath, label: t('user.password') }]),
+    ...menuLinks,
+  ];
+  const toggle = () => {
+    setShown(!shown);
+    onShown?.(!shown);
+  };
 
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !opened } }}
+      navbar={{ width: 250, breakpoint: 'sm', collapsed: { mobile: true, desktop: !shown } }}
+      footer={{ height: { base: 64, sm: 0 } }}
       padding="md"
     >
-      <AppShell.Header>
+      <AppShell.Header
+        className={classes.header}
+        style={{ background: BRAND_GRADIENT, color: '#fff' }}
+      >
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group wrap="nowrap">
-            <Burger
-              opened={opened}
-              aria-expanded={opened}
+          <Group wrap="nowrap" gap="sm">
+            <Group gap="sm" wrap="nowrap" className={classes.brand}>
+              <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
+              <Title order={1} size="h4" c="inherit">
+                {brand.name}
+              </Title>
+            </Group>
+            {badge && (
+              <Badge variant="filled" className={classes.badge}>
+                {badge}
+              </Badge>
+            )}
+            <ActionIcon
+              variant="transparent"
+              c="inherit"
+              className={classes.button}
+              visibleFrom="sm"
+              aria-label={t(shown ? 'nav.hideMenu' : 'nav.showMenu')}
+              aria-expanded={shown}
               onClick={toggle}
-              hiddenFrom="sm"
-              size="sm"
-              aria-label={t('nav.menu')}
-            />
-            <BrandMark brand={brand} />
-            {badge && <Badge variant="light">{badge}</Badge>}
+            >
+              {shown ? <IconX size={18} /> : <IconMenu2 size={18} />}
+            </ActionIcon>
           </Group>
-          <Menu position="bottom-end" withinPortal={false} defaultOpened={userMenuOpen}>
-            <Menu.Target>
-              {/* A phone's header holds the avatar alone: a long name would push the brand out. */}
-              <Button
-                variant="subtle"
-                color="gray"
-                aria-label={user}
-                leftSection={<Avatar name={user} color="brand" size={28} aria-hidden />}
-                rightSection={<IconChevronDown size={14} />}
+          <Group wrap="nowrap" gap="xs">
+            {languages.length > 1 && (
+              <Menu
+                position="bottom-end"
+                withinPortal={false}
+                defaultOpened={languageMenuOpen}
+                classNames={{ dropdown: classes.dropdown }}
               >
-                <Text span inherit visibleFrom="sm">
-                  {user}
-                </Text>
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {languages.length > 1 && (
-                <>
+                <Menu.Target>
+                  <UnstyledButton className={classes.button} aria-label={t('user.language')}>
+                    <IconLanguage size={18} />
+                    <span>{i18n.language.toUpperCase()}</span>
+                  </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
                   <Menu.Label>{t('user.language')}</Menu.Label>
                   {languages.map((language) => (
                     <Menu.Item
                       key={language}
+                      aria-current={i18n.language === language}
+                      fw={i18n.language === language ? 600 : undefined}
                       onClick={() => onLanguage(language)}
-                      disabled={i18n.language === language}
                     >
                       {LANGUAGE_NAMES[language]}
                     </Menu.Item>
                   ))}
-                  <Menu.Divider />
-                </>
-              )}
-              {passwordPath !== undefined && (
-                <Menu.Item component={Link} to={passwordPath}>
-                  {t('user.password')}
-                </Menu.Item>
-              )}
-              {menuLinks.map(({ to, label }) => (
-                <Menu.Item key={to} component={Link} to={to}>
-                  {label}
-                </Menu.Item>
-              ))}
-              <Menu.Item onClick={onSignOut}>{t('user.signOut')}</Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
+                </Menu.Dropdown>
+              </Menu>
+            )}
+            <Menu
+              position="bottom-end"
+              withinPortal={false}
+              defaultOpened={userMenuOpen}
+              classNames={{ dropdown: classes.dropdown }}
+            >
+              <Menu.Target>
+                {/* A phone's header holds the mark alone: a long name would push the brand out. */}
+                <UnstyledButton className={classes.user} aria-label={user}>
+                  <span className={classes.avatar} aria-hidden>
+                    {initialsOf(user)}
+                  </span>
+                  <Text span inherit fw={600} visibleFrom="sm">
+                    {user}
+                  </Text>
+                  <IconChevronDown size={14} />
+                </UnstyledButton>
+              </Menu.Target>
+              <Menu.Dropdown>
+                {links.map(({ to, label }) => (
+                  <Menu.Item key={to} component={Link} to={to}>
+                    {label}
+                  </Menu.Item>
+                ))}
+                <Menu.Item onClick={onSignOut}>{t('user.signOut')}</Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Group>
       </AppShell.Header>
-      <AppShell.Navbar p="xs" aria-label={t('nav.menu')}>
-        {pages.map(({ id, path, label, icon: Icon }) => (
-          <NavLink
-            key={id}
-            component={Link}
-            to={path}
-            label={t(label)}
-            leftSection={<Icon size={20} stroke={1.6} />}
-            active={pathname === path || pathname.startsWith(`${path}/`)}
-            onClick={close}
-          />
-        ))}
-      </AppShell.Navbar>
-      <AppShell.Main>{children}</AppShell.Main>
+      {shown && (
+        <AppShell.Navbar
+          className={classes.menu}
+          style={{ background: MENU_GRADIENT, color: '#fff' }}
+          visibleFrom="sm"
+          aria-label={t('nav.menu')}
+        >
+          {pages.map(({ id, path, label, icon: Icon }) => (
+            <Link
+              key={id}
+              to={path}
+              className={classes.item}
+              aria-current={open(path) ? 'page' : undefined}
+            >
+              <Icon size={20} stroke={1.6} />
+              <span>{t(label)}</span>
+            </Link>
+          ))}
+        </AppShell.Navbar>
+      )}
+      <AppShell.Main>
+        <FrameContext value={{ pages, links, onSignOut }}>{children}</FrameContext>
+      </AppShell.Main>
+      <AppShell.Footer hiddenFrom="sm">
+        <nav className={classes.bar} aria-label={t('nav.menu')}>
+          {barPages.map(({ id, path, label, icon: Icon }) => (
+            <Link
+              key={id}
+              to={path}
+              className={classes.barLink}
+              aria-label={t(label)}
+              aria-current={open(path) ? 'page' : undefined}
+            >
+              <span className={classes.barIcon}>
+                <Icon size={22} stroke={1.8} />
+              </span>
+            </Link>
+          ))}
+          <Link
+            to={morePath}
+            className={classes.barLink}
+            aria-label={t('nav.more')}
+            aria-current={barPages.some(({ path }) => open(path)) ? undefined : 'page'}
+          >
+            <span className={classes.barIcon}>
+              <IconDots size={22} stroke={1.8} />
+            </span>
+          </Link>
+        </nav>
+      </AppShell.Footer>
     </AppShell>
   );
 }

@@ -7,7 +7,7 @@ import { openApp, person } from '../tests/open';
 import { ApiError } from './api';
 
 const at = (code: string) => `/staff/${person(code).id}`;
-const menu = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 const NEW = 'New-password-2@';
 const OLD = 'Old-password-1!';
 

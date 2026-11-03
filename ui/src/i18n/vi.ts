@@ -19,6 +19,9 @@ export const vi: Dictionary = {
   },
   nav: {
     menu: 'Menu',
+    hideMenu: 'Ẩn menu',
+    showMenu: 'Hiện menu',
+    more: 'Thêm',
     myDeliveries: 'Giao hàng của tôi',
     orders: 'Đơn hàng',
     deliveries: 'Yêu cầu giao hàng',

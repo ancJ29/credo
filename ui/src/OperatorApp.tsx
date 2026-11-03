@@ -9,6 +9,7 @@ import { ClientsPage } from './ClientsPage';
 import { DeleteOperatorPage } from './DeleteOperatorPage';
 import type { DeviceStore } from './device';
 import { JoinPage } from './JoinPage';
+import { MorePage } from './MorePage';
 import { OperatorPage } from './OperatorPage';
 import { OPERATOR_PAGES, SOON_PAGES } from './operatorNav';
 import { AddOperatorPage } from './AddOperatorPage';
@@ -153,6 +154,8 @@ function Console({ api, device, passkeys, build, test }: Props) {
       ) : (
         <OperatorPage
           name={who.name}
+          shown={device.menuShown()}
+          onShown={device.setMenuShown}
           onLanguage={(next) => {
             device.setLanguage(next);
             setChosen(next);
@@ -224,6 +227,7 @@ function Console({ api, device, passkeys, build, test }: Props) {
                 <ServicesPage api={api} build={build} onSignedOut={() => setEnded('idle')} />
               }
             />
+            <Route path="/operator/more" element={<MorePage />} />
             {SOON_PAGES.map((page) => (
               <Route key={page.id} path={page.path} element={<SoonPage label={page.label} />} />
             ))}
