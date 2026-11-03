@@ -12,3 +12,5 @@ coverage/
 ops/
 # A static look for the human to judge, its data captured from a build: no product code.
 visual/site/index.html
+# A static look for the human to judge, its data written from the app's own files: no product code.
+ui/frame-mock/

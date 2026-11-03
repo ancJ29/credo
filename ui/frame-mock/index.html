@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-scheme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Credo: the app's frame, a mock</title>
+<!-- A static look for the human to judge, not product code: it opens from disk, fetches nothing,
+     and draws the legacy app's frame around the new app's menus and words (data.js). -->
+<style>
+:root { --ui-bg:#eef0f3; --ui-surface:#fff; --ui-text:#1f2937; --ui-dim:#4b5563; --ui-border:#d1d5db; --ui-accent:#3e618c; --ui-on-accent:#fff; }
+[data-scheme=dark] { --ui-bg:#141517; --ui-surface:#1f2023; --ui-text:#e5e7eb; --ui-dim:#a1a1aa; --ui-border:#3f3f46; --ui-accent:#9bc1e7; --ui-on-accent:#141517; }
+* { box-sizing:border-box; }
+html, body { height:100%; }
+body { margin:0; font:14px/1.45 "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--ui-bg); color:var(--ui-text); display:flex; flex-direction:column; }
+button { font:inherit; color:inherit; cursor:pointer; }
+a { color:inherit; }
+
+/* The mock's own slim top line: what this is, the one question, the languages and the scheme. */
+.top { height:44px; flex:none; display:flex; align-items:center; gap:12px; padding:0 12px; background:var(--ui-surface); border-bottom:1px solid var(--ui-border); }
+.top h1 { font-size:14px; font-weight:600; margin:0; white-space:nowrap; }
+.top .q { margin-left:auto; display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.top .q strong { font-weight:600; }
+.answer { font-size:12px; color:var(--ui-dim); }
+.seg { display:inline-flex; border:1px solid var(--ui-border); border-radius:6px; overflow:hidden; flex:none; }
+.seg button { border:0; background:transparent; padding:3px 10px; font-size:13px; }
+.seg button + button { border-left:1px solid var(--ui-border); }
+.seg button[aria-pressed=true] { background:var(--ui-accent); color:var(--ui-on-accent); }
+.seg button:disabled { opacity:.45; cursor:default; }
+.yes[aria-pressed=true] { background:#15803d !important; color:#fff !important; }
+.no[aria-pressed=true] { background:#b91c1c !important; color:#fff !important; }
+
+.layout { flex:1; min-height:0; display:flex; }
+.controls { width:284px; flex:none; overflow:auto; padding:4px 12px 16px; background:var(--ui-surface); border-right:1px solid var(--ui-border); }
+.controls h2 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ui-dim); margin:14px 0 6px; }
+.controls p { margin:6px 0; font-size:12px; color:var(--ui-dim); }
+.swatches { display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; }
+.swatch { display:flex; align-items:center; gap:6px; padding:3px 6px; border:1px solid var(--ui-border); border-radius:6px; background:transparent; font-size:12px; }
+.swatch i { width:14px; height:14px; border-radius:50%; flex:none; }
+.swatch[aria-pressed=true] { outline:2px solid var(--ui-accent); outline-offset:-1px; font-weight:600; }
+.mix { display:flex; gap:6px; align-items:center; margin-top:6px; font-size:12px; }
+.mix input[type=text] { width:84px; font:12px ui-monospace, monospace; padding:3px 6px; border:1px solid var(--ui-border); border-radius:6px; background:transparent; color:inherit; }
+.mix input[type=color] { width:28px; height:24px; padding:0; border:1px solid var(--ui-border); border-radius:4px; background:transparent; }
+.shades { display:grid; grid-template-columns:repeat(10, 1fr); margin-top:8px; border-radius:6px; overflow:hidden; }
+.shades span { height:30px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:2px; font-size:10px; }
+.shades span.brand { font-weight:700; box-shadow:inset 0 0 0 2px var(--ui-text); }
+.map { list-style:none; margin:0; padding:0; }
+.map a { display:flex; justify-content:space-between; gap:8px; padding:3px 6px; border-radius:4px; text-decoration:none; font-size:12px; }
+.map a code { color:var(--ui-dim); font-size:11px; }
+.map a[aria-current=page] { background:var(--ui-accent); color:var(--ui-on-accent); }
+.map a[aria-current=page] code { color:inherit; }
+
+.stage { flex:1; min-width:0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 12px; overflow:hidden; }
+.addr { font:12px ui-monospace, monospace; color:var(--ui-dim); }
+.device-box { flex:1; min-height:0; width:100%; display:flex; justify-content:center; align-items:flex-start; overflow:hidden; }
+.device { flex:none; transform-origin:top center; border:1px solid var(--ui-border); border-radius:10px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.18); }
+
+/* The app's frame, drawn to the legacy's sizes: header 56, logo 36, menu 250, phone bar 64. */
+.app { position:relative; width:100%; height:100%; overflow:hidden; background:var(--body); color:var(--text); font-size:14px; }
+.app svg { flex:none; }
+.app-header { position:absolute; top:0; left:0; right:0; height:56px; z-index:3; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 16px; color:#fff; }
+.app-header.white { background:var(--n0); color:var(--n8); border-bottom:1px solid var(--n2); }
+.app.phone .app-header { box-shadow:0 2px 8px rgba(0,0,0,.08); }
+.brand { display:flex; align-items:center; gap:12px; min-width:0; }
+.logo { width:36px; height:36px; flex:none; display:block; }
+.brand-name { font-size:18px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.badge { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 8px; border-radius:999px; background:rgba(255,255,255,.18); white-space:nowrap; }
+.app-header.white .badge { background:var(--badge-bg); color:var(--badge-text); }
+.hbtn { width:32px; height:32px; border:0; border-radius:6px; background:transparent; color:inherit; display:flex; align-items:center; justify-content:center; flex:none; }
+.app-header .hbtn:hover { background:rgba(255,255,255,.12); }
+.app-header.white .hbtn { color:var(--n7); }
+.app-header.white .hbtn:hover { background:rgba(0,0,0,.04); }
+.hright { position:relative; display:flex; align-items:center; gap:8px; flex:none; }
+.lang { width:auto; padding:0 8px; gap:4px; font-size:12px; font-weight:700; }
+.user { display:flex; align-items:center; gap:8px; padding:4px 8px; border:0; border-radius:8px; background:rgba(255,255,255,.12); color:inherit; }
+.app-header.white .user { background:rgba(0,0,0,.04); }
+.avatar { width:28px; height:28px; border-radius:8px; border:1.5px solid rgba(255,255,255,.9); background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.app-header.white .avatar { border-color:var(--n3); background:var(--badge-bg); color:var(--badge-text); }
+.user .name { font-size:14px; font-weight:600; }
+.dropdown { position:absolute; right:0; top:44px; width:200px; z-index:10; padding:4px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,.1); }
+.dropdown .label { padding:6px 10px 2px; font-size:12px; color:var(--dim); }
+.dropdown button { display:flex; width:100%; align-items:center; gap:10px; padding:8px 10px; border:0; border-radius:6px; background:transparent; color:inherit; text-align:left; font-size:14px; }
+.dropdown button:hover { background:var(--hover); }
+.dropdown button[aria-current=true] { font-weight:600; }
+.dropdown hr { border:0; border-top:1px solid var(--border); margin:4px 0; }
+.danger { color:var(--err-text) !important; }
+
+.app-menu { position:absolute; top:56px; bottom:0; left:0; width:250px; z-index:2; display:flex; flex-direction:column; padding-top:12px; color:#fff; }
+.app-menu.white { background:var(--n0); color:var(--n8); border-right:1px solid var(--n2); }
+.app.menu-hidden .app-menu { display:none; }
+.app-menu a { position:relative; display:flex; align-items:center; gap:12px; min-height:44px; padding:0 16px; text-decoration:none; color:inherit; font-weight:500; }
+.app-menu a svg { color:inherit; }
+.app-menu.white a svg { color:var(--n7); }
+.app-menu.colour a:hover { background:rgba(255,255,255,.08); }
+.app-menu.white a:hover { background:var(--hover); }
+.app-menu.colour a[aria-current=page] { background:rgba(255,255,255,.16); font-weight:600; }
+.app-menu.white a[aria-current=page] { background:var(--nav-active-bg); color:var(--nav-active-text); font-weight:600; }
+.app-menu.white a[aria-current=page] svg { color:var(--nav-accent); }
+.app-menu a[aria-current=page]::after { content:""; position:absolute; right:0; top:50%; margin-top:-7px; border:7px solid transparent; border-right-color:var(--body); }
+.app-menu.white a[aria-current=page]::after { border-right-color:var(--nav-accent); }
+.build { margin-top:auto; padding:8px 16px 10px; font-size:11px; opacity:.8; font-family:ui-monospace, monospace; }
+
+.app-main { position:absolute; top:56px; left:250px; right:0; bottom:0; overflow:auto; padding:16px; }
+.app.menu-hidden .app-main { left:0; }
+.app.phone .app-main { left:0; bottom:64px; padding:8px; }
+.app-bar { position:absolute; left:0; right:0; bottom:0; height:64px; z-index:3; display:flex; align-items:center; justify-content:space-around; padding:0 8px; background:var(--body); border-top:1px solid var(--border); box-shadow:0 -2px 8px rgba(0,0,0,.06); }
+.app-bar a { flex:1; min-height:56px; display:flex; align-items:center; justify-content:center; color:var(--bar-icon); text-decoration:none; }
+.app-bar a span { width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+.app-bar a[aria-current=page] span { background:var(--bar-active-bg); color:var(--bar-active-icon); box-shadow:0 4px 12px var(--bar-shadow); }
+
+.page-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.page-head h2 { margin:0; font-size:22px; line-height:1.4; font-weight:600; color:var(--strong); }
+.primary { width:36px; height:36px; border:0; border-radius:8px; color:#fff; display:flex; align-items:center; justify-content:center; flex:none; }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+.row { display:flex; align-items:center; gap:12px; padding:12px 16px; }
+.row + .row { border-top:1px solid var(--border); }
+.row .code { font-weight:600; color:var(--strong); }
+.row .when { color:var(--dim); }
+.row .tag { margin-left:auto; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:600; background:var(--badge-bg); color:var(--badge-text); }
+.more-row { display:flex; align-items:center; gap:12px; padding:12px 16px; text-decoration:none; color:inherit; width:100%; border:0; background:transparent; font-size:14px; text-align:left; }
+.more-row + .more-row { border-top:1px solid var(--border); }
+.more-row .go { margin-left:auto; color:var(--dim); }
+.more-row svg:first-child { color:var(--accent); }
+.empty { padding:48px 16px; text-align:center; color:var(--dim); }
+.empty svg { display:block; margin:0 auto 8px; }
+.loading { display:flex; flex-direction:column; align-items:center; gap:12px; padding:64px 0; color:var(--dim); }
+.spin { width:32px; height:32px; border-radius:50%; border:3px solid var(--border); border-top-color:var(--accent); animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.failed { display:flex; align-items:center; gap:12px; padding:12px 16px; border-radius:8px; background:var(--err-bg); color:var(--err-text); border:1px solid var(--err-border); }
+.failed button { margin-left:auto; padding:6px 12px; border-radius:8px; border:1px solid var(--accent); background:transparent; color:var(--accent); font-weight:600; flex:none; }
+</style>
+<!-- The palette and the scheme's colours, written by frame.js: the shades as literal values. -->
+<style id="paint"></style>
+</head>
+<body>
+<header class="top">
+  <h1>Credo: the app's frame, mock round 1</h1>
+  <div class="q" role="group" aria-label="The one question">
+    <strong>Does this read as the old app?</strong>
+    <span class="seg"><button type="button" class="yes" data-answer="yes" aria-pressed="false">Yes</button><button type="button" class="no" data-answer="no" aria-pressed="false">No</button></span>
+    <span class="answer" id="answer"></span>
+  </div>
+  <span class="seg" role="group" aria-label="Language"><button type="button" data-set="lang=vi">Tiếng Việt</button><button type="button" data-set="lang=en">English</button></span>
+  <span class="seg" role="group" aria-label="Scheme"><button type="button" data-set="scheme=light">Light</button><button type="button" data-set="scheme=dark">Dark</button></span>
+</header>
+<div class="layout">
+  <aside class="controls" id="controls" aria-label="What to look at"></aside>
+  <main class="stage">
+    <div class="addr" id="addr"></div>
+    <div class="device-box" id="device-box"><div class="device" id="device"></div></div>
+  </main>
+</div>
+<script src="data.js"></script>
+<script src="frame.js"></script>
+</body>
+</html>
