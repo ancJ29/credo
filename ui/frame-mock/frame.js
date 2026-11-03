@@ -338,7 +338,7 @@
   }
 
   // The one question's answer, kept in the browser where it can be.
-  var KEY = 'credo-frame-mock-round-2';
+  var KEY = 'credo-frame-mock-round-4';
   function answer(value) {
     try { if (value) localStorage.setItem(KEY, value); else value = localStorage.getItem(KEY); } catch (_e) { /* no storage on this page */ }
     document.querySelectorAll('[data-answer]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-answer') === value)); });
