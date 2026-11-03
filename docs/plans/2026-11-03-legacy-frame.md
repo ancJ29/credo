@@ -88,6 +88,7 @@ Decided here:
 - [ ] **5. The full run** (👤 2), about 70 minutes (B1's 114 pictures: 6m16s); 🤖 reads each log whole. Done when:
   run 1 green, its `raw.txt` naming none of row 9's screens; run 2 every count 0; about 588 bases committed (97 moved
   screens and the new one, six pictures each).
+  Fix 2 (the 20:01 run's scrollbar strip): `shot` draws a table's hover scrollbar hidden (`walk/support.ts`), not a wait.
 - [ ] **6. The recap.** 🤖 Sonnet, about 1 minute (B1's and B2's). Done when: committed, under 400 words, a client's own
   logo an open item; the squash.
 

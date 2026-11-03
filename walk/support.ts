@@ -18,6 +18,13 @@ export const required = (name: string, how = 'run this through `pnpm stack -- â€
 const MAX_SHOTS = 10;
 /** The wait between two shots, for a transition or a repaint still under way. */
 const BETWEEN_SHOTS_MS = 100;
+/** Mantine draws a scroll area's scrollbar (type hover, a table's `Table.ScrollContainer`) while the
+ * pointer is over it, and a pointer enter can land after the pointer was parked in the corner (the
+ * table mounts under it after a click, the browser dispatches the enter late), so a wait for the bar
+ * to detach passed before it appeared and the fake and the stack caught it at different times
+ * (20:01 run). Drawn hidden, the picture is the one of a pointer away from the table; the bar is
+ * absolutely placed, so no layout moves. */
+const NO_SCROLLBARS = '[data-mantine-scrollbar] { visibility: hidden !important; }';
 
 const describeMove = (difference: Exclude<Difference, { kind: 'equal' }>) =>
   difference.kind === 'size'
@@ -27,7 +34,7 @@ const describeMove = (difference: Exclude<Difference, { kind: 'equal' }>) =>
 /** The one way a picture is taken. The pointer is parked in the corner first (a button under it is
  * drawn hovered, and which one depends on where the last click left it) and the page is scrolled to
  * the top (a fixed bar is drawn where the scroll left it). Then full-page shots, animations off and
- * the caret hidden, until two in a row are equal pixel for pixel by the raw reader, at most ten, or a
+ * the caret hidden and a table's hover scrollbar not drawn, until two in a row are equal pixel for pixel by the raw reader, at most ten, or a
  * red naming the pixels between the last two. The picture is written to
  * `CREDO_SHOTS_DIR/<screen>-<language>-<width>.png`; `walk/run.sh` compares folders and bases, this
  * compares nothing with a base. `mask` paints over what is minted on every run and the human need not
@@ -50,7 +57,13 @@ export async function shot(
   const name = `${screen}-${language}-${width}.png`;
   const dir = required('CREDO_SHOTS_DIR', 'walk/run.sh gives it the folder for the pictures');
   const take = () =>
-    page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide', mask });
+    page.screenshot({
+      fullPage: true,
+      animations: 'disabled',
+      caret: 'hide',
+      mask,
+      style: NO_SCROLLBARS,
+    });
   let last = await take();
   let moved = 'no second shot';
   for (let taken = 1; taken < MAX_SHOTS; taken++) {
