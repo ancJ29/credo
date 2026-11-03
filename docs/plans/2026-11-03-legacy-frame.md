@@ -90,6 +90,7 @@ Decided here:
   screens and the new one, six pictures each).
   Fix 2 (the 20:01 run's scrollbar strip): `shot` draws a table's hover scrollbar hidden (`walk/support.ts`), not a wait.
   Fix 3 (the 21:02 run's timeout): the detach wait is gone from `shot`, the hidden scrollbar alone serves; the pointer park stays for the hovered-button case.
+  Fix 4 (the 23:02 run's services red): the services walk installs its clock a minute early (`walk/specs/operator-services.spec.ts`), since `pauseAt` fails once the running clock passes its time.
 - [ ] **6. The recap.** 🤖 Sonnet, about 1 minute (B1's and B2's). Done when: committed, under 400 words, a client's own
   logo an open item; the squash.
 

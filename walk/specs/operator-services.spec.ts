@@ -125,8 +125,10 @@ async function walkFull(page: Page, language: Language, width: number) {
   // reads it before it sends and after the answer, so a call that took 42 milliseconds is the
   // fake's, and the moment it stamps is the fake's too (the page shows seconds, and the few checks
   // of a screen move the clock by well under one).
+  // The clock runs from install until pauseAt, so install it a minute early: pauseAt only moves
+  // forward and fails when a loaded Mac let more than the margin pass between the two calls.
   const began = new Date(DEMO_SERVICES.checkedAt - DEMO_SERVICES.bffMs);
-  await page.clock.install({ time: new Date(began.getTime() - 1) });
+  await page.clock.install({ time: new Date(began.getTime() - 60_000) });
   await page.clock.pauseAt(began);
 
   /** The real answer of the BFF, passed on with the builds c-storage and the BFF show and the time
