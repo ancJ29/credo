@@ -83,8 +83,10 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   the creator's last sign-in unmoved; the name in capitals 409; a touch for another act 403; no handle 401 on both
   routes. `team-full` expects the stack's colleague too, typechecked, never run (step 6). The route list test in
   `operator.route.test.ts` gained the new path.
-- [ ] **4. The gate.** 🤖, about 17 minutes (D's): `main` taken in if moved; the whole `pnpm check` under the lock,
-  `== exit 0`.
+- [x] **4. The gate.** 🤖, about 17 minutes (D's): `main` taken in if moved; the whole `pnpm check` under the lock,
+  `== exit 0`. Done 11-03: `main` already in. First run `logs/20261103-1442-b1-step4-gate.log` `== exit 1` at load 21 to 29
+  (the known flakes of open item 56: `SignIns.test.tsx` timed out, `MyDeliveries.test.tsx` landing); a rerun,
+  `logs/20261103-1446-b1-step4-gate2.log`, ends `== exit 0` (a rerun's green, not a first pass).
 - [ ] **5. One review.** 🤖 Opus, about 7 minutes (D's): what the touch is tied to; what a failure claims after a
   timeout. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
 - [ ] **6. The full run** (👤 2), about 12 minutes (D's two walks: 8.5); 🤖 reads each log whole. Done when: both green;
