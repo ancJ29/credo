@@ -60,10 +60,11 @@ Business rows first, each red first from its assertion; every package at 100 %.
 The full flow, since B2 decides who may sign in; each size is B1's.
 
 - [x] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, `wc -w` about 1,000, the grep empty.
-- [ ] **2. The page on the fake.** 🤖 Sonnet, 26 minutes, on `ui/src/AddOperatorPage.tsx`'s model. Done when: the
+- [x] **2. The page on the fake.** 🤖 Sonnet, 26 minutes, on `ui/src/AddOperatorPage.tsx`'s model. Done when: the
   UI halves red once; touched packages at 100 %, lint clean; `pnpm report` builds `tm-4-link` and `tm-5-delete`,
   `tm-1-list` re-asked. Then 👤 1, while step 3 goes on.
-  *Ready for the human's look* (2026-11-03): the UI halves seen red once (23 failed before the pages), then the
+  *Ready for the human's look* (2026-11-03; the look answered yes at 16:16 +07 on 2026-11-03, all six screens
+  of the walk "Who else may sign in here", `tm-1-list` to `tm-6-taken`, vi, on the walks page built from `c188bc2`): the UI halves seen red once (23 failed before the pages), then the
   whole `pnpm check` `== exit 0` at `c188bc2` (two earlier runs red: a ui test timing out at load 16.6, item 56's,
   then `ui/src/fake.ts` at 99.93 % until its 400 and joined-operator lines had tests, and a visual cue count in a
   new test, fixed); the walks page built from that commit with a clean tree: 106 screens and 212 captures (104 and
@@ -81,7 +82,11 @@ The full flow, since B2 decides who may sign in; each size is B1's.
   colleague's delete 204, the list without them, their next call 401, a link for them 404; oneself 403, another
   act's touch 403, no handle 401; no secret in the log. The deleted one's records go in the sweep's order; a record
   that moves is re-read three times, then a 503.
-- [ ] **4. The gate.** 🤖, 10 minutes: `main` taken in if moved; `pnpm check` under the lock, `== exit 0`.
+- [x] **4. The gate.** 🤖, 10 minutes: `main` taken in if moved; `pnpm check` under the lock, `== exit 0`.
+  *Done, green on a rerun* (2026-11-03, at `44db639`, `main` not moved): the first whole check
+  (`logs/20261103-1625-b2-step4-gate.log`, `== exit 1`, load 2.6 at start, 47 inside) failed only item 56's
+  `ui/src/SignIns.test.tsx` test "C: The root turns the email and the QR sign-in on..." (timed out at 5000 ms); the
+  rerun at load 7.3 (`logs/20261103-1630-b2-step4-gate.log`) ends `== exit 0`, 6 minutes.
 - [ ] **5. One review.** 🤖 Opus, 4 minutes: the sweep, the race, the touches. Done when: each finding `[FIXED]`,
   `[REJECTED]` or `[DEFERRED]` here.
 - [ ] **6. The full run** (👤 2), 12.5 minutes; 🤖 reads the logs whole. Done when: the first moves `tm-1-list`'s six
