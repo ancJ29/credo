@@ -182,8 +182,9 @@ async function walk(page: Page, language: Language, width: number) {
   const words = DICTIONARIES[language];
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
+  // By role: the phone bar's link to Customers carries the same label, in the page at every width.
   const choose = (label: string, option: string) =>
-    page.getByLabel(exactly(label)).selectOption({ label: option });
+    page.getByRole('combobox', { name: exactly(label) }).selectOption({ label: option });
   /** The order form's product line: the product chosen, its quantity typed, and the line added. */
   const line = async (option: string, quantity: string) => {
     await choose(words.orders.product, option);

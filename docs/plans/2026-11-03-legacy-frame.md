@@ -103,3 +103,6 @@ push; a no becomes a case, fixed before step 5.
 👤 **2. The full run, step 5.** Two commands in the human's terminal, about 35 minutes each, nothing else testing:
 `bash walk/run.sh` with all 11 walks (`walk/run.sh#L39-L49`) and `--moved all --write`, then plain. Green
 starts the recap; a red names each moved screen, and the machine finds why before any base is kept.
+First full run (11-03) red twice, fixed in the walk: the orders walk's customer field met the phone bar's link of
+the same name (now found by role), and the driver walk's last picture caught a table scrollbar that hides a second
+after the pointer leaves (a shot now waits for it to hide).
