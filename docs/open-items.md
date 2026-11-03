@@ -552,3 +552,21 @@ Create refuses the same name in other capitals, but `--replace` matches exactly 
 `signedInAt` and the strict schema (`shared/src/records.ts#L125`) make an older BFF answer 503 to those operators. The precedent is `docs/open-items.md#L359`. *Fix:* none now; a line in B1's recap's hazards.
 
 *Trigger:* a rollback past B1.
+
+## 70. An add or a link the target began before its delete can land after the sweep — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
+
+`createOperator`'s retry (`bff/src/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. *Fix:* none now; check the maker on the roster at the last write.
+
+*Trigger:* two operators acting in the same instants.
+
+## 71. The link's kind comes from a roster read that can be stale — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
+
+A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) and `makeLink` gets a `join` link while active; using it replaces their passkeys (`bff/src/operator-auth.ts#L328-L332`) without raising the generation, so their sessions are not ended. *Fix:* none now; make the link's kind from the account, not the roster.
+
+*Trigger:* a join in the instant a link is made for the same colleague.
+
+## 72. `--replace` refuses roster names with a space or an accent — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
+
+`scripts/src/ridge.ts#L77-L78` accepts only `^[a-z0-9][a-z0-9._-]{0,31}$`; item 68's compare helps only plain names. The console's New link covers those operators. *Fix:* none now.
+
+*Trigger:* a command-line replace for an operator named with a space or an accent.

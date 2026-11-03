@@ -32,8 +32,9 @@ on two routes in `bff/src/operator-team.ts` (console plan `docs/plans/2026-10-29
 3. **Neither on oneself:** one signed in adds passkeys on their own page, and the last active operator is never
    deleted (console rows 13, 15).
 4. **The delete's check is its page and a touch,** so a stolen session cannot empty the roster; no name typed.
-5. **The sweep is row 47's:** the roster line first, as its write makes an operator (`bff/src/operators.ts#L108-L113`);
-   then the account, their live link and the links they made (each account's `linkHash` read). Sessions are left:
+5. **The sweep is row 47's, amended by the review's M1:** their live link and the links they made first (each
+   account's `linkHash` read), then the roster line, as its write makes an operator (`bff/src/operators.ts`), then
+   the account. Sessions are left:
    the roster check refuses them (`bff/src/operator-auth.ts#L96-L101`), their records kept as every ended one's
    (`bff/src/sessions.ts#L106`).
 6. **Two deletes racing:** a 412 re-reads and checks actor and target again, three times (row 36): actor gone 401,
@@ -87,8 +88,20 @@ The full flow, since B2 decides who may sign in; each size is B1's.
   (`logs/20261103-1625-b2-step4-gate.log`, `== exit 1`, load 2.6 at start, 47 inside) failed only item 56's
   `ui/src/SignIns.test.tsx` test "C: The root turns the email and the QR sign-in on..." (timed out at 5000 ms); the
   rerun at load 7.3 (`logs/20261103-1630-b2-step4-gate.log`) ends `== exit 0`, 6 minutes.
-- [ ] **5. One review.** 🤖 Opus, 4 minutes: the sweep, the race, the touches. Done when: each finding `[FIXED]`,
+- [x] **5. One review.** 🤖 Opus, 4 minutes: the sweep, the race, the touches. Done when: each finding `[FIXED]`,
   `[REJECTED]` or `[DEFERRED]` here.
+  *Done* (2026-11-03, Opus at `44db639`): no High, one Medium, three Lows.
+  - M1 `[FIXED]` (`4131696`): a delete that failed after the roster line left live the links the deleted operator
+    made, and a retry met a 404 and never swept. The links now go before the roster line, the account after it; a
+    failure among the links leaves the operator listed, so the page's "try again" is true. A test fails the delete
+    at each removal and at the roster write and checks the links and the retry (red: three of four, then green; bff
+    at 100 %).
+  - L2 `[DEFERRED]`, item 70: an add or a link the target began before its delete can land after the sweep; rare,
+    needs two operators acting in the same instants.
+  - L3 `[DEFERRED]`, item 71: a link's kind comes from a roster read that can be stale by one join; rare, and the
+    colleague only has their sessions kept.
+  - L4 `[DEFERRED]`, item 72: `--replace` refuses roster names with a space or accent; the console's New link
+    covers them.
 - [ ] **6. The full run** (👤 2), 12.5 minutes; 🤖 reads the logs whole. Done when: the first moves `tm-1-list`'s six
   pictures and adds twelve; the second every count 0; the bases committed.
 - [ ] **7. The recap.** 🤖, 1 minute: `docs/products.md`'s B2 row, console steps 10 to 14 ticked, items 65 to 68
