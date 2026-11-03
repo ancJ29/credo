@@ -101,11 +101,11 @@ export const themeOf = (colour: string) =>
     primaryColor: 'brand',
     primaryShade: 7,
     fontFamily: FONT,
-    // A page's title is its level-2 heading, drawn at the old app's h3.
+    // A page's title is its level-2 heading, drawn at the old app's h3, in bold (700).
     headings: {
       fontFamily: FONT,
       fontWeight: '600',
-      sizes: { h2: { fontSize: rem(22), lineHeight: '1.4' } },
+      sizes: { h2: { fontSize: rem(22), lineHeight: '1.4', fontWeight: '700' } },
     },
     defaultRadius: 'md',
     radius: { xs: '2px', sm: '4px', md: '8px', lg: '12px', xl: '16px' },

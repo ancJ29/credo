@@ -37,6 +37,14 @@ describe('Shell', () => {
     expect(within(header).getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
   });
 
+  it('The brand stays at 600 beside the bold page titles', () => {
+    shell(['en']);
+
+    expect(screen.getByRole('heading', { level: 1 }).getAttribute('style')).toContain(
+      'font-weight: 600',
+    );
+  });
+
   it('1: The header is painted 135° from the brand’s shade 7 to 9 and the menu 180° from 9 to 8, in white text', () => {
     shell(['en']);
 

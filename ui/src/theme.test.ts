@@ -22,6 +22,15 @@ describe('themeOf', () => {
   });
 });
 
+describe('the page title', () => {
+  it('is bold (700) at 22, while the other headings keep 600', () => {
+    const { headings } = themeOf('#2f7d6d');
+
+    expect(headings?.sizes?.h2).toMatchObject({ fontWeight: '700' });
+    expect(headings?.fontWeight).toBe('600');
+  });
+});
+
 describe('the old app’s fixed look', () => {
   it('keeps the greys, the font and the fields the same whatever the tenant’s colour', () => {
     const [teal, rust] = [themeOf('#2f7d6d'), themeOf('#b4532a')];

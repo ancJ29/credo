@@ -124,7 +124,7 @@ export function Shell({
           <Group wrap="nowrap" gap="sm">
             <Group gap="sm" wrap="nowrap" className={classes.brand}>
               <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
-              <Title order={1} size="h4" c="inherit">
+              <Title order={1} size="h4" fw={600} c="inherit">
                 {brand.name}
               </Title>
             </Group>
