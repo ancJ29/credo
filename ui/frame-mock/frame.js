@@ -11,13 +11,16 @@
   var HEIGHTS = { 390: 844, 768: 1024, 1280: 800 };
   var SM = 768;
   var STATES = ['content', 'empty', 'loading', 'failed'];
-  var DEFAULTS = { w: '1280', palette: 'steel', header: 'colour', menu: 'colour', scheme: 'light', lang: 'vi', state: 'content', nav: 'shown' };
+  // icons: the hidden PC menu leaves a 60-pixel strip of icons; a client's option, off as the legacy's.
+  var DEFAULTS = { w: '1280', palette: 'steel', header: 'colour', menu: 'colour', icons: 'off', scheme: 'light', lang: 'vi', state: 'content', nav: 'shown' };
   var HOME = { client: '/orders', console: '/operator/clients' };
   var MORE = { client: '/more', console: '/operator/more' };
   // The frame's few words the app's dictionaries do not hold yet.
   var OWN = { vi: { more: 'Thêm' }, en: { more: 'More' } };
   var LANGS = { vi: 'Tiếng Việt', en: 'English' };
   var USER = 'u1';
+  // A stand-in company: its name and its logo (Tabler's Adobe mark), the same in both apps and languages.
+  var BRAND = 'Acme';
   // The old app's greys (the new app's NEUTRAL): the white variants' ground, text and edges.
   var N = ['#fafafa', '#f5f5f5', '#e5e5e5', '#d4d4d4', '#9ca3af', '#6b7280', '#4b5563', '#374151', '#1f2937', '#111827'];
 
@@ -60,9 +63,7 @@
       }).join('') + '</svg>';
   }
 
-  // A stand-in logo, no tenant's: a rounded square with an open ring, in the brand's colour.
-  var logo = '<svg class="logo" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="9" fill="var(--logo-bg)"/>' +
-    '<path d="M24.5 12.5a8 8 0 1 0 0 11" fill="none" stroke="var(--logo-fg)" stroke-width="3.2" stroke-linecap="round"/></svg>';
+  var logo = function () { return icon('IconBrandAdobe', 36).replace('<svg ', '<svg class="logo" '); };
 
   // The state, read from and written to the hash: #/orders?w=1280&palette=steel&...
   function read() {
@@ -81,6 +82,7 @@
     s.lang = s.lang === 'en' ? 'en' : 'vi';
     s.state = STATES.indexOf(s.state) < 0 ? 'content' : s.state;
     s.nav = s.nav === 'hidden' ? 'hidden' : 'shown';
+    s.icons = s.icons === 'on' ? 'on' : 'off';
     s.palette = paletteOf(s.palette).name;
     var app = appOf(s.path);
     var known = pagesOf(app).some(function (p) { return p.path === s.path; }) || (isPhone(s) && s.path === MORE[app]);
@@ -153,16 +155,15 @@
       '.app{' + Object.keys(v).map(function (k) { return k + ':' + v[k]; }).join(';') + '}\n' +
       '.app-header.colour,.primary{background:linear-gradient(135deg,' + b[7] + ' 0%,' + b[9] + ' 100%)}\n' +
       '.app-menu.colour{background:linear-gradient(180deg,' + b[9] + ' 0%,' + b[8] + ' 100%)}\n' +
-      '.app-header.colour .logo{--logo-bg:#ffffff;--logo-fg:' + b[7] + '}\n' +
-      '.app-header.white .logo{--logo-bg:' + b[7] + ';--logo-fg:#ffffff}\n';
+      '.app-header.white .logo{color:' + b[7] + '}\n';
     return v;
   }
 
   function header(s, L, app, phone) {
     var white = s.header === 'white';
     var h = '<header class="app-header ' + (white ? 'white' : 'colour') + '">';
-    h += '<div class="brand"><a href="' + esc(hashOf(Object.assign({}, s, { path: HOME[app] }))) + '" data-go="' + HOME[app] + '" aria-label="' + esc(L.app) + '">' + logo + '</a>';
-    h += '<span class="brand-name">' + esc(L.app) + '</span>';
+    h += '<div class="brand"><a href="' + esc(hashOf(Object.assign({}, s, { path: HOME[app] }))) + '" data-go="' + HOME[app] + '" aria-label="' + BRAND + '">' + logo() + '</a>';
+    h += '<span class="brand-name">' + BRAND + '</span>';
     if (app === 'console') h += '<span class="badge">' + esc(L.badge) + '</span>';
     // The legacy's toggle sits after the brand: X while the menu shows, the menu's icon once hidden.
     if (!phone) {
@@ -191,11 +192,15 @@
     return h + '</div></header>';
   }
 
+  // The side menu; hidden with the icons option on, a strip of icons, each named for a screen
+  // reader and its page's name shown on hover, as the legacy's tooltip.
   function menu(s, L, pages) {
+    var strip = s.nav === 'hidden' && s.icons === 'on';
     var h = '<nav class="app-menu ' + (s.menu === 'white' ? 'white' : 'colour') + '" aria-label="' + esc(L.nav.menu) + '">';
     pages.forEach(function (p) {
-      h += '<a href="' + esc(hashOf(Object.assign({}, s, { path: p.path }))) + '" data-go="' + p.path + '"' + (activeOn(s.path, p.path) ? ' aria-current="page"' : '') + '>' +
-        icon(p.icon, 20, 1.6) + '<span>' + esc(labelOf(L, p)) + '</span></a>';
+      var name = esc(labelOf(L, p));
+      h += '<a href="' + esc(hashOf(Object.assign({}, s, { path: p.path }))) + '" data-go="' + p.path + '"' + (activeOn(s.path, p.path) ? ' aria-current="page"' : '') +
+        (strip ? ' aria-label="' + name + '" data-tip="' + name + '"' : '') + '>' + icon(p.icon, strip ? 22 : 20, 1.6) + '<span>' + name + '</span></a>';
     });
     return h + '<div class="build" title="main">' + esc(D.source.commit) + '</div></nav>';
   }
@@ -270,6 +275,8 @@
       : pal.shades[7] + ' is no stock shade 7: its ten shades mixed toward white and black, as the new app does today.') + '</p>';
     h += '<h2>Header</h2>' + seg([['header=colour', 'Coloured'], ['header=white', 'White']]);
     h += '<h2>Side menu</h2>' + seg([['menu=colour', 'Coloured'], ['menu=white', 'White']], s, phone) + ' ' + seg([['nav=shown', 'Shown'], ['nav=hidden', 'Hidden']], s, phone);
+    h += '<h2>Icons when the menu is hidden</h2>' + seg([['icons=off', 'Off'], ['icons=on', 'On']], s, phone);
+    if (!phone) h += '<p>A client\'s option, off as the old app\'s: on, the hidden menu leaves a strip 60 wide, a page\'s name on hover.</p>';
     if (phone) h += '<p>A phone has no side menu: its bar holds the first four pages and More, a page of the rest.</p>';
     h += '<h2>State</h2>' + seg([['state=content', 'Content'], ['state=empty', 'Empty'], ['state=loading', 'Loading'], ['state=failed', 'Failed']]);
     var map = pagesOf(app).slice();
@@ -289,7 +296,7 @@
     var pages = pagesOf(app);
     var phone = isPhone(s);
     var cls = ['app', phone ? 'phone' : 'pc'];
-    if (!phone && s.nav === 'hidden') cls.push('menu-hidden');
+    if (!phone && s.nav === 'hidden') cls.push(s.icons === 'on' ? 'menu-icons' : 'menu-hidden');
     var h = '<div class="' + cls.join(' ') + '" lang="' + s.lang + '" data-app="' + app + '" data-scheme="' + s.scheme + '">' + header(s, L, app, phone);
     if (!phone) h += menu(s, L, pages);
     h += '<main class="app-main"' + (s.state === 'loading' ? ' aria-busy="true"' : '') + '>' + page(s, L, app, pages) + '</main>';
@@ -331,7 +338,7 @@
   }
 
   // The one question's answer, kept in the browser where it can be.
-  var KEY = 'credo-frame-mock-round-1';
+  var KEY = 'credo-frame-mock-round-4';
   function answer(value) {
     try { if (value) localStorage.setItem(KEY, value); else value = localStorage.getItem(KEY); } catch (_e) { /* no storage on this page */ }
     document.querySelectorAll('[data-answer]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-answer') === value)); });
