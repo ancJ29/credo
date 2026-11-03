@@ -6,6 +6,7 @@ import {
   createCStorageClient,
   joinLinkPath,
   normaliseSignInName,
+  sameOperatorName,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll } from './demo/apply';
@@ -80,7 +81,9 @@ export async function runRidge(
       const now = Date.now();
       let token: string | null;
       if (replace) {
-        const line = (await readRoster(client())).roster.operators.find((op) => op.name === name);
+        const line = (await readRoster(client())).roster.operators.find((op) =>
+          sameOperatorName(op.name, name),
+        );
         if (!line) throw new Error(`there is no operator ${name}: run it without --replace`);
         token = await makeLink(client(), {
           operatorId: line.id,

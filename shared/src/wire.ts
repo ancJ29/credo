@@ -377,12 +377,14 @@ export type OperatorListReply = z.infer<typeof operatorListReplySchema>;
 /** The longest name an operator is given. */
 export const OPERATOR_NAME_MAX = 60;
 
-/** An operator's name as typed: trimmed, 1 to 60 characters. */
-export const operatorNameSchema = z.string().trim().min(1).max(OPERATOR_NAME_MAX);
+/** An operator's name as typed: trimmed, stored in Unicode form NFC (a Vietnamese accent typed
+ * precomposed or combining is one name), 1 to 60 characters. */
+export const operatorNameSchema = z.string().trim().normalize('NFC').min(1).max(OPERATOR_NAME_MAX);
 
-/** Whether two names are one name: compared trimmed and without case. */
-export const sameOperatorName = (a: string, b: string) =>
-  a.trim().toLowerCase() === b.trim().toLowerCase();
+const comparable = (name: string) => name.trim().normalize('NFC').toLowerCase();
+
+/** Whether two names are one name: compared trimmed, in form NFC and without case. */
+export const sameOperatorName = (a: string, b: string) => comparable(a) === comparable(b);
 
 /** The roster's order: the one added last first, the same time by name. */
 export const addedNewestFirst = (a: OperatorItem, b: OperatorItem) =>

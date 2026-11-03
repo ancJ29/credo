@@ -172,6 +172,20 @@ describe('what the ops scripts ask of ridge', () => {
     expect((await run(['operator', '--replace', 'second'], WITH_ORIGIN, call)).status).toBe(0);
   });
 
+  it('--replace finds the operator the way a create refuses one, trimmed and without case', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['operator', 'kho'], WITH_ORIGIN, call);
+    const roster = storedRosterSchema.parse(records.get(recordKeys.operatorRoster));
+    records.set(recordKeys.operatorRoster, {
+      operators: roster.operators.map((line) => ({ ...line, name: ' Kho ' })),
+    });
+
+    const result = await run(['operator', '--replace', 'kho'], WITH_ORIGIN, call);
+
+    expect(result).toMatchObject({ status: 0, out: ['operator kho replaced'] });
+    expect(result.shown[0]).toMatch(/new-passkey link/);
+  });
+
   it('names no address it was not given, or one a passkey cannot be bound to', async () => {
     const { records, call } = memoryCStorage();
 

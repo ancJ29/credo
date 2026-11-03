@@ -5,14 +5,18 @@ import {
   type ConfirmAct,
   type Confirmation,
   type CStorageClient,
+  deleteOperatorRequestSchema,
   joinLinkPath,
+  operatorLinkRequestSchema,
+  type OperatorLinkReply,
+  operatorRoutes,
   type OperatorItem,
   type OperatorListReply,
   ROUTES,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { HttpError, parse } from './errors';
-import { createOperator, readAccount, readRoster } from './operators';
+import { createOperator, deleteOperator, makeLink, readAccount, readRoster } from './operators';
 
 type Deps = {
   storage: CStorageClient;
@@ -35,6 +39,15 @@ type Deps = {
  * The add: the body (400), the touch for `add-operator` (403), then the operator, invited, with a
  * join link that the answer alone holds (201); a name already there, compared trimmed and
  * without case, is a 409. No mail is sent and the link is never logged.
+ *
+ * A new link (`POST` on the operator's `/link`): the body (400), the target not oneself (403), the
+ * touch for `operator-link` (403), then a link for them, `join` while they are invited and
+ * `replace` once active, whose use alone replaces their passkeys and ends their sessions; 404 for
+ * an operator who is not there. It removes nothing when made.
+ *
+ * The delete (`DELETE` on the operator): the same checks for `delete-operator`, then the operator
+ * and what they held go (204). Of two deleting each other at once, one stays and the other is
+ * a 401; a target already gone is a 404.
  */
 export function registerOperatorTeamRoutes(
   app: FastifyInstance,
@@ -75,5 +88,43 @@ export function registerOperatorTeamRoutes(
     if (made === 'taken') throw new HttpError(409, 'That name is taken');
     void reply.status(201);
     return { id: made.id, link: joinLinkPath(made.token) };
+  });
+
+  app.post<{ Params: { id: string } }>(
+    operatorRoutes.link(':id'),
+    async (request, reply): Promise<OperatorLinkReply> => {
+      const operator = await operatorSignedIn(request);
+      const body = parse(operatorLinkRequestSchema, request.body);
+      if (request.params.id === operator.id) throw new HttpError(403, 'Forbidden');
+      await confirmed(operator, 'operator-link', body.confirm);
+      const line = (await readRoster(storage)).roster.operators.find(
+        (one) => one.id === request.params.id,
+      );
+      const token =
+        line &&
+        (await makeLink(storage, {
+          operatorId: line.id,
+          kind: line.state === 'invited' ? 'join' : 'replace',
+          madeBy: operator.id,
+          now: now(),
+        }));
+      if (!token) throw new HttpError(404, 'Not found');
+      void reply.status(201);
+      return { link: joinLinkPath(token) };
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(operatorRoutes.one(':id'), async (request, reply) => {
+    const operator = await operatorSignedIn(request);
+    const body = parse(deleteOperatorRequestSchema, request.body);
+    if (request.params.id === operator.id) throw new HttpError(403, 'Forbidden');
+    await confirmed(operator, 'delete-operator', body.confirm);
+    const outcome = await deleteOperator(storage, {
+      actorId: operator.id,
+      targetId: request.params.id,
+    });
+    if (outcome === 'actor') throw new HttpError(401, 'Unauthorized');
+    if (outcome === 'target') throw new HttpError(404, 'Not found');
+    return await reply.status(204).send();
   });
 }

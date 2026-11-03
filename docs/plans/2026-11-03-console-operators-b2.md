@@ -71,9 +71,16 @@ The full flow, since B2 decides who may sign in; each size is B1's.
   Vietnamese question each. The BFF gained only the two touches' purposes in its type. *Not done:* the walk spec's
   new steps are typechecked, never run (step 6); the routes are step 3's; the data set's colleague keeps its id
   (`DEMO_COLLEAGUE_ID`) for the stack's walk.
-- [ ] **3. The routes on the real c-storage.** 🤖 Sonnet, 18 minutes. Done when: the other halves red once, at
+- [x] **3. The routes on the real c-storage.** 🤖 Sonnet, 18 minutes. Done when: the other halves red once, at
   100 %; live, in one `pnpm stack -- <command>`: a link for the colleague 201, its join options naming them; their
   delete 204, the list without them, their link 404; oneself 403; no touch 403; no handle 401.
+  *Done* (2026-11-03): the route and unit halves red once (items 67 and 68 with their sources put back to the
+  old compare; item 66 with the re-check at `bff/src/operators.ts#L137` back to `===`, only its race test red);
+  shared, bff and scripts at 100 %, typecheck, lint, format and knip `== exit 0`. Live in one `pnpm stack`: a new
+  link 201 for the invited operator (its options name them) and for the active colleague (who joins by it), the
+  colleague's delete 204, the list without them, their next call 401, a link for them 404; oneself 403, another
+  act's touch 403, no handle 401; no secret in the log. The deleted one's records go in the sweep's order; a record
+  that moves is re-read three times, then a 503.
 - [ ] **4. The gate.** 🤖, 10 minutes: `main` taken in if moved; `pnpm check` under the lock, `== exit 0`.
 - [ ] **5. One review.** 🤖 Opus, 4 minutes: the sweep, the race, the touches. Done when: each finding `[FIXED]`,
   `[REJECTED]` or `[DEFERRED]` here.
@@ -86,7 +93,7 @@ The full flow, since B2 decides who may sign in; each size is B1's.
 
 👤 **1. The look, after step 2.** The walk "operator-team" shows, in vi and en: 4, a new link for a colleague who
 lost their passkeys: is it clear their old passkeys stop when they use it? 5, deleting one: is it clear they are
-signed out at once and come back only by a new invite? 1 again, its rows offering both. A no becomes a case, fixed
+signed out at their next step and come back only by a new invite? 1 again, its rows offering both. A no becomes a case, fixed
 before step 6; the work goes on, and only the push waits.
 
 👤 **2. The full run, step 6.** In the human's terminal, nothing else running:

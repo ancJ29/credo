@@ -394,6 +394,16 @@ describe('B1: the operators of the console', () => {
     expect(sameOperatorName('Lan', 'Lan Anh')).toBe(false);
   });
 
+  it('A Vietnamese name typed precomposed or with combining accents is one name, stored precomposed', () => {
+    const precomposed = 'Thu H\u00e0';
+    const combining = 'Thu Ha\u0300';
+    expect(precomposed).not.toBe(combining);
+    expect(sameOperatorName(precomposed, combining)).toBe(true);
+    expect(sameOperatorName(' THU H\u00c0 ', combining)).toBe(true);
+    expect(operatorNameSchema.parse(` ${combining} `)).toBe(precomposed);
+    expect(operatorNameSchema.safeParse('a\u0300'.repeat(OPERATOR_NAME_MAX)).success).toBe(true);
+  });
+
   it('Adding one sends a name with the touch and nothing more, and answers the id and the link once', () => {
     expect(addOperatorRequestSchema.safeParse({ name: 'Thu Hà', confirm }).success).toBe(true);
     expect(addOperatorRequestSchema.safeParse({ name: '', confirm }).success).toBe(false);
