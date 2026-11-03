@@ -77,8 +77,12 @@ Decided here:
   frame, each with the bar below 768. The font is the legacy's already (`ui/src/theme.ts#L11`): no package. The walk
   is not run (a browser, the human's terminal); `5-language-menu` and `lists-9-more` were replayed in jsdom with the
   real router. The nine screens of row 9 are eleven: `docs/open-items.md#L556`.
-- [ ] **3. The gate.** 🤖 Sonnet, about 11 minutes (B1's 10, B2's 12): `main` taken in if moved; the whole
+- [x] **3. The gate.** 🤖 Sonnet, about 11 minutes (B1's 10, B2's 12): `main` taken in if moved; the whole
   `pnpm check` under the lock, `== exit 0`.
+  *Done 2026-11-03, 18:43 to 18:49 (6 minutes).* `main` (the mock's rounds 2 to 4, `ops/pages-preview.sh`) merged in,
+  no conflict, none of it in `ui/src`. The whole check, load 3.7 at the start, 22 inside it, green on the first run
+  (`logs/20261103-1843-legacy-frame-gate.log`, `== exit 0`): typecheck, eslint, prettier, knip clean; shared 151,
+  bff 524, ui 691, visual 191 and scripts 264 cases, each at 100 %. No warning but vitest's isolate hint.
 - [ ] **4. One review.** 🤖 Opus, about 4 minutes (B1's and B2's): the bar for each kind of person, a page opened by
   its address on a phone. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
 - [ ] **5. The full run** (👤 2), about 70 minutes (B1's 114 pictures: 6m16s); 🤖 reads each log whole. Done when:
