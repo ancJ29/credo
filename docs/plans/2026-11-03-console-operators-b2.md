@@ -63,6 +63,14 @@ The full flow, since B2 decides who may sign in; each size is B1's.
 - [ ] **2. The page on the fake.** 🤖 Sonnet, 26 minutes, on `ui/src/AddOperatorPage.tsx`'s model. Done when: the
   UI halves red once; touched packages at 100 %, lint clean; `pnpm report` builds `tm-4-link` and `tm-5-delete`,
   `tm-1-list` re-asked. Then 👤 1, while step 3 goes on.
+  *Ready for the human's look* (2026-11-03): the UI halves seen red once (23 failed before the pages), then the
+  whole `pnpm check` `== exit 0` at `c188bc2` (two earlier runs red: a ui test timing out at load 16.6, item 56's,
+  then `ui/src/fake.ts` at 99.93 % until its 400 and joined-operator lines had tests, and a visual cue count in a
+  new test, fixed); the walks page built from that commit with a clean tree: 106 screens and 212 captures (104 and
+  208 before), `tm-4-link` and `tm-5-delete` new in vi and en, `tm-1-list` asked again with both actions and a new
+  Vietnamese question each. The BFF gained only the two touches' purposes in its type. *Not done:* the walk spec's
+  new steps are typechecked, never run (step 6); the routes are step 3's; the data set's colleague keeps its id
+  (`DEMO_COLLEAGUE_ID`) for the stack's walk.
 - [ ] **3. The routes on the real c-storage.** 🤖 Sonnet, 18 minutes. Done when: the other halves red once, at
   100 %; live, in one `pnpm stack -- <command>`: a link for the colleague 201, its join options naming them; their
   delete 204, the list without them, their link 404; oneself 403; no touch 403; no handle 401.
