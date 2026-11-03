@@ -958,6 +958,10 @@ passkey on the human's own device for ridge's address (step 26).
 
 **Slice B, operators.** Rows 10 to 17, 22, 36, 37, 43 to 45, 47.
 
+> **B1, the list and the create (steps 10 to 14 for rows 10 to 12, 16, 22, 36's create, 43 to 45), is carried out in its own plan,** [B1](2026-11-03-console-operators.md#steps).
+>
+> **B2 is next:** a new link for a lost passkey and the delete (rows 13 to 15, 17, 36's delete, 37, 47), its own plan once B1 is in `main`.
+
 - [ ] **10. B's pages and walk, on the fake.** Who: 🤖, after step 9, about a day: the Operators page
   in place of its "coming later", the create and its link once, a new link, the delete's check, B's six
   scenes. **Note from step 8:** every add or remove of a passkey takes a touch that moves that passkey's
@@ -1039,27 +1043,27 @@ passkey on the human's own device for ridge's address (step 26).
 
 **Slice D, a client's root password.** Rows 22, 23, 43, 44, 49 to 57.
 
-- [ ] **20. D's pages and walk, on the fake.** Who: 🤖, after step 9 (A's session and prompt), about
+- [x] **20. D's pages and walk, on the fake.** Who: 🤖, after step 9 (A's session and prompt), about
   three quarters of a day: "New root password" on the dashboard's clients list, its confirm with the
   code typed and the optional password typed twice under piece 2's rule and words, the made answer
   once with its copy button, its failure; the call in `createApi` and the fake, with its cue; D's
   four scenes. Done when: as step 4, for D's rows. **Then stop:** for the preview.
-- [ ] **21. D's fake walk.** Who: 👤, about 20 minutes, with D's six business rows read here. Done
+- [x] **21. D's fake walk.** Who: 👤, about 20 minutes, with D's six business rows read here. Done
   when: as step 5, for D's screens, and rows 49 to 54 kept or corrected, dated. **Then stop:** D's UI
   is fixed here.
-- [ ] **22. D's back end.** Who: 🤖, about half a day: the route on `setPasswordRequestSchema`, piece
+- [x] **22. D's back end.** Who: 🤖, about half a day: the route on `setPasswordRequestSchema`, piece
   2's password function on the root's sign-in record, the route list. Done when: the BFF half of D's rows each seen red once;
   `pnpm check` green; live, `pnpm stack -- <command>`: the operator sets the demo root's password,
   typed and then made, a typed one breaking the rule is a 400, the root's old session is a 401 at its
   next call, the old password is refused and the new one signs in. *Model files:* piece 2's password route (`PUT /api/employees/:id/password`) and
   `bff/src/clients.ts`. **Then stop:** for the review.
-- [ ] **23. D's review.** Who: 🤖, another model, about an hour. Done when: as step 8. **Then stop:**
+- [x] **23. D's review.** Who: 🤖, another model, about an hour. Done when: as step 8. **Then stop:**
   for the full walk.
-- [ ] **24. D's full walk.** Who: 👤 runs the script, about 20 minutes; 🤖 reads. Done when: as step
+- [x] **24. D's full walk.** Who: 👤 runs the script, about 20 minutes; 🤖 reads. Done when: as step
   9, D's 24 bases committed; with C's step 19 done, the walks page shows nothing waiting and no open
   "no". **Then stop:** D is done here, and the piece once C is too.
 
-> **Steps 20 to 24 are carried out in D's own plan,** [part D](2026-11-01-console-root-password.md#steps) (its steps 3 to 8), and its [recap](../recaps/2026-11-03-console-root-password.md); tick them here when D is squashed into `main`.
+> **Steps 20 to 24 are carried out in D's own plan,** [part D](2026-11-01-console-root-password.md#steps) (its steps 3 to 8), and its [recap](../recaps/2026-11-03-console-root-password.md); ticked 2026-11-03, D being in `main` (`f6f5043`).
 
 **The close.**
 

@@ -1,7 +1,7 @@
 # Part D of the operator console: a client's root password, set anew
 
 **Where it stands — 2026-11-03 12:13 +07:** steps 1 to 9 done. **The squash into `main` is next** (the orchestrator's); op-5's moved
-sentence is still open and gates only the push; then step 10, the push, and step 11, ridge, both the human's.
+sentence answered yes by the human on 11-03; then step 10, the push, and step 11, ridge, both the human's.
 
 > **Drafted** 2026-11-01 by the machine, for lane B's line 24: part D of
 > [the console's plan](2026-10-29-operator-console.md#d-a-clients-root-password), its rows 49 to 57 and
@@ -155,7 +155,8 @@ the stack part at the operator, as at A's first full run; the stack forgets its 
   plus op-5's, and each needs its Vietnamese question in `visual/site/questions-vi.json` (added, 3 of them).
   *Evidence:* the human, 2026-11-03 12:01 +07, on the walks page built from `e6320b9`: `rp-1-form`, `rp-2-rule`,
   `rp-3-made` and `rp-4-failed`, each yes in vi. Not asked: the en versions (the same screens with en strings, decided
-  not to ask again). **op-5's moved sentence is still open** on the orchestrator's board; it gates the push alone.
+  not to ask again). **op-5, answered yes** by the human on 11-03: the operator walk's screen 5, the clients list with its new "New root
+  password" button.
 - [x] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4, about 4 hours: the route, the write lifted from
   piece 2's route, the touch's act, the route list; the stack's passkey for the walk (row 21); the spec's
   `root-password-full` project, written, not run. c-storage unchanged, so no `make check`. *Model files:*
