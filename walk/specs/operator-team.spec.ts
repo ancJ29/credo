@@ -74,9 +74,9 @@ async function walk(page: Page, language: Language, width: number) {
   // 1. The operators: name, state, added by whom and when, passkeys, last sign-in; you marked.
   await open(page, language, LIST);
   await expect(title(words.nav.operators)).toBeVisible();
-  await expect(page.getByRole('cell', { name: DEMO_INVITED_NAME })).toBeVisible();
+  await expect(page.getByRole('cell', { name: DEMO_INVITED_NAME, exact: true })).toBeVisible();
   // The stack's three operators are the fake's: the colleague whose adder is deleted too.
-  await expect(page.getByRole('cell', { name: DEMO_TEAM[1].name })).toBeVisible();
+  await expect(page.getByRole('cell', { name: DEMO_TEAM[1].name, exact: true })).toBeVisible();
   await at('tm-1-list');
 
   // 2. Creating an operator: a name.
@@ -116,8 +116,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('tm-5-delete');
   await press(words.team.deleteMake);
   await expect(title(words.nav.operators)).toBeVisible();
-  await expect(page.getByRole('cell', { name: DEMO_INVITED_NAME })).toBeVisible();
-  await expect(page.getByRole('cell', { name: DEMO_TEAM[1].name })).toHaveCount(0);
+  await expect(page.getByRole('cell', { name: DEMO_INVITED_NAME, exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: DEMO_TEAM[1].name, exact: true })).toHaveCount(0);
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
