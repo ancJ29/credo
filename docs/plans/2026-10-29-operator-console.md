@@ -960,23 +960,23 @@ passkey on the human's own device for ridge's address (step 26).
 
 > **B1, the list and the create (steps 10 to 14 for rows 10 to 12, 16, 22, 36's create, 43 to 45), is carried out in its own plan,** [B1](2026-11-03-console-operators.md#steps).
 >
-> **B2 is next:** a new link for a lost passkey and the delete (rows 13 to 15, 17, 36's delete, 37, 47), its own plan once B1 is in `main`.
+> **B2, a new link for a lost passkey and the delete (rows 13 to 15, 17, 36's delete, 37, 47), is carried out in its own plan,** [B2](2026-11-03-console-operators-b2.md#steps); B is done with it.
 
-- [ ] **10. B's pages and walk, on the fake.** Who: 🤖, after step 9, about a day: the Operators page
+- [x] **10. B's pages and walk, on the fake.** Who: 🤖, after step 9, about a day: the Operators page
   in place of its "coming later", the create and its link once, a new link, the delete's check, B's six
   scenes. **Note from step 8:** every add or remove of a passkey takes a touch that moves that passkey's
   `lastUsedAt` (`bff/src/operator-auth.ts`), so the Operators page's "last sign-in" (case row 10) cannot be
   read from the passkeys' last use; B records the last sign-in on its own. Done when: as step 4, for B's rows. **Then stop:** for the preview.
-- [ ] **11. B's fake walk.** Who: 👤, about 20 minutes. Done when: as step 5, for B's screens.
+- [x] **11. B's fake walk.** Who: 👤, about 20 minutes. Done when: as step 5, for B's screens.
   **Then stop:** B's UI is fixed here.
-- [ ] **12. B's back end.** Who: 🤖, about a day: the roster's create, new link and delete, the list,
+- [x] **12. B's back end.** Who: 🤖, about a day: the roster's create, new link and delete, the list,
   the log lines, the data set's operators in the generator. Done when: the BFF half of B's rows each
   seen red once; `pnpm check` green; live: one operator creates a second, the second joins, the
   first deletes them, their next call is a 401, and a delete of oneself is refused. **Then stop:** for
   the review.
-- [ ] **13. B's review.** Who: 🤖, another model, about an hour and a half. Done when: as step 8.
+- [x] **13. B's review.** Who: 🤖, another model, about an hour and a half. Done when: as step 8.
   **Then stop:** for the full walk.
-- [ ] **14. B's full walk.** Who: 👤 runs the script, about 20 minutes; 🤖 reads. Done when: as
+- [x] **14. B's full walk.** Who: 👤 runs the script, about 20 minutes; 🤖 reads. Done when: as
   step 9, B's 36 bases committed. **Then stop:** B is done here.
 
 **Slice C, the services status.** Rows 18 to 22, 38 to 45.

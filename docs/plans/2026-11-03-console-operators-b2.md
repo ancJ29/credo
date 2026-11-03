@@ -102,10 +102,18 @@ The full flow, since B2 decides who may sign in; each size is B1's.
     colleague only has their sessions kept.
   - L4 `[DEFERRED]`, item 72: `--replace` refuses roster names with a space or accent; the console's New link
     covers them.
-- [ ] **6. The full run** (👤 2), 12.5 minutes; 🤖 reads the logs whole. Done when: the first moves `tm-1-list`'s six
+- [x] **6. The full run** (👤 2), 12.5 minutes; 🤖 reads the logs whole. Done when: the first moves `tm-1-list`'s six
   pictures and adds twelve; the second every count 0; the bases committed.
-- [ ] **7. The recap.** 🤖, 1 minute: `docs/products.md`'s B2 row, console steps 10 to 14 ticked, items 65 to 68
+  *Done* (2026-11-03, 17:04 to 17:16 +07, `6529c3c`): run 1 wrote the bases, `tm-1-list` 6 moved, `tm-4-link` and
+  `tm-5-delete` 12 new; run 2 every count 0. A first run was red on the walk spec's cell lookups
+  (`walk/specs/operator-team.spec.ts#L77`), not the app, fixed at `ec0d1cf`. The logs read whole
+  (`logs/20261103-1644-walk-operator-passkeys-team.log`, `20261103-1704-walk-operator-passkeys-team.log`,
+  `20261103-1710-walk-operator-passkeys-team.log`): both runs 6 of 6 for every walk on the fake, the stack and the
+  stack again, no warning, no secret pattern.
+- [x] **7. The recap.** 🤖, 1 minute: `docs/products.md`'s B2 row, console steps 10 to 14 ticked, items 65 to 68
   deleted. Done when: committed, `wc -w` under 400, the grep over `main...HEAD` clean; then the squash.
+  *Done* (2026-11-03): the recap `docs/recaps/2026-11-03-console-operators-b2.md`; items 65 to 68 deleted, the
+  reread's two Lows filed (item 70 amended, item 73 new); B1's and B2's rows in `docs/products.md`.
 
 ## The human's points
 

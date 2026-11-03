@@ -523,39 +523,15 @@ only change between the two runs was a type in `bff/src/challenge.ts`, which `sc
 covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
 stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.
 
-## 65. After a timeout the roster write may have landed, yet the page says the operator was not added — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
-
-The page says "The operator was not added" and the link is lost, though the write may have landed; a retry meets 409 and the invited operator is unreachable until B2's new link. The same class as item 61. Lines: `bff/src/operators.ts#L138`, `ui/src/i18n/en.ts#L144`, `ui/src/i18n/vi.ts#L143`. *Fix:* B2's new link reaches that operator; word the failure as "may not have been added".
-
-*Trigger:* B2.
-
-## 66. The race's re-check after the tagged write's retry is held by no test — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
-
-If `sameOperatorName` at `bff/src/operators.ts#L137` went back to `===`, every test would stay green. The race test is `bff/src/operator-passkeys.route.test.ts#L1062`. *Fix:* B2's plan adds a race on two spellings of one name.
-
-*Trigger:* B2.
-
-## 67. Operator names are compared without Unicode normalization — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
-
-A Vietnamese name typed with precomposed or with combining accents compares as different (`shared/src/wire.ts#L370`). *Fix:* B2's plan adds `.normalize('NFC')` to the compare and to the stored name.
-
-*Trigger:* B2.
-
-## 68. The command line's `--replace` finds an operator by exact name — the machine; `[DEFERRED]` to B2 (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
-
-Create refuses the same name in other capitals, but `--replace` matches exactly (`scripts/src/ridge.ts#L83`). *Fix:* B2's plan makes the command line use the same compare.
-
-*Trigger:* B2.
-
 ## 69. A BFF rolled back past B1 cannot read the accounts B1 writes — the machine; `[DEFERRED]` (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
 
 `signedInAt` and the strict schema (`shared/src/records.ts#L125`) make an older BFF answer 503 to those operators. The precedent is `docs/open-items.md#L359`. *Fix:* none now; a line in B1's recap's hazards.
 
 *Trigger:* a rollback past B1.
 
-## 70. An add or a link the target began before its delete can land after the sweep — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
+## 70. An add or a link the target began before its delete can land after the sweep — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, amended after the reread of `4131696`, 2026-11-03, Low)
 
-`createOperator`'s retry (`bff/src/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. *Fix:* none now; check the maker on the roster at the last write.
+`createOperator`'s retry (`bff/src/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. The gap is wider since the fix at `4131696`: the target stays signed in until the roster write, so a link they make after the sweep has passed that colleague's account and before the roster write survives the 204 (`bff/src/operators.ts#L181-L190`). The comment at `#L165-L166` ("no link of theirs or of their making is left") claims more than this. *Fix:* none now; check the maker on the roster at the last write, and say so in the comment.
 
 *Trigger:* two operators acting in the same instants.
 
@@ -570,3 +546,9 @@ A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) an
 `scripts/src/ridge.ts#L77-L78` accepts only `^[a-z0-9][a-z0-9._-]{0,31}$`; item 68's compare helps only plain names. The console's New link covers those operators. *Fix:* none now.
 
 *Trigger:* a command-line replace for an operator named with a space or an accent.
+
+## 73. A delete refused at its roster write has already removed the links of an operator who stays listed — the machine; `[DEFERRED]` (B2, plan step 5, reread of `4131696`, Opus, 2026-11-03, Low)
+
+A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
+
+*Trigger:* two operators deleting each other, or a roster that keeps moving.
