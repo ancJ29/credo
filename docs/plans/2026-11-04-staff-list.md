@@ -71,7 +71,10 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
   green; ui 701 tests and visual 191 at 100 %; typecheck, eslint, prettier, knip clean; `pnpm report` built, 107
   screens, 214 captures. Fix pass after the human's look (PC no, the filters): the search and every select on one line from
   768, the search growing, each select compact, names kept as accessible names (shown above only under 768); ui 702
-  tests at 100 %, the new row test red once, screens moved still the five.
+  tests at 100 %, the new row test red once, screens moved still the five. Second fix pass (five filters
+  on one line at 1280, each select's "all" naming what it filters): at 1280 the content is 998 wide, the four
+  selects 620, the gaps 64 and the search's 200 minimum come to 884; `pnpm check` `== exit 0` at `b976465`, ui 702
+  tests at 100 %, screens moved still the five.
 - [x] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
   `== exit 0`. Done 2026-11-04 at `122161e`: `pnpm check` `== exit 0`
   on the second whole run (the first, at load 47 from other agents' runs, timed out two ui tests, one in
