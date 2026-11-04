@@ -53,11 +53,11 @@ describe('the staff setup page', () => {
           name: 'Staff',
         }),
       );
-      const warehouseStaff = (await screen.findByText('Phạm Quốc Bảo')).closest(
-        'tr',
-      ) as HTMLElement;
+      const warehouseStaff = (await screen.findAllByText('Phạm Quốc Bảo'))
+        .at(-1)
+        ?.closest('tr') as HTMLElement;
       expect(within(warehouseStaff).getByText('Kho hàng')).toBeTruthy();
-      const delivery = screen.getByText('Võ Thanh Tùng').closest('tr') as HTMLElement;
+      const delivery = screen.getAllByText('Võ Thanh Tùng').at(-1)?.closest('tr') as HTMLElement;
       expect(within(delivery).getByText('Giao hàng')).toBeTruthy();
     },
   );

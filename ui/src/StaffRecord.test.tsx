@@ -64,9 +64,11 @@ describe('the company’s optional fields', () => {
       // hidden everywhere: the person's page, the add form, the list's initials
       api.getPhoto.mockClear();
       await user.click(menu().getByRole('link', { name: 'Staff' }));
-      const lanRow = (await screen.findByText('Nguyễn Thị Lan')).closest('tr') as HTMLElement;
+      const lanRow = (await screen.findAllByText('Nguyễn Thị Lan'))
+        .at(-1)
+        ?.closest('tr') as HTMLElement;
       expect(lanRow.textContent).not.toContain('NT');
-      await user.click(screen.getByRole('link', { name: 'Phạm Quốc Bảo' }));
+      await user.click(screen.getAllByRole('link', { name: 'Phạm Quốc Bảo' })[0]);
       await screen.findByLabelText(/^Name/);
       expect(screen.queryByLabelText('Second phone')).toBeNull();
       expect(screen.queryByRole('heading', { level: 3, name: 'Photo' })).toBeNull();
@@ -227,7 +229,7 @@ describe('the company’s own fields', () => {
         expect.objectContaining({ extra: { shoe: 41.5, licence: 'c', plate: '51C-999.99' } }),
       );
       await user.click(screen.getByRole('link', { name: 'Back to the staff list' }));
-      const row = (await screen.findByText('Mai Linh')).closest('tr') as HTMLElement;
+      const row = (await screen.findAllByText('Mai Linh')).at(-1)?.closest('tr') as HTMLElement;
       const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
       expect(headers).toEqual([
         'Name',
@@ -238,9 +240,10 @@ describe('the company’s own fields', () => {
         'Driving licence',
         'Start date',
         'Shoe size',
+        'Status',
       ]);
-      expect(within(row).getAllByRole('cell').at(-3)?.textContent).toBe('Class C');
-      expect(within(row).getAllByRole('cell').at(-1)?.textContent).toBe('41.5');
+      expect(within(row).getAllByRole('cell').at(-4)?.textContent).toBe('Class C');
+      expect(within(row).getAllByRole('cell').at(-2)?.textContent).toBe('41.5');
     },
   );
 
@@ -559,7 +562,7 @@ describe('a photo', () => {
     });
     // the list shows initials, not the picture
     await user.click(menu().getByRole('link', { name: 'Staff' }));
-    const row = (await screen.findByText('Trần Văn Hùng')).closest('tr') as HTMLElement;
+    const row = (await screen.findAllByText('Trần Văn Hùng')).at(-1)?.closest('tr') as HTMLElement;
     expect(row.textContent).toContain('TV');
     expect(within(row).queryByRole('img')).toBeNull();
   });
@@ -620,7 +623,7 @@ describe('search and filters', () => {
   it('Search finds a person by any word the list shows, the company’s own fields included, with or without accents and in any case', async () => {
     openApp('/staff');
     const search = await screen.findByLabelText('Search');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
 
     // a name without its marks, in any case
     await enter(search, 'NGUYEN lan');
@@ -650,7 +653,7 @@ describe('search and filters', () => {
   it('Search reads the language shown: a choice’s Vietnamese name finds it, and đ is d', async () => {
     openApp('/staff', { language: 'vi' });
     const search = await screen.findByLabelText('Tìm kiếm');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
 
     await user.type(search, 'hang b2');
     expect(names()).toEqual(['Đặng Hoài Nam']);
@@ -661,19 +664,19 @@ describe('search and filters', () => {
 
   it('Filters choose by department, position, whether they left, and the company’s choice fields', async () => {
     openApp('/staff');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
 
     await user.selectOptions(screen.getByLabelText('Department'), 'Kho');
     expect(names()).toEqual(['Lê Minh Châu', 'Phạm Quốc Bảo']);
     await user.selectOptions(screen.getByLabelText('Position'), 'Quản lý');
     expect(names()).toEqual(['Lê Minh Châu']);
-    // people who left show with the filter, inside the others
+    // people who left show with the status All, inside the others
     await user.selectOptions(screen.getByLabelText('Position'), 'Nhân viên');
-    await user.click(screen.getByLabelText('Show people who left'));
+    await user.selectOptions(screen.getByLabelText('Status'), 'All');
     expect(names()).toEqual(['Phạm Quốc Bảo', 'Hoàng Gia Huy']);
     await user.selectOptions(screen.getByLabelText('Department'), 'All');
     await user.selectOptions(screen.getByLabelText('Position'), 'All');
-    await user.click(screen.getByLabelText('Show people who left'));
+    await user.selectOptions(screen.getByLabelText('Status'), 'Active');
     // a choice field shown in the list
     await user.selectOptions(screen.getByLabelText('Driving licence'), 'Class B2');
     expect(names()).toEqual(['Đặng Hoài Nam']);
@@ -686,12 +689,12 @@ describe('search and filters', () => {
 
   it('The address keeps both, so a copied link opens the same list', async () => {
     const kho = DEMO_STAFF_SETUP.departments[0]?.id;
-    openApp(`/staff?q=${encodeURIComponent('bảo')}&department=${kho}&left=1&f.licence=`);
+    openApp(`/staff?q=${encodeURIComponent('bảo')}&department=${kho}&status=all&f.licence=`);
 
     expect((await screen.findByLabelText<HTMLInputElement>('Search')).value).toBe('bảo');
     expect(names()).toEqual(['Phạm Quốc Bảo']);
     expect(screen.getByLabelText<HTMLSelectElement>('Department').value).toBe(kho);
-    expect(screen.getByLabelText<HTMLInputElement>('Show people who left').checked).toBe(true);
+    expect(screen.getByLabelText<HTMLSelectElement>('Status').value).toBe('all');
     expect(screen.getByLabelText<HTMLSelectElement>('Driving licence').value).toBe('');
   });
 });
@@ -911,11 +914,11 @@ describe('the list and its address', () => {
   it('The menu’s Staff link clears the list’s address and the search box with it; history back to a searched list puts its word in the box', async () => {
     appAt('/staff?q=lan');
     const search = await screen.findByLabelText<HTMLInputElement>('Search');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
     expect(search.value).toBe('lan');
 
     await user.click(menu().getByRole('link', { name: 'Staff' }));
-    await screen.findByText('Trần Văn Hùng');
+    await screen.findAllByText('Trần Văn Hùng');
     expect(address()).toBe('/staff');
     expect(search.value).toBe('');
 
@@ -942,7 +945,7 @@ describe('the list and its address', () => {
       </>,
     );
     const search = await screen.findByLabelText<HTMLInputElement>('Search');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
     const position = screen.getByLabelText<HTMLSelectElement>('Position');
     const manager = DEMO_STAFF_SETUP.positions[0].id;
     // Two discrete events with no render between, as two actions arriving inside one transition.
@@ -977,7 +980,7 @@ describe('the list and its address', () => {
       </MemoryRouter>,
     );
     const search = await screen.findByLabelText<HTMLInputElement>('Search');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
     // The native setter, called on the element.
     // eslint-disable-next-line @typescript-eslint/unbound-method
     const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set as (
@@ -997,7 +1000,7 @@ describe('the list and its address', () => {
 
     await user.click(menu().getByRole('link', { name: 'Staff' }));
 
-    await screen.findByText('Trần Văn Hùng');
+    await screen.findAllByText('Trần Văn Hùng');
     expect(address()).toBe('/staff');
     expect(screen.getByLabelText<HTMLInputElement>('Search').value).toBe('');
   });
@@ -1005,7 +1008,7 @@ describe('the list and its address', () => {
   it('A criterion the page cannot show, a removed department or a field it does not list, narrows nothing', async () => {
     appAt('/staff?department=gone&position=gone&f.plate=51C&f.licence=zzz');
     await screen.findByLabelText('Search');
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
 
     expect(screen.getByLabelText<HTMLSelectElement>('Department').value).toBe('');
     expect(screen.getByLabelText<HTMLSelectElement>('Driving licence').value).toBe('');
@@ -1032,14 +1035,14 @@ describe('the list and its address', () => {
         });
       },
     });
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
 
     expect(screen.queryByLabelText('Driving licence')).toBeNull();
   });
 
   it('The page’s own Back returns to the list as it was narrowed, and to the bare list when the person was opened by address', async () => {
     appAt('/staff?q=lan');
-    await user.click(await screen.findByRole('link', { name: 'Nguyễn Thị Lan' }));
+    await user.click((await screen.findAllByRole('link', { name: 'Nguyễn Thị Lan' }))[0]);
     await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });
 
     await user.click(screen.getByRole('link', { name: /Back/ }));

@@ -11,8 +11,9 @@ import {
   Anchor,
   Avatar,
   Badge,
+  Box,
   Button,
-  Checkbox,
+  Card,
   Group,
   NativeSelect,
   SimpleGrid,
@@ -28,7 +29,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { Loaded } from './Loaded';
 import { type PageProps, useLoad } from './page';
 import { phoneOf, unitName } from './staffNames';
-import { type Criteria, criteriaOf, matches, paramsOf } from './staffFilter';
+import { type Criteria, criteriaOf, matches, paramsOf, type Status } from './staffFilter';
 
 /** What the table draws while nothing is read yet. */
 const NOTHING_YET: { setup: StaffSetup; people: Employee[] } = {
@@ -55,7 +56,7 @@ function known(criteria: Criteria, setup: StaffSetup, choices: readonly CustomFi
 }
 
 /** The staff, as the BFF lists them, in code order, narrowed by what the address holds: typed words,
- * a department, a position, whether people who left show, and the company's choice fields. Names
+ * a department, a position, a status, and the company's choice fields. Names
  * come from the staff setup as it stands, so a rename follows each person. */
 export function StaffListPage(page: PageProps) {
   const { api, user } = page;
@@ -120,6 +121,13 @@ export function StaffListPage(page: PageProps) {
     />
   );
 
+  const chip = (person: Employee) =>
+    person.archived ? (
+      <Badge color="gray">{t('staff.chipInactive')}</Badge>
+    ) : (
+      <Badge>{t('staff.chipActive')}</Badge>
+    );
+
   const add = can(user, 'staff.canCreate') && (
     <Button component={Link} to="/staff/new">
       {t('staff.add')}
@@ -160,6 +168,16 @@ export function StaffListPage(page: PageProps) {
           }}
         />
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+          <NativeSelect
+            label={t('staff.status')}
+            value={criteria.status}
+            onChange={(event) => narrow({ status: event.currentTarget.value as Status })}
+            data={[
+              { value: 'active', label: t('staff.statusActive') },
+              { value: 'inactive', label: t('staff.statusInactive') },
+              { value: 'all', label: t('staff.statusAll') },
+            ]}
+          />
           {unitFilter(t('staff.filterDepartment'), 'department', setup.departments)}
           {unitFilter(t('staff.filterPosition'), 'position', setup.positions)}
           {choices.map((field) => (
@@ -180,60 +198,89 @@ export function StaffListPage(page: PageProps) {
             />
           ))}
         </SimpleGrid>
-        <Checkbox
-          label={t('staff.showLeft')}
-          checked={criteria.left}
-          onChange={(event) => narrow({ left: event.currentTarget.checked })}
-        />
         {people.length === 0 ? (
           <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
         ) : (
-          <Table.ScrollContainer minWidth={640}>
-            <Table highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>{t('staff.colName')}</Table.Th>
-                  <Table.Th>{t('staff.colCode')}</Table.Th>
-                  <Table.Th>{t('staff.colDepartment')}</Table.Th>
-                  <Table.Th>{t('staff.colPosition')}</Table.Th>
-                  <Table.Th>{t('staff.colPhone')}</Table.Th>
-                  {columns.map((field) => (
-                    <Table.Th key={field.key}>{field.label[language]}</Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {people.map((person) => (
-                  <Table.Tr key={person.id}>
-                    <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
-                        {fields.photo && (
-                          <Avatar name={person.name} color="initials" size={28} aria-hidden />
-                        )}
-                        <Anchor
-                          component={Link}
-                          to={`/staff/${person.id}`}
-                          state={{ list: search }}
-                        >
-                          {person.name}
-                        </Anchor>
-                        {person.archived && <Badge color="gray">{t('staff.left')}</Badge>}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>{person.code}</Table.Td>
-                    <Table.Td>{unitName(person.department, setup.departments)}</Table.Td>
-                    <Table.Td>{unitName(person.position, setup.positions)}</Table.Td>
-                    <Table.Td>{phoneOf(person)}</Table.Td>
-                    {columns.map((field) => (
-                      <Table.Td key={field.key}>
-                        {fieldValueShown(field, person.extra[field.key], language)}
-                      </Table.Td>
+          <>
+            <Stack gap="xs" hiddenFrom="sm" data-testid="staff-cards">
+              {people.map((person) => (
+                <Card key={person.id} withBorder padding="sm" data-testid="staff-card">
+                  <Group justify="space-between" wrap="nowrap" align="flex-start">
+                    <Group gap="xs" wrap="nowrap">
+                      {fields.photo && (
+                        <Avatar name={person.name} color="initials" size={28} aria-hidden />
+                      )}
+                      <Anchor component={Link} to={`/staff/${person.id}`} state={{ list: search }}>
+                        {person.name}
+                      </Anchor>
+                    </Group>
+                    {chip(person)}
+                  </Group>
+                  {[
+                    person.code,
+                    unitName(person.department, setup.departments),
+                    unitName(person.position, setup.positions),
+                    phoneOf(person),
+                  ]
+                    .filter(Boolean)
+                    .map((line) => (
+                      <Text key={line} size="sm" c="dimmed">
+                        {line}
+                      </Text>
                     ))}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
+                </Card>
+              ))}
+            </Stack>
+            <Box visibleFrom="sm">
+              <Table.ScrollContainer minWidth={640}>
+                <Table highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>{t('staff.colName')}</Table.Th>
+                      <Table.Th>{t('staff.colCode')}</Table.Th>
+                      <Table.Th>{t('staff.colDepartment')}</Table.Th>
+                      <Table.Th>{t('staff.colPosition')}</Table.Th>
+                      <Table.Th>{t('staff.colPhone')}</Table.Th>
+                      {columns.map((field) => (
+                        <Table.Th key={field.key}>{field.label[language]}</Table.Th>
+                      ))}
+                      <Table.Th>{t('staff.colStatus')}</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {people.map((person) => (
+                      <Table.Tr key={person.id}>
+                        <Table.Td>
+                          <Group gap="xs" wrap="nowrap">
+                            {fields.photo && (
+                              <Avatar name={person.name} color="initials" size={28} aria-hidden />
+                            )}
+                            <Anchor
+                              component={Link}
+                              to={`/staff/${person.id}`}
+                              state={{ list: search }}
+                            >
+                              {person.name}
+                            </Anchor>
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>{person.code}</Table.Td>
+                        <Table.Td>{unitName(person.department, setup.departments)}</Table.Td>
+                        <Table.Td>{unitName(person.position, setup.positions)}</Table.Td>
+                        <Table.Td>{phoneOf(person)}</Table.Td>
+                        {columns.map((field) => (
+                          <Table.Td key={field.key}>
+                            {fieldValueShown(field, person.extra[field.key], language)}
+                          </Table.Td>
+                        ))}
+                        <Table.Td>{chip(person)}</Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+            </Box>
+          </>
         )}
       </Loaded>
     </Stack>

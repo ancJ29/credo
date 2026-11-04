@@ -66,8 +66,10 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
 ## Steps
 
 - [x] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words.
-- [ ] **2. The list on the fake.** 🤖 Sonnet, about 18 minutes. Done when: rows 1, 2, 3, 5 red once; ui and visual at
-  100 %, lint clean; `pnpm report` builds.
+- [x] **2. The list on the fake.** 🤖 Sonnet, about 18 minutes. Done when: rows 1, 2, 3, 5 red once; ui and visual at
+  100 %, lint clean; `pnpm report` builds. Done 2026-11-04: rows 1, 2, 3, 5 red once against today's page, then
+  green; ui 701 tests and visual 191 at 100 %; typecheck, eslint, prettier, knip clean; `pnpm report` built, 107
+  screens, 214 captures.
 - [ ] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
   `== exit 0`.
 - [ ] **4. One review.** 🤖 Opus, about 5 minutes. Done when: each finding is tagged here.
