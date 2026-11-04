@@ -70,8 +70,11 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
   100 %, lint clean; `pnpm report` builds. Done 2026-11-04: rows 1, 2, 3, 5 red once against today's page, then
   green; ui 701 tests and visual 191 at 100 %; typecheck, eslint, prettier, knip clean; `pnpm report` built, 107
   screens, 214 captures.
-- [ ] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
-  `== exit 0`.
+- [x] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
+  `== exit 0`. Done 2026-11-04 at `122161e`: `pnpm check` `== exit 0`
+  on the second whole run (the first, at load 47 from other agents' runs, timed out two ui tests, one in
+  `SignIns.test.tsx`, one in `StaffSetupPage.test.tsx`, 5-second limits; a rerun at load below 8 is green, named a rerun); shared
+  151, bff 524, ui 701, visual 191, scripts 277 tests, each at 100 %.
 - [ ] **4. One review.** 🤖 Opus, about 5 minutes. Done when: each finding is tagged here.
 - [ ] **5. The full run** (👤 2), about 17 minutes, plus 2 for its one-off and 2 for its log: `ops/full-run.sh`,
   `--moved` the five. Done when: run 1 green, its raw counts naming only the five; run 2 all 0; 30 bases committed.
