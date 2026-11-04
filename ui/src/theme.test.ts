@@ -1,4 +1,6 @@
+import { CREDO_COLOUR } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
+import { PALETTES } from './palettes';
 import { BRAND_GRADIENT, shadesOf, themeOf } from './theme';
 
 describe('shadesOf', () => {
@@ -9,6 +11,40 @@ describe('shadesOf', () => {
     expect(shades[7]).toBe('#2f7d6d');
     expect(shades[0]).toBe('#eef5f3');
     expect(shades[9]).toBe('#1d4e44');
+  });
+});
+
+describe('the stock palettes', () => {
+  const [terracotta, steel] = [PALETTES[0], PALETTES[6]];
+
+  it('draw their own ten shades for a colour that is their shade 7, in any case', () => {
+    for (const palette of PALETTES) {
+      expect(shadesOf(palette.shades[7])).toEqual(palette.shades);
+      expect(shadesOf(palette.shades[7].toUpperCase())).toEqual(palette.shades);
+    }
+    expect(shadesOf('#D97757')[0]).toBe(terracotta.shades[0]);
+  });
+
+  it('leave any other colour mixed as before, even one step from a stock shade', () => {
+    expect(shadesOf('#2f7d6d')).toEqual([
+      '#eef5f3',
+      '#dae8e5',
+      '#bcd5d0',
+      '#97beb6',
+      '#72a79c',
+      '#509284',
+      '#3b8576',
+      '#2f7d6d',
+      '#266457',
+      '#1d4e44',
+    ]);
+    expect(shadesOf('#d97758')).not.toEqual(terracotta.shades);
+    expect(shadesOf('#d97758')[7]).toBe('#d97758');
+  });
+
+  it('give credo’s own colour steel’s ten shades, before a company is known and in the console', () => {
+    expect(shadesOf(CREDO_COLOUR)).toEqual(steel.shades);
+    expect(themeOf(CREDO_COLOUR).colors?.brand).toEqual(steel.shades);
   });
 });
 

@@ -28,7 +28,6 @@ const ROOT = { name: required('CREDO_ROOT_NAME'), password: required('CREDO_ROOT
 const SCOPE = { [CLIENT_HEADER]: CODE };
 
 const NEW_NAME = 'Minh Phát Sài Gòn';
-const NEW_COLOUR = '#b4532a';
 /** What the other save, made through the API, calls the company. */
 const THEIR_NAME = 'Minh Phát Bình Dương';
 
@@ -106,7 +105,7 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 7. A save that failed, what was typed kept.
   await page.getByLabel(words.settings.name).fill(NEW_NAME);
-  await page.getByLabel(words.settings.colour).fill(NEW_COLOUR);
+  await page.getByRole('radio', { name: words.settings.palettes.terracotta }).check();
   await page.getByRole('heading', { level: 2 }).click();
   await page.route(ROUTES.config, (route) =>
     route.request().method() === 'PUT'
@@ -141,7 +140,7 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('button', { name: words.settings.conflictReload }).click();
   await expect(page.getByLabel(words.settings.name)).toHaveValue(THEIR_NAME);
   await page.getByLabel(words.settings.name).fill(NEW_NAME);
-  await page.getByLabel(words.settings.colour).fill(NEW_COLOUR);
+  await page.getByRole('radio', { name: words.settings.palettes.terracotta }).check();
   await page.getByRole('heading', { level: 2 }).click();
 
   // 4. Saved: the app shows the new name and colour.

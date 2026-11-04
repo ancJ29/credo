@@ -16,6 +16,7 @@ import {
   Image,
   NativeSelect,
   Paper,
+  Radio,
   SimpleGrid,
   Stack,
   Text,
@@ -28,6 +29,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from './i18n';
 import { Loaded } from './Loaded';
+import { PALETTES, paletteOfColour } from './palettes';
 
 type Props = {
   status: 'loading' | 'failed' | 'ready';
@@ -169,6 +171,37 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                   </Text>
                 )}
               </Stack>
+              <Radio.Group
+                label={t('settings.palette')}
+                value={paletteOfColour(draft.colour)?.name ?? ''}
+                onChange={(name) =>
+                  PALETTES.filter((palette) => palette.name === name).forEach((palette) =>
+                    change({ colour: palette.shades[7] }),
+                  )
+                }
+                style={{ gridColumn: '1 / -1' }}
+              >
+                <Group mt="xs" gap="lg" align="flex-start">
+                  {PALETTES.map((palette) => (
+                    <Radio
+                      key={palette.name}
+                      value={palette.name}
+                      label={t(`settings.palettes.${palette.name}`)}
+                      color={palette.shades[7]}
+                      size="lg"
+                      radius="xl"
+                      styles={{
+                        body: { flexDirection: 'column', alignItems: 'center', gap: 4 },
+                        labelWrapper: { alignItems: 'center' },
+                        radio: {
+                          backgroundColor: palette.shades[7],
+                          borderColor: palette.shades[7],
+                        },
+                      }}
+                    />
+                  ))}
+                </Group>
+              </Radio.Group>
               <ColorInput
                 label={t('settings.colour')}
                 format="hex"
