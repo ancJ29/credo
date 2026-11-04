@@ -79,6 +79,7 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | `ops/` stack scripts | Make the network, GitHub's provider and an environment by change sets; release, app and check scripts, and the crash drill. | ridge | in `main` | `ops/README.md` (table "At a glance") | [`plans/2026-10-28-ridge.md`](plans/2026-10-28-ridge.md) |
 | `ops/tunnel.sh ridge` | Opens ridge's c-storage on the Mac for Bruno or curl, for up to an hour. | ridge | in `main` | `ops/tunnel.sh ridge` | [`recaps/2026-10-28-ridge-tunnel.md`](recaps/2026-10-28-ridge-tunnel.md) |
 | `ops/operator.sh`, `ops/root-password.sh` | Make the operator with a one-time join link; set a demo copy's root password, typed once and never shown. | ridge | in `main` | `ops/operator.sh ridge`; `ops/root-password.sh ridge <code>` | [`recaps/2026-11-02-ridge-root-password.md`](recaps/2026-11-02-ridge-root-password.md) |
+| `ops/legacy-capture.sh` | Signs in to the legacy app as its root and pictures the screens a file names, on a PC and a phone, opening only and never saving; for whoever compares the legacy with the new app. | the human's terminal only | on `legacy-capture`; run green 11-04 | `bash ops/legacy-capture.sh` (asks for the address, name and password) | [`recaps/2026-11-04-legacy-capture.md`](recaps/2026-11-04-legacy-capture.md) |
 
 ## Known gaps
 
