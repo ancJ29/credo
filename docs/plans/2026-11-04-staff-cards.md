@@ -71,7 +71,8 @@ pictures.** Of every spec, only `walk/specs/piece-2.spec.ts` opens the two pages
 
 ## Steps
 
-- [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
+- [x] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
+  Evidence (2026-11-04): committed at `0a94cad`.
 - [x] **2. The cards on the fake.** 🤖 Sonnet, about 27 minutes, the frame's (`docs/plans/2026-11-03-legacy-frame.md#L52`):
   the frame, both pages, the panels on `DetailCard`, the words. Done when: row 1 red once with the sentence left in its
   old block; rows 2 and 7 green; row 6's grep 0; ui at 100 %, lint clean; `pnpm report` builds, and against `main`'s
@@ -83,19 +84,23 @@ pictures.** Of every spec, only `walk/specs/piece-2.spec.ts` opens the two pages
   12, 16; staff-lookup 2). Also moved: two proof lines in `visual/src/words.test.tsx` (`form:` and `main:` become
   `region:`, the cards being sections) and one by-name lookup in `walk/specs/piece-2.spec.ts` made exact, since the
   new "Sign-in name" field holds the name "Tên"/"Name" as a substring.
-- [ ] **3. The look** (👤 1); the machine goes on.
+- [x] **3. The look** (👤 1); the machine goes on.
+  Evidence (2026-11-04 16:2x): the human's yes on "Take on staff" screens 2 and 4.
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes (`…/2026-11-03-legacy-frame.md#L56`): `main` taken in; the whole
   `pnpm check` under the lock, `== exit 0`.
   Evidence (2026-11-04, 15:53): `main` still `2414b18`, already in. The whole `pnpm check` at `5b51454` under the lock,
   `== exit 0`; every package at 100 %: shared 151 tests, bff 524, ui 698, visual 191, scripts 277. A first run at load
   11 to 14 failed three ui tests on the 5-second timeout (item 56's flakes: SignIns, StaffRecord, StaffSetupPage);
   the rerun at load 7.8 was green, named a rerun and not a pass of the first.
-- [ ] **5. One review.** 🤖 Opus, about 5 minutes (`#L59`). Done when: each finding tagged here.
-- [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
+- [x] **5. One review.** 🤖 Opus, about 5 minutes (`#L59`). Done when: each finding tagged here.
+  Evidence (2026-11-04): no High or Medium; two Lows, both deferred as open items 89 and 90 (an unused `person.signIn` key; the frame's empty side column).
+- [x] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green, its `raw.txt` naming the 16 alone; run 2
   every count 0; 96 bases committed.
-- [ ] **7. The recap.** 🤖 Sonnet, about 1 minute (`…/2026-11-03-legacy-frame.md#L66`). Done when: committed, under
+  Evidence (2026-11-04): the first run red at 17:08 on one services picture (a button loader caught mid-fade by the services walk's fake pass, not this piece; fixed in `main` as `926c1b2`); the rerun green 17:32 to 17:48 (16m00s), bases committed at `8144bce`: 96 pictures, exactly the 16 screens. Open items 91 (the walks' loaders) and 81 (the lanes) note what the run showed.
+- [x] **7. The recap.** 🤖 Sonnet, about 1 minute (`…/2026-11-03-legacy-frame.md#L66`). Done when: committed, under
   400 words, the products row.
+  Evidence (2026-11-04): `docs/recaps/2026-11-04-staff-cards.md`, with the products row.
 
 Total: about 72 minutes, 55 the machine's; the cut's ~105 holds the relays and the look.
 
