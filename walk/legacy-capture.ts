@@ -231,6 +231,31 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
+// The shape of the page's inputs and buttons, never a value, so a failed sign-in is diagnosed from disk.
+async function writeFormShape(page: Page, outDir: string): Promise<void> {
+  try {
+    // A string, since the walk package has no DOM types.
+    const shape: unknown =
+      await page.evaluate(`Array.from(document.querySelectorAll('input, button')).map((el) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return {
+        tag: el.tagName.toLowerCase(),
+        type: el.getAttribute('type'),
+        name: el.getAttribute('name'),
+        id: el.getAttribute('id'),
+        autocomplete: el.getAttribute('autocomplete'),
+        placeholder: el.getAttribute('placeholder'),
+        visible: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none',
+      };
+    })`);
+    writeFileSync(join(outDir, 'sign-in-form.json'), JSON.stringify(shape, null, 2) + '\n');
+    console.log("== sign-in-form.json written (the page's inputs and buttons, no values)");
+  } catch {
+    console.log('== sign-in-form.json could not be written');
+  }
+}
+
 // Returns undefined when signed in, else a fixed text naming the step that stopped (never a value, never
 // Playwright's own message). The form is found by its password field and sent by its own submit button, so the
 // page's language does not matter; the "sign-in link" button is never pressed.
@@ -238,35 +263,49 @@ async function signIn(
   page: Page,
   root: string,
   cred: { user: string; pass: string },
+  outDir: string,
 ): Promise<string | undefined> {
   const step = async (find: () => Promise<boolean>): Promise<boolean> => find().catch(() => false);
+  // The legacy's form library keys the fields but renders no `name` attribute, so the fields are found by
+  // what the page surely has: the password input, and in its form the one visible text-like input.
+  const stop = async (text: string): Promise<string> => {
+    await writeFormShape(page, outDir);
+    return text;
+  };
   await page.goto(root + '/login').catch(() => undefined);
-  const nameField = page.locator('input[name="identifier"]');
-  if (!(await step(async () => (await nameField.count()) > 0)))
-    return 'sign-in stopped: the name field was not found';
-  const passField = page.locator('input[name="password"]');
+  const passField = page.locator('input[type="password"]').first();
   if (!(await step(async () => (await passField.count()) > 0)))
-    return 'sign-in stopped: the password field was not found';
-  const submit = page.locator('form:has(input[name="password"]) button[type="submit"]').first();
+    return stop('sign-in stopped: the password field was not found');
+  const form = page.locator('form:has(input[type="password"])').first();
+  const nameField = form
+    .locator(
+      'input:not([type="password"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"])',
+    )
+    .first();
+  if (!(await step(async () => (await nameField.count()) > 0)))
+    return stop('sign-in stopped: the name field was not found');
+  const submit = form.locator('button[type="submit"]').first();
   if (!(await step(async () => (await submit.count()) > 0)))
-    return 'sign-in stopped: the submit button was not found';
+    return stop('sign-in stopped: the submit button was not found');
   try {
     await nameField.fill(cred.user);
     await passField.fill(cred.pass);
     await submit.click();
   } catch {
-    return 'sign-in stopped: the form could not be filled and sent';
+    return stop('sign-in stopped: the form could not be filled and sent');
   }
   try {
     await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 30_000 });
   } catch {
-    return 'sign-in stopped: still on the sign-in page after sending (most likely the name or password)';
+    return stop(
+      'sign-in stopped: still on the sign-in page after sending (most likely the name or password)',
+    );
   }
   try {
     await settle(page);
     await page.locator('a[href], nav, main').first().waitFor({ timeout: 20_000 });
   } catch {
-    return 'sign-in stopped: left the sign-in page but the app did not load';
+    return stop('sign-in stopped: left the sign-in page but the app did not load');
   }
   return undefined;
 }
@@ -340,7 +379,7 @@ async function main(): Promise<void> {
       await anon.close();
       const ctx = await newContext(browser, device, pw);
       const page = await ctx.newPage();
-      const stopped = await signIn(page, root, cred);
+      const stopped = await signIn(page, root, cred, out);
       if (stopped) {
         console.log(`== ${device}: ${stopped}`);
         await ctx.close();
