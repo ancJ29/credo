@@ -74,7 +74,9 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
   tests at 100 %, the new row test red once, screens moved still the five. Second fix pass (five filters
   on one line at 1280, each select's "all" naming what it filters): at 1280 the content is 998 wide, the four
   selects 620, the gaps 64 and the search's 200 minimum come to 884; `pnpm check` `== exit 0` at `b976465`, ui 702
-  tests at 100 %, screens moved still the five.
+  tests at 100 %, screens moved still the five. Review fix pass (`a7fd011`, `3bb5813`): card lines keyed by field, a
+  field's name lowered by its first letter and not when an acronym, an old `left=1` read as All, the table link's Back
+  tested; `pnpm check` `== exit 0` (a first run red on one uncovered branch, fixed by `3bb5813`), ui 705 tests at 100 %.
 - [x] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
   `== exit 0`. Done 2026-11-04 at `122161e`: `pnpm check` `== exit 0`
   on the second whole run (the first, at load 47 from other agents' runs, timed out two ui tests, one in
