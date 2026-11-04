@@ -674,13 +674,13 @@ describe('search and filters', () => {
     await user.selectOptions(screen.getByLabelText('Position'), 'Nhân viên');
     await user.selectOptions(screen.getByLabelText('Status'), 'All');
     expect(names()).toEqual(['Phạm Quốc Bảo', 'Hoàng Gia Huy']);
-    await user.selectOptions(screen.getByLabelText('Department'), 'All');
-    await user.selectOptions(screen.getByLabelText('Position'), 'All');
+    await user.selectOptions(screen.getByLabelText('Department'), 'All departments');
+    await user.selectOptions(screen.getByLabelText('Position'), 'All positions');
     await user.selectOptions(screen.getByLabelText('Status'), 'Active');
     // a choice field shown in the list
     await user.selectOptions(screen.getByLabelText('Driving licence'), 'Class B2');
     expect(names()).toEqual(['Đặng Hoài Nam']);
-    await user.selectOptions(screen.getByLabelText('Driving licence'), 'All');
+    await user.selectOptions(screen.getByLabelText('Driving licence'), 'All driving licence');
     expect(names()).toHaveLength(7);
     // a field that is not a choice, or not shown in the list, has no filter
     expect(screen.queryByLabelText('Vehicle plate')).toBeNull();

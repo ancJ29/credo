@@ -1,5 +1,8 @@
 /* The staff list's filters: one column on a phone, each with its name above; from 768 (`sm`) one line,
-   the search growing and every select a fixed compact width, wrapping only when they cannot fit. */
+   the search growing and every select a fixed compact width, wrapping only when they cannot fit. At 1280
+   the content is 1280 - 250 (menu) - 32 (padding) = 998 wide: 4 selects of 155 = 620, 4 gaps of 16 = 64
+   and the search's 200 minimum come to 884, so all five fit on one line down to about 884 + 282 = 1166;
+   narrower, the last select wraps. */
 .filters {
   display: flex;
   flex-direction: column;
@@ -18,12 +21,12 @@
   }
 
   .filters > * {
-    width: 190px;
+    width: 155px;
   }
 
   .filters > .search {
     flex: 1;
-    min-width: 220px;
+    min-width: 200px;
     width: auto;
   }
 }

@@ -98,6 +98,10 @@ describe('the staff list', () => {
         ),
       ),
     ).toEqual([0, 1, 2, 3, 4]);
+    // each select's "all" says what it filters
+    expect(
+      controls.slice(2).map((control) => (control as HTMLSelectElement).options[0]?.text),
+    ).toEqual(['All departments', 'All positions', 'All driving licence']);
     // the visible label shows under 768 only, the accessible name stays
     for (const control of controls) {
       const wrapper = control.closest('.mantine-InputWrapper-root') as HTMLElement;

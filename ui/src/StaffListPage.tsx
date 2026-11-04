@@ -116,6 +116,7 @@ export function StaffListPage(page: PageProps) {
 
   const unitFilter = (
     label: string,
+    all: string,
     key: 'department' | 'position',
     units: StaffSetup['departments'],
   ) => (
@@ -124,7 +125,7 @@ export function StaffListPage(page: PageProps) {
       value={criteria[key]}
       onChange={(event) => narrow({ [key]: event.currentTarget.value })}
       data={[
-        { value: '', label: t('staff.filterAll') },
+        { value: '', label: all },
         ...units.map((unit) => ({ value: unit.id, label: unit.name })),
       ]}
     />
@@ -189,8 +190,18 @@ export function StaffListPage(page: PageProps) {
               { value: 'all', label: t('staff.statusAll') },
             ]}
           />
-          {unitFilter(t('staff.filterDepartment'), 'department', setup.departments)}
-          {unitFilter(t('staff.filterPosition'), 'position', setup.positions)}
+          {unitFilter(
+            t('staff.filterDepartment'),
+            t('staff.filterAllDepartments'),
+            'department',
+            setup.departments,
+          )}
+          {unitFilter(
+            t('staff.filterPosition'),
+            t('staff.filterAllPositions'),
+            'position',
+            setup.positions,
+          )}
           {choices.map((field) => (
             <NativeSelect
               key={field.key}
@@ -200,7 +211,12 @@ export function StaffListPage(page: PageProps) {
                 narrow({ choices: { ...criteria.choices, [field.key]: event.currentTarget.value } })
               }
               data={[
-                { value: '', label: t('staff.filterAll') },
+                {
+                  value: '',
+                  label: t('staff.filterAllOf', {
+                    field: field.label[language].toLocaleLowerCase(language),
+                  }),
+                },
                 ...field.options.map((option) => ({
                   value: option.value,
                   label: option.label[language],
