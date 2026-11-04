@@ -58,7 +58,7 @@ Decided here:
 | 6 | One navigation named "Menu" a width (`walk/specs/piece-2.spec.ts#L458`); the active page washed, with its notch | unit, ui; the walks |
 | 7 | The console wears the same frame, its badge and five sections; its More holds activity, passkeys, sign-out | unit, ui; the operator walks |
 | 8 | The fake's scenes equal the spec's and the walks page's; fake = stack = stack again | visual; the walk |
-| 9 | The nine screens outside the frame do not move: `1-sign-in`, `2-sign-in-refused`, `6-service-down`, `9-unknown-company`, `op-1-sign-in`, `pk-1-join`, `pk-4-no-operator`, `pk-5-link-dead`, `phone-2-code-used` | the full run's raw count |
+| 9 | The ten screens outside the frame do not move: `1-sign-in`, `2-sign-in-refused`, `6-service-down`, `9-unknown-company`, `op-1-sign-in`, `pk-1-join`, `pk-3-not-given`, `pk-4-no-operator`, `pk-5-link-dead`, `sv-5-unavailable`. `phone-2-code-used` moves, with the titles' 700 (`ui/src/theme.ts#L108`, `ui/src/QrLanding.tsx#L24`) | the full run's raw count |
 | 10 | The header shows the company's name (the console's, Credo) beside the stand-in logo, never the stored one | unit, ui; the walk |
 
 ## Steps
@@ -76,22 +76,29 @@ Decided here:
   three typechecks clean. `pnpm report` built 107 screens (`…-1829-legacy-frame-report.log`, `== exit 0`); 96 wear the
   frame, each with the bar below 768. The font is the legacy's already (`ui/src/theme.ts#L11`): no package. The walk
   is not run (a browser, the human's terminal); `5-language-menu` and `lists-9-more` were replayed in jsdom with the
-  real router. The nine screens of row 9 are eleven: `docs/open-items.md#L556`.
+  real router. The nine screens of row 9 are ten: `docs/open-items.md#L556`.
 - [x] **3. The gate.** 🤖 Sonnet, about 11 minutes (B1's 10, B2's 12): `main` taken in if moved; the whole
   `pnpm check` under the lock, `== exit 0`.
   *Done 2026-11-03, 18:43 to 18:49 (6 minutes).* `main` (the mock's rounds 2 to 4, `ops/pages-preview.sh`) merged in,
   no conflict, none of it in `ui/src`. The whole check, load 3.7 at the start, 22 inside it, green on the first run
   (`logs/20261103-1843-legacy-frame-gate.log`, `== exit 0`): typecheck, eslint, prettier, knip clean; shared 151,
   bff 524, ui 691, visual 191 and scripts 264 cases, each at 100 %. No warning but vitest's isolate hint.
-- [ ] **4. One review.** 🤖 Opus, about 4 minutes (B1's and B2's): the bar for each kind of person, a page opened by
+- [x] **4. One review.** 🤖 Opus, about 4 minutes (B1's and B2's): the bar for each kind of person, a page opened by
   its address on a phone. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
-- [ ] **5. The full run** (👤 2), about 70 minutes (B1's 114 pictures: 6m16s); 🤖 reads each log whole. Done when:
-  run 1 green, its `raw.txt` naming none of row 9's screens; run 2 every count 0; about 588 bases committed (97 moved
-  screens and the new one, six pictures each).
-  Fix 2 (the 20:01 run's scrollbar strip): `shot` draws a table's hover scrollbar hidden (`walk/support.ts`), not a wait.
-  Fix 3 (the 21:02 run's timeout): the detach wait is gone from `shot`, the hidden scrollbar alone serves; the pointer park stays for the hovered-button case.
-  Fix 4 (the 23:02 run's services red): the services walk installs its clock a minute early (`walk/specs/operator-services.spec.ts`), since `pauseAt` fails once the running clock passes its time.
-- [ ] **6. The recap.** 🤖 Sonnet, about 1 minute (B1's and B2's). Done when: committed, under 400 words, a client's own
+  *Done 2026-11-03 (Opus).* No High or Medium; one Low, `[FIXED]` here: the titles' 700 (`ui/src/theme.ts#L108`) also
+  moves `phone-2-code-used` (`ui/src/QrLanding.tsx#L24`), which row 9 listed as unmoved; row 9 now says so.
+- [x] **5. The full run** (👤 2), about 70 minutes (B1's 114 pictures: 6m16s); 🤖 reads each log whole. Done when:
+  run 1 green, its `raw.txt` naming none of row 9's screens; run 2 every count 0; about 582 bases committed (97 screens,
+  `lists-9-more` among them, six pictures each).
+  *Done 2026-11-03 19:15 to 2026-11-04 08:40,* by `ops/full-run.sh` (`cd42d59`); five tries, each red the walk's own, each
+  fixed in `walk/` alone: a form field found by label also matched the phone bar's link, now found by role (`ed4da7c`); a
+  table's hover scrollbar in some pictures, now drawn hidden by `shot` (`a43cf0c`, the wait removed `ed47125`); the
+  services walk's clock installed 1 ms before its `pauseAt`, now a minute (`ff73652`). Run 1 green 23:38, 582 bases
+  committed (`42d4102`: 96 moved screens and `lists-9-more`, six each); run 2 read 0 on ten walks
+  (`logs/20261103-2339-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team.log#L1157-L1188`);
+  the services walk plain, green 11-04 08:40 (`logs/20261104-0839-walk-services.log#L76-L80`). The ten screens of
+  row 9 did not move.
+- [x] **6. The recap.** 🤖 Sonnet, about 1 minute (B1's and B2's). Done when: committed, under 400 words, a client's own
   logo an open item; the squash.
 
 Total: about 122 minutes, 52 of them the machine's.
@@ -106,6 +113,4 @@ push; a no becomes a case, fixed before step 5.
 👤 **2. The full run, step 5.** Two commands in the human's terminal, about 35 minutes each, nothing else testing:
 `bash walk/run.sh` with all 11 walks (`walk/run.sh#L39-L49`) and `--moved all --write`, then plain. Green
 starts the recap; a red names each moved screen, and the machine finds why before any base is kept.
-First full run (11-03) red twice, fixed in the walk: the orders walk's customer field met the phone bar's link of
-the same name (now found by role), and the driver walk's last picture caught a table scrollbar that hides a second
-after the pointer leaves (a shot now waits for it to hide).
+The first tries were red in the walks, not the frame; the fixes are under step 5.

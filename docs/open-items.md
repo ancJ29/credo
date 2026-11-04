@@ -553,9 +553,20 @@ A delete that stops at its roster write (an actor gone, 401; three roster moves,
 
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
 
-## 74. Eleven screens wear no frame, not the plan's nine — the machine; `[OPEN]` (legacy frame, step 2, 2026-11-03, Low)
+## 74. Ten screens wear no frame, and `phone-2-code-used` moves — the machine; `[OPEN]` (legacy frame, steps 2 and 4, 2026-11-03, Low)
 
-The built walks page draws 107 screens, 96 of them in the frame. Beside row 9's nine, `pk-3-not-given` and `sv-5-unavailable` also wear none (a join page and a boot page, never inside `Shell`). Step 5's "about 588 bases" is then 96 screens by six pictures, about 576, and the raw count of the full run names those eleven as unmoved.
+The built walks page draws 107 screens, 97 of them moved. Beside row 9's first seven, `pk-3-not-given` and `sv-5-unavailable` also wear none (a join page and a boot page, never inside `Shell`); that makes ten unmoved. `phone-2-code-used` is not among them: the titles' 700 moves it (`ui/src/theme.ts#L108`, `ui/src/QrLanding.tsx#L24`). Step 5's bases are 97 screens by six pictures, 582.
 
-*Trigger:* the full run's first raw count.
+*Trigger:* none left; the full run read it. Delete with the recap's merge.
 
+## 75. The hidden menu's icon strip — the human; `[PARKED]` (legacy frame, plan 2026-11-03, milestone 4)
+
+The old app's hidden menu leaves a 60-pixel icon strip, a client's option. Built in milestone 4 beside the white variants; the frame hides the menu whole until then.
+
+*Trigger:* milestone 4's plan.
+
+## 76. A client's own logo in the header — the human; `[PARKED]` (legacy frame, plan 2026-11-03)
+
+The header shows the company's name beside a stand-in logo (Tabler's `IconBrandAdobe`), not the stored one.
+
+*Trigger:* a client's ask for its own logo.
