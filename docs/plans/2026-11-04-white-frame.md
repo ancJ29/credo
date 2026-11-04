@@ -73,10 +73,18 @@ Rows 1 to 5, the business rows, are each seen red first: before the field exists
   included. The walk spec carries screens 10 and 11, not run here (the full run, step 6). `shared`'s schema,
   `startingConfig` and the test constants carry the three fields so the tree type-checks; step 3 still owes
   rows 1 to 5 on the route.
-- [ ] **3. The stack.** 🤖 Sonnet, about 40 minutes (D's 103 for a route less the palettes' 63): rows 1 to 5,
+- [x] **3. The stack.** 🤖 Sonnet, about 40 minutes (D's 103 for a route less the palettes' 63): rows 1 to 5,
   `startingConfig`. Done when: each row seen red; bff at 100 %.
-- [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved; the whole `pnpm check` under the lock,
+  *Done 2026-11-04:* the route, `startingConfig` and the schema's defaults were already in the tree from step 2,
+  so each row was seen red by a mutation, then the code put back: row 1 (two defaults made optional) red; row 2
+  (`menuIcons` forced false) red; row 3 (`menuIcons` any) red; row 4 (the `settings.canEdit` check removed) red, two
+  tests; row 5 (`startingConfig`'s `menuIcons` true) red. All five green on the code; bff at 100 % (528 tests).
+  Row 5 lives in `operator.route.test.ts` (the only test where the console makes a client), not
+  `tenants.route.test.ts`. Rows 1 to 4 are in `config.route.test.ts`. No route code changed.
+- [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved; the whole `pnpm check` under the lock,
   `== exit 0`.
+  *Done 2026-11-04:* `main` had not moved past `b7ce1cb`; the whole `pnpm check` under the lock at load 7,
+  `== exit 0` (19:38 to 19:44, six minutes).
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes: the default, the markup when off, the strip by keyboard. Done when:
   each finding tagged here.
 - [ ] **6. The full run** (👤 2), about 19 minutes (the palettes' 17 plus 2): `ops/full-run.sh`, `--moved` naming row
