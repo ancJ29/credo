@@ -87,6 +87,13 @@ Rows 1 to 5, the business rows, are each seen red first: before the field exists
   `== exit 0` (19:38 to 19:44, six minutes). `pnpm report` from the clean tree built 109 screens; against a build of
   `main`@`b7ce1cb` (107) exactly the plan's eight differ and nothing else: `admin-setup` 3, 4, 5, 7, 8,
   `office-5-settings`, the new 10 and 11.
+  *Fix pass 2026-11-04 (review, after `main`@`dde40d2` was merged in):* the white header's name was held by
+  `c="inherit"` (an inline colour), so its grey rule never applied; now dropped when the white header is on,
+  and the coloured header unchanged (a `Shell` test reads the title's style and class, red then green). The
+  strip's tip also shows on `:focus-visible` (the test reads the rule's text, as the codebase's other rule
+  rows do, red then green). The walk takes screen 5 while every switch is off, the language switch finished
+  after screen 11. The whole check at the merged HEAD, `== exit 0` (22:41 to 22:47); `pnpm report` built 109
+  screens, and against `main`@`dde40d2` (107) exactly the same eight differ.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes: the default, the markup when off, the strip by keyboard. Done when:
   each finding tagged here.
 - [ ] **6. The full run** (👤 2), about 19 minutes (the palettes' 17 plus 2): `ops/full-run.sh`, `--moved` naming row
