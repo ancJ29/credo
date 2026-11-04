@@ -356,6 +356,10 @@ export const vi: Dictionary = {
     back: 'Về danh sách nhân viên',
   },
   addPerson: {
+    basic: 'Thông tin cơ bản',
+    contacts: 'Liên hệ',
+    noteCard: 'Ghi chú',
+    madeCard: 'Đăng nhập',
     title: 'Thêm nhân viên',
     intro: 'Nhập tên, mã và thông tin. Mã là tên đăng nhập của nhân viên.',
     name: 'Tên',
@@ -382,7 +386,9 @@ export const vi: Dictionary = {
     open: 'Mở trang của họ',
   },
   person: {
-    details: 'Thông tin',
+    basic: 'Thông tin cơ bản',
+    contacts: 'Liên hệ',
+    signInName: 'Tên đăng nhập',
     name: 'Tên',
     code: 'Mã',
     phone: 'Điện thoại',

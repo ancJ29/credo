@@ -17,7 +17,6 @@ import {
   Button,
   Group,
   NativeSelect,
-  Paper,
   PasswordInput,
   Stack,
   Text,
@@ -29,6 +28,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router';
 import { ApiError } from './api';
+import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import {
   mergeExtra,
@@ -84,58 +84,55 @@ function PasswordPanel({
   };
 
   return (
-    <Paper withBorder p="md">
-      <Stack gap="md">
-        <Title order={3}>{t('person.password')}</Title>
-        {shown !== null && (
-          <Alert color="green" role="alert">
-            <Stack gap="xs">
-              {t('person.passwordOnce')}
-              <TextInput
-                label={t('person.passwordShown')}
-                value={shown}
-                readOnly
-                styles={READ_ONLY}
-              />
-            </Stack>
-          </Alert>
-        )}
-        {problem !== null && (
-          <Alert color="red" role="alert">
-            {t(
-              problem === 'invalid'
-                ? 'person.passwordInvalid'
-                : problem === 'mismatch'
-                  ? 'person.passwordMismatch'
-                  : 'person.passwordFailed',
-            )}
-          </Alert>
-        )}
-        <form onSubmit={submit}>
-          <Stack gap="sm">
-            <PasswordInput
-              label={t('person.passwordNew')}
-              description={t('person.passwordHint')}
-              autoComplete="new-password"
-              value={typed.first}
-              onChange={(event) => setTyped({ ...typed, first: event.currentTarget.value })}
+    <DetailCard title={t('person.password')}>
+      {shown !== null && (
+        <Alert color="green" role="alert">
+          <Stack gap="xs">
+            {t('person.passwordOnce')}
+            <TextInput
+              label={t('person.passwordShown')}
+              value={shown}
+              readOnly
+              styles={READ_ONLY}
             />
-            <PasswordInput
-              label={t('person.passwordAgain')}
-              autoComplete="new-password"
-              value={typed.again}
-              onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
-            />
-            <Group>
-              <Button type="submit">{t('person.passwordSet')}</Button>
-              <Button variant="default" onClick={() => void give(null)}>
-                {t('person.passwordMake')}
-              </Button>
-            </Group>
           </Stack>
-        </form>
-      </Stack>
-    </Paper>
+        </Alert>
+      )}
+      {problem !== null && (
+        <Alert color="red" role="alert">
+          {t(
+            problem === 'invalid'
+              ? 'person.passwordInvalid'
+              : problem === 'mismatch'
+                ? 'person.passwordMismatch'
+                : 'person.passwordFailed',
+          )}
+        </Alert>
+      )}
+      <form onSubmit={submit}>
+        <Stack gap="sm">
+          <PasswordInput
+            label={t('person.passwordNew')}
+            description={t('person.passwordHint')}
+            autoComplete="new-password"
+            value={typed.first}
+            onChange={(event) => setTyped({ ...typed, first: event.currentTarget.value })}
+          />
+          <PasswordInput
+            label={t('person.passwordAgain')}
+            autoComplete="new-password"
+            value={typed.again}
+            onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
+          />
+          <Group>
+            <Button type="submit">{t('person.passwordSet')}</Button>
+            <Button variant="default" onClick={() => void give(null)}>
+              {t('person.passwordMake')}
+            </Button>
+          </Group>
+        </Stack>
+      </form>
+    </DetailCard>
   );
 }
 
@@ -180,42 +177,39 @@ function CodePanel({
   }
 
   return (
-    <Paper withBorder p="md">
-      <Stack gap="sm">
-        <Title order={3}>{t('person.codeTitle')}</Title>
-        <Text c="dimmed">{t('person.codeText')}</Text>
-        {changedTo !== null && (
-          <Alert color="green" role="alert">
-            {t('person.codeChanged', { code: changedTo })}
-          </Alert>
-        )}
-        {problem !== null && (
-          <Alert color="red" role="alert">
-            {t(
-              problem === 'invalid'
-                ? 'person.codeInvalid'
-                : problem === 'taken'
-                  ? 'person.codeTaken'
-                  : 'person.codeFailed',
-            )}
-          </Alert>
-        )}
-        <form onSubmit={(event) => void change(event)}>
-          <Stack gap="sm" align="flex-start">
-            <TextInput
-              label={t('person.codeNew')}
-              autoCapitalize="characters"
-              autoComplete="off"
-              value={typed}
-              onChange={(event) => setTyped(event.currentTarget.value)}
-            />
-            <Button type="submit" variant="default">
-              {t('person.codeSet')}
-            </Button>
-          </Stack>
-        </form>
-      </Stack>
-    </Paper>
+    <DetailCard title={t('person.codeTitle')}>
+      <Text c="dimmed">{t('person.codeText')}</Text>
+      {changedTo !== null && (
+        <Alert color="green" role="alert">
+          {t('person.codeChanged', { code: changedTo })}
+        </Alert>
+      )}
+      {problem !== null && (
+        <Alert color="red" role="alert">
+          {t(
+            problem === 'invalid'
+              ? 'person.codeInvalid'
+              : problem === 'taken'
+                ? 'person.codeTaken'
+                : 'person.codeFailed',
+          )}
+        </Alert>
+      )}
+      <form onSubmit={(event) => void change(event)}>
+        <Stack gap="sm" align="flex-start">
+          <TextInput
+            label={t('person.codeNew')}
+            autoCapitalize="characters"
+            autoComplete="off"
+            value={typed}
+            onChange={(event) => setTyped(event.currentTarget.value)}
+          />
+          <Button type="submit" variant="default">
+            {t('person.codeSet')}
+          </Button>
+        </Stack>
+      </form>
+    </DetailCard>
   );
 }
 
@@ -232,9 +226,8 @@ function ArchivePanel({
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
   return (
-    <Paper withBorder p="md">
+    <DetailCard title={t('person.archive')}>
       <Stack gap="sm" align="flex-start">
-        <Title order={3}>{t('person.archive')}</Title>
         <Text c="dimmed">{t('person.archiveText')}</Text>
         {failed && (
           <Alert color="red" role="alert">
@@ -256,7 +249,7 @@ function ArchivePanel({
           </Button>
         )}
       </Stack>
-    </Paper>
+    </DetailCard>
   );
 }
 
@@ -401,140 +394,166 @@ function PersonForm({
           </Stack>
         </Alert>
       )}
-      <form onSubmit={submit}>
-        <Paper withBorder p="md">
+      <DetailColumns
+        main={
+          <form onSubmit={submit}>
+            <Stack gap="lg">
+              <DetailCard title={t('person.basic')}>
+                <FieldPair>
+                  <TextInput
+                    label={t('person.name')}
+                    required
+                    readOnly={!editable}
+                    value={name}
+                    onChange={(event) => setName(event.currentTarget.value)}
+                  />
+                  <TextInput
+                    label={t('person.signInName')}
+                    readOnly
+                    value={employee.code}
+                    styles={READ_ONLY}
+                  />
+                  {user.root ? (
+                    <>
+                      {unitSelect(
+                        t('person.department'),
+                        department,
+                        setDepartment,
+                        setup.departments,
+                      )}
+                      {unitSelect(t('person.position'), position, setPosition, setup.positions)}
+                    </>
+                  ) : (
+                    <>
+                      <TextInput
+                        label={t('person.department')}
+                        readOnly
+                        value={unitName(employee.department, setup.departments) ?? ''}
+                      />
+                      <TextInput
+                        label={t('person.position')}
+                        readOnly
+                        value={unitName(employee.position, setup.positions) ?? ''}
+                      />
+                    </>
+                  )}
+                </FieldPair>
+                <Text>
+                  {!ready
+                    ? t('person.signInNotYet')
+                    : employee.email && fields.email
+                      ? t('person.signInReadyEmail', { code: employee.code, email: employee.email })
+                      : t('person.signInReady', { code: employee.code })}
+                </Text>
+              </DetailCard>
+              <DetailCard title={t('person.contacts')}>
+                <FieldPair>
+                  <TextInput
+                    label={t('person.phone')}
+                    type="tel"
+                    readOnly={!editable}
+                    value={phone}
+                    onChange={(event) => setPhone(event.currentTarget.value)}
+                  />
+                  {fields.personalPhone && (
+                    <TextInput
+                      label={t('person.personalPhone')}
+                      type="tel"
+                      readOnly={!editable}
+                      value={personalPhone}
+                      onChange={(event) => setPersonalPhone(event.currentTarget.value)}
+                    />
+                  )}
+                </FieldPair>
+              </DetailCard>
+              <DetailCard title={t('person.note')}>
+                <Textarea
+                  label={t('person.note')}
+                  readOnly={!editable}
+                  value={note}
+                  onChange={(event) => setNote(event.currentTarget.value)}
+                />
+                {customFields.map((field) => (
+                  <OwnFieldInput
+                    key={field.key}
+                    field={field}
+                    value={values[field.key]}
+                    refused={refused.includes(field.key)}
+                    readOnly={!editable}
+                    onChange={(value) => setValues((was) => ({ ...was, [field.key]: value }))}
+                  />
+                ))}
+              </DetailCard>
+              {user.root && !employee.archived && (
+                <DetailCard title={t('person.permissions')}>
+                  <Text c="dimmed" size="sm">
+                    {t('person.permissionsIntro')}
+                  </Text>
+                  <PermissionEditor
+                    mode="each"
+                    label={t('person.permissions')}
+                    layer={own}
+                    below={below}
+                    onChange={setOwn}
+                  />
+                </DetailCard>
+              )}
+              {editable && (
+                <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
+                  {t('person.save')}
+                </Button>
+              )}
+            </Stack>
+          </form>
+        }
+        side={
           <Stack gap="lg">
-            <Title order={3}>{t('person.details')}</Title>
-            <TextInput
-              label={t('person.name')}
-              required
-              readOnly={!editable}
-              value={name}
-              onChange={(event) => setName(event.currentTarget.value)}
-            />
-            <TextInput
-              label={t('person.phone')}
-              type="tel"
-              readOnly={!editable}
-              value={phone}
-              onChange={(event) => setPhone(event.currentTarget.value)}
-            />
-            {fields.personalPhone && (
-              <TextInput
-                label={t('person.personalPhone')}
-                type="tel"
-                readOnly={!editable}
-                value={personalPhone}
-                onChange={(event) => setPersonalPhone(event.currentTarget.value)}
+            {photo && (
+              <PhotoPanel
+                page={page}
+                id={employee.id}
+                name={employee.name}
+                held={photo}
+                onHeld={onPhoto}
+                editable={editable}
               />
-            )}
-            <Textarea
-              label={t('person.note')}
-              readOnly={!editable}
-              value={note}
-              onChange={(event) => setNote(event.currentTarget.value)}
-            />
-            {customFields.map((field) => (
-              <OwnFieldInput
-                key={field.key}
-                field={field}
-                value={values[field.key]}
-                refused={refused.includes(field.key)}
-                readOnly={!editable}
-                onChange={(value) => setValues((was) => ({ ...was, [field.key]: value }))}
-              />
-            ))}
-            {user.root ? (
-              <>
-                {unitSelect(t('person.department'), department, setDepartment, setup.departments)}
-                {unitSelect(t('person.position'), position, setPosition, setup.positions)}
-              </>
-            ) : (
-              <>
-                <TextInput
-                  label={t('person.department')}
-                  readOnly
-                  value={unitName(employee.department, setup.departments) ?? ''}
-                />
-                <TextInput
-                  label={t('person.position')}
-                  readOnly
-                  value={unitName(employee.position, setup.positions) ?? ''}
-                />
-              </>
             )}
             {user.root && !employee.archived && (
-              <Stack gap="xs">
-                <Title order={4}>{t('person.permissions')}</Title>
-                <Text c="dimmed" size="sm">
-                  {t('person.permissionsIntro')}
-                </Text>
-                <PermissionEditor
-                  mode="each"
-                  label={t('person.permissions')}
-                  layer={own}
-                  below={below}
-                  onChange={setOwn}
-                />
-              </Stack>
+              <PasswordPanel page={page} id={employee.id} onGiven={actions.onPasswordGiven} />
             )}
-            {editable && (
-              <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
-                {t('person.save')}
-              </Button>
+            {user.root && !employee.archived && (
+              <CodePanel
+                page={page}
+                id={employee.id}
+                version={doc.version}
+                changedTo={codeChanged}
+                onChanged={actions.onCodeChanged}
+                onConflict={actions.onConflict}
+              />
+            )}
+            {user.root && !employee.archived && fields.email && (
+              <EmailPanel
+                page={page}
+                id={employee.id}
+                version={doc.version}
+                email={employee.email ?? null}
+                onChanged={actions.onEmailChanged}
+                onConflict={actions.onConflict}
+              />
+            )}
+            {user.root && !employee.archived && fields.qr && (
+              <QrPanel page={page} id={employee.id} />
+            )}
+            {can(user, 'staff.canDelete') && !employee.archived && (
+              <ArchivePanel
+                name={employee.name}
+                onArchive={actions.onArchive}
+                failed={archiveFailed}
+              />
             )}
           </Stack>
-        </Paper>
-      </form>
-      {photo && (
-        <PhotoPanel
-          page={page}
-          id={employee.id}
-          name={employee.name}
-          held={photo}
-          onHeld={onPhoto}
-          editable={editable}
-        />
-      )}
-      <Paper withBorder p="md">
-        <Stack gap="xs">
-          <Title order={3}>{t('person.signIn')}</Title>
-          <Text>
-            {!ready
-              ? t('person.signInNotYet')
-              : employee.email && fields.email
-                ? t('person.signInReadyEmail', { code: employee.code, email: employee.email })
-                : t('person.signInReady', { code: employee.code })}
-          </Text>
-        </Stack>
-      </Paper>
-      {user.root && !employee.archived && (
-        <PasswordPanel page={page} id={employee.id} onGiven={actions.onPasswordGiven} />
-      )}
-      {user.root && !employee.archived && (
-        <CodePanel
-          page={page}
-          id={employee.id}
-          version={doc.version}
-          changedTo={codeChanged}
-          onChanged={actions.onCodeChanged}
-          onConflict={actions.onConflict}
-        />
-      )}
-      {user.root && !employee.archived && fields.email && (
-        <EmailPanel
-          page={page}
-          id={employee.id}
-          version={doc.version}
-          email={employee.email ?? null}
-          onChanged={actions.onEmailChanged}
-          onConflict={actions.onConflict}
-        />
-      )}
-      {user.root && !employee.archived && fields.qr && <QrPanel page={page} id={employee.id} />}
-      {can(user, 'staff.canDelete') && !employee.archived && (
-        <ArchivePanel name={employee.name} onArchive={actions.onArchive} failed={archiveFailed} />
-      )}
+        }
+      />
     </Stack>
   );
 }
