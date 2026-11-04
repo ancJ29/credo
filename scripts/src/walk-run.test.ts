@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -95,6 +95,27 @@ case " $* " in
     i=1; while [ "$i" -le "$n" ]; do i=$((i + 1)); echo "  [x] › a.spec.ts:1:1 › a walk on a pc (1280) › walks screen $i"; done ;;
   *)
     last=""; for a in "$@"; do last="$a"; done
+    [ -z "$SHIM_ARGS_LOG" ] || echo "$*" >> "$SHIM_ARGS_LOG"
+    if [ -n "$SHIM_HOLD_FOR" ]; then
+      touch "$SHIM_HOLD_DIR/$$"; i=0
+      while [ "$(ls "$SHIM_HOLD_DIR" | wc -l)" -lt "$SHIM_HOLD_FOR" ]; do
+        i=$((i + 1)); if [ "$i" -gt 100 ]; then echo "  0 passed (held, no other lane started)"; exit 1; fi
+        sleep 0.1
+      done
+    fi
+    if [ -n "$SHIM_RED_PROJECT" ]; then
+      case " $* " in *" --project $SHIM_RED_PROJECT "*) echo "  0 passed"; exit 1 ;; esac
+    fi
+    if [ -n "$SHIM_SLEEP_DIR" ]; then
+      echo $$ >> "$SHIM_SLEEP_DIR/pids"
+      [ -z "$SHIM_LOCK" ] || mkdir "$SHIM_LOCK" 2>/dev/null
+      if [ -n "$SHIM_HOLD_TERM" ]; then
+        trap 'echo "held TERM"; sleep 15; echo "pass done"' TERM
+        sleep 20 & wait
+        exit 0
+      fi
+      sleep 20
+    fi
     pic="$SHIM_PICTURE"
     case "$CREDO_SHOTS_DIR" in */$SHIM_MOVED_IN/*) pic="$SHIM_PICTURE_MOVED" ;; esac
     mkdir -p "$CREDO_SHOTS_DIR"
@@ -513,6 +534,238 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(unnamed.code).toBe(1);
     expect(named.out).toMatch(/== verdict: green/);
     expect(named.code).toBe(0);
+  });
+
+  describe('--bytes, run 2 of a full run', () => {
+    /** Run 1 with --write, its bases committed; the folder it names for its pictures. */
+    const afterRun1 = () => {
+      const l = layout();
+      const first = run(l, ['operator', '--moved', 'all', '--write']);
+      git(l.tree, 'add', '.');
+      git(l.tree, 'commit', '-q', '-m', 'bases');
+      const folder = /^ {2}pictures and results in (.*)$/m.exec(first.out)?.[1] ?? '';
+      expect(folder).not.toBe('');
+      return { l, folder };
+    };
+
+    it('reads every committed base equal to run 1’s picture: green, every count 0, no browser', () => {
+      const { l, folder } = afterRun1();
+
+      const { code, out } = run(l, ['operator', '--bytes', folder]);
+
+      expect(out).toContain(
+        'compare run 1 to the bases: operator: 2 pictures, 0 moved, 0 new, 0 without a counterpart, 0 unreadable',
+      );
+      expect(out).toMatch(/== verdict: green/);
+      expect(out).not.toContain('Chromium');
+      expect(code).toBe(0);
+      expect(git(l.tree, 'status', '--porcelain')).toBe('');
+    });
+
+    it('one byte off, or a base or a picture on one side only, is red and named', () => {
+      const { l, folder } = afterRun1();
+      const base = baseOf(l, 's2');
+      writeFileSync(base, Buffer.concat([readFileSync(base), Buffer.from([0])]));
+      git(l.tree, 'commit', '-q', '-am', 'a base off by one byte');
+
+      const off = run(l, ['operator', '--bytes', folder]);
+
+      expect(off.code).toBe(1);
+      expect(off.out).toContain('moved s2-en-390.png: bytes differ');
+      expect(off.out).toMatch(/== verdict: red: .*bytes: operator/);
+
+      rmSync(join(folder, 'full-1/operator/s3-en-390.png'));
+      const missing = run(l, ['operator', '--bytes', folder]);
+
+      expect(missing.code).toBe(1);
+      expect(missing.out).toContain('only in the right: s3-en-390.png');
+    });
+
+    it('stands alone: refused with --write, and refused on a folder that is not there', () => {
+      const { l, folder } = afterRun1();
+
+      expect(run(l, ['operator', '--write', '--bytes', folder]).out).toMatch(
+        /== refused: --bytes stands alone/,
+      );
+      expect(run(l, ['operator', '--bytes', join(folder, 'nope')]).out).toMatch(
+        /== refused: .* is not a folder/,
+      );
+    });
+  });
+
+  describe('the lanes', () => {
+    const walks = ['piece-2', 'admin-lists', 'operator'];
+    const folderOf = (out: string) => /^ {2}pictures and results in (.*)$/m.exec(out)?.[1] ?? '';
+    const stacks = (out: string) =>
+      out
+        .split('\n')
+        .map((line) => /-- stack \d+\/\d+: .*?(?= \(load)/.exec(line)?.[0])
+        .filter((line): line is string => line !== undefined);
+    const pictureNames = (folder: string) =>
+      execFileSync('find', [folder, '-name', '*.png'], { encoding: 'utf8' })
+        .split('\n')
+        .filter(Boolean)
+        .map((file) => file.slice(folder.length))
+        .sort();
+    /** Every pass holds until `lanes` passes have started: only passes at once get through. */
+    const held = (lanes: number) => {
+      const dir = mkdtempSync(join(temp, 'hold-'));
+      return { SHIM_HOLD_FOR: String(lanes), SHIM_HOLD_DIR: dir };
+    };
+
+    it('three lanes run at once, each walk’s passes as before, and the verdict waits for all', () => {
+      const l = layout();
+
+      const { code, out } = run(l, walks, held(3));
+
+      expect(out).toContain('== 3/6 the passes: 3 lane(s) at once');
+      for (const n of [1, 2, 3]) expect(out).toContain(`[lane ${n}] -- stack 1/1: fake`);
+      expect(out).toContain('[lane 3] -- stack 2/2: full-1, operator');
+      expect(out).toContain('fake operator: 2 of 2 tests passed');
+      expect(out).toMatch(/== verdict: green/);
+      expect(code).toBe(0);
+    });
+
+    it('--serial gives the same passes and pictures in one lane, the walks one after the other', () => {
+      const lanes = run(layout(), walks, held(3));
+      const serial = run(layout(), [...walks, '--serial'], held(1));
+
+      expect(serial.out).toContain('== 3/6 the passes: 1 lane(s) at once');
+      expect(serial.out).not.toContain('[lane');
+      expect(serial.code).toBe(0);
+      expect(stacks(serial.out).sort()).toEqual(stacks(lanes.out).sort());
+      expect(pictureNames(folderOf(serial.out))).toEqual(pictureNames(folderOf(lanes.out)));
+      expect(stacks(serial.out)[0]).toContain('fake, piece-2');
+    });
+
+    it('each pass writes Playwright’s output into a folder of its own in the run’s', () => {
+      const l = layout();
+      const log = join(temp, `args-${count}.log`);
+
+      const { out } = run(l, walks, { SHIM_ARGS_LOG: log });
+
+      const outputs = readFileSync(log, 'utf8')
+        .split('\n')
+        .map((line) => /--output (\S+)/.exec(line)?.[1])
+        .filter((dir): dir is string => dir !== undefined);
+      expect(outputs.length).toBe(stacks(out).length);
+      expect(new Set(outputs).size).toBe(outputs.length);
+      for (const dir of outputs) expect(dir.startsWith(`${folderOf(out)}/pw/`)).toBe(true);
+    });
+
+    it('a lane’s red pass leaves the other lanes to finish, and the verdict names it', () => {
+      const l = layout();
+
+      const { code, out } = run(l, walks, { ...held(3), SHIM_RED_PROJECT: 'lists-full' });
+
+      expect(out).toContain('full-2 piece-2: 2 of 2 tests passed');
+      expect(out).toContain('full-2 operator: 2 of 2 tests passed');
+      expect(out).toMatch(/== verdict: red: .*full-1 admin-lists took 0 of 2 tests/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+    });
+
+    /** Passes that sleep: the pids the stand-in recorded, and which of them still live. */
+    const sleeping = () => {
+      const dir = mkdtempSync(join(temp, 'sleep-'));
+      const pids = () =>
+        existsSync(join(dir, 'pids'))
+          ? readFileSync(join(dir, 'pids'), 'utf8').split('\n').filter(Boolean).map(Number)
+          : [];
+      const alive = (pid: number) => {
+        try {
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      return {
+        env: { SHIM_SLEEP_DIR: dir, SHIM_HOLD_FOR: '3', SHIM_HOLD_DIR: join(dir, 'hold') },
+        pids,
+        left: () => pids().filter(alive),
+      };
+    };
+
+    it('the gate lock appearing stops every lane at once, the verdict lands, nothing is left running', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const began = Date.now();
+
+      const { code, out } = run(l, walks, { ...s.env, SHIM_LOCK: join(l.root, '.gate-lock') });
+
+      expect(out).toMatch(/== verdict: red: the gate lock .* appeared; every lane was stopped/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+      expect(Date.now() - began).toBeLessThan(12_000);
+      expect(s.pids()).toHaveLength(3);
+      expect(s.left()).toEqual([]);
+    });
+
+    it('a pass that holds the first TERM is waited for, then killed at 10 seconds, nothing is left running', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const began = Date.now();
+
+      const { code, out } = run(l, walks, {
+        ...s.env,
+        SHIM_HOLD_TERM: 'yes',
+        SHIM_LOCK: join(l.root, '.gate-lock'),
+      });
+
+      expect(out).toMatch(/== verdict: red: the gate lock .* appeared; every lane was stopped/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+      expect(Date.now() - began).toBeGreaterThan(9_000);
+      expect(Date.now() - began).toBeLessThan(16_000);
+      expect(s.pids()).toHaveLength(3);
+      expect(s.left()).toEqual([]);
+    });
+
+    it('a stopped lane’s last lines still reach the log, and the shell adds no unprefixed "Terminated" line', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+
+      const { out } = run(l, walks, { ...s.env, SHIM_LOCK: join(l.root, '.gate-lock') });
+
+      expect(out).not.toMatch(/^Terminated/m);
+      expect(out).toMatch(/\[lane 1\] .*interrupted|\[lane 1\] .*exited/);
+    });
+
+    it('a Ctrl-C stops every lane, the verdict lands with 130, nothing is left running', async () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const child = spawn('/bin/bash', [join(l.tree, 'walk/run.sh'), ...walks], {
+        env: {
+          ...process.env,
+          NVM_DIR: join(temp, 'no-nvm'),
+          PATH: `${shims}:/usr/bin:/bin`,
+          SHIM_PS: l.ps,
+          SHIM_CHROMIUM: chromium,
+          SHIM_PICTURE: pictures.plain,
+          SHIM_PICTURE_MOVED: pictures.moved,
+          SHIM_MOVED_IN: 'none',
+          ...s.env,
+        },
+        detached: true,
+      });
+      let out = '';
+      child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()));
+      const ended = new Promise<number | null>((resolve) => child.on('close', resolve));
+      while (s.pids().length < 3) await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // as the terminal does: the signal goes to the script's whole process group
+      process.kill(-(child.pid ?? 0), 'SIGINT');
+
+      expect(await ended).toBe(130);
+      expect(out).toMatch(/== verdict: red: interrupted at .*nothing of credo's is left running/);
+      expect(out).toContain('== done');
+      expect(s.left()).toEqual([]);
+    });
   });
 
   it('a pass whose tests did not all pass is red, whatever the pictures say', () => {

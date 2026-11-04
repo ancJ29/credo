@@ -4,10 +4,12 @@
 # The one body of a piece's FULL RUN, in the human's terminal on the Mac: two runs of `walk/run.sh` in the piece's worktree.
 # Each piece's one-off only calls this with its parameters (milestones D, B1, B2 each had a copy of this body).
 #   1. bash walk/run.sh <walks> [--moved <screens>] --write    writes the new and moved bases
-#   2. bash walk/run.sh <walks>                                reads every count 0 (starts only if run 1 ended
-#                                                              "== verdict: green" and "== done")
+#   2. bash walk/run.sh <walks> --bytes <run 1's folder>       run 1's pictures against the committed bases, byte for
+#                                                              byte, every count 0 (starts only if run 1 ended
+#                                                              "== verdict: green" and "== done"); no second browser run
 # Between them it makes ONE local commit of the base pictures alone (only walk/specs/*-snapshots/*.png; anything
-# else in the tree is a stop), since walk/run.sh refuses a dirty tree. Nothing is pushed.
+# else in the tree is a stop), since walk/run.sh refuses a dirty tree. A run 1 that moved no base commits nothing
+# and goes on. Nothing is pushed.
 #
 # Parameters:
 #   --worktree <dir>   the piece's worktree (the walks run there)
@@ -29,7 +31,7 @@
 # LOGS: logs/<stamp>-<stem>.log holds this script's lines; each run's text as it printed is beside it as
 #   logs/<stamp>-<stem>-run-<n>.out; walk/run.sh writes a full log of its own per run (named in the log).
 # Exit: 0 green, 1 red (the run and its failure named), 2 refused, 130 interrupted.
-# TIME: about the walks' own: 6 to 35 minutes a run. Steps print "== n/4" with the elapsed time.
+# TIME: run 1 is the walks' own, 6 to 35 minutes; run 2 is seconds. Steps print "== n/4" with the elapsed time.
 # Look for at the end: "== verdict: green", "== done", exit 0.
 set -uo pipefail
 
@@ -158,8 +160,8 @@ main() {
   if [ "$CHECK" = yes ]; then
     echo "== check only: nothing run, committed or written. It would run, in $TREE:"
     echo "  run 1: bash walk/run.sh ${run1[*]}"
-    echo "  then commit only walk/specs/*-snapshots/*.png as: $subject"
-    echo "  run 2: bash walk/run.sh ${wargs[*]}   (every count 0)"
+    echo "  then commit only walk/specs/*-snapshots/*.png as: $subject (none, if run 1 moved no base)"
+    echo "  run 2: bash walk/run.sh ${wargs[*]} --bytes <run 1's folder>   (every count 0)"
     echo "== verdict: check only"
     echo "== done at $(date '+%H:%M:%S')"
     return 0
@@ -178,11 +180,18 @@ $(grep -E '^(== verdict|== refused|  (moved|red|unreadable|new|base with no pict
   stray="$(git -C "$TREE" status --porcelain | grep -v -E '^[AMD]  walk/specs/[^/]+-snapshots/[^/]+\.png$')"
   [ -z "$stray" ] || red "the tree holds more than base pictures after run 1; nothing committed:
 $(printf '%s\n' "$stray" | head -10 | sed 's/^/    /')"
-  git -C "$TREE" commit -q -m "$subject" || red "git commit failed (the bases stay staged; if gpg-agent did not start, run gpgconf --launch gpg-agent and commit them, then run walk/run.sh ${wargs[*]} yourself)"
-  echo "  committed for run 2: $(git -C "$TREE" log --oneline -1)"
+  if git -C "$TREE" diff --cached --quiet; then
+    echo "  run 1 moved no base: nothing to commit; at $(git -C "$TREE" log --oneline -1)"
+  else
+    git -C "$TREE" commit -q -m "$subject" || red "git commit failed (the bases stay staged; if gpg-agent did not start, run gpgconf --launch gpg-agent and commit them, then run walk/run.sh ${wargs[*]} --bytes <run 1's folder> yourself)"
+    echo "  committed for run 2: $(git -C "$TREE" log --oneline -1)"
+  fi
+  local run1dir
+  run1dir="$(sed -n 's/^  pictures and results in //p' "$logdir/$STAMPED-run-1.out" | tail -1)"
+  [ -n "$run1dir" ] && [ -d "$run1dir" ] || red "run 1's folder could not be read from its line 'pictures and results in' (${run1dir:-no such line}); run 2 not started"
 
-  step "run 2 of 2: ${wargs[*]}, no flags, every count 0 (the walks' own time)"
-  walk_run 2 "${wargs[@]}"
+  step "run 2 of 2: ${wargs[*]} --bytes $run1dir, every count 0 (seconds)"
+  walk_run 2 "${wargs[@]}" --bytes "$run1dir"
   local rc2=$?
   ended_green "$logdir/$STAMPED-run-2.out" || red "run 2 (exit $rc2) did not end '== verdict: green' and '== done':
 $(grep -E '^(== verdict|== refused|  (moved|red|unreadable|new|base with no picture))' "$logdir/$STAMPED-run-2.out" | head -40 | sed 's/^/    /')"

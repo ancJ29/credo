@@ -11,7 +11,7 @@ export type Io = {
 };
 
 const USAGE =
-  'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
+  'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--bytes] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
 
 /** A picture's screen: its name without the language and the width. */
 const screenOf = (name: string) => name.replace(/-(en|vi)-\d+\.png$/, '');
@@ -19,14 +19,30 @@ const boxOf = ({ x0, y0, x1, y1 }: Box) => `${x0},${y0} to ${x1},${y1}`;
 const pngs = async (dir: string) =>
   (await readdir(dir)).filter((name) => name.endsWith('.png')).sort();
 
-type Options = { bases: boolean; retired: boolean; moved: Set<string> | 'all'; raw?: string };
+/** `--bytes`: two files are equal only when every byte is; no decoding, so no browser-free doubt. */
+async function compareBytes(left: string, right: string) {
+  const [a, b] = [await readFile(left), await readFile(right)];
+  return a.equals(b)
+    ? ({ kind: 'equal' } as const)
+    : ({ kind: 'bytes', left: a.length, right: b.length } as const);
+}
+
+type Options = {
+  bases: boolean;
+  bytes: boolean;
+  retired: boolean;
+  moved: Set<string> | 'all';
+  raw?: string;
+};
 
 function parseOptions(rest: string[], out: Io['out']): Options | undefined {
-  const options: Options = { bases: false, retired: false, moved: new Set() };
+  const options: Options = { bases: false, bytes: false, retired: false, moved: new Set() };
   for (let i = 0; i < rest.length; i++) {
     const option = rest[i];
     if (option === '--bases') {
       options.bases = true;
+    } else if (option === '--bytes') {
+      options.bytes = true;
     } else if (option === '--allow-retired') {
       options.retired = true;
     } else if (option === '--moved' || option === '--raw') {
@@ -68,18 +84,22 @@ async function compare(
   const names = leftNames.filter((name) => rightNames.includes(name));
   for (const name of names) {
     try {
-      const difference = comparePictures(
-        decodePng(await readFile(join(left, name))),
-        decodePng(await readFile(join(right, name))),
-      );
+      const difference = options.bytes
+        ? await compareBytes(join(left, name), join(right, name))
+        : comparePictures(
+            decodePng(await readFile(join(left, name))),
+            decodePng(await readFile(join(right, name))),
+          );
       seen.add(screenOf(name));
       if (difference.kind === 'equal') continue;
       movedCount++;
       movedScreens.add(screenOf(name));
       const text =
-        difference.kind === 'size'
-          ? `size ${difference.left} against ${difference.right}`
-          : `${difference.pixels} px, shade ${difference.shade}, box ${boxOf(difference.box)}`;
+        difference.kind === 'bytes'
+          ? `bytes differ, ${difference.left} against ${difference.right}`
+          : difference.kind === 'size'
+            ? `size ${difference.left} against ${difference.right}`
+            : `${difference.pixels} px, shade ${difference.shade}, box ${boxOf(difference.box)}`;
       raw.push(`${label} ${name}: ${text}\n`);
       if (allowed(name)) {
         lines.push(`  moved ${name}: ${text} (named)`);
