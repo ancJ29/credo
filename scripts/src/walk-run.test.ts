@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -102,6 +102,14 @@ case " $* " in
         i=$((i + 1)); if [ "$i" -gt 100 ]; then echo "  0 passed (held, no other lane started)"; exit 1; fi
         sleep 0.1
       done
+    fi
+    if [ -n "$SHIM_RED_PROJECT" ]; then
+      case " $* " in *" --project $SHIM_RED_PROJECT "*) echo "  0 passed"; exit 1 ;; esac
+    fi
+    if [ -n "$SHIM_SLEEP_DIR" ]; then
+      echo $$ >> "$SHIM_SLEEP_DIR/pids"
+      [ -z "$SHIM_LOCK" ] || mkdir "$SHIM_LOCK" 2>/dev/null
+      sleep 20
     fi
     pic="$SHIM_PICTURE"
     case "$CREDO_SHOTS_DIR" in */$SHIM_MOVED_IN/*) pic="$SHIM_PICTURE_MOVED" ;; esac
@@ -638,6 +646,88 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
       expect(outputs.length).toBe(stacks(out).length);
       expect(new Set(outputs).size).toBe(outputs.length);
       for (const dir of outputs) expect(dir.startsWith(`${folderOf(out)}/pw/`)).toBe(true);
+    });
+
+    it('a lane’s red pass leaves the other lanes to finish, and the verdict names it', () => {
+      const l = layout();
+
+      const { code, out } = run(l, walks, { ...held(3), SHIM_RED_PROJECT: 'lists-full' });
+
+      expect(out).toContain('full-2 piece-2: 2 of 2 tests passed');
+      expect(out).toContain('full-2 operator: 2 of 2 tests passed');
+      expect(out).toMatch(/== verdict: red: .*full-1 admin-lists took 0 of 2 tests/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+    });
+
+    /** Passes that sleep: the pids the stand-in recorded, and which of them still live. */
+    const sleeping = () => {
+      const dir = mkdtempSync(join(temp, 'sleep-'));
+      const pids = () =>
+        existsSync(join(dir, 'pids'))
+          ? readFileSync(join(dir, 'pids'), 'utf8').split('\n').filter(Boolean).map(Number)
+          : [];
+      const alive = (pid: number) => {
+        try {
+          process.kill(pid, 0);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      return {
+        env: { SHIM_SLEEP_DIR: dir, SHIM_HOLD_FOR: '3', SHIM_HOLD_DIR: join(dir, 'hold') },
+        pids,
+        left: () => pids().filter(alive),
+      };
+    };
+
+    it('the gate lock appearing stops every lane at once, the verdict lands, nothing is left running', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const began = Date.now();
+
+      const { code, out } = run(l, walks, { ...s.env, SHIM_LOCK: join(l.root, '.gate-lock') });
+
+      expect(out).toMatch(/== verdict: red: the gate lock .* appeared; every lane was stopped/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+      expect(Date.now() - began).toBeLessThan(12_000);
+      expect(s.pids()).toHaveLength(3);
+      expect(s.left()).toEqual([]);
+    });
+
+    it('a Ctrl-C stops every lane, the verdict lands with 130, nothing is left running', async () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const child = spawn('/bin/bash', [join(l.tree, 'walk/run.sh'), ...walks], {
+        env: {
+          ...process.env,
+          NVM_DIR: join(temp, 'no-nvm'),
+          PATH: `${shims}:/usr/bin:/bin`,
+          SHIM_PS: l.ps,
+          SHIM_CHROMIUM: chromium,
+          SHIM_PICTURE: pictures.plain,
+          SHIM_PICTURE_MOVED: pictures.moved,
+          SHIM_MOVED_IN: 'none',
+          ...s.env,
+        },
+        detached: true,
+      });
+      let out = '';
+      child.stdout.on('data', (chunk: Buffer) => (out += chunk.toString()));
+      const ended = new Promise<number | null>((resolve) => child.on('close', resolve));
+      while (s.pids().length < 3) await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // as the terminal does: the signal goes to the script's whole process group
+      process.kill(-(child.pid ?? 0), 'SIGINT');
+
+      expect(await ended).toBe(130);
+      expect(out).toMatch(/== verdict: red: interrupted at .*nothing of credo's is left running/);
+      expect(out).toContain('== done');
+      expect(s.left()).toEqual([]);
     });
   });
 

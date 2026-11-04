@@ -413,7 +413,7 @@ main() {
   }
 
   # The lanes: the table's last column, or one lane for --serial; only those the walks name, in order.
-  local lane_ids=() lane_walks=() lane_pids=() li lane_of found
+  local lane_ids=() lane_walks=() lane_pids=() lane_pgids=() li lane_of found
   for walk in "${walks[@]}"; do
     lane_of=1
     [ -n "$serial" ] || lane_of="$(walk_field "$walk" 8)"
@@ -429,6 +429,9 @@ main() {
     fi
   done
   echo "== 3/6 the passes: ${#lane_ids[@]} lane(s) at once (elapsed $(elapsed))"
+  # Job control gives each lane a process group of its own, so a signal from the terminal reaches this
+  # script alone and this script stops the lanes (TERM to every group), whatever stopped the run.
+  set -m
   for ((li = 0; li < ${#lane_ids[@]}; li++)); do
     echo "  lane ${lane_ids[$li]}: ${lane_walks[$li]}"
     {
@@ -437,9 +440,38 @@ main() {
       echo $? >"$run/lane-${lane_ids[$li]}.rc"
     } 2>&1 | awk -v p="$([ ${#lane_ids[@]} -gt 1 ] && echo "[lane ${lane_ids[$li]}] ")" '{ print p $0; fflush() }' &
     lane_pids+=($!)
+    jobs -p >"$run/jobs.txt"
+    lane_pgids+=("$(tail -1 "$run/jobs.txt")")
   done
-  wait ${lane_pids[@]+"${lane_pids[@]}"}
+  stop_lanes() { # <signal>
+    local g
+    for g in "${lane_pgids[@]}"; do kill -s "$1" -- "-$g" 2>/dev/null; done
+  }
+  # Wait for every lane. A signal to this script, or the gate lock appearing, stops them all; one that
+  # will not stop in 10 seconds is killed. A lane's red pass stops nobody: the others finish.
+  local alive p stopping="" lock_hit="" waited=0
+  while :; do
+    alive=""
+    for p in "${lane_pids[@]}"; do kill -0 "$p" 2>/dev/null && alive=yes; done
+    [ -n "$alive" ] || break
+    if [ -z "$stopping" ]; then
+      if [ -n "$interrupted" ]; then
+        stopping=yes
+      elif [ -e "$gate_lock" ]; then
+        stopping=yes
+        lock_hit=yes
+      fi
+      [ -z "$stopping" ] || stop_lanes TERM
+    else
+      waited=$((waited + 1))
+      [ "$waited" -lt 10 ] || stop_lanes KILL
+    fi
+    sleep 1
+  done
+  wait 2>/dev/null
+  set +m
   stop_if_interrupted
+  [ -z "$lock_hit" ] || finish "red: the gate lock $gate_lock appeared; every lane was stopped; what ran is in $run" 1
   local lrc
   for ((li = 0; li < ${#lane_ids[@]}; li++)); do
     lrc="$(cat "$run/lane-${lane_ids[$li]}.rc" 2>/dev/null || echo unread)"

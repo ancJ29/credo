@@ -74,8 +74,14 @@ src/walk-run.test.ts` (stand-ins, `scripts/src/walk-run.test.ts#L76-L106`).
   new test lines, red against the serial script (the hold timed out, 26 s), then 29 of 29 green with the existing
   cases unchanged. `shellcheck -x` clean on both scripts; `scripts` typecheck, eslint on the touched files, prettier
   and vitest at 100 % under the gate lock, `== exit 0`. Not yet: a lane's gate-lock stop and Ctrl-C (step 4).
-- [ ] **4. The lanes, hardened.** 🤖 Sonnet, about 5 minutes. Done when: rows 7 and 8 each seen red once; `scripts`
+- [x] **4. The lanes, hardened.** 🤖 Sonnet, about 5 minutes. Done when: rows 7 and 8 each seen red once; `scripts`
   at 100 %; one whole `pnpm check` under the gate lock, `== exit 0`.
+  Evidence: each lane in a process group of its own (`set -m`); the parent polls every second, and a signal to it or
+  the gate lock appearing sends TERM to every group (KILL after 10 s), then the verdict lands (130, or red naming
+  the lock); a lane's red pass stops nobody. Row 7 red against a mutation that stops lanes on a red pass; row 8's
+  two cases red against step 3's script (the lock case 23 s, the Ctrl-C case left the sleeping passes running),
+  then all green, nothing left running. `shellcheck -x` clean; one whole `pnpm check` under the gate lock,
+  `== exit 0`, `scripts` at 100 %.
 - [ ] **5. One review.** 🤖 Opus, correctness only, at a fixed sha, about 5 minutes. Done when: each finding tagged
   in the recap; High and Medium fixed.
 - [ ] **6. The adoption run** (👤 1), about 18 minutes; 🤖 reads its log whole. Done when: `== verdict: green`,
