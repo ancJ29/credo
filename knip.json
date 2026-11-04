@@ -7,6 +7,6 @@
     "shared": {},
     "ui": { "ignore": ["frame-mock/**"] },
     "visual": { "entry": ["src/capture.ts", "site/page.ts", "site/styles.ts"] },
-    "walk": {}
+    "walk": { "entry": ["legacy-capture.ts"] }
   }
 }
