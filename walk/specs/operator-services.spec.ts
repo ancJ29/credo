@@ -70,6 +70,7 @@ async function walk(page: Page, language: Language, width: number) {
   });
   await expect(page.getByRole('alert')).toHaveText(words.services.storageDown);
   await expect(service(words.services.storage).getByText(words.services.silent)).toBeVisible();
+  await loaderGone();
   await at('sv-3-storage-silent');
 
   // 4. The BFF does not answer: nothing comes back.
@@ -80,6 +81,7 @@ async function walk(page: Page, language: Language, width: number) {
   });
   await expect(page.getByRole('alert')).toHaveText(words.services.bffDown);
   await expect(service(words.services.storage).getByText(words.services.unseen)).toBeVisible();
+  await loaderGone();
   await at('sv-4-bff-silent');
 
   // 5. Before sign-in: the sign-in's options answer the BFF's 503.
