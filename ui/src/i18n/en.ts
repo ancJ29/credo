@@ -352,6 +352,10 @@ export const en = {
     back: 'Back to the staff list',
   },
   addPerson: {
+    basic: 'Basic information',
+    contacts: 'Contacts',
+    noteCard: 'Note',
+    madeCard: 'Sign-in',
     title: 'Add a person',
     intro: 'Give the name, a code and the details. The code is the person’s sign-in name.',
     name: 'Name',
@@ -378,7 +382,9 @@ export const en = {
     open: 'Open their page',
   },
   person: {
-    details: 'Details',
+    basic: 'Basic information',
+    contacts: 'Contacts',
+    signInName: 'Sign-in name',
     name: 'Name',
     code: 'Code',
     phone: 'Phone',
