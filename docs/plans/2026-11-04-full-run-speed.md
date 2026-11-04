@@ -91,9 +91,17 @@ src/walk-run.test.ts` (stand-ins, `scripts/src/walk-run.test.ts#L76-L106`).
   and the shell's own "Terminated" line is gone). Two new stand-in cases, red on `56bc475` (ended in 6 s with a pass
   alive; an unprefixed "Terminated" line), green after; rows 7 and 8 green; `shellcheck -x` clean; `scripts` and
   `ops` gates `== exit 0`.
-- [ ] **6. The adoption run** (👤 1), about 18 minutes; 🤖 reads its log whole. Done when: `== verdict: green`,
+- [x] **6. The adoption run** (👤 1), about 18 minutes; 🤖 reads its log whole. Done when: `== verdict: green`,
   `== done`, every `compare` line 0.
-- [ ] **7. The recap and the squash.** 🤖 Sonnet, about 1 minute. Done when: committed, the products row true.
+  Evidence: the human's run, 2026-11-04 14:01:09 to 14:17:25, **16m16s** (the serial way took about 70); log
+  `20261104-1401-full-run-speed-adoption.log`, 1,250 lines read whole: "== verdict: green: run 1 wrote the bases
+  (moved: none), run 2 read every count 0". Eleven walks, each in one lane: lane 1 piece-2 alone, 13m04s; lane 2
+  admin-lists, office-orders, driver-deliveries, office-reconcile, 12m38s; lane 3 piece-1, operator, passkeys,
+  services, root-password, team, 9m49s. 32 compares and 11 byte compares, all 0; no error or kill line; the load
+  peaked at 14.18 once, with no failure.
+- [x] **7. The recap and the squash.** 🤖 Sonnet, about 1 minute. Done when: committed, the products row true.
+  Evidence: [the recap](../recaps/2026-11-04-full-run-speed.md); its products row; open items 77 to 81;
+  `CLAUDE.md` and the `walk/run.sh` row made true for run 2.
 
 Total: about 47 minutes, 29 the machine's.
 

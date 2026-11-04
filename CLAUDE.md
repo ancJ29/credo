@@ -68,7 +68,8 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   agent's sandbox,** where Chromium cannot start. `pnpm check` typechecks and lints it and does not
   run it; its base images are made by the human's run, once a piece, on one Mac
   ([the visual report](docs/plans/2026-10-28-visual-report.md#where-it-runs)). **One command runs any
-  walk: `bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write]`**: fake, stack and stack again,
+  walk: `bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write]`**: fake, stack and stack again
+  (the walks in three lanes at once; the full run's second pass is a byte compare of the first),
   then every moved pixel counted raw (no tolerance) between them and against the bases
   ([the plan](docs/plans/2026-10-31-walk-steady.md#the-script)).
 - **`pnpm report` builds the walks page in the sandbox, no browser,** into the credo root's `walks/`

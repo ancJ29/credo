@@ -564,3 +564,23 @@ The old app's hidden menu leaves a 60-pixel icon strip, a client's option. Built
 The header shows the company's name beside a stand-in logo (Tabler's `IconBrandAdobe`), not the stored one.
 
 *Trigger:* a client's ask for its own logo.
+
+## 77. A process left in a lane's group holds the wait with no line saying why — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Low)
+
+In a run nobody stops, a process left in a lane's process group holds the wait after the last pass, and no line says why (`walk/run.sh#L459`). Unlikely, since the stack kills its children at exit (`scripts/src/processes.ts#L47-L48`). *Fix:* once every lane's `.rc` is written, a short grace, then name what is left and TERM it.
+
+## 78. On the stop path bash prints its job lines unprefixed — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Info)
+
+On the KILL path, bash still prints its job lines without the `[lane n]` prefix (`walk/run.sh#L459`). No verdict reads them.
+
+## 79. A rare port clash between lanes — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info)
+
+`freePort` releases its port before the child binds it (`scripts/src/processes.ts#L7-L18`), so two lanes can meet on one. It shows as a named red, never a green. *Fix:* only if a run meets it.
+
+## 80. The full run's stray filter does not take a staged rename — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info; older than the piece)
+
+`ops/full-run.sh#L180` takes only `A`, `M` or `D`, so a staged rename (`R `) would red as "more than base pictures". *Fix:* add `R` when a run stages one.
+
+## 81. The lanes are not balanced — the machine; `[DEFERRED]` (full-run-speed, adoption run, 2026-11-04)
+
+Lane 1, piece-2 alone, is the long pole at 13m04s against lane 3's 9m49s (`walk/run.sh#L38-L50`). Splitting piece-2's passes or moving a walk could take about 3 more minutes off a run.
