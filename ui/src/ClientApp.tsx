@@ -267,6 +267,7 @@ export function ClientApp({
       ) : user ? (
         <Shell
           brand={config}
+          look={config}
           user={user.name}
           pages={pages}
           passwordPath="/password"

@@ -10,6 +10,12 @@ export type TenantConfig = {
   logo: string | null;
   /** The brand colour, `#rrggbb`. */
   colour: string;
+  /** The header on white instead of the brand's colour. */
+  whiteHeader: boolean;
+  /** The side menu on white instead of the brand's colour. */
+  whiteMenu: boolean;
+  /** A PC's hidden menu leaves a strip of icons instead of hiding whole. */
+  menuIcons: boolean;
   /** The languages offered, each once. */
   languages: Language[];
   defaultLanguage: Language;
@@ -60,6 +66,9 @@ export const tenantConfigSchema = z
     name: z.string().trim().min(1),
     logo: z.string().refine(logoIsValid, 'an image of at most 200 KB').nullable(),
     colour: z.string().refine(isHexColour, '#rrggbb'),
+    whiteHeader: z.boolean().default(false),
+    whiteMenu: z.boolean().default(false),
+    menuIcons: z.boolean().default(false),
     languages: z.array(z.enum(LANGUAGES)),
     defaultLanguage: z.enum(LANGUAGES),
   })

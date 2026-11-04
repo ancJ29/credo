@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
 import { PAGES } from './nav';
-import { Shell } from './Shell';
+import { type Look, Shell } from './Shell';
 
+const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
 const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA' };
 
 const shell = (
@@ -322,5 +325,99 @@ describe('Shell', () => {
     expect(screen.getByRole('menuitem', { name: 'Change password' }).getAttribute('href')).toBe(
       '/password',
     );
+  });
+
+  const looked = (look: Look, shown = true) =>
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        shown={shown}
+        look={look}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+  /** The body of the rule whose selector is exactly this one, comments left out. */
+  const rule = (selector: string) =>
+    frameCss
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('}')
+      .map((block) => block.split('{'))
+      .find(([head]) => head?.trim() === selector)?.[1] ?? '';
+
+  it('7: A white header and menu drop the brand’s paint and take the grey ones, only when on', () => {
+    shell(['en']);
+    expect(document.querySelector('header')!.hasAttribute('data-white')).toBe(false);
+    expect(sideMenu().hasAttribute('data-white')).toBe(false);
+    cleanup();
+
+    looked({ whiteHeader: true, whiteMenu: true, menuIcons: false });
+    const header = document.querySelector('header')!;
+    expect(header.getAttribute('data-white')).toBe('true');
+    expect(header.getAttribute('style') ?? '').not.toContain('gradient');
+    expect(sideMenu().getAttribute('data-white')).toBe('true');
+    expect(sideMenu().getAttribute('style') ?? '').not.toContain('gradient');
+    cleanup();
+
+    looked({ whiteHeader: true, whiteMenu: false, menuIcons: false });
+    expect(document.querySelector('header')!.hasAttribute('data-white')).toBe(true);
+    expect(sideMenu().hasAttribute('data-white')).toBe(false);
+    expect(sideMenu().getAttribute('style')).toContain('gradient');
+    cleanup();
+
+    looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });
+    expect(document.querySelector('header')!.getAttribute('style')).toContain('gradient');
+    expect(sideMenu().hasAttribute('data-white')).toBe(true);
+
+    const header7 = rule('.header');
+    expect(header7).toContain('var(--mantine-color-neutral-0)');
+    expect(header7).toContain('var(--mantine-color-neutral-8)');
+    expect(header7).toContain('var(--mantine-color-neutral-2)');
+    const item = rule('.item');
+    expect(item).toContain('var(--mantine-color-neutral-8)');
+    expect(rule('.item svg')).toContain('var(--mantine-color-neutral-7)');
+    const open = rule(".item[aria-current='page']");
+    expect(open).toContain('var(--mantine-color-brand-0)');
+    expect(open).toContain('var(--mantine-color-brand-9)');
+    expect(rule(".item[aria-current='page'] svg")).toContain('var(--mantine-color-brand-7)');
+  });
+
+  it('8: Icons on, the hidden PC menu leaves a strip of named icons; off, it hides whole', () => {
+    looked({ whiteHeader: false, whiteMenu: false, menuIcons: false }, false);
+    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+    cleanup();
+
+    looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, false);
+    const strip = sideMenu();
+    expect(strip.hasAttribute('data-strip')).toBe(true);
+    expect(strip.className).toContain('mantine-visible-from-sm');
+    const links = within(strip).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual(
+      within(sideMenu())
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('data-tip')),
+    );
+    expect(links).toHaveLength(PAGES.length);
+    expect(links.every((link) => link.getAttribute('aria-label'))).toBe(true);
+    expect(strip.textContent).toBe('');
+    const rules = [...document.querySelectorAll('style')].map((one) => one.textContent).join('');
+    expect(rules).toContain('--app-shell-navbar-width:calc(3.75rem');
+    cleanup();
+
+    looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, true);
+    expect(sideMenu().hasAttribute('data-strip')).toBe(false);
+    expect(within(sideMenu()).getByRole('link', { name: 'Settings' }).textContent).toBe('Settings');
+  });
+
+  it('9: In dark, a white header or menu takes the dark surface', () => {
+    const dark = rule("[data-mantine-color-scheme='dark'] .header");
+    expect(dark).toContain('#2e2e2e');
+    expect(dark).toContain('#e9ecef');
+    expect(rule("[data-mantine-color-scheme='dark'] .menu")).toContain('#2e2e2e');
+    expect(rule("[data-mantine-color-scheme='dark'] .item")).toContain('#e9ecef');
   });
 });

@@ -50,8 +50,8 @@ describe('the walk’s screens', () => {
     expect(drawn('logo-too-large', 'en')).not.toContain(DICTIONARIES.en.settings.saveRefused);
   });
 
-  it('numbers piece 1’s screens as its walk does, screen 9 after them, and draws no operator screen', () => {
-    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 9]);
+  it('numbers piece 1’s screens as its walk does, screens 9 to 11 after them, and draws no operator screen', () => {
+    expect(SCREENS.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 9, 10, 11]);
   });
 
   it('draws screen 9 in credo’s colour and in no company’s name', () => {
@@ -66,5 +66,15 @@ describe('the walk’s screens', () => {
     const unknown = draw(SCREENS.find((screen) => screen.number === 9)!.states[0].screen);
 
     expect(unknown.container.textContent).not.toContain('Minh Phát');
+  });
+
+  it('draws screen 10 with the header and the menu in white, and screen 11 with the menu as a strip', () => {
+    const white = draw(SCREENS.find((screen) => screen.number === 10)!.states[0].screen);
+    expect(white.container.querySelector('header')?.getAttribute('data-white')).toBe('true');
+    expect(white.container.querySelector('nav[data-white]')).toBeTruthy();
+    white.unmount();
+
+    const strip = draw(SCREENS.find((screen) => screen.number === 11)!.states[0].screen);
+    expect(strip.container.querySelector('nav[data-strip]')?.textContent).toBe('');
   });
 });

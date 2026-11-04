@@ -1,4 +1,4 @@
-import type { Language } from '@credo/shared';
+import type { Language, TenantConfig } from '@credo/shared';
 import {
   ActionIcon,
   AppShell,
@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import type { Brand } from './brand';
 import classes from './frame.module.css';
+import looks from './frameLook.module.css';
 import { LANGUAGE_NAMES } from './i18n';
 import { type MenuPage, PAGES } from './nav';
 import { BRAND_GRADIENT, MENU_GRADIENT } from './theme';
@@ -38,8 +39,13 @@ export type FrameParts = {
 };
 export const FrameContext = createContext<FrameParts | null>(null);
 
+/** How the company wants its frame drawn: each switch off until its root turns it on. */
+export type Look = Pick<TenantConfig, 'whiteHeader' | 'whiteMenu' | 'menuIcons'>;
+
 type Props = {
   brand: Brand;
+  /** The company's frame switches; the console passes none, so all stay off. */
+  look?: Look;
   user: string;
   /** The languages the company offers. */
   languages: readonly Language[];
@@ -80,6 +86,7 @@ const initialsOf = (name: string) =>
  * a bar of the first four pages and More on a phone; and a page. */
 export function Shell({
   brand,
+  look,
   user,
   languages,
   onLanguage,
@@ -104,6 +111,15 @@ export function Shell({
     ...(passwordPath === undefined ? [] : [{ to: passwordPath, label: t('user.password') }]),
     ...menuLinks,
   ];
+  /** Set only when on, so the markup of a frame with all three off is the one it always was. */
+  const whiteHeader = look?.whiteHeader ? 'true' : undefined;
+  const whiteMenu = look?.whiteMenu ? 'true' : undefined;
+  const strip = !shown && look?.menuIcons ? 'true' : undefined;
+  /** A frame class, with its twin from the look's file after it when the switch is on. */
+  const twin = (on: boolean | undefined, base: string | undefined, white: string | undefined) =>
+    [base, on ? white : undefined].filter(Boolean).join(' ');
+  const head = (base: string | undefined, white: string) => twin(!!whiteHeader, base, looks[white]);
+  const side = (base: string | undefined, white: string) => twin(!!whiteMenu, base, looks[white]);
   const toggle = () => {
     setShown(!shown);
     onShown?.(!shown);
@@ -112,31 +128,42 @@ export function Shell({
   return (
     <AppShell
       header={{ height: 56 }}
-      navbar={{ width: 250, breakpoint: 'sm', collapsed: { mobile: true, desktop: !shown } }}
+      navbar={{
+        width: strip ? 60 : 250,
+        breakpoint: 'sm',
+        collapsed: { mobile: true, desktop: !shown && !strip },
+      }}
       footer={{ height: { base: 64, sm: 0 } }}
       padding="md"
     >
       <AppShell.Header
-        className={classes.header}
-        style={{ background: BRAND_GRADIENT, color: '#fff' }}
+        className={head(classes.header, 'header')}
+        data-white={whiteHeader}
+        style={whiteHeader ? undefined : { background: BRAND_GRADIENT, color: '#fff' }}
       >
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
-            <Group gap="sm" wrap="nowrap" className={classes.brand}>
+            <Group gap="sm" wrap="nowrap" className={head(classes.brand, 'brand')}>
               <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
-              <Title order={1} size="h4" fw={600} c="inherit">
+              <Title
+                order={1}
+                size="h4"
+                fw={600}
+                c="inherit"
+                className={whiteHeader ? looks.brandName : undefined}
+              >
                 {brand.name}
               </Title>
             </Group>
             {badge && (
-              <Badge variant="filled" className={classes.badge}>
+              <Badge variant="filled" className={head(classes.badge, 'badge')}>
                 {badge}
               </Badge>
             )}
             <ActionIcon
               variant="transparent"
               c="inherit"
-              className={classes.button}
+              className={head(classes.button, 'button')}
               visibleFrom="sm"
               aria-label={t(shown ? 'nav.hideMenu' : 'nav.showMenu')}
               aria-expanded={shown}
@@ -154,7 +181,10 @@ export function Shell({
                 classNames={{ dropdown: classes.dropdown }}
               >
                 <Menu.Target>
-                  <UnstyledButton className={classes.button} aria-label={t('user.language')}>
+                  <UnstyledButton
+                    className={head(classes.button, 'button')}
+                    aria-label={t('user.language')}
+                  >
                     <IconLanguage size={18} />
                     <span>{i18n.language.toUpperCase()}</span>
                   </UnstyledButton>
@@ -182,8 +212,8 @@ export function Shell({
             >
               <Menu.Target>
                 {/* A phone's header holds the mark alone: a long name would push the brand out. */}
-                <UnstyledButton className={classes.user} aria-label={user}>
-                  <span className={classes.avatar} aria-hidden>
+                <UnstyledButton className={head(classes.user, 'user')} aria-label={user}>
+                  <span className={head(classes.avatar, 'avatar')} aria-hidden>
                     {initialsOf(user)}
                   </span>
                   <Text span inherit fw={600} visibleFrom="sm">
@@ -204,10 +234,12 @@ export function Shell({
           </Group>
         </Group>
       </AppShell.Header>
-      {shown && (
+      {(shown || strip) && (
         <AppShell.Navbar
-          className={classes.menu}
-          style={{ background: MENU_GRADIENT, color: '#fff' }}
+          className={side(classes.menu, 'menu')}
+          data-white={whiteMenu}
+          data-strip={strip}
+          style={whiteMenu ? undefined : { background: MENU_GRADIENT, color: '#fff' }}
           visibleFrom="sm"
           aria-label={t('nav.menu')}
         >
@@ -215,11 +247,17 @@ export function Shell({
             <Link
               key={id}
               to={path}
-              className={classes.item}
+              className={
+                strip
+                  ? `${side(classes.item, 'item')} ${looks.stripItem}`
+                  : side(classes.item, 'item')
+              }
+              aria-label={strip ? t(label) : undefined}
+              data-tip={strip ? t(label) : undefined}
               aria-current={open(path) ? 'page' : undefined}
             >
-              <Icon size={20} stroke={1.6} />
-              <span>{t(label)}</span>
+              <Icon size={strip ? 22 : 20} stroke={1.6} />
+              {!strip && <span>{t(label)}</span>}
             </Link>
           ))}
         </AppShell.Navbar>

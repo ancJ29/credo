@@ -5,7 +5,7 @@ import { Settings } from '../Settings';
 import { Shell } from '../Shell';
 import { SignIn } from '../SignIn';
 import { UnknownClient } from '../UnknownClient';
-import { FILLED, FRESH, ROOT, TYPED } from './fixtures';
+import { FILLED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
 /** The mock's handlers do nothing: no screen here calls a service. */
@@ -17,10 +17,11 @@ type SettingsProps = Parameters<typeof Settings>[0];
 const settings = (
   config: TenantConfig,
   more: Partial<SettingsProps> = {},
-  shell: { userMenuOpen?: boolean; languageMenuOpen?: boolean } = {},
+  shell: { userMenuOpen?: boolean; languageMenuOpen?: boolean; shown?: boolean } = {},
 ) => (
   <Shell
     brand={config}
+    look={config}
     user={ROOT.username}
     languages={config.languages}
     onLanguage={inert}
@@ -190,6 +191,30 @@ export const SCREENS: MockScreen[] = [
         label: 'failed: no, malformed or unknown code',
         colour: CREDO,
         screen: <UnknownClient />,
+      },
+    ],
+  },
+  {
+    number: 10,
+    label: 'Saved: the header and the menu in white',
+    states: [
+      {
+        id: 'filled',
+        label: 'filled',
+        colour: WHITE.colour,
+        screen: settings(WHITE, { outcome: 'saved' }),
+      },
+    ],
+  },
+  {
+    number: 11,
+    label: 'The menu hidden to its icons',
+    states: [
+      {
+        id: 'filled',
+        label: 'filled: a PC’s strip',
+        colour: WHITE_ICONS.colour,
+        screen: settings(WHITE_ICONS, { outcome: 'saved' }, { shown: false }),
       },
     ],
   },

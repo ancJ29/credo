@@ -12,9 +12,9 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: nine screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: eleven screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (9 × 2 × 3 = 54). The stack
+ * screenshot check against its committed base image (11 × 2 × 3 = 66). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -148,6 +148,31 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
   await expect(page.getByRole('heading', { level: 1, name: NEW_NAME })).toBeVisible();
   await at('4-saved');
+
+  // 10. Saved: the header and the menu in white.
+  await page.getByRole('switch', { name: words.settings.whiteHeader }).check();
+  await page.getByRole('switch', { name: words.settings.whiteMenu }).check();
+  await page.getByRole('heading', { level: 2 }).click();
+  await page.getByRole('button', { name: words.settings.save }).click();
+  await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
+  await expect(page.locator('header')).toHaveAttribute('data-white', 'true');
+  await at('10-saved-white');
+
+  // 11. The menu hidden to its icons: a PC's strip; a phone has its bar and no menu to hide.
+  await page.getByRole('switch', { name: words.settings.menuIcons }).check();
+  await page.getByRole('heading', { level: 2 }).click();
+  await page.getByRole('button', { name: words.settings.save }).click();
+  await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
+  if (width >= WIDTHS.tablet) {
+    await page.getByRole('button', { name: words.nav.hideMenu }).click();
+    await expect(
+      page
+        .getByRole('navigation', { name: words.nav.menu })
+        .first()
+        .getByRole('link', { name: words.nav.settings }),
+    ).toBeVisible();
+  }
+  await at('11-menu-icons');
 
   // 5. The language switched, from the header's button.
   const other: Language = language === 'vi' ? 'en' : 'vi';

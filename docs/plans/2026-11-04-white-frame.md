@@ -62,9 +62,17 @@ Rows 1 to 5, the business rows, are each seen red first: before the field exists
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 9 minutes (this kind: 6 to 9). Done when: committed, `wc -w` about 1,000.
-- [ ] **2. The frame on the fake.** 🤖 Sonnet, about 23 minutes (milestone 2's step 2, a `Shell` change): fields,
+- [x] **2. The frame on the fake.** 🤖 Sonnet, about 23 minutes (milestone 2's step 2, a `Shell` change): fields,
   switches, white frame, strip, the mock's scenes, two screens, the walk. Done when: rows 6 to 9 red once; ui and
   visual at 100 %, lint clean; `pnpm report` builds 109 screens, row 10 compared.
+  *Done 2026-11-04:* rows 6 to 9 each seen red then green (`Settings.test.tsx`, `Shell.test.tsx`); ui, shared and
+  visual at 100 %, eslint, prettier, knip and typecheck clean; `pnpm report` built 109 screens, and against
+  `main`'s build exactly the plan's eight differ (`admin-setup` 3, 4, 5, 7, 8, `office-5-settings`, the new 10
+  and 11). The new rules live in `ui/src/frameLook.module.css`, not in `frame.module.css`: a CSS module's class
+  names hash its file, so an edit to `frame.module.css` moved every screen that draws the frame, console
+  included. The walk spec carries screens 10 and 11, not run here (the full run, step 6). `shared`'s schema,
+  `startingConfig` and the test constants carry the three fields so the tree type-checks; step 3 still owes
+  rows 1 to 5 on the route.
 - [ ] **3. The stack.** 🤖 Sonnet, about 40 minutes (D's 103 for a route less the palettes' 63): rows 1 to 5,
   `startingConfig`. Done when: each row seen red; bff at 100 %.
 - [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved; the whole `pnpm check` under the lock,

@@ -48,6 +48,9 @@ export const en = {
     logoTooLarge: 'That logo is larger than {{max}} KB, so it was not used. The logo is as it was.',
     logoNotImage: 'That file is not an image, so it was not used. The logo is as it was.',
     colour: 'Brand colour',
+    whiteHeader: 'White header',
+    whiteMenu: 'White menu',
+    menuIcons: 'Show the menu’s icons when it is hidden',
     palette: 'Palette',
     palettes: {
       terracotta: 'Terracotta',

@@ -49,6 +49,9 @@ export const vi: Dictionary = {
     logoTooLarge: 'Logo này lớn hơn {{max}} KB nên chưa dùng. Logo vẫn như cũ.',
     logoNotImage: 'Tệp này không phải là ảnh nên chưa dùng. Logo vẫn như cũ.',
     colour: 'Màu thương hiệu',
+    whiteHeader: 'Đầu trang màu trắng',
+    whiteMenu: 'Menu màu trắng',
+    menuIcons: 'Hiện biểu tượng của menu khi ẩn',
     palette: 'Bảng màu',
     palettes: {
       terracotta: 'Đất nung',

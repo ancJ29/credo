@@ -20,6 +20,9 @@ export function companyConfig(client: string, name: string): TenantConfig {
     name,
     logo: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
     colour,
+    whiteHeader: false,
+    whiteMenu: false,
+    menuIcons: false,
     languages: ['vi', 'en'],
     defaultLanguage: 'vi',
   };

@@ -1,0 +1,155 @@
+/* The company's frame switches, in a file of their own: the classes below are put on the frame only
+   when a switch is on, and this file loads after frame.module.css so each wins over its twin there.
+   Kept apart because a CSS module's class names are hashed from its file, and an edit to
+   frame.module.css would move every screen that draws the frame, switches off or not. */
+
+/* The white header: neutral 0 to paint, 8 for text, 7 for icons, 2 for the edge, as the old app's
+   light variant. */
+.header {
+  background: var(--mantine-color-neutral-0);
+  color: var(--mantine-color-neutral-8);
+  border-bottom: 1px solid var(--mantine-color-neutral-2);
+}
+
+.brand {
+  color: var(--mantine-color-brand-7);
+}
+
+.brandName {
+  color: var(--mantine-color-neutral-8);
+}
+
+.button {
+  color: var(--mantine-color-neutral-7);
+}
+
+.button:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.user {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.avatar {
+  border-color: var(--mantine-color-neutral-3);
+  background: var(--mantine-color-brand-1);
+  color: var(--mantine-color-brand-9);
+}
+
+.badge {
+  background: var(--mantine-color-brand-1);
+  color: var(--mantine-color-brand-9);
+}
+
+/* The white menu: the open page on the brand's shade 0, its text 9, its mark 7. */
+.menu {
+  background: var(--mantine-color-neutral-0);
+  color: var(--mantine-color-neutral-8);
+  border-right: 1px solid var(--mantine-color-neutral-2);
+}
+
+.item {
+  color: var(--mantine-color-neutral-8);
+}
+
+.item svg {
+  color: var(--mantine-color-neutral-7);
+}
+
+.item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.item[aria-current='page'] {
+  background: var(--mantine-color-brand-0);
+  color: var(--mantine-color-brand-9);
+}
+
+.item[aria-current='page'] svg {
+  color: var(--mantine-color-brand-7);
+}
+
+.item[aria-current='page']::after {
+  border-right-color: var(--mantine-color-brand-7);
+}
+
+/* In dark, the dark surface in their place. */
+[data-mantine-color-scheme='dark'] .header {
+  background: #2e2e2e;
+  color: #e9ecef;
+  border-bottom-color: #424242;
+}
+
+[data-mantine-color-scheme='dark'] .brandName {
+  color: #e9ecef;
+}
+
+[data-mantine-color-scheme='dark'] .button {
+  color: #b8b8b8;
+}
+
+[data-mantine-color-scheme='dark'] .button:hover,
+[data-mantine-color-scheme='dark'] .user {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-mantine-color-scheme='dark'] .avatar,
+[data-mantine-color-scheme='dark'] .badge {
+  background: var(--mantine-color-brand-9);
+  color: var(--mantine-color-brand-0);
+}
+
+[data-mantine-color-scheme='dark'] .menu {
+  background: #2e2e2e;
+  border-right-color: #424242;
+}
+
+[data-mantine-color-scheme='dark'] .item {
+  color: #e9ecef;
+}
+
+[data-mantine-color-scheme='dark'] .item svg {
+  color: #b8b8b8;
+}
+
+[data-mantine-color-scheme='dark'] .item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-mantine-color-scheme='dark'] .item[aria-current='page'] {
+  background: var(--mantine-color-brand-9);
+  color: var(--mantine-color-brand-0);
+}
+
+[data-mantine-color-scheme='dark'] .item[aria-current='page'] svg {
+  color: var(--mantine-color-brand-3);
+}
+
+[data-mantine-color-scheme='dark'] .item[aria-current='page']::after {
+  border-right-color: var(--mantine-color-brand-3);
+}
+
+/* The hidden menu as a PC's strip of icons, 60 wide (Mantine's navbar width), each page's name in a
+   tip on hover. */
+.stripItem {
+  justify-content: center;
+  padding: 0;
+}
+
+.stripItem[data-tip]:hover::before {
+  content: attr(data-tip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 8px);
+  z-index: 5;
+  padding: 4px 10px;
+  transform: translateY(-50%);
+  border-radius: 6px;
+  background: var(--mantine-color-neutral-8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+}

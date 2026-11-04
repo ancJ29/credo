@@ -21,6 +21,9 @@ const company: TenantConfig = {
   name: 'Công ty Đại Việt',
   logo: null,
   colour: '#2f7d6d',
+  whiteHeader: false,
+  whiteMenu: false,
+  menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
 };

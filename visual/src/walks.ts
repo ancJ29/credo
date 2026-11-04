@@ -368,6 +368,28 @@ export const WALKS: Walk[] = [
         },
         question: 'Would the person know to ask whoever sent the link?',
       },
+      {
+        id: '10-saved-white',
+        number: 10,
+        path: 'main',
+        mock: { screen: 10, state: 'filled' },
+        sentence: {
+          en: 'Saved: the header and the menu in white',
+          vi: 'Đã lưu: đầu trang và menu màu trắng',
+        },
+        question: 'Do the name, the buttons and the menu read clearly on white?',
+      },
+      {
+        id: '11-menu-icons',
+        number: 11,
+        path: 'main',
+        mock: { screen: 11, state: 'filled' },
+        sentence: {
+          en: 'The menu hidden to its icons',
+          vi: 'Menu ẩn còn lại các biểu tượng',
+        },
+        question: 'Would a person on a PC know which page each icon opens?',
+      },
     ],
   },
   {

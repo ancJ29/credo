@@ -19,6 +19,7 @@ import {
   Radio,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
   TextInput,
   ThemeIcon,
@@ -202,13 +203,30 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                   ))}
                 </Group>
               </Radio.Group>
-              <ColorInput
-                label={t('settings.colour')}
-                format="hex"
-                withEyeDropper={false}
-                value={draft.colour}
-                onChange={(colour) => change({ colour })}
-              />
+              <Stack gap="md">
+                <ColorInput
+                  label={t('settings.colour')}
+                  format="hex"
+                  withEyeDropper={false}
+                  value={draft.colour}
+                  onChange={(colour) => change({ colour })}
+                />
+                <Switch
+                  label={t('settings.whiteHeader')}
+                  checked={draft.whiteHeader}
+                  onChange={(event) => change({ whiteHeader: event.currentTarget.checked })}
+                />
+                <Switch
+                  label={t('settings.whiteMenu')}
+                  checked={draft.whiteMenu}
+                  onChange={(event) => change({ whiteMenu: event.currentTarget.checked })}
+                />
+                <Switch
+                  label={t('settings.menuIcons')}
+                  checked={draft.menuIcons}
+                  onChange={(event) => change({ menuIcons: event.currentTarget.checked })}
+                />
+              </Stack>
               <Checkbox.Group
                 label={t('settings.languages')}
                 value={draft.languages}

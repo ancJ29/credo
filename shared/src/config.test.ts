@@ -67,8 +67,17 @@ describe('A config that does not parse is refused on save and stops the boot', (
     defaultLanguage: 'vi',
   };
 
+  const off = { whiteHeader: false, whiteMenu: false, menuIcons: false };
+
   it('parses a whole config and trims the name', () => {
-    expect(tenantConfigSchema.parse({ ...good, name: '  Công ty A ' })).toEqual(good);
+    expect(tenantConfigSchema.parse({ ...good, ...off, name: '  Công ty A ' })).toEqual({
+      ...good,
+      ...off,
+    });
+  });
+
+  it('reads a record stored before the frame switches with all three off', () => {
+    expect(tenantConfigSchema.parse(good)).toEqual({ ...good, ...off });
   });
 
   it('refuses a blank name, a bad colour, a bad language set and a stray key', () => {

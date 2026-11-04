@@ -10,6 +10,9 @@ const config: TenantConfig = {
   name: 'Minh Phát',
   logo: 'data:image/png;base64,AAAA',
   colour: '#2f7d6d',
+  whiteHeader: false,
+  whiteMenu: false,
+  menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
 };
@@ -286,5 +289,43 @@ describe('Settings', () => {
     draw(<Settings {...props({ config: { ...config, colour: '#3e618c' } })} />);
 
     expect(checked().map((radio) => radio.value)).toEqual(['steel']);
+  });
+
+  it('6: shows the three frame switches below the colour field, off when never set, in both languages', () => {
+    const { unmount } = draw(<Settings {...props()} />);
+
+    const names = ['White header', 'White menu', 'Show the menu’s icons when it is hidden'];
+    const switches = screen.getAllByRole<HTMLInputElement>('switch');
+    expect(switches.map((one) => one.labels?.[0]?.textContent)).toEqual(names);
+    expect(switches.map((one) => one.checked)).toEqual([false, false, false]);
+    const colour = screen.getByLabelText('Brand colour');
+    expect(
+      colour.compareDocumentPosition(switches[0]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    unmount();
+
+    draw(<Settings {...props()} />, 'vi');
+    expect(
+      screen.getAllByRole<HTMLInputElement>('switch').map((one) => one.labels?.[0]?.textContent),
+    ).toEqual(['Đầu trang màu trắng', 'Menu màu trắng', 'Hiện biểu tượng của menu khi ẩn']);
+  });
+
+  it('6: sends each switch as set, apart from the others', async () => {
+    const onSave = vi.fn();
+    draw(<Settings {...props({ onSave })} />);
+
+    await userEvent.click(screen.getByRole('switch', { name: 'White menu' }));
+    await userEvent.click(save());
+    expect(onSave).toHaveBeenLastCalledWith({ ...config, whiteMenu: true });
+
+    await userEvent.click(screen.getByRole('switch', { name: 'White header' }));
+    await userEvent.click(screen.getByRole('switch', { name: /icons when it is hidden/ }));
+    await userEvent.click(screen.getByRole('switch', { name: 'White menu' }));
+    await userEvent.click(save());
+    expect(onSave).toHaveBeenLastCalledWith({
+      ...config,
+      whiteHeader: true,
+      menuIcons: true,
+    });
   });
 });

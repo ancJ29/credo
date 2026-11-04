@@ -28,6 +28,9 @@ export const DEMO_CONFIG: TenantConfig = {
   name: 'Minh Phát',
   logo,
   colour: '#2f7d6d',
+  whiteHeader: false,
+  whiteMenu: false,
+  menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
 };
