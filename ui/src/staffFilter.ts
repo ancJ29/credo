@@ -35,7 +35,7 @@ const statusOf = (value: string | null, left: string | null): Status =>
 /** A name inside a sentence: its first letter lowered, unless its first word is an acronym
  * ("CCCD", "GPLX"), which stays as written. */
 export function lowerFirst(name: string, language: Language) {
-  const first = name.split(/\s+/)[0] ?? '';
+  const first = name.replace(/\s.*$/s, '');
   const acronym = first.length > 1 && first === first.toLocaleUpperCase(language);
   return acronym ? name : name.charAt(0).toLocaleLowerCase(language) + name.slice(1);
 }
