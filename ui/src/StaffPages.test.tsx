@@ -80,6 +80,33 @@ describe('the staff list', () => {
     expect(all.at(-1)).toBe('EMP-0008');
   });
 
+  it('From 768 the search and every select sit on one line above the table, the search growing and each select compact with its name only for assistive tools; under 768 the names show above them', async () => {
+    openApp('/staff');
+    await rowOf('Nguyễn Thị Lan');
+
+    const controls = ['Search', 'Status', 'Department', 'Position', 'Driving licence'].map((name) =>
+      screen.getByLabelText(name),
+    );
+    // one row container holds all five, in today's order
+    const row = controls[0]?.closest('[class*="filters"]');
+    expect(row).toBeTruthy();
+    expect(controls.every((control) => control.closest('[class*="filters"]') === row)).toBe(true);
+    expect(
+      controls.map((control) =>
+        [...(row?.children ?? [])].indexOf(
+          control.closest('.mantine-InputWrapper-root') as Element,
+        ),
+      ),
+    ).toEqual([0, 1, 2, 3, 4]);
+    // the visible label shows under 768 only, the accessible name stays
+    for (const control of controls) {
+      const wrapper = control.closest('.mantine-InputWrapper-root') as HTMLElement;
+      const label = wrapper.querySelector('label') as HTMLElement;
+      expect(label.className).toContain('mantine-hidden-from-sm');
+      expect(control.getAttribute('aria-label')).toBe(label.textContent);
+    }
+  });
+
   it('Inactive with nobody who left says no one matches', async () => {
     openApp('/staff?status=inactive', {
       override: (api, original) => {

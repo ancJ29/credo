@@ -1,0 +1,29 @@
+/* The staff list's filters: one column on a phone, each with its name above; from 768 (`sm`) one line,
+   the search growing and every select a fixed compact width, wrapping only when they cannot fit. */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-md);
+}
+
+.filters > * {
+  width: 100%;
+}
+
+@media (min-width: 48em) {
+  .filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .filters > * {
+    width: 190px;
+  }
+
+  .filters > .search {
+    flex: 1;
+    min-width: 220px;
+    width: auto;
+  }
+}

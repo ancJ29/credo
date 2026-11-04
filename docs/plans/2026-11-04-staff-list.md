@@ -69,7 +69,9 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
 - [x] **2. The list on the fake.** 🤖 Sonnet, about 18 minutes. Done when: rows 1, 2, 3, 5 red once; ui and visual at
   100 %, lint clean; `pnpm report` builds. Done 2026-11-04: rows 1, 2, 3, 5 red once against today's page, then
   green; ui 701 tests and visual 191 at 100 %; typecheck, eslint, prettier, knip clean; `pnpm report` built, 107
-  screens, 214 captures.
+  screens, 214 captures. Fix pass after the human's look (PC no, the filters): the search and every select on one line from
+  768, the search growing, each select compact, names kept as accessible names (shown above only under 768); ui 702
+  tests at 100 %, the new row test red once, screens moved still the five.
 - [x] **3. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved. Done when: `pnpm check` under the lock
   `== exit 0`. Done 2026-11-04 at `122161e`: `pnpm check` `== exit 0`
   on the second whole run (the first, at load 47 from other agents' runs, timed out two ui tests, one in

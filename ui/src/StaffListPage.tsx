@@ -16,20 +16,29 @@ import {
   Card,
   Group,
   NativeSelect,
-  SimpleGrid,
   Stack,
   Table,
   Text,
   TextInput,
   Title,
 } from '@mantine/core';
+import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { Loaded } from './Loaded';
+import classes from './staffList.module.css';
 import { type PageProps, useLoad } from './page';
 import { phoneOf, unitName } from './staffNames';
 import { type Criteria, criteriaOf, matches, paramsOf, type Status } from './staffFilter';
+
+/** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
+ * app's one-line filters show the value alone. */
+const named = (label: string) => ({
+  label,
+  'aria-label': label,
+  labelProps: { hiddenFrom: 'sm' },
+});
 
 /** What the table draws while nothing is read yet. */
 const NOTHING_YET: { setup: StaffSetup; people: Employee[] } = {
@@ -111,7 +120,7 @@ export function StaffListPage(page: PageProps) {
     units: StaffSetup['departments'],
   ) => (
     <NativeSelect
-      label={label}
+      {...named(label)}
       value={criteria[key]}
       onChange={(event) => narrow({ [key]: event.currentTarget.value })}
       data={[
@@ -151,25 +160,27 @@ export function StaffListPage(page: PageProps) {
         )}
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
-        <TextInput
-          label={t('staff.search')}
-          placeholder={t('staff.searchPlaceholder')}
-          value={typed}
-          onChange={(event) => {
-            setTyped(event.currentTarget.value);
-            if (!composing.current) narrow({ q: event.currentTarget.value });
-          }}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={(event) => {
-            composing.current = false;
-            narrow({ q: event.currentTarget.value });
-          }}
-        />
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+        <div className={classes.filters}>
+          <TextInput
+            {...named(t('staff.search'))}
+            className={classes.search}
+            leftSection={<IconSearch size={16} />}
+            placeholder={t('staff.searchPlaceholder')}
+            value={typed}
+            onChange={(event) => {
+              setTyped(event.currentTarget.value);
+              if (!composing.current) narrow({ q: event.currentTarget.value });
+            }}
+            onCompositionStart={() => {
+              composing.current = true;
+            }}
+            onCompositionEnd={(event) => {
+              composing.current = false;
+              narrow({ q: event.currentTarget.value });
+            }}
+          />
           <NativeSelect
-            label={t('staff.status')}
+            {...named(t('staff.status'))}
             value={criteria.status}
             onChange={(event) => narrow({ status: event.currentTarget.value as Status })}
             data={[
@@ -183,7 +194,7 @@ export function StaffListPage(page: PageProps) {
           {choices.map((field) => (
             <NativeSelect
               key={field.key}
-              label={field.label[language]}
+              {...named(field.label[language])}
               value={criteria.choices[field.key] ?? ''}
               onChange={(event) =>
                 narrow({ choices: { ...criteria.choices, [field.key]: event.currentTarget.value } })
@@ -197,7 +208,7 @@ export function StaffListPage(page: PageProps) {
               ]}
             />
           ))}
-        </SimpleGrid>
+        </div>
         {people.length === 0 ? (
           <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
         ) : (
