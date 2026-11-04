@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # walk/run.sh: the full run of the walks, one command for every walk (docs/plans/2026-10-31-walk-steady.md).
 #
-#   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks]
+#   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks] [--serial]
 #   bash walk/run.sh <walk>… --bytes <a run's folder>
 #
 # Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services, root-password, team (the table below). It takes every picture of each walk on the
@@ -13,6 +13,8 @@
 #   --write   after a green read only: the first stack's pictures replace the walk's bases, new ones
 #             are added and retired ones removed; the machine reads git's diff and commits
 #   --checks  the refusals and Playwright's listings only, then stop
+#   --serial  one lane, the walks one after the other as before; the default runs the walks' lanes (the table's
+#             last column) at once, each on stacks of its own, its lines prefixed "[lane n]"
 #   --bytes   no browser, no stack: each walk's full-1 pictures in a finished run's folder (the line "pictures and
 #             results in" of run 1) against the committed bases, byte for byte; any byte off, or a name on one
 #             side only, is red. Alone: not with --write, --moved or --checks.
@@ -38,19 +40,20 @@ set -uo pipefail
 
 # One line a walk: name | spec | its fake project (- for none) | its full project | a stack per pass
 # or per test (the operator's walk makes a client by a fixed code, so each test has a stack of its
-# own) | the folder of its bases | the end of a base's name after the picture's.
+# own) | the folder of its bases | the end of a base's name after the picture's | its lane (the memo's
+# measured split: piece 2; the office and driver walks; the others).
 WALKS='
-piece-1|piece-1.spec.ts|-|chromium|pass|walk/specs/piece-1.spec.ts-snapshots|-chromium-darwin
-piece-2|piece-2.spec.ts|fake|full|pass|walk/specs/piece-2.spec.ts-snapshots|-full-darwin
-admin-lists|lists.spec.ts|lists-fake|lists-full|pass|walk/specs/lists.spec.ts-snapshots|-lists-full-darwin
-office-orders|orders.spec.ts|orders-fake|orders-full|pass|walk/specs/orders.spec.ts-snapshots|-orders-full-darwin
-driver-deliveries|driver.spec.ts|driver-fake|driver-full|pass|walk/specs/driver.spec.ts-snapshots|-driver-full-darwin
-office-reconcile|reconcile.spec.ts|reconcile-fake|reconcile-full|pass|walk/specs/reconcile.spec.ts-snapshots|-reconcile-full-darwin
-operator|operator.spec.ts|operator-fake|operator-full|test|walk/specs/operator.spec.ts-snapshots|-operator-full-darwin
-passkeys|operator-passkeys.spec.ts|passkeys-fake|passkeys-full|test|walk/specs/operator-passkeys.spec.ts-snapshots|-passkeys-full-darwin
-services|operator-services.spec.ts|services-fake|services-full|pass|walk/specs/operator-services.spec.ts-snapshots|-services-full-darwin
-root-password|operator-root-password.spec.ts|root-password-fake|root-password-full|test|walk/specs/operator-root-password.spec.ts-snapshots|-root-password-full-darwin
-team|operator-team.spec.ts|team-fake|team-full|test|walk/specs/operator-team.spec.ts-snapshots|-team-full-darwin
+piece-1|piece-1.spec.ts|-|chromium|pass|walk/specs/piece-1.spec.ts-snapshots|-chromium-darwin|3
+piece-2|piece-2.spec.ts|fake|full|pass|walk/specs/piece-2.spec.ts-snapshots|-full-darwin|1
+admin-lists|lists.spec.ts|lists-fake|lists-full|pass|walk/specs/lists.spec.ts-snapshots|-lists-full-darwin|2
+office-orders|orders.spec.ts|orders-fake|orders-full|pass|walk/specs/orders.spec.ts-snapshots|-orders-full-darwin|2
+driver-deliveries|driver.spec.ts|driver-fake|driver-full|pass|walk/specs/driver.spec.ts-snapshots|-driver-full-darwin|2
+office-reconcile|reconcile.spec.ts|reconcile-fake|reconcile-full|pass|walk/specs/reconcile.spec.ts-snapshots|-reconcile-full-darwin|2
+operator|operator.spec.ts|operator-fake|operator-full|test|walk/specs/operator.spec.ts-snapshots|-operator-full-darwin|3
+passkeys|operator-passkeys.spec.ts|passkeys-fake|passkeys-full|test|walk/specs/operator-passkeys.spec.ts-snapshots|-passkeys-full-darwin|3
+services|operator-services.spec.ts|services-fake|services-full|pass|walk/specs/operator-services.spec.ts-snapshots|-services-full-darwin|3
+root-password|operator-root-password.spec.ts|root-password-fake|root-password-full|test|walk/specs/operator-root-password.spec.ts-snapshots|-root-password-full-darwin|3
+team|operator-team.spec.ts|team-fake|team-full|test|walk/specs/operator-team.spec.ts-snapshots|-team-full-darwin|3
 '
 walk_field() { # <walk> <column>
   printf '%s\n' "$WALKS" | awk -F'|' -v w="$1" -v c="$2" '$1 == w { print $c }'
@@ -116,7 +119,8 @@ if [ "${1:-}" = "--inside" ]; then
   cd "$tree" || exit 97
   trap 'echo "-- interrupted (elapsed $(elapsed))"; exit 130' INT TERM HUP
   out="$RUN_DIR/out/$phase-$walk-$k.out"
-  args=(--project "$project" --reporter=list)
+  # Playwright's own output folder, one a pass, so lanes at once do not empty each other's.
+  args=(--project "$project" --reporter=list --output "$RUN_DIR/pw/$phase-$walk-$k")
   [ -z "$pattern" ] || args+=(-g "$pattern")
   walk_pw test "${args[@]}" 2>&1 </dev/null | tee "$out"
   rc="${PIPESTATUS[0]}"
@@ -135,7 +139,7 @@ mkdir -p "$logdir" 2>/dev/null
 log="$logdir/$(date '+%Y%m%d-%H%M')-walk${names:--none}.log"
 
 main() {
-  local interrupted="" walks=() moved="" write="" checks_only="" bytes_from=""
+  local interrupted="" walks=() moved="" write="" checks_only="" bytes_from="" serial=""
   trap 'interrupted="at $(elapsed)"' INT TERM HUP
   refuse() {
     echo "== refused: $1"
@@ -151,12 +155,13 @@ main() {
         ;;
       --write) write=yes ;;
       --checks) checks_only=yes ;;
+      --serial) serial=yes ;;
       --bytes)
         [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || refuse "--bytes needs a run's folder"
         bytes_from="$2"
         shift
         ;;
-      -*) refuse "unknown option $1 (walks: $(walk_names | tr '\n' ' '); options: --moved --write --checks)" ;;
+      -*) refuse "unknown option $1 (walks: $(walk_names | tr '\n' ' '); options: --moved --write --checks --serial)" ;;
       *)
         walk_names | grep -qx "$1" || refuse "unknown walk '$1' (walks: $(walk_names | tr '\n' ' '))"
         walks+=("$1")
@@ -187,7 +192,7 @@ main() {
   }
 
   if [ -n "$bytes_from" ]; then
-    [ -z "$write$moved$checks_only" ] || refuse "--bytes stands alone: not with --write, --moved or --checks"
+    [ -z "$write$moved$checks_only$serial" ] || refuse "--bytes stands alone: not with --write, --moved, --checks or --serial"
     # Run 2 of a full run: files only, so no browser, no stack, no load check.
     echo "== 1/2 checks (elapsed $(elapsed))"
     local dirty_b tool_name walk
@@ -224,7 +229,7 @@ main() {
     finish "green: ${#verdicts[@]} byte comparisons, every count 0" 0
   fi
 
-  echo "== 1/8 checks (elapsed $(elapsed))"
+  echo "== 1/6 checks (elapsed $(elapsed))"
   local tool_name
   for tool_name in pnpm node git awk ps uptime; do
     command -v "$tool_name" >/dev/null 2>&1 || refuse "$tool_name is not installed"
@@ -303,7 +308,7 @@ main() {
   [ ${#busy[@]} -eq 0 ] || refuse "another walk, stack or fake of credo's is running (pids ${busy[*]}): wait for it"
   [ -z "$checks_only" ] || finish "checks only: nothing was run (${#strays[@]} strays would be stopped)" 0
 
-  echo "== 2/8 the strays (elapsed $(elapsed))"
+  echo "== 2/6 the strays (elapsed $(elapsed))"
   if [ ${#strays[@]} -eq 0 ]; then
     echo "  none"
   else
@@ -338,8 +343,10 @@ main() {
   pass_of() { # <phase> <walk> <pattern> <how many> <of>
     local phase="$1" w="$2" pat="$3"
     k=$((k + 1))
-    stop_if_interrupted
-    [ ! -e "$gate_lock" ] || finish "red: the gate lock $gate_lock appeared; the run stopped before $phase $w" 1
+    [ ! -e "$gate_lock" ] || {
+      echo "  the gate lock $gate_lock appeared; the lane stopped before $phase $w"
+      return 3
+    }
     echo "-- stack $4/$5: $phase, $w${pat:+, $pat} (load $(load_now); elapsed $(elapsed))"
     mkdir -p "$run/$phase/$w"
     if [ "$phase" = fake ]; then
@@ -351,13 +358,15 @@ main() {
       if [ "$w" = services ]; then
         local demo_build
         demo_build="$(sed -n "/^export const DEMO_SERVICES/,/^};/s/^  build: '\([0-9a-f]*\)',\$/\1/p" "$tree/shared/src/demo.ts")"
-        [ -n "$demo_build" ] || finish "red: the fake's build could not be read from shared/src/demo.ts" 1
+        [ -n "$demo_build" ] || {
+          echo "  the fake's build could not be read from shared/src/demo.ts"
+          return 4
+        }
         stamp=(CREDO_BUILD="$demo_build")
       fi
       (cd "$tree" && env ${stamp[@]+"${stamp[@]}"} CREDO_SHOTS_DIR="$run/$phase/$w" pnpm stack -- bash "$self" --inside "$phase" "$w" "$pat" "$k" 2>&1 </dev/null)
     fi
     echo "  exited $? after $(elapsed)"
-    stop_if_interrupted
   }
   patterns_of() { # <walk>: one regex a line, one test each
     list_titles "$(walk_field "$1" 4)" | sed '/^$/d' | regex_escape
@@ -376,35 +385,77 @@ main() {
     list_titles "$(walk_field "$1" "$2")" | sed '/^$/d' | wc -l | tr -d ' '
   }
 
-  echo "== 3/8 the fake's pictures (elapsed $(elapsed))"
-  for walk in "${walks[@]}"; do
-    if [ "$(walk_field "$walk" 3)" = - ]; then
-      echo "  $walk has no fake"
-      continue
-    fi
-    pass_of fake "$walk" "" 1 1
-    read_passes fake "$walk" "$(want_tests "$walk" 3)"
-  done
-
-  local phase total_stacks done_stacks
-  for phase in full-1 full-2; do
-    if [ "$phase" = full-1 ]; then echo "== 4/8 the pictures on the stack (elapsed $(elapsed))"; else echo "== 5/8 the pictures on fresh stacks again (elapsed $(elapsed))"; fi
-    for walk in "${walks[@]}"; do
-      if [ "$(walk_field "$walk" 5)" = pass ]; then
-        pass_of "$phase" "$walk" "" 1 1
-      else
-        total_stacks="$(patterns_of "$walk" | wc -l | tr -d ' ')"
-        done_stacks=0
-        while IFS= read -r pattern; do
-          done_stacks=$((done_stacks + 1))
-          pass_of "$phase" "$walk" "$pattern" "$done_stacks" "$total_stacks"
-        done <<<"$(patterns_of "$walk")"
+  # One lane: its walks' passes in today's order (the fakes, then the two stack phases), each on a
+  # stack of its own. It runs in a subshell, so what it reads back (results.txt) is read after the join.
+  lane_run() { # <walk>…
+    local lw phase total_stacks done_stacks pattern
+    for lw in "$@"; do
+      if [ "$(walk_field "$lw" 3)" = - ]; then
+        echo "  $lw has no fake"
+        continue
       fi
-      read_passes "$phase" "$walk" "$(want_tests "$walk" 4)"
+      pass_of fake "$lw" "" 1 1 || return $?
     done
+    for phase in full-1 full-2; do
+      for lw in "$@"; do
+        if [ "$(walk_field "$lw" 5)" = pass ]; then
+          pass_of "$phase" "$lw" "" 1 1 || return $?
+        else
+          total_stacks="$(patterns_of "$lw" | wc -l | tr -d ' ')"
+          done_stacks=0
+          while IFS= read -r pattern; do
+            done_stacks=$((done_stacks + 1))
+            pass_of "$phase" "$lw" "$pattern" "$done_stacks" "$total_stacks" || return $?
+          done <<<"$(patterns_of "$lw")"
+        fi
+      done
+    done
+  }
+
+  # The lanes: the table's last column, or one lane for --serial; only those the walks name, in order.
+  local lane_ids=() lane_walks=() lane_pids=() li lane_of found
+  for walk in "${walks[@]}"; do
+    lane_of=1
+    [ -n "$serial" ] || lane_of="$(walk_field "$walk" 8)"
+    found=-1
+    for ((li = 0; li < ${#lane_ids[@]}; li++)); do
+      [ "${lane_ids[li]}" != "$lane_of" ] || found=$li
+    done
+    if [ "$found" -ge 0 ]; then
+      lane_walks[found]="${lane_walks[found]} $walk"
+    else
+      lane_ids+=("$lane_of")
+      lane_walks+=("$walk")
+    fi
+  done
+  echo "== 3/6 the passes: ${#lane_ids[@]} lane(s) at once (elapsed $(elapsed))"
+  for ((li = 0; li < ${#lane_ids[@]}; li++)); do
+    echo "  lane ${lane_ids[$li]}: ${lane_walks[$li]}"
+    {
+      # shellcheck disable=SC2086  # the walk names hold no glob or space
+      lane_run ${lane_walks[$li]}
+      echo $? >"$run/lane-${lane_ids[$li]}.rc"
+    } 2>&1 | awk -v p="$([ ${#lane_ids[@]} -gt 1 ] && echo "[lane ${lane_ids[$li]}] ")" '{ print p $0; fflush() }' &
+    lane_pids+=($!)
+  done
+  wait ${lane_pids[@]+"${lane_pids[@]}"}
+  stop_if_interrupted
+  local lrc
+  for ((li = 0; li < ${#lane_ids[@]}; li++)); do
+    lrc="$(cat "$run/lane-${lane_ids[$li]}.rc" 2>/dev/null || echo unread)"
+    case "$lrc" in
+      0) ;;
+      3) finish "red: the gate lock $gate_lock appeared; lane ${lane_ids[$li]} stopped" 1 ;;
+      *) reds+=("lane ${lane_ids[$li]} ended with $lrc") ;;
+    esac
+  done
+  for walk in "${walks[@]}"; do
+    [ "$(walk_field "$walk" 3)" = - ] || read_passes fake "$walk" "$(want_tests "$walk" 3)"
+    read_passes full-1 "$walk" "$(want_tests "$walk" 4)"
+    read_passes full-2 "$walk" "$(want_tests "$walk" 4)"
   done
 
-  echo "== 6/8 the raw count: every pixel that moved (elapsed $(elapsed))"
+  echo "== 4/6 the raw count: every pixel that moved (elapsed $(elapsed))"
   local w out rc base suffix view opts
   for w in "${walks[@]}"; do
     if [ "$(walk_field "$w" 3)" != - ]; then
@@ -438,7 +489,7 @@ main() {
   done
   stop_if_interrupted
 
-  echo "== 7/8 the bases (elapsed $(elapsed))"
+  echo "== 5/6 the bases (elapsed $(elapsed))"
   if [ -z "$write" ]; then
     echo "  not asked (--write)"
   elif [ ${#reds[@]} -gt 0 ]; then
@@ -459,7 +510,7 @@ main() {
     echo "  the machine reads git's diff and commits them"
   fi
 
-  echo "== 8/8 the verdict (elapsed $(elapsed))"
+  echo "== 6/6 the verdict (elapsed $(elapsed))"
   printf '  %s\n' "${verdicts[@]}"
   if [ ${#reds[@]} -eq 0 ]; then
     finish "green: ${#verdicts[@]} comparisons, every raw count as asked; results in $run" 0

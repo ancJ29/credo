@@ -66,8 +66,14 @@ src/walk-run.test.ts` (stand-ins, `scripts/src/walk-run.test.ts#L76-L106`).
   `walk/run.sh` in a throwaway repo, three cases: empty run 1 (no commit, bytes, green), a moved base (one commit,
   green), a count of 1 (red, named). `shellcheck -x` clean on both scripts; `scripts` typecheck, prettier, 100 %
   coverage and `ops/test.sh` green, each `== exit 0`.
-- [ ] **3. The lanes, cheap.** 🤖 Sonnet, about 5 minutes. Done when: the existing cases green unchanged; row 4 by a
+- [x] **3. The lanes, cheap.** 🤖 Sonnet, about 5 minutes. Done when: the existing cases green unchanged; row 4 by a
   stand-in holding each pass until every lane has started one (today's script times out: the red); rows 5 and 6.
+  Evidence: the table's lane column (piece-2; admin-lists, office-orders, driver-deliveries, office-reconcile; the six
+  others), each lane a background subshell with `[lane n]` lines, `--serial` for one lane, the markers `== 1/6` to
+  `6/6`, `--output` a folder a pass under the run's `pw/`; `results.txt` read after the join. Rows 4 to 6: three
+  new test lines, red against the serial script (the hold timed out, 26 s), then 29 of 29 green with the existing
+  cases unchanged. `shellcheck -x` clean on both scripts; `scripts` typecheck, eslint on the touched files, prettier
+  and vitest at 100 % under the gate lock, `== exit 0`. Not yet: a lane's gate-lock stop and Ctrl-C (step 4).
 - [ ] **4. The lanes, hardened.** 🤖 Sonnet, about 5 minutes. Done when: rows 7 and 8 each seen red once; `scripts`
   at 100 %; one whole `pnpm check` under the gate lock, `== exit 0`.
 - [ ] **5. One review.** 🤖 Opus, correctness only, at a fixed sha, about 5 minutes. Done when: each finding tagged

@@ -95,6 +95,14 @@ case " $* " in
     i=1; while [ "$i" -le "$n" ]; do i=$((i + 1)); echo "  [x] › a.spec.ts:1:1 › a walk on a pc (1280) › walks screen $i"; done ;;
   *)
     last=""; for a in "$@"; do last="$a"; done
+    [ -z "$SHIM_ARGS_LOG" ] || echo "$*" >> "$SHIM_ARGS_LOG"
+    if [ -n "$SHIM_HOLD_FOR" ]; then
+      touch "$SHIM_HOLD_DIR/$$"; i=0
+      while [ "$(ls "$SHIM_HOLD_DIR" | wc -l)" -lt "$SHIM_HOLD_FOR" ]; do
+        i=$((i + 1)); if [ "$i" -gt 100 ]; then echo "  0 passed (held, no other lane started)"; exit 1; fi
+        sleep 0.1
+      done
+    fi
     pic="$SHIM_PICTURE"
     case "$CREDO_SHOTS_DIR" in */$SHIM_MOVED_IN/*) pic="$SHIM_PICTURE_MOVED" ;; esac
     mkdir -p "$CREDO_SHOTS_DIR"
@@ -569,6 +577,67 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
       expect(run(l, ['operator', '--bytes', join(folder, 'nope')]).out).toMatch(
         /== refused: .* is not a folder/,
       );
+    });
+  });
+
+  describe('the lanes', () => {
+    const walks = ['piece-2', 'admin-lists', 'operator'];
+    const folderOf = (out: string) => /^ {2}pictures and results in (.*)$/m.exec(out)?.[1] ?? '';
+    const stacks = (out: string) =>
+      out
+        .split('\n')
+        .map((line) => /-- stack \d+\/\d+: .*?(?= \(load)/.exec(line)?.[0])
+        .filter((line): line is string => line !== undefined);
+    const pictureNames = (folder: string) =>
+      execFileSync('find', [folder, '-name', '*.png'], { encoding: 'utf8' })
+        .split('\n')
+        .filter(Boolean)
+        .map((file) => file.slice(folder.length))
+        .sort();
+    /** Every pass holds until `lanes` passes have started: only passes at once get through. */
+    const held = (lanes: number) => {
+      const dir = mkdtempSync(join(temp, 'hold-'));
+      return { SHIM_HOLD_FOR: String(lanes), SHIM_HOLD_DIR: dir };
+    };
+
+    it('three lanes run at once, each walk’s passes as before, and the verdict waits for all', () => {
+      const l = layout();
+
+      const { code, out } = run(l, walks, held(3));
+
+      expect(out).toContain('== 3/6 the passes: 3 lane(s) at once');
+      for (const n of [1, 2, 3]) expect(out).toContain(`[lane ${n}] -- stack 1/1: fake`);
+      expect(out).toContain('[lane 3] -- stack 2/2: full-1, operator');
+      expect(out).toContain('fake operator: 2 of 2 tests passed');
+      expect(out).toMatch(/== verdict: green/);
+      expect(code).toBe(0);
+    });
+
+    it('--serial gives the same passes and pictures in one lane, the walks one after the other', () => {
+      const lanes = run(layout(), walks, held(3));
+      const serial = run(layout(), [...walks, '--serial'], held(1));
+
+      expect(serial.out).toContain('== 3/6 the passes: 1 lane(s) at once');
+      expect(serial.out).not.toContain('[lane');
+      expect(serial.code).toBe(0);
+      expect(stacks(serial.out).sort()).toEqual(stacks(lanes.out).sort());
+      expect(pictureNames(folderOf(serial.out))).toEqual(pictureNames(folderOf(lanes.out)));
+      expect(stacks(serial.out)[0]).toContain('fake, piece-2');
+    });
+
+    it('each pass writes Playwright’s output into a folder of its own in the run’s', () => {
+      const l = layout();
+      const log = join(temp, `args-${count}.log`);
+
+      const { out } = run(l, walks, { SHIM_ARGS_LOG: log });
+
+      const outputs = readFileSync(log, 'utf8')
+        .split('\n')
+        .map((line) => /--output (\S+)/.exec(line)?.[1])
+        .filter((dir): dir is string => dir !== undefined);
+      expect(outputs.length).toBe(stacks(out).length);
+      expect(new Set(outputs).size).toBe(outputs.length);
+      for (const dir of outputs) expect(dir.startsWith(`${folderOf(out)}/pw/`)).toBe(true);
     });
   });
 
