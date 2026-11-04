@@ -515,6 +515,63 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(named.code).toBe(0);
   });
 
+  describe('--bytes, run 2 of a full run', () => {
+    /** Run 1 with --write, its bases committed; the folder it names for its pictures. */
+    const afterRun1 = () => {
+      const l = layout();
+      const first = run(l, ['operator', '--moved', 'all', '--write']);
+      git(l.tree, 'add', '.');
+      git(l.tree, 'commit', '-q', '-m', 'bases');
+      const folder = /^ {2}pictures and results in (.*)$/m.exec(first.out)?.[1] ?? '';
+      expect(folder).not.toBe('');
+      return { l, folder };
+    };
+
+    it('reads every committed base equal to run 1’s picture: green, every count 0, no browser', () => {
+      const { l, folder } = afterRun1();
+
+      const { code, out } = run(l, ['operator', '--bytes', folder]);
+
+      expect(out).toContain(
+        'compare run 1 to the bases: operator: 2 pictures, 0 moved, 0 new, 0 without a counterpart, 0 unreadable',
+      );
+      expect(out).toMatch(/== verdict: green/);
+      expect(out).not.toContain('Chromium');
+      expect(code).toBe(0);
+      expect(git(l.tree, 'status', '--porcelain')).toBe('');
+    });
+
+    it('one byte off, or a base or a picture on one side only, is red and named', () => {
+      const { l, folder } = afterRun1();
+      const base = baseOf(l, 's2');
+      writeFileSync(base, Buffer.concat([readFileSync(base), Buffer.from([0])]));
+      git(l.tree, 'commit', '-q', '-am', 'a base off by one byte');
+
+      const off = run(l, ['operator', '--bytes', folder]);
+
+      expect(off.code).toBe(1);
+      expect(off.out).toContain('moved s2-en-390.png: bytes differ');
+      expect(off.out).toMatch(/== verdict: red: .*bytes: operator/);
+
+      rmSync(join(folder, 'full-1/operator/s3-en-390.png'));
+      const missing = run(l, ['operator', '--bytes', folder]);
+
+      expect(missing.code).toBe(1);
+      expect(missing.out).toContain('only in the right: s3-en-390.png');
+    });
+
+    it('stands alone: refused with --write, and refused on a folder that is not there', () => {
+      const { l, folder } = afterRun1();
+
+      expect(run(l, ['operator', '--write', '--bytes', folder]).out).toMatch(
+        /== refused: --bytes stands alone/,
+      );
+      expect(run(l, ['operator', '--bytes', join(folder, 'nope')]).out).toMatch(
+        /== refused: .* is not a folder/,
+      );
+    });
+  });
+
   it('a pass whose tests did not all pass is red, whatever the pictures say', () => {
     const l = layout();
 

@@ -58,8 +58,14 @@ Every check runs in the sandbox; while iterating, `pnpm --filter @credo/scripts 
 src/walk-run.test.ts` (stand-ins, `scripts/src/walk-run.test.ts#L76-L106`).
 
 - [x] **1. This plan.** 🤖 Opus, about 8 minutes. Done when: committed, about 1,000 words.
-- [ ] **2. Run 2 as bytes, end to end.** 🤖 Sonnet, about 5 minutes. Done when: rows 1 to 3 each seen red once;
+- [x] **2. Run 2 as bytes, end to end.** 🤖 Sonnet, about 5 minutes. Done when: rows 1 to 3 each seen red once;
   `shellcheck -x ops/full-run.sh` clean; the throwaway repo (scratch, never committed) green, empty run 1, red count.
+  Evidence: `compare --bytes` (`scripts/src/walks.ts`), `walk/run.sh --bytes <run 1's folder>` (files only, view in
+  `bytes/`, refuses `--write`, `--moved`, `--checks`), `ops/full-run.sh` step 3 calling it and committing only if
+  run 1 staged a base. Rows 1 and 2: 5 new test lines red (reader reverted), then 40 of 40 green. Row 3: a stand-in
+  `walk/run.sh` in a throwaway repo, three cases: empty run 1 (no commit, bytes, green), a moved base (one commit,
+  green), a count of 1 (red, named). `shellcheck -x` clean on both scripts; `scripts` typecheck, prettier, 100 %
+  coverage and `ops/test.sh` green, each `== exit 0`.
 - [ ] **3. The lanes, cheap.** 🤖 Sonnet, about 5 minutes. Done when: the existing cases green unchanged; row 4 by a
   stand-in holding each pass until every lane has started one (today's script times out: the red); rows 5 and 6.
 - [ ] **4. The lanes, hardened.** 🤖 Sonnet, about 5 minutes. Done when: rows 7 and 8 each seen red once; `scripts`

@@ -2,6 +2,7 @@
 # walk/run.sh: the full run of the walks, one command for every walk (docs/plans/2026-10-31-walk-steady.md).
 #
 #   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks]
+#   bash walk/run.sh <walk>… --bytes <a run's folder>
 #
 # Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services, root-password, team (the table below). It takes every picture of each walk on the
 # fake UI (where the walk has one), then on the stack, then on fresh stacks again, and counts raw the
@@ -12,6 +13,9 @@
 #   --write   after a green read only: the first stack's pictures replace the walk's bases, new ones
 #             are added and retired ones removed; the machine reads git's diff and commits
 #   --checks  the refusals and Playwright's listings only, then stop
+#   --bytes   no browser, no stack: each walk's full-1 pictures in a finished run's folder (the line "pictures and
+#             results in" of run 1) against the committed bases, byte for byte; any byte off, or a name on one
+#             side only, is red. Alone: not with --write, --moved or --checks.
 #
 # TIME: about 15 to 20 minutes for the first three walks (a Mac with nothing else running): the fake
 # passes about 2 minutes, a pass of the stacks about 6 (the operator's 18 stacks 2½, piece 2's 2½,
@@ -131,7 +135,7 @@ mkdir -p "$logdir" 2>/dev/null
 log="$logdir/$(date '+%Y%m%d-%H%M')-walk${names:--none}.log"
 
 main() {
-  local interrupted="" walks=() moved="" write="" checks_only=""
+  local interrupted="" walks=() moved="" write="" checks_only="" bytes_from=""
   trap 'interrupted="at $(elapsed)"' INT TERM HUP
   refuse() {
     echo "== refused: $1"
@@ -147,6 +151,11 @@ main() {
         ;;
       --write) write=yes ;;
       --checks) checks_only=yes ;;
+      --bytes)
+        [ $# -ge 2 ] && [ "${2#-}" = "$2" ] || refuse "--bytes needs a run's folder"
+        bytes_from="$2"
+        shift
+        ;;
       -*) refuse "unknown option $1 (walks: $(walk_names | tr '\n' ' '); options: --moved --write --checks)" ;;
       *)
         walk_names | grep -qx "$1" || refuse "unknown walk '$1' (walks: $(walk_names | tr '\n' ' '))"
@@ -176,6 +185,44 @@ main() {
       finish "red: interrupted $interrupted; $left; what ran is in $run" 130
     }
   }
+
+  if [ -n "$bytes_from" ]; then
+    [ -z "$write$moved$checks_only" ] || refuse "--bytes stands alone: not with --write, --moved or --checks"
+    # Run 2 of a full run: files only, so no browser, no stack, no load check.
+    echo "== 1/2 checks (elapsed $(elapsed))"
+    local dirty_b tool_name walk
+    dirty_b="$(git -C "$tree" status --porcelain 2>&1)" || refuse "git status failed: $dirty_b"
+    [ -z "$dirty_b" ] || refuse "the worktree is not clean: $(printf '%s\n' "$dirty_b" | head -5 | tr '\n' ';')"
+    [ -d "$bytes_from" ] || refuse "$bytes_from is not a folder"
+    for tool_name in node git; do
+      command -v "$tool_name" >/dev/null 2>&1 || refuse "$tool_name is not installed"
+    done
+    [ "$(node --version 2>&1)" = "$want_node" ] || refuse "node is '$(node --version 2>&1)', expected $want_node from $node_bin"
+    for walk in "${walks[@]}"; do
+      ls "$bytes_from/full-1/$walk"/*.png >/dev/null 2>&1 || refuse "no pictures of $walk in $bytes_from/full-1/$walk"
+    done
+    echo "  $(git -C "$tree" rev-parse --abbrev-ref HEAD) at $sha, clean; reading $bytes_from"
+    mkdir -p "$run" || finish "red: cannot make $run" 1
+    echo "  views of the bases in $run"
+    echo "== 2/2 the bytes of run 1's pictures against the bases (elapsed $(elapsed))"
+    local bw bsuffix bview bbase bout brc
+    for bw in "${walks[@]}"; do
+      bsuffix="$(walk_field "$bw" 7)"
+      bview="$run/bytes/$bw"
+      mkdir -p "$bview"
+      for bbase in "$tree/$(walk_field "$bw" 6)"/*.png; do
+        [ -e "$bbase" ] || continue
+        cp "$bbase" "$bview/$(basename "$bbase" "$bsuffix.png").png"
+      done
+      bout="$(tool compare "run 1 to the bases: $bw" "$bytes_from/full-1/$bw" "$bview" --bytes)"
+      brc=$?
+      echo "$bout"
+      verdicts+=("$(printf '%s\n' "$bout" | sed -n 1p | sed 's/^compare //'): $(printf '%s\n' "$bout" | tail -1)")
+      [ $brc -eq 0 ] || reds+=("bytes: $bw")
+    done
+    [ ${#reds[@]} -eq 0 ] || finish "red: $(printf '%s; ' "${reds[@]}")(bytes, against $bytes_from)" 1
+    finish "green: ${#verdicts[@]} byte comparisons, every count 0" 0
+  fi
 
   echo "== 1/8 checks (elapsed $(elapsed))"
   local tool_name

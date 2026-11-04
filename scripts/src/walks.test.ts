@@ -252,6 +252,39 @@ describe('the raw count of two folders of pictures', () => {
     expect(code).toBe(1);
   });
 
+  it('--bytes reads equal files green, and one byte off is red even where the pixels are equal', async () => {
+    const same = png(4, 4);
+    const sameOtherBytes = Buffer.concat([same, Buffer.from([0])]);
+    const d = await folders({ 'a-en-390.png': same }, { 'a-en-390.png': Buffer.from(same) });
+    const e = await folders({ 'a-en-390.png': same }, { 'a-en-390.png': sameOtherBytes });
+
+    const green = await run(['compare', 'x', d.left, d.right, '--bytes']);
+    const red = await run(['compare', 'x', e.left, e.right, '--bytes']);
+
+    expect(green.code).toBe(0);
+    expect(green.lines[0]).toBe(
+      'compare x: 1 pictures, 0 moved, 0 new, 0 without a counterpart, 0 unreadable',
+    );
+    expect(red.code).toBe(1);
+    expect(red.lines).toContain(
+      `  moved a-en-390.png: bytes differ, ${same.length} against ${same.length + 1}`,
+    );
+    expect(red.lines.at(-1)).toBe('result: red: 1 moved');
+  });
+
+  it('--bytes names a picture or a base on one side only, and is red', async () => {
+    const d = await folders(
+      { 'a-en-390.png': png(4, 4), 'new-en-390.png': png(4, 4) },
+      { 'a-en-390.png': png(4, 4), 'old-en-390.png': png(4, 4) },
+    );
+
+    const { code, lines } = await run(['compare', 'x', d.left, d.right, '--bytes']);
+
+    expect(code).toBe(1);
+    expect(lines).toContain('  only in the left: new-en-390.png');
+    expect(lines).toContain('  only in the right: old-en-390.png');
+  });
+
   it('refuses a call it does not understand, by name', async () => {
     expect((await run([])).lines[0]).toMatch(/^usage:/);
     expect((await run(['compare', 'x'])).code).toBe(2);
