@@ -30,7 +30,14 @@ import { Loaded } from './Loaded';
 import classes from './staffList.module.css';
 import { type PageProps, useLoad } from './page';
 import { phoneOf, unitName } from './staffNames';
-import { type Criteria, criteriaOf, matches, paramsOf, type Status } from './staffFilter';
+import {
+  type Criteria,
+  criteriaOf,
+  lowerFirst,
+  matches,
+  paramsOf,
+  type Status,
+} from './staffFilter';
 
 /** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
  * app's one-line filters show the value alone. */
@@ -214,7 +221,7 @@ export function StaffListPage(page: PageProps) {
                 {
                   value: '',
                   label: t('staff.filterAllOf', {
-                    field: field.label[language].toLocaleLowerCase(language),
+                    field: lowerFirst(field.label[language], language),
                   }),
                 },
                 ...field.options.map((option) => ({
@@ -243,15 +250,17 @@ export function StaffListPage(page: PageProps) {
                     </Group>
                     {chip(person)}
                   </Group>
-                  {[
-                    person.code,
-                    unitName(person.department, setup.departments),
-                    unitName(person.position, setup.positions),
-                    phoneOf(person),
-                  ]
-                    .filter(Boolean)
-                    .map((line) => (
-                      <Text key={line} size="sm" c="dimmed">
+                  {(
+                    [
+                      ['code', person.code],
+                      ['department', unitName(person.department, setup.departments)],
+                      ['position', unitName(person.position, setup.positions)],
+                      ['phone', phoneOf(person)],
+                    ] as const
+                  )
+                    .filter(([, line]) => line)
+                    .map(([field, line]) => (
+                      <Text key={field} size="sm" c="dimmed">
                         {line}
                       </Text>
                     ))}

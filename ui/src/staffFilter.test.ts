@@ -1,6 +1,14 @@
 import { DEMO_EMPLOYEES, DEMO_STAFF_SETUP } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
-import { type Criteria, criteriaOf, folded, matches, paramsOf, wordsShown } from './staffFilter';
+import {
+  type Criteria,
+  criteriaOf,
+  folded,
+  lowerFirst,
+  matches,
+  paramsOf,
+  wordsShown,
+} from './staffFilter';
 
 const none: Criteria = { q: '', department: '', position: '', status: 'active', choices: {} };
 const shown = {
@@ -30,7 +38,7 @@ describe('the staff list’s search and filters', () => {
     expect(criteriaOf(new URLSearchParams('f.licence=&other=1&left=0'))).toEqual(none);
   });
 
-  it('The status is kept in the address: Active is the bare address, Inactive and All are written, and an unknown value or the old left=1 reads as Active', () => {
+  it('The status is kept in the address: Active is the bare address, Inactive and All are written, and an unknown value reads as Active and an old left=1 link, which meant everyone, as All', () => {
     expect(paramsOf({ ...none, status: 'active' }).toString()).toBe('');
     expect(paramsOf({ ...none, status: 'inactive' }).toString()).toBe('status=inactive');
     expect(paramsOf({ ...none, status: 'all' }).toString()).toBe('status=all');
@@ -38,7 +46,8 @@ describe('the staff list’s search and filters', () => {
     expect(criteriaOf(new URLSearchParams('status=all')).status).toBe('all');
     expect(criteriaOf(new URLSearchParams('status=active')).status).toBe('active');
     expect(criteriaOf(new URLSearchParams('status=gone')).status).toBe('active');
-    expect(criteriaOf(new URLSearchParams('left=1')).status).toBe('active');
+    expect(criteriaOf(new URLSearchParams('left=1')).status).toBe('all');
+    expect(criteriaOf(new URLSearchParams('left=0')).status).toBe('active');
   });
 
   it('folds case, accents and đ, so Vietnamese is found as it is typed with or without its marks', () => {
@@ -90,5 +99,16 @@ describe('the staff list’s search and filters', () => {
     expect(test(driver, { status: 'all' })).toBe(true);
     // a person in no department is in no department's filter
     expect(test(named('Bùi Ngọc Anh'), { department: delivery })).toBe(false);
+  });
+});
+
+describe('a field’s name inside a sentence', () => {
+  it('Only the first letter is lowered, and not at all when the first word is an acronym', () => {
+    expect(lowerFirst('Bằng lái xe', 'vi')).toBe('bằng lái xe');
+    expect(lowerFirst('Loại GPLX', 'vi')).toBe('loại GPLX');
+    expect(lowerFirst('CCCD', 'vi')).toBe('CCCD');
+    expect(lowerFirst('GPLX hạng', 'vi')).toBe('GPLX hạng');
+    expect(lowerFirst('A', 'en')).toBe('a');
+    expect(lowerFirst('', 'en')).toBe('');
   });
 });

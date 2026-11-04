@@ -1051,6 +1051,21 @@ describe('the list and its address', () => {
     expect(address()).toBe('/staff?q=lan');
   });
 
+  it('The table’s link leads Back to the list as it was narrowed, as the card’s does', async () => {
+    appAt('/staff?q=lan');
+    await screen.findAllByRole('link', { name: 'Nguyễn Thị Lan' });
+    const tableLink = within(screen.getByRole('table')).getByRole('link', {
+      name: 'Nguyễn Thị Lan',
+    });
+    await user.click(tableLink);
+    await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });
+
+    await user.click(screen.getByRole('link', { name: /Back/ }));
+
+    expect((await screen.findByLabelText<HTMLInputElement>('Search')).value).toBe('lan');
+    expect(address()).toBe('/staff?q=lan');
+  });
+
   it('A person opened by address goes back to the bare list', async () => {
     appAt(at('EMP-0001'));
     await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });

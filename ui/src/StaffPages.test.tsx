@@ -114,6 +114,27 @@ describe('the staff list', () => {
     }
   });
 
+  it('A card whose department and position share a name shows both lines, with no duplicate-key warning', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    openApp('/staff', {
+      override: (api, original) => {
+        api.listEmployees.mockImplementation(async () =>
+          (await original.listEmployees()).map((employee) => ({
+            ...employee,
+            department: { id: 'gone-d', name: 'Kế toán' },
+            position: { id: 'gone-p', name: 'Kế toán' },
+          })),
+        );
+      },
+    });
+    await screen.findAllByTestId('staff-card');
+
+    const lan = screen.getAllByTestId('staff-card')[0];
+    expect(lan.textContent).toContain('EMP-0001Kế toánKế toán0903 111 001');
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+    warn.mockRestore();
+  });
+
   it('Inactive with nobody who left says no one matches', async () => {
     openApp('/staff?status=inactive', {
       override: (api, original) => {

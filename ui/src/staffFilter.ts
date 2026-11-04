@@ -23,9 +23,22 @@ export type Criteria = {
 
 const CHOICE = 'f.';
 
-/** The status an address names; anything else, an old `left=1` included, is Active. */
-const statusOf = (value: string | null): Status =>
-  value === 'inactive' || value === 'all' ? value : 'active';
+/** The status an address names; an old link's `left=1` meant everyone, so it is All; anything else
+ * is Active. */
+const statusOf = (value: string | null, left: string | null): Status =>
+  value === 'inactive' || value === 'all'
+    ? value
+    : value === null && left === '1'
+      ? 'all'
+      : 'active';
+
+/** A name inside a sentence: its first letter lowered, unless its first word is an acronym
+ * ("CCCD", "GPLX"), which stays as written. */
+export function lowerFirst(name: string, language: Language) {
+  const first = name.split(/\s+/)[0] ?? '';
+  const acronym = first.length > 1 && first === first.toLocaleUpperCase(language);
+  return acronym ? name : name.charAt(0).toLocaleLowerCase(language) + name.slice(1);
+}
 
 /** The criteria an address holds; anything it does not name is not set. */
 export function criteriaOf(params: URLSearchParams): Criteria {
@@ -33,7 +46,7 @@ export function criteriaOf(params: URLSearchParams): Criteria {
     q: params.get('q') ?? '',
     department: params.get('department') ?? '',
     position: params.get('position') ?? '',
-    status: statusOf(params.get('status')),
+    status: statusOf(params.get('status'), params.get('left')),
     choices: Object.fromEntries(
       [...params].flatMap(([key, value]) =>
         key.startsWith(CHOICE) && value ? [[key.slice(CHOICE.length), value]] : [],

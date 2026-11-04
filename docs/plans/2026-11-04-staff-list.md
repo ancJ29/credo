@@ -27,8 +27,8 @@ then the words, two scenes and the spec. Decided here:
   động", "Tất cả"; English Status: Active, Inactive, All. `staff.showLeft` goes; `staff.left` stays on the person's
   page (`ui/src/PersonPage.tsx#L369`), milestone 1's file, for milestone 2 to reword.
 - **The choice:** a `NativeSelect`, first in the filters' grid (`ui/src/StaffListPage.tsx#L162-L182`). The address
-  writes `status=inactive` or `status=all`; Active is the bare address (`ui/src/staffFilter.ts#L38-L39`); `left=1` is
-  no longer read, so an old address opens on Active. The old app opens on All (its `EmployeeListPage.tsx#L48`); the cut kept today's Active.
+  writes `status=inactive` or `status=all`; Active is the bare address (`ui/src/staffFilter.ts#L38-L39`); an old link's
+  `left=1` meant everyone, so it reads as All (decided at the review, the machine's). The old app opens on All (its `EmployeeListPage.tsx#L48`); the cut kept today's Active.
 - **Cards and table both in the markup,** one shown by width (`hiddenFrom`/`visibleFrom="sm"`), as the frame's phone
   bar (`ui/src/Shell.tsx#L230`): a screen's version is read from its markup (`visual/src/capture.ts#L260`), and the
   spec's `personNamed` clicks the visible name link at any width (`walk/specs/piece-2.spec.ts#L203-L206`). *Hazard:*
@@ -55,7 +55,7 @@ cut: it shows the "nothing yet" notice (`ui/src/ClientApp.tsx#L390-L392`, `visua
 | 1 | Each person in the list carries a chip: Active, filled in the brand's shade 7, or Inactive, gray | unit, ui |
 | 2 | The list opens on Active: people who left hidden, the address bare | unit, `staffFilter.test.ts`; ui |
 | 3 | Inactive shows only people who left, All everyone, in code order; chosen in the list | unit, ui |
-| 4 | The status is kept in the address and read back, with search, department, position and choices; an unknown value or `left=1` reads as Active | unit, `staffFilter.test.ts` |
+| 4 | The status is kept in the address and read back, with search, department, position and choices; an unknown value reads as Active, an old `left=1` as All | unit, `staffFilter.test.ts` |
 | 5 | Under 768 one card a person: the name a link to their page, code, department, position, phone, chip; a missing value leaves no empty line; from 768 the table | unit, ui; the walk |
 | 6 | Inactive with nobody who left says no one matches | unit, ui |
 | 7 | The fake's scenes equal the spec's and the walks page's; fake = stack = stack again | visual; the walk |
