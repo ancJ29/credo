@@ -82,10 +82,10 @@ Red first: the business rows 1, 2, 3 and 5, each once against today's page.
   on the second whole run (the first, at load 47 from other agents' runs, timed out two ui tests, one in
   `SignIns.test.tsx`, one in `StaffSetupPage.test.tsx`, 5-second limits; a rerun at load below 8 is green, named a rerun); shared
   151, bff 524, ui 701, visual 191, scripts 277 tests, each at 100 %.
-- [ ] **4. One review.** 🤖 Opus, about 5 minutes. Done when: each finding is tagged here.
-- [ ] **5. The full run** (👤 2), about 17 minutes, plus 2 for its one-off and 2 for its log: `ops/full-run.sh`,
-  `--moved` the five. Done when: run 1 green, its raw counts naming only the five; run 2 all 0; 30 bases committed.
-- [ ] **6. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, its products row true.
+- [x] **4. One review.** 🤖 Opus, about 5 minutes. Done when: each finding is tagged here. Done 2026-11-04: no High or Medium; three Lows and one Info, the Lows fixed in `a7fd011`, `3bb5813` (the reviewer's reread: all hold), the Info is open item 93; the first Low-free look: the third look yes 19:1x.
+- [x] **5. The full run** (👤 2), about 17 minutes, plus 2 for its one-off and 2 for its log: `ops/full-run.sh`,
+  `--moved` the five. Done when: run 1 green, its raw counts naming only the five; run 2 all 0; 30 bases committed. Done 2026-11-04 19:19 to 19:35 (16m42s): green, bases `97bde05`, 30 pictures, exactly the five screens.
+- [x] **6. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, its products row true. Done 2026-11-04: `docs/recaps/2026-11-04-staff-list.md`, products row 'Staff and setup' changed.
 
 Total: about 65 minutes, 48 the machine's: what the palettes' steps took on 11-04, a UI-only piece of this size.
 
