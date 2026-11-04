@@ -4,10 +4,10 @@
  * Run by ops/legacy-capture.sh (read its header first); it is a plain Node script (Node 26 strips the types), a
  * library user of Playwright, not the test runner, so the credential can reach it on stdin.
  *
- *   node walk/legacy-capture.ts --url <address> --screens <file> --out <dir>      (two lines on stdin)
+ *   node walk/legacy-capture.ts --url <address> --screens <file> --out <dir>      (three lines on stdin)
  *   node walk/legacy-capture.ts --screens <file> --check                          (parse only, no stdin)
  *
- * Stdin: line 1 the root's name, line 2 the password. Read once, held in two variables, typed into the sign-in
+ * Stdin: line 1 the root's name, line 2 the password, line 3 the legacy's tunnel seed. Read once, held in two variables, typed into the sign-in
  * form, never printed, logged or written. The sign-in step's failure is a fixed text. No trace, video or HAR is
  * recorded (they keep typed values). The address is read from the command line and written nowhere.
  *
@@ -18,14 +18,20 @@
  *   route    `/employees/:id` takes the id of the first row of the list route named by `list=<route>`
  *            (default: the route up to the `:id`)
  *   auth=no  taken before signing in
- *   tab=word clicks the tab whose name holds the word, then the picture
+ *   tab=word clicks the tab whose value is the word (the legacy's Tabs.Tab value, the same in every language),
+ *            then the picture; PC only, since the legacy's phone frame shows its tabs as a select
  *   if-menu=1 only when the page after sign-in links to the route; else a "not shown" line
  * Out: <name>-pc.png, <name>-phone.png and calls.json (each screen's API calls as `METHOD /path`, ids as `:id`,
- * no query, no body).
+ * no query, no body; `blocked`: the calls refused after the sign-in).
+ *
+ * Read only, enforced: after the sign-in every request that is not a read is aborted (`readOnly`). The legacy's
+ * connector sends every API call from a browser, reads included, as `POST …/api/request` with the real method and
+ * path inside a scrambled msgpack envelope (its shared/connectors call-api.ts), so that envelope is read back here.
  */
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Browser, BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Page, Request } from '@playwright/test';
 
 type Device = 'pc' | 'phone';
 interface Screen {
@@ -78,7 +84,7 @@ function parseScreens(text: string): Screen[] {
     for (const o of opts) {
       const [k, v] = o.split('=');
       if (k === 'auth' && v === 'no') s.auth = false;
-      else if (k === 'tab' && v && /^[A-Za-z]+$/.test(v)) s.tab = v;
+      else if (k === 'tab' && v && /^[a-z]+$/.test(v)) s.tab = v;
       else if (k === 'if-menu' && v === '1') s.ifMenu = true;
       else if (k === 'list' && v?.startsWith('/')) s.list = v;
       else
@@ -87,6 +93,8 @@ function parseScreens(text: string): Screen[] {
     if (s.route.includes(':id') && !s.route.endsWith(':id') && !/:id\/[a-z]+$/.test(s.route)) {
       fail(`${at}: :id stands as a path segment only`);
     }
+    if (s.tab && s.devices.includes('phone'))
+      fail(`${at}: tab= is pc only (the legacy's phone frame shows its tabs as a select)`);
     names.add(name);
     out.push(s);
   });
@@ -95,8 +103,9 @@ function parseScreens(text: string): Screen[] {
 }
 
 /** METHOD /path with ids as :id, no query, no body. */
-function callKey(method: string, rawUrl: string): string {
-  const path = new URL(rawUrl).pathname
+function callKey(method: string, rawPath: string): string {
+  const path = rawPath
+    .replace(/[?#].*/, '')
     .split('/')
     .map((seg) =>
       /^\d+$/.test(seg) ||
@@ -109,14 +118,95 @@ function callKey(method: string, rawUrl: string): string {
   return `${method} ${path}`;
 }
 
+/**
+ * The legacy's tunnel envelope XORs its msgpack bytes with SHA-256(seed + the hour slot) (its shared/kits
+ * crypt.ts `scrambleBytes`). The seed ships in every legacy bundle but stays out of this repo: ops/legacy-capture.sh
+ * reads it from the legacy's source file and sends it as stdin line 3; it is held here, never printed or logged.
+ */
+let tunnelSeed = '';
+
+/** The envelope's first two entries, `method` then `path`, as the connector writes them; else undefined. */
+function readEnvelope(b: Buffer): { method: string; path: string } | undefined {
+  let at = 0;
+  const str = (): string => {
+    const t = b.readUInt8(at++);
+    let n: number;
+    if (t >= 0xa0 && t <= 0xbf) n = t & 0x1f;
+    else if (t === 0xd9) n = b.readUInt8(at++);
+    else if (t === 0xda) {
+      n = b.readUInt16BE(at);
+      at += 2;
+    } else throw new RangeError('not a string');
+    if (at + n > b.length) throw new RangeError('short');
+    const s = b.toString('utf8', at, at + n);
+    at += n;
+    return s;
+  };
+  try {
+    const head = b.readUInt8(at++);
+    if (head === 0xde) at += 2;
+    else if (head < 0x82 || head > 0x8f) return undefined;
+    const fields = new Map<string, string>();
+    for (let i = 0; i < 2; i++) fields.set(str(), str());
+    const method = fields.get('method');
+    const path = fields.get('path');
+    if (!method || !/^[A-Z]+$/.test(method) || !path?.startsWith('/')) return undefined;
+    return { method, path };
+  } catch {
+    return undefined;
+  }
+}
+
+function tunnelCall(body: Buffer | null): { method: string; path: string } | undefined {
+  if (!body || body.length < 16) return undefined;
+  const slot = Math.floor(Date.now() / 3_600_000);
+  // The browser built the body a moment ago: this hour's key, or the one before it at the turn of the hour.
+  for (const s of [slot, slot - 1, slot + 1]) {
+    const key = createHash('sha256').update(`${tunnelSeed}${s}`).digest();
+    const call = readEnvelope(Buffer.from(body.map((v, i) => v ^ (key[i % key.length] ?? 0))));
+    if (call) return call;
+  }
+  return undefined;
+}
+
+/** The call a request makes: its own method and path, or the tunnel envelope's; undefined if unreadable. */
+function callOf(r: Request): { method: string; path: string } | undefined {
+  const path = new URL(r.url()).pathname;
+  if (r.method() === 'POST' && path.endsWith('/api/request')) return tunnelCall(r.postDataBuffer());
+  return { method: r.method(), path };
+}
+
+/** Reads by the legacy's own route tables, though POSTed: range and sync queries, a batch get, the session's refresh. */
+const READ_POSTS = /\/(query|query-sync|batch|refresh-token)$/;
+
+function isRead(c: { method: string; path: string }): boolean {
+  if (c.method === 'GET' || c.method === 'HEAD') return true;
+  return c.method === 'POST' && READ_POSTS.test(c.path.replace(/[?#].*/, ''));
+}
+
+/** After the sign-in: every request that is not a read (or cannot be read) is aborted and listed. */
+async function readOnly(ctx: BrowserContext, blocked: Set<string>, device: Device): Promise<void> {
+  await ctx.route('**/*', async (route) => {
+    const r = route.request();
+    const c = callOf(r);
+    if (c && isRead(c)) return route.continue();
+    const what = c
+      ? callKey(c.method, c.path)
+      : `${callKey(r.method(), new URL(r.url()).pathname)} (unreadable)`;
+    blocked.add(`${device}: ${what}`);
+    return route.abort('blockedbyclient');
+  });
+}
+
 async function readCredential(): Promise<{ user: string; pass: string }> {
   const chunks: Buffer[] = [];
   for await (const c of process.stdin) chunks.push(c as Buffer);
   const lines = Buffer.concat(chunks).toString('utf8').split('\n');
   const user = (lines[0] ?? '').replace(/\r$/, '');
   const pass = (lines[1] ?? '').replace(/\r$/, '');
-  if (user === '' || pass === '')
-    fail('stdin did not carry two lines: the root name, then the password');
+  tunnelSeed = (lines[2] ?? '').replace(/\r$/, '');
+  if (user === '' || pass === '' || tunnelSeed === '')
+    fail('stdin did not carry three lines: the root name, the password, the tunnel seed');
   return { user, pass };
 }
 
@@ -127,9 +217,11 @@ async function newContext(
   device: Device,
   pw: typeof import('@playwright/test'),
 ): Promise<BrowserContext> {
-  if (device === 'pc') return browser.newContext({ ...base.pc, colorScheme: 'light' });
+  // No service worker: a request it made would pass by the context's route (readOnly).
+  const own = { colorScheme: 'light', serviceWorkers: 'block' } as const;
+  if (device === 'pc') return browser.newContext({ ...base.pc, ...own });
   const { defaultBrowserType: _t, ...phone } = pw.devices['iPhone 13'];
-  return browser.newContext({ ...phone, colorScheme: 'light' });
+  return browser.newContext({ ...phone, ...own });
 }
 
 async function hrefsOf(page: Page): Promise<string[]> {
@@ -215,6 +307,9 @@ async function main(): Promise<void> {
   const browser = await pw.chromium.launch({ args: ['--disable-partial-raster'] });
   const calls: Record<string, string[]> = {};
   const notes: string[] = [];
+  const blocked = new Set<string>();
+  // The phone frame lists people as cards, not table rows: it opens the person the PC found.
+  const ids = new Map<string, string | undefined>();
   let reds = 0;
   try {
     for (const device of ['pc', 'phone'] as const) {
@@ -236,7 +331,7 @@ async function main(): Promise<void> {
         continue;
       }
       console.log(`== ${device}: signed in`);
-      const ids = new Map<string, string | undefined>();
+      await readOnly(ctx, blocked, device);
       for (const s of mine.filter((x) => x.auth)) {
         let route = s.route;
         if (route.includes(':id')) {
@@ -267,11 +362,14 @@ async function main(): Promise<void> {
   } finally {
     await browser.close();
   }
-  writeFileSync(join(out, 'calls.json'), JSON.stringify({ calls, notes }, null, 2) + '\n');
-  const nonGet = Object.values(calls)
-    .flat()
-    .filter((c) => !c.startsWith('GET ')).length;
-  console.log(`== calls.json written (${nonGet} calls that are not GET, listed there)`);
+  const refused = [...blocked].sort();
+  writeFileSync(
+    join(out, 'calls.json'),
+    JSON.stringify({ calls, blocked: refused, notes }, null, 2) + '\n',
+  );
+  console.log(
+    `== calls.json written (${refused.length} calls that are not reads blocked, listed there)`,
+  );
   if (reds > 0) process.exitCode = 1;
 }
 
@@ -288,19 +386,34 @@ async function shot(
 ): Promise<void> {
   const key = `${s.name}-${device}`;
   const seen = new Set<string>();
-  const onReq = (r: { method(): string; url(): string; resourceType(): string }): void => {
-    if (r.resourceType() === 'fetch' || r.resourceType() === 'xhr')
-      seen.add(callKey(r.method(), r.url()));
+  const onReq = (r: Request): void => {
+    if (r.resourceType() !== 'fetch' && r.resourceType() !== 'xhr') return;
+    const c = callOf(r);
+    seen.add(
+      c
+        ? callKey(c.method, c.path)
+        : `${callKey(r.method(), new URL(r.url()).pathname)} (unreadable)`,
+    );
   };
   page.on('request', onReq);
   try {
     await page.goto(root + (route ?? s.route));
     await settle(page);
+    if (s.auth && new URL(page.url()).pathname.startsWith('/login')) {
+      console.log(`== ${key}: failed (the page went back to the sign-in screen)`);
+      notes.push(`${key}: signed out`);
+      red();
+      return;
+    }
     if (s.tab) {
-      const word = new RegExp(s.tab, 'i');
-      const tab = page.getByRole('tab', { name: word }).first();
-      if ((await tab.count()) > 0) await tab.click();
-      else await page.getByText(word).first().click();
+      // Mantine's Tabs.Tab id ends in -tab-<value>; no click on a text that merely holds the word.
+      const tab = page.locator(`[role="tab"][id$="-tab-${s.tab}"]`).first();
+      if ((await tab.count()) === 0) {
+        console.log(`== ${key}: the tab is not shown; no picture`);
+        notes.push(`${key}: tab not shown`);
+        return;
+      }
+      await tab.click();
       await settle(page);
     }
     await page.screenshot({ path: join(out, `${key}.png`), fullPage: true });
@@ -316,4 +429,8 @@ async function shot(
   }
 }
 
-await main();
+// Node's own print of an uncaught error would carry Playwright's message and call log (the address with it).
+await main().catch((e: unknown) => {
+  console.log(`== failed (${e instanceof Error ? e.name : 'error'}; the message is not printed)`);
+  process.exitCode = 1;
+});

@@ -1,5 +1,5 @@
 #!/bin/bash
-# ops/legacy-capture.sh --url <the legacy app's address> --screens <file> [--out <dir>] [--stem <log name>] [--check]
+# ops/legacy-capture.sh --url <the legacy app's address> --screens <file> --tunnel-seed-from <file> [--out <dir>] [--stem <log name>] [--check]
 # Signs in to the LEGACY app as a client's root and takes one picture of each screen a screens file names, at the PC
 # width (1280x800) and on a phone (Playwright's emulated iPhone, since the legacy picks its phone frame by device, not
 # by width), for setting beside the new app's walks pictures. OPENING screens only: it navigates and reads, clicks a
@@ -10,23 +10,27 @@
 #   --url <address>    the legacy app's address, such as https://host (no path). Given on your command line only: never
 #                      written into any file, never printed or logged by this script.
 #   --screens <file>   one screen a line (name, pc or both, route, options); the format is at the top of walk/legacy-capture.ts
+#   --tunnel-seed-from <file>
+#                      a legacy source file (the old repo's workspace/shared/kits/src/crypt.ts) holding the constant
+#                      SCRAMBLE_SEED = '<value>'; the value is read from it at run time and goes to the Node script as
+#                      the third stdin line. It is never written into this repo, printed or logged; the file is read-only.
 #   --out <dir>        where the pictures go (default <credo root>/captures/<YYYYMMDD-HHMM>-legacy-<screens file name>/, outside
 #                      git); must be new or empty, and not inside the repo
 #   --stem <name>      the log's name, logs/<YYYYMMDD-HHMM>-<stem>.log in the credo root (default legacy-capture)
 #   --check            the refusals and the screens file parsed, then stop: no prompt, no browser, nothing written but the log
 #
 # The credential: it asks at its prompt for the root's name (shown as you type) and password (not shown), and hands
-# them to the Node script on a pipe from the shell builtin printf: never an argument, an environment variable, a file
+# them, with the tunnel seed, to the Node script on a pipe from the shell builtin printf: never an argument, an environment variable, a file
 # or a here-string (bash 3.2 writes those to disk). Neither value is printed or logged; the sign-in step's failure
 # is a fixed text; no trace, video or HAR is recorded (they keep typed values). The pictures show the data on screen.
 #
 # What it does, in order:
 #   1 refusals (each "== refused: <why>", exit 2, nothing opened): a bad or missing parameter; the screens file is not
-#     there or does not parse; no Node 26; the pictures' folder is inside the repo or not empty; (without --check) no
+#     there or does not parse; the seed file is not there or holds no SCRAMBLE_SEED value; no Node 26; the pictures' folder is inside the repo or not empty; (without --check) no
 #     terminal to ask on, or an empty name or password.
 #   2 the screens parsed and listed (--check stops here).
 #   3 the capture: <screen>-pc.png, <screen>-phone.png, and calls.json (each screen's API calls as METHOD /path, ids as
-#     :id, no query, no body; the calls that are not GET are counted on the screen and listed there).
+#     :id, no query, no body; after the sign-in every call that is not a read is aborted, listed under "blocked").
 #   4 a verdict line naming every screen that failed, then "== done". Exit: 0 good, 1 a failure, 2 refused.
 # What it changes: the pictures folder and the log. Nothing in git, any worktree, or the legacy app (it only reads).
 # Language: the legacy's default (no language is set in the browser).
@@ -46,18 +50,19 @@ refuse() {
 }
 
 main() {
-  local url='' screens='' out='' stem=legacy-capture check=no
+  local url='' screens='' seedfile='' seed='' out='' stem=legacy-capture check=no
   while [ $# -gt 0 ]; do
     case "$1" in
       --check)
         check=yes
         shift
         ;;
-      --url | --screens | --out | --stem)
+      --url | --screens | --tunnel-seed-from | --out | --stem)
         [ $# -ge 2 ] || refuse "$1 needs a value"
         case "$1" in
           --url) url=$2 ;;
           --screens) screens=$2 ;;
+          --tunnel-seed-from) seedfile=$2 ;;
           --out) out=$2 ;;
           --stem) stem=$2 ;;
         esac
@@ -81,6 +86,13 @@ main() {
   [ -n "$screens" ] || refuse "--screens <file> is required"
   [ -f "$screens" ] || refuse "the screens file is not there: $screens"
   screens="$(cd "$(dirname "$screens")" && pwd)/$(basename "$screens")"
+  [ -n "$seedfile" ] || refuse "--tunnel-seed-from <file> is required (the legacy's crypt.ts)"
+  [ -f "$seedfile" ] || refuse "the tunnel seed file is not there: $seedfile"
+  # The value is the text between the first pair of single quotes on the SCRAMBLE_SEED line; held in a variable only.
+  seed=$(grep -m1 -E "SCRAMBLE_SEED[[:space:]]*=[[:space:]]*'" "$seedfile" 2>/dev/null) || seed=''
+  seed=${seed#*\'}
+  seed=${seed%%\'*}
+  [ -n "$seed" ] || refuse "no SCRAMBLE_SEED value was found in the tunnel seed file"
   case "$stem" in '' | *[!A-Za-z0-9._-]*) refuse "--stem has characters a file name should not" ;; esac
   for c in node git; do command -v "$c" >/dev/null 2>&1 || refuse "$c is not on the PATH"; done
   [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)" = 26 ] || refuse "node on the PATH is not v26"
@@ -104,6 +116,8 @@ main() {
   }
   say "pictures will go to: $out"
   if [ "$check" = yes ]; then
+    seed=''
+    say "tunnel seed: found in the file (not shown)"
     say "check only: no prompt, no browser, nothing written"
     say "done"
     exit 0
@@ -113,21 +127,27 @@ main() {
   { : </dev/tty && : >/dev/tty; } 2>/dev/null || refuse "no terminal to ask the root's name and password on"
   local name='' pass=''
   printf 'The legacy root name: ' >/dev/tty
-  read -r name </dev/tty
+  IFS= read -r name </dev/tty
   printf 'The legacy root password (not shown): ' >/dev/tty
-  read -rs pass </dev/tty
+  IFS= read -rs pass </dev/tty
   printf '\n' >/dev/tty
   if [ -z "$name" ] || [ -z "$pass" ]; then
-    name='' pass=''
+    name='' pass='' seed=''
     refuse "the name or the password was empty"
   fi
 
   # ---- 3 the capture ----
   say "2/3 capture (a headless browser; the credential goes to it on a pipe)"
-  printf '%s\n%s\n' "$name" "$pass" | (cd "$REPO_DIR/walk" && node legacy-capture.ts --url "$url" --screens "$screens" --out "$out")
+  # DEBUG=pw:protocol would print the typed password (its CDP message) into the log; NODE_OPTIONS could load code.
+  set +x
+  unset SHELLOPTS
+  printf '%s\n%s\n%s\n' "$name" "$pass" "$seed" | (
+    unset DEBUG DEBUG_FILE PWDEBUG NODE_OPTIONS
+    cd "$REPO_DIR/walk" && node legacy-capture.ts --url "$url" --screens "$screens" --out "$out"
+  )
   local rc=${PIPESTATUS[1]}
-  name='' pass=''
-  unset name pass
+  name='' pass='' seed=''
+  unset name pass seed
 
   # ---- 4 finish ----
   say "3/3 finish"

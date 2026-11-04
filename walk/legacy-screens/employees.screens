@@ -1,14 +1,15 @@
 # The legacy app's employee screens (routes only, no host). Read by ops/legacy-capture.sh.
-# <name> <pc|both> <route> [auth=no] [tab=<word>] [if-menu=1] [list=<route>]
+# <name> <pc|both> <route> [auth=no] [tab=<value>] [if-menu=1] [list=<route>]
 # Never listed here: the person page's QR sign-in-link dialog (it writes on opening), and every save,
-# submit, delete, archive or on/off control.
+# submit, delete, archive or on/off control. PC only: the tabs (a select on the phone), and the add, edit and
+# organization pages (the legacy sends a phone back to the list from them).
 sign-in              both  /login  auth=no
 employees            both  /employees
 employees-new        pc    /employees/new
 employee             both  /employees/:id
-employee-timesheet   both  /employees/:id  tab=timesheet
-employee-driver      both  /employees/:id  tab=driver
-employee-history     both  /employees/:id  tab=history
-employee-permissions both  /employees/:id  tab=permissions
-employee-edit        both  /employees/:id/edit
-organization         both  /employees/organization  if-menu=1
+employee-timesheet   pc    /employees/:id  tab=timesheet
+employee-driver      pc    /employees/:id  tab=driver
+employee-activity    pc    /employees/:id  tab=activity
+employee-permissions pc    /employees/:id  tab=permissions
+employee-edit        pc    /employees/:id/edit
+organization         pc    /employees/organization  if-menu=1
