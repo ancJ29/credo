@@ -22,7 +22,8 @@
  *            then the picture; PC only, since the legacy's phone frame shows its tabs as a select
  *   if-menu=1 only when the page after sign-in links to the route; else a "not shown" line
  * Out: <name>-pc.png, <name>-phone.png and calls.json (each screen's API calls as `METHOD /path`, ids as `:id`,
- * no query, no body; `blocked`: the calls refused after the sign-in).
+ * no query, no body; `blocked`: the calls refused after the sign-in); at a sign-in stop, sign-in-form-<device>.json
+ * (the page's path, title, frame count and fields' shape, no values).
  *
  * Read only, enforced: after the sign-in every request that is not a read is aborted (`readOnly`). The legacy's
  * connector sends every API call from a browser, reads included, as `POST …/api/request` with the real method and
@@ -231,12 +232,20 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
-// The shape of the page's inputs and buttons, never a value, so a failed sign-in is diagnosed from disk.
-async function writeFormShape(page: Page, outDir: string): Promise<void> {
+// The page as the sign-in left it: its path (no host, no query), title, frame count, and the shape of its inputs
+// and buttons (never a value), so a failed sign-in is diagnosed from disk. Each part is read on its own: a page
+// mid-reload can refuse one and still give the others.
+async function writeFormShape(page: Page, outDir: string, device: Device): Promise<void> {
+  const file = `sign-in-form-${device}.json`;
+  const part = async <T>(read: () => Promise<T>): Promise<T | null> => read().catch(() => null);
+  const path = URL.parse(page.url())?.pathname ?? null;
+  const title = await part(() => page.title());
+  const frames = page.frames().length;
+  const readyState = await part(() => page.evaluate('document.readyState'));
   try {
     // A string, since the walk package has no DOM types.
-    const shape: unknown =
-      await page.evaluate(`Array.from(document.querySelectorAll('input, button')).map((el) => {
+    const fields = await part(() =>
+      page.evaluate(`Array.from(document.querySelectorAll('input, button')).map((el) => {
       const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
       return {
@@ -248,11 +257,17 @@ async function writeFormShape(page: Page, outDir: string): Promise<void> {
         placeholder: el.getAttribute('placeholder'),
         visible: r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none',
       };
-    })`);
-    writeFileSync(join(outDir, 'sign-in-form.json'), JSON.stringify(shape, null, 2) + '\n');
-    console.log("== sign-in-form.json written (the page's inputs and buttons, no values)");
+    })`),
+    );
+    writeFileSync(
+      join(outDir, file),
+      JSON.stringify({ path, title, frames, readyState, fields }, null, 2) + '\n',
+    );
+    console.log(
+      `== ${file} written (the page's path, title, frame count, inputs and buttons; no values)`,
+    );
   } catch {
-    console.log('== sign-in-form.json could not be written');
+    console.log(`== ${file} could not be written`);
   }
 }
 
@@ -264,18 +279,24 @@ async function signIn(
   root: string,
   cred: { user: string; pass: string },
   outDir: string,
+  device: Device,
 ): Promise<string | undefined> {
   const step = async (find: () => Promise<boolean>): Promise<boolean> => find().catch(() => false);
   // The legacy's form library keys the fields but renders no `name` attribute, so the fields are found by
   // what the page surely has: the password input, and in its form the one visible text-like input.
   const stop = async (text: string): Promise<string> => {
-    await writeFormShape(page, outDir);
+    await writeFormShape(page, outDir, device);
     return text;
   };
+  // `goto` returns at the load event, before the legacy draws its form: the App is a lazy chunk, and its base
+  // layout shows a loading screen until the config call settles (`GET /config/<code>`), in a fresh context after a
+  // reload or two. So the page settles as the sign-in picture's did, then the password field is waited for (the
+  // wait outlives a reload); `count()` alone looks once, and two runs saw the page before its form.
   await page.goto(root + '/login').catch(() => undefined);
+  await settle(page);
   const passField = page.locator('input[type="password"]').first();
-  if (!(await step(async () => (await passField.count()) > 0)))
-    return stop('sign-in stopped: the password field was not found');
+  if (!(await step(async () => (await passField.waitFor({ timeout: 30_000 }), true))))
+    return stop('sign-in stopped: the password field was not drawn within 30 seconds');
   const form = page.locator('form:has(input[type="password"])').first();
   const nameField = form
     .locator(
@@ -379,7 +400,7 @@ async function main(): Promise<void> {
       await anon.close();
       const ctx = await newContext(browser, device, pw);
       const page = await ctx.newPage();
-      const stopped = await signIn(page, root, cred, out);
+      const stopped = await signIn(page, root, cred, out, device);
       if (stopped) {
         console.log(`== ${device}: ${stopped}`);
         await ctx.close();
