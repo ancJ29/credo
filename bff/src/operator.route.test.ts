@@ -190,6 +190,9 @@ describe('A new client starts with its name, credo’s colour, no logo and both 
       name: 'Acme Trading',
       logo: null,
       colour: CREDO_COLOUR,
+      whiteHeader: false,
+      whiteMenu: false,
+      menuIcons: false,
       languages: ['vi', 'en'],
       defaultLanguage: 'vi',
     });

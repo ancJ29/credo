@@ -175,6 +175,48 @@ describe('A save over a newer one is refused, 409, and the page offers the newer
   });
 });
 
+const SWITCHES = ['whiteHeader', 'whiteMenu', 'menuIcons'] as const;
+
+describe('The root turns the white header, the white menu and the menu’s icons on, each apart', () => {
+  it('reads a record stored before the three existed as all three off', async () => {
+    const t = await rootSession();
+    const { whiteHeader, whiteMenu, menuIcons, ...before } = company;
+    expect([whiteHeader, whiteMenu, menuIcons]).toEqual([false, false, false]);
+    await t.client.putRecord(t.keys.config, before);
+    const read = await t.read();
+    expect(read.statusCode).toBe(200);
+    const config = configDocSchema.parse(read.json()).config;
+    expect(SWITCHES.map((name) => config[name])).toEqual([false, false, false]);
+  });
+
+  it('saves any one on and reads back so, the other two off, for every caller', async () => {
+    for (const on of SWITCHES) {
+      const t = await rootSession();
+      const saved = await t.save({ ...company, [on]: true }, null);
+      expect(saved.statusCode, on).toBe(200);
+      const read = configDocSchema.parse((await t.read()).json());
+      expect(read.config, on).toEqual({ ...company, [on]: true });
+      expect(read.version).toBe(configDocSchema.parse(saved.json()).version);
+      const stored = await t.client.getRecord(t.keys.config);
+      expect((stored?.data as Record<string, unknown>)[on], on).toBe(true);
+    }
+  });
+
+  it('refuses a switch that is no boolean, 400, and keeps the record', async () => {
+    const t = await rootSession();
+    await t.save(company, null);
+    const stored = await t.client.getRecord(t.keys.config);
+    for (const name of SWITCHES) {
+      for (const value of ['true', 1, 0, null, 'on']) {
+        const refused = await t.save({ ...company, [name]: value }, stored?.tag ?? null);
+        expect(refused.statusCode, `${name} ${String(value)}`).toBe(400);
+        expect(refused.json<{ details: string }>().details).toContain(name);
+      }
+    }
+    expect(await t.client.getRecord(t.keys.config)).toEqual(stored);
+  });
+});
+
 describe('A department, a position or a person may be allowed to change the company’s settings', () => {
   const save = (
     call: { send: (m: 'PUT', u: string, p: object) => unknown },
@@ -221,6 +263,25 @@ describe('A department, a position or a person may be allowed to change the comp
       configDocSchema.parse((await t.app.inject({ method: 'GET', url: '/api/config' })).json())
         .config.name,
     ).toBe('Renamed');
+  });
+
+  it('refuses a switch saved by a person the right does not allow, 403, and keeps the switches', async () => {
+    const t = await staffTenant(cs);
+    const first = await t.rootCall.send('PUT', '/api/config', { config: company, version: null });
+    const version = configDocSchema.parse(first.json()).version;
+    const refused = await t.staff('NO-SWITCH', { own: { 'staff.canView': true } });
+    const stored = await t.client.getRecord(t.keys.config);
+
+    const answer = await refused.call.send('PUT', '/api/config', {
+      config: { ...company, whiteHeader: true, whiteMenu: true, menuIcons: true },
+      version,
+    });
+    expect(answer.statusCode).toBe(403);
+    expect(await t.client.getRecord(t.keys.config)).toEqual(stored);
+    expect(
+      configDocSchema.parse((await t.app.inject({ method: 'GET', url: '/api/config' })).json())
+        .config,
+    ).toEqual(company);
   });
 
   it('takes a withdrawn right at the person’s next step, with no new sign-in', async () => {
