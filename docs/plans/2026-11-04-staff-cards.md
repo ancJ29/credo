@@ -84,8 +84,12 @@ pictures.** Of every spec, only `walk/specs/piece-2.spec.ts` opens the two pages
   `region:`, the cards being sections) and one by-name lookup in `walk/specs/piece-2.spec.ts` made exact, since the
   new "Sign-in name" field holds the name "Tên"/"Name" as a substring.
 - [ ] **3. The look** (👤 1); the machine goes on.
-- [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes (`…/2026-11-03-legacy-frame.md#L56`): `main` taken in; the whole
+- [x] **4. The gate.** 🤖 Sonnet, about 11 minutes (`…/2026-11-03-legacy-frame.md#L56`): `main` taken in; the whole
   `pnpm check` under the lock, `== exit 0`.
+  Evidence (2026-11-04, 15:53): `main` still `2414b18`, already in. The whole `pnpm check` at `5b51454` under the lock,
+  `== exit 0`; every package at 100 %: shared 151 tests, bff 524, ui 698, visual 191, scripts 277. A first run at load
+  11 to 14 failed three ui tests on the 5-second timeout (item 56's flakes: SignIns, StaffRecord, StaffSetupPage);
+  the rerun at load 7.8 was green, named a rerun and not a pass of the first.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes (`#L59`). Done when: each finding tagged here.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green, its `raw.txt` naming the 16 alone; run 2
