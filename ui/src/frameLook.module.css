@@ -131,13 +131,14 @@
 }
 
 /* The hidden menu as a PC's strip of icons, 60 wide (Mantine's navbar width), each page's name in a
-   tip on hover. */
+   tip on hover or keyboard focus. */
 .stripItem {
   justify-content: center;
   padding: 0;
 }
 
-.stripItem[data-tip]:hover::before {
+.stripItem[data-tip]:hover::before,
+.stripItem[data-tip]:focus-visible::before {
   content: attr(data-tip);
   position: absolute;
   top: 50%;

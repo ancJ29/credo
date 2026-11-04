@@ -149,7 +149,7 @@ export function Shell({
                 order={1}
                 size="h4"
                 fw={600}
-                c="inherit"
+                c={whiteHeader ? undefined : 'inherit'}
                 className={whiteHeader ? looks.brandName : undefined}
               >
                 {brand.name}

@@ -386,6 +386,27 @@ describe('Shell', () => {
     expect(rule(".item[aria-current='page'] svg")).toContain('var(--mantine-color-brand-7)');
   });
 
+  it('7: The white header draws the company’s name by the grey rule, never by an inline colour', () => {
+    looked({ whiteHeader: true, whiteMenu: false, menuIcons: false });
+    const white = screen.getByRole('heading', { level: 1 });
+    expect(white.getAttribute('style') ?? '').not.toContain('color');
+    expect(white.className).toContain('brandName');
+    expect(rule('.brandName')).toContain('var(--mantine-color-neutral-8)');
+    expect(rule("[data-mantine-color-scheme='dark'] .brandName")).toContain('#e9ecef');
+    cleanup();
+
+    looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });
+    const coloured = screen.getByRole('heading', { level: 1 });
+    expect(coloured.getAttribute('style')).toContain('inherit');
+    expect(coloured.className).not.toContain('brandName');
+  });
+
+  it('8: The strip’s tip shows on keyboard focus as well as on hover', () => {
+    const css = frameCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(css).toContain('.stripItem[data-tip]:hover::before');
+    expect(css).toContain('.stripItem[data-tip]:focus-visible::before');
+  });
+
   it('8: Icons on, the hidden PC menu leaves a strip of named icons; off, it hides whole', () => {
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: false }, false);
     expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);

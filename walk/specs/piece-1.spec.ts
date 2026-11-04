@@ -149,6 +149,17 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('heading', { level: 1, name: NEW_NAME })).toBeVisible();
   await at('4-saved');
 
+  // 5. The language switched, from the header's button: its picture is taken here, while every
+  // switch is off, so screens 1 to 9 keep the coloured frame; the menu is closed and the switch made
+  // after screen 11.
+  await page.getByRole('button', { name: words.user.language, exact: true }).click();
+  await expect(
+    page.getByRole('menuitem', { name: LANGUAGE_NAMES[language === 'vi' ? 'en' : 'vi'] }),
+  ).toBeVisible();
+  await at('5-language-menu');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitem')).toHaveCount(0);
+
   // 10. Saved: the header and the menu in white.
   await page.getByRole('switch', { name: words.settings.whiteHeader }).check();
   await page.getByRole('switch', { name: words.settings.whiteMenu }).check();
@@ -174,11 +185,9 @@ async function walk(page: Page, language: Language, width: number) {
   }
   await at('11-menu-icons');
 
-  // 5. The language switched, from the header's button.
+  // 5, finished: the language switched, from the header's button (its picture is taken above).
   const other: Language = language === 'vi' ? 'en' : 'vi';
   await page.getByRole('button', { name: words.user.language, exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: LANGUAGE_NAMES[other] })).toBeVisible();
-  await at('5-language-menu');
   await page.getByRole('menuitem', { name: LANGUAGE_NAMES[other] }).click();
   await expect(
     page.getByRole('heading', { level: 2, name: DICTIONARIES[other].settings.title }),
