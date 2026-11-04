@@ -94,12 +94,15 @@ Rows 1 to 5, the business rows, are each seen red first: before the field exists
   rows do, red then green). The walk takes screen 5 while every switch is off, the language switch finished
   after screen 11. The whole check at the merged HEAD, `== exit 0` (22:41 to 22:47); `pnpm report` built 109
   screens, and against `main`@`dde40d2` (107) exactly the same eight differ.
-- [ ] **5. One review.** 🤖 Opus, about 5 minutes: the default, the markup when off, the strip by keyboard. Done when:
+- [x] **5. One review.** 🤖 Opus, about 5 minutes: the default, the markup when off, the strip by keyboard. Done when:
   each finding tagged here.
-- [ ] **6. The full run** (👤 2), about 19 minutes (the palettes' 17 plus 2): `ops/full-run.sh`, `--moved` naming row
+  *Done 2026-11-04:* one Medium (the white header's name drawn in shade 7 by `c="inherit"`, 2.1 to 3.3:1, now grey 8), two Lows (the strip's tip on `:focus-visible`; screen 5 taken with every switch off), all fixed in `e165def`; the whole check green; the reread: all hold.
+- [x] **6. The full run** (👤 2), about 19 minutes (the palettes' 17 plus 2): `ops/full-run.sh`, `--moved` naming row
   11's eight. Done when: run 1 green, naming only those; run 2 every count 0; 48 pictures committed.
-- [ ] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, item 75 closed, the Settings row of
+  *Done 2026-11-05:* refused once on the Mac's load (23:15, load 30), then green 00:01 to 00:16 (14m36s); bases `047ce97`: 36 pictures moved on six screens, 12 new for screens 10 and 11.
+- [x] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, item 75 closed, the Settings row of
   `docs/products.md` true.
+  *Done 2026-11-05:* `docs/recaps/2026-11-05-white-frame.md`; item 75 closed, items 94 and 95 added; the row true.
 
 ## Shared with line 58's two pieces
 

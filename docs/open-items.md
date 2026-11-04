@@ -553,11 +553,6 @@ A delete that stops at its roster write (an actor gone, 401; three roster moves,
 
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
 
-## 75. The hidden menu's icon strip — the human; `[PARKED]` (legacy frame, plan 2026-11-03, milestone 4)
-
-The old app's hidden menu leaves a 60-pixel icon strip, a client's option. Built in milestone 4 beside the white variants; the frame hides the menu whole until then.
-
-*Trigger:* milestone 4's plan.
 
 ## 76. A client's own logo in the header — the human; `[PARKED]` (legacy frame, plan 2026-11-03)
 
@@ -634,3 +629,11 @@ The photo-off and photo checks read the table row only (`ui/src/StaffRecord.test
 ## 93. At 992 the last filter select wraps — the machine; `[DEFERRED]` (staff-list, second look, 2026-11-04, Low)
 
 At 992 px of screen width the content is 710 px and the last select wraps; the five filters sit on one line only from about 1166 px. The human's looks were at 1280 and the phone. *Trigger:* the next look at a tablet; say so then, it is known.
+
+## 94. The white menu's open-page mark is under 3:1 for four palettes — the machine; `[DEFERRED]` (white-frame, plan, 2026-11-04, Info)
+
+On the white menu the open page's mark (brand shade 7) falls under 3:1 for terracotta, autumn, olive and coin (2.72 to 2.99), the old app's own colours; kept as decided, since the page's name carries the meaning. *Trigger:* a client on one of the four asks, or a contrast pass over the palettes.
+
+## 95. The icon strip's tip is tested by the CSS file's text, never drawn — the machine; `[DEFERRED]` (white-frame, review, Opus, 2026-11-04, Low)
+
+The strip's tip on `:focus-visible` is held by a test that reads `ui/src/frameLook.module.css` as text, since jsdom has no computed styles; a browser check would be the first to see it drawn. *Trigger:* the first browser check of the app, or the next change to the strip.
