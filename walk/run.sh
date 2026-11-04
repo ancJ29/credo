@@ -413,7 +413,7 @@ main() {
   }
 
   # The lanes: the table's last column, or one lane for --serial; only those the walks name, in order.
-  local lane_ids=() lane_walks=() lane_pids=() lane_pgids=() li lane_of found
+  local lane_ids=() lane_walks=() lane_pgids=() li lane_of found
   for walk in "${walks[@]}"; do
     lane_of=1
     [ -n "$serial" ] || lane_of="$(walk_field "$walk" 8)"
@@ -438,8 +438,11 @@ main() {
       # shellcheck disable=SC2086  # the walk names hold no glob or space
       lane_run ${lane_walks[$li]}
       echo $? >"$run/lane-${lane_ids[$li]}.rc"
-    } 2>&1 | awk -v p="$([ ${#lane_ids[@]} -gt 1 ] && echo "[lane ${lane_ids[$li]}] ")" '{ print p $0; fflush() }' &
-    lane_pids+=($!)
+    } 2>&1 | {
+      # the prefixer ignores TERM: it ends at the end of the lane's output, so a stopped lane's last lines land
+      trap '' TERM
+      exec awk -v p="$([ ${#lane_ids[@]} -gt 1 ] && echo "[lane ${lane_ids[$li]}] ")" '{ print p $0; fflush() }'
+    } &
     jobs -p >"$run/jobs.txt"
     lane_pgids+=("$(tail -1 "$run/jobs.txt")")
   done
@@ -447,12 +450,13 @@ main() {
     local g
     for g in "${lane_pgids[@]}"; do kill -s "$1" -- "-$g" 2>/dev/null; done
   }
-  # Wait for every lane. A signal to this script, or the gate lock appearing, stops them all; one that
-  # will not stop in 10 seconds is killed. A lane's red pass stops nobody: the others finish.
-  local alive p stopping="" lock_hit="" waited=0
+  # Wait for every lane, its whole process group (a stack that holds the first TERM too; kill -0 on a group
+  # answers 1 once all of it is gone and reaped). A signal to this script, or the gate lock appearing, stops
+  # them all; one that will not stop in 10 seconds is killed. A lane's red pass stops nobody: the others finish.
+  local alive g stopping="" lock_hit="" waited=0
   while :; do
     alive=""
-    for p in "${lane_pids[@]}"; do kill -0 "$p" 2>/dev/null && alive=yes; done
+    for g in "${lane_pgids[@]}"; do kill -0 -- "-$g" 2>/dev/null && alive=yes; done
     [ -n "$alive" ] || break
     if [ -z "$stopping" ]; then
       if [ -n "$interrupted" ]; then

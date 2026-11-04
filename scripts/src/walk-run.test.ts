@@ -109,6 +109,11 @@ case " $* " in
     if [ -n "$SHIM_SLEEP_DIR" ]; then
       echo $$ >> "$SHIM_SLEEP_DIR/pids"
       [ -z "$SHIM_LOCK" ] || mkdir "$SHIM_LOCK" 2>/dev/null
+      if [ -n "$SHIM_HOLD_TERM" ]; then
+        trap 'echo "held TERM"; sleep 15; echo "pass done"' TERM
+        sleep 20 & wait
+        exit 0
+      fi
       sleep 20
     fi
     pic="$SHIM_PICTURE"
@@ -696,6 +701,38 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
       expect(Date.now() - began).toBeLessThan(12_000);
       expect(s.pids()).toHaveLength(3);
       expect(s.left()).toEqual([]);
+    });
+
+    it('a pass that holds the first TERM is waited for, then killed at 10 seconds, nothing is left running', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+      const began = Date.now();
+
+      const { code, out } = run(l, walks, {
+        ...s.env,
+        SHIM_HOLD_TERM: 'yes',
+        SHIM_LOCK: join(l.root, '.gate-lock'),
+      });
+
+      expect(out).toMatch(/== verdict: red: the gate lock .* appeared; every lane was stopped/);
+      expect(out).toContain('== done');
+      expect(code).toBe(1);
+      expect(Date.now() - began).toBeGreaterThan(9_000);
+      expect(Date.now() - began).toBeLessThan(16_000);
+      expect(s.pids()).toHaveLength(3);
+      expect(s.left()).toEqual([]);
+    });
+
+    it('a stopped lane’s last lines still reach the log, and the shell adds no unprefixed "Terminated" line', () => {
+      const l = layout();
+      const s = sleeping();
+      mkdirSync(join(s.env.SHIM_HOLD_DIR));
+
+      const { out } = run(l, walks, { ...s.env, SHIM_LOCK: join(l.root, '.gate-lock') });
+
+      expect(out).not.toMatch(/^Terminated/m);
+      expect(out).toMatch(/\[lane 1\] .*interrupted|\[lane 1\] .*exited/);
     });
 
     it('a Ctrl-C stops every lane, the verdict lands with 130, nothing is left running', async () => {

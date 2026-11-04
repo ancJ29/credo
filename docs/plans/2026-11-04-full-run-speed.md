@@ -82,8 +82,15 @@ src/walk-run.test.ts` (stand-ins, `scripts/src/walk-run.test.ts#L76-L106`).
   two cases red against step 3's script (the lock case 23 s, the Ctrl-C case left the sleeping passes running),
   then all green, nothing left running. `shellcheck -x` clean; one whole `pnpm check` under the gate lock,
   `== exit 0`, `scripts` at 100 %.
-- [ ] **5. One review.** 🤖 Opus, correctness only, at a fixed sha, about 5 minutes. Done when: each finding tagged
+- [x] **5. One review.** 🤖 Opus, correctness only, at a fixed sha, about 5 minutes. Done when: each finding tagged
   in the recap; High and Medium fixed.
+  Evidence: review at `56bc475`, one Medium: the wait loop polled the prefixing `awk`'s pid, so the first TERM ended
+  it in about 1 s while a stack that holds the first TERM kept running. Fixed in `walk/run.sh`: the loop polls each
+  lane's process group (`kill -0 -- "-$g"`, answers 1 once all of it is gone and reaped), so KILL at 10 s reaches
+  it; the Low came with it (the `awk` ignores TERM and ends at the lane's end, so a stopped lane's last lines land
+  and the shell's own "Terminated" line is gone). Two new stand-in cases, red on `56bc475` (ended in 6 s with a pass
+  alive; an unprefixed "Terminated" line), green after; rows 7 and 8 green; `shellcheck -x` clean; `scripts` and
+  `ops` gates `== exit 0`.
 - [ ] **6. The adoption run** (👤 1), about 18 minutes; 🤖 reads its log whole. Done when: `== verdict: green`,
   `== done`, every `compare` line 0.
 - [ ] **7. The recap and the squash.** 🤖 Sonnet, about 1 minute. Done when: committed, the products row true.
@@ -92,7 +99,7 @@ Total: about 47 minutes, 29 the machine's.
 
 **If step 6 is red,** nothing is written (`walk/run.sh#L397-L398`) or rerun to green (QA rule 6). A lanes clash (a
 stack that would not start, a missing folder) is fixed as step 4, then one more run. A screen moved between passes
-is a timing defect load surfaced: `ops/full-run.sh` passes `--serial` (one line), the piece merges with run 2's 38
+is a timing defect load surfaced: `ops/full-run.sh` passes `--serial` on run 1's call only (`ops/full-run.sh#L158`; run 2's `--bytes` call stands alone, `walk/run.sh` refuses it), the piece merges with run 2's 38
 minutes saved, the screen becomes a diagnose entry, and the lanes return once a lanes run reads 0. Run 1 green, the
 bytes red: the lanes are adopted; the reader is fixed and rerun on run 1's folder in the sandbox.
 
