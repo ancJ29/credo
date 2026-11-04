@@ -189,7 +189,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-14-search': (w) =>
     `textbox "${w.staff.search}" = "phong" placeholder "${w.staff.searchPlaceholder}"`,
   'admin-staff:staff-15-code-changed': () => 'main: NV-12',
-  'admin-staff:staff-16-field-refused': (w) => `form: ${w.fields.invalidNumber}`,
+  'admin-staff:staff-16-field-refused': (w) => `region: ${w.fields.invalidNumber}`,
   'admin-staff:staff-19-import': (w) =>
     `main: ${w.import.chosen.replace('{{name}}', 'import.xlsx')}`,
   'admin-staff:staff-20-preview': (w) => `heading: ${w.import.previewTitle}`,
@@ -197,7 +197,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-22-no-name': (w) =>
     `alert: ${w.import.noName.replaceAll('{{name}}', w.addPerson.name)}`,
   'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
-  'office-staff:office-2-add': (w) => `main: ${w.person.signInNotYet}`,
+  'office-staff:office-2-add': (w) => `region: ${w.person.signInNotYet}`,
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,
   'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
   'office-staff:office-5-settings': (w) => `link: ${w.nav.settings}`,

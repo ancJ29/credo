@@ -341,7 +341,9 @@ async function walk(page: Page, language: Language, width: number) {
   }
   await press(words.person.save);
   await expect(page.getByRole('alert')).toHaveText(words.person.saveFailed);
-  await expect(page.getByRole('textbox', { name: words.person.name })).toHaveValue('Trần Hùng');
+  await expect(page.getByRole('textbox', { name: exactly(words.person.name) })).toHaveValue(
+    'Trần Hùng',
+  );
   await at('staff-11-save-failed');
 
   // 12. Adding a person with the company's own fields and a second phone; the code left empty.

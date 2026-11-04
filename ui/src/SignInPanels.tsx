@@ -1,7 +1,8 @@
 import { emailSchema, type EmployeeDoc } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from './page';
 import { QrCode } from './QrCode';
 
@@ -54,51 +55,48 @@ export function EmailPanel({
   };
 
   return (
-    <Paper withBorder p="md">
-      <Stack gap="sm">
-        <Title order={3}>{t('person.emailTitle')}</Title>
-        <Text c="dimmed">{t('person.emailText')}</Text>
-        <Text>{email ?? t('person.emailNone')}</Text>
-        {said !== null && (
-          <Alert color="green" role="alert">
-            {said === 'set' ? t('person.emailChanged', { email }) : t('person.emailRemoved')}
-          </Alert>
-        )}
-        {problem !== null && (
-          <Alert color="red" role="alert">
-            {t(
-              problem === 'invalid'
-                ? 'person.emailInvalid'
-                : problem === 'taken'
-                  ? 'person.emailTaken'
-                  : 'person.emailFailed',
-            )}
-          </Alert>
-        )}
-        <form onSubmit={submit}>
-          <Stack gap="sm" align="flex-start">
-            <TextInput
-              label={t('person.emailNew')}
-              inputMode="email"
-              autoComplete="off"
-              autoCapitalize="none"
-              value={typed}
-              onChange={(event) => setTyped(event.currentTarget.value)}
-            />
-            <Group>
-              <Button type="submit" variant="default">
-                {t('person.emailSet')}
+    <DetailCard title={t('person.emailTitle')}>
+      <Text c="dimmed">{t('person.emailText')}</Text>
+      <Text>{email ?? t('person.emailNone')}</Text>
+      {said !== null && (
+        <Alert color="green" role="alert">
+          {said === 'set' ? t('person.emailChanged', { email }) : t('person.emailRemoved')}
+        </Alert>
+      )}
+      {problem !== null && (
+        <Alert color="red" role="alert">
+          {t(
+            problem === 'invalid'
+              ? 'person.emailInvalid'
+              : problem === 'taken'
+                ? 'person.emailTaken'
+                : 'person.emailFailed',
+          )}
+        </Alert>
+      )}
+      <form onSubmit={submit}>
+        <Stack gap="sm" align="flex-start">
+          <TextInput
+            label={t('person.emailNew')}
+            inputMode="email"
+            autoComplete="off"
+            autoCapitalize="none"
+            value={typed}
+            onChange={(event) => setTyped(event.currentTarget.value)}
+          />
+          <Group>
+            <Button type="submit" variant="default">
+              {t('person.emailSet')}
+            </Button>
+            {email !== null && (
+              <Button variant="default" onClick={() => void change(null)}>
+                {t('person.emailRemove')}
               </Button>
-              {email !== null && (
-                <Button variant="default" onClick={() => void change(null)}>
-                  {t('person.emailRemove')}
-                </Button>
-              )}
-            </Group>
-          </Stack>
-        </form>
-      </Stack>
-    </Paper>
+            )}
+          </Group>
+        </Stack>
+      </form>
+    </DetailCard>
   );
 }
 
@@ -121,9 +119,8 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
   }
 
   return (
-    <Paper withBorder p="md">
+    <DetailCard title={t('person.qrTitle')}>
       <Stack gap="sm" align="flex-start">
-        <Title order={3}>{t('person.qrTitle')}</Title>
         <Text c="dimmed">{t('person.qrText')}</Text>
         {failed && (
           <Alert color="red" role="alert">
@@ -143,6 +140,6 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
           {link === null ? t('person.qrShow') : t('person.qrNew')}
         </Button>
       </Stack>
-    </Paper>
+    </DetailCard>
   );
 }

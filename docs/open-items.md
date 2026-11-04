@@ -584,6 +584,7 @@ On the KILL path, bash still prints its job lines without the `[lane n]` prefix 
 ## 81. The lanes are not balanced — the machine; `[DEFERRED]` (full-run-speed, adoption run, 2026-11-04)
 
 Lane 1, piece-2 alone, is the long pole at 13m04s against lane 3's 9m49s (`walk/run.sh#L38-L50`). Splitting piece-2's passes or moving a walk could take about 3 more minutes off a run.
+The staff-cards full run (rerun, 2026-11-04, 16m00s) shows it again: lane 3 ended about 3 minutes before the others, 10m17s against about 13 (`20261104-1732-staff-cards-full-run.log`). Rebalance when a run's length matters.
 
 ## 82. A test types a hex with no letters and calls it a case check — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Low)
 
@@ -613,3 +614,15 @@ The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not perm
 ## 88. A named screen that does not move reads green — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
 
 `ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
+
+## 89. `person.signIn` is left unused — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
+
+The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `ui/src/i18n/en.ts#L403` and `ui/src/i18n/vi.ts#L404` after the sentence moved into the first card. Nothing reads it, and the missing-key test cannot catch an unused key. *Fix:* delete both lines when the files are next touched.
+
+## 90. The frame draws its side column even when empty — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
+
+`ui/src/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
+
+## 91. Eight walk specs press a loading button and take a picture with no wait for its loader — the machine; `[DEFERRED]` (staff-cards, full run, 2026-11-04, Info)
+
+Found while fixing the services walk (`926c1b2`): `operator-services` sv-5 and its sign-in at `#L202`, `operator-passkeys`, `operator`, `operator-team`, `operator-root-password`, `driver`, `lists` and `orders` press a `loading` button and take a picture with no wait for its loader. All green so far. *Fix:* the wait for any button loader belongs inside `at()` itself (`walk/support.ts`), so no spec can forget it. *Trigger:* the next walk piece, or the next flake.

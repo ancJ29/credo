@@ -3,7 +3,6 @@ import {
   Alert,
   Button,
   NativeSelect,
-  Paper,
   Stack,
   Text,
   Textarea,
@@ -13,6 +12,7 @@ import {
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
+import { DetailCard, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import { OwnFieldInput, type OwnTexts, mergeExtra, ownStored, refusedFields } from './ownFields';
 import { type PageProps, refusal, useLoad } from './page';
@@ -99,8 +99,8 @@ export function AddPersonPage(page: PageProps) {
         <Alert color="green" role="alert">
           {t('addPerson.madeIntro')}
         </Alert>
-        <Paper withBorder p="md">
-          <Stack gap="lg">
+        <DetailCard title={t('addPerson.madeCard')}>
+          <FieldPair>
             <TextInput
               label={t('addPerson.signInName')}
               value={made.employee.signIn.name}
@@ -113,8 +113,8 @@ export function AddPersonPage(page: PageProps) {
               readOnly
               styles={READ_ONLY}
             />
-          </Stack>
-        </Paper>
+          </FieldPair>
+        </DetailCard>
         <Stack gap="xs" align="flex-start">
           <Button component={Link} to={`/staff/${made.employee.employee.id}`}>
             {t('addPerson.open')}
@@ -153,59 +153,67 @@ export function AddPersonPage(page: PageProps) {
       )}
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         <form onSubmit={(event) => void submit(event)}>
-          <Paper withBorder p="md">
-            <Stack gap="lg">
-              <TextInput
-                label={t('addPerson.name')}
-                required
-                value={form.name}
-                onChange={(event) => change({ name: event.currentTarget.value })}
-              />
-              <TextInput
-                label={t('addPerson.code')}
-                description={t('addPerson.codeHint')}
-                autoCapitalize="characters"
-                autoComplete="off"
-                error={(codeShown && !codeOk && t('addPerson.codeInvalid')) || status === 'taken'}
-                value={form.code}
-                onChange={(event) => change({ code: event.currentTarget.value })}
-              />
-              <TextInput
-                label={t('addPerson.phone')}
-                type="tel"
-                value={form.phone}
-                onChange={(event) => change({ phone: event.currentTarget.value })}
-              />
-              {fields.personalPhone && (
+          <Stack gap="lg">
+            <DetailCard title={t('addPerson.basic')}>
+              <FieldPair>
                 <TextInput
-                  label={t('addPerson.personalPhone')}
-                  type="tel"
-                  value={form.personalPhone}
-                  onChange={(event) => change({ personalPhone: event.currentTarget.value })}
+                  label={t('addPerson.name')}
+                  required
+                  value={form.name}
+                  onChange={(event) => change({ name: event.currentTarget.value })}
                 />
-              )}
-              {user.root && setup && (
-                <>
-                  <NativeSelect
-                    label={t('addPerson.department')}
-                    value={form.department}
-                    onChange={(event) => change({ department: event.currentTarget.value })}
-                    data={[
-                      { value: '', label: t('addPerson.noneChosen') },
-                      ...setup.departments.map((unit) => ({ value: unit.id, label: unit.name })),
-                    ]}
+                <TextInput
+                  label={t('addPerson.code')}
+                  description={t('addPerson.codeHint')}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  error={(codeShown && !codeOk && t('addPerson.codeInvalid')) || status === 'taken'}
+                  value={form.code}
+                  onChange={(event) => change({ code: event.currentTarget.value })}
+                />
+                {user.root && setup && (
+                  <>
+                    <NativeSelect
+                      label={t('addPerson.department')}
+                      value={form.department}
+                      onChange={(event) => change({ department: event.currentTarget.value })}
+                      data={[
+                        { value: '', label: t('addPerson.noneChosen') },
+                        ...setup.departments.map((unit) => ({ value: unit.id, label: unit.name })),
+                      ]}
+                    />
+                    <NativeSelect
+                      label={t('addPerson.position')}
+                      value={form.position}
+                      onChange={(event) => change({ position: event.currentTarget.value })}
+                      data={[
+                        { value: '', label: t('addPerson.noneChosen') },
+                        ...setup.positions.map((unit) => ({ value: unit.id, label: unit.name })),
+                      ]}
+                    />
+                  </>
+                )}
+              </FieldPair>
+            </DetailCard>
+            <DetailCard title={t('addPerson.contacts')}>
+              <FieldPair>
+                <TextInput
+                  label={t('addPerson.phone')}
+                  type="tel"
+                  value={form.phone}
+                  onChange={(event) => change({ phone: event.currentTarget.value })}
+                />
+                {fields.personalPhone && (
+                  <TextInput
+                    label={t('addPerson.personalPhone')}
+                    type="tel"
+                    value={form.personalPhone}
+                    onChange={(event) => change({ personalPhone: event.currentTarget.value })}
                   />
-                  <NativeSelect
-                    label={t('addPerson.position')}
-                    value={form.position}
-                    onChange={(event) => change({ position: event.currentTarget.value })}
-                    data={[
-                      { value: '', label: t('addPerson.noneChosen') },
-                      ...setup.positions.map((unit) => ({ value: unit.id, label: unit.name })),
-                    ]}
-                  />
-                </>
-              )}
+                )}
+              </FieldPair>
+            </DetailCard>
+            <DetailCard title={t('addPerson.noteCard')}>
               <Textarea
                 label={t('addPerson.note')}
                 value={form.note}
@@ -221,11 +229,11 @@ export function AddPersonPage(page: PageProps) {
                   onChange={(value) => setOwn((was) => ({ ...was, [field.key]: value }))}
                 />
               ))}
-              <Button type="submit" loading={status === 'busy'}>
-                {t('addPerson.submit')}
-              </Button>
-            </Stack>
-          </Paper>
+            </DetailCard>
+            <Button type="submit" loading={status === 'busy'} style={{ alignSelf: 'flex-start' }}>
+              {t('addPerson.submit')}
+            </Button>
+          </Stack>
         </form>
       </Loaded>
     </Stack>

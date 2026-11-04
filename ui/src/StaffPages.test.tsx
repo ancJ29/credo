@@ -15,6 +15,9 @@ const rowOf = async (name: string) => {
   expect(rows).toHaveLength(1);
   return rows[0] as HTMLElement;
 };
+/** A card of a detail page, by its title. */
+const cardOf = async (title: string) =>
+  (await screen.findByRole('heading', { level: 3, name: title })).closest('section') as HTMLElement;
 const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 
 describe('the staff list', () => {
@@ -453,7 +456,10 @@ describe('a person’s page', () => {
     ).toBe('Trần Văn Hùng');
     expect(screen.getByLabelText<HTMLInputElement>('Phone').value).toBe('0903 111 002');
     expect(screen.getByLabelText<HTMLTextAreaElement>('Note').value).toContain('Được lưu trữ');
-    expect(screen.getByText('Signs in with the code EMP-0002 and a password.')).toBeTruthy();
+    // the first card names what they sign in with: the code, and whether they can yet
+    const basic = await cardOf('Basic information');
+    expect(within(basic).getByLabelText<HTMLInputElement>('Sign-in name').value).toBe('EMP-0002');
+    expect(within(basic).getByText('Signs in with the code EMP-0002 and a password.')).toBeTruthy();
     // someone who may change a person changes their details, and no more
     expect(screen.queryByLabelText('Department', { selector: 'select' })).toBeNull();
     expect(screen.queryByRole('radiogroup')).toBeNull();
@@ -480,8 +486,9 @@ describe('a person’s page', () => {
   it('A person’s page, for someone who may only see, changes nothing, and one with no sign-in yet says so', async () => {
     open('EMP-0007', { as: 'EMP-0004' });
 
+    const basic = await cardOf('Basic information');
     expect(
-      await screen.findByText('Cannot sign in yet: the root has not given a password.'),
+      within(basic).getByText('Cannot sign in yet: the root has not given a password.'),
     ).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).readOnly).toBe(true);
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
