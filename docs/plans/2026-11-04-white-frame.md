@@ -84,7 +84,9 @@ Rows 1 to 5, the business rows, are each seen red first: before the field exists
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in if moved; the whole `pnpm check` under the lock,
   `== exit 0`.
   *Done 2026-11-04:* `main` had not moved past `b7ce1cb`; the whole `pnpm check` under the lock at load 7,
-  `== exit 0` (19:38 to 19:44, six minutes).
+  `== exit 0` (19:38 to 19:44, six minutes). `pnpm report` from the clean tree built 109 screens; against a build of
+  `main`@`b7ce1cb` (107) exactly the plan's eight differ and nothing else: `admin-setup` 3, 4, 5, 7, 8,
+  `office-5-settings`, the new 10 and 11.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes: the default, the markup when off, the strip by keyboard. Done when:
   each finding tagged here.
 - [ ] **6. The full run** (👤 2), about 19 minutes (the palettes' 17 plus 2): `ops/full-run.sh`, `--moved` naming row
