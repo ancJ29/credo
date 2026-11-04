@@ -584,3 +584,32 @@ On the KILL path, bash still prints its job lines without the `[lane n]` prefix 
 ## 81. The lanes are not balanced — the machine; `[DEFERRED]` (full-run-speed, adoption run, 2026-11-04)
 
 Lane 1, piece-2 alone, is the long pole at 13m04s against lane 3's 9m49s (`walk/run.sh#L38-L50`). Splitting piece-2's passes or moving a walk could take about 3 more minutes off a run.
+
+## 82. A test types a hex with no letters and calls it a case check — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Low)
+
+`ui/src/Settings.test.tsx#L277` types `'#047857'.toUpperCase()`, which has no letters, so it proves no case handling. *Fix:* a stock shade 7 with a letter in it, such as `#4A76A9`, when the file is next touched.
+
+## 83. Six palettes' menu text falls below 4.5:1 at shade 8 — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
+
+For six palettes the legacy's own shades 8 and 9 are lighter than mixed ones, so the menu's white text on its 9-to-8 gradient reads below 4.5:1 at shade 8: autumn 3.65, coin 3.78, terracotta 4.02. The legacy's own, as decided.
+
+## 84. The demo company can wear steel — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
+
+The demo script draws a client's colour from seven (`scripts/src/demo/company.ts#L5`); one is steel's shade 7, so such a company shows Steel checked in Settings, as meant. The other six are no stock shade and check none.
+
+## 85. The legacy's lookup also takes a palette's name — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
+
+`ui/frame-mock/frame.js#L44` matches a palette's name as well as its shade 7, so moving a legacy client's data needs each name turned into its shade 7.
+*Trigger:* the first legacy client's data move.
+
+## 86. The services walk's sv-5 does not move with a palette — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
+
+The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pictures were committed, not the plan's 216 (log line "named, not moved: sv-5-unavailable" in `20261104-1447-palettes-full-run.log`). It is right: the screen is `Boot` in its unavailable state (`ui/src/Boot.tsx#L19-L39`), a red alert, a title and a Retry button, and the button draws shade 7 only (`ui/src/theme.ts#L109`), which is the colour itself in the mix and in steel's own ten. Nothing on it draws another shade.
+
+## 87. A lane's child could not set its process group — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
+
+The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not permitted" (`20261104-1447-palettes-full-run.log`, line 996), in lane 2's driver walk, which still passed 6 of 6 and exited 0. A lane's child could not set its own process group, so the stop path's KILL may not reach that group. Harmless here. *Trigger:* the next piece touching `walk/run.sh`.
+
+## 88. A named screen that does not move reads green — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
+
+`ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
