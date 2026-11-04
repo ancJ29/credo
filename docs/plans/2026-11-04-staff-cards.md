@@ -72,10 +72,17 @@ pictures.** Of every spec, only `walk/specs/piece-2.spec.ts` opens the two pages
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
-- [ ] **2. The cards on the fake.** 🤖 Sonnet, about 27 minutes, the frame's (`docs/plans/2026-11-03-legacy-frame.md#L52`):
+- [x] **2. The cards on the fake.** 🤖 Sonnet, about 27 minutes, the frame's (`docs/plans/2026-11-03-legacy-frame.md#L52`):
   the frame, both pages, the panels on `DetailCard`, the words. Done when: row 1 red once with the sentence left in its
   old block; rows 2 and 7 green; row 6's grep 0; ui at 100 %, lint clean; `pnpm report` builds, and against `main`'s
   build exactly the 16 screens' versions differ.
+  Evidence (2026-11-04, 15:15 to 15:35): row 1 red first (the sentence in its old block: no card named Basic
+  information), then green; rows 2 and 7 green (StaffPages, StaffRecord, SignIns: 97 tests); row 6's grep 0; ui 698
+  tests and visual 191 tests at 100 %; typecheck, eslint, prettier and knip clean; `pnpm report` builds, and against
+  `main`'s build exactly the 16 screens' versions differ (person 4, 5, 6, 7, 10, 11, 13, 15, 17, 18; add 2, 3, 9,
+  12, 16; staff-lookup 2). Also moved: two proof lines in `visual/src/words.test.tsx` (`form:` and `main:` become
+  `region:`, the cards being sections) and one by-name lookup in `walk/specs/piece-2.spec.ts` made exact, since the
+  new "Sign-in name" field holds the name "Tên"/"Name" as a substring.
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes (`…/2026-11-03-legacy-frame.md#L56`): `main` taken in; the whole
   `pnpm check` under the lock, `== exit 0`.
