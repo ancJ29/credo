@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../tests/render';
+import { PALETTES } from './palettes';
 import { Settings } from './Settings';
 
 const config: TenantConfig = {
@@ -25,6 +26,32 @@ const props = (more: Partial<Props> = {}): Props => ({
   onReload: vi.fn(),
   ...more,
 });
+
+const NAMES_EN = [
+  'Terracotta',
+  'Sandstone',
+  'Forest',
+  'Autumn',
+  'Olive',
+  'Emerald',
+  'Steel',
+  'Ocean',
+  'Coin',
+];
+const NAMES_VI = [
+  'Đất nung',
+  'Sa thạch',
+  'Rừng',
+  'Mùa thu',
+  'Ô liu',
+  'Ngọc lục bảo',
+  'Thép',
+  'Đại dương',
+  'Đồng xu',
+];
+
+const checked = () =>
+  screen.getAllByRole<HTMLInputElement>('radio').filter((radio) => radio.checked);
 
 const save = () => screen.getByRole('button', { name: 'Save' });
 
@@ -203,5 +230,61 @@ describe('Settings', () => {
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
     expect(screen.getByText('No logo yet')).toBeTruthy();
+  });
+
+  it('shows the nine palettes as one radio group named Palette, in the legacy’s order, in both languages', () => {
+    const { unmount } = draw(<Settings {...props()} />);
+
+    expect(screen.getByRole('radiogroup', { name: 'Palette' })).toBeTruthy();
+    expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(
+      PALETTES.map((palette) => palette.name),
+    );
+    expect(
+      screen.getAllByRole<HTMLInputElement>('radio').map((radio) => radio.labels?.[0]?.textContent),
+    ).toEqual(NAMES_EN);
+    unmount();
+
+    draw(<Settings {...props()} />, 'vi');
+    expect(screen.getByRole('radiogroup', { name: 'Bảng màu' })).toBeTruthy();
+    expect(
+      screen.getAllByRole<HTMLInputElement>('radio').map((radio) => radio.labels?.[0]?.textContent),
+    ).toEqual(NAMES_VI);
+  });
+
+  it('puts a picked palette’s shade 7 in the colour field, checks it, and saves that colour', async () => {
+    const onSave = vi.fn();
+    draw(<Settings {...props({ onSave })} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Terracotta' }));
+
+    expect(screen.getByLabelText<HTMLInputElement>('Brand colour').value).toBe('#d97757');
+    expect(screen.getByRole<HTMLInputElement>('radio', { name: 'Terracotta' }).checked).toBe(true);
+    expect(checked()).toHaveLength(1);
+    await userEvent.click(save());
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({ ...config, colour: '#d97757' });
+  });
+
+  it('checks the swatch whose shade 7 is typed, in any case, and none for any other colour', async () => {
+    draw(<Settings {...props()} />);
+    const colour = screen.getByLabelText('Brand colour');
+    expect(checked()).toHaveLength(0);
+
+    await userEvent.clear(colour);
+    await userEvent.type(colour, '#456955');
+    expect(checked().map((radio) => radio.value)).toEqual(['forest']);
+
+    await userEvent.clear(colour);
+    await userEvent.type(colour, '#047857'.toUpperCase());
+    expect(checked().map((radio) => radio.value)).toEqual(['emerald']);
+
+    await userEvent.clear(colour);
+    await userEvent.type(colour, '#456956');
+    expect(checked()).toHaveLength(0);
+  });
+
+  it('starts a new company on steel, checked', () => {
+    draw(<Settings {...props({ config: { ...config, colour: '#3e618c' } })} />);
+
+    expect(checked().map((radio) => radio.value)).toEqual(['steel']);
   });
 });

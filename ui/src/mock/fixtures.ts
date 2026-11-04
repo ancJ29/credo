@@ -27,7 +27,7 @@ export const FRESH: TenantConfig = {
 export const TYPED: TenantConfig = {
   ...FILLED,
   name: 'Minh Phát Sài Gòn',
-  colour: '#b4532a',
+  colour: '#d97757',
 };
 
 /** The root's sign-in name, and the password typed in the half-filled form. */

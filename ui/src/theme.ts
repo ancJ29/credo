@@ -6,6 +6,7 @@ import {
   PasswordInput,
   rem,
 } from '@mantine/core';
+import { paletteOfColour } from './palettes';
 import classes from './theme.module.css';
 
 const FONT = '"Noto Sans Variable", sans-serif';
@@ -81,8 +82,14 @@ const hexOf = (rgb: Rgb) => `#${rgb.map((value) => value.toString(16).padStart(2
 const TOWARD_WHITE = [0.92, 0.82, 0.68, 0.5, 0.32, 0.16, 0.06];
 const TOWARD_BLACK = [0.2, 0.38];
 
-/** Ten shades of a brand colour, the lightest first; shade 7 is the colour itself. */
+/**
+ * Ten shades of a brand colour, the lightest first; shade 7 is the colour itself. A colour that is
+ * a stock palette's shade 7, in any case, draws that palette's own ten (the old app's lookup); any
+ * other is mixed.
+ */
 export function shadesOf(colour: string) {
+  const stock = paletteOfColour(colour);
+  if (stock) return [...stock.shades] as unknown as MantineColorsTuple;
   const base = [1, 3, 5].map((at) => parseInt(colour.slice(at, at + 2), 16)) as Rgb;
   return [
     ...TOWARD_WHITE.map((share) => hexOf(mix(base, [255, 255, 255], share))),
