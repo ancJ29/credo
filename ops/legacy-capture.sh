@@ -140,7 +140,6 @@ main() {
   say "2/3 capture (a headless browser; the credential goes to it on a pipe)"
   # DEBUG=pw:protocol would print the typed password (its CDP message) into the log; NODE_OPTIONS could load code.
   set +x
-  unset SHELLOPTS
   printf '%s\n%s\n%s\n' "$name" "$pass" "$seed" | (
     unset DEBUG DEBUG_FILE PWDEBUG NODE_OPTIONS
     cd "$REPO_DIR/walk" && node legacy-capture.ts --url "$url" --screens "$screens" --out "$out"

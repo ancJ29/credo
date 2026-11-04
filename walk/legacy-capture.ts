@@ -44,9 +44,6 @@ interface Screen {
   list: string | undefined;
 }
 
-const SIGN_IN_FAILED =
-  'sign-in did not complete (the name or password, or the sign-in form, is not as expected)';
-
 function arg(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
   return i >= 0 ? process.argv[i + 1] : undefined;
@@ -234,25 +231,44 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 }
 
+// Returns undefined when signed in, else a fixed text naming the step that stopped (never a value, never
+// Playwright's own message). The form is found by its password field and sent by its own submit button, so the
+// page's language does not matter; the "sign-in link" button is never pressed.
 async function signIn(
   page: Page,
   root: string,
   cred: { user: string; pass: string },
-): Promise<boolean> {
+): Promise<string | undefined> {
+  const step = async (find: () => Promise<boolean>): Promise<boolean> => find().catch(() => false);
+  await page.goto(root + '/login').catch(() => undefined);
+  const nameField = page.locator('input[name="identifier"]');
+  if (!(await step(async () => (await nameField.count()) > 0)))
+    return 'sign-in stopped: the name field was not found';
+  const passField = page.locator('input[name="password"]');
+  if (!(await step(async () => (await passField.count()) > 0)))
+    return 'sign-in stopped: the password field was not found';
+  const submit = page.locator('form:has(input[name="password"]) button[type="submit"]').first();
+  if (!(await step(async () => (await submit.count()) > 0)))
+    return 'sign-in stopped: the submit button was not found';
   try {
-    await page.goto(root + '/login');
-    await page.locator('input[name="identifier"]').fill(cred.user);
-    await page.locator('input[name="password"]').fill(cred.pass);
-    await page
-      .getByRole('button', { name: /sign in/i })
-      .first()
-      .click();
-    await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 30_000 });
-    await settle(page);
-    return true;
+    await nameField.fill(cred.user);
+    await passField.fill(cred.pass);
+    await submit.click();
   } catch {
-    return false;
+    return 'sign-in stopped: the form could not be filled and sent';
   }
+  try {
+    await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 30_000 });
+  } catch {
+    return 'sign-in stopped: still on the sign-in page after sending (most likely the name or password)';
+  }
+  try {
+    await settle(page);
+    await page.locator('a[href], nav, main').first().waitFor({ timeout: 20_000 });
+  } catch {
+    return 'sign-in stopped: left the sign-in page but the app did not load';
+  }
+  return undefined;
 }
 
 async function firstRowId(
@@ -324,8 +340,9 @@ async function main(): Promise<void> {
       await anon.close();
       const ctx = await newContext(browser, device, pw);
       const page = await ctx.newPage();
-      if (!(await signIn(page, root, cred))) {
-        console.log(`== ${device}: ${SIGN_IN_FAILED}`);
+      const stopped = await signIn(page, root, cred);
+      if (stopped) {
+        console.log(`== ${device}: ${stopped}`);
         await ctx.close();
         reds++;
         continue;
