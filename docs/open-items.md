@@ -626,3 +626,11 @@ The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `u
 ## 91. Eight walk specs press a loading button and take a picture with no wait for its loader — the machine; `[DEFERRED]` (staff-cards, full run, 2026-11-04, Info)
 
 Found while fixing the services walk (`926c1b2`): `operator-services` sv-5 and its sign-in at `#L202`, `operator-passkeys`, `operator`, `operator-team`, `operator-root-password`, `driver`, `lists` and `orders` press a `loading` button and take a picture with no wait for its loader. All green so far. *Fix:* the wait for any button loader belongs inside `at()` itself (`walk/support.ts`), so no spec can forget it. *Trigger:* the next walk piece, or the next flake.
+
+## 92. The card's avatar condition is untested — the machine; `[DEFERRED]` (staff-list, review, Opus, 2026-11-04, Low)
+
+The photo-off and photo checks read the table row only (`ui/src/StaffRecord.test.tsx#L67-L70`, `#L565`); the phone card's avatar condition has no test of its own. *Fix:* the same two checks scoped to the card, when the card is next touched.
+
+## 93. At 992 the last filter select wraps — the machine; `[DEFERRED]` (staff-list, second look, 2026-11-04, Low)
+
+At 992 px of screen width the content is 710 px and the last select wraps; the five filters sit on one line only from about 1166 px. The human's looks were at 1280 and the phone. *Trigger:* the next look at a tablet; say so then, it is known.

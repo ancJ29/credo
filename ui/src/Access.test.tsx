@@ -144,15 +144,15 @@ describe('the list’s address', () => {
     await userEvent.type(search, 'lan');
     expect(address()).toBe('?q=lan');
     await userEvent.selectOptions(screen.getByLabelText('Department'), 'Kho');
-    await userEvent.click(screen.getByLabelText('Show people who left'));
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'All');
     await userEvent.selectOptions(screen.getByLabelText('Driving licence'), 'Class C');
     expect(address()).toBe(
-      `?q=lan&department=${DEMO_STAFF_SETUP.departments[0]?.id}&left=1&f.licence=c`,
+      `?q=lan&department=${DEMO_STAFF_SETUP.departments[0]?.id}&status=all&f.licence=c`,
     );
     await userEvent.clear(search);
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'All');
-    await userEvent.click(screen.getByLabelText('Show people who left'));
-    await userEvent.selectOptions(screen.getByLabelText('Driving licence'), 'All');
+    await userEvent.selectOptions(screen.getByLabelText('Department'), 'All departments');
+    await userEvent.selectOptions(screen.getByLabelText('Status'), 'Active');
+    await userEvent.selectOptions(screen.getByLabelText('Driving licence'), 'All driving licence');
     expect(address()).toBe('');
   });
 

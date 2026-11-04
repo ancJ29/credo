@@ -21,16 +21,26 @@ const cardOf = async (title: string) =>
 const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 
 describe('the staff list', () => {
-  it('The staff list shows each person’s name, code, department, position and phone, in code order; people who left are hidden, and a filter shows them', async () => {
+  it('The staff list shows each person’s name, code, department, position, phone and status chip, in code order; the status choice opens on Active and shows people who left or everyone', async () => {
     openApp('/staff');
 
     const lan = await rowOf('Nguyễn Thị Lan');
     // the avatar's initials come with the name, and the company's own fields shown in the list after
+    // them, the status chip last
     expect(
       within(lan)
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
-    ).toEqual(['NTNguyễn Thị Lan', 'EMP-0001', 'Văn phòng', 'Quản lý', '0903 111 001', '', '']);
+    ).toEqual([
+      'NTNguyễn Thị Lan',
+      'EMP-0001',
+      'Văn phòng',
+      'Quản lý',
+      '0903 111 001',
+      '',
+      '',
+      'Active',
+    ]);
     const codes = screen
       .getAllByRole('row')
       .slice(1)
@@ -45,12 +55,122 @@ describe('the staff list', () => {
       'EMP-0007',
     ]);
     expect(screen.queryByText('Hoàng Gia Huy')).toBeNull();
+    // the choice opens on Active and offers the three
+    const status = screen.getByLabelText<HTMLSelectElement>('Status');
+    expect(status.value).toBe('active');
+    expect([...status.options].map((option) => option.text)).toEqual(['Active', 'Inactive', 'All']);
+    expect(screen.queryByLabelText('Show people who left')).toBeNull();
+    // the chip is a filled badge in the theme's primary, the brand's shade 7: no colour of its own
+    const chip = within(lan).getByText('Active').closest('.mantine-Badge-root');
+    expect(chip?.getAttribute('style')).toBeNull();
 
-    await user.click(screen.getByLabelText('Show people who left'));
-
+    await user.selectOptions(status, 'Inactive');
     const left = await rowOf('Hoàng Gia Huy');
-    expect(within(left).getByText('Left')).toBeTruthy();
+    expect(within(left).getByText('Inactive')).toBeTruthy();
+    expect(
+      within(left).getByText('Inactive').closest('.mantine-Badge-root')?.getAttribute('style'),
+    ).toContain('--badge-bg: var(--mantine-color-gray-filled)');
+    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.queryByText('Nguyễn Thị Lan')).toBeNull();
+
+    await user.selectOptions(status, 'All');
+    await rowOf('Nguyễn Thị Lan');
     expect(screen.getAllByRole('row')).toHaveLength(9);
+    const all = screen
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => within(row).getAllByRole('cell')[1]?.textContent);
+    expect(all.at(-1)).toBe('EMP-0008');
+  });
+
+  it('From 768 the search and every select sit on one line above the table, the search growing and each select compact with its name only for assistive tools; under 768 the names show above them', async () => {
+    openApp('/staff');
+    await rowOf('Nguyễn Thị Lan');
+
+    const controls = ['Search', 'Status', 'Department', 'Position', 'Driving licence'].map((name) =>
+      screen.getByLabelText(name),
+    );
+    // one row container holds all five, in today's order
+    const row = controls[0]?.closest('[class*="filters"]');
+    expect(row).toBeTruthy();
+    expect(controls.every((control) => control.closest('[class*="filters"]') === row)).toBe(true);
+    expect(
+      controls.map((control) =>
+        [...(row?.children ?? [])].indexOf(
+          control.closest('.mantine-InputWrapper-root') as Element,
+        ),
+      ),
+    ).toEqual([0, 1, 2, 3, 4]);
+    // each select's "all" says what it filters
+    expect(
+      controls.slice(2).map((control) => (control as HTMLSelectElement).options[0]?.text),
+    ).toEqual(['All departments', 'All positions', 'All driving licence']);
+    // the visible label shows under 768 only, the accessible name stays
+    for (const control of controls) {
+      const wrapper = control.closest('.mantine-InputWrapper-root') as HTMLElement;
+      const label = wrapper.querySelector('label') as HTMLElement;
+      expect(label.className).toContain('mantine-hidden-from-sm');
+      expect(control.getAttribute('aria-label')).toBe(label.textContent);
+    }
+  });
+
+  it('A card whose department and position share a name shows both lines, with no duplicate-key warning', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    openApp('/staff', {
+      override: (api, original) => {
+        api.listEmployees.mockImplementation(async () =>
+          (await original.listEmployees()).map((employee) => ({
+            ...employee,
+            department: { id: 'gone-d', name: 'Kế toán' },
+            position: { id: 'gone-p', name: 'Kế toán' },
+          })),
+        );
+      },
+    });
+    await screen.findAllByTestId('staff-card');
+
+    const lan = screen.getAllByTestId('staff-card')[0];
+    expect(lan.textContent).toContain('EMP-0001Kế toánKế toán0903 111 001');
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+    warn.mockRestore();
+  });
+
+  it('Inactive with nobody who left says no one matches', async () => {
+    openApp('/staff?status=inactive', {
+      override: (api, original) => {
+        api.listEmployees.mockImplementation(async () =>
+          (await original.listEmployees()).filter((employee) => !employee.archived),
+        );
+      },
+    });
+
+    expect(await screen.findByText(/No one matches/)).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('Under 768 one card a person shows the name as a link, code, department, position, phone and chip, and a missing value leaves no empty line; from 768 the table', async () => {
+    openApp('/staff?status=all');
+    await rowOf('Nguyễn Thị Lan');
+
+    // both are drawn, one shown by the width: the table from 768, the cards under it
+    expect(screen.getByRole('table').closest('.mantine-visible-from-sm')).toBeTruthy();
+    const cards = within(screen.getByTestId('staff-cards'));
+    const all = cards.getAllByTestId('staff-card');
+    expect(all).toHaveLength(8);
+    expect(screen.getByTestId('staff-cards').className).toContain('mantine-hidden-from-sm');
+    const lan = within(all[0]);
+    expect(lan.getByRole('link', { name: 'Nguyễn Thị Lan' }).getAttribute('href')).toMatch(
+      /^\/staff\/.+/,
+    );
+    expect(all[0]?.textContent).toBe('NTNguyễn Thị LanActiveEMP-0001Văn phòngQuản lý0903 111 001');
+    // Huy left: the chip says so
+    expect(all[7]?.textContent).toContain('Inactive');
+    // a person in no department has no empty line for it
+    const ngocAnh = all.find((card) => card.textContent?.includes('Bùi Ngọc Anh')) as HTMLElement;
+    expect(ngocAnh.querySelectorAll('p').length).toBeLessThan(all[0].querySelectorAll('p').length);
+    expect(
+      [...ngocAnh.querySelectorAll('p')].every((line) => line.textContent?.trim() !== ''),
+    ).toBe(true);
   });
 
   it('Each person sees in the menu only the pages their permissions allow, and on a page only the buttons for what they may do; a page they may not open says so, and with no page at all one page says there is nothing for them yet', async () => {
@@ -84,7 +204,7 @@ describe('the staff list', () => {
 
     // a warehouse hand who may only see: the list without the button
     const bao = openApp('/staff', { as: 'EMP-0004' });
-    await screen.findByText('Nguyễn Thị Lan');
+    await screen.findAllByText('Nguyễn Thị Lan');
     expect(screen.queryByRole('link', { name: 'Add a person' })).toBeNull();
     bao.unmount();
 

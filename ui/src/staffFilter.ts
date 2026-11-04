@@ -7,18 +7,38 @@ import {
 } from '@credo/shared';
 import { phoneOf, unitName } from './staffNames';
 
-/** What narrows the staff list: typed words, a department, a position, whether people who left
- * show, and a choice for each of the company's choice fields shown in the list. */
+/** Who the list holds: people still working (the default), people who left, or everyone. */
+export type Status = 'active' | 'inactive' | 'all';
+
+/** What narrows the staff list: typed words, a department, a position, a status, and a choice for
+ * each of the company's choice fields shown in the list. */
 export type Criteria = {
   q: string;
   department: string;
   position: string;
-  left: boolean;
+  status: Status;
   /** The chosen option's key, by the field's key. */
   choices: Record<string, string>;
 };
 
 const CHOICE = 'f.';
+
+/** The status an address names; an old link's `left=1` meant everyone, so it is All; anything else
+ * is Active. */
+const statusOf = (value: string | null, left: string | null): Status =>
+  value === 'inactive' || value === 'all'
+    ? value
+    : value === null && left === '1'
+      ? 'all'
+      : 'active';
+
+/** A name inside a sentence: its first letter lowered, unless its first word is an acronym
+ * ("CCCD", "GPLX"), which stays as written. */
+export function lowerFirst(name: string, language: Language) {
+  const first = name.replace(/\s.*$/s, '');
+  const acronym = first.length > 1 && first === first.toLocaleUpperCase(language);
+  return acronym ? name : name.charAt(0).toLocaleLowerCase(language) + name.slice(1);
+}
 
 /** The criteria an address holds; anything it does not name is not set. */
 export function criteriaOf(params: URLSearchParams): Criteria {
@@ -26,7 +46,7 @@ export function criteriaOf(params: URLSearchParams): Criteria {
     q: params.get('q') ?? '',
     department: params.get('department') ?? '',
     position: params.get('position') ?? '',
-    left: params.get('left') === '1',
+    status: statusOf(params.get('status'), params.get('left')),
     choices: Object.fromEntries(
       [...params].flatMap(([key, value]) =>
         key.startsWith(CHOICE) && value ? [[key.slice(CHOICE.length), value]] : [],
@@ -42,7 +62,7 @@ export function paramsOf(criteria: Criteria) {
   if (criteria.q) params.set('q', criteria.q);
   if (criteria.department) params.set('department', criteria.department);
   if (criteria.position) params.set('position', criteria.position);
-  if (criteria.left) params.set('left', '1');
+  if (criteria.status !== 'active') params.set('status', criteria.status);
   for (const [key, value] of Object.entries(criteria.choices)) {
     if (value) params.set(`${CHOICE}${key}`, value);
   }
@@ -77,7 +97,8 @@ export function wordsShown(person: Employee, { setup, language, columns }: Shown
 /** Whether a person stays on the list: every typed word is among the words shown, and each
  * narrowing holds. */
 export function matches(person: Employee, criteria: Criteria, shown: Shown) {
-  if (person.archived && !criteria.left) return false;
+  if (criteria.status === 'active' && person.archived) return false;
+  if (criteria.status === 'inactive' && !person.archived) return false;
   if (criteria.department && person.department?.id !== criteria.department) return false;
   if (criteria.position && person.position?.id !== criteria.position) return false;
   for (const [key, value] of Object.entries(criteria.choices)) {

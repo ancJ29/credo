@@ -305,12 +305,8 @@ async function walk(page: Page, language: Language, width: number) {
   ).toBeVisible();
   await at('staff-7-archive');
 
-  // 8. People who left, shown by the filter.
-  await open(page, language, { path: '/staff' });
-  // Not `check()`: it reads the box at once, and the address writes the box's state a moment
-  // after the click, so it would call a box that is about to tick unchanged.
-  await page.getByLabel(words.staff.showLeft).click();
-  await expect(page.getByLabel(words.staff.showLeft)).toBeChecked();
+  // 8. People who left, by the status choice: the screen opens on Inactive.
+  await open(page, language, { path: '/staff?status=inactive' });
   await expect(page.getByRole('link', { name: 'Hoàng Gia Huy' })).toBeVisible();
   await at('staff-8-left');
 

@@ -144,7 +144,7 @@ describe('an email on a person', () => {
     expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true, qr: true });
 
     await userEvent.click(menu().getByRole('link', { name: 'Staff' }));
-    await userEvent.click(await screen.findByRole('link', { name: 'Trần Văn Hùng' }));
+    await userEvent.click((await screen.findAllByRole('link', { name: 'Trần Văn Hùng' }))[0]);
     expect(await screen.findByRole('heading', { level: 3, name: 'Email' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 3, name: 'Sign in by QR code' })).toBeTruthy();
   });
