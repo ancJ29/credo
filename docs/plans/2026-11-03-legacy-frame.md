@@ -8,43 +8,28 @@ by a button. On a phone: the same header and a 64-pixel bar at the foot, the fir
 rest. No palette picker (milestone 3), no white variant (4), no record, no BFF route; the hidden menu's 60-pixel icon
 strip is a client's option, built in milestone 4 beside the white variants.
 
-The cheapest path is what `main` holds: one `Shell` for both apps (`ui/src/Shell.tsx#L52-L56`,
-`ui/src/OperatorPage.tsx#L22-L31`) on Mantine's `AppShell`; the legacy gradient
-(`ui/src/theme.ts#L65-L67`); each person's menu (`ui/src/nav.ts#L90-L91`); the mock, `ui/frame-mock/`, as the look.
-**Price:** $0 a month; about 52 machine minutes and a 70-minute full run in the human's terminal. **Next:** milestone
-3's plan, during step 5.
+The cheapest path is what `main` holds: one `Shell` for both apps (`ui/src/Shell.tsx#L52-L56`) on Mantine's `AppShell`;
+the legacy gradient (`ui/src/theme.ts#L65-L67`); each person's menu (`ui/src/nav.ts#L90-L91`); the mock as the look.
+**Price:** $0 a month; about 52 machine minutes and a 70-minute full run.
 
 ## The slice
 
-`Shell` rebuilt to the mock; both apps call it as today, so every signed-in screen moves at once. Kept from the mock:
-
-- **Header:** the brand, the console's badge, the PC's toggle, an X or the menu's icon
-  (`ui/frame-mock/frame.js#L167-L171`); on the right the language as its own button, out of the user's menu
-  (`frame.js#L173-L174`; today `ui/src/Shell.tsx#L87-L101`), then the user.
-- **Side menu:** the active page washed in white at 16 %, a notch at its right edge (`ui/frame-mock/index.html#L95`,
-  `#L98`).
-- **Phone bar:** the first four of the person's pages in the menu's order, then More, icons only, each named
-  (`frame.js#L203-L215`); the active one on shade 1 (`index.html#L108`).
-- **More** at `/more` and `/operator/more`, a path in each app's router: the other pages, then the person's own links
-  (password; the console's passkeys, `ui/src/OperatorPage.tsx#L30`) and sign-out (`frame.js#L231-L239`).
-- **Dark** keeps the coloured header and menu (`frame.js#L154-L155`).
+`Shell` rebuilt to the mock; both apps call it as today, so every signed-in screen moves at once. Kept from the mock
+(`ui/frame-mock/`): the header (brand, the console's badge, the PC's toggle, the language as its own button, the user);
+the side menu with the active page washed in white at 16 % and a notch; the phone bar of the first four pages in the
+menu's order, then More, icons only, each named, the active one on shade 1; **More** at `/more` and `/operator/more`
+(the other pages, the person's links, sign-out); dark keeps the coloured header and menu.
 
 Decided here:
 
-- **The brand** (the human's look on the mock): the company's name, as today (`shared/src/config.ts#L7`,
-  `ui/src/BrandMark.tsx#L9-L11`; the console's, `ui/src/brand.ts#L14`), beside a stand-in logo at 36, Tabler's
-  `IconBrandAdobe` (pinned, `pnpm-workspace.yaml#L30`), in place of the stored one, the demo's letter
-  (`ui/src/BrandMark.tsx#L8`). A client's own logo waits for a client's ask: an open item at the recap.
-- **The font is already the legacy's,** Noto Sans (old repo's `workspace/uis/c-mngt/src/theme/index.ts#L199-L201`;
-  here `ui/src/theme.ts#L11`, `ui/src/main.tsx#L1`); the mock loads none (`ui/frame-mock/index.html#L14`). Step 2
-  checks it in the frame: no package, no install, no extra screen moved.
-- **The toggle's state is kept on the device** (`ui/src/device.ts#L40`), shown at first.
-- **The toggle is named by its act** ("Hide the menu", "Show the menu"): piece-1's walk clicks a visible "Menu" button
-  before Settings (`walk/specs/piece-1.spec.ts#L100-L101`), which would hide a PC's menu. Those lines go.
-- **`5-language-menu` is shot from the header's button** (`walk/specs/piece-1.spec.ts#L156-L160`); its question fits
-  (`visual/src/walks.ts#L325`).
+- **The brand:** the company's name as today (`shared/src/config.ts#L7`; the console's, `ui/src/brand.ts#L14`) beside a
+  stand-in logo at 36, Tabler's `IconBrandAdobe`, not the stored one. A client's own logo waits for a client's ask.
+- **The font is already Noto Sans** (`ui/src/theme.ts#L11`): no package.
+- **The toggle's state is kept on the device** (`ui/src/device.ts#L40`), shown at first, named by its act ("Hide the
+  menu", "Show the menu"); piece-1's "Menu" clicks go.
+- **`5-language-menu` is shot from the header's button** (`walk/specs/piece-1.spec.ts#L156-L160`).
 - **One new screen, `lists-9-more`:** the root's More in `admin-lists`.
-- **No build line at the menu's foot** (`frame.js#L200`): it would move every base at every commit.
+- **No build line at the menu's foot:** it would move every base at every commit.
 
 ## The case table
 
@@ -63,54 +48,31 @@ Decided here:
 
 ## Steps
 
-- [x] **1. This plan.** 🤖 Opus, 9 minutes (this kind: 12, 8, 9, 9, 7). Done when: committed, `wc -w` about 1,000, the
-  path grep empty.
-- [x] **2. The frame on the fake.** 🤖 Sonnet, about 27 minutes (B1's page on the fake 26, B2's 27): `Shell`, More,
-  its paths and words, `lists-9-more` in the spec, the walks page and the mock screens. Done when: rows 1
-  to 7 and 10 red once with the old `Shell`; ui and visual at 100 %, lint clean; `pnpm report` builds 107 screens (106
-  before), each at 390 with the bar. Then 👤 1, while step 3 goes on.
-  *Done 2026-11-03, 18:08 to 18:31 (23 minutes).* Rows 1 to 7 and 10 red once with the old `Shell`
-  (`logs/20261103-1811-legacy-frame-ui-red.log`, 15 cases red; `…-1821-legacy-frame-visual-red.log`, 4 red for
-  `lists-9-more` and screen 5), then green: ui 689 cases at 100 % (`…-1828-legacy-frame-ui-final.log`, `== exit 0`),
-  visual 191 cases at 100 % (`…-1825-legacy-frame-visual-green2.log`, `== exit 0`); eslint, prettier, knip and the
-  three typechecks clean. `pnpm report` built 107 screens (`…-1829-legacy-frame-report.log`, `== exit 0`); 96 wear the
-  frame, each with the bar below 768. The font is the legacy's already (`ui/src/theme.ts#L11`): no package. The walk
-  is not run (a browser, the human's terminal); `5-language-menu` and `lists-9-more` were replayed in jsdom with the
-  real router. The nine screens of row 9 are ten: `docs/open-items.md#L556`.
-- [x] **3. The gate.** 🤖 Sonnet, about 11 minutes (B1's 10, B2's 12): `main` taken in if moved; the whole
+- [x] **1. This plan.** 🤖 Opus, 9 minutes . Done when: committed, about 1,000 words.
+- [x] **2. The frame on the fake.** 🤖 Sonnet, about 27 minutes : `Shell`, More,
+  its paths and words, `lists-9-more`. Done when: rows 1 to 7 and 10 red once with the old `Shell`; ui and visual at
+  100 %, lint clean; `pnpm report` builds 107 screens.
+  *Done, see the recap.*
+- [x] **3. The gate.** 🤖 Sonnet, about 11 minutes : `main` taken in if moved; the whole
   `pnpm check` under the lock, `== exit 0`.
-  *Done 2026-11-03, 18:43 to 18:49 (6 minutes).* `main` (the mock's rounds 2 to 4, `ops/pages-preview.sh`) merged in,
-  no conflict, none of it in `ui/src`. The whole check, load 3.7 at the start, 22 inside it, green on the first run
-  (`logs/20261103-1843-legacy-frame-gate.log`, `== exit 0`): typecheck, eslint, prettier, knip clean; shared 151,
-  bff 524, ui 691, visual 191 and scripts 264 cases, each at 100 %. No warning but vitest's isolate hint.
-- [x] **4. One review.** 🤖 Opus, about 4 minutes (B1's and B2's): the bar for each kind of person, a page opened by
-  its address on a phone. Done when: each finding `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
-  *Done 2026-11-03 (Opus).* No High or Medium; one Low, `[FIXED]` here: the titles' 700 (`ui/src/theme.ts#L108`) also
-  moves `phone-2-code-used` (`ui/src/QrLanding.tsx#L24`), which row 9 listed as unmoved; row 9 now says so.
-- [x] **5. The full run** (👤 2), about 70 minutes (B1's 114 pictures: 6m16s); 🤖 reads each log whole. Done when:
+  *Done, see the recap.*
+- [x] **4. One review.** 🤖 Opus, about 4 minutes : the bar for each kind of person, a page opened by
+  its address on a phone. Done when: each finding is tagged here.
+  *Done, see the recap.* One Low, `[FIXED]` here: row 9.
+- [x] **5. The full run** (👤 2), about 70 minutes ; 🤖 reads each log whole. Done when:
   run 1 green, its `raw.txt` naming none of row 9's screens; run 2 every count 0; about 582 bases committed (97 screens,
   `lists-9-more` among them, six pictures each).
-  *Done 2026-11-03 19:15 to 2026-11-04 08:40,* by `ops/full-run.sh` (`cd42d59`); five tries, each red the walk's own, each
-  fixed in `walk/` alone: a form field found by label also matched the phone bar's link, now found by role (`ed4da7c`); a
-  table's hover scrollbar in some pictures, now drawn hidden by `shot` (`a43cf0c`, the wait removed `ed47125`); the
-  services walk's clock installed 1 ms before its `pauseAt`, now a minute (`ff73652`). Run 1 green 23:38, 582 bases
-  committed (`42d4102`: 96 moved screens and `lists-9-more`, six each); run 2 read 0 on ten walks
-  (`logs/20261103-2339-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team.log#L1157-L1188`);
-  the services walk plain, green 11-04 08:40 (`logs/20261104-0839-walk-services.log#L76-L80`). The ten screens of
-  row 9 did not move.
-- [x] **6. The recap.** 🤖 Sonnet, about 1 minute (B1's and B2's). Done when: committed, under 400 words, a client's own
+  *Done, see the recap.*
+- [x] **6. The recap.** 🤖 Sonnet, about 1 minute . Done when: committed, under 400 words, a client's own
   logo an open item; the squash.
 
-Total: about 122 minutes, 52 of them the machine's.
+Total: about 122 minutes, 52 the machine's.
 
 ## The human's points
 
 👤 **1. The look, after step 2.** On the walks page, open `office-orders` at 1280, then `driver-deliveries` at 390,
-then `lists-9-more`: do the header and menu read as the old app on a PC, the bar on a phone? The other screens are
-asked again as you visit them; only an open no holds the merge (`docs/conventions/qa.md#L128-L129`). A yes clears the
-push; a no becomes a case, fixed before step 5.
+then `lists-9-more`: do the header and menu read as the old app on a PC, the bar on a phone? A yes clears the push; a no becomes a case, fixed before step 5.
 
-👤 **2. The full run, step 5.** Two commands in the human's terminal, about 35 minutes each, nothing else testing:
-`bash walk/run.sh` with all 11 walks (`walk/run.sh#L39-L49`) and `--moved all --write`, then plain. Green
-starts the recap; a red names each moved screen, and the machine finds why before any base is kept.
-The first tries were red in the walks, not the frame; the fixes are under step 5.
+👤 **2. The full run, step 5.** Two runs in the human's terminal, about 35 minutes each, nothing else testing: all 11 walks
+with `--moved all --write`, then plain. Green starts the recap; a red names each moved screen, and the machine finds
+why before any base is kept.

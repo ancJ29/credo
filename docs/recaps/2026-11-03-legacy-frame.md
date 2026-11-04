@@ -38,8 +38,8 @@ and More. The language is its own header button. Cost: $0 a month. Left to the h
 ## What remains the human's
 
 - **The push,** when the human calls for it.
-- **Open items 74 to 76:** 74 is this recap's count made true (delete at the merge); 75 the icon strip, milestone 4;
-  76 a client's own logo, on a client's ask.
+- **Open items 75 and 76:** 75 the icon strip, milestone 4; 76 a client's own logo, on a client's ask. Item 74 (ten
+  unmoved, not nine) is closed here.
 
 ## Next
 
