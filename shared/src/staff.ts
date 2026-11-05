@@ -154,7 +154,16 @@ export function staffConfig(setup: Partial<StaffSetup>): {
   numbering: Numbering;
 } {
   return {
-    fields: { personalPhone: false, photo: false, email: false, qr: false, ...setup.fields },
+    fields: {
+      personalPhone: false,
+      photo: false,
+      email: false,
+      qr: false,
+      startDate: false,
+      birthDate: false,
+      address: false,
+      ...setup.fields,
+    },
     customFields: setup.customFields ?? [],
     numbering: setup.numbering ?? DEFAULT_NUMBERING,
   };

@@ -89,11 +89,19 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
-- [ ] **2. The three fields on the fake.** 🤖 Sonnet, about 27 minutes (milestone 1's step 2,
+- [x] **2. The three fields on the fake.** 🤖 Sonnet, about 27 minutes (milestone 1's step 2,
   `docs/plans/2026-11-04-staff-cards.md#L76`): the schema and the reserved keys, the shared day check, the setup's
   switches, both pages, the words, the data set, item 89's two lines. Done when: row 1 red once with the fields drawn
   unconditionally, then green; rows 2 to 8 green; shared, ui and scripts at 100 %, lint and knip clean; `pnpm report`
   builds and, against `main`'s build, exactly the 22 screens' versions differ.
+  Done 2026-11-05 10:35 to 10:55 (about 20 minutes): row 1's off cases red once with the fields drawn unconditionally
+  (five cases red), then green; rows 2 to 8 green, row 3's refused day with the date input made a text input in the
+  test, as jsdom never keeps a day that is not one; shared 152 tests, ui 726, scripts 277 and visual 191 at 100 %
+  (the scripts' first run missed one branch of `processes.ts` at load 11 to 20 and passed on the rerun); typecheck,
+  eslint, prettier and knip clean; `pnpm report` built 109 screens, 218 captures, and against `main`'s build exactly
+  22 screens' versions differ, the 22 named above. The own field "Start date" is "Contract date" (vi "Ngày ký hợp
+  đồng") in the data set and the demo copies; the three keys are reserved; the shared `dayIsValid` serves the own date
+  field and both pages; the BFF route test's round trip holds the three, not run here (the gate's).
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes (`#L89`): `main` taken in, the whole `pnpm check` under the lock,
   `== exit 0`.

@@ -4,6 +4,7 @@ import {
   customFieldSchema,
   customFieldsSchema,
   DEFAULT_NUMBERING,
+  dayIsValid,
   fieldKeyIsValid,
   fieldValueIsValid,
   fieldValueShown,
@@ -38,7 +39,16 @@ describe('a company’s own fields', () => {
       expect(fieldKeyIsValid(bad), bad).toBe(false);
     }
     // the built-in keys, and the names `extra` itself refuses
-    for (const reserved of ['phone', 'personalPhone', 'note', 'constructor', 'prototype']) {
+    for (const reserved of [
+      'phone',
+      'personalPhone',
+      'note',
+      'startDate',
+      'birthDate',
+      'address',
+      'constructor',
+      'prototype',
+    ]) {
       expect(fieldKeyIsValid(reserved), reserved).toBe(false);
     }
     // unique in the list
@@ -85,6 +95,11 @@ describe('a company’s own fields', () => {
     expect(fieldValueIsValid(field('date'), '2026-10-29')).toBe(true);
     for (const bad of ['29/10/2026', '2026-13-01', '2026-02-30', '2026-1-1', 'today']) {
       expect(fieldValueIsValid(field('date'), bad), bad).toBe(false);
+    }
+    // the start and birth dates are checked by the same day check
+    expect(dayIsValid('2026-10-29')).toBe(true);
+    for (const bad of ['', '2026-02-30', '2026-13-01', '29/10/2026', '2026-1-1']) {
+      expect(dayIsValid(bad), bad).toBe(false);
     }
     expect(fieldValueIsValid(choice, 'b2')).toBe(true);
     expect(fieldValueIsValid(choice, 'd')).toBe(false);

@@ -144,6 +144,27 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
             change({ fields: { ...draft.fields, photo: event.currentTarget.checked } })
           }
         />
+        <Checkbox
+          label={t('setup.fieldStartDate')}
+          checked={draft.fields.startDate}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, startDate: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldBirthDate')}
+          checked={draft.fields.birthDate}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, birthDate: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldAddress')}
+          checked={draft.fields.address}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, address: event.currentTarget.checked } })
+          }
+        />
       </Stack>
 
       <Stack gap="sm">

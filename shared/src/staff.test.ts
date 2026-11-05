@@ -16,6 +16,15 @@ import {
   staffSetupSchema,
 } from './staff';
 
+const OFF = {
+  personalPhone: false,
+  photo: false,
+  email: false,
+  qr: false,
+  startDate: false,
+  birthDate: false,
+  address: false,
+};
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
 const person = {
   id: ID,
@@ -197,7 +206,7 @@ describe('staff', () => {
     // a setup saved before these existed has none, and reads as the defaults
     expect(staffSetupSchema.safeParse(bare).success).toBe(true);
     expect(staffConfig(bare)).toEqual({
-      fields: { personalPhone: false, photo: false, email: false, qr: false },
+      fields: { ...OFF },
       customFields: [],
       numbering: { prefix: 'EMP-', digits: 4 },
     });
@@ -210,7 +219,7 @@ describe('staff', () => {
     };
     expect(staffSetupSchema.safeParse(set).success).toBe(true);
     expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
-      fields: { personalPhone: false, photo: true, email: false, qr: false },
+      fields: { ...OFF, photo: true },
       customFields: [{ ...own, options: [], inList: false }],
       numbering: { prefix: 'NV', digits: 3 },
     });
@@ -301,7 +310,22 @@ describe('staff', () => {
       }).success,
     ).toBe(true);
     expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
-      { personalPhone: true, photo: false, email: false, qr: true },
+      { ...OFF, personalPhone: true, qr: true },
     );
+    // the start date, the birth date and the address are switches the same way
+    expect(
+      staffConfig({ fields: { personalPhone: false, photo: false, startDate: true } }).fields,
+    ).toEqual({
+      ...OFF,
+      startDate: true,
+    });
+    expect(
+      staffSetupSchema.safeParse({
+        departments: [],
+        positions: [],
+        extra: {},
+        fields: { birthDate: true, address: true },
+      }).success,
+    ).toBe(true);
   });
 });

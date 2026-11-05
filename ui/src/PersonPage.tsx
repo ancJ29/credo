@@ -42,6 +42,13 @@ import { type PageProps, refusal, useLoad } from './page';
 import { PermissionEditor } from './PermissionEditor';
 import { PhotoPanel } from './PhotoPanel';
 import { EmailPanel, QrPanel } from './SignInPanels';
+import {
+  PersonalFields,
+  type PersonalTexts,
+  personalStored,
+  personalTextsOf,
+  refusedPersonal,
+} from './personalFields';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from './staffNames';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -300,9 +307,12 @@ function PersonForm({
   const [note, setNote] = useState(noteOf(employee));
   const stored = ownTextsOf(customFields, employee.extra);
   const [values, setValues] = useState<OwnTexts>(stored);
+  const storedPersonal = personalTextsOf(employee.extra);
+  const [personal, setPersonal] = useState<PersonalTexts>(storedPersonal);
   const [tried, setTried] = useState(false);
   // A value refused after a try is said at its field until it fits.
   const refused = tried ? refusedFields(customFields, values, stored) : [];
+  const refusedDates = tried ? refusedPersonal(fields, personal, storedPersonal) : [];
   const [department, setDepartment] = useState(employee.department?.id ?? '');
   const [position, setPosition] = useState(employee.position?.id ?? '');
   const [own, setOwn] = useState<PermissionLayer>(employee.permissions);
@@ -313,7 +323,12 @@ function PersonForm({
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setTried(true);
-    if (refusedFields(customFields, values, stored).length > 0) return;
+    if (
+      refusedFields(customFields, values, stored).length > 0 ||
+      refusedPersonal(fields, personal, storedPersonal).length > 0
+    ) {
+      return;
+    }
     // The form starts from the stored bag: a key it does not show survives, and an emptied field
     // removes its own.
     actions.onSave({
@@ -322,6 +337,7 @@ function PersonForm({
         phone: phone.trim() || undefined,
         ...(fields.personalPhone ? { personalPhone: personalPhone.trim() || undefined } : {}),
         note: note.trim() || undefined,
+        ...personalStored(fields, personal),
         ...ownStored(customFields, values, { was: stored, extra: employee.extra }),
       }),
       ...(user.root
@@ -438,6 +454,13 @@ function PersonForm({
                     </>
                   )}
                 </FieldPair>
+                <PersonalFields
+                  fields={fields}
+                  texts={personal}
+                  refused={refusedDates}
+                  readOnly={!editable}
+                  onChange={(next) => setPersonal((was) => ({ ...was, ...next }))}
+                />
                 <Text>
                   {!ready
                     ? t('person.signInNotYet')

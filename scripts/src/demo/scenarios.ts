@@ -147,7 +147,7 @@ export const CUSTOM_FIELDS: CustomField[] = [
   },
   {
     key: 'started',
-    label: { vi: 'Ngày vào làm', en: 'Start date' },
+    label: { vi: 'Ngày ký hợp đồng', en: 'Contract date' },
     kind: 'date',
     options: [],
     inList: true,
@@ -168,7 +168,14 @@ export const CUSTOM_FIELDS: CustomField[] = [
   },
 ];
 
-export const STAFF_FIELDS: StaffFields = { personalPhone: true, photo: false, qr: true };
+export const STAFF_FIELDS: StaffFields = {
+  personalPhone: true,
+  photo: false,
+  qr: true,
+  startDate: true,
+  birthDate: true,
+  address: true,
+};
 
 const view: PermissionLayer = { 'staff.canView': true };
 const office: PermissionLayer = {

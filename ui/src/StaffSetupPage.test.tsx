@@ -62,6 +62,42 @@ describe('the staff setup page', () => {
     },
   );
 
+  it('The setup page switches the start date, the birth date and the address on and off and saves them, in English and in Vietnamese', async () => {
+    const { api } = openApp('/staff-setup');
+    const start = await screen.findByRole('checkbox', { name: 'A start date' });
+    const birth = screen.getByRole('checkbox', { name: 'A birth date' });
+    const address = screen.getByRole('checkbox', { name: 'An address' });
+    // on in the data set
+    expect([start, birth, address].map((box) => (box as HTMLInputElement).checked)).toEqual([
+      true,
+      true,
+      true,
+    ]);
+
+    await user.click(start);
+    await user.click(birth);
+    await user.click(address);
+    await user.click(start);
+    await user.click(address);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Saved.');
+    expect((await api.getStaffSetup()).setup.fields).toMatchObject({
+      startDate: true,
+      birthDate: false,
+      address: true,
+    });
+    await user.click(birth);
+    expect((birth as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('The setup page names the three switches in Vietnamese', async () => {
+    openApp('/staff-setup', { language: 'vi' });
+
+    for (const name of ['Ngày vào làm', 'Ngày sinh', 'Địa chỉ']) {
+      expect(await screen.findByRole('checkbox', { name })).toBeTruthy();
+    }
+  });
+
   it('Piece 2’s permissions are to see the staff list, to add a person, to change a person’s name and details, and to archive a person; the root sets them at any of the three levels', async () => {
     openApp('/staff-setup');
     await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
