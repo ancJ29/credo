@@ -73,8 +73,11 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   `c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
   nothing else differs (log `logs/customer-cards-step2-report-20261105-1707.log`, `== exit 0`).
 - [ ] **3. The look** (👤 1); the machine goes on.
-- [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,
+- [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,
   `== exit 0`.
+  *Evidence:* `main` was still the branch's base, so nothing came in; the whole `pnpm check` ended `== exit 0`
+  (`logs/customer-cards-step4-check3-20261105-1721.log`). Two earlier runs went red on 5-second ui timeouts at load
+  27 to 34, different tests each time; the four files alone passed, 110 of 110.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding tagged here, and
   item 90 marked done with its commit.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1 green, its `raw.txt`
