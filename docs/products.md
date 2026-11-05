@@ -39,6 +39,7 @@ Not built: stock beyond a flag and goods receipts
 | B2, a lost passkey and delete | An operator gives another a new link for a lost passkey, shown once after a touch, and deletes another after a page and a touch, never oneself. | local | in `main` | Operators page, a row's "New link" and "Delete" | [`recaps/2026-11-03-console-operators-b2.md`](recaps/2026-11-03-console-operators-b2.md) |
 | C, services status | Shows the app, the BFF and c-storage: answering or not, builds and times, refreshed each minute. | local, ridge | in `main` | `/operator/services` | [`plans/2026-10-29-operator-console.md`](plans/2026-10-29-operator-console.md) |
 | D, a client's root password | An operator sets a client's root password anew from the Clients list, confirmed by typing the client's code and a passkey touch; the root's sessions end. | local, ridge | in `main`, every look answered yes | Clients row, "New root password" | [`recaps/2026-11-03-console-root-password.md`](recaps/2026-11-03-console-root-password.md) |
+| E, delete a client | An operator deletes a client and everything it owns from the Clients list, on a red page that names the company, asks for its code typed and a passkey touch; irreversible, and big clients go in presses. | local | in `main`, its looks answered yes | Clients row, "Delete" | [`recaps/2026-11-05-client-delete.md`](recaps/2026-11-05-client-delete.md) |
 
 Usage and costs, and Activity, are menu entries with an empty "coming soon" page
 ([`ui/src/operatorNav.ts#L17-L18`](../ui/src/operatorNav.ts#L17-L18)).

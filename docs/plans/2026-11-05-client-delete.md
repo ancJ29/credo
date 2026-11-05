@@ -73,9 +73,12 @@ its records are gone. Walkable end to end on the fake and through the stack.
       other screen moved. Reds shown: the two safety ones and three sweep ones in step 2; the
       read-order and the isolation cases stay unproved by choice. The stack look of step 2 and the
       full run of the walk are unrun.
-- [ ] **4. The look, the review and the full run** (~15 min plus the human's). The three points
+- [x] **4. The look, the review and the full run** (~15 min plus the human's). The three points
       below; one review on another model (rule 5); `bash walk/run.sh operator-setup --moved all` in
       the human's terminal; the recap.
+      *Done 11-05:* the full run of 12 walks green in 14m35s (`20261105-1446-client-delete-full-run.log`),
+      `delete-client` 24 new, `operator` 6 moved, others 0; review fixes in `a073433`; the recap
+      `docs/recaps/2026-11-05-client-delete.md`.
 
 ## The cases
 
