@@ -616,9 +616,11 @@ The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `u
 
 **Done (staff-fields, `ed30369`, 2026-11-05).** Both lines are deleted; no reader was left.
 
-## 90. The frame draws its side column even when empty — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
+## 90. The frame draws its side column even when empty — the machine; **Done (customer-cards, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
 `ui/src/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
+
+**Done (customer-cards, `a71e6a1`, 2026-11-05).** The fix is the one named: `side` is optional and `main` spans 12 when it is absent (`ui/src/DetailCards.tsx#L12-L13`), held by `ui/src/DetailCards.test.tsx#L12-L20`; the customer with no note is its first live case. What is left of the symptom — a side passed but empty — is item 99.
 
 ## 91. Eight walk specs press a loading button and take a picture with no wait for its loader — the machine; `[DEFERRED]` (staff-cards, full run, 2026-11-04, Info)
 
@@ -651,3 +653,11 @@ A real browser's date input never yields a day that is not one, so `dayIsValid` 
 ## 98. The customers and the products have no detail page to re-lay — the machine; `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
 
 The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.
+
+## 99. An empty side still draws its column — the machine; `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Low)
+
+Item 90's fix reads `side !== undefined` (`ui/src/DetailCards.tsx#L13`), so the two other ways a page says "nothing here" still draw a blank 5/12 column: `side={null}` and the usual `side={has && <Card />}`, which is `false` when `has` is false. The person's page passes a `<Stack>` that is always defined (`ui/src/PersonPage.tsx#L552`), so a viewer with no photo field, not the root and not allowed to delete still reads the details at 7/12 beside a blank — the case item 90 opened. *Fix:* treat a falsy side as absent, or have the person's page pass `undefined` when every panel is out; line 58's milestone 2 is in that file. *Trigger:* the next detail page or the next change to the person's page's side.
+
+## 100. The walk and the page disagree on what "has a note" means — the machine; `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Info)
+
+The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`), while the page draws the Note card on the text being non-empty (`ui/src/CustomerPage.tsx#L19`, `#L68`). A customer whose `note` is `''` or not a string would be the walk's "noted" one and show no Note card, so screen 10 would fail on a heading that is correctly absent. The data set has no such customer, so nothing fails today. *Fix:* pick by the same rule the page uses. *Trigger:* a change to the data set's customers, or a second page that draws a conditional card.

@@ -78,8 +78,32 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   *Evidence:* `main` was still the branch's base, so nothing came in; the whole `pnpm check` ended `== exit 0`
   (`logs/customer-cards-step4-check3-20261105-1720.log`). Two earlier runs went red on 5-second ui timeouts at load
   27 to 34, different tests each time; the four files alone passed, 110 of 110.
-- [ ] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding tagged here, and
+- [x] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding tagged here, and
   item 90 marked done with its commit.
+  *Verdict:* **may merge with these fixes.** Findings:
+  - **High** — the walk's two new screens open an address no client on the stack has.
+    `walk/specs/lists.spec.ts#L171` and `#L179` open `/customers/${DEMO_CUSTOMERS[n].id}`, but the `lists-full`
+    project's seed door makes a client whose customers were imported through the root's route, where the BFF mints
+    each id (`scripts/src/generator.ts#L182-L187`, `bff/src/lists.ts#L123`; the generator itself maps code to minted
+    id at `#L269-L270`). On the stack both screens show "This customer is not in the list" and
+    `expect(title(NOTED_CUSTOMER.name)).toBeVisible()` times out, so step 6's run 1 goes red in all 12 full-stack
+    cases and writes no picture. The fake project passes, and `visual/src/walks.test.ts#L628-L633` compares the
+    spec's own text against the same demo ids, so every test stays green. *Fix:* on `lists-full` reach the page as
+    the orders walk does — the list's name link, or the id read by code from `GET /api/customers` — keeping the
+    screen ids and the scene paths as they are.
+  - **Low** — item 99: `side !== undefined` (`ui/src/DetailCards.tsx#L13`) still draws a blank column for
+    `side={null}` or `side={has && <Card />}`, and the person's page's side is always defined
+    (`ui/src/PersonPage.tsx#L552`), so item 90's own viewer still sees the blank half.
+  - **Info** — item 100: the walk picks a noted customer by `'note' in extra`
+    (`walk/specs/lists.spec.ts#L18-L19`) where the page draws the card on non-empty text
+    (`ui/src/CustomerPage.tsx#L19`); nothing fails on today's data set.
+  Item 90 is marked done with `a71e6a1` (`docs/open-items.md#L619-L623`). Read and found sound: every
+  `DetailColumns` caller still passes a `side`; the guard `mayOpen(user, 'customers')`
+  (`ui/src/ClientApp.tsx#L233-L235`, `#L375-L378`, `ui/src/nav.ts#L76`) matches the route's own
+  `orders.canView` (`bff/src/lists.ts#L96`) and gives the 403 page, not a redirect; `/customers/import` still
+  outranks `/customers/:id`; a missing id and a failed read each say so (`ui/src/Loaded.tsx#L12-L33`);
+  `Shown`'s new `id` is filled by both loaders and read by name only; screens 1 to 9 keep their ids and numbers;
+  the five new keys are in both languages and the field labels' `lists.columns.*` are too.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1 green, its `raw.txt`
   naming the three screens alone; run 2 every count 0; 18 bases committed.
 - [ ] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the products row true.
