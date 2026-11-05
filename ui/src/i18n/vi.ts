@@ -674,6 +674,12 @@ export const vi: Dictionary = {
       doneTitle: 'Đã thêm sản phẩm',
       doneAdded: 'Đã thêm {{count}} sản phẩm.',
       back: 'Về danh sách sản phẩm',
+      basic: 'Thông tin cơ bản',
+      unitPrice: 'Đơn vị và giá',
+      stock: 'Tồn kho',
+      note: 'Ghi chú',
+      notThere:
+        'Không có sản phẩm này trong danh sách. Có thể sản phẩm đã bị xóa, hoặc địa chỉ sai.',
     },
   },
   orders: {

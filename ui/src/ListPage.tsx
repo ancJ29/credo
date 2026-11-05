@@ -49,8 +49,8 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
                   <Table.Tr key={row.code}>
                     {list.shown.map((key) => (
                       <Table.Td key={key} ta={key === 'price' ? 'right' : undefined}>
-                        {kind === 'customers' && key === 'name' ? (
-                          <Anchor component={Link} to={`/customers/${row.id}`}>
+                        {key === 'name' ? (
+                          <Anchor component={Link} to={`/${kind}/${row.id}`}>
                             {row.name}
                           </Anchor>
                         ) : (

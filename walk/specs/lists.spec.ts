@@ -1,22 +1,28 @@
 import { type Language } from '@credo/shared';
-import { DEMO_CUSTOMERS } from '@credo/shared/demo';
+import { DEMO_CUSTOMERS, DEMO_PRODUCTS } from '@credo/shared/demo';
 import { type DemoFile, demoImportFile } from '@credo/ui/import-demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * The customers and products from Excel, one walk of eleven screens, each in Vietnamese and in
- * English at the three widths (11 × 2 × 3 = 66). The `lists-fake` project runs it on `pnpm fake -- …`
+ * The customers and products from Excel, one walk of thirteen screens, each in Vietnamese and in
+ * English at the three widths (13 × 2 × 3 = 78). The `lists-fake` project runs it on `pnpm fake -- …`
  * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
  * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
  * added. Words come from the app's own dictionaries.
  */
 
-/** The customers' pages: the first customer with a note and the first without. */
-const NOTED_CUSTOMER = DEMO_CUSTOMERS.find((one) => 'note' in one.extra)!;
-const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !('note' in one.extra))!;
+/** Whether a record has a note the page draws: the page's own rule, a text that is not empty. */
+const hasNote = (one: { extra: Record<string, unknown> }) =>
+  typeof one.extra['note'] === 'string' && one.extra['note'] !== '';
+
+/** The customers' and products' pages: the first of each with a note and the first without. */
+const NOTED_CUSTOMER = DEMO_CUSTOMERS.find(hasNote)!;
+const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !hasNote(one))!;
+const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
+const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 
 const FULL = () => test.info().project.name === 'lists-full';
 
@@ -189,6 +195,28 @@ async function walk(page: Page, language: Language, width: number) {
     page.getByRole('heading', { level: 3, name: words.lists.customers.note }),
   ).toHaveCount(0);
   await at('lists-11-customer-no-note');
+
+  /** A product's page opened from the list by the name's link, for the same reason. */
+  const openProduct = async (name: string) => {
+    await open(page, language, '/products');
+    await page.getByRole('link', { name, exact: true }).click();
+  };
+
+  // 12. A product's page, one with a note: two columns from 992.
+  await openProduct(NOTED_PRODUCT.name);
+  await expect(title(NOTED_PRODUCT.name)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 3, name: words.lists.products.note }),
+  ).toBeVisible();
+  await at('lists-12-product');
+
+  // 13. A product with no note: one column at the full width.
+  await openProduct(PLAIN_PRODUCT.name);
+  await expect(title(PLAIN_PRODUCT.name)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 3, name: words.lists.products.note }),
+  ).toHaveCount(0);
+  await at('lists-13-product-no-note');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -199,7 +227,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all eleven screens in ${name}`, async ({ page }) => {
+      test(`walks all thirteen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

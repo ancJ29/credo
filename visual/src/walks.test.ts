@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { readdirSync, readFileSync } from 'node:fs';
-import { DEMO_COLLEAGUE_ID, DEMO_CUSTOMERS, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import {
+  DEMO_COLLEAGUE_ID,
+  DEMO_CUSTOMERS,
+  DEMO_EMPLOYEES,
+  DEMO_PRODUCTS,
+} from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import {
@@ -614,7 +619,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, eleven screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, thirteen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -630,6 +635,8 @@ describe('the walks', () => {
       ['lists-9-more', 9, 'main'],
       ['lists-10-customer', 10, 'main'],
       ['lists-11-customer-no-note', 11, 'main'],
+      ['lists-12-product', 12, 'main'],
+      ['lists-13-product-no-note', 13, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -650,20 +657,25 @@ describe('the walks', () => {
     }
 
     for (const screen of WALKS[8].screens) {
-      // a customer's page is reached from the list by the name's link: on the stack the BFF mints
-      // the id, so the spec opens the list and clicks the data set's customer by name
+      // a customer's or a product's page is reached from the list by the name's link: on the stack
+      // the BFF mints the id, so the spec opens the list and clicks the data set's record by name
       const before = openings.get(screen.id)!;
       const opened = [...before.matchAll(/await open\(page, language, '([^']+)'\)/g)];
       const customer = DEMO_CUSTOMERS.find((one) => screen.scene!.path === `/customers/${one.id}`);
-      if (customer) {
-        const kind = customer === DEMO_CUSTOMERS[0] ? 'NOTED' : 'PLAIN';
+      const product = DEMO_PRODUCTS.find((one) => screen.scene!.path === `/products/${one.id}`);
+      const record = customer ?? product;
+      if (record) {
+        const noted = typeof record.extra['note'] === 'string' && record.extra['note'] !== '';
+        const opener = customer ? 'openCustomer' : 'openProduct';
+        const name = `${noted ? 'NOTED' : 'PLAIN'}_${customer ? 'CUSTOMER' : 'PRODUCT'}`;
         expect(
           before
-            .slice(before.lastIndexOf('await openCustomer('))
-            .startsWith(`await openCustomer(${kind}_CUSTOMER.name);`),
+            .slice(before.lastIndexOf(`await ${opener}(`))
+            .startsWith(`await ${opener}(${name}.name);`),
           screen.id,
         ).toBe(true);
         expect(before, screen.id).not.toContain('/customers/${');
+        expect(before, screen.id).not.toContain('/products/${');
       } else {
         expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
       }

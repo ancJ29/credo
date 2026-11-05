@@ -6,6 +6,7 @@ import {
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
+  DEMO_PRODUCTS,
   DEMO_TODAY,
   OPERATOR_NAME,
 } from '@credo/shared/demo';
@@ -21,6 +22,10 @@ const dom = (markup: string) => {
   root.innerHTML = markup;
   return root;
 };
+
+/** Whether a record has a note the page draws: a text that is not empty, never an array index. */
+const hasNote = (one: { extra: Record<string, unknown> }) =>
+  typeof one.extra['note'] === 'string' && one.extra['note'] !== '';
 
 const stateOf = (screen: number, state: string) =>
   SCREENS.find((s) => s.number === screen)!.states.find((s) => s.id === state)!;
@@ -221,8 +226,12 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
   'admin-lists:lists-9-more': (w) => `heading: ${w.nav.more}`,
-  'admin-lists:lists-10-customer': () => `heading: ${DEMO_CUSTOMERS[0].name}`,
-  'admin-lists:lists-11-customer-no-note': () => `heading: ${DEMO_CUSTOMERS[1].name}`,
+  'admin-lists:lists-10-customer': () => `heading: ${DEMO_CUSTOMERS.find(hasNote)!.name}`,
+  'admin-lists:lists-11-customer-no-note': () =>
+    `heading: ${DEMO_CUSTOMERS.find((one) => !hasNote(one))!.name}`,
+  'admin-lists:lists-12-product': () => `heading: ${DEMO_PRODUCTS.find(hasNote)!.name}`,
+  'admin-lists:lists-13-product-no-note': () =>
+    `heading: ${DEMO_PRODUCTS.find((one) => !hasNote(one))!.name}`,
   'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
   // the second line is the one added by the steps; the form's own list holds the product too, as an option
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',

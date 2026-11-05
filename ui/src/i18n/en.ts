@@ -675,6 +675,12 @@ export const en = {
       doneTitle: 'Products added',
       doneAdded: '{{count}} products were added.',
       back: 'Back to the products',
+      basic: 'Basic information',
+      unitPrice: 'Unit and price',
+      stock: 'Stock',
+      note: 'Note',
+      notThere:
+        'This product is not in the list. It may have been taken out, or the address is wrong.',
     },
   },
   orders: {
