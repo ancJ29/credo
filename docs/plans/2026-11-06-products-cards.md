@@ -74,10 +74,16 @@ run and never broken.
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
-- [ ] **2. The page on the fake.** 🤖 Sonnet, about 30 minutes: `ui/src/ProductPage.tsx`, its route, the list's
+- [x] **2. The page on the fake.** 🤖 Sonnet, about 30 minutes: `ui/src/ProductPage.tsx`, its route, the list's
   link for both kinds, the frame's falsy `side`, five words in both languages, the two walk screens, the two
   pickers. Done when: rows 1 to 6 each red once, then green; rows 8 and 9 green; ui at 100 %, lint, knip and tsc
   clean; `pnpm report` builds and, against `main`'s build, exactly screens 6, 12 and 13 differ.
+  *Done 2026-11-06, 16 minutes, about 3 of them waiting on the gate lock.* Rows 1 to 6 each red once, then green
+  (`ListPage.test.tsx`, `Access.test.tsx`); item 99 is lane B's, so the page passes `side` as `undefined` by a
+  ternary and row 5 and 6 are proved through it, `DetailCards.tsx` untouched. Whole run per package green, ui 774
+  tests at 100 %; tsc, eslint, prettier and knip clean. `pnpm report` 118 screens, 236 captures against `main`'s
+  116, 232: screen 6 moved, 12 and 13 new, nothing else. Rows 8 and 9: 0 `withBorder`, no diff under `bff/`,
+  `shared/`, `c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
   lock, `== exit 0`.
