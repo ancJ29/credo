@@ -14,17 +14,17 @@ import {
   Group,
   NativeSelect,
   NumberInput,
-  Paper,
   Stack,
   Table,
   Text,
   TextInput,
   Title,
 } from '@mantine/core';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 import type { OrderResult } from './api';
+import { DetailCard, DetailColumns } from './DetailCards';
 import { shownDay } from './day';
 import { Loaded } from './Loaded';
 import {
@@ -134,7 +134,7 @@ function FormFields({
     setSaving(false);
   }
 
-  return (
+  const main = (
     <Stack gap="lg">
       <OutcomeAlert
         outcome={outcome}
@@ -143,108 +143,102 @@ function FormFields({
         // Only a save of an order already made can meet a newer one.
         onTheirs={(current) => existing!.onTheirs(current)}
       />
-      <Paper withBorder p="md">
-        <Stack gap="md">
-          <Title order={3}>{t('orders.details')}</Title>
-          <TextInput label={t('orders.day')} readOnly value={shownDay(day, language)} maw={240} />
+      <DetailCard title={t('orders.details')}>
+        <TextInput label={t('orders.day')} readOnly value={shownDay(day, language)} maw={240} />
+        <NativeSelect
+          label={t('orders.customer')}
+          required
+          value={customerId}
+          onChange={(event) => setCustomerId(event.currentTarget.value)}
+          data={[
+            { value: '', label: t('orders.chooseCustomer') },
+            ...customers.map((one) => ({ value: one.id, label: `${one.code} · ${one.name}` })),
+          ]}
+        />
+      </DetailCard>
+      <DetailCard title={t('orders.lines')}>
+        <Group align="flex-end" wrap="wrap">
           <NativeSelect
-            label={t('orders.customer')}
-            required
-            value={customerId}
-            onChange={(event) => setCustomerId(event.currentTarget.value)}
+            label={t('orders.product')}
+            value={productId}
+            onChange={(event) => setProductId(event.currentTarget.value)}
             data={[
-              { value: '', label: t('orders.chooseCustomer') },
-              ...customers.map((one) => ({ value: one.id, label: `${one.code} · ${one.name}` })),
+              { value: '', label: t('orders.chooseProduct') },
+              ...products.map((one) => ({
+                value: one.id,
+                label: `${one.code} · ${one.name} · ${one.unit}`,
+              })),
             ]}
           />
-        </Stack>
-      </Paper>
-      <Paper withBorder p="md">
-        <Stack gap="md">
-          <Title order={3}>{t('orders.lines')}</Title>
-          <Group align="flex-end" wrap="wrap">
-            <NativeSelect
-              label={t('orders.product')}
-              value={productId}
-              onChange={(event) => setProductId(event.currentTarget.value)}
-              data={[
-                { value: '', label: t('orders.chooseProduct') },
-                ...products.map((one) => ({
-                  value: one.id,
-                  label: `${one.code} · ${one.name} · ${one.unit}`,
-                })),
-              ]}
-            />
-            <NumberInput
-              label={t('orders.quantity')}
-              description={t('orders.wholeUnits')}
-              allowDecimal={false}
-              allowNegative={false}
-              min={1}
-              max={QUANTITY_MAX}
-              w={140}
-              value={quantity}
-              onChange={(value) => setQuantity(typeof value === 'number' ? value : 1)}
-            />
-            <Button variant="default" disabled={productId === ''} onClick={addLine}>
-              {t('orders.addLine')}
-            </Button>
-          </Group>
-          {priced.length === 0 ? (
-            <Text c="dimmed">{t('orders.noLines')}</Text>
-          ) : (
-            <Table.ScrollContainer minWidth={560}>
-              <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>{t('orders.product')}</Table.Th>
-                    <Table.Th>{t('orders.unit')}</Table.Th>
-                    <Table.Th ta="right">{t('orders.price')}</Table.Th>
-                    <Table.Th ta="right">{t('orders.quantity')}</Table.Th>
-                    <Table.Th ta="right">{t('orders.amount')}</Table.Th>
-                    <Table.Th />
+          <NumberInput
+            label={t('orders.quantity')}
+            description={t('orders.wholeUnits')}
+            allowDecimal={false}
+            allowNegative={false}
+            min={1}
+            max={QUANTITY_MAX}
+            w={140}
+            value={quantity}
+            onChange={(value) => setQuantity(typeof value === 'number' ? value : 1)}
+          />
+          <Button variant="default" disabled={productId === ''} onClick={addLine}>
+            {t('orders.addLine')}
+          </Button>
+        </Group>
+        {priced.length === 0 ? (
+          <Text c="dimmed">{t('orders.noLines')}</Text>
+        ) : (
+          <Table.ScrollContainer minWidth={560}>
+            <Table>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>{t('orders.product')}</Table.Th>
+                  <Table.Th>{t('orders.unit')}</Table.Th>
+                  <Table.Th ta="right">{t('orders.price')}</Table.Th>
+                  <Table.Th ta="right">{t('orders.quantity')}</Table.Th>
+                  <Table.Th ta="right">{t('orders.amount')}</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {priced.map(({ product, quantity: count, amount }) => (
+                  <Table.Tr key={product.id}>
+                    <Table.Td>
+                      {product.code} · {product.name}
+                    </Table.Td>
+                    <Table.Td>{product.unit}</Table.Td>
+                    <Table.Td ta="right">{number.format(product.price)}</Table.Td>
+                    <Table.Td ta="right">{number.format(count)}</Table.Td>
+                    <Table.Td ta="right">{number.format(amount)}</Table.Td>
+                    <Table.Td ta="right">
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="compact-sm"
+                        aria-label={t('orders.removeLine', { name: product.name })}
+                        onClick={() =>
+                          setLines(lines.filter((line) => line.productId !== product.id))
+                        }
+                      >
+                        {t('orders.remove')}
+                      </Button>
+                    </Table.Td>
                   </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {priced.map(({ product, quantity: count, amount }) => (
-                    <Table.Tr key={product.id}>
-                      <Table.Td>
-                        {product.code} · {product.name}
-                      </Table.Td>
-                      <Table.Td>{product.unit}</Table.Td>
-                      <Table.Td ta="right">{number.format(product.price)}</Table.Td>
-                      <Table.Td ta="right">{number.format(count)}</Table.Td>
-                      <Table.Td ta="right">{number.format(amount)}</Table.Td>
-                      <Table.Td ta="right">
-                        <Button
-                          variant="subtle"
-                          color="red"
-                          size="compact-sm"
-                          aria-label={t('orders.removeLine', { name: product.name })}
-                          onClick={() =>
-                            setLines(lines.filter((line) => line.productId !== product.id))
-                          }
-                        >
-                          {t('orders.remove')}
-                        </Button>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-                <Table.Tfoot>
-                  <Table.Tr>
-                    <Table.Th colSpan={4} ta="right">
-                      {t('orders.total')}
-                    </Table.Th>
-                    <Table.Th ta="right">{money(total)}</Table.Th>
-                    <Table.Th />
-                  </Table.Tr>
-                </Table.Tfoot>
-              </Table>
-            </Table.ScrollContainer>
-          )}
-        </Stack>
-      </Paper>
+                ))}
+              </Table.Tbody>
+              <Table.Tfoot>
+                <Table.Tr>
+                  <Table.Th colSpan={4} ta="right">
+                    {t('orders.total')}
+                  </Table.Th>
+                  <Table.Th ta="right">{money(total)}</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Tfoot>
+            </Table>
+          </Table.ScrollContainer>
+        )}
+      </DetailCard>
       <Group>
         <Button
           loading={saving}
@@ -254,8 +248,13 @@ function FormFields({
           {t('orders.saveDraft')}
         </Button>
       </Group>
-      {existing && <OrderActions page={page} {...existing} unsaved={dirty} />}
     </Stack>
+  );
+  return (
+    <DetailColumns
+      main={main}
+      side={existing && <OrderActions page={page} {...existing} unsaved={dirty} />}
+    />
   );
 }
 
@@ -349,41 +348,51 @@ function OrderActions({
   );
 }
 
-/** An order read: its customer, lines and total, and its request when it has one. */
-function OrderView({ doc }: { doc: OrderDoc }) {
+/** An order read: its customer, lines and total left, its request and the steps its state allows
+ * (`steps`, none when there are none) right. */
+function OrderView({ doc, steps }: { doc: OrderDoc; steps: ReactNode }) {
   const { t, i18n } = useTranslation();
   const language = i18n.language as Language;
   const { order } = doc;
   return (
-    <Stack gap="lg">
-      <Paper withBorder p="md">
-        <Stack gap="sm">
-          <Text>{t('orders.onDay', { day: shownDay(order.day, language) })}</Text>
-          <CustomerBlock customer={order.customer} />
+    <DetailColumns
+      main={
+        <Stack gap="lg">
+          <DetailCard title={t('orders.details')}>
+            <Text>{t('orders.onDay', { day: shownDay(order.day, language) })}</Text>
+            <CustomerBlock customer={order.customer} />
+          </DetailCard>
+          <DetailCard title={t('orders.lines')}>
+            <LinesTable lines={order.lines} total={order.total} />
+          </DetailCard>
         </Stack>
-      </Paper>
-      <LinesTable lines={order.lines} total={order.total} />
-      <Paper withBorder p="md">
-        {order.request ? (
-          <Stack gap={2}>
-            <Text fw={600}>{t('orders.sentTitle')}</Text>
-            <Text>
-              <Anchor component={Link} to={`/deliveries/${order.request.day}/${order.request.id}`}>
-                {order.request.number}
-              </Anchor>
-              {' · '}
-              {t('orders.byDriver', { name: order.request.driver.name })}
-              {' · '}
-              {t('orders.forDay', { day: shownDay(order.request.day, language) })}
-            </Text>
-          </Stack>
-        ) : (
-          <Text c="dimmed">
-            {t(order.state === 'confirmed' ? 'orders.notSent' : 'orders.noRequest')}
-          </Text>
-        )}
-      </Paper>
-    </Stack>
+      }
+      side={
+        <Stack gap="lg">
+          <DetailCard title={t('orders.sentTitle')}>
+            {order.request ? (
+              <Text>
+                <Anchor
+                  component={Link}
+                  to={`/deliveries/${order.request.day}/${order.request.id}`}
+                >
+                  {order.request.number}
+                </Anchor>
+                {' · '}
+                {t('orders.byDriver', { name: order.request.driver.name })}
+                {' · '}
+                {t('orders.forDay', { day: shownDay(order.request.day, language) })}
+              </Text>
+            ) : (
+              <Text c="dimmed">
+                {t(order.state === 'confirmed' ? 'orders.notSent' : 'orders.noRequest')}
+              </Text>
+            )}
+          </DetailCard>
+          {steps}
+        </Stack>
+      }
+    />
   );
 }
 
@@ -459,19 +468,22 @@ export function OrderPage(page: PageProps) {
                 existing={{ doc, onDoc, onTheirs }}
               />
             ) : (
-              <>
-                <OrderView doc={doc} />
-                {editor && doc.order.state === 'confirmed' && (
-                  <OrderActions
-                    key={doc.version}
-                    page={page}
-                    doc={doc}
-                    unsaved={false}
-                    onDoc={onDoc}
-                    onTheirs={onTheirs}
-                  />
-                )}
-              </>
+              <OrderView
+                doc={doc}
+                steps={
+                  editor &&
+                  doc.order.state === 'confirmed' && (
+                    <OrderActions
+                      key={doc.version}
+                      page={page}
+                      doc={doc}
+                      unsaved={false}
+                      onDoc={onDoc}
+                      onTheirs={onTheirs}
+                    />
+                  )
+                }
+              />
             )}
           </>
         )}

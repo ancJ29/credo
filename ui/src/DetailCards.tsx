@@ -5,12 +5,14 @@ import type { ReactNode } from 'react';
  * seven twelfths and the actions (`side`) five, one column below with `main` first. A later detail
  * page takes it as is: its fields in `DetailCard`s and `FieldPair`s, identity as `main`, actions
  * and the danger zone as `side`. Without a `side` (a page with nothing for it) `main` takes the
- * full twelve at every width, so no blank half is left. */
+ * full twelve at every width, so no blank half is left; a `side` that is `null` or `false` (as
+ * `existing && <Steps/>` is) counts as none. */
 export function DetailColumns({ main, side }: { main: ReactNode; side?: ReactNode }) {
+  const hasSide = Boolean(side);
   return (
     <Grid gap="lg">
-      <Grid.Col span={side === undefined ? 12 : { base: 12, md: 7 }}>{main}</Grid.Col>
-      {side !== undefined && <Grid.Col span={{ base: 12, md: 5 }}>{side}</Grid.Col>}
+      <Grid.Col span={hasSide ? { base: 12, md: 7 } : 12}>{main}</Grid.Col>
+      {hasSide && <Grid.Col span={{ base: 12, md: 5 }}>{side}</Grid.Col>}
     </Grid>
   );
 }

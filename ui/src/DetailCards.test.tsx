@@ -30,4 +30,14 @@ describe('the frame of a detail page', () => {
       true,
     );
   });
+
+  it.each([null, false, undefined])(
+    'A side of %s counts as none: one column, no blank half',
+    (side) => {
+      const { container } = draw(<DetailColumns main={<p>Details</p>} side={side} />);
+
+      expect(columns(container)).toHaveLength(1);
+      expect(widths(container)[0]).not.toContain('@media');
+    },
+  );
 });

@@ -73,10 +73,16 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 8 minutes. Done when: committed, about 1,000 words, no local path.
-- [ ] **2. The re-lay on the fake.** 🤖 Sonnet, about 18 minutes: `DetailCards`'s falsy `side`, then
+- [x] **2. The re-lay on the fake.** 🤖 Sonnet, about 18 minutes: `DetailCards`'s falsy `side`, then
   `ui/src/OrderPage.tsx`'s four blocks and its two frames. Done when: rows 1 to 4 each red once then
   green; rows 6 and 7; ui at 100 %, lint, knip and tsc clean; `pnpm report` builds, and against
   `main`'s build exactly the eight screens' versions differ.
+  Evidence (2026-11-06): rows 1 to 4 each seen red first, then green (8 new tests: 2 in
+  `DetailCards.test.tsx`, 6 in `OrdersPages.test.tsx`), the 31 existing orders tests green; row 6
+  `grep -c withBorder` 4 to 0; ui 63 files, 777 tests, 100 % on all four, `tsc`, eslint, prettier and
+  knip clean, `== exit 0`; `pnpm report` against a scratch build of `main`: 116 screens each, exactly
+  `office-orders` screens 2, 3, 4, 7, 8, 9, 10, 11 differ (8 screens, 48 pictures), 1, 5, 6, 12 and
+  every other walk identical.
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in first, then the whole
   `pnpm check` under the lock, `== exit 0`.

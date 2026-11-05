@@ -345,6 +345,68 @@ describe('a new order', () => {
   });
 });
 
+/** Which column of the page's grid a block sits in: 0 the details, 1 the steps, -1 none. */
+const columnOf = (element: HTMLElement) =>
+  [...document.querySelectorAll('.mantine-Grid-col')].indexOf(
+    element.closest('.mantine-Grid-col')!,
+  );
+const columnCount = () => document.querySelectorAll('.mantine-Grid-col').length;
+const block = (name: string) => screen.getByRole('heading', { level: 3, name });
+
+describe('the order’s page on the cards', () => {
+  it('A draft is two columns from 992: the day, customer and lines left, the confirm and the cancel right', async () => {
+    openApp(at(draftToday), { as: LAN });
+    await formReady();
+
+    expect(columnCount()).toBe(2);
+    expect(columnOf(block('Details'))).toBe(0);
+    expect(columnOf(block('Lines'))).toBe(0);
+    expect(columnOf(screen.getByRole('button', { name: 'Save draft' }))).toBe(0);
+    expect(columnOf(block('Confirm the order'))).toBe(1);
+    expect(columnOf(block('Cancel the order'))).toBe(1);
+  });
+
+  it('A new order offers no step, so it is one column at the full width', async () => {
+    openApp('/orders/new', { as: LAN });
+    await formReady();
+
+    expect(columnCount()).toBe(1);
+    expect(columnOf(block('Details'))).toBe(0);
+    expect(columnOf(block('Lines'))).toBe(0);
+  });
+
+  it.each([
+    ['a confirmed order sent', sentToday, ['Cancel the order']],
+    ['a confirmed order whose request is gone', unsent, ['Send it again', 'Cancel the order']],
+    ['a cancelled order', cancelledOrder, []],
+  ])(
+    '%s puts its facts and lines left, its request and its steps right',
+    async (_, order, steps) => {
+      openApp(at(order), { as: LAN });
+      await heading(`Order ${order.number}`);
+
+      expect(columnCount()).toBe(2);
+      expect(columnOf(block('Details'))).toBe(0);
+      expect(columnOf(block('Lines'))).toBe(0);
+      expect(columnOf(block('Delivery request'))).toBe(1);
+      for (const step of steps) expect(columnOf(block(step))).toBe(1);
+    },
+  );
+
+  it('A draft read by someone who may only see keeps the request on the right', async () => {
+    openApp(at(draftToday), {
+      override: (spied) =>
+        spied.me.mockResolvedValue({
+          user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
+        }),
+    });
+    await heading(`Order ${draftToday.number}`);
+
+    expect(columnOf(block('Details'))).toBe(0);
+    expect(columnOf(block('Delivery request'))).toBe(1);
+  });
+});
+
 function cleanupPage() {
   // the next page is drawn on a fresh app
   document.body.innerHTML = '';
