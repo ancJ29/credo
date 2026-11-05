@@ -92,11 +92,14 @@ About 40 minutes; a first run of this kind.
   (read only, then `--write` on a yes). Two corrections to the line above: the walk is named `passkeys`, not
   `operator-passkeys`, and **nine** doors have a walk picture, not ten (`join-unavailable` has none), so `--moved` names
   those nine and a red is any other screen that moved; the guarded `pk-6-sign-in-ended` joins the three it counts.
-- [ ] **5. Item 94 widened** (2 min). The mock read the same pairing wider: white on the **header
+- [x] **5. Item 94 widened** (2 min). The mock read the same pairing wider: white on the **header
   and the primary button** is 2.8:1 to 3.4:1 — terracotta 3.12, sandstone 3.32, autumn 2.84, olive
   3.10, ocean 3.40, coin 3.05. Line 54's pairing, kept as it is. *Done when:* `grep -c '^## '
   docs/open-items.md` is what it was before — no second item — and 94 names the six palettes and
   the button.
+  *Evidence (18:51):* item 94 widened in place, no item 102; `grep -c '^## '` 80 before and after; the six ratios
+  from the mock's `check.log#L16-L24`; `git diff --stat 1869757 HEAD -- ui bff shared walk visual ops c-storage
+  scripts` empty.
 - [ ] **6. The gate, the review, the recap** (8 min). *Done when:* `pnpm check` green, one
   cross-model review with every finding tagged, the recap holding the evidence.
 

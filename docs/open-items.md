@@ -634,9 +634,9 @@ The photo-off and photo checks read the table row only (`ui/src/StaffRecord.test
 
 At 992 px of screen width the content is 710 px and the last select wraps; the five filters sit on one line only from about 1166 px. The human's looks were at 1280 and the phone. *Trigger:* the next look at a tablet; say so then, it is known.
 
-## 94. The white menu's open-page mark is under 3:1 for four palettes — the machine; `[DEFERRED]` (white-frame, plan, 2026-11-04, Info)
+## 94. White on the brand shade 7 is under 3:1 on the menu mark and about 3:1 on the header and button — the machine; `[DEFERRED]` (white-frame, plan, 2026-11-04, Info; widened by the sign-in look, 2026-11-05)
 
-On the white menu the open page's mark (brand shade 7) falls under 3:1 for terracotta, autumn, olive and coin (2.72 to 2.99), the old app's own colours; kept as decided, since the page's name carries the meaning. *Trigger:* a client on one of the four asks, or a contrast pass over the palettes.
+One pairing fault, line 54's own (the old app's colours kept as they are), not the sign-in look's and not line 60's. It shows in two places. (1) On the white menu the open page's mark (brand shade 7) falls under 3:1 for terracotta, autumn, olive and coin (2.72 to 2.99); kept as decided, since the page's name carries the meaning. (2) The sign-in mock measured the same pairing wider: white text on the header and on the primary button, as the app draws them, is 2.84 to 3.40:1 across six palettes, the four above plus sandstone and ocean — terracotta 3.12, sandstone 3.32, autumn 2.84, olive 3.10, ocean 3.40, coin 3.05 (`one-off/20261105-1755-signin-look-round-1/check.log#L16-L17`, `#L19-L20`, `#L23-L24`, logged as notes "white on <palette>'s shade 7"). The other palettes sit at 4.91 to 6.38. The human was given the recommendation to leave the pairing as it is and answered with their yes on the look (18:12), so this is a record, not a pending fix. *Trigger:* a client on one of the six asks, or a contrast pass over the palettes (the fix would be a darker shade for the fill, or dark text on the light palettes).
 
 ## 95. The icon strip's tip is tested by the CSS file's text, never drawn — the machine; `[DEFERRED]` (white-frame, review, Opus, 2026-11-04, Low)
 
