@@ -12,11 +12,11 @@
 ## What shipped, in order
 
 - `af56d86` the plan; `ed30369` the build on the fake; `be31091` the gate's tick; `34c8279` the review's fix; `854f57c` the bases of 22 screens.
-- The review (Opus) said "may merge as it stands" and still asked two changes, both made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens instead of losing them to a setup that will not parse. A person's own three values are spread after the company's own fields, so the person's win: the overwrite the reservation exists to stop.
+- The review (Opus) said "may merge as it stands" and two changes were made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens instead of losing them to a setup that will not parse. A person's own three values are spread after the company's own fields, so the person's win: the overwrite the reservation exists to stop.
 
 ## Rejected and what remains the human's
 
-- Items 96 (the values checked in the browser only) and 97 (the day check's production path nearly unreachable) stay open, `[DEFERRED]`, both Low.
+- Items 96 and 97 stay open, `[DEFERRED]`.
 - Item 89 closes: `person.signIn` is gone from both dictionaries, no reader left.
 - The human's look: yes on the person's page and the add page (`admin-staff/staff-4-person`, `staff-2-add`, 11-05 11:28, vi). The staff setup's own screen, `setup-2-fields`, was not answered; the merge was not held for it, and it stays on the walks page.
 
