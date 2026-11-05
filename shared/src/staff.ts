@@ -3,6 +3,7 @@ import { extraInputSchema, extraSchema } from './extra';
 import {
   type CustomField,
   customFieldsSchema,
+  customFieldsWriteSchema,
   DEFAULT_NUMBERING,
   type Numbering,
   numberingSchema,
@@ -184,7 +185,7 @@ export const saveStaffSetupRequestSchema = z.strictObject({
     departments: z.array(staffUnitInputSchema),
     positions: z.array(staffUnitInputSchema),
     fields: staffFieldsSchema.optional(),
-    customFields: customFieldsSchema.optional(),
+    customFields: customFieldsWriteSchema.optional(),
     numbering: numberingSchema.optional(),
     extra: extraInputSchema,
   }),

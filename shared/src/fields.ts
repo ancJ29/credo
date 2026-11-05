@@ -6,22 +6,19 @@ import { type Language } from './config';
 export const FIELD_KINDS = ['text', 'number', 'date', 'choice'] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
-/** The keys a company's own field never takes: the built-in keys of `extra`, and the names
- * `extra` refuses as a key. */
-const RESERVED_KEYS = [
-  'phone',
-  'personalPhone',
-  'note',
-  'startDate',
-  'birthDate',
-  'address',
-  'constructor',
-  'prototype',
-];
+/** The keys a stored setup's own field never took: the built-in keys of `extra`, and the names
+ * `extra` refuses as a key. A setup holding one does not parse. */
+const RESERVED_KEYS = ['phone', 'personalPhone', 'note', 'constructor', 'prototype'];
+/** The keys of the start date, the birth date and the address. A write refuses them as an own
+ * field's key; a setup stored before they existed may hold one, and still reads. */
+const PERSONAL_KEYS = ['startDate', 'birthDate', 'address'];
 const FIELD_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
-/** 1 to 64 letters, digits and underscores, a letter first, and not a reserved key. */
-export const fieldKeyIsValid = (key: string) => FIELD_KEY.test(key) && !RESERVED_KEYS.includes(key);
+const keyIsReadable = (key: string) => FIELD_KEY.test(key) && !RESERVED_KEYS.includes(key);
+
+/** 1 to 64 letters, digits and underscores, a letter first, and not a reserved key: the key a new
+ * own field may take. */
+export const fieldKeyIsValid = (key: string) => keyIsReadable(key) && !PERSONAL_KEYS.includes(key);
 
 const label = z.strictObject({
   vi: z.string().trim().min(1).max(200),
@@ -37,7 +34,7 @@ const optionSchema = z.strictObject({
  * its kind, the options of a choice, and whether the list shows it. */
 export const customFieldSchema = z
   .strictObject({
-    key: z.string().refine(fieldKeyIsValid, 'a field key'),
+    key: z.string().refine(keyIsReadable, 'a field key'),
     label,
     kind: z.enum(FIELD_KINDS),
     options: z.array(optionSchema).max(50).default([]),
@@ -60,6 +57,13 @@ export const customFieldsSchema = z
   .refine((fields) => new Set(fields.map((field) => field.key)).size === fields.length, {
     error: 'each key once',
   });
+
+/** The list a write carries: the same, and no field takes the key of a start date, a birth date or
+ * an address. The read side does not ask this, so a setup stored with such a key stays readable. */
+export const customFieldsWriteSchema = customFieldsSchema.refine(
+  (fields) => fields.every((field) => fieldKeyIsValid(field.key)),
+  { error: 'a field key' },
+);
 
 /** The person's optional fields the root switches on; off until turned on. */
 export const staffFieldsSchema = z.strictObject({

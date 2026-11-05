@@ -1,6 +1,6 @@
 import {
   type CustomField,
-  customFieldsSchema,
+  customFieldsWriteSchema,
   FIELD_KINDS,
   nextCode,
   type Numbering,
@@ -77,7 +77,7 @@ const numberingOf = ({ prefix, digits }: FieldsDraft) =>
 
 /** What a draft saves as, or which of its two parts is refused. */
 export function savedFrom(draft: FieldsDraft) {
-  const customFields = customFieldsSchema.safeParse(
+  const customFields = customFieldsWriteSchema.safeParse(
     draft.own.map((field) => ({
       key: field.id.trim(),
       label: { vi: field.vi.trim(), en: field.en.trim() },

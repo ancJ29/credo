@@ -946,6 +946,53 @@ describe('the start date, the birth date and the address', () => {
     });
   });
 
+  it('An own field stored under the key address leaves the staff screens drawn, and the person’s own address wins over it on a save', async () => {
+    const legacy = {
+      key: 'address',
+      label: { vi: 'Nơi ở cũ', en: 'Old address' },
+      kind: 'text' as const,
+      options: [],
+      inList: false,
+    };
+    const { api, unmount } = openApp(`/staff/${person('EMP-0005').id}`, {
+      override: (spied, original) => {
+        spied.getStaffSetup.mockImplementation(async () => {
+          const read = await original.getStaffSetup();
+          return { ...read, setup: { ...read.setup, customFields: [legacy] } };
+        });
+      },
+    });
+
+    // both fields draw; the page is not lost
+    const [own, mine] = [
+      await screen.findByLabelText('Old address'),
+      screen.getByLabelText('Address'),
+    ];
+    await user.clear(mine);
+    await user.type(mine, '9 Hai Bà Trưng');
+    await user.type(own, 'old');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Saved.');
+    expect(api.saveEmployee.mock.calls[0]?.[1].extra).toMatchObject({ address: '9 Hai Bà Trưng' });
+
+    // the add page: the same
+    unmount();
+    const added = openApp('/staff/new', {
+      override: (spied, original) => {
+        spied.getStaffSetup.mockImplementation(async () => {
+          const read = await original.getStaffSetup();
+          return { ...read, setup: { ...read.setup, customFields: [legacy] } };
+        });
+      },
+    });
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    await user.type(screen.getAllByLabelText('Old address').at(-1) as HTMLElement, 'old');
+    await user.type(screen.getAllByLabelText('Address').at(-1) as HTMLElement, '7 Trần Phú');
+    await user.click(screen.getAllByRole('button', { name: 'Add' }).at(-1) as HTMLElement);
+    await waitFor(() => expect(added.api.addEmployee).toHaveBeenCalled());
+    expect(added.api.addEmployee.mock.calls[0]?.[0].extra).toMatchObject({ address: '7 Trần Phú' });
+  });
+
   it('The labels read in Vietnamese', async () => {
     openApp(`/staff/${person('EMP-0005').id}`, { language: 'vi' });
 

@@ -235,6 +235,10 @@ describe('staff', () => {
     expect(save(set)).toBe(true);
     expect(save({ ...set, numbering: { prefix: 'nv', digits: 3 } })).toBe(false);
     expect(save({ ...set, customFields: [{ ...own, key: 'note' }] })).toBe(false);
+    // a stored setup holding an own field keyed address reads, and a save of one is refused
+    const old = { ...bare, customFields: [{ ...own, key: 'address' }] };
+    expect(staffSetupSchema.safeParse(old).success).toBe(true);
+    expect(save({ ...set, customFields: [{ ...own, key: 'address' }] })).toBe(false);
   });
 
   it('The root changes a person’s code: a new code is a valid code over the version read', () => {

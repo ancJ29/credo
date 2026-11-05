@@ -337,8 +337,9 @@ function PersonForm({
         phone: phone.trim() || undefined,
         ...(fields.personalPhone ? { personalPhone: personalPhone.trim() || undefined } : {}),
         note: note.trim() || undefined,
-        ...personalStored(fields, personal),
         ...ownStored(customFields, values, { was: stored, extra: employee.extra }),
+        // after the company's own fields: the person's own three win over a field sharing a key
+        ...personalStored(fields, personal),
       }),
       ...(user.root
         ? {

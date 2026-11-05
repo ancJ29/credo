@@ -85,8 +85,9 @@ export function AddPersonPage(page: PageProps) {
             ? { personalPhone: form.personalPhone.trim() || undefined }
             : {}),
           note: form.note.trim() || undefined,
-          ...personalStored(fields, personal),
           ...ownStored(customFields, own),
+          // after the company's own fields: the person's own three win over a field sharing a key
+          ...personalStored(fields, personal),
         },
       );
       const result = await api.addEmployee({

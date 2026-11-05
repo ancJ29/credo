@@ -63,7 +63,7 @@ Decided here:
 | 4 | A value stored while a switch was on survives a save made while it is off | unit, `StaffPages.test.tsx` |
 | 5 | A company's own field may not take the key `startDate`, `birthDate` or `address` | unit, `shared/src/fields.test.ts` |
 | 6 | A setup saved before the three existed reads as off | unit, `shared/src/staff.test.ts` (`staffConfig`) |
-| 7 | The setup page switches each on and off and saves it, and the route keeps all three over a round trip | unit, `ui/src/StaffSetupPage.test.tsx`; route, `bff/tests/staff.ts#L34-L40` |
+| 7 | The setup page switches each on and off and saves it, and the route keeps all three over a round trip | unit, `ui/src/StaffSetupPage.test.tsx`; route, `bff/src/staff-setup.route.test.ts#L171-L177` |
 | 8 | The three read in Vietnamese and English on all three pages | unit, `StaffPages.test.tsx`, `StaffSetupPage.test.tsx` |
 | 9 | No screen outside the 22 moves | the full run's `raw.txt` |
 
@@ -107,6 +107,7 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
   `== exit 0`.
   Done 2026-11-05 10:58 to 11:04 (6 minutes, 40 seconds of them waiting for the lock): `main` was at the branch point, so
   nothing came in; the whole `pnpm check` under the lock, log `gate-20261105-1057.log`, last line `== exit 0`.
+  Review fix pass 2026-11-05: the three keys bind a write only (`customFieldsWriteSchema`, used by the save request and the setup editor), so a stored setup holding an own field keyed `address` still parses; the person's own three values are spread after the company's own fields, so they win over a field sharing a key. Each half red once, then green; items 96 and 97 deferred. Re-check: the whole `pnpm check`, log `gate2-20261105-1114.log`, last line `== exit 0` (5 of its 10 minutes waiting for the lock).
 - [ ] **5. One review.** 🤖 another model, about 5 minutes. Done when: each finding fixed, rejected or deferred here.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green and its `raw.txt` naming the 22 alone;
