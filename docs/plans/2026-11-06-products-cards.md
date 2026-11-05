@@ -73,7 +73,7 @@ run and never broken.
 
 ## Steps
 
-- [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
+- [x] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
 - [x] **2. The page on the fake.** 🤖 Sonnet, about 30 minutes: `ui/src/ProductPage.tsx`, its route, the list's
   link for both kinds, the frame's falsy `side`, five words in both languages, the two walk screens, the two
   pickers. Done when: rows 1 to 6 each red once, then green; rows 8 and 9 green; ui at 100 %, lint, knip and tsc
@@ -85,7 +85,7 @@ run and never broken.
   116, 232: screen 6 moved, 12 and 13 new, nothing else. Rows 8 and 9: 0 `withBorder`, no diff under `bff/`,
   `shared/`, `c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
 - [x] **3. The look** (👤 1); the machine goes on.
-- [ ] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
+- [x] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
   lock, `== exit 0`.
 - [x] **5. One review.** 🤖 Opus, about 8 minutes, not the build's model. Done when: each finding tagged here, and
   items 98, 99 and 100 marked done with their commits, as item 90 was (`docs/open-items.md#L619-L623`).
