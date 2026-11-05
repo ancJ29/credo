@@ -112,7 +112,8 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green and its `raw.txt` naming the 22 alone;
   run 2 every count 0; the moved bases committed.
-- [ ] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the products row true.
+- [x] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the products row true.
+  Done 2026-11-05: `docs/recaps/2026-11-05-staff-fields.md`, item 89 closed, the products row's staff line extended.
 
 Total: about 72 minutes, 50 the machine's; the cut's ~90 holds the relays and the look.
 

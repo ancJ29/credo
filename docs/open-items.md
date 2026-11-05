@@ -610,9 +610,11 @@ The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not perm
 
 `ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
 
-## 89. `person.signIn` is left unused — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
+## 89. `person.signIn` is left unused — the machine; **Done (staff-fields, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
 The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `ui/src/i18n/en.ts#L403` and `ui/src/i18n/vi.ts#L404` after the sentence moved into the first card. Nothing reads it, and the missing-key test cannot catch an unused key. *Fix:* delete both lines when the files are next touched.
+
+**Done (staff-fields, `ed30369`, 2026-11-05).** Both lines are deleted; no reader was left.
 
 ## 90. The frame draws its side column even when empty — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
