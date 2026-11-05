@@ -9,6 +9,7 @@ import {
   type CStorageClient,
   type StoredClient,
   recordKeys,
+  storedClientDeletionSchema,
   storedClientSchema,
   type StoredUser,
   type TenantConfig,
@@ -103,4 +104,55 @@ export async function listClients(storage: CStorageClient): Promise<ClientListIt
       };
     })
     .sort(newestFirst);
+}
+
+/** The most records one press of a deletion removes, so one request ends well inside the BFF's
+ * time and the page presses again for the rest. */
+export const DELETE_BOUND = 200;
+/** How many of a press's removals run at once. */
+const DELETE_AT_ONCE = 20;
+
+/**
+ * Deletes a client whole, as the mirror of `createClient`. With the client's index in hand, it
+ * writes the deletion record first, then removes the index: the one door into the client, so from
+ * that write the client is out of the list and every session of it is refused at its next step.
+ * With no index (`null`) it resumes from the deletion record a press before left, or answers
+ * `'unknown'` where there is none. Then it removes up to `DELETE_BOUND` of the records under the
+ * tenant's prefix and answers how many are left; the deletion record goes only when a list of the
+ * prefix comes back empty. The caller has checked everything before this writes.
+ */
+export async function deleteClient(
+  storage: CStorageClient,
+  {
+    code,
+    index,
+    by,
+    now,
+  }: { code: string; index: StoredClient | null; by: string; now: () => number },
+): Promise<{ left: number } | 'unknown'> {
+  const key = recordKeys.clientDeletion(code);
+  let deletion;
+  if (index) {
+    deletion = { id: index.id, name: index.name, by, startedAt: now() };
+    await storage.putRecord(key, deletion);
+    await storage.removeRecord(recordKeys.client(code));
+  } else {
+    const held = await storage.getRecord(key);
+    if (!held) return 'unknown';
+    deletion = storedClientDeletionSchema.parse(held.data);
+  }
+  const prefix = recordKeys.tenant(deletion.id).all;
+  const listed = await storage.listRecords(prefix);
+  const batch = listed.records.slice(0, DELETE_BOUND);
+  for (let from = 0; from < batch.length; from += DELETE_AT_ONCE) {
+    await Promise.all(
+      batch.slice(from, from + DELETE_AT_ONCE).map((record) => storage.removeRecord(record.key)),
+    );
+  }
+  const rest = await storage.listRecords(prefix);
+  if (rest.records.length === 0 && !rest.more) {
+    await storage.removeRecord(key);
+    return { left: 0 };
+  }
+  return { left: rest.records.length };
 }

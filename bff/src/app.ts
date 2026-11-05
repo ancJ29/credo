@@ -52,6 +52,7 @@ import { registerListRoutes } from './lists';
 import { registerOrderRoutes } from './orders';
 import { registerReconciliationRoutes } from './reconciliations';
 import { registerOperatorTeamRoutes } from './operator-team';
+import { registerDeleteClientRoutes } from './clients-delete';
 import { registerRootPasswordRoutes } from './root-password';
 import { registerStaffRoutes } from './staff';
 
@@ -357,6 +358,7 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
     serviceKey,
   });
   registerRootPasswordRoutes(app, { storage, now, operatorSignedIn, confirmed });
+  registerDeleteClientRoutes(app, { storage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {

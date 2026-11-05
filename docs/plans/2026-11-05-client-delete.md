@@ -54,6 +54,10 @@ its records are gone. Walkable end to end on the fake and through the stack.
       finds no index, reads the deletion record and resumes. **Done when**
       `pnpm -C bff test clients-delete` is green and `pnpm stack` shows a deleted client's `me`
       answering 404.
+      *Code written 11-05, done check UNRUN* (the Mac was held for the human's full run):
+      `deleteClient` in `bff/src/clients.ts`, the route in `bff/src/clients-delete.ts`, 14 cases in
+      `bff/src/clients-delete.route.test.ts`, the route-list line. `tsc` and eslint clean; no test
+      run yet, so `pnpm -C bff test clients-delete` and the `pnpm stack` look are still to do.
 - [ ] **3. The hardened build** (~35 min). Every row below seen red once
       ([QA](../conventions/qa.md) rule 2), coverage 100 % (rule 8), the walk screens written
       (`visual/src/walks.ts#L396-L470`). **Done when** `pnpm check` is green and

@@ -89,6 +89,17 @@ export const storedClientSchema = z.strictObject({
 });
 export type StoredClient = z.infer<typeof storedClientSchema>;
 
+/** A client's deletion in progress: the tenant's id and name from the index that has gone, the
+ * operator who began it and when, in milliseconds since the epoch. It is the only trace of the
+ * act and goes with the last record. */
+export const storedClientDeletionSchema = z.strictObject({
+  id: z.uuid(),
+  name: z.string(),
+  by: z.uuid(),
+  startedAt: z.number(),
+});
+export type StoredClientDeletion = z.infer<typeof storedClientDeletionSchema>;
+
 /** One operator in the roster: invited until the first passkey is made, then active. `addedBy` is
  * the id of the operator (or null for the terminal) who made them, which may name no one once that
  * operator is deleted. */
