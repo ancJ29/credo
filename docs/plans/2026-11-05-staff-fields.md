@@ -103,8 +103,10 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
   đồng") in the data set and the demo copies; the three keys are reserved; the shared `dayIsValid` serves the own date
   field and both pages; the BFF route test's round trip holds the three, not run here (the gate's).
 - [ ] **3. The look** (👤 1); the machine goes on.
-- [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes (`#L89`): `main` taken in, the whole `pnpm check` under the lock,
+- [x] **4. The gate.** 🤖 Sonnet, about 11 minutes (`#L89`): `main` taken in, the whole `pnpm check` under the lock,
   `== exit 0`.
+  Done 2026-11-05 10:58 to 11:04 (6 minutes, 40 seconds of them waiting for the lock): `main` was at the branch point, so
+  nothing came in; the whole `pnpm check` under the lock, log `gate-20261105-1057.log`, last line `== exit 0`.
 - [ ] **5. One review.** 🤖 another model, about 5 minutes. Done when: each finding fixed, rejected or deferred here.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green and its `raw.txt` naming the 22 alone;
