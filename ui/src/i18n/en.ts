@@ -660,6 +660,12 @@ export const en = {
       doneTitle: 'Customers added',
       doneAdded: '{{count}} customers were added.',
       back: 'Back to the customers',
+      basic: 'Basic information',
+      contacts: 'Contacts',
+      address: 'Address',
+      note: 'Note',
+      notThere:
+        'This customer is not in the list. It may have been taken out, or the address is wrong.',
     },
     products: {
       sheet: 'Products',

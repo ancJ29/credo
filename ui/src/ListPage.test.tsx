@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { openApp } from '../tests/open';
 import { ApiError } from './api';
 
+/** What an input holds. */
+const valueOf = (input: HTMLElement) => (input as HTMLInputElement).value;
+
 /** The text of each row of the table, cell by cell. */
 const cells = () =>
   within(screen.getByRole('table'))
@@ -135,5 +138,85 @@ describe('the customers and the products', () => {
     expect(
       within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).queryByText('Customers'),
     ).toBeNull();
+  });
+
+  it('The customer’s name in the list is a link that opens that customer’s page, and the page’s link goes back to the list', async () => {
+    const first = DEMO_CUSTOMERS[0];
+    openApp('/customers');
+
+    await userEvent.click(await screen.findByRole('link', { name: first.name }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    await userEvent.click(screen.getByRole('link', { name: 'Back to the customers' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
+    expect(screen.getByRole('table')).toBeTruthy();
+  });
+
+  it('The customer’s page shows the code and name, the phone, the address and the note, each in its own card, in English and in Vietnamese', async () => {
+    const first = DEMO_CUSTOMERS[0];
+    const card = (title: string) =>
+      within(screen.getByRole('heading', { level: 3, name: title }).closest('section')!);
+    const drawn = openApp(`/customers/${first.id}`);
+
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(screen.getByText(first.code)).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Contacts', 'Address', 'Note']);
+    const basic = card('Basic information');
+    expect(valueOf(basic.getByRole('textbox', { name: 'Code' }))).toBe(first.code);
+    expect(valueOf(basic.getByRole('textbox', { name: 'Name' }))).toBe(first.name);
+    expect(valueOf(card('Contacts').getByRole('textbox', { name: 'Phone' }))).toBe(
+      first.extra['phone'],
+    );
+    expect(valueOf(card('Address').getByRole('textbox'))).toBe(first.extra['address']);
+    expect(card('Note').getByText(first.extra['note'] as string)).toBeTruthy();
+    expect(
+      card('Basic information').getByRole('textbox', { name: 'Code' }).hasAttribute('readonly'),
+    ).toBe(true);
+    expect(drawn.api.listCustomers).toHaveBeenCalledOnce();
+    drawn.unmount();
+
+    openApp(`/customers/${first.id}`, { language: 'vi' });
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Thông tin cơ bản', 'Liên hệ', 'Địa chỉ', 'Ghi chú']);
+  });
+
+  it('A customer with no note has no Note card', async () => {
+    const quiet = DEMO_CUSTOMERS[1];
+    openApp(`/customers/${quiet.id}`);
+
+    expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Contacts', 'Address']);
+  });
+
+  it('An unknown customer address says the customer is not there, with the way back, and shows no customer’s details', async () => {
+    openApp('/customers/00000000-0000-4000-8000-0000000000ff');
+
+    expect(
+      await screen.findByText(
+        'This customer is not in the list. It may have been taken out, or the address is wrong.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to the customers' })).toBeTruthy();
+    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('The customer’s page says so, and offers another try, when the list cannot be read', async () => {
+    const first = DEMO_CUSTOMERS[0];
+    openApp(`/customers/${first.id}`, {
+      override: (spied) => {
+        spied.listCustomers.mockRejectedValueOnce(new ApiError(503));
+      },
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
   });
 });

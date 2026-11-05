@@ -659,6 +659,12 @@ export const vi: Dictionary = {
       doneTitle: 'Đã thêm khách hàng',
       doneAdded: 'Đã thêm {{count}} khách hàng.',
       back: 'Về danh sách khách hàng',
+      basic: 'Thông tin cơ bản',
+      contacts: 'Liên hệ',
+      address: 'Địa chỉ',
+      note: 'Ghi chú',
+      notThere:
+        'Không có khách hàng này trong danh sách. Có thể khách hàng đã bị xóa, hoặc địa chỉ sai.',
     },
     products: {
       sheet: 'Sản phẩm',

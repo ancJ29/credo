@@ -18,6 +18,7 @@ import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './DeliveriesPage';
 import { DriverDayPage } from './DriverDayPage';
+import { CustomerPage } from './CustomerPage';
 import { DeliveryPage } from './DeliveryPage';
 import { MyDeliveriesPage } from './MyDeliveriesPage';
 import { MyDeliveryPage } from './MyDeliveryPage';
@@ -371,6 +372,10 @@ export function ClientApp({
                   element={guarded(user, kind, <ListPage kind={kind} {...pageFor(user)} />)}
                 />
               ))}
+              <Route
+                path="/customers/:id"
+                element={guarded(user, 'customers', <CustomerPage {...pageFor(user)} />)}
+              />
               {(['customers', 'products'] as const).map((kind) => (
                 <Route
                   key={kind}

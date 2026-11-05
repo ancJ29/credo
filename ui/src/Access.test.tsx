@@ -1,4 +1,4 @@
-import { DEMO_STAFF_SETUP } from '@credo/shared/demo';
+import { DEMO_CUSTOMERS, DEMO_STAFF_SETUP } from '@credo/shared/demo';
 import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router';
@@ -26,6 +26,7 @@ describe('a route guard', () => {
       `/staff/${person('EMP-0002').id}`,
       '/staff-setup',
       '/staff/new',
+      `/customers/${DEMO_CUSTOMERS[0].id}`,
     ]) {
       const drawn = openApp(path, { override: onlySettings });
 
@@ -38,6 +39,7 @@ describe('a route guard', () => {
       expect(drawn.api.listEmployees, path).not.toHaveBeenCalled();
       expect(drawn.api.getEmployee, path).not.toHaveBeenCalled();
       expect(drawn.api.getStaffSetup, path).not.toHaveBeenCalled();
+      expect(drawn.api.listCustomers, path).not.toHaveBeenCalled();
       drawn.unmount();
     }
   });
