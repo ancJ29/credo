@@ -84,7 +84,7 @@ takes `main` and keeps both sides.
     panel with its new words. So the full run's count is 12 screens, 72 pictures, and the cut's second "Amended"
     section (11, 66) is one short. No decision changes: the twelfth shows the same panel's same words; the human's
     two points stay as they are. The `person.signIn` key stays (milestone 3 closes item 89).
-- [ ] **3. The look** (👤 1 and 2); the machine goes on.
+- [x] **3. The look** (👤 1 and 2); the machine goes on. Yes on 11-05, 11:34 (`staff-7-archive`) and 11:33 (`staff-23-back-on`).
 - [x] **4. The route, and the sessions ended at the switch off.** 🤖 Sonnet, about 25 minutes (D's shape, one write
   route, here with a second record written). Done when: rows 6 to 11 each red once then green; bff at 100 %.
   - [x] Rows 6 to 11 red once (8 tests, with the route missing), then green: `bff` 535 tests, 100 % (1525/1525
@@ -99,11 +99,14 @@ takes `main` and keeps both sides.
     that day were red on files this piece does not touch, each at load 10 to 27: scripts coverage (`processes.ts`
     line 83), then bff, ui and office timeouts at load 27, then one `services` words line in visual that passed on
     the rerun. It is to be redone after milestone 3 merges, before step 7.
-- [ ] **6. One review.** 🤖 a model other than the author's, about 5 minutes (`#L95`): each finding tagged in the recap.
-- [ ] **7. The full run** (👤 3): about 16 minutes. Done when: run 1 green, its `raw.txt` naming the twelve alone (step 2's note); run
+- [x] **6. One review.** 🤖 a model other than the author's, about 5 minutes (`#L95`): each finding tagged in the recap.
+  - [x] Opus: merge-able as it stands, no High; the restore's second mint closed the hole it found (`1dec1ce`).
+- [x] **7. The full run** (👤 3): about 16 minutes. Done when: run 1 green, its `raw.txt` naming the twelve alone (step 2's note); run
   2 every count 0; 72 bases committed.
-- [ ] **8. The recap.** 🤖 Sonnet, about 1 minute (`#L101`): committed, under 400 words, item 89 closed, the products
+  - [x] Not as written: fourteen screens, 84 bases (`b3cb7ac`). `20261105-1317-staff-off-on-full-run.log`: green in 14m58s; piece-2 78 moved, 6 new; run 2 every count 0.
+- [x] **8. The recap.** 🤖 Sonnet, about 1 minute (`#L101`): committed, under 400 words, item 89 closed, the products
   row true.
+  - [x] `docs/recaps/2026-11-05-staff-off-on.md`; item 89 was closed by milestone 3's merge, nothing closes here.
 
 ## The human's points
 
