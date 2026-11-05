@@ -58,10 +58,18 @@ its records are gone. Walkable end to end on the fake and through the stack.
       `deleteClient` in `bff/src/clients.ts`, the route in `bff/src/clients-delete.ts`, 14 cases in
       `bff/src/clients-delete.route.test.ts`, the route-list line. `tsc` and eslint clean; no test
       run yet, so `pnpm -C bff test clients-delete` and the `pnpm stack` look are still to do.
-- [ ] **3. The hardened build** (~35 min). Every row below seen red once
+- [x] **3. The hardened build** (~35 min). Every row below seen red once
       ([QA](../conventions/qa.md) rule 2), coverage 100 % (rule 8), the walk screens written
       (`visual/src/walks.ts#L396-L470`). **Done when** `pnpm check` is green and
       `pnpm -C bff test --coverage` reads 100 %.
+      *Done 11-05:* `pnpm check` green (typecheck, eslint, prettier, every package's tests, knip);
+      bff 542 tests at 100 % on all four measures; ui 739; the walk is an appended
+      walk `operator-delete-client` (screens `dc-1-page`, `dc-2-code`, `dc-3-failed`, `dc-4-gone`)
+      with its spec, its two projects and its row in `walk/run.sh`. The report against `main`
+      `4b39482`: `op-5-dashboard` moved (the Delete button), the four `dc-` screens are new, no
+      other screen moved. Reds shown: the two safety ones and three sweep ones in step 2; the
+      read-order and the isolation cases stay unproved by choice. The stack look of step 2 and the
+      full run of the walk are unrun.
 - [ ] **4. The look, the review and the full run** (~15 min plus the human's). The three points
       below; one review on another model (rule 5); `bash walk/run.sh operator-setup --moved all` in
       the human's terminal; the recap.
