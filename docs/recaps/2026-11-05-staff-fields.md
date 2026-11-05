@@ -12,7 +12,7 @@
 ## What shipped, in order
 
 - `af56d86` the plan; `ed30369` the build on the fake; `be31091` the gate's tick; `34c8279` the review's fix; `854f57c` the bases of 22 screens.
-- The review (Opus) said "may merge as it stands" and two changes were made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens. A person's own three values are spread after the company's own fields, so the person's win.
+- The review (Opus) said "may merge as it stands" and two changes were made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens, not lost to a setup that will not parse. A person's own three values are spread after the company's own fields, so the person's win, the overwrite the reservation exists to stop.
 
 ## Rejected and what remains the human's
 
