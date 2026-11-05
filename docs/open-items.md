@@ -665,3 +665,15 @@ The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spe
 ## 101. The join page draws no language switch though the mock did — the machine; `[DEFERRED]` (signin-look, build, Sonnet, 2026-11-05, Low)
 
 The mock drew the language switch on the three join screens, but `Joining` (`ui/src/OperatorApp.tsx#L57-L65`) fixes the language from the device once and holds no handler or state to change it, unlike the console beside it and the client's app. The piece's bound was the words through the caller's existing handler, and giving the join page one means a state in `Joining` and a changed way of choosing the language, so the join page's frame (`JoinPage.tsx`, unchanged) draws the header and no switch. *Fix:* hold the language in `Joining` as `Console` does (`device.setLanguage` and a state) and pass `languages={LANGUAGES}` and the handler to `JoinPage` and on to `SignInFrame`, which already takes both. *Trigger:* the human's word that the join screens should carry the switch the mock showed.
+
+## 102. The join and sign-in card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
+
+`ui/src/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
+
+## 103. A door draws the client's logo, the shell does not — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
+
+A door draws `brand.logo` when there is one (`ui/src/SignIn.tsx#L74-L78`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/Shell.tsx#L145-L147`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
+
+## 104. The words test's BEFORE table was written by hand, not rendered from the old doors — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
+
+Case 8's `BEFORE` table (`ui/src/words.test.tsx#L10-L11`) was hand-written from the doors as they then read, not rendered from `c759c43`, so it pins the words firmly from now on but did not itself prove the rewrite changed no word; the reviewer hand-checked three entries (`qr-busy`, `signin-refused`, `operator-notgiven`) and they matched. *Fix:* render the doors at `c759c43` once and compare the table to the output. *Trigger:* a doubt about a door's wording after this piece, or the next rewrite of the doors' markup.
