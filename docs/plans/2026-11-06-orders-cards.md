@@ -83,7 +83,9 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
   knip clean, `== exit 0`; `pnpm report` against a scratch build of `main`: 116 screens each, exactly
   `office-orders` screens 2, 3, 4, 7, 8, 9, 10, 11 differ (8 screens, 48 pictures), 1, 5, 6, 12 and
   every other walk identical.
-- [ ] **3. The look** (👤 1); the machine goes on.
+- [x] **3. The look** (👤 1); the machine goes on.
+  Evidence (2026-11-06): the human's yes at 00:58 on all eight re-laid screens, each pinned to the new
+  version hash, 8 of 8 matched, on build `walks/2026-11-06-003322-d96f81021`.
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in first, then the whole
   `pnpm check` under the lock, `== exit 0`.
   Evidence (2026-11-06): `main` taken in first: "Already up to date", still `f8162ac`. The whole
@@ -98,8 +100,10 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
   `fd1ab58fc205` to `170a38c3b364`; 10 `0a1a4c14d8dd` to `9ebb1c49ce19`; 11 `dec1f8c55116` to
   `bcdddcb21c27`); screens 1, 5, 6, 12 and every other walk unmoved. The hashes equal those of the
   step-2 build made from the uncommitted tree.
-- [ ] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding
+- [x] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding
   tagged here, and item 99 marked done with its commit.
+  Evidence (2026-11-06): may merge, no High or Medium (`0b36369`, corrected by `acc8b60`); item 99
+  marked done on the first of its two fixes, items 106 and 107 raised and deferred.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1
   green, its `raw.txt` naming the eight screens alone; run 2 every count 0; 48 bases committed.
 - [ ] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the orders

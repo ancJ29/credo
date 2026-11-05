@@ -24,6 +24,6 @@
 
 - Review (Opus): may merge, no High or Medium. It proved no behaviour changed by a token multiset diff of both versions of the page (handlers, api calls, setters, guards, keys, `t('…')`): all 71 identical but the two reused title keys the plan authorises.
 - Gate: `orders-cards-step4-check2-20261106-0035.log`, `== exit 0`: shared 154, bff 556, ui 777, visual 197, scripts 277.
-- Look build `walks/2026-11-06-003322-d96f81021`, hashes identical to the uncommitted one.
-- Look: <!-- FILL: the human's answer on the eight re-laid screens -->
+- Build `walks/2026-11-06-003322-d96f81021`, hashes identical to the uncommitted one.
+- Look: yes on all eight at 00:58, each answer pinned to its re-laid version, on the build above.
 - Full run: <!-- FILL: result and minutes of the full run, log name -->
