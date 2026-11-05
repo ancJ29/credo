@@ -138,7 +138,11 @@ export const vi: Dictionary = {
     deleteClientMake: 'Xóa khách hàng và toàn bộ dữ liệu',
     deleteClientLeft: 'Đang xóa… còn {{count}} bản ghi. Hãy giữ trang này mở.',
     deleteClientFailed:
-      'Khách hàng có thể chưa được xóa hết. Hãy xem danh sách, rồi bấm lại nếu khách hàng vẫn còn: bấm lại sẽ tiếp tục từ chỗ đã dừng.',
+      'Việc xóa đã dừng trước khi xong, nên một số bản ghi của khách hàng này có thể còn lại. Hãy bấm lại nút để tiếp tục từ chỗ đã dừng: bấm lại là an toàn. Nếu bạn rời trang này, hãy quay lại địa chỉ này và bấm “Tiếp tục xóa”.',
+    deleteClientUnfinished:
+      'Khách hàng này không có trong danh sách. Nếu việc xóa đã dừng giữa chừng, một số bản ghi của họ có thể vẫn còn trong kho: hãy bấm “Tiếp tục xóa” để hoàn tất. Nếu không còn gì, trang này sẽ cho biết.',
+    deleteClientResume: 'Tiếp tục xóa',
+    deleteClientFinished: 'Không còn gì của khách hàng này: việc xóa đã hoàn tất.',
     back: 'Về danh sách khách hàng',
     unavailableStorage:
       'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',

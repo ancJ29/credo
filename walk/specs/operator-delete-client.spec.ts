@@ -14,9 +14,9 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
  * The `delete-client-full` project runs it on a stack of its own for each test (`pnpm stack -- …`):
  * the walk deletes the data set's second client, which only its own stack loses. Chromium's virtual
  * authenticator holds the passkey the stack hands over, so the touch the act asks for is a real one
- * that the BFF checks. The failure of screen 3 is stubbed at the browser. After screen 4 the spec
- * reads by the API that the client's own sign-in is refused (held by
- * bff/src/clients-delete.route.test.ts, case 5).
+ * that the BFF checks. The failure of screen 3 is stubbed at the browser. The spec reads nothing by
+ * the API: that a deleted client's own sign-in is refused is held by
+ * bff/src/clients-delete.route.test.ts, case 5.
  */
 
 const FULL = () => test.info().project.name === 'delete-client-full';

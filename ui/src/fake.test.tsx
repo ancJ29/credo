@@ -474,6 +474,7 @@ describe('the fake Api', () => {
     expect(await status(fake().deleteClient('hoa-sen', { confirm: CONFIRM }))).toBe(401);
     expect(await status(api.deleteClient('nobody', {} as never))).toBe(404);
     expect(await status(api.deleteClient('hoa-sen', {} as never))).toBe(400);
+    expect(await status(api.deleteClient('hoa-sen', null))).toBe(400);
     expect((await api.listClients()).map((one) => one.code)).toContain('hoa-sen');
     expect(await api.deleteClient('hoa-sen', { confirm: CONFIRM })).toEqual({ left: 0 });
     expect((await api.listClients()).map((one) => one.code)).not.toContain('hoa-sen');

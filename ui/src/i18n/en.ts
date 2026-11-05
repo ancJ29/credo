@@ -139,7 +139,11 @@ export const en = {
     deleteClientMake: 'Delete the client and all its data',
     deleteClientLeft: 'Deleting… {{count}} records are still to go. Keep this page open.',
     deleteClientFailed:
-      'The client may not be fully deleted. Look at the list, then press again if it is still there: pressing again picks up where it stopped.',
+      'The deletion stopped before it finished, so some records of this client may remain. Press the button again to go on from where it stopped: pressing again is safe. If you leave this page, come back to this address and press “Continue deleting”.',
+    deleteClientUnfinished:
+      'This client is not in the list. If a deletion of it stopped part way, some of its records may still be in storage: press “Continue deleting” to finish it. If nothing was left, this page says so.',
+    deleteClientResume: 'Continue deleting',
+    deleteClientFinished: 'Nothing is left of this client: its deletion is finished.',
     back: 'Back to the clients',
     unavailableStorage:
       'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',

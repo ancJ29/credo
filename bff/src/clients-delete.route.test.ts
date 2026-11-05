@@ -259,6 +259,131 @@ describe(
   },
 );
 
+describe('A deletion writes only over what it read, and keeps its code until it is finished', () => {
+  it('case 11: an index that changed under the window (the code deleted and made again) is refused with a 409: the new client stays, nothing is swept, and no deletion record is left', async () => {
+    const other = '00000000-0000-4000-8000-0000000000aa';
+    const t = await setup({}, (client) => ({
+      ...client,
+      removeRecord: async (key, tag) => {
+        if (key === recordKeys.client(CODE)) {
+          await client.putRecord(key, { id: other, name: 'Newer' });
+        }
+        return await client.removeRecord(key, tag);
+      },
+    }));
+    await t.fill(5);
+    const before = await t.tenantRecords();
+    const answer = await t.press();
+
+    expect(answer.statusCode).toBe(409);
+    expect((await t.index())!.data).toEqual({ id: other, name: 'Newer' });
+    expect(await t.tenantRecords()).toEqual(before);
+    expect(await t.deletion()).toBeNull();
+  });
+
+  it('case 11, retried: an index that moves after a half-died press leaves the old deletion record in place', async () => {
+    let first = true;
+    const other = '00000000-0000-4000-8000-0000000000aa';
+    const t = await setup({}, (client) => ({
+      ...client,
+      removeRecord: async (key, tag) => {
+        if (key === recordKeys.client(CODE)) {
+          if (first) {
+            first = false;
+            throw new CStorageError(500, 'down');
+          }
+          await client.putRecord(key, { id: other, name: 'Newer' });
+        }
+        return await client.removeRecord(key, tag);
+      },
+    }));
+    expect((await t.press()).statusCode).toBe(503);
+    expect(await t.deletion()).not.toBeNull();
+    expect((await t.press()).statusCode).toBe(409);
+    expect(await t.deletion()).not.toBeNull();
+  });
+
+  it('case 12: a press that died between the record and the index is retried with a new touch and finishes', async () => {
+    let first = true;
+    const t = await setup({}, (client) => ({
+      ...client,
+      removeRecord: async (key, tag) => {
+        if (first && key === recordKeys.client(CODE)) {
+          first = false;
+          throw new CStorageError(500, 'down');
+        }
+        return await client.removeRecord(key, tag);
+      },
+    }));
+    await t.fill(3);
+
+    expect((await t.press()).statusCode).toBe(503);
+    expect(await t.index()).not.toBeNull();
+    const again = await t.press();
+    expect(again.statusCode).toBe(200);
+    expect(left(again)).toBe(0);
+    expect(await t.index()).toBeNull();
+    expect(await t.deletion()).toBeNull();
+  });
+
+  it('case 12: an unfinished deletion of another tenant under this code is a 409, and nothing is written', async () => {
+    const t = await setup();
+    const earlier = {
+      id: '00000000-0000-4000-8000-0000000000bb',
+      name: 'Earlier',
+      by: t.op.id,
+      startedAt: 1,
+    };
+    await t.client.putRecord(recordKeys.clientDeletion(CODE), earlier);
+    const before = await t.tenantRecords();
+    t.calls.wrote.length = 0;
+    t.calls.removed.length = 0;
+
+    expect((await t.press()).statusCode).toBe(409);
+    expect(await t.index()).not.toBeNull();
+    expect(await t.tenantRecords()).toEqual(before);
+    expect(t.calls.wrote).toEqual([]);
+    expect(t.calls.removed).toEqual([]);
+  });
+
+  it('case 12: a deletion record that appears between the read and the write is a 409', async () => {
+    const t = await setup({}, (client) => ({
+      ...client,
+      putRecord: async (key, data, tag) => {
+        if (key === recordKeys.clientDeletion(CODE)) {
+          await client.putRecord(key, {
+            id: '00000000-0000-4000-8000-0000000000bb',
+            name: 'E',
+            by: 'x',
+            startedAt: 1,
+          });
+        }
+        return await client.putRecord(key, data, tag);
+      },
+    }));
+
+    expect((await t.press()).statusCode).toBe(409);
+    expect(await t.index()).not.toBeNull();
+  });
+
+  it('case 13: a code with an unfinished deletion cannot be made again until it is finished', async () => {
+    const t = await setup();
+    await t.fill(DELETE_BOUND + 5);
+    await t.press();
+    const make = () =>
+      t.app.inject({
+        method: 'POST',
+        url: '/api/operator/clients',
+        headers: withAuth(t.op.authId),
+        payload: { code: CODE, name: 'Again' },
+      });
+
+    expect((await make()).statusCode).toBe(409);
+    expect(left(await t.resume())).toBe(0);
+    expect((await make()).statusCode).toBe(201);
+  });
+});
+
 describe('Deleting a client needs the operator, the client’s code and the fresh touch, all checked before any write', () => {
   it('case 1: is a 401 with no sign-in, a wrong handle, or a client root’s handle, and nothing is written', async () => {
     const t = await setup();

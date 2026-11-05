@@ -448,9 +448,18 @@ export function createApi({
     },
 
     /** A client deleted whole, with the operator's fresh touch: the answer says how many of its
-     * records are still to go, and zero is done. */
-    async deleteClient(code: string, request: DeleteClientRequest): Promise<DeleteClientReply> {
-      const response = await send('DELETE', clientDeleteRoute(code), request, 'operator');
+     * records are still to go, and zero is done. With no request, a deletion already begun is
+     * continued on the session alone, or the answer is a 404 where none is. */
+    async deleteClient(
+      code: string,
+      request: DeleteClientRequest | null,
+    ): Promise<DeleteClientReply> {
+      const response = await send(
+        'DELETE',
+        clientDeleteRoute(code),
+        request ?? undefined,
+        'operator',
+      );
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, deleteClientReplySchema);
     },

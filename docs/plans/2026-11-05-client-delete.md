@@ -129,6 +129,17 @@ its records are gone. Walkable end to end on the fake and through the stack.
   ridge is the piece's first real use, the human's own act. It is a broom, not a fix:
   `ops/check.sh#L149-L156` still makes one a run, so that open item stays open until the check
   deletes its own, a next ops piece.
+- **A session alone may continue another operator's deletion.** The resume asks for no body and no
+  touch, and the deletion record's `by` is kept only as the trace: the touch was given to begin the
+  act, and the console's operators are one team.
+- **The route's order, as built:** the index is read before the body, so a malformed body on a code
+  naming no client and no deletion in progress is a 404, not a 400; nothing is written either way.
+- **The writes are conditional (review, 11-05):** the index is removed only over the tag it was read
+  with, and the deletion record is written only over what was read (none, or this tenant's own), so
+  a code deleted and made again under a press is a 409 and nothing is swept. `createClient` refuses
+  a code whose deletion is unfinished, so a new client never hides records no press can reach.
+  The page of a client no longer in the list offers to continue blindly: the route answers 404
+  where there is nothing to continue.
 - **The sweep retries a bounded number of times and never past them**, as `deleteOperator` does on a
   moved roster (`bff/src/operators.ts#L168-L196`); `more` is read as a signal to press on, not as
   the error `listClients` makes of it (`bff/src/clients.ts#L89-L91`).

@@ -43,12 +43,56 @@ describe('a client deleted whole', () => {
     expect(api.deleteClient).not.toHaveBeenCalled();
   });
 
-  it('a client not in the list has no page: it says so and offers the list, never the touch', async () => {
+  it('a client not in the list has no form and no touch: the page offers to continue a deletion that may have stopped, and says there is nothing left when the route finds none (404)', async () => {
     const { api } = open({}, '/operator/clients/nobody/delete');
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.rootUnknown);
+    expect((await screen.findByRole('note')).textContent).toBe(
+      words.operator.deleteClientUnfinished,
+    );
     expect(screen.queryByRole('button', { name: words.operator.deleteClientMake })).toBeNull();
-    expect(api.deleteClient).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: words.operator.deleteClientResume }));
+
+    expect((await screen.findByRole('status')).textContent).toBe(
+      words.operator.deleteClientFinished,
+    );
+    expect(api.deleteClient).toHaveBeenCalledExactlyOnceWith('nobody', null);
+    expect(api.operatorPasskeyConfirmOptions).not.toHaveBeenCalled();
+  });
+
+  it('continuing a deletion presses on while records are left, with no touch, and lands on the list', async () => {
+    const { api } = open({}, '/operator/clients/nobody/delete');
+    api.deleteClient.mockResolvedValueOnce({ left: 3 }).mockResolvedValueOnce({ left: 0 });
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.operator.deleteClientResume }),
+    );
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(api.deleteClient).toHaveBeenCalledTimes(2);
+    expect(api.operatorPasskeyConfirmOptions).not.toHaveBeenCalled();
+  });
+
+  it('a continued deletion that fails says to press again, with the count left so far; a 401 opens the prompt', async () => {
+    const { api } = open({}, '/operator/clients/nobody/delete');
+    api.deleteClient.mockResolvedValueOnce({ left: 4 }).mockRejectedValueOnce(new ApiError(503));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.operator.deleteClientResume }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.deleteClientFailed);
+    expect(screen.getByRole('status').textContent).toBe(
+      words.operator.deleteClientLeft.replace('{{count}}', '4'),
+    );
+    api.deleteClient.mockRejectedValueOnce(new ApiError(401));
+    await userEvent.click(screen.getByRole('button', { name: words.operator.deleteClientResume }));
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
+  });
+
+  it('the failure words send the operator back to press again, never to look for a row that is gone', () => {
+    for (const language of ['en', 'vi'] as const) {
+      const failed = DICTIONARIES[language].operator.deleteClientFailed;
+      expect(failed).toContain(DICTIONARIES[language].operator.deleteClientResume);
+      expect(failed).not.toMatch(/if it is still there|nếu khách hàng vẫn còn/);
+    }
   });
 
   it('a client already gone (404) leaves the page listing again', async () => {

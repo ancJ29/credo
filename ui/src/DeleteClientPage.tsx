@@ -24,7 +24,8 @@ const PROBLEM = {
  * that everything it owns goes and cannot come back, asks for the client's code typed, then a fresh
  * touch of the operator's own passkey. The route does a bounded part of the work and says how many
  * records are left; the page presses on, with the same touch, until none are, and the list comes
- * back without the client. One already gone (404) is the same list.
+ * back without the client. One already gone (404) is the same list. A page opened for a client not
+ * in the list offers to continue a deletion that may have stopped part way.
  */
 export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
   const { t } = useTranslation();
@@ -37,6 +38,8 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
   const [busy, setBusy] = useState(false);
   /** The records the last press left, while the page presses on. */
   const [left, setLeft] = useState<number | null>(null);
+  /** Set when a continued deletion found nothing left to continue. */
+  const [finished, setFinished] = useState(false);
 
   async function give() {
     setBusy(true);
@@ -60,6 +63,27 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
     setBusy(false);
   }
 
+  /** The client is out of the list, so a deletion of it may have stopped part way: the route
+   * continues one on the session alone, and answers 404 where there is none. */
+  async function resume() {
+    setBusy(true);
+    setProblem(null);
+    try {
+      let reply = await api.deleteClient(code, null);
+      while (reply.left > 0) {
+        setLeft(reply.left);
+        reply = await api.deleteClient(code, null);
+      }
+      void navigate('/operator/clients');
+      return;
+    } catch (error) {
+      refusal(error, { onSignedOut });
+      if (error instanceof ApiError && error.status === 404) setFinished(true);
+      else setProblem('failed');
+    }
+    setBusy(false);
+  }
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setProblem(null);
@@ -77,9 +101,30 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
         <Stack align="flex-start">
-          <Alert color="orange" role="alert" w="100%">
-            {t('operator.rootUnknown')}
-          </Alert>
+          {finished ? (
+            <Alert color="green" role="status" w="100%">
+              {t('operator.deleteClientFinished')}
+            </Alert>
+          ) : (
+            <>
+              <Alert color="orange" role="note" w="100%">
+                {t('operator.deleteClientUnfinished')}
+              </Alert>
+              {problem !== null && (
+                <Alert color="red" role="alert" w="100%">
+                  {t(PROBLEM[problem])}
+                </Alert>
+              )}
+              {left !== null && (
+                <Alert color="orange" role="status" w="100%">
+                  {t('operator.deleteClientLeft', { count: left })}
+                </Alert>
+              )}
+              <Button color="red" variant="outline" loading={busy} onClick={() => void resume()}>
+                {t('operator.deleteClientResume')}
+              </Button>
+            </>
+          )}
           {back}
         </Stack>
       ) : (

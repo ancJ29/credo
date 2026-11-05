@@ -182,6 +182,13 @@ describe('the API client', () => {
     expect(JSON.parse(calls[0]?.init.body as string)).toEqual({ confirm });
   });
 
+  it('A deletion is continued with no request at all: the call carries no body', async () => {
+    const { calls, api } = fake(json({ left: 0 }));
+
+    expect(await api.deleteClient('binh-an', null)).toEqual({ left: 0 });
+    expect(calls[0]?.init.body).toBeUndefined();
+  });
+
   it('A root’s password is set by POST with the operator’s handle and no client code, the touch in the body; the made one is returned, and a refusal or a wrong shape is an error', async () => {
     const { calls, api } = fake(
       json({ made: 'Abcdef1!' }),

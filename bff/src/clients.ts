@@ -62,6 +62,9 @@ export async function createClient(
   }: { code: string; name: string; madeAt: number; settings?: Partial<TenantConfig> },
 ): Promise<{ id: string; password: string } | 'taken'> {
   if (await storage.getRecord(recordKeys.client(code))) return 'taken';
+  // A deletion of an earlier client of this code still unfinished keeps the code, or its records
+  // would be left with no way to finish them.
+  if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
   const password = newPassword();
@@ -113,13 +116,17 @@ export const DELETE_BOUND = 200;
 const DELETE_AT_ONCE = 20;
 
 /**
- * Deletes a client whole, as the mirror of `createClient`. With the client's index in hand, it
- * writes the deletion record first, then removes the index: the one door into the client, so from
- * that write the client is out of the list and every session of it is refused at its next step.
- * With no index (`null`) it resumes from the deletion record a press before left, or answers
- * `'unknown'` where there is none. Then it removes up to `DELETE_BOUND` of the records under the
- * tenant's prefix and answers how many are left; the deletion record goes only when a list of the
- * prefix comes back empty. The caller has checked everything before this writes.
+ * Deletes a client whole, as the mirror of `createClient`. With the client's index in hand (read
+ * with its tag), it writes the deletion record first, then removes the index only if it is still as
+ * it was read: the one door into the client, so from that write the client is out of the list and
+ * every session of it is refused at its next step. An index that changed in the meantime (the code
+ * deleted and made again by another operator) is another client, which nobody confirmed:
+ * `'moved'`, and nothing is swept. An earlier deletion of another tenant under this code, still
+ * unfinished, is `'busy'`, and the deletion record is written only over what was read. With no
+ * index (`null`) it resumes from the deletion record a press before left, or answers `'unknown'`
+ * where there is none. Then it removes up to `DELETE_BOUND` of the records under the tenant's
+ * prefix and answers how many are left; the deletion record goes only when a list of the prefix
+ * comes back empty. The caller has checked everything before this writes.
  */
 export async function deleteClient(
   storage: CStorageClient,
@@ -128,14 +135,24 @@ export async function deleteClient(
     index,
     by,
     now,
-  }: { code: string; index: StoredClient | null; by: string; now: () => number },
-): Promise<{ left: number } | 'unknown'> {
+  }: {
+    code: string;
+    index: (StoredClient & { tag: string }) | null;
+    by: string;
+    now: () => number;
+  },
+): Promise<{ left: number } | 'unknown' | 'busy' | 'moved'> {
   const key = recordKeys.clientDeletion(code);
   let deletion;
   if (index) {
+    const prior = await storage.getRecord(key);
+    if (prior && storedClientDeletionSchema.parse(prior.data).id !== index.id) return 'busy';
     deletion = { id: index.id, name: index.name, by, startedAt: now() };
-    await storage.putRecord(key, deletion);
-    await storage.removeRecord(recordKeys.client(code));
+    if ((await storage.putRecord(key, deletion, prior?.tag ?? null)) === 'moved') return 'busy';
+    if ((await storage.removeRecord(recordKeys.client(code), index.tag)) === 'moved') {
+      if (!prior) await storage.removeRecord(key);
+      return 'moved';
+    }
   } else {
     const held = await storage.getRecord(key);
     if (!held) return 'unknown';
