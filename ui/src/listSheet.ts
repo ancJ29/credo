@@ -20,7 +20,7 @@ export type ColumnKey =
   'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'stocked' | 'note';
 export type Cells = Partial<Record<ColumnKey, string>>;
 /** A record of a list as the page shows it: the code is always there. */
-export type Shown = Cells & { code: string };
+export type Shown = Cells & { id: string; code: string };
 export type ListRequest = AddCustomerRequest | AddProductRequest;
 
 /** What each list shows and takes: the columns of its file in the template's order, the ones every
@@ -33,7 +33,8 @@ export const LISTS = {
     shown: ['code', 'name', 'phone', 'address'],
     preview: ['phone'],
     load: async (api: Api): Promise<Shown[]> =>
-      (await api.listCustomers()).map(({ code, name, extra }) => ({
+      (await api.listCustomers()).map(({ id, code, name, extra }) => ({
+        id,
         code,
         name,
         phone: textIn(extra['phone']),
@@ -47,7 +48,8 @@ export const LISTS = {
     shown: ['code', 'name', 'unit', 'price', 'stocked'],
     preview: ['unit', 'price', 'stocked'],
     load: async (api: Api, language: Language): Promise<Shown[]> =>
-      (await api.listProducts()).map(({ code, name, unit, price, stocked }) => ({
+      (await api.listProducts()).map(({ id, code, name, unit, price, stocked }) => ({
+        id,
         code,
         name,
         unit,
@@ -58,7 +60,7 @@ export const LISTS = {
   },
 } as const;
 
-const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
+export const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
 
 /** A column's heading in a language. */
 export const headingOf = (key: ColumnKey, language: Language) =>

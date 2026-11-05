@@ -1,5 +1,5 @@
 import { type Language } from '@credo/shared';
-import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { Loaded } from './Loaded';
@@ -49,7 +49,13 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
                   <Table.Tr key={row.code}>
                     {list.shown.map((key) => (
                       <Table.Td key={key} ta={key === 'price' ? 'right' : undefined}>
-                        {row[key]}
+                        {kind === 'customers' && key === 'name' ? (
+                          <Anchor component={Link} to={`/customers/${row.id}`}>
+                            {row.name}
+                          </Anchor>
+                        ) : (
+                          row[key]
+                        )}
                       </Table.Td>
                     ))}
                   </Table.Tr>
