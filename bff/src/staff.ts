@@ -54,6 +54,7 @@ import {
   readEmployee,
   readQr,
   readSetup,
+  endSessions,
   readSignIn,
   setSignInPassword,
 } from './staff-records';
@@ -471,6 +472,30 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
     if (
       (await storage.putRecord(key, { ...found.employee, archived: true }, body.version)) ===
+      'moved'
+    ) {
+      throw conflict(await newest(request.tenantId, found.employee.id));
+    }
+    // A fresh generation on their sign-in record, so a session from before cannot wake when they
+    // are switched back on; the password stays. None to write for someone with no sign-in record.
+    await endSessions(
+      storage,
+      request.tenantId,
+      normaliseSignInName(found.employee.code),
+      (user) => user.employeeId === found.employee.id,
+    );
+    return await newest(request.tenantId, found.employee.id);
+  });
+
+  /** Back on: the flag written off over the version read; the sign-in record, password and code
+   * are as the switch off left them. */
+  app.post(employeeRoutes.restore(':id'), forClient, async (request) => {
+    mustCan(await signedIn(request), 'staff.canDelete');
+    const found = await mustFind(request.tenantId, idOf(request));
+    const body = parse(archiveEmployeeRequestSchema, request.body);
+    const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
+    if (
+      (await storage.putRecord(key, { ...found.employee, archived: false }, body.version)) ===
       'moved'
     ) {
       throw conflict(await newest(request.tenantId, found.employee.id));

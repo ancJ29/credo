@@ -389,6 +389,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│   ├── /import (POST)',
         '│   └── /:id (GET, HEAD, PUT)',
         '│       ├── /archive (POST)',
+        '│       ├── /restore (POST)',
         '│       ├── /password (PUT)',
         '│       ├── /photo (GET, HEAD, PUT)',
         '│       ├── /code (PUT)',

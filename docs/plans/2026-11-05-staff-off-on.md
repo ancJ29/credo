@@ -85,8 +85,13 @@ takes `main` and keeps both sides.
     section (11, 66) is one short. No decision changes: the twelfth shows the same panel's same words; the human's
     two points stay as they are. The `person.signIn` key stays (milestone 3 closes item 89).
 - [ ] **3. The look** (👤 1 and 2); the machine goes on.
-- [ ] **4. The route, and the sessions ended at the switch off.** 🤖 Sonnet, about 25 minutes (D's shape, one write
+- [x] **4. The route, and the sessions ended at the switch off.** 🤖 Sonnet, about 25 minutes (D's shape, one write
   route, here with a second record written). Done when: rows 6 to 11 each red once then green; bff at 100 %.
+  - [x] Rows 6 to 11 red once (8 tests, with the route missing), then green: `bff` 535 tests, 100 % (1525/1525
+    statements, 816/816 branches, 287/287 functions, 1275/1275 lines). Row 9 also red with the route but without the
+    new generation on the switch off, so it does not pass by accident. Row 11 holds two cases: a sign-in record
+    with no password, and no sign-in record at all.
+  - [x] The route list test (`bff/src/operator.route.test.ts`) names `/restore (POST)`.
 - [ ] **5. The gate.** 🤖 Sonnet, about 11 minutes (`docs/plans/2026-11-04-staff-cards.md#L89`): `main` taken in, the
   whole `pnpm check` under the lock, `== exit 0`.
 - [ ] **6. One review.** 🤖 a model other than the author's, about 5 minutes (`#L95`): each finding tagged in the recap.
