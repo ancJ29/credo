@@ -3,7 +3,16 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { DEMO_COLLEAGUE_ID, DEMO_CUSTOMERS, DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
-import { DEVICE_WIDTH, PARTS, PEOPLE, resolveDrawn, type Step, type Walk, WALKS } from './walks';
+import {
+  DEVICE_WIDTH,
+  PARTS,
+  PEOPLE,
+  resolveDrawn,
+  SIGN_IN_LOOK,
+  type Step,
+  type Walk,
+  WALKS,
+} from './walks';
 import { stepWords } from './scene';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
@@ -16,6 +25,25 @@ const piece2Walks = () => {
 };
 
 describe('the walks', () => {
+  it('The sign-in look question is the question of exactly the nine doors and of no other screen', () => {
+    const DOORS = [
+      '1-sign-in',
+      '2-sign-in-refused',
+      'op-1-sign-in',
+      'pk-1-join',
+      'pk-3-not-given',
+      'pk-4-no-operator',
+      'pk-5-link-dead',
+      'phone-1-signed-in',
+      'phone-2-code-used',
+    ];
+    const asking = WALKS.flatMap((walk) => walk.screens)
+      .filter((screen) => screen.question === SIGN_IN_LOOK)
+      .map((screen) => screen.id);
+
+    expect(asking.sort()).toEqual([...DOORS].sort());
+  });
+
   it('Each walk screen names a state the mock draws', () => {
     const states = resolveDrawn(WALKS, SCREENS);
 

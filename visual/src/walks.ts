@@ -271,7 +271,7 @@ const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
  * The one question the sign-in doors ask (docs/plans/2026-11-05-signin-look.md): the coloured header, the
  * card on the app's ground, and the one difference from the mock, named where it is looked at.
  */
-const SIGN_IN_LOOK =
+export const SIGN_IN_LOOK =
   'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? The doors that offer two languages carry the language switch the mock showed; the three join screens do not, and keep the language the device chose. Adding it there is a small later change, if you want it.';
 
 /**
@@ -299,7 +299,7 @@ export const WALKS: Walk[] = [
           en: 'Sign in, in the company’s name and colours',
           vi: 'Đăng nhập, mang tên và màu của công ty',
         },
-        question: 'Would the admin know this is their app, and how to sign in?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: '2-sign-in-refused',
@@ -307,7 +307,7 @@ export const WALKS: Walk[] = [
         path: 'wrong',
         mock: { screen: 2, state: 'failed' },
         sentence: { en: 'Sign-in refused', vi: 'Đăng nhập bị từ chối' },
-        question: 'Does this say what to do?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: '3-settings',
@@ -425,7 +425,7 @@ export const WALKS: Walk[] = [
           en: 'Sign in at the operator’s page',
           vi: 'Đăng nhập tại trang người vận hành',
         },
-        question: 'Would you know this is our own door, not a client’s?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'op-2-new-client',
@@ -451,7 +451,8 @@ export const WALKS: Walk[] = [
           en: 'Made: the link, the root’s name and its first password, once, to copy',
           vi: 'Đã tạo: đường dẫn, tên tài khoản root và mật khẩu đầu tiên, chỉ một lần, để sao chép',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would you know what to send the client, and that the password is not shown again?',
       },
       {
         id: 'op-4-code-taken',
@@ -479,7 +480,8 @@ export const WALKS: Walk[] = [
           en: 'The dashboard: the five sections, who is signed in, the clients newest first with the day each was made and a New root password button on each',
           vi: 'Bảng điều khiển: năm mục, người đang đăng nhập, khách hàng mới nhất trước kèm ngày tạo và nút Mật khẩu root mới ở mỗi dòng',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Is this what you need to see of your clients, and are these the sections you expect?',
       },
       {
         id: 'op-6-coming-soon',
@@ -556,7 +558,7 @@ export const WALKS: Walk[] = [
           en: 'A join link opened: whose it is, who made it, and the button to make a passkey',
           vi: 'Mở đường dẫn tham gia: của ai, ai tạo, và nút tạo khóa truy cập',
         },
-        question: 'Would the new operator know what this is and what to do?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'pk-2-passkeys',
@@ -579,7 +581,7 @@ export const WALKS: Walk[] = [
           steps: [{ press: 'passkey.signInButton' }],
         },
         sentence: { en: 'The passkey not given', vi: 'Chưa có khóa truy cập nào được đưa ra' },
-        question: 'Does this say what to do?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'pk-4-no-operator',
@@ -594,7 +596,7 @@ export const WALKS: Walk[] = [
           en: 'A passkey that opens nothing here',
           vi: 'Khóa truy cập không mở được gì ở đây',
         },
-        question: 'Would you know to ask another operator?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'pk-5-link-dead',
@@ -605,7 +607,7 @@ export const WALKS: Walk[] = [
           en: 'A link used, too old or replaced',
           vi: 'Đường dẫn đã dùng, quá cũ hoặc đã bị thay',
         },
-        question: 'Would you know to ask for a new link?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'pk-6-sign-in-ended',
@@ -770,7 +772,8 @@ export const WALKS: Walk[] = [
           en: 'Added: the sign-in name and a first password, shown once',
           vi: 'Đã thêm: tên đăng nhập và mật khẩu đầu tiên, chỉ hiện một lần',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would the admin know what to hand over, and that the password is not shown again?',
       },
       {
         id: 'staff-4-person',
@@ -1148,7 +1151,7 @@ export const WALKS: Walk[] = [
           en: 'Signed in on a phone by the code, on the person’s first page',
           vi: 'Đăng nhập trên điện thoại bằng mã, vào trang đầu tiên của người đó',
         },
-        question: 'Would the person know they are in, and where?',
+        question: SIGN_IN_LOOK,
       },
       {
         id: 'phone-2-code-used',
@@ -1159,7 +1162,7 @@ export const WALKS: Walk[] = [
           en: 'A code used before, or past its 15 minutes',
           vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
         },
-        question: 'Would the person know to ask for a new one?',
+        question: SIGN_IN_LOOK,
       },
     ],
   },
@@ -1600,7 +1603,8 @@ export const WALKS: Walk[] = [
           en: 'Delivery requests: each driver’s cash to bring back, delivered n of m, the day open',
           vi: 'Yêu cầu giao hàng: tiền mặt tài xế cần mang về, đã giao n trên m, ngày chưa chốt',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would the office know whose day is still to settle, and what each should bring back?',
       },
       {
         id: 'reconcile-2-day',
@@ -1611,7 +1615,8 @@ export const WALKS: Walk[] = [
           en: 'A driver’s day: the delivered requests and their sum, the one still waiting apart',
           vi: 'Ngày của một tài xế: các yêu cầu đã giao và tổng của chúng, yêu cầu còn chờ để riêng',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would the office know how much this driver should hand in, and for which deliveries?',
       },
       {
         id: 'reconcile-3-cash',
@@ -1710,7 +1715,8 @@ export const WALKS: Walk[] = [
           en: 'The page: the company, its code typed, the password twice, what it ends',
           vi: 'Trang này: tên công ty, mã đã nhập, mật khẩu hai lần, điều nó chấm dứt',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would you know whose password this changes, that their root is signed out, and that leaving it empty makes one?',
       },
       {
         id: 'rp-2-rule',
@@ -1784,7 +1790,8 @@ export const WALKS: Walk[] = [
           en: 'The operators: name, state, added by whom (“—” once that one is deleted) and when, passkeys, last sign-in; you marked; every other row offers New link and Delete',
           vi: 'Các người vận hành: tên, trạng thái, ai thêm (“—” khi người đó đã bị xóa) và khi nào, khóa truy cập, lần đăng nhập gần nhất; bạn được đánh dấu; mỗi dòng còn lại có Đường dẫn mới và Xóa',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Is this who you expect may sign in, and does every row but yours offer a new link and a delete?',
       },
       {
         id: 'tm-2-name',
@@ -1814,7 +1821,8 @@ export const WALKS: Walk[] = [
           en: 'Added: the join link, once, to send',
           vi: 'Đã thêm: đường dẫn tham gia, chỉ một lần, để gửi đi',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would you know to send the link to your colleague, and that it is not shown again?',
       },
       {
         id: 'tm-4-link',
@@ -1829,7 +1837,8 @@ export const WALKS: Walk[] = [
           en: 'A new link for a colleague who lost their passkeys: shown once, their old passkeys stop when they use it',
           vi: 'Đường dẫn mới cho đồng nghiệp đã mất khóa truy cập: chỉ hiện một lần, khóa cũ của họ ngừng hoạt động khi họ dùng nó',
         },
-        question: SIGN_IN_LOOK,
+        question:
+          'Would you know that their old passkeys stop only when they use the link, and that it is not shown again?',
       },
       {
         id: 'tm-5-delete',
