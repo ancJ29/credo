@@ -1,8 +1,9 @@
+import type { Language } from '@credo/shared';
 import {
   Alert,
   Box,
   Button,
-  Container,
+  Flex,
   Group,
   Image,
   Paper,
@@ -10,12 +11,25 @@ import {
   Stack,
   TextInput,
   Title,
+  UnstyledButton,
 } from '@mantine/core';
-import { IconLock, IconUser } from '@tabler/icons-react';
+import { IconBrandAdobe, IconLock, IconUser } from '@tabler/icons-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from './brand';
+import classes from './frame.module.css';
+import { LANGUAGE_NAMES } from './i18n';
 import { BRAND_GRADIENT } from './theme';
+
+/** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
+const GROUND = 'light-dark(var(--mantine-color-neutral-1), var(--mantine-color-body))';
+
+/** The language switch's outline, white on the coloured header. */
+const SWITCH = {
+  border: '1px solid rgba(255, 255, 255, 0.55)',
+  borderRadius: 6,
+  overflow: 'hidden',
+};
 
 type Props = {
   brand: Brand;
@@ -24,70 +38,100 @@ type Props = {
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
   onSubmit: (username: string, password: string) => void;
+  /** The languages the company offers, and the caller's handler for a chosen one. */
+  languages?: readonly Language[];
+  onLanguage?: (language: Language) => void;
 };
 
 type FrameProps = {
   brand: Brand;
   /** The heading over what the card holds. */
   title: string;
+  /** The languages the caller offers; the header draws a switch only when there is more than one. */
+  languages?: readonly Language[];
+  /** The caller's own handler for a chosen language, the one the signed-in header calls. */
+  onLanguage?: (language: Language) => void;
   children: ReactNode;
 };
 
 /**
- * The card a door is drawn in, in the company's name and colours, as the old app's: one card on a
- * soft grey ground, the brand's bar across its top, the logo and name in its tinted head, and a
- * title over what the person does there. The sign-in, the operator's and the join page share it.
+ * What a door is drawn in: the app's own coloured header (gradient, logo, company name and, where
+ * the caller offers more than one language, the language switch) with no menu, and the card on the
+ * app's own ground beneath. The sign-in, the operator's and the join page share it.
  */
-export function SignInFrame({ brand, title, children }: FrameProps) {
+export function SignInFrame({ brand, title, languages = [], onLanguage, children }: FrameProps) {
+  const { t, i18n } = useTranslation();
   return (
-    <Box
-      mih="100vh"
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        background:
-          'linear-gradient(135deg, var(--mantine-color-neutral-0) 0%, var(--mantine-color-neutral-1) 100%)',
-      }}
-    >
-      <Container size={500} w="100%" px="sm" py="lg">
+    <Box mih="100vh" style={{ display: 'flex', flexDirection: 'column' }}>
+      <Group
+        component="header"
+        h={56}
+        px="md"
+        justify="space-between"
+        wrap="nowrap"
+        className={classes.header}
+        style={{ background: BRAND_GRADIENT, flexShrink: 0 }}
+      >
+        <Group gap="sm" wrap="nowrap" className={classes.brand}>
+          {brand.logo ? (
+            <Image src={brand.logo} alt="" h={36} w={36} fit="contain" radius="sm" />
+          ) : (
+            <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
+          )}
+          <Title order={1} size="h4" fw={600} c="inherit">
+            {brand.name}
+          </Title>
+        </Group>
+        {languages.length > 1 && onLanguage && (
+          <Group gap={0} wrap="nowrap" role="group" aria-label={t('user.language')} style={SWITCH}>
+            {languages.map((language) => (
+              <UnstyledButton
+                key={language}
+                aria-label={LANGUAGE_NAMES[language]}
+                aria-current={i18n.language === language}
+                px={8}
+                py={3}
+                fz={12}
+                fw={700}
+                style={{
+                  background: i18n.language === language ? 'rgba(255, 255, 255, 0.22)' : undefined,
+                }}
+                onClick={() => onLanguage(language)}
+              >
+                {language.toUpperCase()}
+              </UnstyledButton>
+            ))}
+          </Group>
+        )}
+      </Group>
+      <Flex
+        flex={1}
+        justify="center"
+        align={{ base: 'flex-start', sm: 'center' }}
+        px={{ base: 'sm', sm: 'md' }}
+        py={{ base: 'md', sm: 24 }}
+        style={{ background: GROUND }}
+      >
         <Paper
-          shadow="xl"
+          shadow="lg"
           radius="md"
-          style={{ border: '1px solid var(--mantine-color-neutral-3)', overflow: 'hidden' }}
+          w="100%"
+          maw={440}
+          p={{ base: '24px 20px', sm: 32 }}
+          style={{ border: '1px solid var(--mantine-color-default-border)' }}
         >
-          <Box h={4} style={{ background: BRAND_GRADIENT }} />
-          <Box px={40} pt={28} bg="brand.0">
-            <Group gap="md" justify="center" wrap="nowrap">
-              {brand.logo && (
-                <Box
-                  w={44}
-                  h={44}
-                  bd="1px solid var(--mantine-color-brand-2)"
-                  style={{ borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}
-                >
-                  <Image src={brand.logo} alt="" h={44} w={44} fit="contain" />
-                </Box>
-              )}
-              <Title order={1} fz="md" fw={700} lh={1.2}>
-                {brand.name}
-              </Title>
-            </Group>
-            <Box mt="md" h={1} bg="brand.1" />
-          </Box>
-          <Box p={40} pt={28}>
-            <Title order={2} fw={700} ta="center" mb="md">
-              {title}
-            </Title>
-            {children}
-          </Box>
+          <Title order={2} fw={700} ta="center" mb="md">
+            {title}
+          </Title>
+          {children}
         </Paper>
-      </Container>
+      </Flex>
     </Box>
   );
 }
 
 /** The sign-in: a username and a password in the company's card. */
-export function SignIn({ brand, status, initial, onSubmit }: Props) {
+export function SignIn({ brand, status, initial, onSubmit, languages, onLanguage }: Props) {
   const { t } = useTranslation();
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
@@ -98,7 +142,12 @@ export function SignIn({ brand, status, initial, onSubmit }: Props) {
   };
 
   return (
-    <SignInFrame brand={brand} title={t('auth.title')}>
+    <SignInFrame
+      brand={brand}
+      title={t('auth.title')}
+      languages={languages}
+      onLanguage={onLanguage}
+    >
       {status === 'refused' && (
         <Alert color="red" role="alert" mb="md">
           {t('auth.refused')}

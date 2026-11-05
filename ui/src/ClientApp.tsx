@@ -253,6 +253,10 @@ export function ClientApp({
   });
 
   const landing = !user && qr !== null && qrStatus !== 'done';
+  const chooseLanguage = (next: Language) => {
+    device.setLanguage(next);
+    setChosen(next);
+  };
 
   return (
     <Providers colour={config.colour} language={language} test={test} {...look}>
@@ -260,6 +264,8 @@ export function ClientApp({
         <QrLanding
           brand={config}
           status={qrStatus === 'refused' ? 'refused' : 'busy'}
+          languages={config.languages}
+          onLanguage={chooseLanguage}
           onPassword={() => {
             setQrStatus('done');
             void navigate('/', { replace: true });
@@ -275,10 +281,7 @@ export function ClientApp({
           shown={device.menuShown()}
           onShown={device.setMenuShown}
           languages={config.languages}
-          onLanguage={(next) => {
-            device.setLanguage(next);
-            setChosen(next);
-          }}
+          onLanguage={chooseLanguage}
           onSignOut={() => void signOut()}
         >
           {first ? (
@@ -400,7 +403,13 @@ export function ClientApp({
           )}
         </Shell>
       ) : (
-        <SignIn brand={config} status={signIn} onSubmit={(n, p) => void submit(n, p)} />
+        <SignIn
+          brand={config}
+          status={signIn}
+          languages={config.languages}
+          onLanguage={chooseLanguage}
+          onSubmit={(n, p) => void submit(n, p)}
+        />
       )}
     </Providers>
   );

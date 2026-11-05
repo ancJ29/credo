@@ -1,4 +1,4 @@
-import { JOIN_PATH, type Language } from '@credo/shared';
+import { JOIN_PATH, type Language, LANGUAGES } from '@credo/shared';
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router';
 import { AddClientPage } from './AddClientPage';
@@ -146,21 +146,28 @@ function Console({ api, device, passkeys, build, test }: Props) {
     setAttempt((n) => n + 1);
   };
 
+  const chooseLanguage = (next: Language) => {
+    device.setLanguage(next);
+    setChosen(next);
+  };
+
   return (
     <Providers colour={BEFORE_CONFIG.colour} language={chosen} test={test}>
       {phase === 'loading' || phase === 'unavailable' ? (
         <Boot status={phase} hop={hop} onRetry={retry} />
       ) : phase === 'signedOut' ? (
-        <OperatorSignIn status={signIn} onSubmit={() => void submitSignIn()} />
+        <OperatorSignIn
+          status={signIn}
+          languages={LANGUAGES}
+          onLanguage={chooseLanguage}
+          onSubmit={() => void submitSignIn()}
+        />
       ) : (
         <OperatorPage
           name={who.name}
           shown={device.menuShown()}
           onShown={device.setMenuShown}
-          onLanguage={(next) => {
-            device.setLanguage(next);
-            setChosen(next);
-          }}
+          onLanguage={chooseLanguage}
           onSignOut={() => void signOut()}
         >
           <Routes key={round}>
