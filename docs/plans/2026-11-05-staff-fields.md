@@ -88,7 +88,8 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
 
 ## Steps
 
-- [ ] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
+- [x] **1. This plan.** 🤖 Opus, 9 minutes. Done when: committed, about 1,000 words, no local path.
+  Done: `af56d86`.
 - [x] **2. The three fields on the fake.** 🤖 Sonnet, about 27 minutes (milestone 1's step 2,
   `docs/plans/2026-11-04-staff-cards.md#L76`): the schema and the reserved keys, the shared day check, the setup's
   switches, both pages, the words, the data set, item 89's two lines. Done when: row 1 red once with the fields drawn
@@ -102,16 +103,19 @@ filters taking choice fields alone (`ui/src/StaffListPage.tsx#L212`).
   22 screens' versions differ, the 22 named above. The own field "Start date" is "Contract date" (vi "Ngày ký hợp
   đồng") in the data set and the demo copies; the three keys are reserved; the shared `dayIsValid` serves the own date
   field and both pages; the BFF route test's round trip holds the three, not run here (the gate's).
-- [ ] **3. The look** (👤 1); the machine goes on.
+- [x] **3. The look** (👤 1); the machine goes on.
+  Done 2026-11-05 11:28, from the answers pasted from the walks page: `admin-staff/staff-4-person` and `staff-2-add` yes in vi; `setup-2-fields` unanswered, and the merge was not held for it.
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes (`#L89`): `main` taken in, the whole `pnpm check` under the lock,
   `== exit 0`.
   Done 2026-11-05 10:58 to 11:04 (6 minutes, 40 seconds of them waiting for the lock): `main` was at the branch point, so
   nothing came in; the whole `pnpm check` under the lock, log `gate-20261105-1057.log`, last line `== exit 0`.
   Review fix pass 2026-11-05: the three keys bind a write only (`customFieldsWriteSchema`, used by the save request and the setup editor), so a stored setup holding an own field keyed `address` still parses; the person's own three values are spread after the company's own fields, so they win over a field sharing a key. Each half red once, then green; items 96 and 97 deferred. Re-check: the whole `pnpm check`, log `gate2-20261105-1114.log`, last line `== exit 0` (5 of its 10 minutes waiting for the lock).
-- [ ] **5. One review.** 🤖 another model, about 5 minutes. Done when: each finding fixed, rejected or deferred here.
-- [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
+- [x] **5. One review.** 🤖 another model, about 5 minutes. Done when: each finding fixed, rejected or deferred here.
+  Done: Opus, "may merge as it stands", one Medium fixed in `34c8279` (verdict as reported by the orchestrator); items 96 and 97 deferred.
+- [x] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17
   (`docs/recaps/2026-11-04-full-run-speed.md#L28`). Done when: run 1 green and its `raw.txt` naming the 22 alone;
   run 2 every count 0; the moved bases committed.
+  Done 2026-11-05 12:08 to 12:21, 13m36s, log `20261105-1208-staff-fields-full-run.log`: run 1 green, `compare full-1 to the bases: piece-2: 198 pictures, 122 moved, 0 new, 0 unreadable`; run 2 every count 0; the bases committed as `854f57c`.
 - [x] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the products row true.
   Done 2026-11-05: `docs/recaps/2026-11-05-staff-fields.md`, item 89 closed, the products row's staff line extended.
 

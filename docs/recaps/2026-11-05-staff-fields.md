@@ -12,7 +12,7 @@
 ## What shipped, in order
 
 - `af56d86` the plan; `ed30369` the build on the fake; `be31091` the gate's tick; `34c8279` the review's fix; `854f57c` the bases of 22 screens.
-- The review (Opus) said "may merge as it stands" and two changes were made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens instead of losing them to a setup that will not parse. A person's own three values are spread after the company's own fields, so the person's win: the overwrite the reservation exists to stop.
+- The review (Opus) said "may merge as it stands" and two changes were made. The three reserved keys now bind a write only, so an older company whose own field is keyed `address` keeps its staff screens. A person's own three values are spread after the company's own fields, so the person's win.
 
 ## Rejected and what remains the human's
 
@@ -23,4 +23,4 @@
 ## Evidence
 
 - The whole `pnpm check` green first try, last line `== exit 0`, every package at 100 % (`gate-20261105-1057.log`); again after the fix (`gate2-20261105-1114.log`).
-- The human's full run green in 13m36s: run 1 wrote the bases for all 22 named screens, 122 of `piece-2`'s 198 pictures moved, 0 new, 0 unreadable; run 2 read every count 0. Why 122 and not 132: 17 screens at all six bases, plus the five list screens at 768 and 1280 only, the phone cards carrying no field of their own.
+- The human's full run, log `20261105-1208-staff-fields-full-run.log`, on `854f57c`: green in 13m36s. Run 1 wrote the bases for the 22 named screens and nothing else moved: 122 of `piece-2`'s 198 pictures, 0 new, 0 unreadable. Run 2 read every count 0. Why 122, not six times 22: 17 screens at all six bases, plus the five list screens at 768 and 1280 only, since a phone card shows code, department, position and phone and no own field (`ui/src/StaffListPage.tsx#L241-L261`).
