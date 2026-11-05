@@ -5,7 +5,7 @@
     "bff": { "entry": ["src/main.ts", "src/lambda-main.ts"] },
     "scripts": { "entry": ["src/ridge-main.ts"] },
     "shared": {},
-    "ui": { "ignore": ["frame-mock/**"] },
+    "ui": { "ignore": ["frame-mock/**", "signin-mock/**"] },
     "visual": { "entry": ["src/capture.ts", "site/page.ts", "site/styles.ts"] },
     "walk": { "entry": ["legacy-capture.ts"] }
   }

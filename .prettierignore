@@ -14,3 +14,4 @@ ops/
 visual/site/index.html
 # A static look for the human to judge, its data written from the app's own files: no product code.
 ui/frame-mock/
+ui/signin-mock/
