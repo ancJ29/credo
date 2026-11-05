@@ -666,7 +666,7 @@ The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spe
 
 The mock drew the language switch on the three join screens, but `Joining` (`ui/src/OperatorApp.tsx#L57-L65`) fixes the language from the device once and holds no handler or state to change it, unlike the console beside it and the client's app. The piece's bound was the words through the caller's existing handler, and giving the join page one means a state in `Joining` and a changed way of choosing the language, so the join page's frame (`JoinPage.tsx`, unchanged) draws the header and no switch. *Fix:* hold the language in `Joining` as `Console` does (`device.setLanguage` and a state) and pass `languages={LANGUAGES}` and the handler to `JoinPage` and on to `SignInFrame`, which already takes both. *Trigger:* the human's word that the join screens should carry the switch the mock showed.
 
-## 102. The join and sign-in card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
+## 102. The QR landing card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
 
 `ui/src/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
 
