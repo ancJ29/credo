@@ -352,7 +352,35 @@ describe('the walks', () => {
       undefined,
       undefined,
     ]);
-    expect(WALKS).toHaveLength(14);
+    expect(WALKS.slice(0, 14)).toHaveLength(14);
+  });
+
+  it('puts the client delete walk last: four screens, each a scene for the operator on the delete page, the page and the deleted list on the main path, the wrong code and the failure on the wrong one', () => {
+    const walk = WALKS[14];
+
+    expect(walk.id).toBe('operator-delete-client');
+    expect(walk.person).toBe('operator');
+    expect(PARTS.map((part) => part.id)).toContain(walk.part);
+    expect(walk.screens.map((screen) => [screen.id, screen.number, screen.path])).toEqual([
+      ['dc-1-page', 1, 'main'],
+      ['dc-2-code', 2, 'wrong'],
+      ['dc-3-failed', 3, 'wrong'],
+      ['dc-4-gone', 4, 'main'],
+    ]);
+    expect(walk.screens.every((screen) => screen.scene?.operator === true)).toBe(true);
+    expect(
+      walk.screens.every((screen) => screen.scene?.path === '/operator/clients/hoa-sen/delete'),
+    ).toBe(true);
+    expect(walk.screens.map((screen) => screen.scene?.cue)).toEqual([
+      undefined,
+      undefined,
+      'deleteClient:503',
+      undefined,
+    ]);
+    expect(WALKS).toHaveLength(15);
+    const spec = read('specs/operator-delete-client.spec.ts');
+    expect(spec).toContain(`cue: '${walk.screens[2].scene!.cue}'`);
+    expect(spec).toContain('status: 503');
   });
 
   it('puts piece 2’s groups A, B, C and D in four walks, thirty-three screens in all, each a scene and none from the mock', () => {
@@ -500,6 +528,9 @@ describe('the walks', () => {
     expect(shot('operator-team.spec.ts').sort()).toEqual(
       WALKS[13].screens.map((screen) => screen.id).sort(),
     );
+    expect(shot('operator-delete-client.spec.ts')).toEqual(
+      WALKS[14].screens.map((screen) => screen.id),
+    );
     // the operator's spec shoots screens 5 to 7 before screen 2, so its ids are compared unordered
     expect(shot('operator.spec.ts').sort()).toEqual(
       WALKS[1].screens.map((screen) => screen.id).sort(),
@@ -517,6 +548,8 @@ describe('the walks', () => {
     expect(config).toContain("name: 'root-password-full'");
     expect(config).toContain("name: 'team-fake'");
     expect(config).toContain("name: 'team-full'");
+    expect(config).toContain("name: 'delete-client-fake'");
+    expect(config).toContain("name: 'delete-client-full'");
     // the chromium project's whole ignore list, in order: a line that another project's testMatch also
     // holds cannot stand in for it
     const chromium = /name: 'chromium',\s*testIgnore: \[([^\]]*)\],/.exec(config);
@@ -536,6 +569,7 @@ describe('the walks', () => {
       "'operator-services.spec.ts'",
       "'operator-root-password.spec.ts'",
       "'operator-team.spec.ts'",
+      "'operator-delete-client.spec.ts'",
     ]);
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");

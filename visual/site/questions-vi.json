@@ -95,5 +95,9 @@
   "Would you know the name is taken, that no one was added, and to choose another?": "Bạn có biết tên đã có người dùng, chưa có ai được thêm, và cần chọn tên khác không?",
   "Is this who you expect may sign in, and does every row but yours offer a new link and a delete?": "Đây có đúng là những người bạn mong đợi được đăng nhập, và mỗi dòng trừ dòng của bạn có cho tạo đường dẫn mới và xóa không?",
   "Would you know that their old passkeys stop only when they use the link, and that it is not shown again?": "Bạn có biết khóa cũ của họ chỉ ngừng hoạt động khi họ dùng đường dẫn, và đường dẫn sẽ không hiện lại không?",
-  "Would you know they are signed out at their next step, and come back only by a new invite?": "Bạn có biết họ bị đăng xuất ở bước tiếp theo, và chỉ quay lại được bằng một lời mời mới không?"
+  "Would you know they are signed out at their next step, and come back only by a new invite?": "Bạn có biết họ bị đăng xuất ở bước tiếp theo, và chỉ quay lại được bằng một lời mời mới không?",
+  "Does this read as a wall: would you know everything of this client goes for good, and that you must type its code first?": "Trang này có đọc như một bức tường không: bạn có biết mọi thứ của khách hàng này mất vĩnh viễn, và phải nhập mã của họ trước không?",
+  "Would you know the client was not deleted, and to type the right code?": "Bạn có biết khách hàng chưa bị xóa, và cần nhập đúng mã không?",
+  "Would you know the client may be only partly deleted, and that pressing again picks up where it stopped?": "Bạn có biết khách hàng có thể mới bị xóa một phần, và bấm lại sẽ tiếp tục từ chỗ đã dừng không?",
+  "Does the list read as finished: is the client gone from it?": "Danh sách có đọc như đã xong không: khách hàng đã biến mất khỏi đó chưa?"
 }

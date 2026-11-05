@@ -149,6 +149,11 @@ const ROOT_TYPED: Step[] = [
   { fill: 'person.passwordAgain', text: 'Mat-khau-moi-1!' },
 ];
 
+/** A client's delete page: the data set's second client, whose code the walk types and deletes. */
+const DELETE_CLIENT_CODE = 'hoa-sen';
+const DELETE_CLIENT_PATH = `/operator/clients/${DELETE_CLIENT_CODE}/delete`;
+const DELETE_CODE: Step = { fill: 'operator.deleteClientCodeLabel', text: DELETE_CLIENT_CODE };
+
 /** The add-operator form's name, typed as the operator types it. */
 const NEW_OPERATOR_NAME: Step = { fill: 'team.nameLabel', text: 'Thu Hà' };
 
@@ -1815,6 +1820,80 @@ export const WALKS: Walk[] = [
           vi: 'Tên đã có người dùng',
         },
         question: 'Would you know the name is taken, that no one was added, and to choose another?',
+      },
+    ],
+  },
+
+  {
+    id: 'operator-delete-client',
+    person: 'operator',
+    part: 'setup',
+    title: {
+      en: 'Delete a client and everything it owns',
+      vi: 'Xóa một khách hàng và mọi thứ của họ',
+    },
+    screens: [
+      {
+        id: 'dc-1-page',
+        number: 1,
+        path: 'main',
+        scene: { path: DELETE_CLIENT_PATH, operator: true },
+        sentence: {
+          en: 'The delete page before anything is pressed: the company, what goes and cannot come back, the code to type, the red button',
+          vi: 'Trang xóa trước khi bấm gì: tên công ty, những gì sẽ mất và không thể khôi phục, mã cần nhập, nút đỏ',
+        },
+        question:
+          'Does this read as a wall: would you know everything of this client goes for good, and that you must type its code first?',
+      },
+      {
+        id: 'dc-2-code',
+        number: 2,
+        path: 'wrong',
+        scene: {
+          path: DELETE_CLIENT_PATH,
+          operator: true,
+          steps: [
+            { fill: 'operator.deleteClientCodeLabel', text: 'binh-an' },
+            { press: 'operator.deleteClientMake' },
+          ],
+        },
+        sentence: {
+          en: 'The wrong code typed: refused on the page, nothing sent',
+          vi: 'Nhập sai mã: bị từ chối ngay trên trang, không gửi gì cả',
+        },
+        question: 'Would you know the client was not deleted, and to type the right code?',
+      },
+      {
+        id: 'dc-3-failed',
+        number: 3,
+        path: 'wrong',
+        scene: {
+          path: DELETE_CLIENT_PATH,
+          operator: true,
+          cue: 'deleteClient:503',
+          steps: [DELETE_CODE, { press: 'operator.deleteClientMake' }],
+        },
+        sentence: {
+          en: 'The service failed: the client may not be fully deleted, look at the list and press again',
+          vi: 'Dịch vụ lỗi: khách hàng có thể chưa bị xóa hết, hãy xem danh sách và bấm lại',
+        },
+        question:
+          'Would you know the client may be only partly deleted, and that pressing again picks up where it stopped?',
+      },
+      {
+        id: 'dc-4-gone',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: DELETE_CLIENT_PATH,
+          operator: true,
+          steps: [DELETE_CODE, { press: 'operator.deleteClientMake' }],
+        },
+        sentence: {
+          en: 'Deleted: the clients list comes back without the client',
+          vi: 'Đã xóa: danh sách khách hàng hiện lại, không còn khách hàng đó',
+        },
+        question: 'Does the list read as finished: is the client gone from it?',
       },
     ],
   },

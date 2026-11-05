@@ -30,6 +30,8 @@ describe('the record keys', () => {
     expect(tenant.seed.startsWith(tenant.all)).toBe(true);
     expect(tenant.config.startsWith(tenant.all)).toBe(true);
     expect(recordKeys.client('acme')).toBe('client.acme');
+    expect(recordKeys.clientDeletion('acme')).toBe('client-deletion.acme');
+    expect(recordKeys.clientDeletion('acme').startsWith(recordKeys.clientPrefix)).toBe(false);
     const other = recordKeys.tenant('3f2a91bc-0000-4000-8000-000000000002');
     expect(other.config).not.toBe(tenant.config);
   });

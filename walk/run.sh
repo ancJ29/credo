@@ -4,7 +4,7 @@
 #   bash walk/run.sh <walk>… [--moved <screen>,…|all] [--write] [--checks] [--serial]
 #   bash walk/run.sh <walk>… --bytes <a run's folder>
 #
-# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services, root-password, team (the table below). It takes every picture of each walk on the
+# Walks: piece-1, piece-2, admin-lists, office-orders, driver-deliveries, office-reconcile, operator, passkeys, services, root-password, team, delete-client (the table below). It takes every picture of each walk on the
 # fake UI (where the walk has one), then on the stack, then on fresh stacks again, and counts raw the
 # pixels that moved between the passes and against the committed base images: no threshold, no
 # comparator that skips softened edges. Green means fake = stack = stack again pixel for pixel, and
@@ -54,6 +54,7 @@ passkeys|operator-passkeys.spec.ts|passkeys-fake|passkeys-full|test|walk/specs/o
 services|operator-services.spec.ts|services-fake|services-full|pass|walk/specs/operator-services.spec.ts-snapshots|-services-full-darwin|3
 root-password|operator-root-password.spec.ts|root-password-fake|root-password-full|test|walk/specs/operator-root-password.spec.ts-snapshots|-root-password-full-darwin|3
 team|operator-team.spec.ts|team-fake|team-full|test|walk/specs/operator-team.spec.ts-snapshots|-team-full-darwin|3
+delete-client|operator-delete-client.spec.ts|delete-client-fake|delete-client-full|test|walk/specs/operator-delete-client.spec.ts-snapshots|-delete-client-full-darwin|3
 '
 walk_field() { # <walk> <column>
   printf '%s\n' "$WALKS" | awk -F'|' -v w="$1" -v c="$2" '$1 == w { print $c }'

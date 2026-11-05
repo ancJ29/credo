@@ -41,6 +41,7 @@ export default defineConfig({
         'operator-services.spec.ts',
         'operator-root-password.spec.ts',
         'operator-team.spec.ts',
+        'operator-delete-client.spec.ts',
       ],
     },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
@@ -89,5 +90,9 @@ export default defineConfig({
     // stack of its own for each language and width (the walk adds an operator).
     { name: 'team-fake', testMatch: 'operator-team.spec.ts', timeout: 120_000 },
     { name: 'team-full', testMatch: 'operator-team.spec.ts', timeout: 120_000 },
+    // A client deleted whole, the same two ways: the fake, and the full run on a stack of its own for
+    // each language and width (the walk deletes the data set's second client).
+    { name: 'delete-client-fake', testMatch: 'operator-delete-client.spec.ts', timeout: 120_000 },
+    { name: 'delete-client-full', testMatch: 'operator-delete-client.spec.ts', timeout: 120_000 },
   ],
 });

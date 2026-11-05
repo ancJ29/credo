@@ -393,6 +393,37 @@ const TEAM_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> =
   'operator-team:tm-6-taken': (w) => [`alert: ${w.team.taken}`],
 };
 
+/** What each client delete screen must say, in either language: the line that makes it that screen. */
+const DELETE_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
+  'operator-delete-client:dc-1-page': (w) => [
+    `heading: ${w.operator.deleteClientTitle.replace('{{name}}', 'Hoa Sen')}`,
+    `button: ${w.operator.deleteClientMake}`,
+  ],
+  'operator-delete-client:dc-2-code': (w) => [`alert: ${w.operator.rootCodeWrong}`],
+  'operator-delete-client:dc-3-failed': (w) => [`alert: ${w.operator.deleteClientFailed}`],
+  'operator-delete-client:dc-4-gone': (w) => [`heading: ${w.nav.clients}`, `cell: Bình An`],
+};
+
+describe('the client delete walk, drawn', () => {
+  it('Each client delete screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
+    const drawn = resolveDrawn(WALKS.slice(14, 15), SCREENS);
+    expect([...drawn.keys()].sort()).toEqual(Object.keys(DELETE_PROOF).sort());
+
+    for (const [key, what] of drawn) {
+      for (const language of LANGUAGES) {
+        const words = await readWords(what, language, false);
+        for (const line of DELETE_PROOF[key](DICTIONARIES[language])) {
+          expect(words, `${key} ${language}`).toContain(line);
+        }
+        expect(
+          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
+          key,
+        ).toEqual([]);
+      }
+    }
+  });
+});
+
 describe('the operators walk, drawn', () => {
   it('B1: Each operators screen is drawn as a fake scene saying what its question asks about, in both languages, never a key', async () => {
     const drawn = resolveDrawn(WALKS.slice(13, 14), SCREENS);

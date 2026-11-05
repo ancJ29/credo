@@ -3,6 +3,10 @@ import {
   addedNewestFirst,
   addOperatorReplySchema,
   addOperatorRequestSchema,
+  clientDeleteRoute,
+  confirmActSchema,
+  deleteClientReplySchema,
+  deleteClientRequestSchema,
   deleteOperatorRequestSchema,
   operatorLinkReplySchema,
   operatorLinkRequestSchema,
@@ -293,6 +297,20 @@ describe('the operator’s passkey ceremonies', () => {
     expect(operatorLinkReplySchema.safeParse({ link: '/operator/join#abc' }).success).toBe(true);
     expect(operatorLinkReplySchema.safeParse({}).success).toBe(false);
     expect(operatorLinkReplySchema.safeParse({ link: 'x', id }).success).toBe(false);
+  });
+
+  it('A client is deleted at its own path, with the touch in the body, and the answer says how many records are left', () => {
+    const confirm = { token: 't.s', response: credential };
+    expect(clientDeleteRoute('acme-vn')).toBe('/api/operator/clients/acme-vn');
+    expect(deleteClientRequestSchema.safeParse({ confirm }).success).toBe(true);
+    expect(deleteClientRequestSchema.safeParse({}).success).toBe(false);
+    expect(deleteClientRequestSchema.safeParse({ confirm, more: 1 }).success).toBe(false);
+    expect(deleteClientReplySchema.safeParse({ left: 0 }).success).toBe(true);
+    expect(deleteClientReplySchema.safeParse({ left: 12 }).success).toBe(true);
+    expect(deleteClientReplySchema.safeParse({ left: -1 }).success).toBe(false);
+    expect(deleteClientReplySchema.safeParse({ left: 1.5 }).success).toBe(false);
+    expect(deleteClientReplySchema.safeParse({}).success).toBe(false);
+    expect(confirmActSchema.safeParse('delete-client').success).toBe(true);
   });
 
   it('A client’s root password is set at a route named by the code, and answers the made one or none', () => {
