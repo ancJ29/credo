@@ -84,8 +84,20 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
   `office-orders` screens 2, 3, 4, 7, 8, 9, 10, 11 differ (8 screens, 48 pictures), 1, 5, 6, 12 and
   every other walk identical.
 - [ ] **3. The look** (👤 1); the machine goes on.
-- [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in first, then the whole
+- [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in first, then the whole
   `pnpm check` under the lock, `== exit 0`.
+  Evidence (2026-11-06): `main` taken in first: "Already up to date", still `f8162ac`. The whole
+  `pnpm check` ended `== exit 0` (`logs/orders-cards-step4-check2-20261106-0035.log`): shared 154,
+  bff 556, ui 777, visual 197, scripts 277 tests. The first run (`...-check-20261106-0029.log`) was
+  red on two timeouts in files this piece never touched (`SignIns.test.tsx`,
+  `StaffSetupPage.test.tsx`), a load stall: both passed alone, then the whole check passed. Look
+  build from the committed tree: `walks/2026-11-06-003322-d96f81021`. Against a scratch build of
+  `main`, `office-orders` screens 2, 3, 4, 7, 8, 9, 10, 11 moved (hash, `main` then new: 2
+  `5bda319e2094` to `f95bf8224263`; 3 `980745a1ba08` to `ed30e4e97c80`; 4 `47611a2df466` to
+  `20999ee71eb9`; 7 `b00cd312e71d` to `bed83638ef72`; 8 `95970495f383` to `d5a1eb0a8e27`; 9
+  `fd1ab58fc205` to `170a38c3b364`; 10 `0a1a4c14d8dd` to `9ebb1c49ce19`; 11 `dec1f8c55116` to
+  `bcdddcb21c27`); screens 1, 5, 6, 12 and every other walk unmoved. The hashes equal those of the
+  step-2 build made from the uncommitted tree.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding
   tagged here, and item 99 marked done with its commit.
 - [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1
