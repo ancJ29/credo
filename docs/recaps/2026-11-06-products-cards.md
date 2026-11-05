@@ -12,12 +12,12 @@
 
 ## What shipped
 
-- **A built page, not a re-laid one** (open item 98, done): `ui/src/ProductPage.tsx`, route `/products/:id` (`02bbebc`). `GET /api/products` answers each product whole, so the page reads the list and picks its id. The price is the whole-list read, bounded by the import's 500 rows; the BFF throws rather than truncate silently. No new route, nothing under `bff/` or `shared/`.
-- **Walk screens 12 (a note) and 13 (none) appended**, screen 6's name now a link; the pickers choose a noted record by non-empty text (item 100, done).
+- **A built page, not a re-laid one** (open item 98, done): `ui/src/ProductPage.tsx`, route `/products/:id` (`02bbebc`). `GET /api/products` answers each product whole, so the page reads the list and picks its id. The price is the whole-list read, bounded by the import's 500 rows; the BFF throws rather than truncate silently. Nothing under `bff/` or `shared/`.
+- **Walk screens 12 (a note) and 13 (none) appended**, screen 6's name now a link; pickers choose by non-empty text (item 100, done).
 
 ## The lane split
 
-This milestone ran beside the orders page. Both plans claimed the same two lines of `ui/src/DetailCards.tsx` (item 99), so that item was left to the orders lane. This page passes `side` as `note ? <DetailCard/> : undefined`, a ternary, never `&&`, which yields `false` and draws a blank column. It touches the shared file not at all, and its no-note case works without the frame's fix.
+This milestone ran beside the orders page. Both plans claimed the same two lines of `ui/src/DetailCards.tsx` (item 99), so that item was left to the orders lane. This page passes `side` as `note ? <DetailCard/> : undefined`, a ternary, never `&&`, which yields `false` and draws a blank column. It touches the shared file not at all, so its no-note case needs no frame fix.
 
 ## Rejected and what remains the human's
 
