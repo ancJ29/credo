@@ -731,23 +731,26 @@ describe('a person’s page', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('The password was not set');
   });
 
-  it('Someone allowed archives a person who left, after a check: they are stopped at their next step and cannot sign in again, and their record and code are kept; no one is un-archived, so someone who returns is added again under a new code', async () => {
+  it('Someone allowed locks a person who left, after a check: they are stopped at their next step, and their record and code are kept; the page then offers the unlock', async () => {
     const { api } = open('EMP-0006', { as: 'EMP-0001' });
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
 
-    // the check first: nothing is archived until it is answered
-    await user.click(screen.getByRole('button', { name: 'Archive' }));
+    // the check first: nothing is locked until it is answered
+    await user.click(screen.getByRole('button', { name: 'Lock' }));
     expect(api.archiveEmployee).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Keep them' }));
-    await user.click(screen.getByRole('button', { name: 'Archive' }));
-    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
+    await user.click(screen.getByRole('button', { name: 'Lock' }));
+    await user.click(screen.getByRole('button', { name: 'Lock Đặng Hoài Nam' }));
 
     expect(
-      await screen.findByText('This person left. Their record and code are kept.'),
+      await screen.findByText(
+        'This person left. Their record and code are kept, and they can come back.',
+      ),
     ).toBeTruthy();
     expect(api.archiveEmployee).toHaveBeenCalledOnce();
-    // nothing brings them back on this page
-    expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+    // the lock is gone and the unlock is offered instead
+    expect(screen.queryByRole('button', { name: 'Lock' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
     expect((await api.getEmployee(person('EMP-0006').id)).employee).toMatchObject({
       archived: true,
@@ -759,23 +762,97 @@ describe('a person’s page', () => {
     expect(screen.queryByText('Đặng Hoài Nam')).toBeNull();
   });
 
-  it('An archive that fails says so, and one over a newer record is refused', async () => {
+  it('A lock that fails says so, and one over a newer record is refused', async () => {
     const failing = open('EMP-0006', { cue: 'archiveEmployee:503' });
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
-    await user.click(screen.getByRole('button', { name: 'Archive' }));
-    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'were not archived'.replace('were', 'They were'),
-    );
+    await user.click(screen.getByRole('button', { name: 'Lock' }));
+    await user.click(screen.getByRole('button', { name: 'Lock Đặng Hoài Nam' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('They were not locked');
     failing.unmount();
 
     open('EMP-0006', { cue: 'archiveEmployee:409' });
     await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
-    await user.click(screen.getByRole('button', { name: 'Archive' }));
-    await user.click(screen.getByRole('button', { name: 'Archive Đặng Hoài Nam' }));
+    await user.click(screen.getByRole('button', { name: 'Lock' }));
+    await user.click(screen.getByRole('button', { name: 'Lock Đặng Hoài Nam' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       'Someone saved newer details first',
     );
+  });
+
+  it('Switched back on, a person who left is a working person again: no Left badge, the actions back, the record as it was', async () => {
+    const { api } = open('EMP-0008', { as: 'EMP-0001' });
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    expect(screen.getByText('Left')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+
+    // the check first: nobody is unlocked until it is answered
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    expect(api.restoreEmployee).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Keep them locked' }));
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    await user.click(screen.getByRole('button', { name: 'Unlock Hoàng Gia Huy' }));
+
+    expect(await screen.findByRole('button', { name: 'Lock' })).toBeTruthy();
+    expect(api.restoreEmployee).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Left')).toBeNull();
+    expect(screen.queryByText(/This person left/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull();
+    expect((await api.getEmployee(person('EMP-0008').id)).employee).toMatchObject({
+      archived: false,
+      code: 'EMP-0008',
+    });
+  });
+
+  it('The unlock is offered only on a person who left, and only to someone allowed to lock', async () => {
+    const working = open('EMP-0006', { as: 'EMP-0001' });
+    await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull();
+    working.unmount();
+
+    const notAllowed = open('EMP-0008', { as: 'EMP-0004' });
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    expect(screen.getByText('Left')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Unlock' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lock' })).toBeNull();
+    notAllowed.unmount();
+  });
+
+  it('An unlock the BFF refuses says so, and the page stays as it was', async () => {
+    const failing = open('EMP-0008', { cue: 'restoreEmployee:503' });
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    await user.click(screen.getByRole('button', { name: 'Unlock Hoàng Gia Huy' }));
+    expect(
+      (await screen.findAllByRole('alert')).map((alert) => alert.textContent).join(' '),
+    ).toContain('They were not unlocked');
+    expect(screen.getByText('Left')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    failing.unmount();
+
+    open('EMP-0008', { cue: 'restoreEmployee:409' });
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    await user.click(screen.getByRole('button', { name: 'Unlock Hoàng Gia Huy' }));
+    expect(
+      (await screen.findAllByRole('alert')).map((alert) => alert.textContent).join(' '),
+    ).toContain('Someone saved newer details first');
+    expect(screen.getByText('Left')).toBeTruthy();
+  });
+
+  it('Both panels read in Vietnamese and in English', async () => {
+    const left = open('EMP-0008', { language: 'vi' });
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    await user.click(screen.getByRole('button', { name: 'Mở khóa' }));
+    expect(screen.getByRole('button', { name: 'Mở khóa Hoàng Gia Huy' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Giữ nguyên khóa' })).toBeTruthy();
+    left.unmount();
+
+    open('EMP-0006', { language: 'vi' });
+    await screen.findByRole('heading', { level: 2, name: 'Đặng Hoài Nam' });
+    await user.click(screen.getByRole('button', { name: 'Khóa' }));
+    expect(screen.getByRole('button', { name: 'Khóa Đặng Hoài Nam' })).toBeTruthy();
   });
 
   it('A person who is not there says the page could not be loaded', async () => {
@@ -793,6 +870,7 @@ describe('the words', () => {
       { path: '/staff-setup', ready: 'textbox' },
       { path: '/staff/new', ready: 'textbox' },
       { path: `/staff/${id}`, ready: 'textbox' },
+      { path: `/staff/${person('EMP-0008').id}`, ready: 'textbox' },
     ];
     // a key with no words shows as the key: a dotted name of the dictionaries' groups
     const KEY =

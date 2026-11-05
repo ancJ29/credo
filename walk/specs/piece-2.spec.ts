@@ -450,6 +450,14 @@ async function walk(page: Page, language: Language, width: number) {
   );
   await at('staff-22-no-name');
 
+  // 23. A person who left, switched back on: the data set's EMP-0008, the unlock pressed and confirmed.
+  await open(page, language, { path: '/staff?status=inactive' });
+  await personNamed(page, 'Hoàng Gia Huy');
+  await press(words.person.restore);
+  await press(words.person.restoreConfirm.replace('{{name}}', 'Hoàng Gia Huy'));
+  await expect(page.getByRole('button', { name: words.person.archive, exact: true })).toBeVisible();
+  await at('staff-23-back-on');
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();

@@ -355,23 +355,23 @@ describe('the walks', () => {
     expect(WALKS).toHaveLength(14);
   });
 
-  it('puts piece 2’s groups A, B, C and D in four walks, thirty-three screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B, C and D in four walks, thirty-four screens in all, each a scene and none from the mock', () => {
     const piece2 = piece2Walks();
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
-      ['admin-staff', 'admin', 'staff', 22],
+      ['admin-staff', 'admin', 'staff', 23],
       ['office-staff', 'office', 'staff', 7],
       ['phone-sign-in', 'driver', 'staff', 2],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(33);
+    expect(screens).toHaveLength(34);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(33);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(34);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
       [1, 2, 3, 4, 5, 6, 7],
       [1, 2],
     ]);
@@ -419,7 +419,7 @@ describe('the walks', () => {
     expect(scenes.get('office-7-password-wrong')?.cue).toBe('changePassword:403');
   });
 
-  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path', () => {
+  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path, and the switch back on appended as 23', () => {
     const staff = WALKS.find((walk) => walk.id === 'admin-staff')!.screens;
 
     expect(staff.slice(18).map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -427,6 +427,7 @@ describe('the walks', () => {
       ['staff-20-preview', 20, 'main'],
       ['staff-21-imported', 21, 'main'],
       ['staff-22-no-name', 22, 'wrong'],
+      ['staff-23-back-on', 23, 'main'],
     ]);
     expect(staff[21].scene!.steps).toEqual([
       { attach: 'import.file', file: 'import-no-name' },

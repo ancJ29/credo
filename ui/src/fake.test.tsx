@@ -313,8 +313,17 @@ describe('the fake Api', () => {
       employeeDocSchema,
       archived.kind === 'archived' ? archived.doc : null,
     );
+    const restored = await api.restoreEmployee(
+      id,
+      archived.kind === 'archived' ? archived.doc.version : '',
+    );
+    parses(
+      'restoreEmployee',
+      employeeDocSchema,
+      restored.kind === 'restored' ? restored.doc : null,
+    );
     const coded = await api.changeCode(id, {
-      version: archived.kind === 'archived' ? archived.doc.version : '',
+      version: restored.kind === 'restored' ? restored.doc.version : '',
       code: 'moi-1',
     });
     parses('changeCode', employeeDocSchema, coded.kind === 'changed' ? coded.doc : null);
@@ -416,6 +425,7 @@ describe('the fake Api', () => {
         'getPhoto',
         'savePhoto',
         'archiveEmployee',
+        'restoreEmployee',
         'saveConfig',
         'makeClient',
         'setRootPassword',
@@ -908,6 +918,23 @@ describe('the fake Api’s staff', () => {
     expect(rooted.kind === 'added' && rooted.reply.password).toMatch(/^Fake-password/);
   });
 
+  it('A person who left is switched back on: the flag goes, the version moves, a stale version is a conflict and the record is as it was', async () => {
+    const api = fake();
+    const left = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0008')!;
+    const read = await api.getEmployee(left.id);
+    expect(read.employee.archived).toBe(true);
+
+    expect(await api.restoreEmployee(left.id, 'e99')).toEqual({ kind: 'conflict' });
+    const restored = await api.restoreEmployee(left.id, read.version);
+    expect(restored.kind).toBe('restored');
+    if (restored.kind !== 'restored') return;
+    expect(restored.doc.version).not.toBe(read.version);
+    expect(restored.doc.employee).toEqual({ ...read.employee, archived: false });
+    expect((await api.getEmployee(left.id)).employee.archived).toBe(false);
+    // the version read before is now stale
+    expect(await api.restoreEmployee(left.id, read.version)).toEqual({ kind: 'conflict' });
+  });
+
   it('A save over a newer version is a conflict, and a person who is not there is a 404', async () => {
     const api = fake();
     const id = bao?.id ?? '';
@@ -917,6 +944,7 @@ describe('the fake Api’s staff', () => {
     expect((await save(read.version)).kind).toBe('saved');
     expect(await save(read.version)).toEqual({ kind: 'conflict' });
     expect(await api.archiveEmployee(id, read.version)).toEqual({ kind: 'conflict' });
+    expect(await api.restoreEmployee(id, read.version)).toEqual({ kind: 'conflict' });
     expect(await status(api.getEmployee('missing'))).toBe(404);
     expect(await api.saveStaffSetup({ departments: [], positions: [], extra: {} }, 's0')).toEqual({
       kind: 'conflict',
@@ -1192,7 +1220,13 @@ describe('the cue', () => {
     await expect(clients.makeClient('another-one', 'x')).resolves.toEqual({ kind: 'taken' });
     await expect(clients.makeClient('another-one', 'x')).resolves.toMatchObject({ kind: 'made' });
 
-    for (const call of ['saveStaffSetup', 'addEmployee', 'saveEmployee', 'archiveEmployee']) {
+    for (const call of [
+      'saveStaffSetup',
+      'addEmployee',
+      'saveEmployee',
+      'archiveEmployee',
+      'restoreEmployee',
+    ]) {
       const cued = fake(`${call}:409`) as unknown as Record<
         string,
         (...args: unknown[]) => Promise<unknown>

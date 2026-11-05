@@ -213,39 +213,57 @@ function CodePanel({
   );
 }
 
-/** Archiving, after a check: someone who left is stopped at their next step, and no one comes back. */
+/** Locking, after a check: someone who left is stopped at their next step. Its mirror, the unlock,
+ * is drawn for someone who left, with the same check: they sign in again as before. */
 function ArchivePanel({
   name,
-  onArchive,
+  back,
+  onSwitch,
   failed,
 }: {
   name: string;
-  onArchive: () => void;
+  back: boolean;
+  onSwitch: () => void;
   failed: boolean;
 }) {
   const { t } = useTranslation();
   const [asking, setAsking] = useState(false);
+  const words = back
+    ? {
+        title: t('person.restore'),
+        text: t('person.restoreText'),
+        failed: t('person.restoreFailed'),
+        confirm: t('person.restoreConfirm', { name }),
+        cancel: t('person.restoreCancel'),
+      }
+    : {
+        title: t('person.archive'),
+        text: t('person.archiveText'),
+        failed: t('person.archiveFailed'),
+        confirm: t('person.archiveConfirm', { name }),
+        cancel: t('person.archiveCancel'),
+      };
   return (
-    <DetailCard title={t('person.archive')}>
+    <DetailCard title={words.title}>
       <Stack gap="sm" align="flex-start">
-        <Text c="dimmed">{t('person.archiveText')}</Text>
+        <Text c="dimmed">{words.text}</Text>
         {failed && (
           <Alert color="red" role="alert">
-            {t('person.archiveFailed')}
+            {words.failed}
           </Alert>
         )}
         {asking ? (
           <Group>
-            <Button color="red" onClick={onArchive}>
-              {t('person.archiveConfirm', { name })}
+            <Button color={back ? undefined : 'red'} onClick={onSwitch}>
+              {words.confirm}
             </Button>
             <Button variant="default" onClick={() => setAsking(false)}>
-              {t('person.archiveCancel')}
+              {words.cancel}
             </Button>
           </Group>
         ) : (
           <Button variant="default" onClick={() => setAsking(true)}>
-            {t('person.archive')}
+            {words.title}
           </Button>
         )}
       </Stack>
@@ -271,6 +289,7 @@ type FormProps = {
   onSave: (request: Omit<SaveEmployeeRequest, 'version'>) => void;
   onReload: () => void;
   onArchive: () => void;
+  onRestore: () => void;
   onPasswordGiven: () => void;
 };
 
@@ -544,10 +563,11 @@ function PersonForm({
             {user.root && !employee.archived && fields.qr && (
               <QrPanel page={page} id={employee.id} />
             )}
-            {can(user, 'staff.canDelete') && !employee.archived && (
+            {can(user, 'staff.canDelete') && (
               <ArchivePanel
                 name={employee.name}
-                onArchive={actions.onArchive}
+                back={employee.archived}
+                onSwitch={employee.archived ? actions.onRestore : actions.onArchive}
                 failed={archiveFailed}
               />
             )}
@@ -631,6 +651,19 @@ export function PersonPage(page: PageProps) {
     );
   }
 
+  async function restore(version: string) {
+    setArchiveFailed(false);
+    setOutcome(null);
+    await act(
+      () => api.restoreEmployee(id, version),
+      (result) => {
+        setCurrent(result.doc);
+        setFormKey((n) => n + 1);
+      },
+      () => setArchiveFailed(true),
+    );
+  }
+
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {data && (
@@ -666,6 +699,7 @@ export function PersonPage(page: PageProps) {
             loaded.reload();
           }}
           onArchive={() => void archive((current ?? data.doc).version)}
+          onRestore={() => void restore((current ?? data.doc).version)}
           onPasswordGiven={() => setGavePassword(true)}
         />
       )}

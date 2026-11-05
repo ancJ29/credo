@@ -34,9 +34,9 @@ One: the root switches a person off and back on from the person's page, on the f
   (`visual/src/walks.ts#L803`), the words proof (`visual/src/words.test.tsx#L180-L181`) and the spec
   (`walk/specs/piece-2.spec.ts#L300-L306`) while the stored flag keeps the name `archive`.
 
-**Open items.** 89 closes: nothing reads `person.signIn`, now at `ui/src/i18n/en.ts#L414` and `vi.ts#L415`; both lines
-go while the files are open. 90 and 92 to 95 are carried, none triggered here; 91 too, its fix belonging inside `at()`
-(`walk/support.ts`), not in one spec.
+**Open items.** 89 is not this plan's: milestone 3's build closes it, and `person.signIn` stays where it is here. 90 and
+92 to 95 are carried, none triggered here; 91 too, its fix belonging inside `at()` (`walk/support.ts`), not in one
+spec.
 
 ## The case table
 
@@ -53,7 +53,7 @@ go while the files are open. 90 and 92 to 95 are carried, none triggered here; 9
 | 9 | A session issued before the switch off is still a 401 after the switch back on | BFF, same |
 | 10 | Switched off and back on, the person signs in with the password they had | BFF, `bff/src/sign-ins.route.test.ts` |
 | 11 | Someone with no password yet is switched off and back on all the same | BFF, same |
-| 12 | No screen outside the eleven moves | the full run's `raw.txt` |
+| 12 | No screen outside the twelve moves (step 2's note) | the full run's `raw.txt` |
 
 ## What moves
 
@@ -70,18 +70,28 @@ takes `main` and keeps both sides.
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 7 minutes (the kind's last five: 6, 8, 7, 9, 6). Done when: committed, no local path.
-- [ ] **2. Off and back on, on the fake.** 🤖 Sonnet, about 27 minutes (milestone 1's step 2,
+- [x] **2. Off and back on, on the fake.** 🤖 Sonnet, about 27 minutes (milestone 1's step 2,
   `docs/plans/2026-11-04-staff-cards.md#L76`): the mirror panel, the fake's restore, the words, screen 23. Done when:
   rows 1 to 5 each red once then green; ui and visual at 100 %, lint clean; `pnpm report` builds, and against `main`'s
   build exactly the eleven screens' versions differ.
+  - [x] Rows 1 to 5: red once (10 tests failed on the missing `restoreEmployee`: 6 in `ui/src/StaffPages.test.tsx`,
+    4 in `ui/src/fake.test.tsx`), then green (719 ui tests).
+  - [x] ui at 100 % (3200/3200 statements, 2080/2080 branches), visual 100 % (1033/1033, 419/419), shared 100 %;
+    eslint and prettier clean.
+  - [x] `pnpm report` builds: 110 screens, 220 captures (`main`'s 109 and 218).
+  - Note, **not as written: 12 screens' versions differ, not 11.** The eleven named, and `office-2-add`: the office
+    manager (`EMP-0001`, who holds `staff.canDelete`) adds a person and lands on that person's page, which draws the
+    panel with its new words. So the full run's count is 12 screens, 72 pictures, and the cut's second "Amended"
+    section (11, 66) is one short. No decision changes: the twelfth shows the same panel's same words; the human's
+    two points stay as they are. The `person.signIn` key stays (milestone 3 closes item 89).
 - [ ] **3. The look** (👤 1 and 2); the machine goes on.
 - [ ] **4. The route, and the sessions ended at the switch off.** 🤖 Sonnet, about 25 minutes (D's shape, one write
   route, here with a second record written). Done when: rows 6 to 11 each red once then green; bff at 100 %.
 - [ ] **5. The gate.** 🤖 Sonnet, about 11 minutes (`docs/plans/2026-11-04-staff-cards.md#L89`): `main` taken in, the
   whole `pnpm check` under the lock, `== exit 0`.
 - [ ] **6. One review.** 🤖 a model other than the author's, about 5 minutes (`#L95`): each finding tagged in the recap.
-- [ ] **7. The full run** (👤 3): about 16 minutes. Done when: run 1 green, its `raw.txt` naming the eleven alone; run
-  2 every count 0; 66 bases committed.
+- [ ] **7. The full run** (👤 3): about 16 minutes. Done when: run 1 green, its `raw.txt` naming the twelve alone (step 2's note); run
+  2 every count 0; 72 bases committed.
 - [ ] **8. The recap.** 🤖 Sonnet, about 1 minute (`#L101`): committed, under 400 words, item 89 closed, the products
   row true.
 
@@ -96,6 +106,6 @@ nothing but the words changes.
 gone, their code, password, email and QR where they were, nothing of the record lost. This is what a partner's office
 staff do when someone comes back next season. A yes holds; a no becomes a case, fixed before step 7.
 
-👤 **3. The full run, step 7.** One command in your terminal, about 16 minutes, nothing else testing: 66 pictures for
-the eleven screens, then a byte compare. Ten are the person's page, re-asked because the panel's new words sit on each
+👤 **3. The full run, step 7.** One command in your terminal, about 16 minutes, nothing else testing: 72 pictures for
+the twelve screens, then a byte compare. Eleven are a person's page, re-asked because the panel's new words sit on each
 of them. Green starts the recap; a red names every moved screen, and the machine finds why before a base is kept.
