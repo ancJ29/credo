@@ -29,4 +29,4 @@ This milestone ran beside the orders page. Both plans claimed the same two lines
 - The human's look, yes 00:34 ("yes, all ok"), build `walks/2026-11-06-002829-02bbebc64`: screens 12, 13 and 6.
 - The gate: `products-step4-0032-check.log`, `== exit 0`; shared 154, bff 556, ui 774, visual 199, scripts 277.
 - Pictures: 118 screens against `main`'s 116; exactly `lists-6-products` moved, `lists-12-product` and `lists-13-product-no-note` new.
-- The full run: <!-- FILL: result and minutes of the full run, log name -->
+- The full run: green in 14m26s, `20261106-0054-products-cards-full-run.log`; bases `dddea56`.

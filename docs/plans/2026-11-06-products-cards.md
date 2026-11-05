@@ -84,14 +84,14 @@ run and never broken.
   tests at 100 %; tsc, eslint, prettier and knip clean. `pnpm report` 118 screens, 236 captures against `main`'s
   116, 232: screen 6 moved, 12 and 13 new, nothing else. Rows 8 and 9: 0 `withBorder`, no diff under `bff/`,
   `shared/`, `c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
-- [ ] **3. The look** (👤 1); the machine goes on.
+- [x] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
   lock, `== exit 0`.
-- [ ] **5. One review.** 🤖 Opus, about 8 minutes, not the build's model. Done when: each finding tagged here, and
+- [x] **5. One review.** 🤖 Opus, about 8 minutes, not the build's model. Done when: each finding tagged here, and
   items 98, 99 and 100 marked done with their commits, as item 90 was (`docs/open-items.md#L619-L623`).
-- [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1 green, its
+- [x] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1 green, its
   `raw.txt` naming the three screens alone; run 2 every count 0; 18 bases committed.
-- [ ] **7. The recap.** 🤖 Sonnet, 2 minutes. Done when: committed, under 400 words, the orders row true.
+- [x] **7. The recap.** 🤖 Sonnet, 2 minutes. Done when: committed, under 400 words, the orders row true.
 
 Total: about 64 machine minutes, about 85 all told — milestone 1's own cost.
 
