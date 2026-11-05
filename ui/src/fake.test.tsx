@@ -745,6 +745,9 @@ describe('the fake Api', () => {
     expect((await plain.getStaffSetup()).setup.fields).toEqual({
       personalPhone: true,
       photo: true,
+      startDate: true,
+      birthDate: true,
+      address: true,
     });
   });
 
@@ -1159,7 +1162,13 @@ describe('the fake Api’s record and list', () => {
   it('A saved staff setup keeps its fields, its own fields and its numbering, and one saved without them keeps the stored ones, as the BFF does', async () => {
     const api = fake();
     const { setup, version } = await api.getStaffSetup();
-    expect(setup.fields).toEqual({ personalPhone: true, photo: true });
+    expect(setup.fields).toEqual({
+      personalPhone: true,
+      photo: true,
+      startDate: true,
+      birthDate: true,
+      address: true,
+    });
     expect(setup.customFields).toHaveLength(4);
 
     const changed = {

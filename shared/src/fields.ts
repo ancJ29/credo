@@ -6,13 +6,19 @@ import { type Language } from './config';
 export const FIELD_KINDS = ['text', 'number', 'date', 'choice'] as const;
 export type FieldKind = (typeof FIELD_KINDS)[number];
 
-/** The keys a company's own field never takes: the built-in keys of `extra`, and the names
- * `extra` refuses as a key. */
+/** The keys a stored setup's own field never took: the built-in keys of `extra`, and the names
+ * `extra` refuses as a key. A setup holding one does not parse. */
 const RESERVED_KEYS = ['phone', 'personalPhone', 'note', 'constructor', 'prototype'];
+/** The keys of the start date, the birth date and the address. A write refuses them as an own
+ * field's key; a setup stored before they existed may hold one, and still reads. */
+const PERSONAL_KEYS = ['startDate', 'birthDate', 'address'];
 const FIELD_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 
-/** 1 to 64 letters, digits and underscores, a letter first, and not a reserved key. */
-export const fieldKeyIsValid = (key: string) => FIELD_KEY.test(key) && !RESERVED_KEYS.includes(key);
+const keyIsReadable = (key: string) => FIELD_KEY.test(key) && !RESERVED_KEYS.includes(key);
+
+/** 1 to 64 letters, digits and underscores, a letter first, and not a reserved key: the key a new
+ * own field may take. */
+export const fieldKeyIsValid = (key: string) => keyIsReadable(key) && !PERSONAL_KEYS.includes(key);
 
 const label = z.strictObject({
   vi: z.string().trim().min(1).max(200),
@@ -28,7 +34,7 @@ const optionSchema = z.strictObject({
  * its kind, the options of a choice, and whether the list shows it. */
 export const customFieldSchema = z
   .strictObject({
-    key: z.string().refine(fieldKeyIsValid, 'a field key'),
+    key: z.string().refine(keyIsReadable, 'a field key'),
     label,
     kind: z.enum(FIELD_KINDS),
     options: z.array(optionSchema).max(50).default([]),
@@ -52,6 +58,13 @@ export const customFieldsSchema = z
     error: 'each key once',
   });
 
+/** The list a write carries: the same, and no field takes the key of a start date, a birth date or
+ * an address. The read side does not ask this, so a setup stored with such a key stays readable. */
+export const customFieldsWriteSchema = customFieldsSchema.refine(
+  (fields) => fields.every((field) => fieldKeyIsValid(field.key)),
+  { error: 'a field key' },
+);
+
 /** The person's optional fields the root switches on; off until turned on. */
 export const staffFieldsSchema = z.strictObject({
   personalPhone: z.boolean().default(false),
@@ -60,6 +73,11 @@ export const staffFieldsSchema = z.strictObject({
    * Both are absent from a setup saved before they existed, and read as off. */
   email: z.boolean().optional(),
   qr: z.boolean().optional(),
+  /** The start date, the birth date and the address: values in `extra` under these same names.
+   * Absent from a setup saved before they existed, and read as off. */
+  startDate: z.boolean().optional(),
+  birthDate: z.boolean().optional(),
+  address: z.boolean().optional(),
 });
 export type StaffFields = z.output<typeof staffFieldsSchema>;
 
@@ -94,15 +112,19 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const NUMBER = /^-?\d+([.,]\d+)?$/;
 const MAX_TEXT = 500;
 
+/** Whether a text is a real day, `YYYY-MM-DD`: the check of the company's own date field and of the
+ * start and birth dates. */
+export function dayIsValid(text: string) {
+  const day = new Date(`${text}T00:00:00Z`);
+  return DATE.test(text) && !Number.isNaN(day.getTime()) && day.toISOString().startsWith(text);
+}
+
 /** Whether what was typed fits the field's kind. An empty field is fine: it is not kept. */
 export function fieldValueIsValid(field: CustomField, raw: string) {
   const text = raw.trim();
   if (text === '') return true;
   if (field.kind === 'number') return NUMBER.test(text);
-  if (field.kind === 'date') {
-    const day = new Date(`${text}T00:00:00Z`);
-    return DATE.test(text) && !Number.isNaN(day.getTime()) && day.toISOString().startsWith(text);
-  }
+  if (field.kind === 'date') return dayIsValid(text);
   if (field.kind === 'choice') return field.options.some((option) => option.value === text);
   return text.length <= MAX_TEXT;
 }

@@ -3,7 +3,9 @@ import {
   type CustomField,
   customFieldSchema,
   customFieldsSchema,
+  customFieldsWriteSchema,
   DEFAULT_NUMBERING,
+  dayIsValid,
   fieldKeyIsValid,
   fieldValueIsValid,
   fieldValueShown,
@@ -38,7 +40,16 @@ describe('a company’s own fields', () => {
       expect(fieldKeyIsValid(bad), bad).toBe(false);
     }
     // the built-in keys, and the names `extra` itself refuses
-    for (const reserved of ['phone', 'personalPhone', 'note', 'constructor', 'prototype']) {
+    for (const reserved of [
+      'phone',
+      'personalPhone',
+      'note',
+      'startDate',
+      'birthDate',
+      'address',
+      'constructor',
+      'prototype',
+    ]) {
       expect(fieldKeyIsValid(reserved), reserved).toBe(false);
     }
     // unique in the list
@@ -46,6 +57,16 @@ describe('a company’s own fields', () => {
     expect(customFieldsSchema.safeParse([one, { ...one, key: 'b' }]).success).toBe(true);
     expect(customFieldsSchema.safeParse([one, one]).success).toBe(false);
     expect(customFieldSchema.safeParse({ ...one, key: 'phone' }).success).toBe(false);
+  });
+
+  it('The start date, birth date and address keys are refused to a new own field, but a setup stored with one still reads', () => {
+    const stored = { key: 'address', label, kind: 'text' };
+    // read: a setup stored before the keys were reserved still parses
+    expect(customFieldSchema.safeParse(stored).success).toBe(true);
+    expect(customFieldsSchema.safeParse([stored]).success).toBe(true);
+    // write: the list is refused
+    expect(customFieldsWriteSchema.safeParse([stored]).success).toBe(false);
+    expect(customFieldsWriteSchema.safeParse([{ ...stored, key: 'street' }]).success).toBe(true);
   });
 
   it('The root adds the company’s own fields to a person, each with a name in Vietnamese and English, a kind (text, number, date, or a choice from a list) and whether the list shows it', () => {
@@ -85,6 +106,11 @@ describe('a company’s own fields', () => {
     expect(fieldValueIsValid(field('date'), '2026-10-29')).toBe(true);
     for (const bad of ['29/10/2026', '2026-13-01', '2026-02-30', '2026-1-1', 'today']) {
       expect(fieldValueIsValid(field('date'), bad), bad).toBe(false);
+    }
+    // the start and birth dates are checked by the same day check
+    expect(dayIsValid('2026-10-29')).toBe(true);
+    for (const bad of ['', '2026-02-30', '2026-13-01', '29/10/2026', '2026-1-1']) {
+      expect(dayIsValid(bad), bad).toBe(false);
     }
     expect(fieldValueIsValid(choice, 'b2')).toBe(true);
     expect(fieldValueIsValid(choice, 'd')).toBe(false);

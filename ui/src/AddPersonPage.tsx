@@ -15,6 +15,13 @@ import { Link, useNavigate } from 'react-router';
 import { DetailCard, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import { OwnFieldInput, type OwnTexts, mergeExtra, ownStored, refusedFields } from './ownFields';
+import {
+  NO_PERSONAL,
+  PersonalFields,
+  type PersonalTexts,
+  personalStored,
+  refusedPersonal,
+} from './personalFields';
 import { type PageProps, refusal, useLoad } from './page';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -44,6 +51,7 @@ export function AddPersonPage(page: PageProps) {
   ]);
   const [form, setForm] = useState(EMPTY);
   const [own, setOwn] = useState<OwnTexts>({});
+  const [personal, setPersonal] = useState<PersonalTexts>(NO_PERSONAL);
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed' | 'taken'>('idle');
   const [codeShown, setCodeShown] = useState(false);
   /** Held in this state alone: the password is shown once and kept nowhere else. */
@@ -55,11 +63,18 @@ export function AddPersonPage(page: PageProps) {
   const codeOk = form.code.trim() === '' || employeeCodeIsValid(form.code);
   // A value refused after a try is said at its field until it fits.
   const refused = codeShown ? refusedFields(customFields, own) : [];
+  const refusedDates = codeShown ? refusedPersonal(fields, personal) : [];
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setCodeShown(true);
-    if (!codeOk || refusedFields(customFields, own).length > 0) return;
+    if (
+      !codeOk ||
+      refusedFields(customFields, own).length > 0 ||
+      refusedPersonal(fields, personal).length > 0
+    ) {
+      return;
+    }
     setStatus('busy');
     try {
       const extra = mergeExtra(
@@ -71,6 +86,8 @@ export function AddPersonPage(page: PageProps) {
             : {}),
           note: form.note.trim() || undefined,
           ...ownStored(customFields, own),
+          // after the company's own fields: the person's own three win over a field sharing a key
+          ...personalStored(fields, personal),
         },
       );
       const result = await api.addEmployee({
@@ -125,6 +142,7 @@ export function AddPersonPage(page: PageProps) {
               setMade(null);
               setForm(EMPTY);
               setOwn({});
+              setPersonal(NO_PERSONAL);
               setCodeShown(false);
             }}
           >
@@ -194,6 +212,13 @@ export function AddPersonPage(page: PageProps) {
                   </>
                 )}
               </FieldPair>
+              <PersonalFields
+                fields={fields}
+                texts={personal}
+                refused={refusedDates}
+                readOnly={false}
+                onChange={(next) => setPersonal((was) => ({ ...was, ...next }))}
+              />
             </DetailCard>
             <DetailCard title={t('addPerson.contacts')}>
               <FieldPair>
