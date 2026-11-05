@@ -76,7 +76,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,
   `== exit 0`.
   *Evidence:* `main` was still the branch's base, so nothing came in; the whole `pnpm check` ended `== exit 0`
-  (`logs/customer-cards-step4-check3-20261105-1721.log`). Two earlier runs went red on 5-second ui timeouts at load
+  (`logs/customer-cards-step4-check3-20261105-1720.log`). Two earlier runs went red on 5-second ui timeouts at load
   27 to 34, different tests each time; the four files alone passed, 110 of 110.
 - [ ] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding tagged here, and
   item 90 marked done with its commit.
