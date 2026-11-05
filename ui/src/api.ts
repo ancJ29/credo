@@ -189,6 +189,7 @@ export type CloseDayResult = { kind: 'closed'; reconciliation: Reconciliation } 
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
+export type RestoreResult = { kind: 'restored'; doc: EmployeeDoc } | { kind: 'conflict' };
 
 /** What a services check gives the page: the BFF's answer with the two times the page shows. The
  * BFF's is the round trip of the call, timed here; c-storage's is the BFF's own read of it. */
@@ -749,6 +750,13 @@ export function createApi({
       if (response.status === 409) return { kind: 'conflict' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'archived', doc: await read(response, employeeDocSchema) };
+    },
+
+    async restoreEmployee(id: string, version: string): Promise<RestoreResult> {
+      const response = await send('POST', employeeRoutes.restore(id), { version });
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'restored', doc: await read(response, employeeDocSchema) };
     },
   };
 }

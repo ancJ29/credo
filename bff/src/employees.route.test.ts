@@ -512,6 +512,139 @@ describe('Someone allowed archives a person who left, after a check: they are st
   });
 });
 
+describe('Someone allowed switches a person who left back on: the flag goes over the version read, and the sessions from before stay ended', () => {
+  const left = async (t: Tenant, code: string) => {
+    const reply = await added(t.rootCall, { code });
+    const id = reply.employee.employee.id;
+    const off = await t.rootCall.send('POST', `/api/employees/${id}/archive`, {
+      version: reply.employee.version,
+    });
+    expect(off.statusCode).toBe(200);
+    return {
+      id,
+      password: reply.password as string,
+      added: reply.employee.version,
+      off: employeeDocSchema.parse(off.json()),
+    };
+  };
+
+  it('writes archived: false over the version read and answers the person as stored', async () => {
+    const t = await staffTenant(cs);
+    const keeper = await t.staff('KEEPER', { own: { 'staff.canDelete': true } });
+    const gone = await left(t, 'EMP-1');
+
+    const back = await keeper.call.send('POST', `/api/employees/${gone.id}/restore`, {
+      version: gone.off.version,
+    });
+
+    expect(back.statusCode).toBe(200);
+    const answered = employeeDocSchema.parse(back.json());
+    expect(answered.employee).toEqual({ ...gone.off.employee, archived: false });
+    expect(answered).toEqual(await doc(t.rootCall, gone.id));
+    expect(answered.version).not.toBe(gone.off.version);
+    expect(await t.client.getRecord(t.keys.user('emp-1'))).not.toBeNull();
+  });
+
+  it('refuses a version that moved with a 409 carrying the person as stored, and writes nothing', async () => {
+    const t = await staffTenant(cs);
+    const gone = await left(t, 'EMP-1');
+    const url = `/api/employees/${gone.id}/restore`;
+
+    const stale = await t.rootCall.send('POST', url, { version: gone.added });
+
+    expect(stale.statusCode).toBe(409);
+    expect(stale.json<{ current: unknown }>().current).toEqual(await doc(t.rootCall, gone.id));
+    expect((await doc(t.rootCall, gone.id)).employee.archived).toBe(true);
+    const missing = await t.rootCall.send(
+      'POST',
+      '/api/employees/00000000-0000-4000-8000-000000000000/restore',
+      { version: 'x' },
+    );
+    expect(missing.statusCode).toBe(404);
+  });
+
+  it('is refused without staff.canDelete, 403, and nothing is written', async () => {
+    const t = await staffTenant(cs);
+    const gone = await left(t, 'EMP-1');
+    const plain = await t.staff('PLAIN', { own: { 'staff.canEdit': true } });
+
+    const refused = await plain.call.send('POST', `/api/employees/${gone.id}/restore`, {
+      version: gone.off.version,
+    });
+
+    expect(refused.statusCode).toBe(403);
+    expect(await doc(t.rootCall, gone.id)).toEqual(gone.off);
+  });
+
+  it('keeps a session issued before the switch off a 401 after the switch back on, the password unchanged', async () => {
+    const t = await staffTenant(cs);
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const id = reply.employee.employee.id;
+    const password = reply.password as string;
+    const own = await signIn(t.app, { name: 'EMP-1', password });
+    expect((await me(t, own.body.authId)).statusCode).toBe(200);
+    const before = await t.client.getRecord(t.keys.user('emp-1'));
+
+    const off = employeeDocSchema.parse(
+      (
+        await t.rootCall.send('POST', `/api/employees/${id}/archive`, {
+          version: reply.employee.version,
+        })
+      ).json(),
+    );
+    const mid = await t.client.getRecord(t.keys.user('emp-1'));
+    const on = await t.rootCall.send('POST', `/api/employees/${id}/restore`, {
+      version: off.version,
+    });
+    expect(on.statusCode).toBe(200);
+
+    // the switch off minted a generation and left the hash; the old handle never wakes
+    const hash = (record: typeof before) => (record!.data as { passwordHash: string }).passwordHash;
+    const generation = (record: typeof before) =>
+      (record!.data as { generation: string }).generation;
+    expect(generation(mid)).not.toBe(generation(before));
+    expect(hash(mid)).toBe(hash(before));
+    // and the switch back on mints once more, the hash still the same
+    const after = await t.client.getRecord(t.keys.user('emp-1'));
+    expect(generation(after)).not.toBe(generation(mid));
+    expect(hash(after)).toBe(hash(before));
+    expect((await me(t, own.body.authId)).statusCode).toBe(401);
+    expect((await signIn(t.app, { name: 'EMP-1', password })).response.statusCode).toBe(200);
+  });
+});
+
+describe('A switch off that failed to end the sessions is mended by the switch back on', () => {
+  it('keeps a session from before a 401 after the switch back on, when the mint failed at the switch off', async () => {
+    let failKey = '';
+    const t = await staffTenant(cs, {
+      wrap: failing((call, key) => call === 'put' && key === failKey),
+    });
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const id = reply.employee.employee.id;
+    const password = reply.password as string;
+    const own = await signIn(t.app, { name: 'EMP-1', password });
+    const before = await t.client.getRecord(t.keys.user('emp-1'));
+
+    failKey = t.keys.user('emp-1');
+    const off = await t.rootCall.send('POST', `/api/employees/${id}/archive`, {
+      version: reply.employee.version,
+    });
+    failKey = '';
+    // the person is locked and no generation was minted: the answer was a 503
+    expect(off.statusCode).toBe(503);
+    const locked = await doc(t.rootCall, id);
+    expect(locked.employee.archived).toBe(true);
+    expect(await t.client.getRecord(t.keys.user('emp-1'))).toEqual(before);
+
+    const on = await t.rootCall.send('POST', `/api/employees/${id}/restore`, {
+      version: locked.version,
+    });
+    expect(on.statusCode).toBe(200);
+    expect((await me(t, own.body.authId)).statusCode).toBe(401);
+    expect((await signIn(t.app, { name: 'EMP-1', password })).response.statusCode).toBe(200);
+  });
+});
+
 describe('A person signs in with their code and password on the company’s link, on a PC or a phone', () => {
   it('signs a person in by their code in any case, answers who they are, and refuses one with no password yet', async () => {
     const t = await staffTenant(cs);

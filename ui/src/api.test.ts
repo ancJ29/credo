@@ -568,6 +568,19 @@ describe('the API client', () => {
       expect(calls[0]?.path).toBe(`/api/employees/${id}/archive`);
     });
 
+    it('switches a person back on over the version read, and a moved record is a conflict', async () => {
+      const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 500));
+
+      expect(await api.restoreEmployee(id, 'e1')).toMatchObject({
+        kind: 'restored',
+        doc: { version: 'e1' },
+      });
+      expect(await api.restoreEmployee(id, 'e0')).toEqual({ kind: 'conflict' });
+      await expect(api.restoreEmployee(id, 'e1')).rejects.toMatchObject({ status: 500 });
+      expect(calls[0]?.init).toMatchObject({ method: 'POST', body: '{"version":"e1"}' });
+      expect(calls[0]?.path).toBe(`/api/employees/${id}/restore`);
+    });
+
     it('changes a person’s code over the version read, a 409 with the newer person being a moved version and any other 409 a code taken', async () => {
       const { calls, api } = fake(
         json(personDoc),

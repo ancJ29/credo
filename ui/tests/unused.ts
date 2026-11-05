@@ -24,6 +24,7 @@ export const staffCalls = {
   getPhoto: down,
   savePhoto: down,
   archiveEmployee: down,
+  restoreEmployee: down,
   listOrders: down,
   getOrder: down,
   createOrder: down,

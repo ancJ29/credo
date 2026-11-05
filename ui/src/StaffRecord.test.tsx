@@ -536,7 +536,9 @@ describe('a code changed', () => {
     office.unmount();
 
     openApp(at('EMP-0008'));
-    await screen.findByText('This person left. Their record and code are kept.');
+    await screen.findByText(
+      'This person left. Their record and code are kept, and they can come back.',
+    );
     expect(screen.queryByLabelText('New code')).toBeNull();
   });
 });
@@ -782,7 +784,9 @@ describe('the person’s page keeps what the person did', () => {
 
   it('A person who left has no way to change the photo', async () => {
     openApp(at('EMP-0008'));
-    await screen.findByText('This person left. Their record and code are kept.');
+    await screen.findByText(
+      'This person left. Their record and code are kept, and they can come back.',
+    );
 
     expect(screen.getByRole('heading', { level: 3, name: 'Photo' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Choose a photo' })).toBeNull();

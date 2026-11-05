@@ -73,6 +73,7 @@ describe('the wire contract', () => {
   it('names a person’s routes under the employees', () => {
     expect(employeeRoutes.one('i')).toBe('/api/employees/i');
     expect(employeeRoutes.archive('i')).toBe('/api/employees/i/archive');
+    expect(employeeRoutes.restore('i')).toBe('/api/employees/i/restore');
     expect(employeeRoutes.password('i')).toBe('/api/employees/i/password');
     expect(employeeRoutes.code('i')).toBe('/api/employees/i/code');
     expect(employeeRoutes.photo('i')).toBe('/api/employees/i/photo');

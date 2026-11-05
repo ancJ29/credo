@@ -106,7 +106,7 @@ describe('the staff setup page', () => {
       'See the staff list',
       'Add a person',
       'Change a person’s name and details',
-      'Archive a person',
+      'Lock and unlock a person',
       'Change the company’s settings',
       'See orders, delivery requests, customers and products',
       'Make, change, confirm and cancel orders; send and cancel delivery requests',
@@ -234,11 +234,11 @@ describe('the staff setup page', () => {
     await user.click(within(paper('Giao hàng')).getAllByRole('checkbox')[0]);
     // the staff position refuses archiving; the manager's allowance is left as the level above
     const staff = within(paper('Nhân viên')).getByRole('radiogroup', {
-      name: 'Nhân viên: Archive a person',
+      name: 'Nhân viên: Lock and unlock a person',
     });
     await user.click(within(staff).getByText('Refuse'));
     const manager = within(paper('Quản lý')).getByRole('radiogroup', {
-      name: 'Quản lý: Archive a person',
+      name: 'Quản lý: Lock and unlock a person',
     });
     await user.click(within(manager).getByText('As the level above'));
     await user.click(screen.getByRole('button', { name: 'Save' }));

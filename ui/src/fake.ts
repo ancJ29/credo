@@ -1157,6 +1157,18 @@ export function createFakeApi({
         () => ({ kind: 'conflict' as const }),
       ),
 
+    restoreEmployee: (id, readAt) =>
+      call(
+        'restoreEmployee',
+        () => {
+          const found = person(id);
+          if (readAt !== `e${versions.get(id)}`) return { kind: 'conflict' as const };
+          found.archived = false;
+          return { kind: 'restored' as const, doc: moved(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
+
     listClients: () =>
       call('listClients', () => {
         if (!device.operatorAuthId()) throw signedOut();

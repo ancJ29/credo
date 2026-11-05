@@ -807,10 +807,10 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: personAt('EMP-0006'), steps: [{ press: 'person.archive' }] },
         sentence: {
-          en: 'Archive, after a check: their sign-in stops at once, their record is kept',
-          vi: 'Lưu trữ, sau khi hỏi lại: đăng nhập dừng ngay, hồ sơ vẫn được giữ',
+          en: 'Lock, after a check: their sign-in stops at once, their record is kept',
+          vi: 'Khóa, sau khi hỏi lại: đăng nhập dừng ngay, hồ sơ vẫn được giữ',
         },
-        question: 'Is “archive” the word for someone who left, and is the check clear?',
+        question: 'Is “lock” the word for someone who left, and is the check clear?',
       },
       {
         id: 'staff-8-left',
@@ -1007,6 +1007,23 @@ export const WALKS: Walk[] = [
         },
         sentence: { en: 'A file without the name column', vi: 'Tệp không có cột tên' },
         question: 'Does this say what to fix?',
+      },
+      {
+        id: 'staff-23-back-on',
+        number: 23,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0008'),
+          steps: [
+            { press: 'person.restore' },
+            { press: 'person.restoreConfirm', with: { name: 'Hoàng Gia Huy' } },
+          ],
+        },
+        sentence: {
+          en: 'Someone who left, switched back on: the record as it was, and they sign in as before',
+          vi: 'Người đã nghỉ, được mở khóa lại: hồ sơ như cũ, và họ đăng nhập như trước',
+        },
+        question: 'Is anything lost from the record of someone switched back on?',
       },
     ],
   },

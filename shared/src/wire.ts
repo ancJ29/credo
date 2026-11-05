@@ -36,6 +36,7 @@ export const listImportRoute = (list: 'customers' | 'products') => `${ROUTES[lis
 export const employeeRoutes = {
   one: (id: string) => `${ROUTES.employees}/${id}`,
   archive: (id: string) => `${ROUTES.employees}/${id}/archive`,
+  restore: (id: string) => `${ROUTES.employees}/${id}/restore`,
   password: (id: string) => `${ROUTES.employees}/${id}/password`,
   code: (id: string) => `${ROUTES.employees}/${id}/code`,
   photo: (id: string) => `${ROUTES.employees}/${id}/photo`,

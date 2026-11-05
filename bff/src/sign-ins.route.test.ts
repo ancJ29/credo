@@ -529,6 +529,64 @@ describe('C: An email names the person by id in its own record', () => {
   });
 });
 
+describe('Switched off and back on, a person signs in as before', () => {
+  /** Off, then on over the version each answer gave; the person is as stored after. */
+  const offAndOn = async (t: Tenant, id: string, version: string) => {
+    const off = await t.rootCall.send('POST', `/api/employees/${id}/archive`, { version });
+    expect(off.statusCode).toBe(200);
+    const on = await t.rootCall.send('POST', `/api/employees/${id}/restore`, {
+      version: off.json<{ version: string }>().version,
+    });
+    expect(on.statusCode).toBe(200);
+    expect((await doc(t.rootCall, id)).employee.archived).toBe(false);
+  };
+
+  it('D: Switched off and back on, the person signs in with the password they had, and cannot in between', async () => {
+    const t = await staffTenant(cs);
+    const lan = await person(t, { code: 'EMP-0001' });
+    expect(await status(t, 'emp-0001', lan.password)).toBe(200);
+
+    const off = await t.rootCall.send('POST', `/api/employees/${lan.id}/archive`, {
+      version: lan.version,
+    });
+    expect(await status(t, 'emp-0001', lan.password)).toBe(401);
+    const on = await t.rootCall.send('POST', `/api/employees/${lan.id}/restore`, {
+      version: off.json<{ version: string }>().version,
+    });
+    expect(on.statusCode).toBe(200);
+
+    const again = await signIn(t.app, { name: 'emp-0001', password: lan.password });
+    expect(again.response.statusCode).toBe(200);
+    expect((await me(t, again.body.authId)).statusCode).toBe(200);
+  });
+
+  it('D: Someone with no password yet is switched off and back on all the same, and is given a first password after', async () => {
+    const t = await staffTenant(cs);
+    const fresh = await seedEmployee(t.client, t.id, { code: 'NEW-1', password: null });
+    const id = fresh.employee.id;
+
+    await offAndOn(t, id, (await doc(t.rootCall, id)).version);
+
+    expect(await status(t, 'new-1', 'Any-password-1!')).toBe(401);
+    const given = await t.rootCall.send('PUT', `/api/employees/${id}/password`, {
+      password: NEW_PASSWORD,
+    });
+    expect(given.statusCode).toBe(200);
+    expect(await status(t, 'new-1', NEW_PASSWORD)).toBe(200);
+  });
+
+  it('D: A person whose sign-in record is not there is switched off and back on all the same', async () => {
+    const t = await staffTenant(cs);
+    const bare = await person(t, { code: 'EMP-0004' });
+    const lone = await t.client.getRecord(t.keys.user('emp-0004'));
+    await t.client.removeRecord(t.keys.user('emp-0004'), lone!.tag);
+
+    await offAndOn(t, bare.id, bare.version);
+
+    expect(await t.client.getRecord(t.keys.user('emp-0004'))).toBeNull();
+  });
+});
+
 describe('C: A QR code is 32 random bytes kept as their hash, in one record per person', () => {
   const qrTenant = async (options: Parameters<typeof staffTenant>[1] = {}) => {
     const t = await staffTenant(cs, options);

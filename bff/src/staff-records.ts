@@ -74,19 +74,45 @@ export async function setSignInPassword(
   passwordHash: string,
   now: () => number,
 ): Promise<'set' | 'not owned'> {
+  return await rewriteSignIn(storage, tenantId, name, owns, (user) => ({
+    ...user,
+    passwordHash,
+    passwordAt: now(),
+    generation: randomUUID(),
+  }));
+}
+
+/**
+ * Ends every session of a sign-in record and nothing else: a fresh `generation` is minted, the
+ * password hash and its time left as they are, so the old password still signs the person in. The
+ * same read, ownership check and retries as {@link setSignInPassword}.
+ */
+export async function endSessions(
+  storage: CStorageClient,
+  tenantId: string,
+  name: string,
+  owns: (user: StoredUser) => boolean,
+): Promise<'set' | 'not owned'> {
+  return await rewriteSignIn(storage, tenantId, name, owns, (user) => ({
+    ...user,
+    generation: randomUUID(),
+  }));
+}
+
+async function rewriteSignIn(
+  storage: CStorageClient,
+  tenantId: string,
+  name: string,
+  owns: (user: StoredUser) => boolean,
+  change: (user: StoredUser) => StoredUser,
+): Promise<'set' | 'not owned'> {
   const key = recordKeys.tenant(tenantId).user(name);
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const signIn = await readSignIn(storage, tenantId, name);
     if (!signIn || !owns(signIn.user)) return 'not owned';
-    const changed: StoredUser = {
-      ...signIn.user,
-      passwordHash,
-      passwordAt: now(),
-      generation: randomUUID(),
-    };
-    if ((await storage.putRecord(key, changed, signIn.tag)) === 'saved') return 'set';
+    if ((await storage.putRecord(key, change(signIn.user), signIn.tag)) === 'saved') return 'set';
   }
-  throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
+  throw new CStorageError(412, 'the sign-in record moved on every attempt to write it');
 }
 
 /** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500
