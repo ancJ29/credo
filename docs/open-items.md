@@ -647,3 +647,7 @@ The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-
 ## 97. The day check's production path is nearly unreachable on these two fields — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
 
 A real browser's date input never yields a day that is not one, so `dayIsValid` (`shared/src/fields.ts#L117`) guards an older browser's text fallback; it is right and covered, and its refusal is tested with the input made a text input. *Cost:* none to keep; *trigger:* none, noted so a reader does not look for the path.
+
+## 98. The customers and the products have no detail page to re-lay — the machine; `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
+
+The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.

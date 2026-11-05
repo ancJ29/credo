@@ -63,7 +63,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
 
 ## Steps
 
-- [ ] **1. This plan.** 🤖 Opus, 8 minutes. Done when: committed, about 1,000 words or under, no local path.
+- [x] **1. This plan.** 🤖 Opus, 8 minutes. Done when: committed, about 1,000 words or under, no local path.
 - [ ] **2. The page on the fake.** 🤖 Sonnet, about 25 minutes: the frame's optional `side`,
   `ui/src/CustomerPage.tsx`, the list's link, the words, the two walk screens. Done when: rows 1 to 4 and 6 each red
   once, then green; row 7 green; row 8's diff; ui at 100 %, lint and knip clean; `pnpm report` builds, and against
