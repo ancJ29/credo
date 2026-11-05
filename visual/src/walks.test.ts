@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { readdirSync, readFileSync } from 'node:fs';
-import { DEMO_COLLEAGUE_ID, DEMO_EMPLOYEES } from '@credo/shared/demo';
+import { DEMO_COLLEAGUE_ID, DEMO_CUSTOMERS, DEMO_EMPLOYEES } from '@credo/shared/demo';
 import { SCREENS } from '@credo/ui/mock';
 import { describe, expect, it } from 'vitest';
 import { DEVICE_WIDTH, PARTS, PEOPLE, resolveDrawn, type Step, type Walk, WALKS } from './walks';
@@ -586,7 +586,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, nine screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, eleven screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -600,6 +600,8 @@ describe('the walks', () => {
       ['lists-7-products-preview', 7, 'main'],
       ['lists-8-products-added', 8, 'main'],
       ['lists-9-more', 9, 'main'],
+      ['lists-10-customer', 10, 'main'],
+      ['lists-11-customer-no-note', 11, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -620,10 +622,15 @@ describe('the walks', () => {
     }
 
     for (const screen of WALKS[8].screens) {
+      // a customer's page is opened at an address built from the data set's customer, in backticks
       const opened = [
-        ...openings.get(screen.id)!.matchAll(/await open\(page, language, '([^']+)'\)/g),
+        ...openings.get(screen.id)!.matchAll(/await open\(page, language, ['`]([^'`]+)['`]\)/g),
       ];
-      expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
+      const named = opened
+        .at(-1)?.[1]
+        ?.replace('${NOTED_CUSTOMER.id}', DEMO_CUSTOMERS[0].id)
+        .replace('${PLAIN_CUSTOMER.id}', DEMO_CUSTOMERS[1].id);
+      expect(named, screen.id).toBe(screen.scene!.path);
       expect(screen.scene!.as, screen.id).toBeUndefined();
       expect(screen.scene!.cue, screen.id).toBeUndefined();
     }

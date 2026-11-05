@@ -100,5 +100,7 @@
   "Does this read as a wall: would you know everything of this client goes for good, and that you must type its code first?": "Trang này có đọc như một bức tường không: bạn có biết mọi thứ của khách hàng này mất vĩnh viễn, và phải nhập mã của họ trước không?",
   "Would you know the client was not deleted, and to type the right code?": "Bạn có biết khách hàng chưa bị xóa, và cần nhập đúng mã không?",
   "Would you know the client may be only partly deleted, and that pressing again picks up where it stopped?": "Bạn có biết khách hàng có thể mới bị xóa một phần, và bấm lại sẽ tiếp tục từ chỗ đã dừng không?",
-  "Does the list read as finished: is the client gone from it?": "Danh sách có đọc như đã xong không: khách hàng đã biến mất khỏi đó chưa?"
+  "Does the list read as finished: is the client gone from it?": "Danh sách có đọc như đã xong không: khách hàng đã biến mất khỏi đó chưa?",
+  "Does this show the office what the old app showed about a customer?": "Trang này có cho văn phòng thấy những gì ứng dụng cũ đã cho thấy về một khách hàng không?",
+  "Does a customer with no note read well in one full column?": "Khách hàng không có ghi chú có đọc tốt trong một cột đủ chiều rộng không?"
 }

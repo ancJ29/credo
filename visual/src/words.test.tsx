@@ -2,6 +2,7 @@ import { LANGUAGES } from '@credo/shared';
 import {
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
@@ -220,6 +221,8 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-7-products-preview': (w) => `heading: ${w.import.previewTitle}`,
   'admin-lists:lists-8-products-added': (w) => `heading: ${w.lists.products.doneTitle}`,
   'admin-lists:lists-9-more': (w) => `heading: ${w.nav.more}`,
+  'admin-lists:lists-10-customer': () => `heading: ${DEMO_CUSTOMERS[0].name}`,
+  'admin-lists:lists-11-customer-no-note': () => `heading: ${DEMO_CUSTOMERS[1].name}`,
   'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
   // the second line is the one added by the steps; the form's own list holds the product too, as an option
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',

@@ -179,6 +179,9 @@ const DRAFT_TODAY = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.stat
 const WAITING_TODAY = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
+/** The customers' pages in the lists walk: one with a note, one without. */
+const NOTED_CUSTOMER = DEMO_CUSTOMERS.find((one) => 'note' in one.extra)!;
+const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !('note' in one.extra))!;
 /** A customer or a product as the order form lists it in its choice. */
 const customerChoice = (code: string) => {
   const one = DEMO_CUSTOMERS.find((candidate) => candidate.code === code)!;
@@ -1283,6 +1286,28 @@ export const WALKS: Walk[] = [
           vi: 'Thêm: các trang thanh dưới của điện thoại không có, rồi đổi mật khẩu và đăng xuất',
         },
         question: 'Would a person on a phone find the other pages and sign-out here?',
+      },
+      {
+        id: 'lists-10-customer',
+        number: 10,
+        path: 'main',
+        scene: { path: `/customers/${NOTED_CUSTOMER.id}` },
+        sentence: {
+          en: 'A customer’s page: code, name, phone and address on the left, the note on the right',
+          vi: 'Trang khách hàng: mã, tên, điện thoại, địa chỉ bên trái, ghi chú bên phải',
+        },
+        question: 'Does this show the office what the old app showed about a customer?',
+      },
+      {
+        id: 'lists-11-customer-no-note',
+        number: 11,
+        path: 'main',
+        scene: { path: `/customers/${PLAIN_CUSTOMER.id}` },
+        sentence: {
+          en: 'A customer with no note: one column at the full width, no blank half',
+          vi: 'Khách hàng không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
+        },
+        question: 'Does a customer with no note read well in one full column?',
       },
     ],
   },
