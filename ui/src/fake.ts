@@ -3,6 +3,7 @@ import {
   addDays,
   addedNewestFirst,
   addOperatorRequestSchema,
+  deleteClientRequestSchema,
   deleteOperatorRequestSchema,
   operatorLinkRequestSchema,
   addProductRequestSchema,
@@ -1239,6 +1240,16 @@ export function createFakeApi({
           .map((one) =>
             one.addedBy === gone.name && !one.addedByTerminal ? { ...one, addedBy: null } : one,
           );
+      }),
+
+    deleteClient: (code, request) =>
+      call('deleteClient', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        // As the BFF orders it: the client, then the body, and only then a write.
+        if (!clients.has(code)) throw notFound();
+        if (!deleteClientRequestSchema.safeParse(request).success) throw new ApiError(400, true);
+        clients.delete(code);
+        return { left: 0 };
       }),
 
     setRootPassword: (code, request) =>

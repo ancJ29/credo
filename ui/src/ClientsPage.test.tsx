@@ -33,13 +33,22 @@ describe('ClientsPage', () => {
       ),
     ).toEqual([
       [],
-      ['Bình An', 'binh-an', '21 Oct 2026', 'Copy the link', 'New root password'],
-      ['Old One', 'old-one', '—', 'Copy the link', 'New root password'],
+      ['Bình An', 'binh-an', '21 Oct 2026', 'Copy the link', 'New root passwordDelete'],
+      ['Old One', 'old-one', '—', 'Copy the link', 'New root passwordDelete'],
     ]);
     expect(screen.getByRole('columnheader', { name: 'Name when made' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Add a client' }).getAttribute('href')).toBe(
       '/operator/clients/new',
     );
+  });
+
+  it('draws a Delete button on every row, naming its code, to the delete page', async () => {
+    draw(<ClientsPage api={list(SOME) as unknown as Api} onSignedOut={vi.fn()} />);
+
+    expect(
+      (await screen.findByRole('link', { name: 'Delete: binh-an' })).getAttribute('href'),
+    ).toBe('/operator/clients/binh-an/delete');
+    expect(screen.getByRole('link', { name: 'Delete: old-one' })).toBeTruthy();
   });
 
   it('shows the day in the language shown', async () => {

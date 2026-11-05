@@ -34,6 +34,7 @@ import {
   photoReplySchema,
   registrationResponseSchema,
   sessionReplySchema,
+  deleteClientReplySchema,
   rootPasswordReplySchema,
   addOperatorReplySchema,
   operatorLinkReplySchema,
@@ -361,6 +362,11 @@ describe('the fake Api', () => {
       rootPasswordReplySchema,
       await api.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM }),
     );
+    parses(
+      'deleteClient',
+      deleteClientReplySchema,
+      await api.deleteClient('hoa-sen', { confirm: CONFIRM }),
+    );
 
     expect(Object.entries(checked).filter(([, ok]) => !ok)).toEqual([]);
     // a method with no check above would answer unchecked
@@ -419,6 +425,7 @@ describe('the fake Api', () => {
         'saveConfig',
         'makeClient',
         'setRootPassword',
+        'deleteClient',
         'listOperators',
         'addOperator',
         'newOperatorLink',
@@ -459,6 +466,20 @@ describe('the fake Api', () => {
         (await cued.setRootPassword('hoa-sen', { password: null, confirm: CONFIRM })).made,
       ).toBe('Fake-password-1!');
     }
+  });
+
+  it('The fake deletes a client from its own list, refusing as the BFF orders: the session, the client, the body', async () => {
+    const api = fake('', { operator: 'fake.operator' });
+
+    expect(await status(fake().deleteClient('hoa-sen', { confirm: CONFIRM }))).toBe(401);
+    expect(await status(api.deleteClient('nobody', {} as never))).toBe(404);
+    expect(await status(api.deleteClient('hoa-sen', {} as never))).toBe(400);
+    expect((await api.listClients()).map((one) => one.code)).toContain('hoa-sen');
+    expect(await api.deleteClient('hoa-sen', { confirm: CONFIRM })).toEqual({ left: 0 });
+    expect((await api.listClients()).map((one) => one.code)).not.toContain('hoa-sen');
+    expect(await status(api.deleteClient('hoa-sen', { confirm: CONFIRM }))).toBe(404);
+    // the code is free again
+    expect(await api.makeClient('hoa-sen', 'Hoa Sen')).toMatchObject({ kind: 'made' });
   });
 
   it('B1: The fake lists the data set’s operators with the reader marked, and adds one by a name, invited, the name taken refused whatever its capitals', async () => {

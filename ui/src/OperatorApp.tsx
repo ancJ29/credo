@@ -6,6 +6,7 @@ import { type Api, ApiError, type Hop, hopOf } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
 import { ClientsPage } from './ClientsPage';
+import { DeleteClientPage } from './DeleteClientPage';
 import { DeleteOperatorPage } from './DeleteOperatorPage';
 import type { DeviceStore } from './device';
 import { JoinPage } from './JoinPage';
@@ -175,6 +176,16 @@ function Console({ api, device, passkeys, build, test }: Props) {
               path="/operator/clients/:code/root-password"
               element={
                 <RootPasswordPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
+            />
+            <Route
+              path="/operator/clients/:code/delete"
+              element={
+                <DeleteClientPage
                   api={api}
                   passkeys={passkeys}
                   onSignedOut={() => setEnded('idle')}

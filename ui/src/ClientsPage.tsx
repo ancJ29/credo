@@ -54,15 +54,27 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                       />
                     </Table.Td>
                     <Table.Td ta="right">
-                      <Button
-                        component={Link}
-                        to={`/operator/clients/${client.code}/root-password`}
-                        variant="default"
-                        size="xs"
-                        aria-label={`${t('operator.rootPassword')}: ${client.code}`}
-                      >
-                        {t('operator.rootPassword')}
-                      </Button>
+                      <Group gap="xs" justify="flex-end" wrap="nowrap">
+                        <Button
+                          component={Link}
+                          to={`/operator/clients/${client.code}/root-password`}
+                          variant="default"
+                          size="xs"
+                          aria-label={`${t('operator.rootPassword')}: ${client.code}`}
+                        >
+                          {t('operator.rootPassword')}
+                        </Button>
+                        <Button
+                          component={Link}
+                          to={`/operator/clients/${client.code}/delete`}
+                          variant="outline"
+                          color="red"
+                          size="xs"
+                          aria-label={`${t('operator.deleteClient')}: ${client.code}`}
+                        >
+                          {t('operator.deleteClient')}
+                        </Button>
+                      </Group>
                     </Table.Td>
                   </Table.Tr>
                 ))}

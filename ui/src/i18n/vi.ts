@@ -128,6 +128,17 @@ export const vi: Dictionary = {
     rootDoneIntro:
       'Mật khẩu bạn đã nhập sẽ không hiện lại. Hãy gửi cho root bằng kênh riêng của bạn. Root đã bị đăng xuất khỏi mọi thiết bị.',
     rootUnknown: 'Khách hàng này không có trong danh sách.',
+    deleteClient: 'Xóa',
+    deleteClientTitle: 'Xóa {{name}}',
+    deleteClientIntro:
+      'Thao tác này xóa {{name}} vĩnh viễn: mọi nhân viên, đơn hàng, lần giao, ảnh, cài đặt và tài khoản đăng nhập của khách hàng này đều mất và không thể khôi phục. Mọi người của khách hàng này bị đăng xuất ở bước tiếp theo. Mã của họ có thể được dùng lại.',
+    deleteClientCodeLabel: 'Nhập mã khách hàng để xác nhận',
+    deleteClientCodeHint: 'Mã của khách hàng này là {{code}}.',
+    deleteClientTouch: 'Khi xóa, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    deleteClientMake: 'Xóa khách hàng và toàn bộ dữ liệu',
+    deleteClientLeft: 'Đang xóa… còn {{count}} bản ghi. Hãy giữ trang này mở.',
+    deleteClientFailed:
+      'Khách hàng có thể chưa được xóa hết. Hãy xem danh sách, rồi bấm lại nếu khách hàng vẫn còn: bấm lại sẽ tiếp tục từ chỗ đã dừng.',
     back: 'Về danh sách khách hàng',
     unavailableStorage:
       'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',

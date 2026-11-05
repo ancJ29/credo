@@ -7,6 +7,8 @@ import {
   type AddOperatorReply,
   addOperatorReplySchema,
   type AddOperatorRequest,
+  type DeleteClientReply,
+  type DeleteClientRequest,
   type DeleteOperatorRequest,
   type OperatorLinkReply,
   operatorLinkReplySchema,
@@ -84,6 +86,8 @@ import {
   passkeyRoutes,
   type RootPasswordReply,
   rootPasswordReplySchema,
+  clientDeleteRoute,
+  deleteClientReplySchema,
   rootPasswordRoute,
   type SetRootPasswordRequest,
   type Reconciliation,
@@ -441,6 +445,14 @@ export function createApi({
         'operator',
       );
       if (!response.ok) throw new ApiError(response.status);
+    },
+
+    /** A client deleted whole, with the operator's fresh touch: the answer says how many of its
+     * records are still to go, and zero is done. */
+    async deleteClient(code: string, request: DeleteClientRequest): Promise<DeleteClientReply> {
+      const response = await send('DELETE', clientDeleteRoute(code), request, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, deleteClientReplySchema);
     },
 
     /** A client's root password set anew, with the operator's fresh touch: the answer holds the

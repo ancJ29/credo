@@ -129,6 +129,17 @@ export const en = {
     rootDoneIntro:
       'The password you typed is not shown again. Send it to the root by your own channel. The root was signed out on every device.',
     rootUnknown: 'This client is not in the list.',
+    deleteClient: 'Delete',
+    deleteClientTitle: 'Delete {{name}}',
+    deleteClientIntro:
+      'This deletes {{name}} for good: every person, order, delivery, photo, setting and sign-in of this client goes, and none of it can be brought back. Everyone of this client is signed out at their next step. Their code is free to use again.',
+    deleteClientCodeLabel: 'Type the client’s code to confirm',
+    deleteClientCodeHint: 'This client’s code is {{code}}.',
+    deleteClientTouch: 'Deleting asks for your passkey.',
+    deleteClientMake: 'Delete the client and all its data',
+    deleteClientLeft: 'Deleting… {{count}} records are still to go. Keep this page open.',
+    deleteClientFailed:
+      'The client may not be fully deleted. Look at the list, then press again if it is still there: pressing again picks up where it stopped.',
     back: 'Back to the clients',
     unavailableStorage:
       'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',

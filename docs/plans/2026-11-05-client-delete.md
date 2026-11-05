@@ -29,7 +29,7 @@ its records are gone. Walkable end to end on the fake and through the stack.
 
 ## The steps
 
-- [ ] **1. The cheap build, end to end on the fake** (~25 min). `shared/`: a `DELETE` route beside
+- [x] **1. The cheap build, end to end on the fake** (~25 min). `shared/`: a `DELETE` route beside
       `rootPasswordRoute` (`shared/src/wire.ts#L206-L208`), a request of `{ confirm }` as
       `deleteOperatorRequestSchema` has (`#L413`), a reply of `{ left: number }`, `'delete-client'`
       in `confirmActSchema` (`#L315-L322`), `recordKeys.clientDeletion(code)` beside the index key
@@ -38,6 +38,13 @@ its records are gone. Walkable end to end on the fake and through the stack.
       `DeleteOperatorPage` (the red button, the 404 that lands on the list); the row's button; the
       fake's `deleteClient` (`ui/src/fake.ts#L1159`); vi and en words. **Done when** `pnpm fake`
       walks the three screens below and `pnpm -C ui test` is green.
+      *Done 11-05:* `pnpm -C ui test` green, 59 files, 725 tests, coverage 100 % on all four
+      measures; `pnpm -r run typecheck` and prettier clean. The three screens (the delete page, the
+      list with the button, the page pressing on with its count left) are held by
+      `DeleteClientPage.test.tsx`, `ClientsPage.test.tsx` and `fake.test.tsx` in jsdom; `pnpm fake`
+      serves them to a browser, which the sandbox cannot start, so it is the human's look. One
+      line outside `ui/`/`shared/`: `'confirm-delete-client'` in `bff/src/challenge.ts`'s `Purpose`
+      type, which the shared act list forces to compile; no route.
 - [ ] **2. The route through the stack** (~30 min). `deleteClient` in `bff/src/clients.ts`, one
       route in `app.ts` beside the create (`#L377-L387`). Every check before any write, as
       `root-password.ts#L27-L48` orders its own: the live session (401); the code parsed (400); the

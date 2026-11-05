@@ -7,6 +7,10 @@ const clientPrefix = 'client.';
 export const recordKeys = {
   /** The index: a client's code to its id. Written last, when the client is made. */
   client: (code: string) => `${clientPrefix}${code}`,
+  /** A client's deletion in progress, by its code, under a prefix the list's `client.` never
+   * matches: written before the index goes, removed when the sweep of its records ends. A press
+   * after the index is gone resumes from it. */
+  clientDeletion: (code: string) => `client-deletion.${code}`,
   /** What the operator's list reads: every index key starts with it, and no other key does. */
   clientPrefix,
   /** Every operator in one record, under one tag: a name taken and "at least one operator" hold

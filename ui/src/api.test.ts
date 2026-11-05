@@ -165,6 +165,23 @@ describe('the API client', () => {
     ).rejects.toMatchObject({ status: 401 });
   });
 
+  it('A client is deleted by DELETE on its own path, the touch in the body; how many records are left comes back, and a refusal or a wrong shape is an error', async () => {
+    const { calls, api } = fake(
+      json({ left: 3 }),
+      json({ left: 0 }),
+      json({}, 404),
+      json({ left: -1 }),
+    );
+
+    expect(await api.deleteClient('binh-an', { confirm })).toEqual({ left: 3 });
+    expect(await api.deleteClient('binh-an', { confirm })).toEqual({ left: 0 });
+    await expect(api.deleteClient('binh-an', { confirm })).rejects.toMatchObject({ status: 404 });
+    await expect(api.deleteClient('binh-an', { confirm })).rejects.toMatchObject({ status: null });
+    expect(calls[0]?.path).toBe('/api/operator/clients/binh-an');
+    expect(calls[0]?.init.method).toBe('DELETE');
+    expect(JSON.parse(calls[0]?.init.body as string)).toEqual({ confirm });
+  });
+
   it('A root’s password is set by POST with the operator’s handle and no client code, the touch in the body; the made one is returned, and a refusal or a wrong shape is an error', async () => {
     const { calls, api } = fake(
       json({ made: 'Abcdef1!' }),

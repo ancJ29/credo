@@ -11,7 +11,8 @@ export type Purpose =
   | 'confirm-root-password'
   | 'confirm-add-operator'
   | 'confirm-operator-link'
-  | 'confirm-delete-operator';
+  | 'confirm-delete-operator'
+  | 'confirm-delete-client';
 
 /** How long a challenge may wait for the device's answer. */
 export const CHALLENGE_MS = 5 * 60 * 1000;

@@ -207,6 +207,10 @@ export const operatorRoutes = {
 export const rootPasswordRoute = (code: string) =>
   `${ROUTES.operatorClients}/${code}/root-password`;
 
+/** The route that deletes a client whole, by the client's code: `DELETE` on the client's own path
+ * under the operator's clients. */
+export const clientDeleteRoute = (code: string) => `${ROUTES.operatorClients}/${code}`;
+
 /** What setting a root's password answers: the password the app made, shown once, or null when the
  * operator typed one, which is never sent back. */
 export const rootPasswordReplySchema = z.strictObject({ made: z.string().nullable() });
@@ -309,7 +313,7 @@ export const joinRequestSchema = z.strictObject({
 export type JoinRequest = z.infer<typeof joinRequestSchema>;
 
 /** What a touch is asked for: an add or a remove of one's own passkeys, or a client's root password
- * set anew, or a new operator added, a colleague's new link made, or a colleague deleted. A session
+ * set anew, or a new operator added, a colleague's new link made, or a colleague or a whole client deleted. A session
  * alone does none of them, so a stolen session cannot put the thief's passkey in, take the owner's
  * out, take a client's root, let in a stranger, take a colleague's place or empty the roster. */
 export const confirmActSchema = z.enum([
@@ -319,6 +323,7 @@ export const confirmActSchema = z.enum([
   'add-operator',
   'operator-link',
   'delete-operator',
+  'delete-client',
 ]);
 export type ConfirmAct = z.infer<typeof confirmActSchema>;
 export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
@@ -412,3 +417,12 @@ export type OperatorLinkReply = z.infer<typeof operatorLinkReplySchema>;
 /** A colleague deleted, with the touch that allows it. */
 export const deleteOperatorRequestSchema = z.strictObject({ confirm: confirmationSchema });
 export type DeleteOperatorRequest = z.infer<typeof deleteOperatorRequestSchema>;
+
+/** A client deleted whole, with the touch that allows it. */
+export const deleteClientRequestSchema = z.strictObject({ confirm: confirmationSchema });
+export type DeleteClientRequest = z.infer<typeof deleteClientRequestSchema>;
+
+/** What one press of a client's delete answers: how many of its records are still to go. Zero is
+ * done; more, and the page presses again. */
+export const deleteClientReplySchema = z.strictObject({ left: z.number().int().nonnegative() });
+export type DeleteClientReply = z.infer<typeof deleteClientReplySchema>;
