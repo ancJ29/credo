@@ -45,7 +45,7 @@ its records are gone. Walkable end to end on the fake and through the stack.
       serves them to a browser, which the sandbox cannot start, so it is the human's look. One
       line outside `ui/`/`shared/`: `'confirm-delete-client'` in `bff/src/challenge.ts`'s `Purpose`
       type, which the shared act list forces to compile; no route.
-- [ ] **2. The route through the stack** (~30 min). `deleteClient` in `bff/src/clients.ts`, one
+- [x] **2. The route through the stack** (~30 min). `deleteClient` in `bff/src/clients.ts`, one
       route in `app.ts` beside the create (`#L377-L387`). Every check before any write, as
       `root-password.ts#L27-L48` orders its own: the live session (401); the code parsed (400); the
       index read (404, before anything of the client is read); the body (400); the touch (403). Then
@@ -54,10 +54,13 @@ its records are gone. Walkable end to end on the fake and through the stack.
       finds no index, reads the deletion record and resumes. **Done when**
       `pnpm -C bff test clients-delete` is green and `pnpm stack` shows a deleted client's `me`
       answering 404.
-      *Code written 11-05; `pnpm -C bff test clients-delete` 14 of 14 green, `pnpm stack` look still UNRUN* (held for the human's full run; the first line below is the state before that run):
-      `deleteClient` in `bff/src/clients.ts`, the route in `bff/src/clients-delete.ts`, 14 cases in
-      `bff/src/clients-delete.route.test.ts`, the route-list line. `tsc` and eslint clean; no test
-      run yet, so `pnpm -C bff test clients-delete` and the `pnpm stack` look are still to do.
+      *Done 11-05* (ticked after the stack look): the code is `deleteClient` in
+      `bff/src/clients.ts`, the route in `bff/src/clients-delete.ts`, its cases in
+      `bff/src/clients-delete.route.test.ts` (20 after the review round), all green. On
+      `pnpm stack` a client's root signed in (200) and its `me` answered 200; one delete press with a
+      fresh touch answered `{ left: 0 }`; then the same session's `me` answered 404, the root's
+      sign-in 404, the operator's list no longer held the client (the data set's other two stayed),
+      and a further press answered 404.
 - [x] **3. The hardened build** (~35 min). Every row below seen red once
       ([QA](../conventions/qa.md) rule 2), coverage 100 % (rule 8), the walk screens written
       (`visual/src/walks.ts#L396-L470`). **Done when** `pnpm check` is green and
