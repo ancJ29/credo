@@ -71,11 +71,15 @@ walk screen, only `JoinPage.tsx#L84` and a unit test.
 
 About 40 minutes; a first run of this kind.
 
-- [ ] **1. The frame, on the fake** (10 min). `SignInFrame` rewritten to the decision above;
+- [x] **1. The frame, on the fake** (10 min). `SignInFrame` rewritten to the decision above;
   `QrLanding` moved onto it. *Done when:* `pnpm --filter @credo/ui test` green, `git grep -c
   'bg="brand.0"' -- ui/src` prints nothing, `git grep -c SignInFrame -- ui/src/QrLanding.tsx`
   prints 1.
-- [ ] **2. The nine cases, red then green** (10 min). *Done when:* each row red once from its own
+  *Evidence (18:28):* `94f60cb`; `pnpm --filter @credo/ui test` green; the first grep prints nothing;
+  the second prints 3, the import and the open and close tags, so one use. The join page's three
+  states draw no switch: its caller has no language handler, and giving it one would change how a
+  language is chosen, so it is left to the human (`docs/open-items.md#L665`).
+- [x] **2. The nine cases, red then green** (10 min). *Done when:* each row red once from its own
   assertion, one red a row in the log; then `pnpm --filter @credo/ui test` green at 100 %.
 - [ ] **3. The walks page** (5 min). The doors' question set to the mock's. *Done when:* `pnpm
   report` ends green and `git diff -- walk/specs | grep -c "at('"` prints 0 — no screen added,
