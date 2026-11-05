@@ -92,8 +92,13 @@ takes `main` and keeps both sides.
     new generation on the switch off, so it does not pass by accident. Row 11 holds two cases: a sign-in record
     with no password, and no sign-in record at all.
   - [x] The route list test (`bff/src/operator.route.test.ts`) names `/restore (POST)`.
-- [ ] **5. The gate.** 🤖 Sonnet, about 11 minutes (`docs/plans/2026-11-04-staff-cards.md#L89`): `main` taken in, the
+- [x] **5. The gate.** 🤖 Sonnet, about 11 minutes (`docs/plans/2026-11-04-staff-cards.md#L89`): `main` taken in, the
   whole `pnpm check` under the lock, `== exit 0`.
+  - [x] `main` taken in: already up to date (`b4ac75b`). `pnpm check` under the lock: `check-20261105-1120.log`
+    ends `== exit 0` (shared 152, bff 535, ui 719, visual 192, scripts 277 tests, all at 100 %). Three earlier runs
+    that day were red on files this piece does not touch, each at load 10 to 27: scripts coverage (`processes.ts`
+    line 83), then bff, ui and office timeouts at load 27, then one `services` words line in visual that passed on
+    the rerun. It is to be redone after milestone 3 merges, before step 7.
 - [ ] **6. One review.** 🤖 a model other than the author's, about 5 minutes (`#L95`): each finding tagged in the recap.
 - [ ] **7. The full run** (👤 3): about 16 minutes. Done when: run 1 green, its `raw.txt` naming the twelve alone (step 2's note); run
   2 every count 0; 72 bases committed.
