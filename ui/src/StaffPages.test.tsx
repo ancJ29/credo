@@ -514,7 +514,7 @@ describe('a person’s page', () => {
     ).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>(/^Name/).readOnly).toBe(true);
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Lock' })).toBeNull();
   });
 
   it('A save over someone else’s newer one is refused, what was typed is kept, and the page offers the newer details', async () => {
@@ -560,7 +560,7 @@ describe('a person’s page', () => {
     expect(needs()).toHaveLength(1);
     await user.click(within(group('Add a person')).getByText('As the level above'));
     expect(needs()).toHaveLength(0);
-    await user.click(within(group('Archive a person')).getByText('Allow'));
+    await user.click(within(group('Lock and unlock a person')).getByText('Allow'));
     expect(needs()).toHaveLength(1);
     await user.click(within(group('See the staff list')).getByText('As the level above'));
     expect(needs()).toHaveLength(0);
@@ -608,7 +608,7 @@ describe('a person’s page', () => {
     expect(screen.getAllByText('As the level above: Refused')).toHaveLength(7);
 
     // the person's own: allow archiving, which nothing above allows; allow seeing, which the department already does
-    await user.click(within(group('Archive a person')).getByText('Allow'));
+    await user.click(within(group('Lock and unlock a person')).getByText('Allow'));
     await user.click(within(group('See the staff list')).getByText('Allow'));
     expect(screen.getAllByText('Custom')).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: 'Save' }));

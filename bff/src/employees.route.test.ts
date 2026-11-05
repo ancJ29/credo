@@ -604,7 +604,10 @@ describe('Someone allowed switches a person who left back on: the flag goes over
       (record!.data as { generation: string }).generation;
     expect(generation(mid)).not.toBe(generation(before));
     expect(hash(mid)).toBe(hash(before));
-    expect(await t.client.getRecord(t.keys.user('emp-1'))).toEqual(mid);
+    // and the switch back on mints once more, the hash still the same
+    const after = await t.client.getRecord(t.keys.user('emp-1'));
+    expect(generation(after)).not.toBe(generation(mid));
+    expect(hash(after)).toBe(hash(before));
     expect((await me(t, own.body.authId)).statusCode).toBe(401);
     expect((await signIn(t.app, { name: 'EMP-1', password })).response.statusCode).toBe(200);
   });
