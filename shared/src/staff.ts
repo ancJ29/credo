@@ -3,6 +3,7 @@ import { extraInputSchema, extraSchema } from './extra';
 import {
   type CustomField,
   customFieldsSchema,
+  customFieldsWriteSchema,
   DEFAULT_NUMBERING,
   type Numbering,
   numberingSchema,
@@ -154,7 +155,16 @@ export function staffConfig(setup: Partial<StaffSetup>): {
   numbering: Numbering;
 } {
   return {
-    fields: { personalPhone: false, photo: false, email: false, qr: false, ...setup.fields },
+    fields: {
+      personalPhone: false,
+      photo: false,
+      email: false,
+      qr: false,
+      startDate: false,
+      birthDate: false,
+      address: false,
+      ...setup.fields,
+    },
     customFields: setup.customFields ?? [],
     numbering: setup.numbering ?? DEFAULT_NUMBERING,
   };
@@ -175,7 +185,7 @@ export const saveStaffSetupRequestSchema = z.strictObject({
     departments: z.array(staffUnitInputSchema),
     positions: z.array(staffUnitInputSchema),
     fields: staffFieldsSchema.optional(),
-    customFields: customFieldsSchema.optional(),
+    customFields: customFieldsWriteSchema.optional(),
     numbering: numberingSchema.optional(),
     extra: extraInputSchema,
   }),

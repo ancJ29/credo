@@ -168,7 +168,13 @@ describe('The root chooses which optional fields the company keeps on a person, 
   it('stores the field switches, the company’s own fields and the numbering, and returns them as saved', async () => {
     const t = await staffTenant(cs);
     const sent = {
-      fields: { personalPhone: true, photo: false },
+      fields: {
+        personalPhone: true,
+        photo: false,
+        startDate: true,
+        birthDate: false,
+        address: true,
+      },
       customFields: [licence],
       numbering: { prefix: 'NV', digits: 3 },
     };

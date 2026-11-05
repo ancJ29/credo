@@ -59,6 +59,9 @@ describe('the company’s optional fields', () => {
         photo: false,
         email: false,
         qr: false,
+        startDate: true,
+        birthDate: true,
+        address: true,
       });
 
       // hidden everywhere: the person's page, the add form, the list's initials
@@ -224,7 +227,7 @@ describe('the company’s own fields', () => {
       expect(await screen.findByDisplayValue('41.5')).toBeTruthy();
       expect(screen.getByLabelText<HTMLSelectElement>('Driving licence').value).toBe('c');
       expect(screen.getByLabelText('Vehicle plate')).toBeTruthy();
-      expect(screen.getByLabelText('Start date')).toBeTruthy();
+      expect(screen.getByLabelText('Contract date')).toBeTruthy();
       expect(api.addEmployee).toHaveBeenCalledWith(
         expect.objectContaining({ extra: { shoe: 41.5, licence: 'c', plate: '51C-999.99' } }),
       );
@@ -238,7 +241,7 @@ describe('the company’s own fields', () => {
         'Position',
         'Phone',
         'Driving licence',
-        'Start date',
+        'Contract date',
         'Shoe size',
         'Status',
       ]);
@@ -257,8 +260,8 @@ describe('the company’s own fields', () => {
       'Hạng B2',
       'Hạng C',
     ]);
-    expect(screen.getByLabelText<HTMLInputElement>('Ngày vào làm').type).toBe('date');
-    expect(screen.getByLabelText<HTMLInputElement>('Ngày vào làm').value).toBe('2023-08-21');
+    expect(screen.getByLabelText<HTMLInputElement>('Ngày ký hợp đồng').type).toBe('date');
+    expect(screen.getByLabelText<HTMLInputElement>('Ngày ký hợp đồng').value).toBe('2023-08-21');
     expect(screen.getByLabelText<HTMLInputElement>('Số người phụ thuộc').value).toBe('2');
   });
 
@@ -307,6 +310,9 @@ describe('the company’s own fields', () => {
       note: 'Lái xe tải nhỏ.',
       licence: 'c',
       started: '2023-08-21',
+      startDate: '2023-08-21',
+      birthDate: '1985-01-30',
+      address: '45 Lê Lợi, Quận 3, TP. Hồ Chí Minh',
       dependants: 2,
       legacy: { kept: true },
       personalPhone: 'x',
@@ -686,7 +692,7 @@ describe('search and filters', () => {
     expect(names()).toHaveLength(7);
     // a field that is not a choice, or not shown in the list, has no filter
     expect(screen.queryByLabelText('Vehicle plate')).toBeNull();
-    expect(screen.queryByLabelText('Start date')).toBeNull();
+    expect(screen.queryByLabelText('Contract date')).toBeNull();
   });
 
   it('The address keeps both, so a copied link opens the same list', async () => {

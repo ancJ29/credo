@@ -610,9 +610,11 @@ The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not perm
 
 `ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
 
-## 89. `person.signIn` is left unused — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
+## 89. `person.signIn` is left unused — the machine; **Done (staff-fields, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
 The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `ui/src/i18n/en.ts#L403` and `ui/src/i18n/vi.ts#L404` after the sentence moved into the first card. Nothing reads it, and the missing-key test cannot catch an unused key. *Fix:* delete both lines when the files are next touched.
+
+**Done (staff-fields, `ed30369`, 2026-11-05).** Both lines are deleted; no reader was left.
 
 ## 90. The frame draws its side column even when empty — the machine; `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
@@ -637,3 +639,11 @@ On the white menu the open page's mark (brand shade 7) falls under 3:1 for terra
 ## 95. The icon strip's tip is tested by the CSS file's text, never drawn — the machine; `[DEFERRED]` (white-frame, review, Opus, 2026-11-04, Low)
 
 The strip's tip on `:focus-visible` is held by a test that reads `ui/src/frameLook.module.css` as text, since jsdom has no computed styles; a browser check would be the first to see it drawn. *Trigger:* the first browser check of the app, or the next change to the strip.
+
+## 96. The start, birth and address values are checked in the browser only — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
+
+The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-day shows as a blank date input and is re-sent unchanged (`ui/src/personalFields.tsx#L23`). The company's own date field behaves the same, so this is consistent, not new. *Fix:* a day check on the three keys in the BFF's save of a person, about a route test and ten lines; *trigger:* a second client that writes `extra` (an import of the dates, or a partner's tool).
+
+## 97. The day check's production path is nearly unreachable on these two fields — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
+
+A real browser's date input never yields a day that is not one, so `dayIsValid` (`shared/src/fields.ts#L117`) guards an older browser's text fallback; it is right and covered, and its refusal is tested with the input made a text input. *Cost:* none to keep; *trigger:* none, noted so a reader does not look for the path.

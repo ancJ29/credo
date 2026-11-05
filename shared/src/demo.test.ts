@@ -16,7 +16,7 @@ import {
   DEMO_STAFF_SETUP,
   OPERATOR_NAME,
 } from './demo';
-import { fieldValueIsValid } from './fields';
+import { dayIsValid, fieldValueIsValid } from './fields';
 import { photoIsValid } from './photo';
 import { clientCodeSchema } from './records';
 import { employeeSchema, staffConfig, staffSetupSchema } from './staff';
@@ -49,10 +49,18 @@ describe('the demo data set', () => {
     ).toHaveLength(2);
   });
 
-  it('The demo setup switches the second phone and the photo on, holds one field of each kind and numbers codes as EMP- and 4 digits; every value a person holds is one its field takes, and the photos are ones the BFF would take', () => {
+  it('The demo setup switches the second phone, the photo, the start date, the birth date and the address on, holds one field of each kind and numbers codes as EMP- and 4 digits; every value a person holds is one its field takes, and the photos are ones the BFF would take', () => {
     const { fields, customFields, numbering } = staffConfig(DEMO_STAFF_SETUP);
 
-    expect(fields).toEqual({ personalPhone: true, photo: true, email: false, qr: false });
+    expect(fields).toEqual({
+      personalPhone: true,
+      photo: true,
+      email: false,
+      qr: false,
+      startDate: true,
+      birthDate: true,
+      address: true,
+    });
     expect(customFields.map((field) => field.kind).sort()).toEqual([
       'choice',
       'date',
@@ -61,6 +69,11 @@ describe('the demo data set', () => {
     ]);
     expect(numbering).toEqual({ prefix: 'EMP-', digits: 4 });
     for (const person of DEMO_EMPLOYEES) {
+      for (const key of ['startDate', 'birthDate'] as const) {
+        const day = person.extra[key];
+        if (day !== undefined)
+          expect(dayIsValid(day as string), `${person.code} ${key}`).toBe(true);
+      }
       for (const field of customFields) {
         const stored = person.extra[field.key];
         if (stored === undefined) continue;

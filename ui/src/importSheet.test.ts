@@ -139,7 +139,7 @@ describe('the template', () => {
     );
     expect(of('Note')?.[2]).toBe('Any note.');
     expect(of('Driving licence')?.[2]).toBe('One of: Class B2, Class C.');
-    expect(of('Start date')?.[2]).toBe('A date as year-month-day, for example 2026-10-29.');
+    expect(of('Contract date')?.[2]).toBe('A date as year-month-day, for example 2026-10-29.');
     expect(of('Vehicle plate')?.[2]).toBe('Text of at most 500 characters.');
     expect(of('Dependants')?.[2]).toBe('A number, for example 3 or 3.5.');
   });

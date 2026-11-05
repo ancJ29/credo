@@ -1,5 +1,6 @@
+import { staffConfig } from '@credo/shared';
 import { DEMO_STAFF_SETUP } from '@credo/shared/demo';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { openApp, person, type Spied } from '../tests/open';
@@ -862,6 +863,223 @@ describe('a person’s page', () => {
   });
 });
 
+describe('the start date, the birth date and the address', () => {
+  type Switches = Partial<Record<'startDate' | 'birthDate' | 'address', boolean>>;
+  /** The data set's setup with these switches set over its own. */
+  const switched =
+    (on: Switches) =>
+    (spied: Spied, original: Api): void => {
+      spied.getStaffSetup.mockImplementation(async () => {
+        const read = await original.getStaffSetup();
+        const { fields } = staffConfig(read.setup);
+        return { ...read, setup: { ...read.setup, fields: { ...fields, ...on } } };
+      });
+    };
+  const OFF = { startDate: false, birthDate: false, address: false };
+  const LABELS = { startDate: 'Start date', birthDate: 'Birth date', address: 'Address' };
+  const gridOf = (field: HTMLElement) => field.closest('.mantine-SimpleGrid-root');
+  /** A date typed as text: a browser's date input never offers a day that is not one, so the
+   * input is made a text input first, as an older browser's would be. */
+  const typeDay = (field: HTMLElement, value: string) => {
+    (field as HTMLInputElement).type = 'text';
+    fireEvent.change(field, { target: { value } });
+  };
+
+  it('With the three switched on, a person’s page shows the start and birth dates in one row and the address below; each switched off, its field is absent', async () => {
+    openApp(`/staff/${person('EMP-0005').id}`);
+
+    const basic = await cardOf('Basic information');
+    const start = within(basic).getByLabelText<HTMLInputElement>('Start date');
+    const birth = within(basic).getByLabelText<HTMLInputElement>('Birth date');
+    const address = within(basic).getByLabelText<HTMLInputElement>('Address');
+    expect([start.type, birth.type, address.type]).toEqual(['date', 'date', 'text']);
+    expect([start.value, birth.value, address.value]).toEqual([
+      '2023-08-21',
+      '1985-01-30',
+      '45 Lê Lợi, Quận 3, TP. Hồ Chí Minh',
+    ]);
+    // the two dates share a row, the address is outside it, below
+    expect(gridOf(start)).not.toBeNull();
+    expect(gridOf(start)).toBe(gridOf(birth));
+    expect(gridOf(address)).not.toBe(gridOf(start));
+    expect(start.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each(['startDate', 'birthDate', 'address'] as const)(
+    'The %s switched off leaves its field out and the others in',
+    async (key) => {
+      openApp(`/staff/${person('EMP-0005').id}`, { override: switched({ [key]: false }) });
+
+      await cardOf('Basic information');
+      for (const [other, label] of Object.entries(LABELS)) {
+        expect(screen.queryByLabelText(label) === null, `${key} ${other}`).toBe(other === key);
+      }
+    },
+  );
+
+  it('All three switched off draw no row and no address', async () => {
+    openApp(`/staff/${person('EMP-0005').id}`, { override: switched(OFF) });
+
+    await cardOf('Basic information');
+    for (const label of Object.values(LABELS)) expect(screen.queryByLabelText(label)).toBeNull();
+  });
+
+  it('Someone who may only see reads the three and changes none', async () => {
+    openApp(`/staff/${person('EMP-0005').id}`, {
+      override: (spied) => {
+        spied.me.mockResolvedValue({
+          user: { name: 'Hạnh', root: false, permissions: { 'staff.canView': true } },
+        });
+      },
+    });
+
+    const start = await screen.findByLabelText<HTMLInputElement>('Start date');
+    expect(start.readOnly).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>('Address').readOnly).toBe(true);
+  });
+
+  it('The add page shows the same three, and Add sends them in extra under startDate, birthDate and address', async () => {
+    const { api } = openApp('/staff/new');
+
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-03-05' } });
+    fireEvent.change(screen.getByLabelText('Birth date'), { target: { value: '1999-12-31' } });
+    await user.type(screen.getByLabelText('Address'), ' 7 Trần Phú ');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(api.addEmployee).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extra: { startDate: '2026-03-05', birthDate: '1999-12-31', address: '7 Trần Phú' },
+      }),
+    );
+    // another person: the three are empty again
+    await user.click(screen.getByRole('button', { name: 'Add another person' }));
+    expect(screen.getByLabelText<HTMLInputElement>('Address').value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Start date').value).toBe('');
+  });
+
+  it('The add page sends none of the three left empty, and none whose switch is off', async () => {
+    const empty = openApp('/staff/new');
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(empty.api.addEmployee).toHaveBeenCalledWith(expect.objectContaining({ extra: {} }));
+    empty.unmount();
+
+    const off = openApp('/staff/new', { override: switched(OFF) });
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    expect(screen.queryByLabelText('Birth date')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByRole('heading', { level: 2, name: 'Person added' });
+    expect(off.api.addEmployee).toHaveBeenCalledWith(expect.objectContaining({ extra: {} }));
+  });
+
+  it('A date that is not a real day is refused at its field and nothing is sent, on the add page and on the person’s page', async () => {
+    const added = openApp('/staff/new');
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    typeDay(screen.getByLabelText('Start date'), '2026-02-30');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    expect(
+      await screen.findByText('A date as year-month-day, for example 2026-10-29.'),
+    ).toBeTruthy();
+    expect(added.api.addEmployee).not.toHaveBeenCalled();
+    // the refusal goes as the day fits
+    typeDay(screen.getByLabelText('Start date'), '2026-02-28');
+    expect(screen.queryByText('A date as year-month-day, for example 2026-10-29.')).toBeNull();
+    added.unmount();
+
+    const shown = openApp(`/staff/${person('EMP-0005').id}`);
+    typeDay(await screen.findByLabelText('Birth date'), '1985-13-01');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText('A date as year-month-day, for example 2026-10-29.'),
+    ).toBeTruthy();
+    expect(shown.api.saveEmployee).not.toHaveBeenCalled();
+  });
+
+  it('A person’s page saves the three typed, an emptied one removes its key, and a value stored while a switch was on survives a save made while it is off', async () => {
+    const { api } = openApp(`/staff/${person('EMP-0005').id}`);
+    fireEvent.change(await screen.findByLabelText('Start date'), {
+      target: { value: '2024-01-02' },
+    });
+    await user.clear(screen.getByLabelText('Address'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Saved.');
+    const extra = api.saveEmployee.mock.calls[0]?.[1].extra;
+    expect(extra).toMatchObject({ startDate: '2024-01-02', birthDate: '1985-01-30' });
+    expect(Object.keys(extra ?? {})).not.toContain('address');
+
+    // the switches off: the stored values stay
+    const off = openApp(`/staff/${person('EMP-0005').id}`, { override: switched(OFF) });
+    const name = (await screen.findAllByLabelText(/^Name/)).at(-1) as HTMLElement;
+    await user.type(name, ' B');
+    await user.click(screen.getAllByRole('button', { name: 'Save' }).at(-1) as HTMLElement);
+    await waitFor(() => expect(off.api.saveEmployee).toHaveBeenCalled());
+    expect(off.api.saveEmployee.mock.calls[0]?.[1].extra).toMatchObject({
+      startDate: '2023-08-21',
+      birthDate: '1985-01-30',
+      address: '45 Lê Lợi, Quận 3, TP. Hồ Chí Minh',
+    });
+  });
+
+  it('An own field stored under the key address leaves the staff screens drawn, and the person’s own address wins over it on a save', async () => {
+    const legacy = {
+      key: 'address',
+      label: { vi: 'Nơi ở cũ', en: 'Old address' },
+      kind: 'text' as const,
+      options: [],
+      inList: false,
+    };
+    const { api, unmount } = openApp(`/staff/${person('EMP-0005').id}`, {
+      override: (spied, original) => {
+        spied.getStaffSetup.mockImplementation(async () => {
+          const read = await original.getStaffSetup();
+          return { ...read, setup: { ...read.setup, customFields: [legacy] } };
+        });
+      },
+    });
+
+    // both fields draw; the page is not lost
+    const [own, mine] = [
+      await screen.findByLabelText('Old address'),
+      screen.getByLabelText('Address'),
+    ];
+    await user.clear(mine);
+    await user.type(mine, '9 Hai Bà Trưng');
+    await user.type(own, 'old');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Saved.');
+    expect(api.saveEmployee.mock.calls[0]?.[1].extra).toMatchObject({ address: '9 Hai Bà Trưng' });
+
+    // the add page: the same
+    unmount();
+    const added = openApp('/staff/new', {
+      override: (spied, original) => {
+        spied.getStaffSetup.mockImplementation(async () => {
+          const read = await original.getStaffSetup();
+          return { ...read, setup: { ...read.setup, customFields: [legacy] } };
+        });
+      },
+    });
+    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
+    await user.type(screen.getAllByLabelText('Old address').at(-1) as HTMLElement, 'old');
+    await user.type(screen.getAllByLabelText('Address').at(-1) as HTMLElement, '7 Trần Phú');
+    await user.click(screen.getAllByRole('button', { name: 'Add' }).at(-1) as HTMLElement);
+    await waitFor(() => expect(added.api.addEmployee).toHaveBeenCalled());
+    expect(added.api.addEmployee.mock.calls[0]?.[0].extra).toMatchObject({ address: '7 Trần Phú' });
+  });
+
+  it('The labels read in Vietnamese', async () => {
+    openApp(`/staff/${person('EMP-0005').id}`, { language: 'vi' });
+
+    expect(await screen.findByLabelText('Ngày vào làm')).toBeTruthy();
+    expect(screen.getByLabelText('Ngày sinh')).toBeTruthy();
+    expect(screen.getByLabelText('Địa chỉ')).toBeTruthy();
+    expect(screen.getByLabelText('Ngày ký hợp đồng')).toBeTruthy();
+  });
+});
+
 describe('the words', () => {
   it('Every new screen reads fully in Vietnamese and in English', async () => {
     const id = person('EMP-0007').id;
@@ -874,7 +1092,7 @@ describe('the words', () => {
     ];
     // a key with no words shows as the key: a dotted name of the dictionaries' groups
     const KEY =
-      /\b(common|nav|staff|person|addPerson|setup|permissions|forbidden|nothing)\.[A-Za-z_]+/;
+      /\b(common|nav|staff|person|addPerson|setup|fields|permissions|forbidden|nothing)\.[A-Za-z_]+/;
     const missingKey = () => KEY.exec(document.body.textContent)?.[0] ?? null;
     for (const language of ['vi', 'en'] as const) {
       for (const { path, ready } of screens) {

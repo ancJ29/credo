@@ -1,6 +1,6 @@
 import {
   type CustomField,
-  customFieldsSchema,
+  customFieldsWriteSchema,
   FIELD_KINDS,
   nextCode,
   type Numbering,
@@ -77,7 +77,7 @@ const numberingOf = ({ prefix, digits }: FieldsDraft) =>
 
 /** What a draft saves as, or which of its two parts is refused. */
 export function savedFrom(draft: FieldsDraft) {
-  const customFields = customFieldsSchema.safeParse(
+  const customFields = customFieldsWriteSchema.safeParse(
     draft.own.map((field) => ({
       key: field.id.trim(),
       label: { vi: field.vi.trim(), en: field.en.trim() },
@@ -142,6 +142,27 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
           checked={draft.fields.photo}
           onChange={(event) =>
             change({ fields: { ...draft.fields, photo: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldStartDate')}
+          checked={draft.fields.startDate}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, startDate: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldBirthDate')}
+          checked={draft.fields.birthDate}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, birthDate: event.currentTarget.checked } })
+          }
+        />
+        <Checkbox
+          label={t('setup.fieldAddress')}
+          checked={draft.fields.address}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, address: event.currentTarget.checked } })
           }
         />
       </Stack>
