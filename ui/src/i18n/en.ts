@@ -261,7 +261,7 @@ export const en = {
     staff_canView: 'See the staff list',
     staff_canCreate: 'Add a person',
     staff_canEdit: 'Change a person’s name and details',
-    staff_canDelete: 'Archive a person',
+    staff_canDelete: 'Lock and unlock a person',
     settings_canEdit: 'Change the company’s settings',
     orders_canView: 'See orders, delivery requests, customers and products',
     orders_canEdit: 'Make, change, confirm and cancel orders; send and cancel delivery requests',

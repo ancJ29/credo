@@ -610,6 +610,38 @@ describe('Someone allowed switches a person who left back on: the flag goes over
   });
 });
 
+describe('A switch off that failed to end the sessions is mended by the switch back on', () => {
+  it('keeps a session from before a 401 after the switch back on, when the mint failed at the switch off', async () => {
+    let failKey = '';
+    const t = await staffTenant(cs, {
+      wrap: failing((call, key) => call === 'put' && key === failKey),
+    });
+    const reply = await added(t.rootCall, { code: 'EMP-1' });
+    const id = reply.employee.employee.id;
+    const password = reply.password as string;
+    const own = await signIn(t.app, { name: 'EMP-1', password });
+    const before = await t.client.getRecord(t.keys.user('emp-1'));
+
+    failKey = t.keys.user('emp-1');
+    const off = await t.rootCall.send('POST', `/api/employees/${id}/archive`, {
+      version: reply.employee.version,
+    });
+    failKey = '';
+    // the person is locked and no generation was minted: the answer was a 503
+    expect(off.statusCode).toBe(503);
+    const locked = await doc(t.rootCall, id);
+    expect(locked.employee.archived).toBe(true);
+    expect(await t.client.getRecord(t.keys.user('emp-1'))).toEqual(before);
+
+    const on = await t.rootCall.send('POST', `/api/employees/${id}/restore`, {
+      version: locked.version,
+    });
+    expect(on.statusCode).toBe(200);
+    expect((await me(t, own.body.authId)).statusCode).toBe(401);
+    expect((await signIn(t.app, { name: 'EMP-1', password })).response.statusCode).toBe(200);
+  });
+});
+
 describe('A person signs in with their code and password on the company’s link, on a PC or a phone', () => {
   it('signs a person in by their code in any case, answers who they are, and refuses one with no password yet', async () => {
     const t = await staffTenant(cs);

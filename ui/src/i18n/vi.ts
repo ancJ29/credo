@@ -261,7 +261,7 @@ export const vi: Dictionary = {
     staff_canView: 'Xem danh sách nhân viên',
     staff_canCreate: 'Thêm nhân viên',
     staff_canEdit: 'Sửa tên và thông tin nhân viên',
-    staff_canDelete: 'Lưu trữ nhân viên',
+    staff_canDelete: 'Khóa và mở khóa nhân viên',
     settings_canEdit: 'Đổi thiết lập của công ty',
     orders_canView: 'Xem đơn hàng, yêu cầu giao hàng, khách hàng và sản phẩm',
     orders_canEdit: 'Tạo, sửa, xác nhận và hủy đơn hàng; gửi và hủy yêu cầu giao hàng',

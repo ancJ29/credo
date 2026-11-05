@@ -112,7 +112,7 @@ async function rewriteSignIn(
     if (!signIn || !owns(signIn.user)) return 'not owned';
     if ((await storage.putRecord(key, change(signIn.user), signIn.tag)) === 'saved') return 'set';
   }
-  throw new CStorageError(412, 'the sign-in moved on every attempt to give it a password');
+  throw new CStorageError(412, 'the sign-in record moved on every attempt to write it');
 }
 
 /** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500

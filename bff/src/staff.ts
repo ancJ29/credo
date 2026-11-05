@@ -487,8 +487,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return await newest(request.tenantId, found.employee.id);
   });
 
-  /** Back on: the flag written off over the version read; the sign-in record, password and code
-   * are as the switch off left them. */
+  /** Back on: the flag written off over the version read, and the sessions ended once more; the
+   * password and code are as the switch off left them. */
   app.post(employeeRoutes.restore(':id'), forClient, async (request) => {
     mustCan(await signedIn(request), 'staff.canDelete');
     const found = await mustFind(request.tenantId, idOf(request));
@@ -500,6 +500,14 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     ) {
       throw conflict(await newest(request.tenantId, found.employee.id));
     }
+    // The switch off may have written the flag and failed to end the sessions: ended again here, so
+    // no handle from before wakes whatever it managed. A person who left holds no live session.
+    await endSessions(
+      storage,
+      request.tenantId,
+      normaliseSignInName(found.employee.code),
+      (user) => user.employeeId === found.employee.id,
+    );
     return await newest(request.tenantId, found.employee.id);
   });
 
