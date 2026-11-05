@@ -81,13 +81,17 @@ About 40 minutes; a first run of this kind.
   language is chosen, so it is left to the human (`docs/open-items.md#L665`).
 - [x] **2. The nine cases, red then green** (10 min). *Done when:* each row red once from its own
   assertion, one red a row in the log; then `pnpm --filter @credo/ui test` green at 100 %.
-- [ ] **3. The walks page** (5 min). The doors' question set to the mock's. *Done when:* `pnpm
+- [x] **3. The walks page** (5 min). The doors' question set to the mock's. *Done when:* `pnpm
   report` ends green and `git diff -- walk/specs | grep -c "at('"` prints 0 — no screen added,
   inserted or renumbered.
 - [ ] **4. The pixels and the look** (5 min, the human's terminal). *Done when:* `bash walk/run.sh
   piece-1 piece-2 operator operator-passkeys --moved all` prints a raw moved count for each of the
   ten doors and **0** for `pk-2-passkeys`, `staff-17-email`, `staff-18-qr`; `--write` once the look
   is a yes.
+  *Not ticked, waiting on the human's terminal (18:40):* the run is written as `one-off/20261105-1838-signin-look-pixels.sh`
+  (read only, then `--write` on a yes). Two corrections to the line above: the walk is named `passkeys`, not
+  `operator-passkeys`, and **nine** doors have a walk picture, not ten (`join-unavailable` has none), so `--moved` names
+  those nine and a red is any other screen that moved; the guarded `pk-6-sign-in-ended` joins the three it counts.
 - [ ] **5. Item 94 widened** (2 min). The mock read the same pairing wider: white on the **header
   and the primary button** is 2.8:1 to 3.4:1 — terracotta 3.12, sandstone 3.32, autumn 2.84, olive
   3.10, ocean 3.40, coin 3.05. Line 54's pairing, kept as it is. *Done when:* `grep -c '^## '
@@ -95,6 +99,12 @@ About 40 minutes; a first run of this kind.
   the button.
 - [ ] **6. The gate, the review, the recap** (8 min). *Done when:* `pnpm check` green, one
   cross-model review with every finding tagged, the recap holding the evidence.
+
+*Step 3 evidence (18:40):* one question, `SIGN_IN_LOOK` in `visual/src/walks.ts`, set on the nine walked doors
+(`1-sign-in`, `2-sign-in-refused`, `op-1-sign-in`, `pk-1-join`, `pk-3-not-given`, `pk-4-no-operator`, `pk-5-link-dead`,
+`phone-1-signed-in`, `phone-2-code-used`), its Vietnamese in `questions-vi.json`; it names the join screens' missing
+switch. `pnpm report` green (116 screens, 232 captures); `pnpm --filter @credo/visual test` green at 100 %;
+`git diff -- walk/specs | grep -c "at('"` prints 0. The nine screens' earlier questions are replaced.
 
 ## The human's points
 
