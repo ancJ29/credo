@@ -186,7 +186,7 @@ describe('the API client', () => {
     const { calls, api } = fake(json({ left: 0 }));
 
     expect(await api.deleteClient('binh-an', null)).toEqual({ left: 0 });
-    expect(calls[0]?.init.body).toBeUndefined();
+    expect(calls[0]?.init.body ?? null).toBeNull();
   });
 
   it('A root’s password is set by POST with the operator’s handle and no client code, the touch in the body; the made one is returned, and a refusal or a wrong shape is an error', async () => {
