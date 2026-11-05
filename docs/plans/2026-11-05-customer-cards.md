@@ -91,6 +91,10 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
     spec's own text against the same demo ids, so every test stays green. *Fix:* on `lists-full` reach the page as
     the orders walk does — the list's name link, or the id read by code from `GET /api/customers` — keeping the
     screen ids and the scene paths as they are.
+    *Fixed* in `479f7dd`: `lists.spec.ts` opens the list and clicks the customer's name link (`openCustomer`), as
+    the orders walk does; `walks.test.ts` now checks that opening (red against the old spec, green after). Whole
+    `pnpm check` `== exit 0` (`logs/customer-cards-fix-check3-20261105-1744.log`, load 3.7 at start); `pnpm report`
+    116 screens, ids, numbers and versions identical to the step-2 build (`walks/2026-11-05-174345-479f7dd4a`).
   - **Low** — item 99: `side !== undefined` (`ui/src/DetailCards.tsx#L13`) still draws a blank column for
     `side={null}` or `side={has && <Card />}`, and the person's page's side is always defined
     (`ui/src/PersonPage.tsx#L552`), so item 90's own viewer still sees the blank half.
