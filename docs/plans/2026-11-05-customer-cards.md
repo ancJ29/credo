@@ -64,10 +64,14 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
 ## Steps
 
 - [x] **1. This plan.** 🤖 Opus, 8 minutes. Done when: committed, about 1,000 words or under, no local path.
-- [ ] **2. The page on the fake.** 🤖 Sonnet, about 25 minutes: the frame's optional `side`,
+- [x] **2. The page on the fake.** 🤖 Sonnet, about 25 minutes: the frame's optional `side`,
   `ui/src/CustomerPage.tsx`, the list's link, the words, the two walk screens. Done when: rows 1 to 4 and 6 each red
   once, then green; row 7 green; row 8's diff; ui at 100 %, lint and knip clean; `pnpm report` builds, and against
   `main`'s build exactly the three screens' versions differ.
+  *Evidence:* rows 1 to 4 and 6 each red first, then green; `ui` 756 tests at 100 %, lint, knip, tsc clean;
+  `grep -c withBorder ui/src/CustomerPage.tsx` is 0; `git diff --stat main` names nothing under `bff/`, `shared/`,
+  `c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
+  nothing else differs (log `logs/customer-cards-step2-report-20261105-1707.log`, `== exit 0`).
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [ ] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,
   `== exit 0`.
