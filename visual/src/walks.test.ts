@@ -622,15 +622,23 @@ describe('the walks', () => {
     }
 
     for (const screen of WALKS[8].screens) {
-      // a customer's page is opened at an address built from the data set's customer, in backticks
-      const opened = [
-        ...openings.get(screen.id)!.matchAll(/await open\(page, language, ['`]([^'`]+)['`]\)/g),
-      ];
-      const named = opened
-        .at(-1)?.[1]
-        ?.replace('${NOTED_CUSTOMER.id}', DEMO_CUSTOMERS[0].id)
-        .replace('${PLAIN_CUSTOMER.id}', DEMO_CUSTOMERS[1].id);
-      expect(named, screen.id).toBe(screen.scene!.path);
+      // a customer's page is reached from the list by the name's link: on the stack the BFF mints
+      // the id, so the spec opens the list and clicks the data set's customer by name
+      const before = openings.get(screen.id)!;
+      const opened = [...before.matchAll(/await open\(page, language, '([^']+)'\)/g)];
+      const customer = DEMO_CUSTOMERS.find((one) => screen.scene!.path === `/customers/${one.id}`);
+      if (customer) {
+        const kind = customer === DEMO_CUSTOMERS[0] ? 'NOTED' : 'PLAIN';
+        expect(
+          before
+            .slice(before.lastIndexOf('await openCustomer('))
+            .startsWith(`await openCustomer(${kind}_CUSTOMER.name);`),
+          screen.id,
+        ).toBe(true);
+        expect(before, screen.id).not.toContain('/customers/${');
+      } else {
+        expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
+      }
       expect(screen.scene!.as, screen.id).toBeUndefined();
       expect(screen.scene!.cue, screen.id).toBeUndefined();
     }

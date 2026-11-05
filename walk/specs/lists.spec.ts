@@ -167,8 +167,15 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(title(words.nav.more)).toBeVisible();
   await at('lists-9-more');
 
+  /** A customer's page opened from the list by the name's link, as the office does: on the stack
+   * the BFF minted the id, so no address can name it. */
+  const openCustomer = async (name: string) => {
+    await open(page, language, '/customers');
+    await page.getByRole('link', { name, exact: true }).click();
+  };
+
   // 10. A customer's page, one with a note: two columns from 992.
-  await open(page, language, `/customers/${NOTED_CUSTOMER.id}`);
+  await openCustomer(NOTED_CUSTOMER.name);
   await expect(title(NOTED_CUSTOMER.name)).toBeVisible();
   await expect(
     page.getByRole('heading', { level: 3, name: words.lists.customers.note }),
@@ -176,7 +183,7 @@ async function walk(page: Page, language: Language, width: number) {
   await at('lists-10-customer');
 
   // 11. A customer with no note: one column at the full width.
-  await open(page, language, `/customers/${PLAIN_CUSTOMER.id}`);
+  await openCustomer(PLAIN_CUSTOMER.name);
   await expect(title(PLAIN_CUSTOMER.name)).toBeVisible();
   await expect(
     page.getByRole('heading', { level: 3, name: words.lists.customers.note }),
