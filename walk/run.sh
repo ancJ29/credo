@@ -178,7 +178,7 @@ main() {
   sha="$(git -C "$tree" rev-parse --short HEAD 2>/dev/null)" || refuse "cannot read the worktree's commit"
   local run
   run="$root/walks/run-$(date '+%Y-%m-%d-%H%M%S')-$sha"
-  local results="$run/results.txt" verdicts=() reds=()
+  local results="$run/results.txt" verdicts=() reds=() red_walks=" "
 
   finish() { # <verdict> <exit>
     echo "== verdict: $1"
@@ -383,6 +383,7 @@ main() {
     echo "  $phase $w: $got of $want tests passed${bad:+; $bad}"
     if [ "$got" != "$want" ] || [ -n "$bad" ]; then
       reds+=("$phase $w took $got of $want tests${bad:+ ($bad)}")
+      red_walks+="$w "
     fi
   }
   want_tests() { # <walk> <project column>
@@ -486,7 +487,11 @@ main() {
     case "$lrc" in
       0) ;;
       3) finish "red: the gate lock $gate_lock appeared; lane ${lane_ids[$li]} stopped" 1 ;;
-      *) reds+=("lane ${lane_ids[$li]} ended with $lrc") ;;
+      *)
+        reds+=("lane ${lane_ids[$li]} ended with $lrc")
+        # a lane that died may have read a walk of it as green when it was not: none of its walks is written
+        red_walks+="${lane_walks[$li]} "
+        ;;
     esac
   done
   for walk in "${walks[@]}"; do
@@ -504,14 +509,20 @@ main() {
       rc=$?
       echo "$out"
       verdicts+=("$(printf '%s\n' "$out" | sed -n 1p | sed 's/^compare //'): $(printf '%s\n' "$out" | tail -1)")
-      [ $rc -eq 0 ] || reds+=("fake to full-1: $w")
+      [ $rc -eq 0 ] || {
+        reds+=("fake to full-1: $w")
+        red_walks+="$w "
+      }
     fi
     compare_stamp "full-1 to full-2: $w"
     out="$(tool compare "full-1 to full-2: $w" "$run/full-1/$w" "$run/full-2/$w" --raw "$run/raw.txt")"
     rc=$?
     echo "$out"
     verdicts+=("$(printf '%s\n' "$out" | sed -n 1p | sed 's/^compare //'): $(printf '%s\n' "$out" | tail -1)")
-    [ $rc -eq 0 ] || reds+=("full-1 to full-2: $w")
+    [ $rc -eq 0 ] || {
+      reds+=("full-1 to full-2: $w")
+      red_walks+="$w "
+    }
     # The bases under the pictures' names: a base's own name carries the platform and the project.
     suffix="$(walk_field "$w" 7)"
     view="$run/bases/$w"
@@ -528,18 +539,27 @@ main() {
     rc=$?
     echo "$out"
     verdicts+=("$(printf '%s\n' "$out" | sed -n 1p | sed 's/^compare //'): $(printf '%s\n' "$out" | tail -1)")
-    [ $rc -eq 0 ] || reds+=("full-1 to the bases: $w")
+    [ $rc -eq 0 ] || {
+      reds+=("full-1 to the bases: $w")
+      red_walks+="$w "
+    }
   done
   stop_if_interrupted
 
   echo "== 5/6 the bases (elapsed $(elapsed))"
   if [ -z "$write" ]; then
     echo "  not asked (--write)"
-  elif [ ${#reds[@]} -gt 0 ]; then
-    echo "  not written: the read is red"
   else
+    # Each walk's bases are written on its own reads: a walk red in its own passes or comparisons, or in a
+    # lane that ended red, keeps its bases as they were. The run's exit stays red whatever was written.
     local picture written
     for w in "${walks[@]}"; do
+      case "$red_walks" in
+        *" $w "*)
+          echo "  $w: not written: the read is red"
+          continue
+          ;;
+      esac
       suffix="$(walk_field "$w" 7)"
       rm -f "$tree/$(walk_field "$w" 6)"/*.png
       mkdir -p "$tree/$(walk_field "$w" 6)"
@@ -550,7 +570,7 @@ main() {
       done
       echo "  $w: $written bases written"
     done
-    echo "  the machine reads git's diff and commits them"
+    echo "  the machine reads git's diff and commits them (none, if the run ends red)"
   fi
 
   echo "== 6/6 the verdict (elapsed $(elapsed))"

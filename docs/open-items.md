@@ -708,9 +708,11 @@ Item 99 is marked done on the first of the two fixes it named, and this is the s
 
 **Done (walk-machinery, step 4, 2026-11-06).** `compare_stamp` prints `-- compare <label> (load N; elapsed XmYYs)` before every comparison, in the shape of `pass_of`'s line, so the lines either side give each comparison's own time. No verdict reads the line. Held in `scripts/src/walk-run.test.ts`.
 
-## 110. One stalled walk blocks the bases of every other walk — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-05, Medium)
+## 110. One stalled walk blocks the bases of every other walk — the machine; **Done (walk-machinery, step 5, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-05, Medium)
 
 `walk/run.sh` writes the bases all or nothing: one stalled pass discarded three green walks' 156 pictures (27m24s, `20261105-1934-walk-piece-1-piece-2-operator-passkeys.log`). *Fix:* step 5 of the walk-machinery plan writes each walk's bases on its own reads; a red walk, or a lane that ended red, is left untouched and the run still ends red.
+
+**Done (walk-machinery, step 5, 2026-11-06).** `walk/run.sh` keeps the walks whose own passes or comparisons were red, and every walk of a lane that ended red, in `red_walks`, and writes the bases of the others; the red ones keep their bases as they were and the run still ends red, exit 1. A red run 1 therefore leaves the green walks' new bases uncommitted in the worktree (`ops/full-run.sh` commits nothing on a red run 1, as before): the next full run refuses a dirty tree until the human decides: commit those pictures if they are good, or discard them with `git -C <worktree> checkout -- walk/specs`. Rows 6 to 8 in `scripts/src/walk-run.test.ts`.
 
 ## 111. Piece-2's walk takes six minutes in one worker — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Info)
 
@@ -719,3 +721,12 @@ One spec of 33 screens in six tests, one worker by decision (`walk/playwright.co
 ## 112. One words-test scene took 187,912 ms against its own 30,000 ms limit — the machine; `[DEFERRED]` (walk-machinery, step 3 gate, 2026-11-06, Medium)
 
 In the step 3 gate, `visual`'s `src/words.test.tsx` took 325,709 ms for the file, and one scene, `office-orders:orders-9-confirm-failed`, ran 187,912 ms against its 30,000 ms limit and failed with "the scene did not end in 30000 ms" (`20261106-1252-walk-machinery-step3-gate.log#L99-L111`). The same gate passed on one rerun (`20261106-1301-walk-machinery-step3-gate-rerun.log`, `== exit 0`). The screen was merged that morning and nothing heavy was on the Mac in that window, so load alone does not explain a sixfold overshoot: the scene's own slowness is the symptom. Not in the walk-machinery piece, and the fix is nobody's yet. *Trigger:* the next red of that scene, or `visual` is next touched; first read how long that scene takes alone.
+
+## 113. `ui`'s 5-second per-test limit starves its slowest files under load — the machine; `[DEFERRED]` (walk-machinery, step 5 gate, 2026-11-06, Medium)
+
+In three whole gates of the same tree, `ui`'s `src/StaffSetupPage.test.tsx` timed out at 5,000 ms in every run, and the others moved about: 6 timeouts, then 4, then 1, the last being that file alone at the quietest load (`20261106-1324-walk-machinery-step5-gate.log`, `20261106-1329-walk-machinery-step5-gate.log`, `20261106-1337-walk-machinery-step5-gate.log`). The four failing files passed alone. It is the slowest file rather than a broken one, and the first to starve; item 112 is the same shape in `visual`. Not chased in the walk-machinery piece. *Trigger:* the next such red; first time the file alone and raise its limit or split it.
+
+## 114. A `ui` test reads a call count straight after awaiting a heading, and can read zero under load — the machine; `[DEFERRED]` (walk-machinery, step 5 gate, 2026-11-06, Low)
+
+`ui/src/MyDeliveries.test.tsx#L48` expects `myDeliveries` to have been called exactly once with `DEMO_TODAY` right after awaiting the "My deliveries" heading, and read zero calls in one whole gate (`20261106-1343-walk-machinery-step5-gate.log`, the file ran 1,856 ms, no timeout). The file passed alone twice straight afterwards at a load of 16 to 18. A separate flake from item 113; neither is the walk-machinery piece's to fix. *Trigger:* the next such red; first wait for the call (`waitFor`) rather than reading it at once.
+

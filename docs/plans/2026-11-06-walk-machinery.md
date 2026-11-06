@@ -91,9 +91,15 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   No verdict reads the new lines; a break is a missing line.
   Evidence: row 5 seen red (the stamp missing), then green; `compare_stamp` prints before each of the four
   comparisons; `scripts` at 100 % in the gate. Item 112 (a slow `visual` scene) written, not in this piece.
-- [ ] **5. The bases written per walk.** 18 minutes; closes 110. Done: rows 6 to 8, the suite's
+- [x] **5. The bases written per walk.** 18 minutes; closes 110. Done: rows 6 to 8, the suite's
   other cases unchanged, `scripts` at 100 %. The one step that could write a wrong base: a break
   shows as a red walk's picture put in as a base, which rows 7 and 8 hold.
+  Evidence: rows 6 and 8 seen red before the change, row 7 red under a mutation that writes a red walk's
+  bases; `walk-run.test.ts` 35 of 35 before, 38 of 38 after (the 35 unchanged);
+  the touched packages gated under the gate lock (`scripts` typecheck and suite, 281 tests, lines 100 %
+  (1231/1231); `walk` typecheck; eslint and prettier on `walk`, `scripts` and the docs; `shellcheck -x` on both
+  scripts), all green. The whole `pnpm check` was not the step's gate: it went red four times on `ui` files this
+  step cannot reach (items 113 and 114) and is taken in step 8.
 - [ ] **6. The loader wait in the one picture-taker.** 6 minutes; closes 91. Done:
   `pnpm --filter @credo/walk run typecheck`, eslint and prettier green; the services walk's own
   waits left as they are. A break shows at once on every walk, as a red naming a screen whose button

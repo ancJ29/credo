@@ -668,6 +668,64 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
       for (const dir of outputs) expect(dir.startsWith(`${folderOf(out)}/pw/`)).toBe(true);
     });
 
+    /** A base of a walk's folder, as it is on disk. */
+    const baseFile = (l: ReturnType<typeof layout>, spec: string, suffix: string, screen: string) =>
+      join(l.tree, `walk/specs/${spec}-snapshots/${screen}-en-390${suffix}.png`);
+
+    it('a walk whose own reads are green has its bases written though another walk is red', () => {
+      const l = layout();
+
+      const { code, out } = run(l, ['piece-2', 'admin-lists', '--moved', 'all', '--write'], {
+        SHIM_RED_PROJECT: 'lists-full',
+      });
+
+      expect(out).toContain('piece-2: 2 bases written');
+      expect(out).toContain('admin-lists: not written: the read is red');
+      expect(existsSync(baseFile(l, 'piece-2.spec.ts', '-full-darwin', 's2'))).toBe(true);
+      expect(existsSync(baseFile(l, 'lists.spec.ts', '-lists-full-darwin', 's2'))).toBe(false);
+      expect(code).toBe(1);
+    });
+
+    it('a red walk’s bases stay as they were, and the run still ends red, exit 1', () => {
+      const l = layout();
+      const kept = baseFile(l, 'lists.spec.ts', '-lists-full-darwin', 's2');
+      mkdirSync(join(l.tree, 'walk/specs/lists.spec.ts-snapshots'), { recursive: true });
+      writeFileSync(kept, 'the base as it was');
+      git(l.tree, 'add', '.');
+      git(l.tree, 'commit', '-q', '-m', 'a base');
+
+      const { code, out } = run(l, ['piece-2', 'admin-lists', '--moved', 'all', '--write'], {
+        SHIM_RED_PROJECT: 'lists-full',
+      });
+
+      expect(readFileSync(kept, 'utf8')).toBe('the base as it was');
+      expect(out).toMatch(/== verdict: red: .*full-1 admin-lists took 0 of 2 tests/);
+      expect(code).toBe(1);
+    });
+
+    it('a lane that ended red writes no base for any walk of that lane', () => {
+      const l = layout();
+
+      const { code, out } = run(l, [
+        'piece-2',
+        'operator',
+        'services',
+        '--moved',
+        'all',
+        '--write',
+      ]);
+
+      expect(out).toMatch(/lane 3 ended with 4/);
+      expect(out).toContain('operator: not written: the read is red');
+      expect(out).toContain('services: not written: the read is red');
+      expect(out).toContain('piece-2: 2 bases written');
+      expect(existsSync(baseFile(l, 'operator.spec.ts', '-operator-full-darwin', 's2'))).toBe(
+        false,
+      );
+      expect(existsSync(baseFile(l, 'piece-2.spec.ts', '-full-darwin', 's2'))).toBe(true);
+      expect(code).toBe(1);
+    });
+
     it('a lane’s red pass leaves the other lanes to finish, and the verdict names it', () => {
       const l = layout();
 

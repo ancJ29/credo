@@ -36,6 +36,9 @@
 #   logs in <credo root>/logs; the walks' pictures in <credo root>/walks/run-*.
 # LOGS: logs/<stamp>-<stem>.log holds this script's lines; each run's text as it printed is beside it as
 #   logs/<stamp>-<stem>-run-<n>.out; walk/run.sh writes a full log of its own per run (named in the log).
+# A red run 1 commits nothing, but walk/run.sh writes the bases of every walk whose own reads were green: they stay in the
+# worktree, uncommitted, and the next run refuses the dirty tree until you decide: commit them if the pictures are good, or discard
+# them with git checkout -- walk/specs in the worktree.
 # Exit: 0 green, 1 red (the run and its failure named), 2 refused, 130 interrupted.
 # TIME: run 1 is the walks' own, 6 to 35 minutes; run 2 is seconds. Steps print "== n/4" with the elapsed time.
 # Look for at the end: "== verdict: green", "== done", exit 0.
