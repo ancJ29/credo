@@ -33,7 +33,7 @@ const describeMove = (difference: Exclude<Difference, { kind: 'equal' }>) =>
 
 /** The one way a picture is taken. The pointer is parked in the corner first (a button under it is
  * drawn hovered, and which one depends on where the last click left it) and the page is scrolled to
- * the top (a fixed bar is drawn where the scroll left it). Then full-page shots, animations off and
+ * the top (a fixed bar is drawn where the scroll left it), once no button loader is on the page. Then full-page shots, animations off and
  * the caret hidden and a table's hover scrollbar not drawn, until two in a row are equal pixel for pixel by the raw reader, at most ten, or a
  * red naming the pixels between the last two. The picture is written to
  * `CREDO_SHOTS_DIR/<screen>-<language>-<width>.png`; `walk/run.sh` compares folders and bases, this
@@ -46,6 +46,9 @@ export async function shot(
   width: number,
   mask: Locator[] = [],
 ) {
+  // A pressed button's loader fades out in Mantine's 150 ms transition: no picture is taken while one is on
+  // the page (the shape of the services walk's own wait, 926c1b2). No screen's subject is a loader.
+  await expect(page.locator('.mantine-Button-loader')).toHaveCount(0);
   await page.mouse.move(0, 0);
   await page.evaluate('window.scrollTo(0, 0)');
   const name = `${screen}-${language}-${width}.png`;

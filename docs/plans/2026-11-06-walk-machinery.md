@@ -100,10 +100,13 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   (1231/1231); `walk` typecheck; eslint and prettier on `walk`, `scripts` and the docs; `shellcheck -x` on both
   scripts), all green. The whole `pnpm check` was not the step's gate: it went red four times on `ui` files this
   step cannot reach (items 113 and 114) and is taken in step 8.
-- [ ] **6. The loader wait in the one picture-taker.** 6 minutes; closes 91. Done:
+- [x] **6. The loader wait in the one picture-taker.** 6 minutes; closes 91. Done:
   `pnpm --filter @credo/walk run typecheck`, eslint and prettier green; the services walk's own
   waits left as they are. A break shows at once on every walk, as a red naming a screen whose button
   never stopped loading; one line reverts it.
+  Evidence: `shot()` waits for no `.mantine-Button-loader` before its first shot; the services walk's own
+  waits untouched. Gated on its package under the gate lock: `walk` typecheck, eslint and prettier all green
+  (`20261106-1351-walk-machinery-step6-scoped-gate.log`, `== exit 0`); the proof is step 8's picture run.
 - [ ] **7. One review.** Another model than the builder's, correctness only, at a fixed sha, 8
   minutes. Done: each finding tagged in the recap, High and Medium fixed.
 - [ ] **8. The full run** (point 1), 15 to 30 minutes. One script in the root's `one-off/`, on this
