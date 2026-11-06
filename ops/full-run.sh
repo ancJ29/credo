@@ -1,6 +1,6 @@
 #!/bin/bash
 # ops/full-run.sh --worktree <dir> --branch <branch> --walks <w1,w2,…> [--moved <screen,…|all>] [--subject <commit subject>]
-#   [--stem <log name>] [--node <vX.Y.Z>] [--lock <path>] [--check]
+#   [--stem <log name>] [--node <vX.Y.Z>] [--lock <path>] [--run-lock <path>] [--check]
 # The one body of a piece's FULL RUN, in the human's terminal on the Mac: two runs of `walk/run.sh` in the piece's worktree.
 # Each piece's one-off only calls this with its parameters (milestones D, B1, B2 each had a copy of this body).
 #   1. bash walk/run.sh <walks> [--moved <screens>] --write    writes the new and moved bases
@@ -20,12 +20,18 @@
 #   --stem <name>      the log's name, logs/<YYYYMMDD-HHMM>-<stem>.log (default full-run)
 #   --node <vX.Y.Z>    the Node it needs, from nvm's folder (default v26.12.1)
 #   --lock <path>      the gate lock it refuses on, never takes (default <credo root>/.gate-lock)
+#   --run-lock <path>  the full run's own lock, taken after the refusals and released at the end (default
+#                      <credo root>/.full-run-lock); a lock left behind is refused on, never cleared by this script
 #   --check            run the refusals and show the plan, then stop: nothing is run, committed or written
 #
 # REFUSES (exit 2, "== refused: <why>", written to the log too) before acting: a bad or missing parameter; the
 # worktree is not one; HEAD is not on the branch; the tree is not clean; the gate lock is there (its owner is named);
-# no such Node from nvm. It does NOT take the lock: walk/run.sh refuses a run while the lock exists and stops one when
-# it appears, so holding it would refuse every walk. Nothing else may test on this Mac while it runs.
+# no such Node from nvm; another full run holds the run lock (its owner is named, with the one command that clears a lock
+# left behind). It does NOT take the gate lock: walk/run.sh refuses a run while that lock exists and stops one when
+# it appears, so holding it would refuse every walk. It takes a lock of its own, .full-run-lock (a folder made with mkdir,
+# which is atomic, as the gate lock is), so two full runs cannot overlap; --check takes none. The run lock is released on
+# green, on every red and on an interrupt, and is never cleared for a run that did not take it. Nothing else may test on
+# this Mac while it runs.
 # WHAT IT CHANGES: the base images in the worktree's walk/specs/*-snapshots (run 1) and one local commit of them; the
 #   logs in <credo root>/logs; the walks' pictures in <credo root>/walks/run-*.
 # LOGS: logs/<stamp>-<stem>.log holds this script's lines; each run's text as it printed is beside it as
@@ -40,14 +46,14 @@ set -uo pipefail
 root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
 logdir="${OPS_LOG_DIR:-$root/logs}"
 
-TREE='' BRANCH='' WALKS='' MOVED='' SUBJECT='' STEM=full-run WANT_NODE=v26.12.1 LOCK="$root/.gate-lock" CHECK=no perr=''
+TREE='' BRANCH='' WALKS='' MOVED='' SUBJECT='' STEM=full-run WANT_NODE=v26.12.1 LOCK="$root/.gate-lock" RUNLOCK="$root/.full-run-lock" HELD=no CHECK=no perr=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --check)
       CHECK=yes
       shift
       ;;
-    --worktree | --branch | --walks | --moved | --subject | --stem | --node | --lock)
+    --worktree | --branch | --walks | --moved | --subject | --stem | --node | --lock | --run-lock)
       if [ $# -lt 2 ]; then
         perr="$1 needs a value"
         break
@@ -61,6 +67,7 @@ while [ $# -gt 0 ]; do
         --stem) STEM=$2 ;;
         --node) WANT_NODE=$2 ;;
         --lock) LOCK=$2 ;;
+        --run-lock) RUNLOCK=$2 ;;
       esac
       shift 2
       ;;
@@ -91,6 +98,25 @@ step() {
   n=$((n + 1))
   echo "== $n/$TOTAL $1 (elapsed $(elapsed))"
 }
+take_run_lock() { # atomic: mkdir either makes the folder or fails; a lock found is refused on, never cleared here
+  local owner pid
+  if mkdir "$RUNLOCK" 2>/dev/null; then
+    HELD=yes
+    # macOS's bash 3.2 has no BASHPID: a child's parent is this subshell, the process that holds the lock
+    sh -c 'printf "pid %s started %s for walks %s in %s\n" "$PPID" "$1" "$2" "$3"' _ "$(date '+%Y-%m-%d %H:%M:%S %z')" "$WALKS" "$TREE" >"$RUNLOCK/owner"
+    return 0
+  fi
+  [ -d "$RUNLOCK" ] || refuse "the run lock $RUNLOCK could not be made"
+  owner="$(cat "$RUNLOCK/owner" 2>/dev/null || echo 'unreadable (being taken just now, or left half-made)')"
+  pid="$(printf '%s' "$owner" | sed -n 's/^pid \([0-9][0-9]*\) .*/\1/p')"
+  refuse "another full run holds the run lock $RUNLOCK (owner: $(printf '%s' "$owner" | tr '\n' ' ')). Nothing was run. If that run is over (a run killed hard leaves its lock behind), check ${pid:+with: ps -p $pid, then }clear it with: rm -rf '$RUNLOCK' -- this script never clears a lock itself"
+}
+release_run_lock() {
+  [ "$HELD" = yes ] || return 0
+  rm -f "$RUNLOCK/owner"
+  rmdir "$RUNLOCK" 2>/dev/null || true
+  HELD=no
+}
 refuse() {
   echo "== refused: $1"
   exit 2
@@ -98,6 +124,7 @@ refuse() {
 red() {
   echo "== verdict: red: $1"
   echo "== done at $(date '+%H:%M:%S') (elapsed $(elapsed)); bring $LOG and the walk logs back"
+  release_run_lock
   exit 1
 }
 
@@ -124,7 +151,7 @@ ended_green() { # <out>
 }
 
 main() {
-  trap 'echo "== interrupted at $(elapsed)"; exit 130' INT TERM HUP
+  trap 'echo "== interrupted at $(elapsed)"; release_run_lock; exit 130' INT TERM HUP
   echo "== $0 — $(date '+%Y-%m-%d %H:%M:%S %z')"
 
   step "the refusals"
@@ -167,6 +194,8 @@ main() {
     return 0
   fi
 
+  take_run_lock
+  echo "  the run lock $RUNLOCK taken"
   step "run 1 of 2: ${run1[*]} (the walks' own time)"
   walk_run 1 "${run1[@]}"
   local rc1=$?
@@ -203,6 +232,7 @@ $(printf '%s\n' "$bad" | sed 's/^/    /')"
   step "the verdict"
   echo "  the commit on $BRANCH: $(git -C "$TREE" log --oneline -1)"
   echo "== verdict: green: run 1 wrote the bases (moved: ${MOVED:-none}), run 2 read every count 0"
+  release_run_lock
   echo "== done at $(date '+%H:%M:%S') (elapsed $(elapsed))"
 }
 

@@ -301,10 +301,13 @@ bash <credo root>/main/ops/full-run.sh --worktree <credo root>/wip-<piece> --bra
 Parameters: `--worktree`, `--branch` and `--walks` (comma separated, as `walk/run.sh` names them) are required;
 `--moved <screens|all>` is run 1's (default none); `--subject` the bases commit's subject; `--stem` the log's name
 (`logs/<YYYYMMDD-HHMM>-<stem>.log`, each run's text beside it as `…-run-<n>.out`); `--node` the Node it needs (default
-v26.12.1, from nvm); `--lock` the gate lock it refuses on (default `<credo root>/.gate-lock`); `--check` runs the
-refusals and shows the two commands, then stops. It never takes the lock: `walk/run.sh` refuses while it exists.
+v26.12.1, from nvm); `--lock` the gate lock it refuses on (default `<credo root>/.gate-lock`); `--run-lock` its own lock (default
+`<credo root>/.full-run-lock`); `--check` runs the refusals and shows the two commands, then stops, taking no lock. It never
+takes the gate lock: `walk/run.sh` refuses while it exists. It takes `.full-run-lock` after the refusals, so two full runs
+cannot overlap, and releases it on green, red and interrupt. A lock left behind (a run killed hard) is refused on, never
+cleared by the script: the refusal names the owner and prints the `rm -rf` that clears it.
 - **== refused: ...:** nothing ran; the line names why (a missing parameter, no worktree, the wrong branch, a dirty tree,
-  the gate lock held with its owner, the wrong Node). It is in the log too.
+  the gate lock held with its owner, another full run's lock held with its owner, the wrong Node). It is in the log too.
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`.
 

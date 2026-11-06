@@ -2376,5 +2376,94 @@ refuses_quiet "a project with no production deploy is refused" "no production de
 refuses_quiet "a deploy's commit too short to match is refused" "too short" \
   bash -c "{ $(declare -f deploy); deploy Production 0123 https://x.p.pages.dev; } | jq -s . | bash '$SERVED' '$commit'"
 
+echo "== ops/full-run.sh's run lock, on a stand-in worktree and a stand-in walk/run.sh (nothing real is run)"
+FR=$OPS_DIR/full-run.sh
+FRW=$WORK/fr
+mkdir -p "$FRW/nvm/versions/node/v0.0.1/bin" "$FRW/tree/walk/specs/x-snapshots" "$FRW/logs" "$FRW/pics"
+printf '#!/bin/sh\necho v0.0.1\n' >"$FRW/nvm/versions/node/v0.0.1/bin/node"
+chmod +x "$FRW/nvm/versions/node/v0.0.1/bin/node"
+: >"$FRW/tree/walk/specs/x-snapshots/.keep"
+cat >"$FRW/tree/walk/run.sh" <<'STUB'
+#!/bin/bash
+# the stand-in: records that it ran; STUB_SLEEP holds it; STUB_RED ends run 1 red
+echo "ran $*" >>"$STUB_RAN"
+[ -z "${STUB_SLEEP:-}" ] || { echo $$ >"$STUB_PID"; exec sleep 30; }
+case " $* " in
+  *" --bytes "*)
+    echo "compare x: 0 raw, 0 byte, 0 moved, 0 new, 0 without a counterpart, 0 unreadable"
+    ;;
+  *)
+    [ -z "${STUB_RED:-}" ] || { echo "== verdict: red: stand-in"; exit 1; }
+    echo "  pictures and results in $STUB_PICS"
+    ;;
+esac
+echo "== verdict: green"
+echo "== done"
+STUB
+git -C "$FRW/tree" init -q -b piece
+git -C "$FRW/tree" add -A
+git -C "$FRW/tree" -c user.name=t -c user.email=t@t -c commit.gpgsign=false commit -q -m stand-in
+FRLOCK=$FRW/.full-run-lock
+fr() { # <args…>: the full run on the stand-ins, its text in $FRW/out, its exit in $FR_RC
+  FR_RC=0
+  NVM_DIR=$FRW/nvm OPS_LOG_DIR=$FRW/logs STUB_RAN=$FRW/ran STUB_PICS=$FRW/pics STUB_PID=$FRW/stubpid \
+    bash "$FR" --worktree "$FRW/tree" --branch piece --walks a,b --node v0.0.1 --lock "$FRW/gate-lock" \
+    --run-lock "$FRLOCK" --stem frtest "$@" >"$FRW/out" 2>&1 || FR_RC=$?
+}
+mkdir "$FRLOCK"
+printf 'pid 4242 started 2026-01-02 03:04:05 +0000 for a,b\n' >"$FRLOCK/owner"
+rm -f "$FRW/ran"
+fr
+check "a full run started while another holds the run lock is refused, exit 2" 2 "$FR_RC"
+check "  the refusal names the owner" 1 "$(grep -c 'pid 4242 started 2026-01-02 03:04:05' "$FRW/out" || true)"
+check "  and the command that clears it, which it never runs itself" 1 "$(grep -c "rm -rf '$FRLOCK'" "$FRW/out" || true)"
+check "  nothing was run" none "$([ -e "$FRW/ran" ] && echo ran || echo none)"
+check "  and the other's lock is as it was" "pid 4242 started 2026-01-02 03:04:05 +0000 for a,b" "$(cat "$FRLOCK/owner")"
+rm -rf "$FRLOCK"
+fr
+check "a full run with no lock goes green, exit 0" 0 "$FR_RC"
+check "  and the run lock is gone after it" gone "$([ -e "$FRLOCK" ] && echo there || echo gone)"
+check "  both runs ran" 2 "$(cat "$FRW/ran" 2>/dev/null | wc -l | tr -d ' ')"
+rm -f "$FRW/ran"
+STUB_RED=1 fr
+check "a red run 1 ends red, exit 1" 1 "$FR_RC"
+check "  and the run lock is gone after it" gone "$([ -e "$FRLOCK" ] && echo there || echo gone)"
+rm -f "$FRW/ran" "$FRW/stubpid"
+fr_bg() {
+  NVM_DIR=$FRW/nvm OPS_LOG_DIR=$FRW/logs STUB_RAN=$FRW/ran STUB_PICS=$FRW/pics STUB_PID=$FRW/stubpid STUB_SLEEP=1 \
+    bash "$FR" --worktree "$FRW/tree" --branch piece --walks a,b --node v0.0.1 --lock "$FRW/gate-lock" \
+    --run-lock "$FRLOCK" --stem frtest >"$FRW/out" 2>&1 &
+  FRPID=$!
+}
+fr_bg
+for _ in $(seq 1 100); do
+  [ -s "$FRW/stubpid" ] && [ -s "$FRLOCK/owner" ] && break
+  sleep 0.1
+done
+check "while it runs, the run lock names its owner's pid" 1 "$(grep -c '^pid [0-9][0-9]* started ' "$FRLOCK/owner" || true)"
+holder=$(sed -n 's/^pid \([0-9]*\) .*/\1/p' "$FRLOCK/owner")
+kill -TERM "$holder" "$(cat "$FRW/stubpid")" 2>/dev/null || true
+FR_RC=0
+wait "$FRPID" || FR_RC=$?
+check "an interrupted run ends 130" 130 "$FR_RC"
+check "  and the run lock is gone after it" gone "$([ -e "$FRLOCK" ] && echo there || echo gone)"
+rm -f "$FRW/ran"
+fr --check
+check "--check passes, exit 0" 0 "$FR_RC"
+check "  takes no run lock" gone "$([ -e "$FRLOCK" ] && echo there || echo gone)"
+check "  and runs nothing" none "$([ -e "$FRW/ran" ] && echo ran || echo none)"
+mkdir "$FRW/gate-lock"
+fr
+check "a held gate lock refuses a run, exit 2" 2 "$FR_RC"
+check "  naming the gate lock" 1 "$(grep -c 'the gate lock .* is held' "$FRW/out" || true)"
+check "  and the run lock was never taken" gone "$([ -e "$FRLOCK" ] && echo there || echo gone)"
+mkdir "$FRLOCK"
+printf 'pid 4242 started x for a,b\n' >"$FRLOCK/owner"
+fr
+check "with both held, the gate lock refuses first" 1 "$(grep -c 'the gate lock .* is held' "$FRW/out" || true)"
+check "  and the other's run lock is left as it was" 1 "$(grep -c '^pid 4242' "$FRLOCK/owner" || true)"
+rmdir "$FRW/gate-lock"
+rm -rf "$FRLOCK"
+
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

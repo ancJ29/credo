@@ -73,11 +73,15 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
 
 - [x] **1. This plan.** Opus, about 9 minutes (the kind's last five, 7 to 11). Done: committed,
   about 1,000 words.
-- [ ] **2. The run lock, and the log of the six.** 15 minutes; closes 108. Taken after the refusals,
+- [x] **2. The run lock, and the log of the six.** 15 minutes; closes 108. Taken after the refusals,
   released at the end, on the red path (`ops/full-run.sh#L98-L102`) and in the trap (`#L127`);
   `--check` (`#L160-L168`) takes none. Done: rows 1 to 3, `bash ops/test.sh` green on stand-ins,
   nothing run. A break shows as every run refused by a lock left behind, so the refusal names its
   owner and the command that clears it.
+  Evidence: rows 1 to 3 each seen red before the lock existed, then green in `ops/test.sh` (stand-in
+  worktree and stand-in `walk/run.sh`, nothing run), which ends all checks passed; `shellcheck -x` clean
+  on `ops/full-run.sh` and `ops/test.sh`; `pnpm check` green, its log ending `== exit 0`. The lock is a
+  `mkdir` folder like the gate lock, never cleared by the script; items 108 to 111 written, 108 done.
 - [ ] **3. The verdict names what moved.** 12 minutes; closes 88. Done: row 4, `ops/test.sh` green.
   The counts still decide the exit (`#L199-L201`), so a break misleads a reader and cannot green a
   red.

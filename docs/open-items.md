@@ -695,3 +695,19 @@ Item 99 is marked done on the first of the two fixes it named, and this is the s
 ## 107. The new column tests count every grid column in the document — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Info)
 
 `columnOf` and `columnCount` (`ui/src/OrdersPages.test.tsx#L349-L353`) query `document` for `.mantine-Grid-col`, so they hold only while the page's frame draws no other `Grid`. They are right today and read the real class the component emits, which is the point; but a `Grid` added to the shell or a banner would turn the column *indexes* wrong rather than merely failing, and the message would point at the order's page. *Fix:* scope both to the page's own grid (the `.mantine-Grid` nearest the found heading). *Trigger:* a `Grid` added to `ui/src/Shell.tsx`, or the next page to copy these helpers.
+
+## 108. Two full runs can overlap: the lock is refused on, never taken — the machine; **Done (walk-machinery, step 2, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Medium)
+
+`ops/full-run.sh` refused on the gate lock and took none, since `walk/run.sh` refuses a run while that lock exists; its only guard against a second full run was `walk/run.sh`'s refusal while a credo process lives, and the compare step starts none (13m50s on 2026-11-06, unguarded). **Done (walk-machinery, step 2, 2026-11-06).** The full run takes `.full-run-lock` (a folder made with `mkdir`, atomic, as the gate lock is) after its refusals and releases it at the end, on every red path and on an interrupt; `--check` takes none and the gate lock still refuses first. A lock left behind is refused on, never cleared by the script: the refusal names the owner (pid, start time, walks) and prints the one command that clears it. The rows are in `ops/test.sh`, "ops/full-run.sh's run lock".
+
+## 109. The compare step says neither the time nor the load of each comparison — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Low)
+
+`walk/run.sh`'s compare step printed no elapsed time or load: 1m50s in one run against 13m50s in the next on the same work, and nothing in either log says why. *Fix:* step 4 of the walk-machinery plan stamps each comparison with its elapsed time and the Mac's load, as `pass_of` does.
+
+## 110. One stalled walk blocks the bases of every other walk — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-05, Medium)
+
+`walk/run.sh` writes the bases all or nothing: one stalled pass discarded three green walks' 156 pictures (27m24s, `20261105-1934-walk-piece-1-piece-2-operator-passkeys.log`). *Fix:* step 5 of the walk-machinery plan writes each walk's bases on its own reads; a red walk, or a lane that ended red, is left untouched and the run still ends red.
+
+## 111. Piece-2's walk takes six minutes in one worker — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Info)
+
+One spec of 33 screens in six tests, one worker by decision (`walk/playwright.config.ts#L19-L20`): 6m01s against the next pass's 2m03s, and Playwright advises a split. Measured and left alone: tests at once in one stack raise the load the walks' steadiness rests on, and item 81 holds the cheaper rebalance. *Trigger:* item 81 is worked, or the run's length is next cut.
