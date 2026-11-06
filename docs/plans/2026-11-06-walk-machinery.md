@@ -87,8 +87,10 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   red.
   Evidence: row 4 seen red (four checks failed before the change), then green in `ops/test.sh`; the verdict
   reads the compare lines of run 1 and prints `asked` beside `found`; the exit code is untouched. `shellcheck -x` clean; `pnpm check` green on its second run (`== exit 0`; the first went red on one `visual` scene timeout under load, in a file this step never touched).
-- [ ] **4. The compare step's own stamps.** 8 minutes; closes 109. Done: row 5, `scripts` at 100 %.
+- [x] **4. The compare step's own stamps.** 8 minutes; closes 109. Done: row 5, `scripts` at 100 %.
   No verdict reads the new lines; a break is a missing line.
+  Evidence: row 5 seen red (the stamp missing), then green; `compare_stamp` prints before each of the four
+  comparisons; `scripts` at 100 % in the gate. Item 112 (a slow `visual` scene) written, not in this piece.
 - [ ] **5. The bases written per walk.** 18 minutes; closes 110. Done: rows 6 to 8, the suite's
   other cases unchanged, `scripts` at 100 %. The one step that could write a wrong base: a break
   shows as a red walk's picture put in as a base, which rows 7 and 8 hold.

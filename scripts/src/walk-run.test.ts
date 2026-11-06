@@ -458,6 +458,21 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
     expect(git(l.tree, 'status', '--porcelain')).toBe('');
   });
 
+  it('each comparison of the compare step prints its elapsed time and the Mac’s load before its result', () => {
+    const l = layout();
+
+    const { out } = run(l, ['operator', '--moved', 'all', '--write']);
+
+    for (const label of ['fake to full-1', 'full-1 to full-2', 'full-1 to the bases']) {
+      const stamp = out.indexOf(`-- compare ${label}: operator (load `);
+      expect(stamp).toBeGreaterThan(-1);
+      expect(out).toMatch(
+        new RegExp(`-- compare ${label}: operator \\(load [0-9.]+; elapsed \\d+m\\d\\ds\\)`),
+      );
+      expect(out.indexOf(`compare ${label}: operator: `)).toBeGreaterThan(stamp);
+    }
+  });
+
   it('a walk with no bases yet reads every picture as new, and --write makes its folder', () => {
     const l = layout();
     const folder = join(l.tree, 'walk/specs/operator-passkeys.spec.ts-snapshots');

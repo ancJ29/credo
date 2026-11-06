@@ -95,6 +95,8 @@ elapsed() {
   printf '%dm%02ds' $((s / 60)) $((s % 60))
 }
 load_now() { uptime | sed -n 's/.*load averages*: *\([0-9][0-9.,]*\).*/\1/p' | tr ',' '.'; }
+# One line before each comparison, as pass_of stamps a pass: the lines either side give its own time.
+compare_stamp() { echo "-- compare $1 (load $(load_now); elapsed $(elapsed))"; }
 plain() { sed $'s/\x1b\\[[0-9;]*m//g'; }
 # The raw count and the strays' choice are TypeScript under the gate (scripts/src/walks.ts).
 tool() { (cd "$tree/scripts" && node --import tsx src/walks-main.ts "$@"); }
@@ -220,6 +222,7 @@ main() {
         [ -e "$bbase" ] || continue
         cp "$bbase" "$bview/$(basename "$bbase" "$bsuffix.png").png"
       done
+      compare_stamp "run 1 to the bases: $bw"
       bout="$(tool compare "run 1 to the bases: $bw" "$bytes_from/full-1/$bw" "$bview" --bytes)"
       brc=$?
       echo "$bout"
@@ -496,12 +499,14 @@ main() {
   local w out rc base suffix view opts
   for w in "${walks[@]}"; do
     if [ "$(walk_field "$w" 3)" != - ]; then
+      compare_stamp "fake to full-1: $w"
       out="$(tool compare "fake to full-1: $w" "$run/fake/$w" "$run/full-1/$w" --raw "$run/raw.txt")"
       rc=$?
       echo "$out"
       verdicts+=("$(printf '%s\n' "$out" | sed -n 1p | sed 's/^compare //'): $(printf '%s\n' "$out" | tail -1)")
       [ $rc -eq 0 ] || reds+=("fake to full-1: $w")
     fi
+    compare_stamp "full-1 to full-2: $w"
     out="$(tool compare "full-1 to full-2: $w" "$run/full-1/$w" "$run/full-2/$w" --raw "$run/raw.txt")"
     rc=$?
     echo "$out"
@@ -518,6 +523,7 @@ main() {
     opts=(--bases --raw "$run/raw.txt")
     [ -z "$moved" ] || opts+=(--moved "$moved")
     [ -z "$write" ] || opts+=(--allow-retired)
+    compare_stamp "full-1 to the bases: $w"
     out="$(tool compare "full-1 to the bases: $w" "$run/full-1/$w" "$view" "${opts[@]}")"
     rc=$?
     echo "$out"

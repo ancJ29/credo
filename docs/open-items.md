@@ -702,9 +702,11 @@ Item 99 is marked done on the first of the two fixes it named, and this is the s
 
 `ops/full-run.sh` refused on the gate lock and took none, since `walk/run.sh` refuses a run while that lock exists; its only guard against a second full run was `walk/run.sh`'s refusal while a credo process lives, and the compare step starts none (13m50s on 2026-11-06, unguarded). **Done (walk-machinery, step 2, 2026-11-06).** The full run takes `.full-run-lock` (a folder made with `mkdir`, atomic, as the gate lock is) after its refusals and releases it at the end, on every red path and on an interrupt; `--check` takes none and the gate lock still refuses first. A lock left behind is refused on, never cleared by the script: the refusal names the owner (pid, start time, walks) and prints the one command that clears it. The rows are in `ops/test.sh`, "ops/full-run.sh's run lock".
 
-## 109. The compare step says neither the time nor the load of each comparison — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Low)
+## 109. The compare step says neither the time nor the load of each comparison — the machine; **Done (walk-machinery, step 4, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Low)
 
 `walk/run.sh`'s compare step printed no elapsed time or load: 1m50s in one run against 13m50s in the next on the same work, and nothing in either log says why. *Fix:* step 4 of the walk-machinery plan stamps each comparison with its elapsed time and the Mac's load, as `pass_of` does.
+
+**Done (walk-machinery, step 4, 2026-11-06).** `compare_stamp` prints `-- compare <label> (load N; elapsed XmYYs)` before every comparison, in the shape of `pass_of`'s line, so the lines either side give each comparison's own time. No verdict reads the line. Held in `scripts/src/walk-run.test.ts`.
 
 ## 110. One stalled walk blocks the bases of every other walk — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-05, Medium)
 
@@ -713,3 +715,7 @@ Item 99 is marked done on the first of the two fixes it named, and this is the s
 ## 111. Piece-2's walk takes six minutes in one worker — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Info)
 
 One spec of 33 screens in six tests, one worker by decision (`walk/playwright.config.ts#L19-L20`): 6m01s against the next pass's 2m03s, and Playwright advises a split. Measured and left alone: tests at once in one stack raise the load the walks' steadiness rests on, and item 81 holds the cheaper rebalance. *Trigger:* item 81 is worked, or the run's length is next cut.
+
+## 112. One words-test scene took 187,912 ms against its own 30,000 ms limit — the machine; `[DEFERRED]` (walk-machinery, step 3 gate, 2026-11-06, Medium)
+
+In the step 3 gate, `visual`'s `src/words.test.tsx` took 325,709 ms for the file, and one scene, `office-orders:orders-9-confirm-failed`, ran 187,912 ms against its 30,000 ms limit and failed with "the scene did not end in 30000 ms" (`20261106-1252-walk-machinery-step3-gate.log#L99-L111`). The same gate passed on one rerun (`20261106-1301-walk-machinery-step3-gate-rerun.log`, `== exit 0`). The screen was merged that morning and nothing heavy was on the Mac in that window, so load alone does not explain a sixfold overshoot: the scene's own slowness is the symptom. Not in the walk-machinery piece, and the fix is nobody's yet. *Trigger:* the next red of that scene, or `visual` is next touched; first read how long that scene takes alone.
