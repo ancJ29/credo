@@ -100,6 +100,11 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
   `fd1ab58fc205` to `170a38c3b364`; 10 `0a1a4c14d8dd` to `9ebb1c49ce19`; 11 `dec1f8c55116` to
   `bcdddcb21c27`); screens 1, 5, 6, 12 and every other walk unmoved. The hashes equal those of the
   step-2 build made from the uncommitted tree.
+  Re-run after `main` moved (2026-11-06): the full run refused until `main` is merged in, so `main`
+  (`314c5e1`, the products page) was taken in (`096be0a`; only `docs/products.md` and
+  `docs/open-items.md` conflicted, both kept from each lane), then the whole `pnpm check` on the
+  merged tree ended `== exit 0` (`logs/orders-cards-step4-merged-check-20261106-0930.log`): shared
+  154, bff 556, ui 783, visual 199, scripts 277 tests.
 - [x] **5. One review.** 🤖 Opus, about 5 minutes, not the build's model. Done when: each finding
   tagged here, and item 99 marked done with its commit.
   Evidence (2026-11-06): may merge, no High or Medium (`0b36369`, corrected by `acc8b60`); item 99
