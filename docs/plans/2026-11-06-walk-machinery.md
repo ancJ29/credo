@@ -124,8 +124,9 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   reads `walk/support.ts` as text and anchored the park of the pointer at the top of `shot()`; step 6's wait now
   comes first and the pattern names all three statements in order (`20261106-1409-walk-machinery-full-run.log`).
   No other test reads a file this piece changed; the run was not started.
-- [ ] **9. The recap and the squash.** 5 minutes. Done: committed; 88, 91 and 108 to 110 done with
+- [x] **9. The recap and the squash.** 5 minutes. Done: committed; 88, 91 and 108 to 110 done with
   their commits, 111 deferred; the products row true.
+  Evidence: `docs/recaps/2026-11-06-walk-machinery.md`; the full run green in 14m48s (`20261106-1541-walk-machinery-full-run.log`); the full-run row in `docs/products.md` updated.
 
 Total: about 75 machine minutes and one run of the Mac.
 
