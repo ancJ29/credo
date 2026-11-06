@@ -117,7 +117,7 @@ take_run_lock() { # atomic: mkdir either makes the folder or fails; a lock found
 release_run_lock() {
   [ "$HELD" = yes ] || return 0
   rm -f "$RUNLOCK/owner"
-  rmdir "$RUNLOCK" 2>/dev/null || true
+  rmdir "$RUNLOCK" 2>/dev/null || echo "== warning: the run lock $RUNLOCK could not be removed (something else is in that folder); the next full run will refuse until you clear it with: rm -rf '$RUNLOCK'"
   HELD=no
 }
 refuse() {
@@ -170,10 +170,26 @@ found_in_compare() {
   # a named screen that moved in one walk's compare is not "not moved"
   local moved_names
   moved_names="$(printf '%s\n' "$lines" | sed -n 's/^  moved \([^:]*\): .*/\1/p' | sed -E 's/-(en|vi)-[0-9]+\.png$//' | sort -u)"
+  # an asked screen that no walk's compare names at all (a typo) is in none of the three lists: say it
+  local seen asked_missing=''
+  seen="$(
+    {
+      printf '%s\n' "$moved_names"
+      printf '%s\n' "$lines" | sed -n 's/^  new \(.*\)$/\1/p' | sed -E 's/-(en|vi)-[0-9]+\.png$//'
+      printf '%s\n' "$lines" | sed -n 's/^  named, not moved: \(.*\)$/\1/p'
+    } | sort -u
+  )"
+  if [ -n "$MOVED" ] && [ "$MOVED" != all ]; then
+    asked_missing="$(printf '%s\n' "${MOVED//,/$'\n'}" | while IFS= read -r n; do
+      printf '%s\n' "$seen" | grep -qxF "$n" || printf '%s.png\n' "$n"
+    done)"
+  fi
   lines="$(printf '%s\n' "$lines" | sed -n 's/^  named, not moved: \(.*\)$/\1.png/p' | while IFS= read -r n; do
     printf '%s\n' "$moved_names" | grep -qxF "${n%.png}" || printf '%s\n' "$n"
   done)"
   kind="$kind, $(list_of 'named but not moved' 's/^\(.*\)\.png$/\1/p')"
+  lines="$asked_missing"
+  kind="$kind, $(list_of 'asked but in no walk' 's/^\(.*\)\.png$/\1/p')"
   printf '%s' "$kind"
 }
 

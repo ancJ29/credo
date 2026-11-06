@@ -47,8 +47,13 @@ export async function shot(
   mask: Locator[] = [],
 ) {
   // A pressed button's loader fades out in Mantine's 150 ms transition: no picture is taken while one is on
-  // the page (the shape of the services walk's own wait, 926c1b2). No screen's subject is a loader.
-  await expect(page.locator('.mantine-Button-loader')).toHaveCount(0);
+  // the page (the shape of the services walk's own wait, 926c1b2). The count is of mounted elements, not visible ones: a loader whose
+  // exit has not finished stays mounted at opacity 0, which Playwright reads as visible, so a walk that pauses the
+  // clock must advance it before its picture. No screen's subject is a loader.
+  await expect(
+    page.locator('.mantine-Button-loader'),
+    `${screen}: a button's loader is still on the page`,
+  ).toHaveCount(0);
   await page.mouse.move(0, 0);
   await page.evaluate('window.scrollTo(0, 0)');
   const name = `${screen}-${language}-${width}.png`;

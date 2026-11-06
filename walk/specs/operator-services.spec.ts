@@ -183,6 +183,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   await openFull(page, language, handle, '/operator/services');
   await expect(page.getByRole('alert')).toHaveText(words.services.storageDown);
   await expect(service(words.services.storage).getByText(words.services.silent)).toBeVisible();
+  await settled();
   await picture('sv-3-storage-silent');
   await page.unroute(SERVICES);
 
@@ -191,6 +192,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   await openFull(page, language, handle, '/operator/services');
   await expect(page.getByRole('alert')).toHaveText(words.services.bffDown);
   await expect(service(words.services.storage).getByText(words.services.unseen)).toBeVisible();
+  await settled();
   await picture('sv-4-bff-silent');
   await page.unroute(SERVICES);
 
@@ -201,6 +203,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   await openFull(page, language, null, '/operator');
   await press(words.passkey.signInButton);
   await expect(page.getByRole('alert')).toHaveText(words.operator.unavailableStorage);
+  await settled();
   await picture('sv-5-unavailable');
 }
 

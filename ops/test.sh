@@ -2484,6 +2484,7 @@ check "the verdict names the screen that moved" 1 "$(grep -c '^== verdict: green
 check "  the screen that is new" 1 "$(grep -c '^== verdict: green: .*new 1 screen (s2)' "$FRW/out" || true)"
 check "  and the named screens that moved nothing, not the ones that do not exist" 1 \
   "$(grep -c '^== verdict: green: .*named but not moved 2 screens (s3, s5)' "$FRW/out" || true)"
+check "  and an asked screen that is in no walk is said, not left to a diff" 1 "$(grep -c '^== verdict: green: .*asked but in no walk 1 screen (s4)' "$FRW/out" || true)"
 check "  and the run still ends green on its counts, exit 0" 0 "$FR_RC"
 fr --moved s1,s2
 check "with nothing seen, the verdict says none for each" 1 "$(grep -c '^== verdict: green: .*moved none, new none, named but not moved none' "$FRW/out" || true)"

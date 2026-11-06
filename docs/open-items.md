@@ -628,7 +628,7 @@ The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `u
 
 Found while fixing the services walk (`926c1b2`): `operator-services` sv-5 and its sign-in at `#L202`, `operator-passkeys`, `operator`, `operator-team`, `operator-root-password`, `driver`, `lists` and `orders` press a `loading` button and take a picture with no wait for its loader. All green so far. *Fix:* the wait for any button loader belongs inside `at()` itself (`walk/support.ts`), so no spec can forget it. *Trigger:* the next walk piece, or the next flake.
 
-**Done (walk-machinery, step 6, 2026-11-06).** `shot()` in `walk/support.ts`, the one picture-taker, now waits for no `.mantine-Button-loader` on the page before it parks the pointer and takes the first shot; the services walk's own local waits are left as they are. Blast radius: a break shows at once on every walk, as a red naming a screen whose button never stopped loading, and deleting that one line reverts it. The proof is the full run (step 8): every base must come back unmoved.
+**Done (walk-machinery, step 6, 2026-11-06).** `shot()` in `walk/support.ts`, the one picture-taker, now waits for no `.mantine-Button-loader` on the page before it parks the pointer and takes the first shot; the services walk's own local waits are left as they are. The count is of loaders mounted, not visible: a loader whose exit has not finished stays mounted at opacity 0 (Mantine's Button keeps it through the exit transition, and Playwright reads opacity 0 as visible), so the services walk, whose clock is paused, advances it with its own `settled()` before sv-3, sv-4 and sv-5 as it already did before sv-1 and sv-2 (the review's High; the advance moves the clock 500 ms and a loader at opacity 0 draws nothing, which step 8's run must confirm: no base moves). Blast radius: a break shows at once on every walk, as a red naming the screen (`<screen>: a button's loader is still on the page`), and deleting the one line in `shot()` reverts it, the three `settled()` lines being harmless without it. The proof is the full run (step 8): every base must come back unmoved.
 
 ## 92. The card's avatar condition is untested — the machine; `[DEFERRED]` (staff-list, review, Opus, 2026-11-04, Low)
 
@@ -731,4 +731,12 @@ In three whole gates of the same tree, `ui`'s `src/StaffSetupPage.test.tsx` time
 ## 114. A `ui` test reads a call count straight after awaiting a heading, and can read zero under load — the machine; `[DEFERRED]` (walk-machinery, step 5 gate, 2026-11-06, Low)
 
 `ui/src/MyDeliveries.test.tsx#L48` expects `myDeliveries` to have been called exactly once with `DEMO_TODAY` right after awaiting the "My deliveries" heading, and read zero calls in one whole gate (`20261106-1343-walk-machinery-step5-gate.log`, the file ran 1,856 ms, no timeout). The file passed alone twice straight afterwards at a load of 16 to 18. A separate flake from item 113; neither is the walk-machinery piece's to fix. *Trigger:* the next such red; first wait for the call (`waitFor`) rather than reading it at once.
+
+## 115. The verdict's cross-walk guard covers a moved screen but not a new one — the machine; `[DEFERRED]` (walk-machinery, review, 2026-11-06, Low)
+
+In `found_in_compare` (`ops/full-run.sh`) a named screen that moved in one walk is not listed as "not moved" because of another walk, but a screen that is new in one walk and named-and-seen in another is not given the same care. Unreachable today: no screen name is shared by two walks. It becomes reachable the day two walks use one screen name. *Trigger:* a screen name used by two walks; then treat new like moved.
+
+## 116. The base write removes the old pictures before it copies the new, with no `nullglob` — the machine; `[DEFERRED]` (walk-machinery, review, 2026-11-06, Low)
+
+`walk/run.sh`'s write (`rm -f …/*.png`, then a copy loop over `$run/full-1/$w/*.png`) leaves the folder empty and writes one literal `*.png` copy attempt if a green walk produced no picture. Unreachable today: a green walk has its tests passed, each of which takes pictures, and the shape is the old block's. It becomes reachable if a walk with no pictures is added. *Trigger:* a walk that takes no picture; then guard the loop with `[ -e "$picture" ] || continue`.
 

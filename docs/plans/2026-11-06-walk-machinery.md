@@ -109,6 +109,11 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   (`20261106-1351-walk-machinery-step6-scoped-gate.log`, `== exit 0`); the proof is step 8's picture run.
 - [ ] **7. One review.** Another model than the builder's, correctness only, at a fixed sha, 8
   minutes. Done: each finding tagged in the recap, High and Medium fixed.
+  Review done, one fix pass: High (a loader mounted at opacity 0 never leaves under the services walk's paused
+  clock) fixed by the walk's own `settled()` before sv-3, sv-4 and sv-5, the `:visible` form not working since
+  opacity 0 counts as visible; Medium (the red now names the screen); two Lows taken (an asked screen in no walk
+  is said; a lock that cannot be removed warns); two Lows deferred as items 115 and 116. The `settled()` advance
+  is the one place this piece could move a picture; step 8 must show no base moved.
 - [ ] **8. The full run** (point 1), 15 to 30 minutes. One script in the root's `one-off/`, on this
   morning's two, calling **this worktree's** `ops/full-run.sh` with its parameters and never a copy
   of its body: the twelve walks, no `--moved`. `git merge main` and one whole `pnpm check` first,
