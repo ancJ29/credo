@@ -309,7 +309,7 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
 - **== refused: ...:** nothing ran; the line names why (a missing parameter, no worktree, the wrong branch, a dirty tree,
   the gate lock held with its owner, another full run's lock held with its owner, the wrong Node). It is in the log too.
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
-  with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`.
+  with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
 
 ## The check
 

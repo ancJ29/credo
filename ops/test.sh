@@ -2395,6 +2395,7 @@ case " $* " in
   *)
     [ -z "${STUB_RED:-}" ] || { echo "== verdict: red: stand-in"; exit 1; }
     echo "  pictures and results in $STUB_PICS"
+    [ -z "${STUB_EXTRA:-}" ] || printf '%s\n' "$STUB_EXTRA"
     ;;
 esac
 echo "== verdict: green"
@@ -2464,6 +2465,28 @@ check "with both held, the gate lock refuses first" 1 "$(grep -c 'the gate lock 
 check "  and the other's run lock is left as it was" 1 "$(grep -c '^pid 4242' "$FRLOCK/owner" || true)"
 rmdir "$FRW/gate-lock"
 rm -rf "$FRLOCK"
+
+# row 4: the verdict names what moved, what is new, and each named screen that moved nothing, read from the
+# compare lines; --moved only asked (s1,s2,s3,s4,s5), and the counts still decide the exit
+EXTRA='compare full-1 to the bases: a: 4 pictures, 2 moved, 1 new, 0 without a counterpart, 0 unreadable
+  moved s1-en-1280.png: 5 px, shade 255, box 1,1 to 2,2 (named)
+  moved s1-vi-390.png: 5 px, shade 255, box 1,1 to 2,2 (named)
+  new s2-en-390.png
+  named, not moved: s3
+  named, no such screen: s4
+result: green
+compare full-1 to the bases: b: 2 pictures, 0 moved, 0 new, 0 without a counterpart, 0 unreadable
+  named, not moved: s5
+  named, no such screen: s4
+result: green'
+STUB_EXTRA=$EXTRA fr --moved s1,s2,s3,s4,s5
+check "the verdict names the screen that moved" 1 "$(grep -c '^== verdict: green: .*moved 1 screen (s1)' "$FRW/out" || true)"
+check "  the screen that is new" 1 "$(grep -c '^== verdict: green: .*new 1 screen (s2)' "$FRW/out" || true)"
+check "  and the named screens that moved nothing, not the ones that do not exist" 1 \
+  "$(grep -c '^== verdict: green: .*named but not moved 2 screens (s3, s5)' "$FRW/out" || true)"
+check "  and the run still ends green on its counts, exit 0" 0 "$FR_RC"
+fr --moved s1,s2
+check "with nothing seen, the verdict says none for each" 1 "$(grep -c '^== verdict: green: .*moved none, new none, named but not moved none' "$FRW/out" || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

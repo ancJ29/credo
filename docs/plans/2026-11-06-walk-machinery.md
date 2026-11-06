@@ -82,9 +82,11 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   worktree and stand-in `walk/run.sh`, nothing run), which ends all checks passed; `shellcheck -x` clean
   on `ops/full-run.sh` and `ops/test.sh`; `pnpm check` green, its log ending `== exit 0`. The lock is a
   `mkdir` folder like the gate lock, never cleared by the script; items 108 to 111 written, 108 done.
-- [ ] **3. The verdict names what moved.** 12 minutes; closes 88. Done: row 4, `ops/test.sh` green.
+- [x] **3. The verdict names what moved.** 12 minutes; closes 88. Done: row 4, `ops/test.sh` green.
   The counts still decide the exit (`#L199-L201`), so a break misleads a reader and cannot green a
   red.
+  Evidence: row 4 seen red (four checks failed before the change), then green in `ops/test.sh`; the verdict
+  reads the compare lines of run 1 and prints `asked` beside `found`; the exit code is untouched. `shellcheck -x` clean; `pnpm check` green on its second run (`== exit 0`; the first went red on one `visual` scene timeout under load, in a file this step never touched).
 - [ ] **4. The compare step's own stamps.** 8 minutes; closes 109. Done: row 5, `scripts` at 100 %.
   No verdict reads the new lines; a break is a missing line.
 - [ ] **5. The bases written per walk.** 18 minutes; closes 110. Done: rows 6 to 8, the suite's

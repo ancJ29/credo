@@ -606,9 +606,11 @@ The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pict
 
 The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not permitted" (`20261104-1447-palettes-full-run.log`, line 996), in lane 2's driver walk, which still passed 6 of 6 and exited 0. A lane's child could not set its own process group, so the stop path's KILL may not reach that group. Harmless here. *Trigger:* the next piece touching `walk/run.sh`.
 
-## 88. A named screen that does not move reads green — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
+## 88. A named screen that does not move reads green — the machine; **Done (walk-machinery, step 3, 2026-11-06)**; was `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
 
 `ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
+
+**Done (walk-machinery, step 3, 2026-11-06).** The verdict line now reads run 1's `full-1 to the bases` compare lines and names the screens that moved, the screens that are new, and the named screens that were seen and moved nothing; the asked list is printed as `asked`. The counts still decide the exit. Row 4 in `ops/test.sh`.
 
 ## 89. `person.signIn` is left unused — the machine; **Done (staff-fields, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 

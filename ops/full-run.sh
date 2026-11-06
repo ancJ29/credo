@@ -146,6 +146,34 @@ walk_run() { # <n> <args…>
   return "$rc"
 }
 
+# found_in_compare <run 1's text>: what the "full-1 to the bases" compare lines say happened to the screens, not the
+# --moved list that was asked: the screens with a moved picture, the screens with a new one, and the named screens
+# that were seen and moved nothing. Read only; the counts decide the exit, never this.
+found_in_compare() {
+  local lines kind
+  lines="$(awk '/^compare /{ on = ($0 ~ /^compare full-1 to the bases/) } on' "$1")"
+  list_of() { # <word> <what the line starts with>
+    local screens count
+    screens="$(printf '%s\n' "$lines" | sed -n "$2" | sed -E 's/-(en|vi)-[0-9]+\.png$//' | sort -u)"
+    count="$(printf '%s' "$screens" | grep -c . || true)"
+    if [ "$count" = 0 ]; then
+      printf '%s none' "$1"
+    else
+      printf '%s %s screen%s (%s)' "$1" "$count" "$([ "$count" = 1 ] || echo s)" "$(printf '%s\n' "$screens" | paste -s -d, - | sed 's/,/, /g')"
+    fi
+  }
+  kind="$(list_of moved 's/^  moved \([^:]*\): .*/\1/p')"
+  kind="$kind, $(list_of new 's/^  new \(.*\)$/\1/p')"
+  # a named screen that moved in one walk's compare is not "not moved"
+  local moved_names
+  moved_names="$(printf '%s\n' "$lines" | sed -n 's/^  moved \([^:]*\): .*/\1/p' | sed -E 's/-(en|vi)-[0-9]+\.png$//' | sort -u)"
+  lines="$(printf '%s\n' "$lines" | sed -n 's/^  named, not moved: \(.*\)$/\1.png/p' | while IFS= read -r n; do
+    printf '%s\n' "$moved_names" | grep -qxF "${n%.png}" || printf '%s\n' "$n"
+  done)"
+  kind="$kind, $(list_of 'named but not moved' 's/^\(.*\)\.png$/\1/p')"
+  printf '%s' "$kind"
+}
+
 ended_green() { # <out>
   grep -q '^== verdict: green' "$1" && grep -q '^== done' "$1"
 }
@@ -231,7 +259,7 @@ $(printf '%s\n' "$bad" | sed 's/^/    /')"
 
   step "the verdict"
   echo "  the commit on $BRANCH: $(git -C "$TREE" log --oneline -1)"
-  echo "== verdict: green: run 1 wrote the bases (moved: ${MOVED:-none}), run 2 read every count 0"
+  echo "== verdict: green: run 1 wrote the bases (asked: ${MOVED:-none}; found: $(found_in_compare "$logdir/$STAMPED-run-1.out")), run 2 read every count 0"
   release_run_lock
   echo "== done at $(date '+%H:%M:%S') (elapsed $(elapsed))"
 }
