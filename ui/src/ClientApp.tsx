@@ -28,6 +28,7 @@ import { ListPage } from './ListPage';
 import { type PageProps } from './page';
 import { shrinkToProof } from './photo';
 import { PersonPage } from './PersonPage';
+import { ProductPage } from './ProductPage';
 import { type Look, Providers } from './Providers';
 import { mayOpen, type Page, pagesOf } from './nav';
 import { MorePage } from './MorePage';
@@ -378,6 +379,10 @@ export function ClientApp({
               <Route
                 path="/customers/:id"
                 element={guarded(user, 'customers', <CustomerPage {...pageFor(user)} />)}
+              />
+              <Route
+                path="/products/:id"
+                element={guarded(user, 'products', <ProductPage {...pageFor(user)} />)}
               />
               {(['customers', 'products'] as const).map((kind) => (
                 <Route

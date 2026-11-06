@@ -8,6 +8,9 @@ import { ApiError } from './api';
 /** What an input holds. */
 const valueOf = (input: HTMLElement) => (input as HTMLInputElement).value;
 
+/** A note's text, as the page reads it: empty unless it is a string. */
+const textOf = (value: unknown) => (typeof value === 'string' ? value : '');
+
 /** The text of each row of the table, cell by cell. */
 const cells = () =>
   within(screen.getByRole('table'))
@@ -213,6 +216,113 @@ describe('the customers and the products', () => {
     openApp(`/customers/${first.id}`, {
       override: (spied) => {
         spied.listCustomers.mockRejectedValueOnce(new ApiError(503));
+      },
+    });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+  });
+
+  it('The product’s name in the list is a link that opens that product’s page, and the page’s link goes back to the list', async () => {
+    const first = DEMO_PRODUCTS[0];
+    openApp('/products');
+
+    await userEvent.click(await screen.findByRole('link', { name: first.name }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    await userEvent.click(screen.getByRole('link', { name: 'Back to the products' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
+    expect(screen.getByRole('table')).toBeTruthy();
+  });
+
+  it('The product’s page shows the code, name, unit, price, stock and note, each in its own card, the price as the language writes a number and the stock as Yes or No, in English and in Vietnamese', async () => {
+    const noted = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) !== '')!;
+    const card = (title: string) =>
+      within(screen.getByRole('heading', { level: 3, name: title }).closest('section')!);
+    const drawn = openApp(`/products/${noted.id}`);
+
+    expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
+    expect(screen.getByText(noted.code)).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
+    const basic = card('Basic information');
+    expect(valueOf(basic.getByRole('textbox', { name: 'Code' }))).toBe(noted.code);
+    expect(valueOf(basic.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
+    const unit = card('Unit and price');
+    expect(valueOf(unit.getByRole('textbox', { name: 'Unit' }))).toBe(noted.unit);
+    expect(valueOf(unit.getByRole('textbox', { name: 'Price (VND)' }))).toBe(
+      new Intl.NumberFormat('en').format(noted.price),
+    );
+    expect(valueOf(card('Stock').getByRole('textbox'))).toBe(noted.stocked ? 'Yes' : 'No');
+    expect(card('Note').getByText(noted.extra['note'] as string)).toBeTruthy();
+    expect(basic.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(true);
+    expect(drawn.api.listProducts).toHaveBeenCalledOnce();
+    drawn.unmount();
+
+    openApp(`/products/${noted.id}`, { language: 'vi' });
+    expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Thông tin cơ bản', 'Đơn vị và giá', 'Tồn kho', 'Ghi chú']);
+    expect(
+      valueOf(
+        within(
+          screen.getByRole('heading', { level: 3, name: 'Đơn vị và giá' }).closest('section')!,
+        ).getByRole('textbox', { name: 'Giá (đồng)' }),
+      ),
+    ).toBe(new Intl.NumberFormat('vi').format(noted.price));
+  });
+
+  it('A product not stocked reads No', async () => {
+    const unstocked = DEMO_PRODUCTS.find((one) => !one.stocked)!;
+    openApp(`/products/${unstocked.id}`);
+
+    expect(await screen.findByRole('heading', { level: 2, name: unstocked.name })).toBeTruthy();
+    const stock = screen.getByRole('heading', { level: 3, name: 'Stock' }).closest('section')!;
+    expect(valueOf(within(stock).getByRole('textbox'))).toBe('No');
+  });
+
+  it('An unknown product address says the product is not there, with the way back, and shows no product’s details', async () => {
+    openApp('/products/00000000-0000-4000-8000-0000000000ff');
+
+    expect(
+      await screen.findByText(
+        'This product is not in the list. It may have been taken out, or the address is wrong.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back to the products' })).toBeTruthy();
+    expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('A product with no note, or a note that is not text, is one column at the full width and has no Note card', async () => {
+    const quiet = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) === '')!;
+    for (const extra of [quiet.extra, { note: '' }, { note: 5 }]) {
+      const drawn = openApp(`/products/${quiet.id}`, {
+        override: (spied) => {
+          spied.listProducts.mockResolvedValue([{ ...quiet, extra }]);
+        },
+      });
+
+      expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
+      expect(
+        screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+      ).toEqual(['Basic information', 'Unit and price', 'Stock']);
+      const grid = drawn.container.querySelector('.mantine-Grid-inner')!;
+      expect(grid.querySelectorAll('.mantine-Grid-col')).toHaveLength(1);
+      // one span of 12 writes no media query: the same at every width
+      expect(grid.querySelector(':scope > style')?.textContent).not.toContain('@media');
+      drawn.unmount();
+    }
+  });
+
+  it('The product’s page says so, and offers another try, when the list cannot be read', async () => {
+    const first = DEMO_PRODUCTS[0];
+    openApp(`/products/${first.id}`, {
+      override: (spied) => {
+        spied.listProducts.mockRejectedValueOnce(new ApiError(503));
       },
     });
 

@@ -179,9 +179,14 @@ const DRAFT_TODAY = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.stat
 const WAITING_TODAY = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
-/** The customers' pages in the lists walk: one with a note, one without. */
-const NOTED_CUSTOMER = DEMO_CUSTOMERS.find((one) => 'note' in one.extra)!;
-const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !('note' in one.extra))!;
+/** Whether a record has a note the page draws: the page's own rule, a text that is not empty. */
+const hasNote = (one: { extra: Record<string, unknown> }) =>
+  typeof one.extra['note'] === 'string' && one.extra['note'] !== '';
+/** The customers' and products' pages in the lists walk: one with a note, one without. */
+const NOTED_CUSTOMER = DEMO_CUSTOMERS.find(hasNote)!;
+const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !hasNote(one))!;
+const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
+const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 /** A customer or a product as the order form lists it in its choice. */
 const customerChoice = (code: string) => {
   const one = DEMO_CUSTOMERS.find((candidate) => candidate.code === code)!;
@@ -1315,6 +1320,28 @@ export const WALKS: Walk[] = [
           vi: 'Khách hàng không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
         },
         question: 'Does a customer with no note read well in one full column?',
+      },
+      {
+        id: 'lists-12-product',
+        number: 12,
+        path: 'main',
+        scene: { path: `/products/${NOTED_PRODUCT.id}` },
+        sentence: {
+          en: 'A product’s page: code, name, unit, price and stock on the left, the note on the right',
+          vi: 'Trang sản phẩm: mã, tên, đơn vị, giá, tồn kho bên trái, ghi chú bên phải',
+        },
+        question: 'Does this show the office what the old app showed about a product?',
+      },
+      {
+        id: 'lists-13-product-no-note',
+        number: 13,
+        path: 'main',
+        scene: { path: `/products/${PLAIN_PRODUCT.id}` },
+        sentence: {
+          en: 'A product with no note: one column at the full width, no blank half',
+          vi: 'Sản phẩm không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
+        },
+        question: 'Does a product with no note read well in one full column?',
       },
     ],
   },

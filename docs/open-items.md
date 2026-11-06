@@ -650,9 +650,11 @@ The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-
 
 A real browser's date input never yields a day that is not one, so `dayIsValid` (`shared/src/fields.ts#L117`) guards an older browser's text fallback; it is right and covered, and its refusal is tested with the input made a text input. *Cost:* none to keep; *trigger:* none, noted so a reader does not look for the path.
 
-## 98. The customers and the products have no detail page to re-lay — the machine; `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
+## 98. The customers and the products have no detail page to re-lay — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
 
 The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.
+
+**Done (products-cards, `02bbebc`, 2026-11-06).** The trigger was met: this milestone's plan sized the product's page as a new page with its own columns, and the page is built (`ui/src/ProductPage.tsx`, `/products/:id` at `ui/src/ClientApp.tsx#L383-L386`). Both lists now have a detail page, so nothing of the campaign's "re-lay" reading is left unsized; the order's page, already there, is lane B's.
 
 ## 99. An empty side still draws its column — the machine; **Done (orders-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Low)
 
@@ -660,9 +662,11 @@ Item 90's fix reads `side !== undefined` (`ui/src/DetailCards.tsx#L13`), so the 
 
 **Done (orders-cards, `d96f810`, 2026-11-06).** Of the two fixes named above this build took the first: a falsy `side` counts as absent (`ui/src/DetailCards.tsx#L11`, `#L14-L15`), held for `null`, `false` and `undefined` alike by `ui/src/DetailCards.test.tsx#L34-L43`. That closes the two shapes this item opened with — `side={null}` and the usual `side={has && <Card />}` — and the order's page is the live proof: a new order passes `side={existing && <OrderActions/>}`, which is `null` there (`ui/src/OrderPage.tsx#L256`), and the built screen draws one column at 100 %. **The second fix was not made, so the case this item was opened for survives the fix that closes it:** the person's page still passes an always-truthy `<Stack>` (`ui/src/PersonPage.tsx#L552-L553`), so a viewer with no photo field, neither the root nor allowed to delete, still reads the details at 7/12 beside a blank half. That residue is **item 106**, where it is now held with its own fix and trigger — read the two together before believing the blank half is gone everywhere.
 
-## 100. The walk and the page disagree on what "has a note" means — the machine; `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Info)
+## 100. The walk and the page disagree on what "has a note" means — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Info)
 
 The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`), while the page draws the Note card on the text being non-empty (`ui/src/CustomerPage.tsx#L19`, `#L68`). A customer whose `note` is `''` or not a string would be the walk's "noted" one and show no Note card, so screen 10 would fail on a heading that is correctly absent. The data set has no such customer, so nothing fails today. *Fix:* pick by the same rule the page uses. *Trigger:* a change to the data set's customers, or a second page that draws a conditional card.
+
+**Done (products-cards, `02bbebc`, 2026-11-06).** The fix is the one named: all four pickers read a `hasNote` of "a string that is not empty", the page's own rule — `walk/specs/lists.spec.ts#L17-L19`, `visual/src/walks.ts#L181-L183`, `visual/src/words.test.tsx#L26-L28`, and `visual/src/walks.test.ts#L668`, whose opener check no longer reads `DEMO_CUSTOMERS[0]` by index. The customers' two records are unchanged by the new rule (only `KH-001` carries a `note`, and it is a non-empty string), which step 2's picture compare proves: 118 screens against `main`'s 116, with screens 10 and 11 byte-identical. What is left — the rule written out four times with nothing shared — is item 105.
 
 ## 101. The join page draws no language switch though the mock did — the machine; `[DEFERRED]` (signin-look, build, Sonnet, 2026-11-05, Low)
 
@@ -679,6 +683,10 @@ A door draws `brand.logo` when there is one (`ui/src/SignIn.tsx#L74-L78`), while
 ## 104. The words test's BEFORE table was written by hand, not rendered from the old doors — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
 
 Case 8's `BEFORE` table (`ui/src/words.test.tsx#L10-L11`) was hand-written from the doors as they then read, not rendered from `c759c43`, so it pins the words firmly from now on but did not itself prove the rewrite changed no word; the reviewer hand-checked three entries (`qr-busy`, `signin-refused`, `operator-notgiven`) and they matched. *Fix:* render the doors at `c759c43` once and compare the table to the output. *Trigger:* a doubt about a door's wording after this piece, or the next rewrite of the doors' markup.
+
+## 105. One rule for "has a note", written out six times — the machine; `[DEFERRED]` (products-cards, review, Opus, 2026-11-06, Low)
+
+Item 100 is closed by making every picker read the page's rule, but each reads its own copy of it: `walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `visual/src/words.test.tsx#L27-L28`, the inline pair in `visual/src/walks.test.ts#L668`, and a fifth shape in the unit test, `ui/src/ListPage.test.tsx#L12` with `#L240` and `#L301`. The pages themselves hold the sixth, as the truthiness of `textIn` (`ui/src/listSheet.ts#L63`, used at `ui/src/ProductPage.tsx#L20` and `ui/src/CustomerPage.tsx#L20`). Nothing fails today — all six agree — but the next change to what a page counts as a note (a trim, say, so that a note of spaces draws no card) moves one and leaves five, and the red appears only in the human's full picture run, where a walk opens the record it still calls noted and waits for a heading that is correctly absent. *Fix:* export the rule once beside `textIn` (`noteOf`, or `hasNote` taking `extra`) and add `./lists` to `ui/package.json`'s exports, which today offers `./import-demo`, `./mock`, `./scene` and `./words` only; the walk and the visual package already import `@credo/ui/words`, so both can take it. *Trigger:* the next change to how a page decides to draw a conditional card, or a seventh copy of the rule.
 
 ## 106. The person's page can still draw a blank half, and no test says so — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Low)
 
