@@ -120,6 +120,10 @@ once. Items 108 to 111 are written in step 2 and never renumbered.
   since the run refuses until main is in (`walk/run.sh#L248`). Done: `== verdict: green`, `== done`;
   every `compare` line 0 moved, 0 new, 0 without a counterpart, 0 unreadable; run 1 "moved no base:
   nothing to commit"; twelve bases-written lines; run 2's twelve byte comparisons 0.
+  First attempt refused by its own preamble, as meant: `pnpm check` went red on `visual/src/walks.test.ts`, which
+  reads `walk/support.ts` as text and anchored the park of the pointer at the top of `shot()`; step 6's wait now
+  comes first and the pattern names all three statements in order (`20261106-1409-walk-machinery-full-run.log`).
+  No other test reads a file this piece changed; the run was not started.
 - [ ] **9. The recap and the squash.** 5 minutes. Done: committed; 88, 91 and 108 to 110 done with
   their commits, 111 deferred; the products row true.
 

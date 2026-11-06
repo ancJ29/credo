@@ -187,9 +187,11 @@ describe('the walks', () => {
   it('parks the pointer and scrolls to the top before each shot, and settles on two equal shots pixel for pixel', () => {
     const support = read('support.ts');
 
-    // the first statement of `shot`, so every picture is taken after it
+    // the top of `shot`, in this order and nothing else between: the wait for any button loader (first,
+    // since a loader still on the page is no state to park the pointer over), then the park and the
+    // scroll, so every picture is taken after all three
     expect(support).toMatch(
-      /export async function shot\([^)]*\) \{\n {2}await page\.mouse\.move\(0, 0\);\n {2}await page\.evaluate\('window\.scrollTo\(0, 0\)'\);\n/,
+      /export async function shot\([^)]*\) \{\n(?: {2}\/\/[^\n]*\n)* {2}await expect\(\n {4}page\.locator\('\.mantine-Button-loader'\),\n {4}`\$\{screen\}: a button's loader is still on the page`,\n {2}\)\.toHaveCount\(0\);\n {2}await page\.mouse\.move\(0, 0\);\n {2}await page\.evaluate\('window\.scrollTo\(0, 0\)'\);\n/,
     );
     // the raw reader decides "equal": no comparator that skips softened edges, no tolerance
     expect(support).toContain("from '@credo/scripts/pixels'");
