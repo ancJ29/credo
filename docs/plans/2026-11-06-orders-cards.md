@@ -109,9 +109,12 @@ gate and the full run may wait on the sibling, read the lock each time, and neve
   tagged here, and item 99 marked done with its commit.
   Evidence (2026-11-06): may merge, no High or Medium (`0b36369`, corrected by `acc8b60`); item 99
   marked done on the first of its two fixes, items 106 and 107 raised and deferred.
-- [ ] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1
+- [x] **6. The full run** (👤 2): the one-off about 2 minutes, the run about 17. Done when: run 1
   green, its `raw.txt` naming the eight screens alone; run 2 every count 0; 48 bases committed.
-- [ ] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the orders
+  Evidence (2026-11-06): `20261106-0938-orders-cards-full-run.log` green, 29m32s; run 1 29m25s, 35
+  comparisons; run 2 5s, 12 byte comparisons, every count 0. Bases `826bc8c`. 26 pictures moved across
+  seven screens, not 48 across eight: `orders-2-new` none (item 99's fix), the rest by pixels.
+- [x] **7. The recap.** 🤖 Sonnet, about 1 minute. Done when: committed, under 400 words, the orders
   row true.
 
 Total: about 62 minutes, 43 the machine's.

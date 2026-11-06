@@ -12,18 +12,18 @@
 ## What shipped
 
 - **The legacy order page has no two-column layout to copy:** 2,465 lines, tabbed, its only split 6/6 inside one tab. The campaign said "the old app's PC layout"; for orders none exists, so the authority is this app's own frame (`ui/src/DetailCards.tsx`).
-- **The cut:** `main` is the day, the customer and the lines; `side` is the delivery request and its steps. The frame went inside `FormFields` and the read branch (`d96f810`), so the form's `dirty` state stays put; one frame round the page would be a rewrite. `ui/src/OrderParts.tsx` stays: `DeliveryPage` and `MyDeliveryPage` draw its panels too.
+- **The cut:** `main` is the day, the customer and the lines; `side` is the delivery request and its steps. The frame went inside `FormFields` and the read branch (`d96f810`), so `dirty` stays put. `ui/src/OrderParts.tsx` stays: `DeliveryPage` and `MyDeliveryPage` draw its panels too.
 - **Item 99, the first of its two fixes:** a falsy `side` counts as absent, as `side={existing && <OrderActions/>}` is `null` on a new order. The second was not made: the person's page passes an always-truthy `<Stack>` and can still draw a blank half (item 106). Item 99 is done on that half.
 
 ## Rejected and what remains
 
 - Deferred: item 106 (that residue), item 107 (column tests count every grid column in the page).
-- **Moved, not added:** 8 screens of "An order, sent to a driver" (2-4, 7-11; 48 pictures), all already yes. No walk screen added or renumbered; `walk/specs/orders.spec.ts` untouched; screens 1, 5, 6, 12 did not move.
+- **Moved, not added:** 8 screens of "An order, sent to a driver" (2-4, 7-11), all already yes; no walk screen added or renumbered, `walk/specs/orders.spec.ts` untouched. The run moved 26 pictures across seven screens, not the predicted 48 across eight: a changed markup hash is not a changed picture, and `orders-2-new` moved nothing, the falsy-`side` fix showing where it can.
 
 ## Evidence
 
-- Review (Opus): may merge, no High or Medium. It proved no behaviour changed by a token multiset diff of both versions of the page (handlers, api calls, setters, guards, keys, `t('…')`): all 71 identical but the two reused title keys the plan authorises.
+- Review (Opus): may merge, no High or Medium. Its token multiset diff of both page versions (handlers, api calls, setters, guards, keys, `t('…')`) found all 71 identical but the two reused title keys the plan authorises: no behaviour changed.
 - Gate: `orders-cards-step4-check2-20261106-0035.log`, `== exit 0`: shared 154, bff 556, ui 777, visual 197, scripts 277.
-- Build `walks/2026-11-06-003322-d96f81021`, hashes identical to the uncommitted one.
+- Build `walks/2026-11-06-003322-d96f81021`.
 - Look: yes on all eight at 00:58, each answer pinned to its re-laid version, on the build above.
-- Full run: <!-- FILL: result and minutes of the full run, log name -->
+- Full run: green both passes in 29m32s, run 2 every count 0, log `20261106-0938-orders-cards-full-run.log`; bases `826bc8c`.
