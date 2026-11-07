@@ -333,10 +333,11 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toHaveText(words.lists.customers.codeTaken);
   await at('lists-19-code-taken');
 
-  // 20. Adding a product: the code, name, unit and price to type in, the stock switch off.
+  // 20. Adding a product: the code, name, unit and price to type in, the stock switch on, as an import's
+  // blank stock cell reads, so a product nobody says anything about is the same either way in.
   await open(page, language, '/products/new');
   await expect(title(words.lists.products.newTitle)).toBeVisible();
-  await expect(page.getByRole('switch')).not.toBeChecked();
+  await expect(page.getByRole('switch')).toBeChecked();
   await at('lists-20-product-new');
 
   // 21. A customer added: it opens on its own page.

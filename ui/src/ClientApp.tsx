@@ -383,8 +383,9 @@ export function ClientApp({
                   key={kind}
                   path={`/${kind}/new`}
                   element={
-                    // Whoever may edit orders adds, as they correct these records (case-table row 11).
-                    can(user, 'orders.canEdit') ? (
+                    // Whoever may edit orders adds, as they correct these records (case-table row 11),
+                    // and only through a page their menu lists: the list's own question comes first.
+                    mayOpen(user, kind) && can(user, 'orders.canEdit') ? (
                       kind === 'customers' ? (
                         <AddCustomerPage {...pageFor(user)} />
                       ) : (

@@ -767,7 +767,7 @@ describe('the customers and the products', () => {
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
     ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
     expect(screen.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(false);
-    expect(screen.getByRole('switch').hasAttribute('checked')).toBe(false);
+    expect(screen.getByRole<HTMLInputElement>('switch').checked).toBe(true);
     expect(screen.getAllByRole('textbox').map((box) => valueOf(box))).toEqual(['', '', '', '', '']);
   });
 
@@ -860,7 +860,7 @@ describe('the customers and the products', () => {
     expect(screen.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(true);
   });
 
-  it('A product added with the stock switch untouched is sent with stocked false, its price whole, and opens on its own page', async () => {
+  it('A product added with the stock switch untouched is sent with stocked true, as a blank stock cell in an import reads, its price whole, and opens on its own page', async () => {
     const drawn = openApp('/products/new');
     await screen.findByRole('heading', { level: 2, name: 'Add a product' });
     await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'vt-90');
@@ -876,11 +876,11 @@ describe('the customers and the products', () => {
       name: 'Xi măng PCB40',
       unit: 'bao',
       price: 95000,
-      stocked: false,
+      stocked: true,
       extra: { note: 'Kho 2' },
     });
     expect(screen.getByText('VT-90')).toBeTruthy();
-    expect(screen.getByRole('switch').hasAttribute('checked')).toBe(false);
+    expect(screen.getByRole<HTMLInputElement>('switch').checked).toBe(true);
   });
 
   it('An add that fails says so, and one the BFF refuses as no longer allowed says that; each keeps what was typed', async () => {
@@ -944,6 +944,31 @@ describe('the customers and the products', () => {
       );
       expect(await screen.findByRole('textbox', { name: 'Code' })).toBeTruthy();
       root.unmount();
+    }
+  });
+
+  it('Whoever may edit orders but not see them cannot open the add pages by their address, as the list itself is closed to them', async () => {
+    // staff.canView gives the person a menu at all, without Customers or Products in it
+    const editor = {
+      override: (spied: Spied) => {
+        spied.me.mockResolvedValue({
+          user: {
+            name: 'Sửa',
+            root: false,
+            permissions: { 'orders.canEdit': true, 'staff.canView': true },
+          },
+        });
+      },
+    };
+    for (const kind of ['customers', 'products'] as const) {
+      for (const path of [`/${kind}`, `/${kind}/new`]) {
+        const drawn = openApp(path, editor);
+        expect(
+          await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+        ).toBeTruthy();
+        expect(screen.queryByRole('textbox')).toBeNull();
+        drawn.unmount();
+      }
     }
   });
 

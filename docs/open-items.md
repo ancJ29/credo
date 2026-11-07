@@ -970,3 +970,15 @@ smallest first use and does not need one if a one-time link shown on the root's 
 ## 145. The fake's imports add records with no version, so an imported customer or product saves to "NaN" — the machine; `[OPEN]` (add-records, step 2, 2026-11-07, Low)
 
 `ui/src/fake.ts`'s `importInto` puts a record in its list but never sets its entry in `customerVersions` or `productVersions`, so a record the fake imported reads at version `cundefined`, and a save over it moves the version to `NaN`. The new add (`addInto`) sets version 1 itself, so an added record is right; an imported one is not. Only the fake lane is touched (the real BFF versions by c-storage's tag), and no walk imports and then edits the same record. *Fix:* set the version inside `importInto` and let `addInto` rely on it. *Trigger:* a walk or a test that edits a record the fake imported.
+
+## 146. A taken code reddens the code box with no message in it, and the red outlasts the retyping — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
+
+`ui/src/CustomerPage.tsx#L124` and `ui/src/ProductPage.tsx#L194` pass `adding.taken || undefined` to a prop that takes a node, so a taken code reddens the box with no message in it (the words are in the orange alert above). `adding.taken` also stays true while the clerk retypes the code and clears only on the next press, so the box stays red over a code that may now be free. The same shape is in the save form the human approved, so it was left. *Fix:* pass the words as the box's error, and clear `taken` when the code box changes. *Trigger:* a clerk misreading the red box, or the next edit of either form.
+
+## 147. A customer's name over 200 characters is sent, refused 400 and shown as the generic "could not add" — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
+
+`CustomerForm.submit` checks only `!name.trim()` (`ui/src/CustomerPage.tsx#L128`) while `nameSchema` allows 200 (`shared/src/staff.ts#L36`), so a 250-character name goes to the server, comes back 400 and shows the generic alert, where the import refuses the same row with its own word (`ui/src/listSheet.ts#L203`). The save form has the same shape. *Fix:* refuse on the page with the import's word, before any call. *Trigger:* a clerk pasting a long text into the name box, or the next edit of the form.
+
+## 148. An add's uniqueness is read-then-write, so two adds of one code can both land, and a lost answer can duplicate — the machine; `[OPEN]` (add-records, plan and review, 2026-11-07, Low)
+
+A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.

@@ -1458,8 +1458,8 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: '/products/new' },
         sentence: {
-          en: 'Adding a product: the code, name, unit and price to type in, the stock switch off',
-          vi: 'Thêm sản phẩm: mã, tên, đơn vị tính và giá để gõ vào, công tắc tồn kho đang tắt',
+          en: 'Adding a product: the code, name, unit and price to type in, the stock switch on',
+          vi: 'Thêm sản phẩm: mã, tên, đơn vị tính và giá để gõ vào, công tắc tồn kho đang bật',
         },
         question: 'Would the office know what a new product needs before it can be added?',
       },

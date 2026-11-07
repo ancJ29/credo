@@ -41,8 +41,9 @@ Decided here, each from what the repository already holds rather than from prefe
   phone, address and note; a product's code, name, unit, price, stock switch and note. *Why:* the two ways into one
   list must put the same record in it, or a clerk's customer and an imported one are different animals.
 - **Required are exactly the import's `needed`** (`#L32`, `#L47`): a customer's code and name; a product's code,
-  name, unit and price. The stock switch starts off — it is a boolean, whether stock is kept, with no third state
-  (`shared/src/lists.ts#L32`) — and the phone, address and note are free, an empty one writing no key at all
+  name, unit and price. The stock switch starts **on** (changed at step 7 from off: the import reads a blank stock cell as yes,
+  `ui/src/listSheet.ts#L73`, and the two ways in must agree) — it is a boolean, whether stock is kept, with no third
+  state (`shared/src/lists.ts#L32`) — and the phone, address and note are free, an empty one writing no key at all
   (`mergeExtra`, as every save already does).
 - **The code is typed, never generated.** Adding a person may leave it empty for the next number
   (`ui/src/AddPersonPage.tsx#L62-L63`), but these lists have no number series and the import demands a code in
@@ -52,8 +53,9 @@ Decided here, each from what the repository already holds rather than from prefe
   typed** — 409, as a taken staff code is answered (`bff/src/staff.ts#L209`) and mapped to a result rather than an
   error (`#L71`). *Rejected:* adding anyway under a second id, which would break the uniqueness rule every
   imported row is held to.
-- **`orders.canEdit` gates the add, and no new permission is made.** The catalogue holds seven ids and no
-  `orders.canCreate` (`shared/src/permissions.ts#L10-L16`); `orders.canEdit` is already the right that *makes*
+- **`orders.canEdit` gates the add, and no new permission is made.** The catalogue holds eight ids and no
+  `orders.canCreate` (`shared/src/permissions.ts#L9-L17`; the plan first said seven and cited `#L10-L16`, one line
+  short of `deliveries.canDeliver` — corrected at step 7, the decision unaffected; for the recap); `orders.canEdit` is already the right that *makes*
   records here and already corrects these two (`bff/src/lists.ts#L213`). A new id would cost the catalogue, the
   permission editor, the labels and every role's defaults — its own milestone. 👤 2.
 - **A clerk sets no id and no version:** the id is the server's fresh uuid and the body is a strict object, so
@@ -89,7 +91,7 @@ The invariants, not a file list:
 | 7 | A customer add with no code, a code of the wrong shape, or no name is refused on the page and makes no call | unit, `ui/src/ListPage.test.tsx`; red first |
 | 8 | A product add with no unit, no price, a minus price or a fractional price is refused on the page and makes no call | unit, same file; red first |
 | 9 | A taken code shows its own notice and keeps every field as typed | unit, same file; red first |
-| 10 | A product added with the stock switch untouched is sent with `stocked` false | unit, same file; red first |
+| 10 | A product added with the stock switch untouched is sent with `stocked` true, as the import reads a blank stock cell (changed at step 7) | unit, same file; red first |
 | 11 | Whoever may see orders but not edit sees no Add on either list; whoever may edit sees one on both | unit, same file; red first |
 | 12 | Every new word reads in both languages, and each new screen's first heading is in the map | `visual/src/words.test.tsx` |
 
@@ -157,7 +159,7 @@ client-readiness read; opens one item for the read-then-write code race.
 👤 **1. The look, after step 2.** On the walks page, open "Customers and products from Excel". Screen 18: an empty
 customer form in the same cards as yesterday's editable page, with one box that was never editable before — the
 code. Screen 19: the code typed is already in the list, so an orange notice says so and everything typed stays in
-its box. Screen 20: the same for a product, with the unit, the price and the stock switch. Screen 21: the customer
+its box. Screen 20: the same for a product, with the unit, the price and the stock switch (on since step 7, so re-look at it in step 8). Screen 21: the customer
 added, on its own page. A yes holds; a no becomes a case, fixed before step 8. **No mock is drawn for this:** the
 form, the cards and the notices were all judged on 11-07 on the three editable pages, so a mock would re-ask a
 settled question and cost a round.

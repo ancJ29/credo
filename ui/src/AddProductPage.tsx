@@ -9,15 +9,16 @@ import { ProductForm } from './ProductPage';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
-/** No product yet: the form of a product's page with nothing in it, the stock switch off. */
+/** No product yet: the form of a product's page with nothing in it, the stock switch on, as an import's blank stock cell reads. */
 const BLANK: ProductDoc = {
-  product: { id: '', code: '', name: '', unit: '', price: 0, stocked: false, extra: {} },
+  product: { id: '', code: '', name: '', unit: '', price: 0, stocked: true, extra: {} },
   version: '',
 };
 
 /**
  * Adding a product: the product's own form with the code box open, over no version, as adding a
- * customer is. The stock switch starts off; the unit and the price are asked, as the import asks
+ * customer is. The stock switch starts on, as the import reads a blank stock cell (`readStocked`), so the two ways in
+ * agree on a product nobody said anything about; the unit and the price are asked, as the import asks
  * them. A product added opens on its own page.
  */
 export function AddProductPage(page: PageProps) {
