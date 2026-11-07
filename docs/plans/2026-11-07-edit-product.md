@@ -121,11 +121,20 @@ order page, which is milestone 3.
   12 and 13 differ, 16 and 17 are new, no other screen's version moved. Gate log first two runs red (a type error and
   four lint errors of this step's tests, then a branch-coverage gap in the page), fixed; the third is the green one.
 - [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
-- [ ] **4. The routes against the real c-storage.** 🤖 Sonnet, 22 minutes: the `ListKind` generalisation and the two
+- [x] **4. The routes against the real c-storage.** 🤖 Sonnet, 22 minutes: the `ListKind` generalisation and the two
   routes; nothing of the page changes, since step 2 bound it to the wire. Done when: rows 1 to 6 each red once, then
   green, row 7 green untouched, and `bff`'s five gate steps at 100 % —
   `GOPROXY=off GOFLAGS=-mod=mod pnpm --filter @credo/bff run typecheck && eslint . && prettier --check . && GOPROXY=off GOFLAGS=-mod=mod pnpm --filter @credo/bff run test && knip`.
   The stack lane's screen 17 can only run after this.
+  *Done 2026-11-07 (about 8 minutes of work, gate log `20261107-1442-edit-product-step4-gate.log`, `== exit 0`; the tick
+  and its code are in the same commit):* `ListKind` gained `one`, `save` and `apply`; `readCustomer`, `mustRead`, `idOf`
+  and the PUT now sit inside `registerList` once, for both kinds, with the one compare comment widened to "a record's".
+  Rows 1 to 6 (eleven cases) each seen red once, all 404 before the route existed, then green; row 7: the customer's ten
+  cases untouched in the file and green. Gate: bff typecheck, `eslint .`, `prettier --check .`, tests (578, 100 % all
+  four counts) and `knip` all exit 0 (eslint and prettier ran from `bff/`, so over that package; knip over the repo
+  root, as the root script runs it). **Beyond the plan:** `bff/src/operator.route.test.ts` prints the route tree and
+  gained the line `/api/products/:id (GET, HEAD, PUT)`. The 409 is the one place the answer's shape was touched: `current`
+  is the kind's doc, as before for the customer. Not run: the walks, the page's gate, `pnpm check` (step 5).
 - [ ] **5. The gates.** 🤖 Sonnet, 10 minutes: `main` taken in, then the whole `pnpm check` once, in the background
   under the shared test lock, `== exit 0`. **The one place the whole gate runs:** `walk/` and `visual/` typecheck
   against this piece's changes in `ui/` and `shared/`, so no package's gate can clear it.
