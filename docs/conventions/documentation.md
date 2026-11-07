@@ -3,8 +3,9 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-07, from the stamp block the human cut out of a principles memo: this
-> file holds the rules as they stand; their history is in `git log`.
+> **Last amended** 2026-11-07, from the measurement of every plan written under the one-page shape:
+> the plan's word cap set to what that shape costs. This file holds the rules as they stand; their
+> history is in `git log`.
 
 ## At a glance
 
@@ -108,7 +109,7 @@ content, never ahead of it.
 
 ### The plan: one short page
 
-**A plan is about 1,000 words at most, its case table included**, in this order:
+**A plan is about 2,000 words at most, its case table included**, in this order:
 
 1. **The purpose**, as its `## At a glance`: what the piece is for, who sees it, and the cheapest
    safe path there, what exists picked over a design from zero, the price in one line.
@@ -121,11 +122,23 @@ content, never ahead of it.
 4. **The human's points**, up to five, the ones [QA](qa.md#at-a-glance) names, each at the step
    that needs it. **Each point reads on its own, in plain words:** a few sentences, about 60 words,
    that say what the human will see, why it matters, and what a yes and a no each start. A sha, a
-   line number or a label follows the words and never stands in for them. Five told points take
-   about 300 of the page's words, beside about 500 for the purpose, the cases and the steps of the
-   shortest plan so far. *Rejected:* a point in one line. The human cannot picture the whole
+   line number or a label follows the words and never stands in for them. Told points have
+   run 65 to 270 words of a plan, and five of them would take about 300. *Rejected:* a point in one
+   line. The human cannot picture the whole
    story from it, and digging for the rest costs the speed the short page buys. The human gave
    that correction twice on 2026-11-02, of a plan's points and of the orchestrator's day list.
+
+**The 2,000 is what this shape costs, not a target.** Over the eighteen plans written since the
+shape was set, `wc -w` ran from 986 to 1,970 words, median 1,610. The parts above cost about
+800 of that before the first step: about 150 words for the `## At a glance`, 260 for the slice,
+240 for the case table and 150 for the points. A slice of six to nine steps, each with its
+done-when and the file-and-line citations a reviewer reads it against, costs about 600 more.
+About a fifth of the case table's words are the table's own pipes and dashes, which `wc -w`
+counts as words, so the number is not a prose budget. *Rejected:* 1,000 words, what this
+convention asked for until 2026-11-07. Seventeen of the eighteen were over it; the cost was not
+the overage but about fifteen passes spent shortening prose nobody had asked to be shorter,
+while the parts this convention itself demands could not fit in the number — its own arithmetic
+had left the slice out and put the steps at a figure no plan has met.
 
 Nothing the builder finds in the repo or in git goes in: no status block, no list of the files it
 was drawn from, no evidence. Where a piece stands is its ticks, and across pieces the
@@ -135,8 +148,15 @@ in one, the shape these conventions asked for until 2026-11-02, against the one 
 27,036 words, every reader paid for the four other files to reach the steps, and the best of the
 six reviewed on 2026-11-02 was the shortest. A rewritten "Where it stands" was one more copy of what
 the ticks and the board already said. *Hazard no gate catches:* the page grows back, one step's
-evidence at a time. *Guard:* `wc -w` on the plan before its commit; well over 1,000 words, the
-slice is cut in two.
+evidence at a time. *Guard:* `wc -w` on the plan before its commit; well over 2,000 words, the
+part that grew is named and cut back, and the two limits that bind are the `## At a glance` at
+about 150 words and each of the human's points at about 60. *Rejected:* cutting the slice in
+two on the word count, what this guard asked for until 2026-11-07. No slice was ever cut on
+that ground in the shape's first week, and the count does not diagnose one: the longest of the
+eighteen plans is a single walkable slice of eight steps, and the plans this guard was written
+against ran from 2,400 to 27,000 words at the same step counts, so what cut them down was
+dropping the status, provenance and evidence blocks, not cutting slices. A slice is cut by its
+own test above: not walkable end to end when the plan ends.
 
 ## Never in a doc
 

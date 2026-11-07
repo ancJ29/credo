@@ -757,6 +757,10 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
 
+## 121. The API address in front of the BFF answers anyone — the human; *parked* until a client signs or real client data reaches a deployment (the architecture page, 2026-11-07)
+
+The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and no access log; the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L244`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
+
 ## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, not a fault of the piece. The post-join check (`walk/run.sh#L523`, `#L604`) adds a red rather than only labelling reds already collected, which was the plan's intent: a run green in every pass and comparison exits 1 if the browser vanishes in the second between the last pass and the join. `red_walks` is untouched, so `--write` still writes the bases while the run exits 1. *Trigger:* a green run turned red by that check; then make it label only.
@@ -772,3 +776,11 @@ Deferred from line 72's review, not a fault of the piece. `scripts/src/claim.ts`
 ## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now appends the way to write the claim only where writing was the failure, and names a walk in it because `--checks` alone is refused by the parser.
+
+## 126. The 409's `current: null` arm has no case — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
+
+In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
+
+## 127. The product page's `extra` test dropped two of its three variants — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
+
+In `ui/src/ListPage.test.tsx` the test that became the editable-versus-reader one kept only one of its three `extra` shapes: `{ note: 5 }` is still exercised as a save, while `{ note: '' }` is covered only through the `textIn` behaviour, and the third is gone. A change to how an emptied or non-string note is written would not fail a case of its own. *Trigger:* the next change to how a note is read or written on a detail page.

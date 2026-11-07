@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { DEMO_CUSTOMERS, DEMO_PRODUCTS } from '@credo/shared/demo';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { openApp } from '../tests/open';
@@ -382,7 +384,7 @@ describe('the customers and the products', () => {
     expect(screen.getByRole('table')).toBeTruthy();
   });
 
-  it('The product’s page shows the code, name, unit, price, stock and note, each in its own card, the price as the language writes a number and the stock as Yes or No, in English and in Vietnamese', async () => {
+  it('The product’s page shows the code, name, unit, price, stock and note, each in its own card, the price as the language writes a number and the stock as a switch, in English and in Vietnamese', async () => {
     const noted = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) !== '')!;
     const card = (title: string) =>
       within(screen.getByRole('heading', { level: 3, name: title }).closest('section')!);
@@ -398,13 +400,16 @@ describe('the customers and the products', () => {
     expect(valueOf(basic.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
     const unit = card('Unit and price');
     expect(valueOf(unit.getByRole('textbox', { name: 'Unit' }))).toBe(noted.unit);
-    expect(valueOf(unit.getByRole('textbox', { name: 'Price (VND)' }))).toBe(
+    expect(valueOf(unit.getByRole('textbox', { name: /^Price \(VND\)/ }))).toBe(
       new Intl.NumberFormat('en').format(noted.price),
     );
-    expect(valueOf(card('Stock').getByRole('textbox'))).toBe(noted.stocked ? 'Yes' : 'No');
-    expect(card('Note').getByText(noted.extra['note'] as string)).toBeTruthy();
+    expect(card('Stock').getByRole<HTMLInputElement>('switch', { name: 'Stocked' }).checked).toBe(
+      noted.stocked,
+    );
+    expect(valueOf(card('Note').getByRole('textbox'))).toBe(noted.extra['note']);
     expect(basic.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(true);
-    expect(drawn.api.listProducts).toHaveBeenCalledOnce();
+    expect(drawn.api.getProduct).toHaveBeenCalledOnce();
+    expect(drawn.api.listProducts).not.toHaveBeenCalled();
     drawn.unmount();
 
     openApp(`/products/${noted.id}`, { language: 'vi' });
@@ -416,18 +421,236 @@ describe('the customers and the products', () => {
       valueOf(
         within(
           screen.getByRole('heading', { level: 3, name: 'Đơn vị và giá' }).closest('section')!,
-        ).getByRole('textbox', { name: 'Giá (đồng)' }),
+        ).getByRole('textbox', { name: /^Giá \(đồng\)/ }),
       ),
     ).toBe(new Intl.NumberFormat('vi').format(noted.price));
   });
 
-  it('A product not stocked reads No', async () => {
-    const unstocked = DEMO_PRODUCTS.find((one) => !one.stocked)!;
-    openApp(`/products/${unstocked.id}`);
+  it('A whole price saves as whole đồng, with the thousands mark read as the language writes it: 120.000 in Vietnamese is 120000; the price’s words describe the box', async () => {
+    const one = DEMO_PRODUCTS[0];
+    const drawn = openApp(`/products/${one.id}`, { language: 'vi' });
+    await screen.findByRole('heading', { level: 2, name: one.name });
 
-    expect(await screen.findByRole('heading', { level: 2, name: unstocked.name })).toBeTruthy();
-    const stock = screen.getByRole('heading', { level: 3, name: 'Stock' }).closest('section')!;
-    expect(valueOf(within(stock).getByRole('textbox'))).toBe('No');
+    const box = screen.getByRole('textbox', { name: /^Giá \(đồng\)/ });
+    expect(box.getAttribute('aria-describedby')).toBeTruthy();
+    await userEvent.clear(box);
+    await userEvent.type(box, '120.000');
+    expect(valueOf(box)).toBe('120.000');
+    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Đã lưu.');
+    expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
+      one.id,
+      expect.objectContaining({ price: 120000 }),
+    );
+  });
+
+  it('A price that is empty, zero, negative or not whole is refused on the page with one word and makes no call; what was typed stays in the box, never cut, clamped or rounded', async () => {
+    const one = DEMO_PRODUCTS[0];
+    const drawn = openApp(`/products/${one.id}`);
+    await screen.findByRole('heading', { level: 2, name: one.name });
+    const box = () => screen.getByRole('textbox', { name: /^Price \(VND\)/ });
+    const word = 'Write a whole number of đồng above zero.';
+
+    // letters: the box yields nothing, so the price is empty, and empty is refused
+    await userEvent.clear(box());
+    await userEvent.type(box(), 'abc');
+    expect(valueOf(box())).toBe('');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(word)).toBeTruthy();
+    // zero, a typed minus, a pasted minus, a pasted decimal and a size past the top each stay
+    // as they were written
+    for (const [how, text, shown] of [
+      ['type', '0', '0'],
+      ['type', '-5', '-5'],
+      ['paste', '-5', '-5'],
+      ['paste', '95000.5', '95,000.5'],
+      ['paste', '1000000000001', '1,000,000,000,001'],
+    ] as const) {
+      await userEvent.clear(box());
+      await userEvent.click(box());
+      await (how === 'type' ? userEvent.type(box(), text) : userEvent.paste(text));
+      expect(valueOf(box())).toBe(shown);
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(screen.getByText(word)).toBeTruthy();
+    }
+    expect(drawn.api.saveProduct).not.toHaveBeenCalled();
+  });
+
+  it('An empty or over-long unit and an empty name are refused on the page and no call is made', async () => {
+    const one = DEMO_PRODUCTS[0];
+    const drawn = openApp(`/products/${one.id}`);
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Unit' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'x'.repeat(21));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('Please write the product’s name, at most 200 characters.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Please write the unit, at most 20 characters.')).toBeTruthy();
+    expect(drawn.api.saveProduct).not.toHaveBeenCalled();
+  });
+
+  it('The stock switch saves true and false; the new values show with a saved notice, and the box shows the saved price', async () => {
+    const one = DEMO_PRODUCTS.find((p) => p.stocked)!;
+    const drawn = openApp(`/products/${one.id}`);
+    await screen.findByRole('heading', { level: 2, name: one.name });
+    const stock = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Stocked' });
+    expect(stock().checked).toBe(true);
+
+    await userEvent.click(stock());
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect(drawn.api.saveProduct).toHaveBeenLastCalledWith(
+      one.id,
+      expect.objectContaining({ version: 'p1', stocked: false, price: one.price }),
+    );
+    expect(stock().checked).toBe(false);
+
+    await userEvent.click(stock());
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(drawn.api.saveProduct).toHaveBeenCalledTimes(2));
+    expect(drawn.api.saveProduct).toHaveBeenLastCalledWith(
+      one.id,
+      expect.objectContaining({ version: 'p2', stocked: true }),
+    );
+  });
+
+  it('Whoever may only see orders sees every value, no Save button and a switch that cannot move', async () => {
+    const noted = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) !== '')!;
+    openApp(`/products/${noted.id}`, {
+      override: (spied) => {
+        spied.me.mockResolvedValue({
+          user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
+        });
+      },
+    });
+
+    expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
+    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
+    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(noted.unit);
+    expect(valueOf(screen.getByRole('textbox', { name: /^Price \(VND\)/ }))).toBe(
+      new Intl.NumberFormat('en').format(noted.price),
+    );
+    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe(noted.extra['note']);
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(screen.getByRole<HTMLInputElement>('switch', { name: 'Stocked' }).disabled).toBe(true);
+    for (const box of screen.getAllByRole('textbox'))
+      expect(box.hasAttribute('readonly')).toBe(true);
+  });
+
+  it('An emptied note removes its key and a key the page does not show survives a save; a note left as it was keeps its key, even one that is not text', async () => {
+    const noted = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) !== '')!;
+    const quiet = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) === '')!;
+    const hidden: Record<string, unknown> = { ...noted.extra, tier: 'gold' };
+    const first = openApp(`/products/${noted.id}`, {
+      override: (spied, original) => {
+        spied.getProduct.mockImplementationOnce(async (id) => {
+          const read = await original.getProduct(id);
+          return read && { ...read, product: { ...read.product, extra: hidden } };
+        });
+      },
+    });
+    await screen.findByRole('heading', { level: 2, name: noted.name });
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Note' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    const { note: _note, ...kept } = hidden;
+    expect(first.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
+      noted.id,
+      expect.objectContaining({ extra: kept }),
+    );
+    first.unmount();
+
+    const second = openApp(`/products/${quiet.id}`, {
+      override: (spied, original) => {
+        spied.getProduct.mockImplementationOnce(async (id) => {
+          const read = await original.getProduct(id);
+          return read && { ...read, product: { ...read.product, extra: { note: 5 } } };
+        });
+      },
+    });
+    await screen.findByRole('heading', { level: 2, name: quiet.name });
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect(second.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
+      quiet.id,
+      expect.objectContaining({ extra: { note: 5 } }),
+    );
+  });
+
+  it('A note typed into the empty card is saved as the product’s note, trimmed', async () => {
+    const quiet = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) === '')!;
+    const drawn = openApp(`/products/${quiet.id}`);
+    await screen.findByRole('heading', { level: 2, name: quiet.name });
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Note' }), '  Giao trong ngày. ');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
+      quiet.id,
+      expect.objectContaining({ extra: { ...quiet.extra, note: 'Giao trong ngày.' } }),
+    );
+  });
+
+  it('A note that would push the details past 8 KB is refused on the page with a word of its own, and no call is made', async () => {
+    const quiet = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) === '')!;
+    const drawn = openApp(`/products/${quiet.id}`);
+    await screen.findByRole('heading', { level: 2, name: quiet.name });
+
+    await userEvent.click(screen.getByRole('textbox', { name: 'Note' }));
+    await userEvent.paste('x'.repeat(9000));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('This note is too long to save. Please shorten it.'),
+    ).toBeTruthy();
+    expect(drawn.api.saveProduct).not.toHaveBeenCalled();
+  });
+
+  it('Someone else saving first shows the notice and its reload, and keeps what was typed; the reload shows the newer product', async () => {
+    const one = DEMO_PRODUCTS[0];
+    const drawn = openApp(`/products/${one.id}`, { cue: 'saveProduct:409' });
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'z');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const notice = await screen.findByRole('alert');
+    expect(notice.textContent).toContain('Someone saved newer details first.');
+    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(`${one.unit}z`);
+    await userEvent.click(within(notice).getByRole('button', { name: 'Show the newer details' }));
+    await screen.findByRole('heading', { level: 2, name: one.name });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(one.unit);
+    expect(drawn.api.getProduct).toHaveBeenCalledTimes(2);
+  });
+
+  it('A save that fails says so, one the BFF refuses as no longer allowed says that, and one it refuses as invalid says that; each keeps what was typed', async () => {
+    const one = DEMO_PRODUCTS[0];
+    for (const [status, words] of [
+      [503, 'The product was not saved. What you typed'],
+      [403, 'you may no longer change products'],
+      [400, 'the system refused what you typed'],
+    ] as const) {
+      const drawn = openApp(`/products/${one.id}`, {
+        override: (spied) => {
+          spied.saveProduct.mockRejectedValueOnce(new ApiError(status));
+        },
+      });
+      await screen.findByRole('heading', { level: 2, name: one.name });
+      await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'z');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain(words);
+      expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(`${one.unit}z`);
+      drawn.unmount();
+    }
   });
 
   it('An unknown product address says the product is not there, with the way back, and shows no product’s details', async () => {
@@ -443,32 +666,45 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
-  it('A product with no note, or a note that is not text, is one column at the full width and has no Note card', async () => {
+  it('A product with no note has an empty Note card to write one into for whoever may edit, two columns, and no Note card for someone who may only see, one column at the full width', async () => {
     const quiet = DEMO_PRODUCTS.find((one) => textOf(one.extra['note']) === '')!;
-    for (const extra of [quiet.extra, { note: '' }, { note: 5 }]) {
-      const drawn = openApp(`/products/${quiet.id}`, {
-        override: (spied) => {
-          spied.listProducts.mockResolvedValue([{ ...quiet, extra }]);
-        },
-      });
+    const office = openApp(`/products/${quiet.id}`);
 
-      expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
-      expect(
-        screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-      ).toEqual(['Basic information', 'Unit and price', 'Stock']);
-      const grid = drawn.container.querySelector('.mantine-Grid-inner')!;
-      expect(grid.querySelectorAll('.mantine-Grid-col')).toHaveLength(1);
-      // one span of 12 writes no media query: the same at every width
-      expect(grid.querySelector(':scope > style')?.textContent).not.toContain('@media');
-      drawn.unmount();
-    }
+    expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
+    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe('');
+    expect(office.container.querySelectorAll('.mantine-Grid-col')).toHaveLength(2);
+    office.unmount();
+
+    const reader = openApp(`/products/${quiet.id}`, {
+      override: (spied) => {
+        spied.me.mockResolvedValue({
+          user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
+        });
+      },
+    });
+    expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Unit and price', 'Stock']);
+    const grid = reader.container.querySelector('.mantine-Grid-inner')!;
+    expect(grid.querySelectorAll('.mantine-Grid-col')).toHaveLength(1);
+    // one span of 12 writes no media query: the same at every width
+    expect(grid.querySelector(':scope > style')?.textContent).not.toContain('@media');
   });
 
-  it('The product’s page says so, and offers another try, when the list cannot be read', async () => {
+  it('The product’s cards are still the shared DetailCard, none a bordered paper of its own', () => {
+    const source = readFileSync(join(import.meta.dirname, 'ProductPage.tsx'), 'utf8');
+    expect(source.match(/withBorder/g)).toBeNull();
+  });
+
+  it('The product’s page says so, and offers another try, when the product cannot be read', async () => {
     const first = DEMO_PRODUCTS[0];
     openApp(`/products/${first.id}`, {
       override: (spied) => {
-        spied.listProducts.mockRejectedValueOnce(new ApiError(503));
+        spied.getProduct.mockRejectedValueOnce(new ApiError(503));
       },
     });
 

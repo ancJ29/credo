@@ -42,6 +42,7 @@ import {
   passkeyRoutes,
   passkeySignInRequestSchema,
   customerRoutes,
+  productRoutes,
   employeeRoutes,
   ROUTES,
   rootPasswordReplySchema,
@@ -73,6 +74,10 @@ describe('the wire contract', () => {
 
   it('names a customer’s route under the customers', () => {
     expect(customerRoutes.one('i')).toBe('/api/customers/i');
+  });
+
+  it('names a product’s route under the products', () => {
+    expect(productRoutes.one('i')).toBe('/api/products/i');
   });
 
   it('names a person’s routes under the employees', () => {

@@ -69,7 +69,10 @@ import {
   type PhotoReply,
   photoReplySchema,
   type Product,
+  type ProductDoc,
+  productDocSchema,
   productListReplySchema,
+  productRoutes,
   type OperatorMeReply,
   type OperatorItem,
   operatorListReplySchema,
@@ -100,6 +103,7 @@ import {
   ROUTES,
   type SaveCustomerRequest,
   type SaveEmployeeRequest,
+  type SaveProductRequest,
   type SaveOrderRequest,
   type SendOrderRequest,
   type SavePhotoRequest,
@@ -193,6 +197,8 @@ export type CloseDayResult = { kind: 'closed'; reconciliation: Reconciliation } 
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
 /** A customer saved, or the version moved: a conflict is a result, not an error. */
 export type SaveCustomerResult = { kind: 'saved'; doc: CustomerDoc } | { kind: 'conflict' };
+/** A product saved, or the version moved: a conflict is a result, not an error. */
+export type SaveProductResult = { kind: 'saved'; doc: ProductDoc } | { kind: 'conflict' };
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type RestoreResult = { kind: 'restored'; doc: EmployeeDoc } | { kind: 'conflict' };
@@ -561,6 +567,22 @@ export function createApi({
       const response = await send('GET', ROUTES.products);
       if (!response.ok) throw new ApiError(response.status);
       return (await read(response, productListReplySchema)).products;
+    },
+
+    /** One product with the version it was read at; `null` when the company holds none by that id. */
+    async getProduct(id: string): Promise<ProductDoc | null> {
+      const response = await send('GET', productRoutes.one(id));
+      if (response.status === 404) return null;
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, productDocSchema);
+    },
+
+    /** A save over the version read; a 409 is a result, and the page offers to read it again. */
+    async saveProduct(id: string, request: SaveProductRequest): Promise<SaveProductResult> {
+      const response = await send('PUT', productRoutes.one(id), request);
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', doc: await read(response, productDocSchema) };
     },
 
     /** The root's: up to a call's rows, one result for each in order; a refused row is a result,
