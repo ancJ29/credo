@@ -101,9 +101,17 @@ both sides. Nothing else of this piece is shared.
   two cases red. Touched `operator.route.test.ts`'s exact route list (it read the routes as text). Gate over `bff`
   (typecheck, tests at 100 %, eslint, prettier, knip; `shared` untouched), `== exit 0` in
   `logs/20261107-0937-edit-customer-step4-gate.log` (bff 566 tests, 19 s). The stack lane's screen 15 can now run.
-- [ ] **5. The gates.** 🤖 Sonnet, about 12 minutes: `main` taken in, then the whole `pnpm check` once under the
+- [x] **5. The gates.** 🤖 Sonnet, about 12 minutes: `main` taken in, then the whole `pnpm check` once under the
   lock, `== exit 0`. **The one place the whole gate runs:** `walk/` and `visual/` typecheck against this piece's
   changes in `ui/` and `shared/`, so no single package's gate can clear it.
+  *Done 2026-11-07, `main` (`2c0455cd`) taken in as `67d05faf`, no conflict (`docs/open-items.md` merged by itself).
+  The whole `pnpm check` (typecheck, eslint, prettier, tests, knip) under the lock, released by a trap on EXIT,
+  `== exit 0` in `logs/20261107-1035-edit-customer-step5-check-3.log`, 5 min 2 s of wall clock (shared 156 tests 1 s,
+  bff 567 in 24 s, ui 791 in 39 s, visual 201 in 135 s, scripts 287 in 226 s). Two earlier whole checks the same
+  morning were red on timeouts alone, in files this piece never touched, at load 14 to 45 with other sessions on the
+  Mac (`logs/20261107-1003-edit-customer-step5-check.log`: scripts and visual, 143 s a test;
+  `logs/20261107-1027-edit-customer-step5-check-2.log`: two `ui` 5-second timeouts); the third, started at load 7,
+  passed with no change between them.*
 - [ ] **6. One review.** 🤖 Opus, about 6 minutes, not the build's model. Done when: each finding tagged here.
 - [ ] **7. The picture run** (👤 3): one command, about 17 minutes. Done when: run 1 green, its `raw.txt` naming the
   four screens alone; run 2 every count 0; 24 bases committed.
