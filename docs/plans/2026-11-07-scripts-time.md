@@ -110,12 +110,25 @@ runs every line while checking less keeps the package at 100 %. So:
       108.48 s at load 7.34 to 12.68 (before: 199.19 s on a quiet Mac). One departure: the helper file is
       counted by coverage and its own guards are never reached, so it is listed in `scripts/vitest.config.ts`'s
       `exclude` with its reason, as the old test file was.
-- [ ] **3. Trim only what step 2 leaves over the threshold**, to the shared-fill pattern the file
+- [x] **3. Trim only what step 2 leaves over the threshold**, to the shared-fill pattern the file
       already holds. *Done when* each trimmed test has been seen red once, the same five steps are
       green, and no file is over 86.7 s. Skipped entirely if step 2 clears the threshold. **10 min.**
+      *Not needed, 2026-11-07:* after the split the longest apply file is `apply.up-to-yesterday.test.ts`,
+      about 89 s (its seven tests summed, read at load 5.8 rising to 14), a third of the old 199 s; the package's
+      longest file is now `src/walk-run.test.ts` (47 tests, about 119 s summed), which this plan does not cover,
+      so a trim of an apply test would not move the package's wall time. 86.7 s is the runner's number and no
+      runner number exists after the split, so a trim here would be a guess. Nothing trimmed.
 - [ ] **4. The after number, taken the way rule 3 asks.** The before is already on disk and free.
       *Done when* the recap holds the package's own `Duration` with its load beside it, and the next
       CI run's `scripts test` line. **5 min.**
+      *Local half done 2026-11-07, after taking `main` in (`afcda360`):* two runs of the package's test step, `vitest run
+      --coverage`, the lock `.full-run-lock` held and released, `Duration` **120.60 s** (load 4.45 at start, 14.85 peak
+      a minute in, 7.74 at the end; log `20261107-scripts-time-step4b.log`) and **120.26 s** (load 5.82, 13.95 peak,
+      6.57 end; `20261107-scripts-time-step4c.log`); `Tests 305` over 32 files, coverage 100 %, typecheck, eslint,
+      prettier and knip each exit 0. Before: 199.19 s on a quiet Mac, or 199.98 s for the package. **The after
+      number is the split plus what `main` added** (`scripts/src/claim.ts`, `claim.test.ts`, and nine more tests
+      in `walk-run.test.ts`: 287 + 18 = 305), and the package's floor is now `walk-run.test.ts`, not the split
+      file. **Held:** the next CI run's `scripts test` line, which needs a push.
 - [ ] **5. One cross-model review, then the recap.** *Done when* each finding is `[FIXED]`,
       `[REJECTED]` or `[DEFERRED]` with its reason. **8 min.**
 
