@@ -53,7 +53,7 @@ Decided here:
 | 3 | A save whose write landed and whose answer was lost counts as saved, not as a conflict | BFF route; red first |
 | 4 | Whoever may see orders but not edit them cannot save: 403, and nothing written | BFF route; red first |
 | 5 | A save carrying a code, or an unknown field, is refused and writes nothing | BFF route; red first |
-| 6 | An emptied field removes its key from `extra`; a key the form never shows survives a save | unit, `ui/src/CustomerPage.test.tsx`; red first |
+| 6 | An emptied field removes its key from `extra`; a key the form never shows survives a save | unit, `ui/src/ListPage.test.tsx`; red first |
 | 7 | An empty name is refused on the page, and no call is made | unit, same file; red first |
 | 8 | Someone else saving first shows the notice and its reload, and keeps what was typed | unit, same file; red first |
 | 9 | Whoever may not edit sees the values and no Save button | unit, same file; red first |
@@ -88,12 +88,13 @@ both sides. Nothing else of this piece is shared.
   parent commit, and the two `walks.json` differ in exactly screens 10 and 11 (sentence, and for 11 the question)
   and the new 14 and 15. The stack lane's screen 15 (`someoneSavesFirst`) calls the routes of step 4 and cannot run
   before it.
-- [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
+- [x] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
+  *Done 2026-11-07: yes on all four screens, and yes on who may edit.*
 - [x] **4. The route against the real c-storage.** 🤖 Sonnet, about 30 minutes: the two routes and the
   false-conflict re-read; nothing of the page changes, since step 2 bound it to the wire, not to a route still
   moving. Done when: rows 1 to 5 each red once, then green (`bff/tests/` builds the real c-storage per file);
   `pnpm --filter @credo/bff check` green at 100 %.
-  *Done 2026-11-07, code in the commit before this tick:* `GET` and `PUT /api/customers/:id` in `bff/src/lists.ts`
+  *Done 2026-11-07, code, tests and tick in `7e3c941c`:* `GET` and `PUT /api/customers/:id` in `bff/src/lists.ts`
   (`orders.canView` reads, `orders.canEdit` saves, the version never skipped). Rows 1 to 5 each red once (10 new
   cases failed against the old `lists.ts`), then green; the false conflict is forced, not hoped for: a wrapped
   `putRecord` lets the real write land and then answers `moved` (or loses its answer), a counter fails the test
@@ -112,10 +113,12 @@ both sides. Nothing else of this piece is shared.
   Mac (`logs/20261107-1003-edit-customer-step5-check.log`: scripts and visual, 143 s a test;
   `logs/20261107-1027-edit-customer-step5-check-2.log`: two `ui` 5-second timeouts); the third, started at load 7,
   passed with no change between them.*
-- [ ] **6. One review.** 🤖 Opus, about 6 minutes, not the build's model. Done when: each finding tagged here.
+- [x] **6. One review.** 🤖 Opus, about 6 minutes, not the build's model. Done when: each finding tagged here.
+  *Done 2026-11-07: may merge, no High and no Medium. Four Lows: one a comment at the route's compare, three deferred as items 118 to 120 of `docs/open-items.md`.*
 - [ ] **7. The picture run** (👤 3): one command, about 17 minutes. Done when: run 1 green, its `raw.txt` naming the
   four screens alone; run 2 every count 0; 24 bases committed.
-- [ ] **8. The recap.** 🤖 Sonnet, about 2 minutes. Done when: committed, under 400 words, the products row true.
+- [x] **8. The recap.** 🤖 Sonnet, about 2 minutes. Done when: committed, under 400 words, the products row true.
+  *Done 2026-11-07: `docs/recaps/2026-11-07-edit-customer.md`; the Customers and Products row names the editing. The picture run's line is a marked fill.*
 
 About 110 machine minutes. Opens nothing; closes nothing — item 105 stays open, one copy lighter than it would be.
 

@@ -189,6 +189,10 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
     } catch (error) {
       // The write may have landed with its answer lost: the record is as asked, or the failure stands.
       const now = await readCustomer(request.tenantId, id).catch(() => null);
+      // This compare and the `moved` one below hold only while a customer's code and id never
+      // change: `updated` spreads `found.customer`, read now, perhaps after another writer. The
+      // day a mutable field (a `changeCode`, an `archived` flag, an order's status) joins a record
+      // saved this way, another writer's record could count as our own save: re-think this then.
       if (now && isDeepStrictEqual(now.customer, updated)) return now;
       throw error;
     }
