@@ -240,6 +240,10 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-15-customer-conflict': (w) => `alert: ${w.lists.customers.conflict}`,
   'admin-lists:lists-16-product-saved': (w) => `alert: ${w.lists.products.saved}`,
   'admin-lists:lists-17-product-conflict': (w) => `alert: ${w.lists.products.conflict}`,
+  'admin-lists:lists-18-customer-new': (w) => `heading: ${w.lists.customers.newTitle}`,
+  'admin-lists:lists-19-code-taken': (w) => `alert: ${w.lists.customers.codeTaken}`,
+  'admin-lists:lists-20-product-new': (w) => `heading: ${w.lists.products.newTitle}`,
+  'admin-lists:lists-21-customer-added': () => 'heading: Cửa hàng Hải Âu',
   'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
   // the second line is the one added by the steps; the form's own list holds the product too, as an option
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',

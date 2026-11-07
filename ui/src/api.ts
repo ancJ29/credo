@@ -197,6 +197,10 @@ export type CloseDayResult = { kind: 'closed'; reconciliation: Reconciliation } 
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
 /** A customer saved, or the version moved: a conflict is a result, not an error. */
 export type SaveCustomerResult = { kind: 'saved'; doc: CustomerDoc } | { kind: 'conflict' };
+/** A customer added with its version, or its code is already in the list: a result, not an error. */
+export type AddCustomerResult = { kind: 'added'; doc: CustomerDoc } | { kind: 'taken' };
+/** A product added with its version, or its code is already in the list. */
+export type AddProductResult = { kind: 'added'; doc: ProductDoc } | { kind: 'taken' };
 /** A product saved, or the version moved: a conflict is a result, not an error. */
 export type SaveProductResult = { kind: 'saved'; doc: ProductDoc } | { kind: 'conflict' };
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
@@ -562,6 +566,15 @@ export function createApi({
       return { kind: 'saved', doc: await read(response, customerDocSchema) };
     },
 
+    /** Whoever may edit orders adds one customer as the import's row would be: a code already in
+     * the list is a result, and the page says so and keeps what was typed. */
+    async addCustomer(request: AddCustomerRequest): Promise<AddCustomerResult> {
+      const response = await send('POST', ROUTES.customers, request);
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'added', doc: await read(response, customerDocSchema) };
+    },
+
     /** The root's: every product of the company, in code order. */
     async listProducts(): Promise<Product[]> {
       const response = await send('GET', ROUTES.products);
@@ -583,6 +596,14 @@ export function createApi({
       if (response.status === 409) return { kind: 'conflict' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'saved', doc: await read(response, productDocSchema) };
+    },
+
+    /** As the customers' add is. */
+    async addProduct(request: AddProductRequest): Promise<AddProductResult> {
+      const response = await send('POST', ROUTES.products, request);
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'added', doc: await read(response, productDocSchema) };
     },
 
     /** The root's: up to a call's rows, one result for each in order; a refused row is a result,

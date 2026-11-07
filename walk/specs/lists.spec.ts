@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * The customers and products from Excel, one walk of seventeen screens, each in Vietnamese and in
- * English at the three widths (17 × 2 × 3 = 102). The `lists-fake` project runs it on `pnpm fake -- …`
+ * The customers and products from Excel, one walk of twenty-one screens, each in Vietnamese and in
+ * English at the three widths (21 × 2 × 3 = 126). The `lists-fake` project runs it on `pnpm fake -- …`
  * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
  * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
@@ -29,6 +29,11 @@ const NOTE_WRITTEN = 'Giao hàng buổi sáng, gọi trước khi đến.';
 const NEW_PHONE = '0903 111 999';
 /** The price typed on screens 16 and 17: the same as the walk's steps. */
 const NEW_PRICE = '175000';
+/** The customer typed on screens 19 and 21, the same as the walk's steps; screen 19 types the code
+ * the list already holds. */
+const ADDED_CODE = 'KH-090';
+const ADDED_NAME = 'Cửa hàng Hải Âu';
+const ADDED_PHONE = '0903 555 123';
 
 const FULL = () => test.info().project.name === 'lists-full';
 
@@ -303,6 +308,44 @@ async function walk(page: Page, language: Language, width: number) {
   await press(words.lists.products.save);
   await expect(page.getByRole('alert')).toContainText(words.lists.products.conflict);
   await at('lists-17-product-conflict');
+
+  /** The add form's boxes typed as the walk's steps do, then the press. */
+  const typeCustomer = async (code: string) => {
+    await page.getByRole('textbox', { name: exactly(words.lists.columns.code) }).fill(code);
+    await page.getByRole('textbox', { name: exactly(words.lists.columns.name) }).fill(ADDED_NAME);
+    await page.getByRole('textbox', { name: exactly(words.lists.columns.phone) }).fill(ADDED_PHONE);
+    await press(words.lists.customers.create);
+  };
+
+  // 18. Adding a customer: the customer's cards, and a code box to type in.
+  await open(page, language, '/customers/new');
+  await expect(title(words.lists.customers.newTitle)).toBeVisible();
+  await expect(
+    page.getByRole('textbox', { name: exactly(words.lists.columns.code) }),
+  ).toBeEditable();
+  await at('lists-18-customer-new');
+
+  // 19. A code the list already holds: the fake answers the add with a refusal once, and on the
+  // stack the code typed is the data set's own, so the BFF refuses it for real.
+  await open(page, language, '/customers/new', 'addCustomer:409');
+  await expect(title(words.lists.customers.newTitle)).toBeVisible();
+  await typeCustomer(NOTED_CUSTOMER.code);
+  await expect(page.getByRole('alert')).toHaveText(words.lists.customers.codeTaken);
+  await at('lists-19-code-taken');
+
+  // 20. Adding a product: the code, name, unit and price to type in, the stock switch off.
+  await open(page, language, '/products/new');
+  await expect(title(words.lists.products.newTitle)).toBeVisible();
+  await expect(page.getByRole('switch')).not.toBeChecked();
+  await at('lists-20-product-new');
+
+  // 21. A customer added: it opens on its own page.
+  await open(page, language, '/customers/new');
+  await expect(title(words.lists.customers.newTitle)).toBeVisible();
+  await typeCustomer(ADDED_CODE);
+  await expect(title(ADDED_NAME)).toBeVisible();
+  await expect(page.getByText(ADDED_CODE, { exact: true })).toBeVisible();
+  await at('lists-21-customer-added');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -313,7 +356,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all seventeen screens in ${name}`, async ({ page }) => {
+      test(`walks all twenty-one screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

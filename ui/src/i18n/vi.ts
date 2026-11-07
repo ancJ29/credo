@@ -673,6 +673,16 @@ export const vi: Dictionary = {
       conflict: 'Có người đã lưu thông tin mới hơn trước. Thay đổi của bạn chưa được lưu.',
       conflictReload: 'Xem thông tin mới hơn',
       nameNeeded: 'Hãy ghi tên khách hàng.',
+      newButton: 'Thêm khách hàng',
+      newTitle: 'Thêm khách hàng',
+      newIntro: 'Hãy ghi mã để gọi khách hàng này và tên. Phần còn lại có thể để sau.',
+      create: 'Thêm khách hàng này',
+      createFailed: 'Chưa thêm được khách hàng. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
+      createForbidden:
+        'Chưa thêm được khách hàng: bạn không còn được sửa khách hàng. Những gì bạn nhập vẫn còn đây.',
+      codeInvalid: 'Hãy ghi mã gồm 2 đến 20 chữ cái A đến Z, chữ số hoặc dấu gạch nối.',
+      codeTaken:
+        'Mã này đã có người dùng: một khách hàng khác trong danh sách có mã này. Hãy chọn mã khác.',
     },
     products: {
       sheet: 'Sản phẩm',
@@ -701,6 +711,17 @@ export const vi: Dictionary = {
       unitNeeded: 'Hãy ghi đơn vị, tối đa 20 ký tự.',
       priceInvalid: 'Hãy ghi một số đồng nguyên lớn hơn không.',
       noteTooLong: 'Ghi chú này quá dài để lưu. Hãy rút ngắn lại.',
+      newButton: 'Thêm sản phẩm',
+      newTitle: 'Thêm sản phẩm',
+      newIntro:
+        'Hãy ghi mã để gọi sản phẩm này, tên, đơn vị tính và giá. Phần còn lại có thể để sau.',
+      create: 'Thêm sản phẩm này',
+      createFailed: 'Chưa thêm được sản phẩm. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
+      createForbidden:
+        'Chưa thêm được sản phẩm: bạn không còn được sửa sản phẩm. Những gì bạn nhập vẫn còn đây.',
+      codeInvalid: 'Hãy ghi mã gồm 2 đến 20 chữ cái A đến Z, chữ số hoặc dấu gạch nối.',
+      codeTaken:
+        'Mã này đã có người dùng: một sản phẩm khác trong danh sách có mã này. Hãy chọn mã khác.',
     },
   },
   orders: {

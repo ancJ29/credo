@@ -674,6 +674,15 @@ export const en = {
       conflict: 'Someone saved newer details first. Your changes were not saved.',
       conflictReload: 'Show the newer details',
       nameNeeded: 'Please write the customer’s name.',
+      newButton: 'Add a customer',
+      newTitle: 'Add a customer',
+      newIntro: 'Write the code the customer will be known by and the name. The rest can wait.',
+      create: 'Add the customer',
+      createFailed: 'The customer was not added. What you typed is still here: try again.',
+      createForbidden:
+        'The customer was not added: you may no longer change customers. What you typed is still shown.',
+      codeInvalid: 'Write a code of 2 to 20 letters A to Z, digits or hyphens.',
+      codeTaken: 'That code is taken: another customer in the list has it. Choose another code.',
     },
     products: {
       sheet: 'Products',
@@ -702,6 +711,16 @@ export const en = {
       unitNeeded: 'Please write the unit, at most 20 characters.',
       priceInvalid: 'Write a whole number of đồng above zero.',
       noteTooLong: 'This note is too long to save. Please shorten it.',
+      newButton: 'Add a product',
+      newTitle: 'Add a product',
+      newIntro:
+        'Write the code the product will be known by, the name, the unit and the price. The rest can wait.',
+      create: 'Add the product',
+      createFailed: 'The product was not added. What you typed is still here: try again.',
+      createForbidden:
+        'The product was not added: you may no longer change products. What you typed is still shown.',
+      codeInvalid: 'Write a code of 2 to 20 letters A to Z, digits or hyphens.',
+      codeTaken: 'That code is taken: another product in the list has it. Choose another code.',
     },
   },
   orders: {

@@ -966,3 +966,7 @@ smallest first use and does not need one if a one-time link shown on the root's 
 ## 144. `ops_match_main`'s `mktemp` is not checked, so a failed one reports a misleading cause — the machine; `[DEFERRED]` (tree guard, the recap's own read, 2026-11-07, Low)
 
 `ci=$(mktemp ...)` (`ops/lib.sh#L200`) has no check of its own. If `mktemp` fails, `ci` is empty, the redirect on the next line fails, and the function dies through its `||` branch with "ci.yml cannot be read" — failing closed, but naming the wrong cause. The same unchecked shape sits at `ops/lib.sh#L146`. *Fix:* `|| die "no temporary file could be made"` on both. *Trigger:* a reader of that message is misled, or the next edit of this function.
+
+## 145. The fake's imports add records with no version, so an imported customer or product saves to "NaN" — the machine; `[OPEN]` (add-records, step 2, 2026-11-07, Low)
+
+`ui/src/fake.ts`'s `importInto` puts a record in its list but never sets its entry in `customerVersions` or `productVersions`, so a record the fake imported reads at version `cundefined`, and a save over it moves the version to `NaN`. The new add (`addInto`) sets version 1 itself, so an added record is right; an imported one is not. Only the fake lane is touched (the real BFF versions by c-storage's tag), and no walk imports and then edits the same record. *Fix:* set the version inside `importInto` and let `addInto` rely on it. *Trigger:* a walk or a test that edits a record the fake imported.

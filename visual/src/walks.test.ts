@@ -621,7 +621,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, seventeen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, twenty-one screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -643,6 +643,10 @@ describe('the walks', () => {
       ['lists-15-customer-conflict', 15, 'wrong'],
       ['lists-16-product-saved', 16, 'main'],
       ['lists-17-product-conflict', 17, 'wrong'],
+      ['lists-18-customer-new', 18, 'main'],
+      ['lists-19-code-taken', 19, 'wrong'],
+      ['lists-20-product-new', 20, 'main'],
+      ['lists-21-customer-added', 21, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -666,7 +670,7 @@ describe('the walks', () => {
       // a customer's or a product's page is reached from the list by the name's link: on the stack
       // the BFF mints the id, so the spec opens the list and clicks the data set's record by name
       const before = openings.get(screen.id)!;
-      const opened = [...before.matchAll(/await open\(page, language, '([^']+)'\)/g)];
+      const opened = [...before.matchAll(/await open\(page, language, '([^']+)'(?:, '[^']+')?\)/g)];
       const customer = DEMO_CUSTOMERS.find((one) => screen.scene!.path === `/customers/${one.id}`);
       const product = DEMO_PRODUCTS.find((one) => screen.scene!.path === `/products/${one.id}`);
       const record = customer ?? product;
@@ -686,11 +690,12 @@ describe('the walks', () => {
         expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
       }
       expect(screen.scene!.as, screen.id).toBeUndefined();
-      // only the two conflicts are cued, and the spec opens each with the same cue
+      // only the two conflicts and the refused add are cued, and the spec opens each with the same cue
       expect(screen.scene!.cue, screen.id).toBe(
         {
           'lists-15-customer-conflict': 'saveCustomer:409',
           'lists-17-product-conflict': 'saveProduct:409',
+          'lists-19-code-taken': 'addCustomer:409',
         }[screen.id],
       );
       if (screen.scene!.cue) expect(before, screen.id).toContain(`, '${screen.scene!.cue}');`);

@@ -10,7 +10,9 @@ import {
 } from '@credo/shared';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
+import { AddCustomerPage } from './AddCustomerPage';
 import { AddPersonPage } from './AddPersonPage';
+import { AddProductPage } from './AddProductPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './Boot';
 import { BEFORE_CONFIG } from './brand';
@@ -374,6 +376,24 @@ export function ClientApp({
                   key={kind}
                   path={`/${kind}`}
                   element={guarded(user, kind, <ListPage kind={kind} {...pageFor(user)} />)}
+                />
+              ))}
+              {(['customers', 'products'] as const).map((kind) => (
+                <Route
+                  key={kind}
+                  path={`/${kind}/new`}
+                  element={
+                    // Whoever may edit orders adds, as they correct these records (case-table row 11).
+                    can(user, 'orders.canEdit') ? (
+                      kind === 'customers' ? (
+                        <AddCustomerPage {...pageFor(user)} />
+                      ) : (
+                        <AddProductPage {...pageFor(user)} />
+                      )
+                    ) : (
+                      <Notice kind="forbidden" />
+                    )
+                  }
                 />
               ))}
               <Route
