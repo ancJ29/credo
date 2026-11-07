@@ -119,7 +119,7 @@ set through the BFF; step 2 did not, and the red surfaced only in the whole chec
       `logs/edit-order-step2-fake.log`; the two `walks.json` of `pnpm report` against `main` differ
       in screen 1's version and in the two added screens 13 and 14, and in nothing else.
 - [x] **3. The look** (👤 1, 👤 2, 👤 3). The machine goes straight on to step 4 and does not wait. Evidence: the human's yes on all three screens.
-- [ ] **4. The wire and the route against the real c-storage.** 🤖 Sonnet, about 20 minutes: the
+- [x] **4. The wire and the route against the real c-storage.** 🤖 Sonnet, about 20 minutes: the
       re-save schema, the create's refusal, the lost-answer recovery. Nothing of the page changes —
       step 2 bound it to the wire, not to a route still moving. Done when: rows 1 to 7 each red once,
       then green (`bff/tests/` builds the real c-storage per file); `@credo/shared` and `@credo/bff`
@@ -139,10 +139,10 @@ set through the BFF; step 2 did not, and the red surfaced only in the whole chec
       separate, test step green in one invocation, `== exit 0 (typecheck 0 eslint 0 prettier 0 test
       0 knip 0)`, in `logs/20261107-2000-edit-order-step5-check2.log` (the red one:
       `...1941-edit-order-step5-check.log`).
-- [ ] **6. One review.** 🤖 Opus, about 10 minutes, not the build's model. Done when: each finding
-      tagged here `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with its reason.
-- [ ] **7. The picture run** (👤 4): one command, about 17 minutes. Done when: run 1 green, its
-      `raw.txt` naming screens 1, 13 and 14 alone; run 2 every count 0; 18 pictures committed.
+- [x] **6. One review.** 🤖 Opus, about 10 minutes, not the build's model. Done when: each finding
+      tagged here `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with its reason. Evidence: Opus, 12 minutes, may merge with one named change; one Medium (the record contradicted the branch: items 140, 35 and 36's findings 4, 5 and 8) and four Lows, three fixed and one deferred as item 141, all tagged in `ad40d65f`.
+- [x] **7. The picture run** (👤 4): one command, about 17 minutes. Done when: run 1 green, its
+      `raw.txt` naming screens 1, 13 and 14 alone; run 2 every count 0; 18 pictures committed. Evidence: green at 20:59:19, 17m07s, `logs/20261107-2042-edit-order-full-run.log`; run 1 moved exactly `orders-1-list` and wrote `orders-13-moved-price` and `orders-14-repriced` new, none named but unmoved, none asked for in no walk; run 2 every count 0; bases `a7263006`, 18 pictures.
 - [x] **8. The recap.** 🤖 Sonnet, about 3 minutes. Done when: committed, under 400 words, the
       products row true. Evidence: `docs/recaps/2026-11-07-edit-order.md`, 390 words by `wc -w` (title and lists counted); the Orders row of `docs/products.md` changed in the same commit.
 
