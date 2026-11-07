@@ -96,6 +96,9 @@ case " $* " in
   *)
     last=""; for a in "$@"; do last="$a"; done
     [ -z "$SHIM_ARGS_LOG" ] || echo "$*" >> "$SHIM_ARGS_LOG"
+    # The trap goes in before the lane counts as held, so the gate lock can only appear once all
+    # lanes hold their first TERM.
+    [ -z "$SHIM_HOLD_TERM" ] || trap 'echo "held TERM"; sleep 15; echo "pass done"' TERM
     if [ -n "$SHIM_HOLD_FOR" ]; then
       touch "$SHIM_HOLD_DIR/$$"; i=0
       while [ "$(ls "$SHIM_HOLD_DIR" | wc -l)" -lt "$SHIM_HOLD_FOR" ]; do
@@ -110,7 +113,6 @@ case " $* " in
       echo $$ >> "$SHIM_SLEEP_DIR/pids"
       [ -z "$SHIM_LOCK" ] || mkdir "$SHIM_LOCK" 2>/dev/null
       if [ -n "$SHIM_HOLD_TERM" ]; then
-        trap 'echo "held TERM"; sleep 15; echo "pass done"' TERM
         sleep 20 & wait
         exit 0
       fi
