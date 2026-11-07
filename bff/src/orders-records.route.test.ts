@@ -29,7 +29,7 @@ function flaky() {
       key: string,
       data: unknown,
       ifTag?: string | null,
-    ) => 'throw' | 'lost' | 'moved' | 'bump' | null;
+    ) => 'throw' | 'lost' | 'moved' | 'bump' | 'bump-then-throw' | null;
   } = {};
   const wrap = (client: CStorageClient): CStorageClient => ({
     ...client,
@@ -37,7 +37,7 @@ function flaky() {
       const what = plan.failOn?.(key, data, ifTag) ?? null;
       if (what === 'throw') throw new CStorageError(503, 'down');
       if (what === 'moved') return 'moved';
-      if (what === 'bump') {
+      if (what === 'bump' || what === 'bump-then-throw') {
         const current = (await client.getRecord(key))!.data as Record<string, unknown>;
         // The numbering moves by a request given elsewhere; any other record by its extra.
         await client.putRecord(
@@ -47,6 +47,8 @@ function flaky() {
             : { ...current, extra: { bumped: true } },
         );
       }
+      if (what === 'bump-then-throw')
+        throw new CStorageError(null, 'c-storage did not answer a put');
       const saved = await client.putRecord(key, data, ifTag);
       if (what === 'lost') throw new CStorageError(null, 'c-storage did not answer a put');
       return saved;
@@ -336,6 +338,49 @@ describe('Rows 19 and 20: every write names the tag, and a stop between two writ
     f.plan.failOn = undefined;
 
     expect(sent.order.request?.number).toBe('GH-00001');
+  });
+
+  it('counts a draft’s save as saved when its write landed and its answer was lost, and fails when it did not land', async () => {
+    const f = flaky();
+    const w = await ordersTenant(cs, { wrap: f.wrap });
+    const draft = await w.made();
+    const other = await w.made();
+    const url = orderRoutes.one(DAY, draft.order.id);
+    const save = (over: object, version: string) =>
+      w.office.call.send('PUT', url, { ...w.body(over), version });
+    const aimed = (key: string) => key.includes('.order.');
+
+    f.plan.failOn = (key) => (aimed(key) ? 'lost' : null);
+    const lost = w.orderDoc(
+      await save({ lines: [{ productId: w.ids.fee, quantity: 4 }] }, draft.version),
+    );
+    f.plan.failOn = (key) => (aimed(key) ? 'throw' : null);
+    const down = await save({ lines: [{ productId: w.ids.fee, quantity: 5 }] }, lost.version);
+    f.plan.failOn = undefined;
+    const stored = await w.read(DAY, draft.order.id);
+
+    expect(lost.order.total).toBe(200000);
+    expect(lost.version).not.toBe(draft.version);
+    expect(down.statusCode).toBe(503);
+    expect(stored).toEqual(lost);
+    expect((await w.read(DAY, other.order.id)).version).toBe(other.version);
+  });
+
+  it('does not read another writer’s write as its own lost save: the failure stands and their record is kept', async () => {
+    const f = flaky();
+    const w = await ordersTenant(cs, { wrap: f.wrap });
+    const draft = await w.made();
+    // our write is never made, and by the re-read someone else's write holds the record
+    f.plan.failOn = (key) => (key.includes('.order.') ? 'bump-then-throw' : null);
+
+    const reply = await w.office.call.send('PUT', orderRoutes.one(DAY, draft.order.id), {
+      ...w.body(),
+      version: draft.version,
+    });
+    f.plan.failOn = undefined;
+
+    expect(reply.statusCode).toBe(503);
+    expect((await w.read(DAY, draft.order.id)).order.extra).toEqual({ bumped: true });
   });
 
   it('answers 503 when the store says a record already sat under the fresh id', async () => {

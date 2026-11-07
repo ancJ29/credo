@@ -112,12 +112,18 @@ false conflict on send, and item 36's findings 3, 6 and 7, stay parked with the 
       served the build holding the new words and the saved price, in one invocation, in
       `logs/edit-order-step2-fake.log`; the two `walks.json` of `pnpm report` against `main` differ
       in screen 1's version and in the two added screens 13 and 14, and in nothing else.
-- [ ] **3. The look** (👤 1, 👤 2, 👤 3). The machine goes straight on to step 4 and does not wait.
+- [x] **3. The look** (👤 1, 👤 2, 👤 3). The machine goes straight on to step 4 and does not wait. Evidence: the human's yes on all three screens.
 - [ ] **4. The wire and the route against the real c-storage.** 🤖 Sonnet, about 20 minutes: the
       re-save schema, the create's refusal, the lost-answer recovery. Nothing of the page changes —
       step 2 bound it to the wire, not to a route still moving. Done when: rows 1 to 7 each red once,
       then green (`bff/tests/` builds the real c-storage per file); `@credo/shared` and `@credo/bff`
-      gated at 100 %.
+      gated at 100 %. Evidence: `main` taken in clean (`docs/open-items.md` untouched, numbers in
+      order); rows 2, 5 and 6 red on the old code by single-file runs, then green; rows 1, 4 and 7 and
+      row 3's added assertion guard today's behaviour, each proved red by one mutation of the route
+      (row 1 `extra` from the stored order, row 4 the `draft` check dropped, row 7 the lines kept
+      unpriced, row 3 the version compare dropped) and reverted; the gate (shared and bff five steps
+      by name, plus `pnpm -r run typecheck` over `ui`, `visual` and `walk`) every step exit 0 in
+      `logs/20261107-1928-edit-order-step4-gate.log`; no `ui/` file changed.
 - [ ] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once
       under the lock, `== exit 0`. **The one place the whole check runs:** `walk/` and `visual/`
       typecheck against this piece's changes in `ui/` and `shared/`, so no package's gate clears it.

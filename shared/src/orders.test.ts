@@ -18,6 +18,8 @@ import {
   orderSchema,
   priceLines,
   REQUEST_STATES,
+  firstSaveOrderRequestSchema,
+  resaveOrderRequestSchema,
   saveOrderRequestSchema,
   sendableOn,
   sendOrderRequestSchema,
@@ -104,6 +106,22 @@ describe('pricing an order', () => {
       expect(order.total).toBe(order.lines.reduce((sum, one) => sum + one.amount, 0));
       for (const one of order.lines) expect(one.amount).toBe(one.price * one.quantity);
       expect(order.customer).toEqual(DEMO_CUSTOMERS.find((c) => c.id === order.customer.id));
+    }
+  });
+
+  it('A first save carries no version and a save again carries the tag it read: a version that is no tag, or one on a first save, is refused', () => {
+    const body = {
+      day: DEMO_TODAY,
+      customerId: DEMO_CUSTOMERS[0].id,
+      lines: [{ productId: cement.id, quantity: 1 }],
+      extra: {},
+    };
+    const tag = 'a'.repeat(64);
+    expect(firstSaveOrderRequestSchema.safeParse(body).success).toBe(true);
+    expect(firstSaveOrderRequestSchema.safeParse({ ...body, version: tag }).success).toBe(false);
+    expect(resaveOrderRequestSchema.safeParse({ ...body, version: tag }).success).toBe(true);
+    for (const version of [undefined, '', 'x', 'A'.repeat(64), 'a'.repeat(63), 7]) {
+      expect(resaveOrderRequestSchema.safeParse({ ...body, version }).success).toBe(false);
     }
   });
 
