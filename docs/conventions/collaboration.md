@@ -1,8 +1,8 @@
 # Collaboration
 
 > **Decided** 2026-10-27. Binds every person and every agent working here.
-> **Last amended** 2026-11-07 by the human, from the review of how we work: this file holds the
-> rules as they stand; their history is in `git log`.
+> **Last amended** 2026-11-07 by the human, from their cleanup of this memo: this file holds the
+> rules and the reason each exists; their history is in `git log`.
 
 ## At a glance
 
@@ -64,9 +64,7 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    client, a partner's need, a credential, a push or a deploy. Each is asked at the step that
    needs it, never ahead of it, as one recommendation and never a menu. *Rejected:* asking
    between two workable ways, and asking the human to confirm each section, which hands back a
-   task already delegated. *Why:* each question spends the attention the work needs — one
-   campaign put over 50 such items to the human, most answered yes to the recommendation, while
-   the things worth a human's eye got the same share or less.
+   task already delegated. *Why:* each question spends the attention the work needs.
 
    **An act on production, a client's own stack, sits at the latest point its done-when needs
    it**, its price said in days ("up to N days"), never moved earlier to save calendar time. A
@@ -108,14 +106,12 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    **A gate is the touched package's.** The check a step runs is the one that can change its
    conclusion: the package the step wrote in, and the whole workspace's check only where the step
    crossed packages or before a merge. A brief that names a wider gate than the step's own done
-   check is answered with the touched package's and the reason, not obeyed. *Why:* one step gated
-   on the whole project four times over reds in files it was not allowed to touch, 32 minutes
-   against a size of 18, and none of the four reds was its own.
+   check is answered with the touched package's and the reason, not obeyed. *Why:* a step gated
+   on the whole project stalls on reds in files it was not allowed to touch, none of them its own.
 
    **A fix starts from the red, not from a guess.** A brief for a fix names the one red, its
    error, its lines and the rule that decides between fixes, and asks for the root cause before
-   any code; it never carries a candidate fix of the briefer's own. *Why:* the brief that carried
-   the decision rule instead of a fix was answered right in five minutes, while a named candidate
+   any code; it never carries a candidate fix of the briefer's own. *Why:* a named candidate
    sends the agent to defend someone else's guess.
 
    **Three limits have no capability to ask for, so they are the human's hand, named as such.**
@@ -140,8 +136,7 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    changed for anyone, and belong in the machine's own record. Reviewing a recap is reading it
    for sense and for what would make someone act wrongly; the reviewer re-runs only what it
    claims without evidence. *Why:* a compact line sends the human hunting for what it means,
-   which is the attention it was written to save — three of six corrections in one day were
-   exactly that.
+   which is the attention it was written to save.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
    yes. *Rejected:* a new rule after the first correction. The rules then grow faster than a
    session can read them.
@@ -154,8 +149,7 @@ verdict line with its evidence for a run — one yes or no each.
 
 - **The work goes on past the point.** It stays open in the piece's record while the next work
   starts, and a no reopens its piece. *Why:* a look comes when the human is free, often hours
-  after the minutes of work it judges; work held for it stands idle all that time (looks answered
-  320 to 625 minutes after work of 3.5 to 83).
+  after the minutes of work it judges; work held for it stands idle all that time.
 - **A look is not a yes, and silence is not a yes.** An unanswered point stays open, and a
   decision only the human can make waits there as one line; the machine never reads its own
   progress into the gap.
@@ -232,7 +226,7 @@ flowchart LR
   minutes a step. The budget is a different number and only a stuck task's stop: three times the
   size and at least 15 minutes, or the same red met on two tries. *Why:* the kind's mean mixes
   the two shapes and is wrong both ways, and a guessed size plans the day around minutes the work
-  never takes — one day's rows were sized at 405 minutes and took 203.
+  never takes.
 - **A remake of what already works is a copy plus its changes, in minutes:** a one-off kept, a
   script or a page for one more case. The original's checks are rerun, and there is no new test
   suite, no lock and no review for an act that can be undone. A script for one more case is a
