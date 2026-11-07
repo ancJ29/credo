@@ -143,8 +143,8 @@ set through the BFF; step 2 did not, and the red surfaced only in the whole chec
       tagged here `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with its reason.
 - [ ] **7. The picture run** (👤 4): one command, about 17 minutes. Done when: run 1 green, its
       `raw.txt` naming screens 1, 13 and 14 alone; run 2 every count 0; 18 pictures committed.
-- [ ] **8. The recap.** 🤖 Sonnet, about 3 minutes. Done when: committed, under 400 words, the
-      products row true.
+- [x] **8. The recap.** 🤖 Sonnet, about 3 minutes. Done when: committed, under 400 words, the
+      products row true. Evidence: `docs/recaps/2026-11-07-edit-order.md`, 390 words by `wc -w` (title and lists counted); the Orders row of `docs/products.md` changed in the same commit.
 
 About 93 machine minutes, which holds the 90 this piece was sized at. Closes item 36's findings 4, 5
 and 8 and item 35's first bullet; opens nothing.
