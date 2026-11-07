@@ -1113,6 +1113,7 @@ describe('A record that moves or goes while a ceremony is written is read again,
    * carry out `after` once the removal is done. */
   const meddling = (rules: {
     onPut?: (key: string, client: CStorageClient) => Promise<unknown>;
+    beforeRemove?: (key: string, client: CStorageClient) => Promise<unknown>;
     afterRemove?: (key: string, client: CStorageClient) => Promise<unknown>;
   }) => {
     return (client: CStorageClient): CStorageClient => ({
@@ -1122,6 +1123,7 @@ describe('A record that moves or goes while a ceremony is written is read again,
         return await client.putRecord(key, data, tag);
       },
       removeRecord: async (key, tag) => {
+        await rules.beforeRemove?.(key, client);
         const removed = await client.removeRecord(key, tag);
         await rules.afterRemove?.(key, client);
         return removed;
@@ -1137,6 +1139,21 @@ describe('A record that moves or goes while a ceremony is written is read again,
       (await t.client.getRecord(recordKeys.operatorAccount(id)))!.tag,
     );
     expect((await post(t.app, '/api/operator/join/options', { link: token })).statusCode).toBe(404);
+  });
+
+  it('answers 404 when a rival removes the link between its reading and its removal', async () => {
+    // Forces the loser's order every time: it has read the link, and the winner removes it first.
+    const t = await bffOn(cs, {
+      wrap: meddling({
+        beforeRemove: async (key, client) => {
+          if (!key.startsWith('operator.link.')) return;
+          await client.removeRecord(key, (await client.getRecord(key))!.tag);
+        },
+      }),
+    });
+    const { id, token } = await inviteOperator(t);
+    expect((await joinWith(t, token)).joined.statusCode).toBe(404);
+    expect((await accountOf(t, id)).passkeys).toHaveLength(0);
   });
 
   it('answers 404 when the account goes between the link’s removal and the passkey’s write', async () => {

@@ -114,7 +114,9 @@ jobs:
   # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
   app:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 25, not 15: the job's own green run measured over 12 minutes on 11-05, and tests have been
+    # added since. The cap was skipping deploys, not catching a hang.
+    timeout-minutes: 25
     permissions:
       contents: read
     steps:
