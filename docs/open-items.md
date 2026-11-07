@@ -55,6 +55,20 @@ ridge, the first box, holds no real data, so the backup still waits for a signed
 ([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint and the box's
 put-only role come with it.
 
+**Widened by the client-readiness read (2026-11-07), and it belongs here rather than in an item of
+its own, since one piece closes both.** The box's root volume, which holds the one SQLite file
+(`ops/c-storage.service#L20`), carries `DeleteOnTermination: true` with no `DeletionPolicy` and no
+snapshot (`ops/env.yml#L111-L117`). So until this item is built, anything that terminates or
+replaces the instance takes every record with it: a stack delete, an image or instance-type change
+taken with `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the
+stack" (`ops/lib.sh#L276`), which names no environment and reads the same on a client's stack as on
+a fresh one. One guard stands in front of it and says so in its own words — a change set that
+removes or replaces any resource is refused unless its logical id is named, because "a replaced box
+deletes its disk and the database with it" (`ops/unsafe-changes.jq#L1-L8`, the guard step in
+`ops/stack.sh`) — and behind that guard there is nothing. So the backup's piece carries two more
+things: a `DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` on the volume, and a
+`ROLLBACK_COMPLETE` message that does not tell a human to delete a stack holding real data.
+
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
 `bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`
@@ -502,9 +516,11 @@ c-storage saves the root's record but its answer misses the BFF's 5-second timeo
 
 *Trigger:* the first client's root, or the next change to the route.
 
-## 62. The root-password touch is not tied to the client — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
+## 62. The root-password touch is not tied to the client, and nor is the delete's — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low; widened 2026-11-07)
 
 Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
+
+**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/operator-auth.ts#L266-L275`, `bff/src/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
 
 *Trigger:* before a second operator or a client signs.
 
@@ -788,3 +804,74 @@ About 119.4 s summed over 47 tests, as long as the whole package. It met the pla
 ## 129. The c-storage handle in `apply-support.ts` lives in two module-level variables — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Low)
 
 `scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
+
+## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; *parked* until before any environment but ridge exists (the client-readiness read, 2026-11-07)
+
+`ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
+session is always a reviewed one" — and it compares `ops/` and nothing else. But `ridge_cli` runs
+`scripts/src/ridge-main.ts` out of the working copy (`ops/lib.sh#L612-L618`), and that package holds the
+client-delete command. In `main` the command is safe: `untenant` refuses any code that is not the deploy
+check's own (`scripts/src/ridge.ts#L126-L134`), saying in its comment that it has none of the console's gates.
+Nothing proves the `scripts/` on disk is that `main`. `ops/seed.sh#L41` and `ops/root-password.sh#L89` close it
+for themselves with `git diff --quiet HEAD` ("the write would run code /health cannot name");
+`ops/check.sh`, `ops/app.sh` and `ops/operator.sh` do not, and `check.sh` calls `untenant` from
+`cleanup_extra` on every exit path including a refusal (`ops/check.sh#L36-L47` through `ops/lib.sh#L106`).
+So an uncommitted edit, or a worktree on a branch, runs against whatever environment the script is given with
+the box's keys. *Fix:* either `ops_match_main` covers `scripts/` as well, or the three scripts gain the
+clean-tree check the other two already have. *Severity:* High against a client's stack; on ridge it risks demo
+data alone. *Trigger:* before any environment but ridge exists.
+
+## 131. `ops/check.sh` puts the box's internal and super-admin keys on an operator's machine, for any environment — the machine; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
+
+`ops/tunnel.sh#L35-L36` refuses every environment but ridge, in its own words, because "another stack's admin
+keys would land on this disk, and the collection would write test records into it". `ops/check.sh` does both and
+refuses no environment: it opens its own connection to the box (`#L80`), reads the keys (`#L114`) and writes the
+internal access key and the super-admin key into a Bruno environment file on the machine running it (`#L120`,
+through `ops/lib.sh#L530-L552`). The file is 0600, git-ignored and removed by `on_exit` (`ops/lib.sh#L107`), and
+the deploy job runs this script, so the same would be true of a client's stack's keys on a runner. It also makes
+a client and signs in through the edge each run (`#L165-L171`), and each Bruno run leaves a service row behind
+(`#L164`). *Fix:* `check.sh` takes ridge alone until the guard `tunnel.sh` names exists, or gets a client-stack
+mode that skips the collection and the client it makes. *Trigger:* before a client's own stack.
+
+## 132. Six of the nine `ops/` scripts take any environment name, and a client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07)
+
+Three scripts refuse any environment but ridge and each says why: `ops/tunnel.sh#L35-L36` (another stack's admin
+keys on this disk), `ops/root-password.sh#L79` ("a client's own stack is the console's, never this") and
+`ops/seed.sh#L36` ("a client's stack must never receive demo data"). `ops/stack.sh`, `ops/release.sh`,
+`ops/app.sh`, `ops/check.sh`, `ops/drill.sh` and `ops/operator.sh` carry no such test. On a client's stack today a
+person could therefore make and change the stack, release c-storage, ship the BFF and the UI, run the deploy
+check (item 131), run the crash drill — which kills c-storage and reboots the box, `ops/drill.sh#L4-L7` — and make
+the operator with a one-time join link, `--replace` being the way back from lost passkeys
+(`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
+that client's root password from a terminal**: the only path is the console's route, which needs a live operator
+session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
+*Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
+the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
+*Trigger:* a client's own stack.
+
+## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
+
+`deleteClient` removes the index first — from that write the client is out of the list and every session of it is
+refused — then sweeps at most 200 records a press (`bff/src/clients.ts#L112-L174`), and a press after the index is
+gone resumes on the session alone (`bff/src/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
+in the file for good, reachable by nothing: `listClients` reads the index prefix alone (`clients.ts#L93-L94`), and
+the deletion record's only two readers are inside `clients.ts` itself (`#L67`, `#L145`) — no route, no page and no
+script lists one. The code is held, so the client cannot be made again (`#L67`), which is right; what is missing is
+anyone being told. *Fix:* a read of the deletion records on the Clients page or in the operator's own view, so an
+unfinished deletion is visible and can be pressed on. *Severity:* Low on ridge, where the data is invented; it is
+what makes the delete's promise in `docs/products.md` true or not for a real client. *Trigger:* a client's deletion
+seen stopping part way, or the first deletion of real records.
+
+## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; *parked* until a key must be replaced, or before a client's own stack (the client-readiness read, 2026-11-07)
+
+c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
+never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L487-L490`). The
+BFF's own service code and access key are made once the same way (`ops/app.sh#L99-L114`, "present, left as it is").
+Nothing in `ops/` rotates any of the four: there is no script, and no order written down. The two the BFF needs sit
+in the function's environment as plain variables (`ops/app.sh#L131-L137`), so anyone in the account who can read a
+function's configuration reads them, which `ops/check.sh#L140` notes while taking care not to print them. Rotating
+by hand means editing the box's file, re-pushing the function's environment and re-registering the service, in that
+order. *Fix:* one script that does the three in order and reads back, or the order written into `ops/README.md` as
+a runbook entry. Related: item 50 (how the end-of-run search handles the keys it already holds). *Trigger:* a key
+that must be replaced — a leak found by the end-of-run search, or an operator leaving — or before a client's own
+stack.
