@@ -459,15 +459,21 @@ at_repo() { GITHUB_ACTIONS='' REPO_DIR=$WORK/repo ops_match_main; }
 at_repo_job() { GITHUB_ACTIONS=true REPO_DIR=$WORK/repo ops_match_main; }
 passes "a clean tree passes, with the ignored build outputs present" at_repo
 passes "in the deploy job, the checked-out commit's tree passes with ignored build outputs present" at_repo_job
-# The ignores carry that pass: without them the same outputs are untracked files in deployed paths.
-mv "$WORK/repo/.gitignore" "$WORK/gitignore.away"
-refuses "  and without the scratch .gitignore the same tree is refused, so the ignores are what carry it" "differs from this commit's" at_repo_job
-mv "$WORK/gitignore.away" "$WORK/repo/.gitignore"
+# The ignores carry that pass: a base commit without the .gitignore, the same outputs untracked.
+git_repo rm -q .gitignore
+git_repo commit -q -m 'no ignores'
+git_repo update-ref refs/remotes/origin/main HEAD
+refuses "  and with a base that lacks the .gitignore the same tree is refused, so the ignores are what carry it" "differs from this commit's" at_repo_job
+git_repo reset -q --hard "$old_sha"
+git_repo update-ref refs/remotes/origin/main "$old_sha"
+echo '# one local line' >>"$WORK/repo/.gitignore"
+refuses "a clean tree with one line appended to .gitignore is refused, which would hide any new file" "differs from origin/main's" at_repo
+git_repo checkout -q -- .gitignore
 check "the line names the code, not the folder" "1 0" \
-  "$(at_repo 2>&1 | grep -c 'the code here (every path ci.yml deploys on) is origin/main') $(at_repo 2>&1 | grep -c 'ops/ is')"
+  "$(at_repo 2>&1 | grep -c 'the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) is origin/main') $(at_repo 2>&1 | grep -c 'ops/ is')"
 echo 'echo edited' >"$WORK/repo/ops/a.sh"
-refuses "an edited script is refused" "the code here (every path ci.yml deploys on) differs from origin/main's" at_repo
-refuses "  and in the job, against its own commit" "the code here (every path ci.yml deploys on) differs from this commit's" at_repo_job
+refuses "an edited script is refused" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from origin/main's" at_repo
+refuses "  and in the job, against its own commit" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from this commit's" at_repo_job
 git_repo checkout -q -- ops/a.sh
 echo 'echo new' >"$WORK/repo/ops/b.sh"
 refuses "a new script is refused" "differs from origin/main's" at_repo
@@ -546,7 +552,7 @@ refuses "a path added to the push trigger is compared, with no edit to lib.sh" "
 mk_scratch "$WORK/repo-bad" '      - extra/**
 '
 refuses "a push trigger the reader cannot parse stops the guard, naming the line" "      - extra/**" at_dir "$WORK/repo-bad"
-refuses "  and it is a refusal of a clean tree, never a comparison of nothing" "cannot read" at_dir "$WORK/repo-bad"
+check "  and it never reaches the comparison: no ok line is printed" 0 "$(at_dir "$WORK/repo-bad" 2>&1 | grep -c '^ok' || true)"
 
 echo "== mask writes its line whole (tee writes the same pipe, so it opens with a newline)"
 (GITHUB_ACTIONS=true mask thekey 3>"$WORK/fd3")
@@ -2074,7 +2080,7 @@ export OPS_LOG_DIR=$E2E/logs-rp-ops
 printf '# touched\n' >>"$E2E/repo/ops/README.md"
 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
 git -C "$E2E/repo" checkout -q -- ops/README.md
-refused_untouched "an ops/ that is not origin/main's is refused" "the code here (every path ci.yml deploys on) differs from origin/main's"
+refused_untouched "an ops/ that is not origin/main's is refused" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from origin/main's"
 export OPS_LOG_DIR=$E2E/logs-rp-head
 printf 'a note\n' >"$E2E/repo/NOTES-ROOT-PASSWORD.md"
 git -C "$E2E/repo" add NOTES-ROOT-PASSWORD.md

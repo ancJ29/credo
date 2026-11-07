@@ -177,16 +177,18 @@ main_synced() {
   ops_match_main
 }
 
-# ops_match_main: dies unless every path ci.yml's push trigger deploys on, in the working copy
-#   (tracked and untracked files), is as reviewed. Those paths are what the scripts here execute,
-#   deploy or seed (ridge_cli runs scripts/ and the packages it imports), and the list is read from
-#   the base's own ci.yml through push_paths: one home, and a working copy cannot shorten it.
+# ops_match_main: dies unless the tracked and untracked files git does not ignore, under every path
+#   ci.yml's push trigger deploys on, and the root .gitignore (one local line there would hide a new
+#   file under any of them), are as reviewed. Ignored files (node_modules, dist) are not compared.
+#   Those paths are what the scripts here execute, deploy or seed (ridge_cli runs scripts/ and the
+#   packages it imports), and the list is read from the base's own ci.yml through push_paths: one
+#   home, and a working copy cannot shorten it.
 #   By hand: equal to origin/main's.
 #   In the deploy job (GITHUB_ACTIONS=true): equal to the commit checked out, which must be a commit
 #   of origin/main. A push that lands during the run moves origin/main on, and the job still runs
 #   what it checked out; comparing with the moved ref would turn a sound deploy red.
 ops_match_main() {
-  local base=origin/main whose="origin/main's" ci paths path
+  local base=origin/main whose="origin/main's" ci paths path rc
   local deployed=()
   git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
   if [ "${GITHUB_ACTIONS:-}" = true ]; then
@@ -194,14 +196,23 @@ ops_match_main() {
     base=HEAD
     whose="this commit's"
   fi
-  ci=$(git -C "$REPO_DIR" show "$base:.github/workflows/ci.yml") || die "$whose .github/workflows/ci.yml cannot be read, so the paths a push deploys on are not known: nothing was written"
-  paths=$(push_paths /dev/stdin <<<"$ci") || exit 1
+  # push_paths reads a real file, as seed.sh gives it: the base's ci.yml, removed on every way out.
+  ci=$(mktemp "${TMPDIR:-/tmp}/ci-base.XXXXXX")
+  git -C "$REPO_DIR" show "$base:.github/workflows/ci.yml" >"$ci" || {
+    rm -f "$ci"
+    die "$whose .github/workflows/ci.yml cannot be read, so the paths a push deploys on are not known: nothing was written"
+  }
+  rc=0
+  paths=$(push_paths "$ci") || rc=$?
+  rm -f "$ci"
+  [ "$rc" = 0 ] || exit 1
   while IFS= read -r path; do deployed+=("$path"); done <<<"$paths"
+  deployed+=(.gitignore)
   if ! git -C "$REPO_DIR" diff --quiet "$base" -- "${deployed[@]}" ||
     [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- "${deployed[@]}")" ]; then
-    die "the code here (every path ci.yml deploys on) differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
+    die "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
   fi
-  ok "the code here (every path ci.yml deploys on) is $whose"
+  ok "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) is $whose"
 }
 
 region_enabled() {
