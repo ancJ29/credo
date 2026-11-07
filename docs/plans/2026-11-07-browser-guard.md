@@ -83,7 +83,7 @@ the touched package's gate, `shellcheck -x walk/run.sh`, the step's rows each se
   1,993), with about 115 of it the fourteen-row table's pipes, and one tightening pass taken.
   `prettier --check` inspects nothing here — `.prettierignore` excludes `*.md` — so the page is held
   by `wc -w` and a read.
-- [ ] **2. The re-check.** 15 minutes. Done: rows 1 to 6, each seen red first, in
+- [x] **2. The re-check.** 15 minutes. Built: `browser_gone` and the per-pass check in `pass_of` (a pass stops with 5), one naming line after the lanes join, a first red in the verdict; five cases in `walk-run.test.ts` (rows 1 to 4 and 6 red without the guard, row 5 is the stays-in-place run), `scripts` gate 292 tests, 100 %, `shellcheck -x walk/run.sh` clean. Done: rows 1 to 6, each seen red first, in
   `cd scripts && npx vitest run src/walk-run.test.ts`; `shellcheck -x walk/run.sh` clean. **The
   rehearsal of the failure is row 2's own test:** the harness's shimmed browser, a file in the test's
   temp folder, is removed between two passes of a run of the real `walk/run.sh`, and the output is

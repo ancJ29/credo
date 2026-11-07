@@ -88,7 +88,17 @@ echo "\${SHIM_CHROMIUM:-}"`,
   shim(
     'pnpm',
     `if [ "$1" = --version ]; then echo "\${SHIM_PNPM:-12.10.1}"; exit 0; fi
-if [ "$1" = stack ] || [ "$1" = fake ]; then shift 2; exec "$@"; fi
+if [ "$1" = stack ] || [ "$1" = fake ]; then
+  shift 2
+  if [ -n "$SHIM_PRUNE" ]; then
+    # a pass that ends with the browser taken from under the run, as another project's install does
+    "$@"; rc=$?
+    n=$(cat "$SHIM_PRUNE_COUNT" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$SHIM_PRUNE_COUNT"
+    [ "$n" -lt "\${SHIM_PRUNE_AFTER:-1}" ] || rm -rf "$SHIM_PRUNE"
+    exit $rc
+  fi
+  exec "$@"
+fi
 case " $* " in *" -g "*) n=\${SHIM_MATCHES:-1} ;; *) n=\${SHIM_LISTED:-2} ;; esac
 case " $* " in
   *" --list "*)
@@ -850,5 +860,104 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
 
     expect(code).toBe(1);
     expect(out).toMatch(/== verdict: red: fake operator took 1 of 2 tests/);
+  });
+});
+
+describe('walk/run.sh when the browser is taken from under the run', () => {
+  /** A browser folder of this test's own, so taking it spares every other test (never the machine's). */
+  const ownBrowser = () => {
+    const base = join(temp, `pw-own-${count++}`);
+    const dir = join(base, 'chromium-1248');
+    const shell = join(base, 'chromium_headless_shell-1248');
+    mkdirSync(dir, { recursive: true });
+    mkdirSync(shell);
+    const exe = join(dir, 'chrome');
+    writeFileSync(exe, '');
+    return { exe, shell };
+  };
+  const taken = (l: ReturnType<typeof layout>, prune: string, after: number) => ({
+    SHIM_PRUNE: prune,
+    SHIM_PRUNE_AFTER: String(after),
+    SHIM_PRUNE_COUNT: join(l.root, 'prune-count.txt'),
+  });
+  const committedBases = (l: ReturnType<typeof layout>) => {
+    run(l, ['piece-2', '--moved', 'all', '--write']);
+    git(l.tree, 'add', '.');
+    git(l.tree, 'commit', '-q', '-m', 'bases');
+  };
+
+  it('a pass whose browser is gone does not start, and the run names the prune, its path, its revision and the way back', () => {
+    const l = layout();
+    const b = ownBrowser();
+
+    const { code, out } = run(l, ['piece-2'], { SHIM_CHROMIUM: b.exe, ...taken(l, b.exe, 1) });
+
+    expect(code).toBe(1);
+    expect(out).toContain('the browser is gone; the lane stopped before full-1 piece-2');
+    expect(out).not.toContain('-- stack 1/1: full-1');
+    expect(out).toContain(
+      `the browser was removed during the run: the executable ${b.exe} (Chromium r1248) is gone`,
+    );
+    expect(out).toContain(
+      'Restore it: run once: pnpm --filter @credo/walk exec playwright install chromium',
+    );
+    expect(out).toMatch(/== verdict: red: the browser was removed during the run: the executable /);
+    expect(out.indexOf('the browser was removed during the run')).toBeLessThan(
+      out.indexOf('== 4/6 the raw count'),
+    );
+  });
+
+  it('a browser taken between two passes leaves every base picture as it was', () => {
+    const l = layout();
+    committedBases(l);
+    const b = ownBrowser();
+
+    const { code, out } = run(l, ['piece-2', '--write', '--moved', 'all'], {
+      SHIM_CHROMIUM: b.exe,
+      ...taken(l, b.exe, 2),
+    });
+
+    expect(code).toBe(1);
+    expect(out).toContain('the browser was removed during the run');
+    expect(out).toContain('piece-2: not written: the read is red');
+    expect(git(l.tree, 'status', '--porcelain')).toBe('');
+  });
+
+  it('a headless shell folder gone, the executable still there, is named the same way', () => {
+    const l = layout();
+    const b = ownBrowser();
+
+    const { code, out } = run(l, ['piece-2'], { SHIM_CHROMIUM: b.exe, ...taken(l, b.shell, 1) });
+
+    expect(code).toBe(1);
+    expect(out).toContain(
+      `the browser was removed during the run: the headless shell folder ${b.shell} (Chromium r1248) is gone`,
+    );
+  });
+
+  it('a browser taken during the last pass is named in the verdict, before the raw count', () => {
+    const l = layout();
+    const b = ownBrowser();
+
+    const { code, out } = run(l, ['piece-2'], { SHIM_CHROMIUM: b.exe, ...taken(l, b.exe, 3) });
+
+    expect(code).toBe(1);
+    expect(out).toContain('-- stack 1/1: full-2, piece-2');
+    expect(out).not.toContain('the browser is gone; the lane stopped');
+    expect(out.indexOf('the browser was removed during the run')).toBeLessThan(
+      out.indexOf('== 4/6 the raw count'),
+    );
+    expect(out).toMatch(/== verdict: red: the browser was removed during the run/);
+  });
+
+  it('a run whose browser stays in place runs every pass and says nothing of a browser', () => {
+    const l = layout();
+    const b = ownBrowser();
+
+    const { code, out } = run(l, ['piece-2', '--moved', 'all'], { SHIM_CHROMIUM: b.exe });
+
+    expect(code).toBe(0);
+    expect(out).toContain('-- stack 1/1: full-2, piece-2');
+    expect(out).not.toContain('the browser');
   });
 });
