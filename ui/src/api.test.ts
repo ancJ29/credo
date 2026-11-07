@@ -552,6 +552,50 @@ describe('the API client', () => {
       ]);
     });
 
+    it('reads one product with its version, null when there is none, and saves over the version read: a moved record is a conflict, not an error', async () => {
+      const product = {
+        id,
+        code: 'VT-1',
+        name: 'Một',
+        unit: 'bao',
+        price: 95000,
+        stocked: true,
+        extra: {},
+      };
+      const doc = { product, version: 'p1' };
+      const { calls, api } = fake(
+        json(doc),
+        json({}, 404),
+        json({}, 403),
+        json(doc),
+        json({}, 409),
+        json({}, 503),
+      );
+      const request = {
+        version: 'p1',
+        name: 'Một',
+        unit: 'bao',
+        price: 95000,
+        stocked: true,
+        extra: {},
+      };
+
+      expect(await api.getProduct(product.id)).toEqual(doc);
+      expect(await api.getProduct(product.id)).toBeNull();
+      await expect(api.getProduct(product.id)).rejects.toMatchObject({ status: 403 });
+      expect(await api.saveProduct(product.id, request)).toEqual({ kind: 'saved', doc });
+      expect(await api.saveProduct(product.id, request)).toEqual({ kind: 'conflict' });
+      await expect(api.saveProduct(product.id, request)).rejects.toMatchObject({ status: 503 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/products/${product.id}`],
+        ['GET', `/api/products/${product.id}`],
+        ['GET', `/api/products/${product.id}`],
+        ['PUT', `/api/products/${product.id}`],
+        ['PUT', `/api/products/${product.id}`],
+        ['PUT', `/api/products/${product.id}`],
+      ]);
+    });
+
     it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
       const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
       const request = { version: 'e1', name: 'Lan', extra: {} };

@@ -45,6 +45,8 @@ import {
   normaliseEmployeeCode,
   normaliseSignInName,
   passwordIsValid,
+  type Product,
+  type ProductDoc,
   productSchema,
   QR_MINUTES,
   qrLink,
@@ -235,6 +237,8 @@ export function createFakeApi({
   const products = new Map(DEMO_PRODUCTS.map((one) => [one.id, productSchema.parse(one)]));
   /** The version each customer is at, moved by a save. */
   const customerVersions = new Map(DEMO_CUSTOMERS.map((one) => [one.id, 1]));
+  /** The version each product is at, moved by a save. */
+  const productVersions = new Map(DEMO_PRODUCTS.map((one) => [one.id, 1]));
   /** The week of orders and requests, each at the version it is at, and the last number given. */
   const orders = new Map(DEMO_ORDERS.map((one) => [one.id, orderSchema.parse(one)]));
   const requests = new Map(
@@ -506,6 +510,10 @@ export function createFakeApi({
   const customerDocOf = (found: Customer): CustomerDoc => ({
     customer: structuredClone(found),
     version: `c${customerVersions.get(found.id)}`,
+  });
+  const productDocOf = (found: Product): ProductDoc => ({
+    product: structuredClone(found),
+    version: `p${productVersions.get(found.id)}`,
   });
   /** A list in code order, as the BFF answers it. */
   const inOrder = <T extends { code: string }>(held: Map<string, T>) =>
@@ -834,6 +842,34 @@ export function createFakeApi({
         mayOnly('orders.canView');
         return inOrder(products);
       }),
+
+    getProduct: (id) =>
+      call('getProduct', () => {
+        mayOnly('orders.canView');
+        const found = products.get(id);
+        return found ? productDocOf(found) : null;
+      }),
+
+    saveProduct: (id, request) =>
+      call(
+        'saveProduct',
+        () => {
+          mayOnly('orders.canEdit');
+          const found = products.get(id);
+          if (!found) throw notFound();
+          if (request.version !== `p${productVersions.get(id)}`) {
+            return { kind: 'conflict' as const };
+          }
+          found.name = request.name;
+          found.unit = request.unit;
+          found.price = request.price;
+          found.stocked = request.stocked;
+          found.extra = structuredClone(request.extra);
+          productVersions.set(id, (productVersions.get(id) as number) + 1);
+          return { kind: 'saved' as const, doc: productDocOf(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
 
     importCustomers: (rows) =>
       call('importCustomers', () => {

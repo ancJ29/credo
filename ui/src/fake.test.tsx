@@ -8,6 +8,7 @@ import {
   importCustomersReplySchema,
   importProductsReplySchema,
   customerDocSchema,
+  productDocSchema,
   customerListReplySchema,
   deliveryDocSchema,
   deliveryListReplySchema,
@@ -215,6 +216,21 @@ describe('the fake Api', () => {
       savedCustomer.kind === 'saved' ? savedCustomer.doc : null,
     );
     parses('listProducts', productListReplySchema, { products: await api.listProducts() });
+    const firstProduct = (await api.listProducts())[0];
+    parses('getProduct', productDocSchema, await api.getProduct(firstProduct.id));
+    const savedProduct = await api.saveProduct(firstProduct.id, {
+      version: 'p1',
+      name: 'Đổi',
+      unit: 'bao',
+      price: 1000,
+      stocked: false,
+      extra: {},
+    });
+    parses(
+      'saveProduct',
+      productDocSchema,
+      savedProduct.kind === 'saved' ? savedProduct.doc : null,
+    );
     parses(
       'importCustomers',
       importCustomersReplySchema,
@@ -418,6 +434,8 @@ describe('the fake Api', () => {
         'getCustomer',
         'saveCustomer',
         'listProducts',
+        'getProduct',
+        'saveProduct',
         'importCustomers',
         'importProducts',
         'listOrders',
@@ -995,6 +1013,51 @@ describe('the fake Api’s staff', () => {
     );
   });
 
+  it('A product is read with a version, saved over it, and a save over an older one is a conflict; one not there is null, and saving it is a 404', async () => {
+    const api = fake();
+    const one = (await api.listProducts())[0];
+    const read = await api.getProduct(one.id);
+    expect(read).toMatchObject({ product: one, version: 'p1' });
+    const save = (version: string) =>
+      api.saveProduct(one.id, {
+        version,
+        name: 'Đổi',
+        unit: 'tấn',
+        price: 120000,
+        stocked: !one.stocked,
+        extra: { note: 'x' },
+      });
+
+    const saved = await save('p1');
+    expect(saved).toMatchObject({
+      kind: 'saved',
+      doc: {
+        product: {
+          name: 'Đổi',
+          unit: 'tấn',
+          price: 120000,
+          stocked: !one.stocked,
+          extra: { note: 'x' },
+        },
+        version: 'p2',
+      },
+    });
+    expect(await save('p1')).toEqual({ kind: 'conflict' });
+    expect(await api.getProduct('missing')).toBeNull();
+    expect(
+      await status(
+        api.saveProduct('missing', {
+          version: 'p1',
+          name: 'x',
+          unit: 'x',
+          price: 1,
+          stocked: true,
+          extra: {},
+        }),
+      ),
+    ).toBe(404);
+  });
+
   it('A save over a newer version is a conflict, and a person who is not there is a 404', async () => {
     const api = fake();
     const id = bao?.id ?? '';
@@ -1291,6 +1354,7 @@ describe('the cue', () => {
       'addEmployee',
       'saveEmployee',
       'saveCustomer',
+      'saveProduct',
       'archiveEmployee',
       'restoreEmployee',
     ]) {

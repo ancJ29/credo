@@ -689,6 +689,19 @@ export const en = {
       note: 'Note',
       notThere:
         'This product is not in the list. It may have been taken out, or the address is wrong.',
+      save: 'Save',
+      saved: 'Saved.',
+      saveFailed: 'The product was not saved. What you typed is still here: try again.',
+      saveForbidden:
+        'The product was not saved: you may no longer change products. What you typed is still shown.',
+      saveRefused:
+        'The product was not saved: the system refused what you typed. What you typed is still here: check each box.',
+      conflict: 'Someone saved newer details first. Your changes were not saved.',
+      conflictReload: 'Show the newer details',
+      nameNeeded: 'Please write the product’s name, at most 200 characters.',
+      unitNeeded: 'Please write the unit, at most 20 characters.',
+      priceInvalid: 'Write a whole number of đồng above zero.',
+      noteTooLong: 'This note is too long to save. Please shorten it.',
     },
   },
   orders: {

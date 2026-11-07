@@ -621,7 +621,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, fifteen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, seventeen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -641,6 +641,8 @@ describe('the walks', () => {
       ['lists-13-product-no-note', 13, 'main'],
       ['lists-14-customer-saved', 14, 'main'],
       ['lists-15-customer-conflict', 15, 'wrong'],
+      ['lists-16-product-saved', 16, 'main'],
+      ['lists-17-product-conflict', 17, 'wrong'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -684,9 +686,12 @@ describe('the walks', () => {
         expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
       }
       expect(screen.scene!.as, screen.id).toBeUndefined();
-      // only the conflict is cued, and the spec opens it with the same cue
+      // only the two conflicts are cued, and the spec opens each with the same cue
       expect(screen.scene!.cue, screen.id).toBe(
-        screen.id === 'lists-15-customer-conflict' ? 'saveCustomer:409' : undefined,
+        {
+          'lists-15-customer-conflict': 'saveCustomer:409',
+          'lists-17-product-conflict': 'saveProduct:409',
+        }[screen.id],
       );
       if (screen.scene!.cue) expect(before, screen.id).toContain(`, '${screen.scene!.cue}');`);
     }

@@ -201,6 +201,12 @@ const PHONE_CHANGED: Step[] = [
 ];
 const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
 const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
+/** A new price typed and saved: on the product with no note for the saved notice, and on the one
+ * with a note for a save that someone else's came before. */
+const PRICE_TYPED: Step[] = [
+  { fill: 'lists.columns.price', text: '175000' },
+  { press: 'lists.products.save' },
+];
 /** A customer or a product as the order form lists it in its choice. */
 const customerChoice = (code: string) => {
   const one = DEMO_CUSTOMERS.find((candidate) => candidate.code === code)!;
@@ -1342,8 +1348,8 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: `/products/${NOTED_PRODUCT.id}` },
         sentence: {
-          en: 'A product’s page: code, name, unit, price and stock on the left, the note on the right',
-          vi: 'Trang sản phẩm: mã, tên, đơn vị, giá, tồn kho bên trái, ghi chú bên phải',
+          en: 'A product’s page: code, name, unit, price and stock on the left, the note on the right, each to type in, with a Save',
+          vi: 'Trang sản phẩm: mã, tên, đơn vị, giá, tồn kho bên trái, ghi chú bên phải, mỗi mục gõ được, có nút Lưu',
         },
         question: 'Does this show the office what the old app showed about a product?',
       },
@@ -1353,10 +1359,10 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: `/products/${PLAIN_PRODUCT.id}` },
         sentence: {
-          en: 'A product with no note: one column at the full width, no blank half',
-          vi: 'Sản phẩm không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
+          en: 'A product with no note: an empty note card to write one into',
+          vi: 'Sản phẩm chưa có ghi chú: thẻ ghi chú còn trống để viết vào',
         },
-        question: 'Does a product with no note read well in one full column?',
+        question: 'Does a product with no note offer an empty note to write one into?',
       },
       {
         id: 'lists-14-customer-saved',
@@ -1381,6 +1387,32 @@ export const WALKS: Walk[] = [
         sentence: {
           en: 'Someone else saved the customer first, what was typed kept',
           vi: 'Người khác đã lưu khách hàng trước, nội dung đã nhập vẫn còn',
+        },
+        question: 'Would the office know someone else saved first, and how to see what they saved?',
+      },
+      {
+        id: 'lists-16-product-saved',
+        number: 16,
+        path: 'main',
+        scene: { path: `/products/${PLAIN_PRODUCT.id}`, steps: PRICE_TYPED },
+        sentence: {
+          en: 'A product saved: a new price typed and saved, a green notice',
+          vi: 'Sản phẩm đã lưu: giá mới vừa gõ đã được lưu, có thông báo màu xanh',
+        },
+        question: 'Would the office know the change was saved?',
+      },
+      {
+        id: 'lists-17-product-conflict',
+        number: 17,
+        path: 'wrong',
+        scene: {
+          path: `/products/${NOTED_PRODUCT.id}`,
+          cue: 'saveProduct:409',
+          steps: PRICE_TYPED,
+        },
+        sentence: {
+          en: 'Someone else saved the product first, what was typed kept',
+          vi: 'Người khác đã lưu sản phẩm trước, nội dung đã nhập vẫn còn',
         },
         question: 'Would the office know someone else saved first, and how to see what they saved?',
       },
