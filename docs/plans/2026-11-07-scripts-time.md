@@ -98,10 +98,18 @@ runs every line while checking less keeps the package at 100 %. So:
       all 22 of the package's files with their seconds and the package's total, from both logs
       named above, and the share the longest file holds. **5 min.** (`.prettierignore` holds
       `*.md`, so a prettier green on this page inspects nothing and is no evidence for it.)
-- [ ] **2. Split `src/demo/apply.test.ts` along its ten `describe` blocks.** No assertion, no name
+- [x] **2. Split `src/demo/apply.test.ts` along its ten `describe` blocks.** No assertion, no name
       and no product line changed. *Done when* the package's five gate steps are green:
       `pnpm -r run typecheck && eslint . && prettier --check . && pnpm --filter @credo/scripts test && knip`,
       the `Tests` line still 281 and coverage 100 %. **12 min.**
+      *Done 2026-11-07:* ten files `src/demo/apply.<block>.test.ts` and a shared `src/demo/apply-support.ts`
+      (the old header's helpers; each file starts its own c-storage); the 48 tests listed by `vitest list`
+      before and after are the same 48 names, and the ten blocks' text is identical line for line. All five
+      steps green, log `20261107-1414-scripts-time-step2-gate-rerun.log`: `Tests 287` over 31 files (the plan's
+      281 was stale; the 239 outside this file are untouched), coverage 100 %, the package's `Duration`
+      108.48 s at load 7.34 to 12.68 (before: 199.19 s on a quiet Mac). One departure: the helper file is
+      counted by coverage and its own guards are never reached, so it is listed in `scripts/vitest.config.ts`'s
+      `exclude` with its reason, as the old test file was.
 - [ ] **3. Trim only what step 2 leaves over the threshold**, to the shared-fill pattern the file
       already holds. *Done when* each trimmed test has been seen red once, the same five steps are
       green, and no file is over 86.7 s. Skipped entirely if step 2 clears the threshold. **10 min.**
