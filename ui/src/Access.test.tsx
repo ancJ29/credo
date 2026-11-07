@@ -39,6 +39,8 @@ describe('a route guard', () => {
       ).toEqual(['Settings']);
       expect(drawn.api.listEmployees, path).not.toHaveBeenCalled();
       expect(drawn.api.getEmployee, path).not.toHaveBeenCalled();
+      expect(drawn.api.getCustomer, path).not.toHaveBeenCalled();
+      expect(drawn.api.getProduct, path).not.toHaveBeenCalled();
       expect(drawn.api.getStaffSetup, path).not.toHaveBeenCalled();
       expect(drawn.api.listCustomers, path).not.toHaveBeenCalled();
       expect(drawn.api.listProducts, path).not.toHaveBeenCalled();

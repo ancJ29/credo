@@ -268,6 +268,27 @@ main() {
   chromium_rev="$(printf '%s' "$chromium_path" | sed -n 's#.*/chromium-\([0-9][0-9]*\)/.*#\1#p')"
   shell_dir="$(dirname "$(printf '%s' "$chromium_path" | sed 's#/chromium-[0-9][0-9]*/.*#/x#')")/chromium_headless_shell-$chromium_rev"
   [ -n "$chromium_rev" ] && [ -d "$shell_dir" ] || refuse "Playwright's headless shell is not installed (looked for ${shell_dir:-none}): $install_hint"
+  # The browser read above must still be there at each pass: an install by another project here can
+  # delete it mid-run. Sets browser_what to what is missing; returns 0 when something is.
+  browser_what=""
+  browser_gone() {
+    browser_what=""
+    [ -e "$chromium_path" ] || browser_what="the executable $chromium_path"
+    [ -d "$shell_dir" ] || browser_what="${browser_what:+$browser_what and }the headless shell folder $shell_dir"
+    [ -n "$browser_what" ]
+  }
+  # An install by another project deletes every browser no claim names, and a claim naming this
+  # worktree dies with it: the trunk's install holds the claim. Written once if absent (a terminal
+  # that can write the browser folder), checked every run.
+  local claim_line
+  claim_line="$(git -C "$tree" worktree list --porcelain 2>/dev/null | tool claim "$(dirname "$shell_dir")" "$chromium_rev")" || {
+    # the way to write it is named only where writing was the failure; --checks needs a walk named
+    case "$claim_line" in
+      *"cannot be written"*) claim_line="$claim_line; from a terminal that can write the browser folder, once: bash $self $(walk_names | head -1) --checks" ;;
+    esac
+    refuse "$claim_line"
+  }
+  echo "  $claim_line"
   echo "  node $node_now, pnpm $pnpm_now, Playwright $pw_version, Chromium r$chromium_rev; load $load (at most $max_load); no gate lock; $(git -C "$tree" rev-parse --abbrev-ref HEAD) at $sha, clean, main in"
 
   # Playwright's own listing of each walk's projects (placeholders for what the specs read when they
@@ -350,6 +371,10 @@ main() {
     [ ! -e "$gate_lock" ] || {
       echo "  the gate lock $gate_lock appeared; the lane stopped before $phase $w"
       return 3
+    }
+    ! browser_gone || {
+      echo "  the browser is gone; the lane stopped before $phase $w"
+      return 5
     }
     echo "-- stack $4/$5: $phase, $w${pat:+, $pat} (load $(load_now); elapsed $(elapsed))"
     mkdir -p "$run/$phase/$w"
@@ -481,19 +506,27 @@ main() {
   set +m
   stop_if_interrupted
   [ -z "$lock_hit" ] || finish "red: the gate lock $gate_lock appeared; every lane was stopped; what ran is in $run" 1
-  local lrc
+  local lrc browser_lost=""
   for ((li = 0; li < ${#lane_ids[@]}; li++)); do
     lrc="$(cat "$run/lane-${lane_ids[$li]}.rc" 2>/dev/null || echo unread)"
     case "$lrc" in
       0) ;;
       3) finish "red: the gate lock $gate_lock appeared; lane ${lane_ids[$li]} stopped" 1 ;;
       *)
+        [ "$lrc" != 5 ] || browser_lost=yes
         reds+=("lane ${lane_ids[$li]} ended with $lrc")
         # a lane that died may have read a walk of it as green when it was not: none of its walks is written
         red_walks+="${lane_walks[$li]} "
         ;;
     esac
   done
+  # A browser taken during the run (a lane stopped on it, or one gone since the last pass) is said
+  # once, before any count, so the reds below read as what they are and not as moved pixels.
+  if [ -n "$browser_lost" ] || browser_gone; then
+    [ -n "$browser_what" ] || browser_gone || browser_what="the browser read at the start"
+    echo "  the browser was removed during the run: $browser_what (Chromium r$chromium_rev) is gone, so a pass without its pictures is this and not moved pixels; something deleted it, most often another project's Playwright install. Restore it: $install_hint"
+    reds=("the browser was removed during the run: $browser_what" ${reds[@]+"${reds[@]}"})
+  fi
   for walk in "${walks[@]}"; do
     [ "$(walk_field "$walk" 3)" = - ] || read_passes fake "$walk" "$(want_tests "$walk" 3)"
     read_passes full-1 "$walk" "$(want_tests "$walk" 4)"

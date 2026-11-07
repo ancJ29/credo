@@ -8,7 +8,7 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
 - **Read [collaboration](docs/conventions/collaboration.md) before working here,
   [documentation](docs/conventions/documentation.md) before writing any doc, `CLAUDE.md` or
   comment, or committing any path, and [QA](docs/conventions/qa.md) before writing any test or
-  feature plan.**
+  feature plan, and before running any check on this machine or writing its log.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`

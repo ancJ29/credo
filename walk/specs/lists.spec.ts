@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * The customers and products from Excel, one walk of fifteen screens, each in Vietnamese and in
- * English at the three widths (15 × 2 × 3 = 90). The `lists-fake` project runs it on `pnpm fake -- …`
+ * The customers and products from Excel, one walk of seventeen screens, each in Vietnamese and in
+ * English at the three widths (17 × 2 × 3 = 102). The `lists-fake` project runs it on `pnpm fake -- …`
  * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
  * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
@@ -27,6 +27,8 @@ const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 /** The note written on screen 14 and the phone retyped on screen 15: the same as the walk's steps. */
 const NOTE_WRITTEN = 'Giao hàng buổi sáng, gọi trước khi đến.';
 const NEW_PHONE = '0903 111 999';
+/** The price typed on screens 16 and 17: the same as the walk's steps. */
+const NEW_PRICE = '175000';
 
 const FULL = () => test.info().project.name === 'lists-full';
 
@@ -43,22 +45,38 @@ async function seed(): Promise<Seeded> {
 /** The client the page's latest opening made on the stack, for a save that goes in beside it. */
 const clients = new WeakMap<Page, Seeded & { handle: string }>();
 
-/** Someone else saves a data-set customer first, through the real API, so the page's own save meets
- * the BFF's 409: no stub, the refusal and its wording are the product's. The fake answers the same
- * save with a cue. */
-async function someoneSavesFirst(page: Page, code: string) {
+/** Someone else saves a data-set customer or product first, through the real API, so the page's
+ * own save meets the BFF's 409: no stub, the refusal and its wording are the product's. The fake
+ * answers the same save with a cue. The other's save changes one thing in `extra`, which the page's
+ * own never touches, and sends the rest as read. */
+async function someoneSavesFirst(page: Page, list: 'customers' | 'products', code: string) {
   const client = clients.get(page)!;
   const headers = { 'x-client-code': client.code, 'x-auth-id': client.handle };
-  const listed = (await (await page.request.get('/api/customers', { headers })).json()) as {
-    customers: { id: string; code: string }[];
+  const listed = (await (await page.request.get(`/api/${list}`, { headers })).json()) as Record<
+    string,
+    { id: string; code: string }[]
+  >;
+  const id = listed[list].find((one) => one.code === code)!.id;
+  const read = (await (await page.request.get(`/api/${list}/${id}`, { headers })).json()) as Record<
+    string,
+    unknown
+  >;
+  const {
+    id: _id,
+    code: _code,
+    ...fields
+  } = read[list === 'customers' ? 'customer' : 'product'] as {
+    id: string;
+    code: string;
+    extra: object;
   };
-  const id = listed.customers.find((one) => one.code === code)!.id;
-  const { customer, version } = (await (
-    await page.request.get(`/api/customers/${id}`, { headers })
-  ).json()) as { customer: { name: string; extra: object }; version: string };
-  const theirs = await page.request.put(`/api/customers/${id}`, {
+  const theirs = await page.request.put(`/api/${list}/${id}`, {
     headers,
-    data: { version, name: customer.name, extra: { ...customer.extra, phone: '0900 000 111' } },
+    data: {
+      ...fields,
+      version: read['version'],
+      extra: { ...fields.extra, [list === 'customers' ? 'phone' : 'tier']: '0900 000 111' },
+    },
   });
   expect(theirs.ok()).toBe(true);
 }
@@ -225,9 +243,12 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('textbox', { name: words.lists.customers.note })).toHaveValue('');
   await at('lists-11-customer-no-note');
 
+  /** The price box, named by its label alone: its description is a separate text. */
+  const priceLabel = exactly(words.lists.columns.price);
+
   /** A product's page opened from the list by the name's link, for the same reason. */
-  const openProduct = async (name: string) => {
-    await open(page, language, '/products');
+  const openProduct = async (name: string, cue?: string) => {
+    await open(page, language, '/products', cue);
     await page.getByRole('link', { name, exact: true }).click();
   };
 
@@ -239,12 +260,13 @@ async function walk(page: Page, language: Language, width: number) {
   ).toBeVisible();
   await at('lists-12-product');
 
-  // 13. A product with no note: one column at the full width.
+  // 13. A product with no note: the Note card is there, empty, to write one into.
   await openProduct(PLAIN_PRODUCT.name);
   await expect(title(PLAIN_PRODUCT.name)).toBeVisible();
   await expect(
     page.getByRole('heading', { level: 3, name: words.lists.products.note }),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(page.getByRole('textbox', { name: words.lists.products.note })).toHaveValue('');
   await at('lists-13-product-no-note');
 
   // 14. A note written into the empty card and saved: the green notice.
@@ -260,10 +282,27 @@ async function walk(page: Page, language: Language, width: number) {
   await openCustomer(NOTED_CUSTOMER.name, 'saveCustomer:409');
   await expect(title(NOTED_CUSTOMER.name)).toBeVisible();
   await page.getByRole('textbox', { name: exactly(words.lists.columns.phone) }).fill(NEW_PHONE);
-  if (FULL()) await someoneSavesFirst(page, NOTED_CUSTOMER.code);
+  if (FULL()) await someoneSavesFirst(page, 'customers', NOTED_CUSTOMER.code);
   await press(words.lists.customers.save);
   await expect(page.getByRole('alert')).toContainText(words.lists.customers.conflict);
   await at('lists-15-customer-conflict');
+
+  // 16. A new price typed into the product with no note and saved: the green notice.
+  await openProduct(PLAIN_PRODUCT.name);
+  await expect(title(PLAIN_PRODUCT.name)).toBeVisible();
+  await page.getByRole('textbox', { name: priceLabel }).fill(NEW_PRICE);
+  await press(words.lists.products.save);
+  await expect(page.getByRole('alert')).toHaveText(words.lists.products.saved);
+  await at('lists-16-product-saved');
+
+  // 17. Someone else saved the product first, as on screen 15.
+  await openProduct(NOTED_PRODUCT.name, 'saveProduct:409');
+  await expect(title(NOTED_PRODUCT.name)).toBeVisible();
+  await page.getByRole('textbox', { name: priceLabel }).fill(NEW_PRICE);
+  if (FULL()) await someoneSavesFirst(page, 'products', NOTED_PRODUCT.code);
+  await press(words.lists.products.save);
+  await expect(page.getByRole('alert')).toContainText(words.lists.products.conflict);
+  await at('lists-17-product-conflict');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -274,7 +313,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all fifteen screens in ${name}`, async ({ page }) => {
+      test(`walks all seventeen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

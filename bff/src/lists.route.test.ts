@@ -744,3 +744,233 @@ describe('A customer is read and saved on its own route, over the version it was
     expect(reply.body).not.toContain(id);
   });
 });
+
+describe('A product is read and saved on its own route, over the version it was read at', () => {
+  const asked = (version: string, over: object = {}) => ({
+    version,
+    name: 'Xi măng PCB40',
+    unit: 'tấn',
+    price: 1850000,
+    stocked: false,
+    extra: { note: 'Giao tận nơi' },
+    ...over,
+  });
+  const route = (id: string) => `${ROUTES.products}/${id}`;
+  const storedNow = async (t: Tenant, id: string) =>
+    (await t.client.getRecord(t.keys.product(id)))?.data;
+  type Doc = {
+    product: { id: string; code: string; name: string; unit: string; price: number };
+    version: string;
+  };
+  const read = async (call: Tenant['rootCall'], id: string) =>
+    (await call.get(route(id))).json<Doc>();
+  const SEEDED = { extra: { note: 'Cũ', zalo: 'kept' } };
+
+  it('reads one product with its version, and answers 404 to an id that is no id and to one the company lacks', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+
+    const doc = await read(t.rootCall, held.id);
+
+    expect(doc.product).toEqual(held);
+    expect(doc.version).toMatch(/^[0-9a-f]{64}$/);
+    expect((await t.rootCall.get(route('nope'))).statusCode).toBe(404);
+    expect((await t.rootCall.get(route(randomUUID()))).statusCode).toBe(404);
+    expect((await t.rootCall.send('PUT', route(randomUUID()), asked(doc.version))).statusCode).toBe(
+      404,
+    );
+  });
+
+  it('row 1: stores the name, unit, price, stock and note over the version read, and answers the record with its new version', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+    const before = await read(t.rootCall, held.id);
+    const extra = { note: 'Giao tận nơi', zalo: 'kept' };
+    const next = { name: 'Xi măng PCB40', unit: 'tấn', price: 1850000, stocked: false, extra };
+
+    const reply = await t.rootCall.send('PUT', route(held.id), asked(before.version, next));
+
+    expect(reply.statusCode).toBe(200);
+    const doc = reply.json<Doc>();
+    expect(doc.product).toEqual({ ...held, ...next });
+    expect(doc.version).not.toBe(before.version);
+    expect(await read(t.rootCall, held.id)).toEqual(doc);
+    expect(await storedNow(t, held.id)).toEqual({ ...held, ...next });
+  });
+
+  it('row 2: a version that moved writes nothing and answers 409 with the product as it is now', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+    const before = await read(t.rootCall, held.id);
+    const theirs = { ...held, price: 77000, extra: {} };
+    await t.client.putRecord(t.keys.product(held.id), theirs);
+
+    const reply = await t.rootCall.send('PUT', route(held.id), asked(before.version));
+
+    expect(reply.statusCode).toBe(409);
+    const current = reply.json<{ current: Doc }>().current;
+    expect(current.product).toEqual(theirs);
+    expect(current.version).not.toBe(before.version);
+    expect(await storedNow(t, held.id)).toEqual(theirs);
+  });
+
+  describe('row 3: a write that landed counts as saved, not as a conflict', () => {
+    /** The real write lands, then the call goes wrong the way `lose` says; `reached` counts the
+     * times the forced line ran, so a test that never gets there fails on that. */
+    const forced = (lose: 'answer lost' | 'retried over its own tag', readsFail = false) => {
+      const state = { reached: 0, down: false, armed: false };
+      const wrap = (client: CStorageClient, keys: () => Keys): CStorageClient => ({
+        ...client,
+        async getRecord(key) {
+          if (state.down && key.startsWith(keys().productPrefix)) {
+            throw new CStorageError(503, 'down');
+          }
+          return await client.getRecord(key);
+        },
+        async putRecord(key, data, ifTag) {
+          const saved = await client.putRecord(key, data, ifTag);
+          if (!state.armed || !key.startsWith(keys().productPrefix) || !ifTag) return saved;
+          state.reached++;
+          if (lose === 'retried over its own tag') return 'moved';
+          state.down = readsFail;
+          throw new CStorageError(null, 'c-storage did not answer a put');
+        },
+      });
+      return { state, wrap };
+    };
+
+    it.each(['retried over its own tag', 'answer lost'] as const)(
+      'when the write landed and the failure was %s',
+      async (lose) => {
+        const { state, wrap } = forced(lose);
+        const t = await staffTenant(cs, { wrap: (client) => wrap(client, () => t.keys) });
+        const held = await hold(t, LISTS[1], SEEDED);
+        const before = await read(t.rootCall, held.id);
+        state.armed = true;
+
+        const reply = await t.rootCall.send('PUT', route(held.id), asked(before.version));
+
+        expect(state.reached).toBe(1);
+        expect(reply.statusCode).toBe(200);
+        expect(reply.json<Doc>().product.price).toBe(1850000);
+        expect(reply.json<Doc>().version).not.toBe(before.version);
+      },
+    );
+
+    it('but the failure stands when the answer was lost and the read after it fails too', async () => {
+      const { state, wrap } = forced('answer lost', true);
+      const t = await staffTenant(cs, { wrap: (client) => wrap(client, () => t.keys) });
+      const held = await hold(t, LISTS[1], SEEDED);
+      const before = await read(t.rootCall, held.id);
+      state.armed = true;
+
+      const reply = await t.rootCall.send('PUT', route(held.id), asked(before.version));
+      state.down = false;
+
+      expect(state.reached).toBe(1);
+      expect(reply.statusCode).toBe(503);
+    });
+
+    it('but the failure stands when the answer was lost and the record is not what was asked', async () => {
+      let armed = false;
+      const t = await staffTenant(cs, {
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            if (armed && ifTag) throw new CStorageError(null, 'c-storage did not answer a put');
+            return await client.putRecord(key, data, ifTag);
+          },
+        }),
+      });
+      const held = await hold(t, LISTS[1], SEEDED);
+      const before = await read(t.rootCall, held.id);
+      armed = true;
+
+      const reply = await t.rootCall.send('PUT', route(held.id), asked(before.version));
+
+      expect(reply.statusCode).toBe(503);
+      expect(await storedNow(t, held.id)).toEqual(held);
+    });
+  });
+
+  it('row 4: whoever may see orders but not edit them cannot save: 403, and nothing written; whoever may not see them cannot read', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+    const version = (await read(t.rootCall, held.id)).version;
+    const reader = await t.staff('READER', { own: { 'orders.canView': true } });
+    const editor = await t.staff('EDITOR', { own: { 'orders.canEdit': true } });
+
+    const refused = await reader.call.send('PUT', route(held.id), asked(version));
+    // The permission is checked before the body is read: a body that is no body is 403 too.
+    const unread = await reader.call.send('PUT', route(held.id), { nonsense: true });
+
+    expect(refused.statusCode).toBe(403);
+    expect(unread.statusCode).toBe(403);
+    expect(await storedNow(t, held.id)).toEqual(held);
+    expect((await reader.call.get(route(held.id))).statusCode).toBe(200);
+    expect((await editor.call.get(route(held.id))).statusCode).toBe(403);
+    expect((await editor.call.send('PUT', route(held.id), asked(version))).statusCode).toBe(200);
+  });
+
+  it('row 5: a save carrying a code, an id or an unknown field, or lacking its version, is refused and writes nothing', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+    const version = (await read(t.rootCall, held.id)).version;
+    const { name: _name, ...noName } = asked(version);
+    const bad = [
+      asked(version, { code: 'SP-2' }),
+      asked(version, { id: randomUUID() }),
+      asked(version, { colour: 'red' }),
+      asked(version, { version: 'not a tag' }),
+      asked(version, { stocked: 'yes' }),
+      asked(version, { name: '' }),
+      asked(version, { extra: 'text' }),
+      noName,
+      { name: 'Xi măng', unit: 'bao', price: 95000, stocked: true, extra: {} },
+    ];
+
+    for (const body of bad) {
+      const reply = await t.rootCall.send('PUT', route(held.id), body);
+      expect(reply.statusCode, JSON.stringify(body)).toBe(400);
+    }
+
+    expect(await storedNow(t, held.id)).toEqual(held);
+  });
+
+  it('row 6: a price that is not whole and above zero, or an empty or over-long unit, is refused: 400, nothing written', async () => {
+    const t = await staffTenant(cs);
+    const held = await hold(t, LISTS[1], SEEDED);
+    const version = (await read(t.rootCall, held.id)).version;
+    const bad = [
+      asked(version, { price: 0 }),
+      asked(version, { price: -5 }),
+      asked(version, { price: 95000.5 }),
+      asked(version, { price: 10 ** 12 + 1 }),
+      asked(version, { price: '95000' }),
+      asked(version, { price: null }),
+      asked(version, { unit: '' }),
+      asked(version, { unit: '   ' }),
+      asked(version, { unit: 'x'.repeat(21) }),
+    ];
+
+    for (const body of bad) {
+      const reply = await t.rootCall.send('PUT', route(held.id), body);
+      expect(reply.statusCode, JSON.stringify(body)).toBe(400);
+    }
+
+    expect(await storedNow(t, held.id)).toEqual(held);
+    const top = await t.rootCall.send('PUT', route(held.id), asked(version, { price: 10 ** 12 }));
+    expect(top.statusCode).toBe(200);
+  });
+
+  it('answers 500 for a stored product that does not parse, naming the kind and not the key', async () => {
+    const t = await staffTenant(cs);
+    const id = randomUUID();
+    await t.client.putRecord(t.keys.product(id), { id, nonsense: true });
+
+    const reply = await t.rootCall.get(route(id));
+
+    expect(reply.statusCode).toBe(500);
+    expect(reply.body).not.toContain(id);
+  });
+});
