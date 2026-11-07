@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { extraInputSchema, extraSchema } from './extra';
 import { importRefusedSchema } from './import';
 import { codeSchema, employeeCodeIsValid, nameSchema } from './staff';
+import { tagSchema } from './wire';
 
 /** The customers and the products the company sells to and sells: what the BFF reasons about is
  * typed, the rest (a phone, an address, a note) is in `extra`. A code is the employee's rule,
@@ -32,6 +33,19 @@ export const productSchema = z.strictObject({
   extra: extraSchema,
 });
 export type Product = z.infer<typeof productSchema>;
+
+/** A customer with the version it was read at, for a save over it. */
+export const customerDocSchema = z.strictObject({ customer: customerSchema, version: z.string() });
+export type CustomerDoc = z.infer<typeof customerDocSchema>;
+
+/** Saving a customer over the version read: the name and `extra`, each required since a save
+ * replaces `extra` whole. The code is not here: a new code is its own act. */
+export const saveCustomerRequestSchema = z.strictObject({
+  version: tagSchema,
+  name: nameSchema,
+  extra: extraInputSchema,
+});
+export type SaveCustomerRequest = z.infer<typeof saveCustomerRequestSchema>;
 
 export const customerListReplySchema = z.strictObject({ customers: z.array(customerSchema) });
 export const productListReplySchema = z.strictObject({ products: z.array(productSchema) });

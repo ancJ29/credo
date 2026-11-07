@@ -102,7 +102,9 @@
   "Would you know the client may be only partly deleted, and that pressing again picks up where it stopped?": "Bạn có biết khách hàng có thể mới bị xóa một phần, và bấm lại sẽ tiếp tục từ chỗ đã dừng không?",
   "Does the list read as finished: is the client gone from it?": "Danh sách có đọc như đã xong không: khách hàng đã biến mất khỏi đó chưa?",
   "Does this show the office what the old app showed about a customer?": "Trang này có cho văn phòng thấy những gì ứng dụng cũ đã cho thấy về một khách hàng không?",
-  "Does a customer with no note read well in one full column?": "Khách hàng không có ghi chú có đọc tốt trong một cột đủ chiều rộng không?",
+  "Does a customer with no note offer an empty note to write one into?": "Khách hàng chưa có ghi chú có cho một thẻ ghi chú trống để viết vào không?",
+  "Would the office know the change was saved?": "Văn phòng có biết thay đổi đã được lưu không?",
+  "Would the office know someone else saved first, and how to see what they saved?": "Văn phòng có biết người khác đã lưu trước, và cách xem họ đã lưu gì không?",
   "Does this show the office what the old app showed about a product?": "Trang này có cho văn phòng thấy những gì ứng dụng cũ đã cho thấy về một sản phẩm không?",
   "Does a product with no note read well in one full column?": "Sản phẩm không có ghi chú có đọc tốt trong một cột đủ chiều rộng không?",
   "Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? The doors that offer two languages carry the language switch the mock showed; the three join screens do not, and keep the language the device chose. Adding it there is a small later change, if you want it.": "Các cửa đăng nhập có giống cùng một ứng dụng không: thanh đầu có màu cùng biểu tượng và tên, thẻ nằm trên nền xám của ứng dụng, không có menu bên? Các cửa có hai ngôn ngữ mang nút chuyển ngôn ngữ như bản vẽ thử; ba màn hình tham gia thì không, và giữ ngôn ngữ mà thiết bị đã chọn. Thêm nút đó vào là một thay đổi nhỏ về sau, nếu bạn muốn."

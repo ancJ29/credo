@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * The customers and products from Excel, one walk of thirteen screens, each in Vietnamese and in
- * English at the three widths (13 × 2 × 3 = 78). The `lists-fake` project runs it on `pnpm fake -- …`
+ * The customers and products from Excel, one walk of fifteen screens, each in Vietnamese and in
+ * English at the three widths (15 × 2 × 3 = 90). The `lists-fake` project runs it on `pnpm fake -- …`
  * and the `lists-full` project on the stack (`pnpm stack -- …`); both write their pictures for
  * `walk/run.sh` to compare, raw. Each screen opens at an address of its own, signed in as
  * the root, on a client of its own on the stack, so an import never meets what an earlier one
@@ -24,6 +24,10 @@ const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !hasNote(one))!;
 const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
 const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 
+/** The note written on screen 14 and the phone retyped on screen 15: the same as the walk's steps. */
+const NOTE_WRITTEN = 'Giao hàng buổi sáng, gọi trước khi đến.';
+const NEW_PHONE = '0903 111 999';
+
 const FULL = () => test.info().project.name === 'lists-full';
 
 /** What the stack's seed door answers: a client made from the data set, with its first passwords. */
@@ -36,13 +40,36 @@ async function seed(): Promise<Seeded> {
   return (await reply.json()) as Seeded;
 }
 
+/** The client the page's latest opening made on the stack, for a save that goes in beside it. */
+const clients = new WeakMap<Page, Seeded & { handle: string }>();
+
+/** Someone else saves a data-set customer first, through the real API, so the page's own save meets
+ * the BFF's 409: no stub, the refusal and its wording are the product's. The fake answers the same
+ * save with a cue. */
+async function someoneSavesFirst(page: Page, code: string) {
+  const client = clients.get(page)!;
+  const headers = { 'x-client-code': client.code, 'x-auth-id': client.handle };
+  const listed = (await (await page.request.get('/api/customers', { headers })).json()) as {
+    customers: { id: string; code: string }[];
+  };
+  const id = listed.customers.find((one) => one.code === code)!.id;
+  const { customer, version } = (await (
+    await page.request.get(`/api/customers/${id}`, { headers })
+  ).json()) as { customer: { name: string; extra: object }; version: string };
+  const theirs = await page.request.put(`/api/customers/${id}`, {
+    headers,
+    data: { version, name: customer.name, extra: { ...customer.extra, phone: '0900 000 111' } },
+  });
+  expect(theirs.ok()).toBe(true);
+}
+
 /** The init script of each page's latest opening, to be removed by the next. */
 const setups = new WeakMap<Page, Awaited<ReturnType<Page['addInitScript']>>>();
 
 /** Opens a screen as the root. On the fake: the address with `?fake` and the language kept in the
  * tab. On the stack: a client of its own, the root signed in through the real API, the language and
  * the handle kept on the device. */
-async function open(page: Page, language: Language, path: string) {
+async function open(page: Page, language: Language, path: string, cue?: string) {
   // Only this opening's setup may run: an earlier one would run again on every navigation.
   await setups.get(page)?.dispose();
   if (!FULL()) {
@@ -56,7 +83,7 @@ async function open(page: Page, language: Language, path: string) {
         [language, 'fake.session'],
       ),
     );
-    await page.goto(`${path}?fake`);
+    await page.goto(`${path}?fake${cue ? `&cue=${cue}` : ''}`);
     return;
   }
   const client = await seed();
@@ -66,6 +93,7 @@ async function open(page: Page, language: Language, path: string) {
   });
   expect(reply.ok(), `root signs in on ${client.code}`).toBe(true);
   const handle = ((await reply.json()) as { authId: string }).authId;
+  clients.set(page, { ...client, handle });
   setups.set(
     page,
     await page.addInitScript(
@@ -175,8 +203,8 @@ async function walk(page: Page, language: Language, width: number) {
 
   /** A customer's page opened from the list by the name's link, as the office does: on the stack
    * the BFF minted the id, so no address can name it. */
-  const openCustomer = async (name: string) => {
-    await open(page, language, '/customers');
+  const openCustomer = async (name: string, cue?: string) => {
+    await open(page, language, '/customers', cue);
     await page.getByRole('link', { name, exact: true }).click();
   };
 
@@ -188,12 +216,13 @@ async function walk(page: Page, language: Language, width: number) {
   ).toBeVisible();
   await at('lists-10-customer');
 
-  // 11. A customer with no note: one column at the full width.
+  // 11. A customer with no note: the Note card is there, empty, to write one into.
   await openCustomer(PLAIN_CUSTOMER.name);
   await expect(title(PLAIN_CUSTOMER.name)).toBeVisible();
   await expect(
     page.getByRole('heading', { level: 3, name: words.lists.customers.note }),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await expect(page.getByRole('textbox', { name: words.lists.customers.note })).toHaveValue('');
   await at('lists-11-customer-no-note');
 
   /** A product's page opened from the list by the name's link, for the same reason. */
@@ -217,6 +246,24 @@ async function walk(page: Page, language: Language, width: number) {
     page.getByRole('heading', { level: 3, name: words.lists.products.note }),
   ).toHaveCount(0);
   await at('lists-13-product-no-note');
+
+  // 14. A note written into the empty card and saved: the green notice.
+  await openCustomer(PLAIN_CUSTOMER.name);
+  await expect(title(PLAIN_CUSTOMER.name)).toBeVisible();
+  await page.getByRole('textbox', { name: words.lists.customers.note }).fill(NOTE_WRITTEN);
+  await press(words.lists.customers.save);
+  await expect(page.getByRole('alert')).toHaveText(words.lists.customers.saved);
+  await at('lists-14-customer-saved');
+
+  // 15. Someone else saved first: the fake answers the save with a conflict once; on the stack
+  // another save goes in through the real API, so the page's own save meets the BFF's 409.
+  await openCustomer(NOTED_CUSTOMER.name, 'saveCustomer:409');
+  await expect(title(NOTED_CUSTOMER.name)).toBeVisible();
+  await page.getByRole('textbox', { name: exactly(words.lists.columns.phone) }).fill(NEW_PHONE);
+  if (FULL()) await someoneSavesFirst(page, NOTED_CUSTOMER.code);
+  await press(words.lists.customers.save);
+  await expect(page.getByRole('alert')).toContainText(words.lists.customers.conflict);
+  await at('lists-15-customer-conflict');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -227,7 +274,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all thirteen screens in ${name}`, async ({ page }) => {
+      test(`walks all fifteen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

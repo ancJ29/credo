@@ -523,6 +523,35 @@ describe('the API client', () => {
       expect(JSON.parse(calls[2]?.init.body as string)).toEqual({ rows });
     });
 
+    it('reads one customer with its version, null when there is none, and saves over the version read: a moved record is a conflict, not an error', async () => {
+      const customer = { id, code: 'KH-1', name: 'Một', extra: {} };
+      const doc = { customer, version: 'c1' };
+      const { calls, api } = fake(
+        json(doc),
+        json({}, 404),
+        json({}, 403),
+        json(doc),
+        json({}, 409),
+        json({}, 503),
+      );
+      const request = { version: 'c1', name: 'Một', extra: {} };
+
+      expect(await api.getCustomer(customer.id)).toEqual(doc);
+      expect(await api.getCustomer(customer.id)).toBeNull();
+      await expect(api.getCustomer(customer.id)).rejects.toMatchObject({ status: 403 });
+      expect(await api.saveCustomer(customer.id, request)).toEqual({ kind: 'saved', doc });
+      expect(await api.saveCustomer(customer.id, request)).toEqual({ kind: 'conflict' });
+      await expect(api.saveCustomer(customer.id, request)).rejects.toMatchObject({ status: 503 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/customers/${customer.id}`],
+        ['GET', `/api/customers/${customer.id}`],
+        ['GET', `/api/customers/${customer.id}`],
+        ['PUT', `/api/customers/${customer.id}`],
+        ['PUT', `/api/customers/${customer.id}`],
+        ['PUT', `/api/customers/${customer.id}`],
+      ]);
+    });
+
     it('saves a person over the version read, and a moved record is a conflict, not an error', async () => {
       const { calls, api } = fake(json(personDoc), json({}, 409), json({}, 400));
       const request = { version: 'e1', name: 'Lan', extra: {} };

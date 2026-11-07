@@ -174,11 +174,12 @@ describe('the customers and the products', () => {
       first.extra['phone'],
     );
     expect(valueOf(card('Address').getByRole('textbox'))).toBe(first.extra['address']);
-    expect(card('Note').getByText(first.extra['note'] as string)).toBeTruthy();
+    expect(valueOf(card('Note').getByRole('textbox'))).toBe(first.extra['note']);
     expect(
       card('Basic information').getByRole('textbox', { name: 'Code' }).hasAttribute('readonly'),
     ).toBe(true);
-    expect(drawn.api.listCustomers).toHaveBeenCalledOnce();
+    expect(drawn.api.getCustomer).toHaveBeenCalledOnce();
+    expect(drawn.api.listCustomers).not.toHaveBeenCalled();
     drawn.unmount();
 
     openApp(`/customers/${first.id}`, { language: 'vi' });
@@ -188,14 +189,159 @@ describe('the customers and the products', () => {
     ).toEqual(['Thông tin cơ bản', 'Liên hệ', 'Địa chỉ', 'Ghi chú']);
   });
 
-  it('A customer with no note has no Note card', async () => {
+  it('A customer with no note has an empty Note card to write one into for whoever may edit, and no Note card for someone who may only see', async () => {
     const quiet = DEMO_CUSTOMERS[1];
-    openApp(`/customers/${quiet.id}`);
+    const office = openApp(`/customers/${quiet.id}`);
 
     expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Contacts', 'Address', 'Note']);
+    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe('');
+    office.unmount();
+
+    openApp(`/customers/${quiet.id}`, {
+      override: (spied) => {
+        spied.me.mockResolvedValue({
+          user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
+        });
+      },
+    });
+    expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
     ).toEqual(['Basic information', 'Contacts', 'Address']);
+  });
+
+  it('Whoever may only see orders sees the values and no Save button', async () => {
+    const noted = DEMO_CUSTOMERS[0];
+    openApp(`/customers/${noted.id}`, {
+      override: (spied) => {
+        spied.me.mockResolvedValue({
+          user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
+        });
+      },
+    });
+
+    expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
+    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
+    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe(noted.extra['note']);
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    for (const box of screen.getAllByRole('textbox'))
+      expect(box.hasAttribute('readonly')).toBe(true);
+  });
+
+  it('A save sends the name, phone, address and note over the version read; an emptied field removes its own key and a key the page does not show survives; the new name shows, with a saved notice', async () => {
+    const one = DEMO_CUSTOMERS[0];
+    const drawn = openApp(`/customers/${one.id}`, {
+      override: (spied, original) => {
+        spied.getCustomer.mockImplementationOnce(async (id) => {
+          const read = await original.getCustomer(id);
+          return (
+            read && {
+              ...read,
+              customer: { ...read.customer, extra: { ...read.customer.extra, tier: 'gold' } },
+            }
+          );
+        });
+      },
+    });
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Phone' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Address' }), ' 12');
+    await userEvent.type(screen.getByRole('textbox', { name: 'Note' }), ' Gọi trước.');
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '  Tên mới ');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    const kept = Object.fromEntries(
+      Object.entries({ ...one.extra, tier: 'gold' }).filter(([key]) => key !== 'phone'),
+    );
+    kept['address'] = `${textOf(one.extra['address'])} 12`;
+    kept['note'] = `${textOf(one.extra['note'])} Gọi trước.`;
+    expect(drawn.api.saveCustomer).toHaveBeenCalledExactlyOnceWith(one.id, {
+      version: 'c1',
+      name: 'Tên mới',
+      extra: kept,
+    });
+    expect(await screen.findByRole('heading', { level: 2, name: 'Tên mới' })).toBeTruthy();
+    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe('');
+  });
+
+  it('An emptied address and note remove their own keys, and the phone and the name stay', async () => {
+    const one = DEMO_CUSTOMERS[0];
+    const drawn = openApp(`/customers/${one.id}`);
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Address' }));
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Note' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    const { address: _address, note: _note, ...kept } = one.extra;
+    expect(drawn.api.saveCustomer).toHaveBeenCalledExactlyOnceWith(one.id, {
+      version: 'c1',
+      name: one.name,
+      extra: kept,
+    });
+  });
+
+  it('An empty name is refused on the page and no call is made', async () => {
+    const one = DEMO_CUSTOMERS[0];
+    const drawn = openApp(`/customers/${one.id}`);
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText('Please write the customer’s name.')).toBeTruthy();
+    expect(drawn.api.saveCustomer).not.toHaveBeenCalled();
+  });
+
+  it('Someone else saving first shows the notice and its reload, and keeps what was typed; the reload shows the newer customer', async () => {
+    const one = DEMO_CUSTOMERS[0];
+    const drawn = openApp(`/customers/${one.id}`, { cue: 'saveCustomer:409' });
+    await screen.findByRole('heading', { level: 2, name: one.name });
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Phone' }), '9');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    const notice = await screen.findByRole('alert');
+    expect(notice.textContent).toContain('Someone saved newer details first.');
+    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(
+      `${textOf(one.extra['phone'])}9`,
+    );
+    await userEvent.click(within(notice).getByRole('button', { name: 'Show the newer details' }));
+    await screen.findByRole('heading', { level: 2, name: one.name });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(one.extra['phone']);
+    expect(drawn.api.getCustomer).toHaveBeenCalledTimes(2);
+  });
+
+  it('A save that fails says so and keeps what was typed; one the BFF refuses as no longer allowed says that', async () => {
+    const one = DEMO_CUSTOMERS[0];
+    for (const [status, words] of [
+      [503, 'The customer was not saved. What you typed'],
+      [403, 'you may no longer change customers'],
+    ] as const) {
+      const drawn = openApp(`/customers/${one.id}`, {
+        override: (spied) => {
+          spied.saveCustomer.mockRejectedValueOnce(new ApiError(status));
+        },
+      });
+      await screen.findByRole('heading', { level: 2, name: one.name });
+      await userEvent.type(screen.getByRole('textbox', { name: 'Phone' }), '9');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect((await screen.findByRole('alert')).textContent).toContain(words);
+      expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(
+        `${textOf(one.extra['phone'])}9`,
+      );
+      drawn.unmount();
+    }
   });
 
   it('An unknown customer address says the customer is not there, with the way back, and shows no customer’s details', async () => {
@@ -215,7 +361,7 @@ describe('the customers and the products', () => {
     const first = DEMO_CUSTOMERS[0];
     openApp(`/customers/${first.id}`, {
       override: (spied) => {
-        spied.listCustomers.mockRejectedValueOnce(new ApiError(503));
+        spied.getCustomer.mockRejectedValueOnce(new ApiError(503));
       },
     });
 

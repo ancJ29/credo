@@ -42,6 +42,11 @@ export const employeeRoutes = {
   photo: (id: string) => `${ROUTES.employees}/${id}/photo`,
 };
 
+/** A customer's own route, under `ROUTES.customers`. */
+export const customerRoutes = {
+  one: (id: string) => `${ROUTES.customers}/${id}`,
+};
+
 /** An order's own routes, under `ROUTES.orders`: a day's records are found by their day and id. */
 export const orderRoutes = {
   list: (from: string, to: string) => `${ROUTES.orders}?from=${from}&to=${to}`,

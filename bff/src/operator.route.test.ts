@@ -357,7 +357,8 @@ describe('The operator never reads or changes a client, never sees a root’s pa
       `${[
         '├── /api/config (GET, HEAD, PUT)',
         '├── /api/customers (GET, HEAD)',
-        '│   └── /import (POST)',
+        '│   ├── /import (POST)',
+        '│   └── /:id (GET, HEAD, PUT)',
         '├── /api/auth/sign-in (POST)',
         '│   └── -qr (POST)',
         '├── /api/auth/sign-out (POST)',

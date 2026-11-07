@@ -1,31 +1,63 @@
-import { Alert, Button, Stack, Text, TextInput, Title } from '@mantine/core';
+import { type CustomerDoc, can } from '@credo/shared';
+import { Alert, Button, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
+import { ApiError } from './api';
 import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import { textIn } from './listSheet';
-import { type PageProps, useLoad } from './page';
+import { mergeExtra } from './ownFields';
+import { type PageProps, refusal, useLoad } from './page';
+
+type Outcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
 
 /**
  * One customer as the old app's cards: code and name, the phone, the address on the left and the
- * note on the right, drawn only when the customer has one. Read only: the page reads the
- * customers' list, as the list page does, and picks its id.
+ * note on the right. Whoever may edit orders changes the name, phone, address and note and saves
+ * them over the version read, as the person's page does: a conflict, a failure or a refusal keeps
+ * what was typed. The note card is drawn for whoever may edit, empty or not, else a note could
+ * never be added; for a reader only when it has text. The code is not here: a new code is its
+ * own act.
  */
 export function CustomerPage(page: PageProps) {
-  const { api } = page;
+  const { api, user } = page;
   const { t } = useTranslation();
-  const { id } = useParams();
-  const loaded = useLoad(() => api.listCustomers(), page, [api]);
-  const customer = (loaded.data ?? []).find((one) => one.id === id);
-  const note = textIn(customer?.extra['note']);
+  const { id = '' } = useParams();
+  const loaded = useLoad(() => api.getCustomer(id), page, [api, id]);
+  const [current, setCurrent] = useState<CustomerDoc | null>(null);
+  const [outcome, setOutcome] = useState<Outcome>(null);
+  const [saving, setSaving] = useState(false);
+  // The form starts afresh from the stored customer when this changes: after a save or a reload.
+  const [formKey, setFormKey] = useState(0);
+  const doc = current ?? loaded.data;
+
+  async function save(read: CustomerDoc, name: string, extra: Record<string, unknown>) {
+    setSaving(true);
+    setOutcome(null);
+    try {
+      const result = await api.saveCustomer(id, { version: read.version, name, extra });
+      if (result.kind === 'conflict') {
+        setOutcome('conflict');
+      } else {
+        setCurrent(result.doc);
+        setFormKey((n) => n + 1);
+        setOutcome('saved');
+      }
+    } catch (error) {
+      refusal(error, page);
+      setOutcome(error instanceof ApiError && error.status === 403 ? 'forbidden' : 'failed');
+    }
+    setSaving(false);
+  }
 
   return (
     <Stack gap="lg">
       <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {customer ? (
+        {doc ? (
           <Stack gap="xs">
-            <Title order={2}>{customer.name}</Title>
-            <Text c="dimmed">{customer.code}</Text>
+            <Title order={2}>{doc.customer.name}</Title>
+            <Text c="dimmed">{doc.customer.code}</Text>
           </Stack>
         ) : (
           <Alert color="gray" role="alert">
@@ -36,41 +68,141 @@ export function CustomerPage(page: PageProps) {
       <Button component={Link} to="/customers" variant="subtle" style={{ alignSelf: 'flex-start' }}>
         {t('lists.customers.back')}
       </Button>
-      {customer && (
+      {doc && outcome === 'saved' && (
+        <Alert color="green" role="alert">
+          {t('lists.customers.saved')}
+        </Alert>
+      )}
+      {doc && (outcome === 'failed' || outcome === 'forbidden') && (
+        <Alert color="red" role="alert">
+          {t(outcome === 'failed' ? 'lists.customers.saveFailed' : 'lists.customers.saveForbidden')}
+        </Alert>
+      )}
+      {doc && outcome === 'conflict' && (
+        <Alert color="orange" role="alert">
+          <Stack gap="xs" align="flex-start">
+            {t('lists.customers.conflict')}
+            <Button
+              variant="default"
+              size="xs"
+              onClick={() => {
+                setCurrent(null);
+                setOutcome(null);
+                setFormKey((n) => n + 1);
+                loaded.reload();
+              }}
+            >
+              {t('lists.customers.conflictReload')}
+            </Button>
+          </Stack>
+        </Alert>
+      )}
+      {doc && (
+        <CustomerForm
+          key={formKey}
+          doc={doc}
+          editable={can(user, 'orders.canEdit')}
+          saving={saving}
+          onSave={(name, extra) => void save(doc, name, extra)}
+        />
+      )}
+    </Stack>
+  );
+}
+
+function CustomerForm({
+  doc,
+  editable,
+  saving,
+  onSave,
+}: {
+  doc: CustomerDoc;
+  editable: boolean;
+  saving: boolean;
+  onSave: (name: string, extra: Record<string, unknown>) => void;
+}) {
+  const { t } = useTranslation();
+  const { customer } = doc;
+  const [name, setName] = useState(customer.name);
+  const [phone, setPhone] = useState(textIn(customer.extra['phone']));
+  const [address, setAddress] = useState(textIn(customer.extra['address']));
+  const [note, setNote] = useState(textIn(customer.extra['note']));
+  const [tried, setTried] = useState(false);
+  const stored = textIn(customer.extra['note']);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setTried(true);
+    if (!name.trim()) return;
+    // The form starts from the stored bag: a key it does not show survives, and an emptied field
+    // removes its own.
+    onSave(
+      name.trim(),
+      mergeExtra(customer.extra, {
+        phone: phone.trim() || undefined,
+        address: address.trim() || undefined,
+        note: note.trim() || undefined,
+      }),
+    );
+  };
+
+  return (
+    <form onSubmit={submit}>
+      <Stack gap="lg">
         <DetailColumns
           main={
             <Stack gap="lg">
               <DetailCard title={t('lists.customers.basic')}>
                 <FieldPair>
                   <TextInput label={t('lists.columns.code')} readOnly value={customer.code} />
-                  <TextInput label={t('lists.columns.name')} readOnly value={customer.name} />
+                  <TextInput
+                    label={t('lists.columns.name')}
+                    readOnly={!editable}
+                    value={name}
+                    error={tried && !name.trim() ? t('lists.customers.nameNeeded') : undefined}
+                    onChange={(event) => setName(event.currentTarget.value)}
+                  />
                 </FieldPair>
               </DetailCard>
               <DetailCard title={t('lists.customers.contacts')}>
                 <TextInput
                   label={t('lists.columns.phone')}
-                  readOnly
-                  value={textIn(customer.extra['phone'])}
+                  type="tel"
+                  readOnly={!editable}
+                  value={phone}
+                  onChange={(event) => setPhone(event.currentTarget.value)}
                 />
               </DetailCard>
               <DetailCard title={t('lists.customers.address')}>
                 <TextInput
                   aria-label={t('lists.columns.address')}
-                  readOnly
-                  value={textIn(customer.extra['address'])}
+                  readOnly={!editable}
+                  value={address}
+                  onChange={(event) => setAddress(event.currentTarget.value)}
                 />
               </DetailCard>
             </Stack>
           }
           side={
-            note ? (
+            editable || stored ? (
               <DetailCard title={t('lists.customers.note')}>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>{note}</Text>
+                <Textarea
+                  aria-label={t('lists.customers.note')}
+                  rows={4}
+                  readOnly={!editable}
+                  value={note}
+                  onChange={(event) => setNote(event.currentTarget.value)}
+                />
               </DetailCard>
             ) : undefined
           }
         />
-      )}
-    </Stack>
+        {editable && (
+          <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
+            {t('lists.customers.save')}
+          </Button>
+        )}
+      </Stack>
+    </form>
   );
 }

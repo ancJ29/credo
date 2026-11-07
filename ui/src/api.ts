@@ -22,7 +22,10 @@ import {
   type ConfigDoc,
   configDocSchema,
   type Customer,
+  type CustomerDoc,
+  customerDocSchema,
   customerListReplySchema,
+  customerRoutes,
   type DeliverRequest,
   type DeliveryDoc,
   deliveryDocSchema,
@@ -95,6 +98,7 @@ import {
   reconciliationRoutes,
   reconciliationSchema,
   ROUTES,
+  type SaveCustomerRequest,
   type SaveEmployeeRequest,
   type SaveOrderRequest,
   type SendOrderRequest,
@@ -187,6 +191,8 @@ export type CloseDayResult = { kind: 'closed'; reconciliation: Reconciliation } 
 
 /** A staff setup or a person saved, or the version moved: a conflict is a result, not an error. */
 export type SaveStaffSetupResult = { kind: 'saved'; doc: StaffSetupDoc } | { kind: 'conflict' };
+/** A customer saved, or the version moved: a conflict is a result, not an error. */
+export type SaveCustomerResult = { kind: 'saved'; doc: CustomerDoc } | { kind: 'conflict' };
 export type SaveEmployeeResult = { kind: 'saved'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type ArchiveResult = { kind: 'archived'; doc: EmployeeDoc } | { kind: 'conflict' };
 export type RestoreResult = { kind: 'restored'; doc: EmployeeDoc } | { kind: 'conflict' };
@@ -532,6 +538,22 @@ export function createApi({
       const response = await send('GET', ROUTES.customers);
       if (!response.ok) throw new ApiError(response.status);
       return (await read(response, customerListReplySchema)).customers;
+    },
+
+    /** One customer with the version it was read at; `null` when the company holds none by that id. */
+    async getCustomer(id: string): Promise<CustomerDoc | null> {
+      const response = await send('GET', customerRoutes.one(id));
+      if (response.status === 404) return null;
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, customerDocSchema);
+    },
+
+    /** A save over the version read; a 409 is a result, and the page offers to read it again. */
+    async saveCustomer(id: string, request: SaveCustomerRequest): Promise<SaveCustomerResult> {
+      const response = await send('PUT', customerRoutes.one(id), request);
+      if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', doc: await read(response, customerDocSchema) };
     },
 
     /** The root's: every product of the company, in code order. */

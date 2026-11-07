@@ -621,7 +621,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, thirteen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, fifteen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -639,6 +639,8 @@ describe('the walks', () => {
       ['lists-11-customer-no-note', 11, 'main'],
       ['lists-12-product', 12, 'main'],
       ['lists-13-product-no-note', 13, 'main'],
+      ['lists-14-customer-saved', 14, 'main'],
+      ['lists-15-customer-conflict', 15, 'wrong'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -673,7 +675,7 @@ describe('the walks', () => {
         expect(
           before
             .slice(before.lastIndexOf(`await ${opener}(`))
-            .startsWith(`await ${opener}(${name}.name);`),
+            .startsWith(`await ${opener}(${name}.name`),
           screen.id,
         ).toBe(true);
         expect(before, screen.id).not.toContain('/customers/${');
@@ -682,7 +684,11 @@ describe('the walks', () => {
         expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
       }
       expect(screen.scene!.as, screen.id).toBeUndefined();
-      expect(screen.scene!.cue, screen.id).toBeUndefined();
+      // only the conflict is cued, and the spec opens it with the same cue
+      expect(screen.scene!.cue, screen.id).toBe(
+        screen.id === 'lists-15-customer-conflict' ? 'saveCustomer:409' : undefined,
+      );
+      if (screen.scene!.cue) expect(before, screen.id).toContain(`, '${screen.scene!.cue}');`);
     }
   });
 
