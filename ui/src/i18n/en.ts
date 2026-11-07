@@ -666,6 +666,14 @@ export const en = {
       note: 'Note',
       notThere:
         'This customer is not in the list. It may have been taken out, or the address is wrong.',
+      save: 'Save',
+      saved: 'Saved.',
+      saveFailed: 'The customer was not saved. What you typed is still here: try again.',
+      saveForbidden:
+        'The customer was not saved: you may no longer change customers. What you typed is still shown.',
+      conflict: 'Someone saved newer details first. Your changes were not saved.',
+      conflictReload: 'Show the newer details',
+      nameNeeded: 'Please write the customer’s name.',
     },
     products: {
       sheet: 'Products',

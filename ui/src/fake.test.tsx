@@ -7,6 +7,7 @@ import {
   importEmployeesReplySchema,
   importCustomersReplySchema,
   importProductsReplySchema,
+  customerDocSchema,
   customerListReplySchema,
   deliveryDocSchema,
   deliveryListReplySchema,
@@ -201,6 +202,18 @@ describe('the fake Api', () => {
       await api.importEmployees([{ name: 'Nhập', extra: {} }]),
     );
     parses('listCustomers', customerListReplySchema, { customers: await api.listCustomers() });
+    const firstCustomer = (await api.listCustomers())[0];
+    parses('getCustomer', customerDocSchema, await api.getCustomer(firstCustomer.id));
+    const savedCustomer = await api.saveCustomer(firstCustomer.id, {
+      version: 'c1',
+      name: 'Đổi',
+      extra: {},
+    });
+    parses(
+      'saveCustomer',
+      customerDocSchema,
+      savedCustomer.kind === 'saved' ? savedCustomer.doc : null,
+    );
     parses('listProducts', productListReplySchema, { products: await api.listProducts() });
     parses(
       'importCustomers',
@@ -402,6 +415,8 @@ describe('the fake Api', () => {
         'addEmployee',
         'importEmployees',
         'listCustomers',
+        'getCustomer',
+        'saveCustomer',
         'listProducts',
         'importCustomers',
         'importProducts',
@@ -960,6 +975,26 @@ describe('the fake Api’s staff', () => {
     expect(await api.restoreEmployee(left.id, read.version)).toEqual({ kind: 'conflict' });
   });
 
+  it('A customer is read with a version, saved over it, and a save over an older one is a conflict; one not there is null, and saving it is a 404', async () => {
+    const api = fake();
+    const one = (await api.listCustomers())[0];
+    const read = await api.getCustomer(one.id);
+    expect(read).toMatchObject({ customer: one, version: 'c1' });
+    const save = (version: string) =>
+      api.saveCustomer(one.id, { version, name: 'Đổi', extra: { phone: '0900' } });
+
+    const saved = await save('c1');
+    expect(saved).toMatchObject({
+      kind: 'saved',
+      doc: { customer: { name: 'Đổi', extra: { phone: '0900' } }, version: 'c2' },
+    });
+    expect(await save('c1')).toEqual({ kind: 'conflict' });
+    expect(await api.getCustomer('missing')).toBeNull();
+    expect(await status(api.saveCustomer('missing', { version: 'c1', name: 'x', extra: {} }))).toBe(
+      404,
+    );
+  });
+
   it('A save over a newer version is a conflict, and a person who is not there is a 404', async () => {
     const api = fake();
     const id = bao?.id ?? '';
@@ -1255,6 +1290,7 @@ describe('the cue', () => {
       'saveStaffSetup',
       'addEmployee',
       'saveEmployee',
+      'saveCustomer',
       'archiveEmployee',
       'restoreEmployee',
     ]) {

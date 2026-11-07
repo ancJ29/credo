@@ -8,6 +8,7 @@ import {
 import {
   addCustomerRequestSchema,
   addProductRequestSchema,
+  customerDocSchema,
   customerListReplySchema,
   customerSchema,
   importCustomersReplySchema,
@@ -16,6 +17,7 @@ import {
   priceSchema,
   productListReplySchema,
   productSchema,
+  saveCustomerRequestSchema,
   UNIT_MAX,
 } from './lists';
 import { recordKeys } from './records';
@@ -78,6 +80,27 @@ describe('the customer and the product', () => {
     expect(customerListReplySchema.safeParse({ customers: DEMO_CUSTOMERS }).success).toBe(true);
     expect(productListReplySchema.safeParse({ products: DEMO_PRODUCTS }).success).toBe(true);
     expect(productListReplySchema.safeParse({ customers: [] }).success).toBe(false);
+  });
+});
+
+describe('the customer’s save', () => {
+  it('A customer is read with its version, and saved over one: the name and `extra` only, the code and any other field refused', () => {
+    expect(
+      customerDocSchema.safeParse({ customer: DEMO_CUSTOMERS[0], version: 'c1' }).success,
+    ).toBe(true);
+    expect(customerDocSchema.safeParse({ customer: DEMO_CUSTOMERS[0] }).success).toBe(false);
+    const tag = 'a'.repeat(64);
+    const save = { version: tag, name: ' Một ', extra: { phone: '0900' } };
+    expect(saveCustomerRequestSchema.safeParse(save).data).toEqual({ ...save, name: 'Một' });
+    for (const bad of [
+      { ...save, code: 'KH-2' },
+      { ...save, name: ' ' },
+      { version: tag, name: 'Một' },
+      { name: 'Một', extra: {} },
+      { ...save, version: 'c1' },
+    ]) {
+      expect(saveCustomerRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
   });
 });
 

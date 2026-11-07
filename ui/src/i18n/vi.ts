@@ -665,6 +665,14 @@ export const vi: Dictionary = {
       note: 'Ghi chú',
       notThere:
         'Không có khách hàng này trong danh sách. Có thể khách hàng đã bị xóa, hoặc địa chỉ sai.',
+      save: 'Lưu',
+      saved: 'Đã lưu.',
+      saveFailed: 'Chưa lưu được khách hàng. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
+      saveForbidden:
+        'Chưa lưu được khách hàng: bạn không còn được sửa khách hàng. Những gì bạn nhập vẫn còn đây.',
+      conflict: 'Có người đã lưu thông tin mới hơn trước. Thay đổi của bạn chưa được lưu.',
+      conflictReload: 'Xem thông tin mới hơn',
+      nameNeeded: 'Hãy ghi tên khách hàng.',
     },
     products: {
       sheet: 'Sản phẩm',

@@ -41,6 +41,7 @@ import {
   NO_RENEW_QUERY,
   passkeyRoutes,
   passkeySignInRequestSchema,
+  customerRoutes,
   employeeRoutes,
   ROUTES,
   rootPasswordReplySchema,
@@ -68,6 +69,10 @@ describe('the wire contract', () => {
   it('names every route under /api', () => {
     expect(Object.values(ROUTES).every((path) => path.startsWith('/api/'))).toBe(true);
     expect(ROUTES.config).toBe('/api/config');
+  });
+
+  it('names a customer’s route under the customers', () => {
+    expect(customerRoutes.one('i')).toBe('/api/customers/i');
   });
 
   it('names a person’s routes under the employees', () => {

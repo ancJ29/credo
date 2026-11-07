@@ -185,6 +185,16 @@ const hasNote = (one: { extra: Record<string, unknown> }) =>
 /** The customers' and products' pages in the lists walk: one with a note, one without. */
 const NOTED_CUSTOMER = DEMO_CUSTOMERS.find(hasNote)!;
 const PLAIN_CUSTOMER = DEMO_CUSTOMERS.find((one) => !hasNote(one))!;
+/** A note written into the empty card of the customer who has none, and saved; and a phone retyped
+ * on the customer who has a note, for a save that someone else's came before. */
+const NOTE_WRITTEN: Step[] = [
+  { fill: 'lists.customers.note', text: 'Giao hàng buổi sáng, gọi trước khi đến.' },
+  { press: 'lists.customers.save' },
+];
+const PHONE_CHANGED: Step[] = [
+  { fill: 'lists.columns.phone', text: '0903 111 999' },
+  { press: 'lists.customers.save' },
+];
 const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
 const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 /** A customer or a product as the order form lists it in its choice. */
@@ -1305,8 +1315,8 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: `/customers/${NOTED_CUSTOMER.id}` },
         sentence: {
-          en: 'A customer’s page: code, name, phone and address on the left, the note on the right',
-          vi: 'Trang khách hàng: mã, tên, điện thoại, địa chỉ bên trái, ghi chú bên phải',
+          en: 'A customer’s page: code, name, phone and address on the left, the note on the right, each to type in, with a Save',
+          vi: 'Trang khách hàng: mã, tên, điện thoại, địa chỉ bên trái, ghi chú bên phải, mỗi mục gõ được, có nút Lưu',
         },
         question: 'Does this show the office what the old app showed about a customer?',
       },
@@ -1316,10 +1326,10 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: `/customers/${PLAIN_CUSTOMER.id}` },
         sentence: {
-          en: 'A customer with no note: one column at the full width, no blank half',
-          vi: 'Khách hàng không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
+          en: 'A customer with no note: an empty note card to write one into',
+          vi: 'Khách hàng chưa có ghi chú: thẻ ghi chú còn trống để viết vào',
         },
-        question: 'Does a customer with no note read well in one full column?',
+        question: 'Does a customer with no note offer an empty note to write one into?',
       },
       {
         id: 'lists-12-product',
@@ -1342,6 +1352,32 @@ export const WALKS: Walk[] = [
           vi: 'Sản phẩm không có ghi chú: một cột đủ chiều rộng, không để trống nửa trang',
         },
         question: 'Does a product with no note read well in one full column?',
+      },
+      {
+        id: 'lists-14-customer-saved',
+        number: 14,
+        path: 'main',
+        scene: { path: `/customers/${PLAIN_CUSTOMER.id}`, steps: NOTE_WRITTEN },
+        sentence: {
+          en: 'A customer saved: a note written and saved, a green notice',
+          vi: 'Khách hàng đã lưu: ghi chú vừa viết đã được lưu, có thông báo màu xanh',
+        },
+        question: 'Would the office know the change was saved?',
+      },
+      {
+        id: 'lists-15-customer-conflict',
+        number: 15,
+        path: 'wrong',
+        scene: {
+          path: `/customers/${NOTED_CUSTOMER.id}`,
+          cue: 'saveCustomer:409',
+          steps: PHONE_CHANGED,
+        },
+        sentence: {
+          en: 'Someone else saved the customer first, what was typed kept',
+          vi: 'Người khác đã lưu khách hàng trước, nội dung đã nhập vẫn còn',
+        },
+        question: 'Would the office know someone else saved first, and how to see what they saved?',
       },
     ],
   },

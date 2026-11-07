@@ -11,6 +11,8 @@ export const staffCalls = {
   addEmployee: down,
   importEmployees: down,
   listCustomers: down,
+  getCustomer: down,
+  saveCustomer: down,
   listProducts: down,
   importCustomers: down,
   importProducts: down,

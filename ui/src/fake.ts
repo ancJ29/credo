@@ -18,6 +18,8 @@ import {
   driverDay,
   type DeliveryRequest,
   deliveryRequestSchema,
+  type Customer,
+  type CustomerDoc,
   type Driver,
   type Employee,
   type EmployeeDoc,
@@ -231,6 +233,8 @@ export function createFakeApi({
    * records, by minted id. */
   const customers = new Map(DEMO_CUSTOMERS.map((one) => [one.id, customerSchema.parse(one)]));
   const products = new Map(DEMO_PRODUCTS.map((one) => [one.id, productSchema.parse(one)]));
+  /** The version each customer is at, moved by a save. */
+  const customerVersions = new Map(DEMO_CUSTOMERS.map((one) => [one.id, 1]));
   /** The week of orders and requests, each at the version it is at, and the last number given. */
   const orders = new Map(DEMO_ORDERS.map((one) => [one.id, orderSchema.parse(one)]));
   const requests = new Map(
@@ -499,6 +503,10 @@ export function createFakeApi({
     closed.set(key, made);
     return { kind: 'closed', reconciliation: structuredClone(made) };
   };
+  const customerDocOf = (found: Customer): CustomerDoc => ({
+    customer: structuredClone(found),
+    version: `c${customerVersions.get(found.id)}`,
+  });
   /** A list in code order, as the BFF answers it. */
   const inOrder = <T extends { code: string }>(held: Map<string, T>) =>
     [...held.values()].map((one) => structuredClone(one)).sort(byCode);
@@ -795,6 +803,31 @@ export function createFakeApi({
         mayOnly('orders.canView');
         return inOrder(customers);
       }),
+
+    getCustomer: (id) =>
+      call('getCustomer', () => {
+        mayOnly('orders.canView');
+        const found = customers.get(id);
+        return found ? customerDocOf(found) : null;
+      }),
+
+    saveCustomer: (id, request) =>
+      call(
+        'saveCustomer',
+        () => {
+          mayOnly('orders.canEdit');
+          const found = customers.get(id);
+          if (!found) throw notFound();
+          if (request.version !== `c${customerVersions.get(id)}`) {
+            return { kind: 'conflict' as const };
+          }
+          found.name = request.name;
+          found.extra = structuredClone(request.extra);
+          customerVersions.set(id, (customerVersions.get(id) as number) + 1);
+          return { kind: 'saved' as const, doc: customerDocOf(found) };
+        },
+        () => ({ kind: 'conflict' as const }),
+      ),
 
     listProducts: () =>
       call('listProducts', () => {
