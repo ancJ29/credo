@@ -106,13 +106,21 @@ cued on the fake lane; the stack lane adds a second record with a code it just u
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 10 minutes. Done when: committed, about 2,000 words or under, no local path.
-- [ ] **2. The two forms on invented data, the cheap end to end.** 🤖 Sonnet, about 35 minutes: the two api
+- [x] **2. The two forms on invented data, the cheap end to end.** 🤖 Sonnet, about 35 minutes: the two api
   methods, the fake's two calls and its taken cue, the two add pages around the existing form components, the Add
   buttons, the words in both dictionaries, the four scenes and the spec's four screens. The look comes off this
   build, so a no costs no server work. Done when: rows 7 to 12 each red once from a named mutation, then green;
   `pnpm -r run typecheck`, the tests of `shared`, `ui` and `visual` at 100 %, eslint and prettier (there is no
   per-package `check` script: only the root has one, `package.json#L10`); `pnpm fake` serves both add pages;
   `pnpm report` builds, and against `main`'s build exactly screens 1, 6, 18, 19, 20 and 21 differ.
+  *Ticked 2026-11-07 (code in `c3698f6e`):* rows 7 to 12 each red from one named mutation, then green (the
+  gate's last line, log `20261107-2258-clerk-add-records-step2-gate.log`: `== exit 0 ( typecheck 0 eslint 0 prettier
+  0 test-shared 0 test-ui 0 test-visual 0 test-scripts 0 knip 0 )`, ui and visual at 100 %); `pnpm fake` served both
+  pages and was down at the end of its command; the report built from the committed tree against `main`'s, and
+  exactly screens 1, 6 (markup differs) and 18 to 21 (new) differ out of 128 against 124, the other 122 equal,
+  css and styles equal. *The plan's misreads:* the spec's header and test name had to read twenty-one (done), and
+  the form markup of screens 10 to 17 stayed identical only because the code box's two new attributes are written
+  in add mode alone.
 - [ ] **3. The look** (👤 1, 👤 2, 👤 4); the machine goes straight on to step 4 and does not wait for it.
 - [ ] **4. The route against the real c-storage.** 🤖 Sonnet, about 20 minutes: one `app.post` on the kind's own
   route inside `registerList`, lifting the import's row-parse, code search and write out of its loop so both paths
