@@ -138,7 +138,7 @@ order page, which is milestone 3.
 - [x] **5. The gates.** 🤖 Sonnet, 10 minutes: `main` taken in, then the whole `pnpm check` once, in the background
   under the shared test lock, `== exit 0`. **The one place the whole gate runs:** `walk/` and `visual/` typecheck
   against this piece's changes in `ui/` and `shared/`, so no package's gate can clear it.
-  *Done 2026-11-07 (about 15 minutes with the rerun; `main` had not moved, both at `deb805aa`, so nothing came in):* the
+  *Done 2026-11-07 (about 15 minutes with the rerun; `main` had not moved at 15:39, both at `deb805aa`, and had moved to `72884bde` by 16:10, docs only, taken in as merge `0cfb5c3d`):* the
   five steps run one after another so none hides behind another's failure. Log `20261107-1539-edit-product-step5-check.log`
   (`== exit 1`): typecheck 0 (11s), eslint 0 (22s), prettier 0 (6s), knip 0 (1s), tests 1 after 387s - one case in
   `visual`, `admin-staff:staff-16-field-refused`, "the scene did not end in 30000 ms", in a walk this piece never
@@ -146,6 +146,11 @@ order page, which is milestone 3.
   time, log `20261107-1546-edit-product-step5-rerun-tests.log` (`== exit 0`): shared 158, bff 578, ui 803 (all
   at 100 %), scripts 287, visual 203 passed. The first red is a 30 s timeout in an untouched file, not an assertion;
   one red seen once, so read as load, not proved by a second identical failure.
+  A single `pnpm check` at 16:10 (log `20261107-1610-edit-product-step5-check-single.log`, `== exit 1`, 237s) was red
+  again in `visual`, on a different case (`operator-services:sv-2-two-builds`, a missing status line, an assertion), so
+  eslint, prettier and knip did not run in it. After the merge, `visual` alone (log
+  `20261107-1615-edit-product-step5-visual-alone.log`, `== exit 0`, 137s, 203 passed) did not repeat it. No single
+  whole `pnpm check` is green on this tree; the green is by package, with the first run's eslint, prettier and knip.
 - [ ] **6. One review.** 🤖 Opus, 6 minutes, not the build's model, with the case table. Done when: each finding
   tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]` here.
 - [ ] **7. The picture run** (👤 3): one command in the human's terminal, about 17 minutes —
