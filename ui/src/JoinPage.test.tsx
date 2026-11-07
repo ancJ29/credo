@@ -1,5 +1,5 @@
 import { DEMO_INVITED_NAME, DEMO_JOIN_TOKEN, OPERATOR_NAME } from '@credo/shared/demo';
-import { screen, waitFor } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { openApp } from '../tests/open';
@@ -129,5 +129,75 @@ describe('the join page', () => {
     const { unmount, api } = openApp(PATH);
     unmount();
     await waitFor(() => expect(api.operatorJoinOptions).toHaveBeenCalledOnce());
+  });
+
+  it('draws a language switch in its header, both languages offered, the device’s marked', async () => {
+    openApp(PATH);
+    await screen.findByRole('button', { name: 'Make a passkey' });
+
+    const group = screen.getByRole('group', { name: words.user.language });
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['VI', 'EN']);
+    expect(screen.getByRole('button', { name: 'English' }).getAttribute('aria-current')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Tiếng Việt' }).getAttribute('aria-current')).toBe(
+      'false',
+    );
+  });
+
+  it('pressing a language changes the page’s words and nothing else of it', async () => {
+    const { api } = openApp(PATH);
+    await screen.findByRole('button', { name: 'Make a passkey' });
+    await userEvent.click(screen.getByRole('button', { name: 'Tiếng Việt' }));
+
+    expect(await screen.findByRole('button', { name: 'Tạo khóa truy cập' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(
+      DICTIONARIES.vi.passkey.joinTitle,
+    );
+    expect(screen.getByText(`Do ${OPERATOR_NAME} tạo.`)).toBeTruthy();
+    expect(api.operatorJoinOptions).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: 'Tiếng Việt' }).getAttribute('aria-current')).toBe(
+      'true',
+    );
+  });
+
+  it('keeps the language pressed on the device, and the dashboard the join lands on speaks it', async () => {
+    const { device } = openApp(PATH);
+    await screen.findByRole('button', { name: 'Make a passkey' });
+    await userEvent.click(screen.getByRole('button', { name: 'Tiếng Việt' }));
+    expect(device.language()).toBe('vi');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Tạo khóa truy cập' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: DICTIONARIES.vi.nav.clients }),
+    ).toBeTruthy();
+    expect(device.language()).toBe('vi');
+  });
+
+  it('a device that chose Vietnamese opens the page in it, that language marked', async () => {
+    openApp(PATH, { language: 'vi' });
+    await screen.findByRole('button', { name: 'Tạo khóa truy cập' });
+
+    expect(screen.getByRole('button', { name: 'Tiếng Việt' }).getAttribute('aria-current')).toBe(
+      'true',
+    );
+  });
+
+  it('the dead link and the service unavailable draw the same switch', async () => {
+    openApp(PATH, { cue: 'operatorJoinOptions:404' });
+    await screen.findByRole('alert');
+    expect(screen.getByRole('group', { name: words.user.language })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Tiếng Việt' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(DICTIONARIES.vi.passkey.dead);
+    cleanup();
+
+    openApp(PATH, { cue: 'operatorJoinOptions:503' });
+    await screen.findByRole('alert');
+    expect(screen.getByRole('group', { name: words.user.language })).toBeTruthy();
   });
 });

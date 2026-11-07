@@ -245,11 +245,11 @@ describe('the frame every door wears', () => {
 });
 
 describe('the join page in the same frame', () => {
-  it('1+2: draws the header and no menu, and no switch since its caller offers no handler', async () => {
+  it('1+2: draws the header and no menu, and the language switch since its caller offers a handler', async () => {
     openApp(`/operator/join#${DEMO_JOIN_TOKEN}`);
     await screen.findByRole('button', { name: 'Make a passkey' });
     expect(screen.getByRole('banner')).toBeTruthy();
     expect(document.querySelector('nav')).toBeNull();
-    expect(screen.queryByRole('group', { name: 'Language' })).toBeNull();
+    expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy();
   });
 });

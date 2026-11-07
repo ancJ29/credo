@@ -91,11 +91,15 @@ and `docs/open-items.md` is the one file the live pieces share, so whichever mer
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 15 min. *Done when:* committed, no local path.
-- [ ] **2. The switch on the join page, the cheap end to end on the fake.** 🤖 Sonnet, 15 min: the
+- [x] **2. The switch on the join page, the cheap end to end on the fake.** 🤖 Sonnet, 15 min: the
       state and handler in `Joining`, the two props through `JoinPage`, the six unit rows. *Done
       when:* rows 1, 2, 3 and 5 each red once from their own assertion, then green; row 6's diff
       empty; the gate over `ui`, all five steps named and run — typecheck, eslint, prettier,
       `pnpm --filter @credo/ui test` at 100 %, knip — `== exit 0` in a log read whole.
+      *Done 11-07:* rows 1, 2, 3, 5 red once each with the source reverted, then green; row 4 held
+      (green both ways, today's behaviour); row 6's diff empty; the five steps ran, ui 796 tests,
+      `== exit 0`. One existing test in `ui/src/SignIn.test.tsx` asserted the join page had no switch
+      and now asserts it has one.
 - [ ] **3. The walks page and the walk's two assertions.** 🤖 Sonnet, 8 min: the doors' question and
       its Vietnamese, and the switch asserted before the shot on the spec's screens 1 and 5
       (`walk/specs/operator-passkeys.spec.ts#L74-L86`, `#L109-L112`). *Done when:* `pnpm report` ends
