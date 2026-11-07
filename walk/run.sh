@@ -281,8 +281,13 @@ main() {
   # worktree dies with it: the trunk's install holds the claim. Written once if absent (a terminal
   # that can write the browser folder), checked every run.
   local claim_line
-  claim_line="$(git -C "$tree" worktree list --porcelain 2>/dev/null | tool claim "$(dirname "$shell_dir")" "$chromium_rev")" ||
-    refuse "$claim_line; from a terminal that can write the browser folder, once: bash $self --checks"
+  claim_line="$(git -C "$tree" worktree list --porcelain 2>/dev/null | tool claim "$(dirname "$shell_dir")" "$chromium_rev")" || {
+    # the way to write it is named only where writing was the failure; --checks needs a walk named
+    case "$claim_line" in
+      *"cannot be written"*) claim_line="$claim_line; from a terminal that can write the browser folder, once: bash $self $(walk_names | head -1) --checks" ;;
+    esac
+    refuse "$claim_line"
+  }
   echo "  $claim_line"
   echo "  node $node_now, pnpm $pnpm_now, Playwright $pw_version, Chromium r$chromium_rev; load $load (at most $max_load); no gate lock; $(git -C "$tree" rev-parse --abbrev-ref HEAD) at $sha, clean, main in"
 

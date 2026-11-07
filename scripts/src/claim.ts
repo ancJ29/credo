@@ -62,7 +62,10 @@ export function registerClaim(options: {
   }
   const file = join(browsersDir, '.links', claimName(core));
   const protects = `protects Chromium r${revision}`;
-  if (existsSync(file)) return `claim ${core} (already there): ${protects}`;
+  // Playwright unlinks a link file it cannot read, so only a file holding the path counts as there.
+  if (existsSync(file) && readFileSync(file, 'utf8') === core) {
+    return `claim ${core} (already there): ${protects}`;
+  }
   const draft = join(browsersDir, `.claim-${process.pid}`);
   try {
     mkdirSync(join(browsersDir, '.links'), { recursive: true });

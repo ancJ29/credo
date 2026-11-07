@@ -1012,7 +1012,7 @@ describe('walk/run.sh keeps the browser claimed by a path that outlives the work
     refusedWith(
       l,
       ['piece-2'],
-      /== refused: unclaimed: the trunk's playwright-core names chromium r1300, this run uses r1248: install there: cd .*main && pnpm install/,
+      /== refused: unclaimed: the trunk's playwright-core names chromium r1300, this run uses r1248: install there: cd .*main && pnpm install[^;]*$/m,
       { SHIM_CHROMIUM: b.exe },
     );
     expect(existsSync(claimsOf(b.exe))).toBe(false);
@@ -1041,7 +1041,7 @@ describe('walk/run.sh keeps the browser claimed by a path that outlives the work
     refusedWith(
       l,
       ['piece-2'],
-      /== refused: unclaimed: the claim folder .*\.links cannot be written from here \(\w+\), and nothing else was tried; from a terminal that can write the browser folder, once: bash .*run.sh --checks/,
+      /== refused: unclaimed: the claim folder .*\.links cannot be written from here \(\w+\), and nothing else was tried; from a terminal that can write the browser folder, once: bash .*run.sh [a-z0-9-]+ --checks$/m,
       { SHIM_CHROMIUM: b.exe },
     );
   });

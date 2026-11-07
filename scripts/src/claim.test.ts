@@ -95,6 +95,22 @@ describe('the browser claim is the trunk’s, a file named by the sha1 of its pl
     expect(statSync(file).mtimeMs).toBe(before.mtimeMs);
   });
 
+  it('rewrites a claim file that is empty or torn, since Playwright unlinks one it cannot read', () => {
+    const s = setup();
+    const file = join(s.browsersDir, '.links', claimName(s.core));
+    mkdirSync(join(s.browsersDir, '.links'));
+    writeFileSync(file, '');
+
+    const line = registerClaim({
+      porcelain: s.porcelain,
+      browsersDir: s.browsersDir,
+      revision: '1248',
+    });
+
+    expect(line).toBe(`claim ${s.core} (registered): protects Chromium r1248`);
+    expect(readFileSync(file, 'utf8')).toBe(s.core);
+  });
+
   it('writes through a name of its own beside the claim folder and renames, leaving nothing behind', () => {
     const s = setup();
 
