@@ -1,6 +1,7 @@
 import { appendFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { type Box, comparePictures, decodePng } from './pixels';
+import { registerClaim } from './claim';
 import { classifyProcesses, parseProcessList } from './strays';
 
 export type Io = {
@@ -11,7 +12,7 @@ export type Io = {
 };
 
 const USAGE =
-  'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--bytes] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid>';
+  'usage: compare <label> <left> <right> [--bases [--allow-retired]] [--bytes] [--moved <screen>,…|all] [--raw <file>] | strays <root> <pid> | claim <browsers-dir> <revision>';
 
 /** A picture's screen: its name without the language and the width. */
 const screenOf = (name: string) => name.replace(/-(en|vi)-\d+\.png$/, '');
@@ -153,7 +154,8 @@ async function compare(
 }
 
 /** The commands `walk/run.sh` calls: `compare`, the raw count of two folders, and `strays`, the
- * leftover processes in a `ps` listing on stdin. Exit 0 green, 1 red, 2 a call or a listing it
+ * leftover processes in a `ps` listing on stdin, and `claim`, the browser claim kept by the trunk (the
+ * worktree listing on stdin; exit 1 when it cannot be made true). Exit 0 green, 1 red, 2 a call or a listing it
  * cannot read. */
 export async function walksCommand(argv: string[], io: Io): Promise<number> {
   const [command, ...rest] = argv;
@@ -174,6 +176,17 @@ export async function walksCommand(argv: string[], io: Io): Promise<number> {
     } catch (error) {
       io.out(`unreadable: ${(error as Error).message}`);
       return 2;
+    }
+  }
+  if (command === 'claim' && rest.length === 2) {
+    try {
+      io.out(
+        registerClaim({ porcelain: await io.stdin(), browsersDir: rest[0], revision: rest[1] }),
+      );
+      return 0;
+    } catch (error) {
+      io.out(`unclaimed: ${(error as Error).message}`);
+      return 1;
     }
   }
   io.out(USAGE);

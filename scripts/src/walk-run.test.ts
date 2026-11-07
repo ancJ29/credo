@@ -1,9 +1,11 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   realpathSync,
   rmSync,
@@ -159,6 +161,14 @@ esac`,
 afterAll(() => rmSync(temp, { recursive: true, force: true }));
 
 let count = 0;
+/** What a trunk's `browsers.json` names: both browsers a run uses, at one revision. */
+const trunkBrowsers = (revision: string) =>
+  JSON.stringify({
+    browsers: [
+      { name: 'chromium', revision },
+      { name: 'chromium-headless-shell', revision },
+    ],
+  });
 /** A root with a bare repository and one worktree of it, `walk-steady`, clean and with main in. */
 function layout() {
   const root = join(temp, `root-${count++}`);
@@ -172,9 +182,20 @@ function layout() {
     '{ "version": "1.64.0" }\n',
   );
   mkdirSync(join(tree, 'node_modules'));
+  // the trunk: main's own worktree, whose install holds the browser claim (revision 1248 unless a test says)
+  const trunk = join(root, 'main');
+  git(join(root, '.bare'), 'worktree', 'add', '-q', trunk, 'main');
+  mkdirSync(join(trunk, 'walk/node_modules/@playwright/test'), { recursive: true });
+  writeFileSync(join(trunk, 'walk/node_modules/@playwright/test/index.js'), '');
+  mkdirSync(join(trunk, 'walk/node_modules/playwright-core'));
+  writeFileSync(join(trunk, 'walk/node_modules/playwright-core/package.json'), '{}\n');
+  writeFileSync(
+    join(trunk, 'walk/node_modules/playwright-core/browsers.json'),
+    trunkBrowsers('1248'),
+  );
   const ps = join(root, 'ps.txt');
   writeFileSync(ps, '  1     0 /sbin/launchd\n 20     1 /bin/zsh\n');
-  return { root, tree, ps };
+  return { root, tree, trunk, ps };
 }
 
 type Setup = Record<string, string>;
@@ -208,6 +229,18 @@ const refusedWith = (
   // nothing was acted on: no folder of results, no base touched
   expect(existsSync(join(l.root, 'walks'))).toBe(false);
   expect(git(l.tree, 'status', '--porcelain')).toBe('');
+};
+
+/** A browser folder of this test's own, so taking it spares every other test (never the machine's). */
+const ownBrowser = () => {
+  const base = join(temp, `pw-own-${count++}`);
+  const dir = join(base, 'chromium-1248');
+  const shell = join(base, 'chromium_headless_shell-1248');
+  mkdirSync(dir, { recursive: true });
+  mkdirSync(shell);
+  const exe = join(dir, 'chrome');
+  writeFileSync(exe, '');
+  return { exe, shell };
 };
 
 describe('walk/run.sh refuses before it acts', () => {
@@ -864,17 +897,6 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
 });
 
 describe('walk/run.sh when the browser is taken from under the run', () => {
-  /** A browser folder of this test's own, so taking it spares every other test (never the machine's). */
-  const ownBrowser = () => {
-    const base = join(temp, `pw-own-${count++}`);
-    const dir = join(base, 'chromium-1248');
-    const shell = join(base, 'chromium_headless_shell-1248');
-    mkdirSync(dir, { recursive: true });
-    mkdirSync(shell);
-    const exe = join(dir, 'chrome');
-    writeFileSync(exe, '');
-    return { exe, shell };
-  };
   const taken = (l: ReturnType<typeof layout>, prune: string, after: number) => ({
     SHIM_PRUNE: prune,
     SHIM_PRUNE_AFTER: String(after),
@@ -959,5 +981,68 @@ describe('walk/run.sh when the browser is taken from under the run', () => {
     expect(code).toBe(0);
     expect(out).toContain('-- stack 1/1: full-2, piece-2');
     expect(out).not.toContain('the browser');
+  });
+});
+
+describe('walk/run.sh keeps the browser claimed by a path that outlives the worktrees', () => {
+  const claimsOf = (exe: string) => join(exe, '..', '..', '.links');
+  const core = (l: ReturnType<typeof layout>) =>
+    join(realpathSync(l.trunk), 'walk/node_modules/playwright-core');
+
+  it('a green run registers the trunk’s claim once and its header names it and the revision', () => {
+    const l = layout();
+    const b = ownBrowser();
+
+    const first = run(l, ['piece-2', '--checks'], { SHIM_CHROMIUM: b.exe });
+    const second = run(l, ['piece-2', '--checks'], { SHIM_CHROMIUM: b.exe });
+
+    expect(first.code).toBe(0);
+    expect(first.out).toContain(`claim ${core(l)} (registered): protects Chromium r1248`);
+    expect(second.out).toContain(`claim ${core(l)} (already there): protects Chromium r1248`);
+    const files = readdirSync(claimsOf(b.exe));
+    expect(files).toEqual([createHash('sha1').update(core(l)).digest('hex')]);
+    expect(readFileSync(join(claimsOf(b.exe), files[0]), 'utf8')).toBe(core(l));
+  });
+
+  it('a trunk whose browsers.json names another revision refuses the run before any pass', () => {
+    const l = layout();
+    const b = ownBrowser();
+    writeFileSync(join(core(l), 'browsers.json'), trunkBrowsers('1300'));
+
+    refusedWith(
+      l,
+      ['piece-2'],
+      /== refused: unclaimed: the trunk's playwright-core names chromium r1300, this run uses r1248: install there: cd .*main && pnpm install/,
+      { SHIM_CHROMIUM: b.exe },
+    );
+    expect(existsSync(claimsOf(b.exe))).toBe(false);
+  });
+
+  it('a trunk with no readable browsers.json refuses the run before any pass', () => {
+    const l = layout();
+    const b = ownBrowser();
+    rmSync(join(core(l), 'browsers.json'));
+
+    refusedWith(
+      l,
+      ['piece-2'],
+      /== refused: unclaimed: the trunk's playwright-core or its browsers.json cannot be read/,
+      {
+        SHIM_CHROMIUM: b.exe,
+      },
+    );
+  });
+
+  it('a claim folder that cannot be written is said in one line with the way to write it', () => {
+    const l = layout();
+    const b = ownBrowser();
+    writeFileSync(join(claimsOf(b.exe)), 'a file where the folder should be');
+
+    refusedWith(
+      l,
+      ['piece-2'],
+      /== refused: unclaimed: the claim folder .*\.links cannot be written from here \(\w+\), and nothing else was tried; from a terminal that can write the browser folder, once: bash .*run.sh --checks/,
+      { SHIM_CHROMIUM: b.exe },
+    );
   });
 });

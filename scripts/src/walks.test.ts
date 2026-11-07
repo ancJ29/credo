@@ -320,3 +320,18 @@ describe('the strays, from a process listing', () => {
     expect((await run(['strays', '/work/credo'])).code).toBe(2);
   });
 });
+
+describe('the claim, from a worktree listing', () => {
+  it('says what it could not make true in one line, exit 1, and refuses a call it does not understand', async () => {
+    expect(
+      await run(
+        ['claim', '/nonexistent/browsers', '1248'],
+        'worktree /x\nbranch refs/heads/other\n',
+      ),
+    ).toEqual({
+      code: 1,
+      lines: ['unclaimed: no worktree has main checked out, and the claim lives there'],
+    });
+    expect((await run(['claim', '/nonexistent/browsers'])).code).toBe(2);
+  });
+});

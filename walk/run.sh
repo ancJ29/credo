@@ -277,6 +277,13 @@ main() {
     [ -d "$shell_dir" ] || browser_what="${browser_what:+$browser_what and }the headless shell folder $shell_dir"
     [ -n "$browser_what" ]
   }
+  # An install by another project deletes every browser no claim names, and a claim naming this
+  # worktree dies with it: the trunk's install holds the claim. Written once if absent (a terminal
+  # that can write the browser folder), checked every run.
+  local claim_line
+  claim_line="$(git -C "$tree" worktree list --porcelain 2>/dev/null | tool claim "$(dirname "$shell_dir")" "$chromium_rev")" ||
+    refuse "$claim_line; from a terminal that can write the browser folder, once: bash $self --checks"
+  echo "  $claim_line"
   echo "  node $node_now, pnpm $pnpm_now, Playwright $pw_version, Chromium r$chromium_rev; load $load (at most $max_load); no gate lock; $(git -C "$tree" rev-parse --abbrev-ref HEAD) at $sha, clean, main in"
 
   # Playwright's own listing of each walk's projects (placeholders for what the specs read when they
