@@ -255,10 +255,11 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L244`](../ops/env.yml#L244)). **This change is recorded nowhere else** — not in
-  `docs/open-items.md`, not in the conventions, only in that one template comment and now here. It
-  is the one property of the day-one design that was given up without being written down, which is
-  worth knowing before anyone reasons about the edge from the plan.
+  ([`ops/env.yml#L244`](../ops/env.yml#L244)). It is the one property of the day-one design that
+  was given up without anyone deciding to — it followed from the Region's limit when function URLs
+  turned out not to be offered there — and until 2026-11-07 that template comment was the only
+  place it was written down. It is now [open item 121](open-items.md), parked for the human until a
+  client signs or real client data reaches a deployment.
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**
   (`#L181`). There is no Route53, ACM or custom domain anywhere in the repository; the distribution
   uses CloudFront's own certificate and name
