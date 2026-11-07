@@ -10,7 +10,7 @@ measurement names.
 per-file seconds. On the runner the `scripts` package took 407.45 s, and **one file,
 `src/demo/apply.test.ts`, took 402.48 s of it — 98.8 %**. Locally the same file was 199.19 s of
 199.98 s. Vitest runs files on separate workers but the tests inside one file one after another, so
-the package's floor **is** that file. Nothing else comes near: the next longest is 86.7 s.
+the package's floor **is** that file. Nothing else comes near: the next longest is 86.7 s (`stack.test.ts` on the runner; see the correction under the table: `walk-run.test.ts` was the other).
 
 **The cheapest safe path is therefore not a trim but a split.** The file already has ten top-level
 `describe` blocks, and every test inside takes a service of its own, so the blocks can become ten
@@ -33,6 +33,7 @@ long pole, `visual` at 274.89 s, is a second plan.
 | `src/demo/apply.test.ts` | **402.48 s** (48 tests) | **199.19 s** |
 | `src/stack.test.ts` | 86.7 s | 54.1 s |
 | `src/demo.test.ts` | 72.3 s | 50.7 s |
+| `src/walk-run.test.ts` | 67.0 s, **truncated: the line is an abort** (34 of 38 tests, 1 failed) | **86.4 s** (38 tests), 43 % of the package |
 | the package's own total | **407.45 s** | 199.98 s |
 | the whole app job | 12 min 06 s | — |
 
@@ -52,6 +53,9 @@ with no gate lock held and no picture run pending, never something a step takes 
 
 1. **A file over 25 % of the package's wall time.** The package's floor is its longest file, so
    only the longest one can pay. At 25 % exactly one file is in scope and the next (21 %) is out.
+   `[FIXED]` in review: this was wrong. The runner's 67 s for `walk-run.test.ts` was cut short by its own red;
+   locally that file is 86.4 s over 38 tests, 43 % of 199.98 s, so two files met the rule from the start and
+   `walk-run.test.ts` is carried by item 128, deliberately not by this piece.
 2. **Inside that file, a single test over 5 s.** Not a budget: the file's own shared-fill tests land
    at 2–3 s, so 5 s is above what this file already proves reachable.
 3. **Stop when the longest file is at or under the second pole, 86.7 s on the runner.** Below that
