@@ -100,12 +100,16 @@ and `docs/open-items.md` is the one file the live pieces share, so whichever mer
       (green both ways, today's behaviour); row 6's diff empty; the five steps ran, ui 796 tests,
       `== exit 0`. One existing test in `ui/src/SignIn.test.tsx` asserted the join page had no switch
       and now asserts it has one.
-- [ ] **3. The walks page and the walk's two assertions.** 🤖 Sonnet, 8 min: the doors' question and
+- [x] **3. The walks page and the walk's two assertions.** 🤖 Sonnet, 8 min: the doors' question and
       its Vietnamese, and the switch asserted before the shot on the spec's screens 1 and 5
       (`walk/specs/operator-passkeys.spec.ts#L74-L86`, `#L109-L112`). *Done when:* `pnpm report` ends
       green; `git diff -- walk/specs | grep -c "at('"` prints 0; the built `walks.json` differs from
       `main`'s in exactly the two join screens' versions and the doors' question (row 8); the gate
       over `visual` and `walk`, all five steps named, `== exit 0`.
+      *Done 11-07:* question and its Vietnamese rewritten; the switch asserted before the shot on
+      screens 1 and 5; typecheck of both, eslint, prettier, knip and `pnpm report` (120 screens)
+      exit 0; `visual` tests 100 % exit 0 on the rerun (first run: two timeouts in `admin-staff`,
+      load). Row 8's comparison against `main`'s build and the `walk` run itself are held to step 5.
 - [ ] **4. The look** (👤 1). The machine goes straight on to step 5 and does not wait for it.
 - [ ] **5. The gates and one review.** 🤖 Sonnet, then Opus, 10 min: `main` taken in, then the whole
       `pnpm check` once under the shared lock. *Done when:* `== exit 0` in the log, and every review
