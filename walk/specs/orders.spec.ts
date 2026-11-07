@@ -314,13 +314,13 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(
     title(words.orders.orderTitle.replace('{{number}}', yesterdays.number)),
   ).toBeVisible();
-  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0]!)).toBeVisible();
+  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0])).toBeVisible();
   await at('orders-13-moved-price');
 
   // 14. The draft saved again: the moved line repriced, and a new total.
   await press(words.orders.saveDraft);
   await expect(page.getByRole('alert')).toContainText(words.orders.done.saved);
-  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0]!)).toHaveCount(0);
+  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0])).toHaveCount(0);
   await at('orders-14-repriced');
 }
 

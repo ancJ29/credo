@@ -780,7 +780,7 @@ const WEEK = (() => {
     ) as Extract<Priced, { kind: 'priced' }>; // every code is in the data set's lists, as its test reads
     // a line named with its saved price keeps it, the amount and the total following
     const lines = priced.lines.map((line, at) => {
-      const saved = spec.lines[at]![2];
+      const saved = spec.lines[at][2];
       return saved === undefined ? line : { ...line, price: saved, amount: saved * line.quantity };
     });
     const total = lines.reduce((sum, line) => sum + line.amount, 0);
