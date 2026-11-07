@@ -102,6 +102,28 @@ it. That is a claim about a job, so it is step 3's own case and the point the hu
 
 - [x] **4.** 2026-11-07 21:50. The `ops` job's steps as `.github/workflows/ci.yml` runs them, locally: ShellCheck 0.11.0 (`-x ops/*.sh walk/*.sh`) exit 0 and `bash ops/test.sh` whole exit 0, `logs/20261107-2147-tree-guard-step4.log` (`== shellcheck exit 0`, `== ops/test.sh exit 0`, last line `== exit 0`, lock released and free). cfn-lint is not part of this step's done-when and was not run (needs pip, no network). The one unknown is answered: after the whole gate on the committed tree, `git status --short` printed nothing, so no tracked file under any deployed path was rewritten, and the path set loses no path.
 
+
+- [x] **5.** 2026-11-07 21:56. One cross-model review, read-only at `dc5983dc` in a scratch worktree of its
+  own, on a model other than the author's. **Verdict: findings - two Medium, two Low, none a regression against
+  the base and none blocking.** Its one substantive catch: the new message claimed more than the check
+  delivered, since `--exclude-standard` stays and `.gitignore` is not one of the 16 paths the push trigger names,
+  so `node_modules/` and `dist` sit inside deployed paths uncompared. It also proved, from an existing green step
+  inside the deploy job rather than from a local `git status`, that this cannot redden that job:
+  `c-storage/Makefile#L28-L29` runs `git status --porcelain` over the whole repository after the install and both
+  builds and before the role is taken (`.github/workflows/ci.yml#L263-L284`).
+
+- [x] **6.** 2026-11-07 22:02. The fix pass, `138571c4`: both messages now read "the code here (tracked and
+  unignored files under every path ci.yml deploys on, and `.gitignore`)" and the function's comment says ignored
+  files are not compared; `.gitignore` joined the compared set; the base's `ci.yml` goes to a temp file passed to
+  `push_paths` as `seed.sh` gives it, removed on every way out with the exit code carried in `rc`, so the
+  `/dev/stdin` call shape is gone before the deploy's runner meets it. One weak case was made independent.
+  `RIDGE_SCRIPTS_DIR` got no code change - the suite itself uses it. Re-check, the whole ops gate again:
+  `logs/20261107-2159-tree-guard-step6.log` (`== ops/test.sh exit 0` L576, `== exit 0` L577, lock released
+  22:02:17 L578, no `FAIL`). Items 142 and 143 filed.
+  **These two ticks were written by the orchestrator, not by the step's own agent**, from the diff, the gate log
+  and the tree: the fix pass never handed its report back (it stopped waiting on its own background work and did
+  not resume). Every figure above was reread from disk in this worktree.
+
 **Total 44 minutes**, the review and the whole check among them. Each size is the minutes the same
 shape took in its last rows: a guard built into a shell script 8, its cases 8 to 14, a small cases
 step on `ops/test.sh` 3, an Opus review 6 to 12, a fix pass 5 to 7, a recap 2 to 4. The piece needs
