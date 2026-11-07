@@ -1,4 +1,4 @@
-import { createClient } from '@credo/bff/clients';
+import { createClient, deleteClient } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
@@ -6,7 +6,9 @@ import {
   createCStorageClient,
   joinLinkPath,
   normaliseSignInName,
+  recordKeys,
   sameOperatorName,
+  storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll } from './demo/apply';
@@ -28,12 +30,13 @@ export type RidgeIo = {
 };
 
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | seed | root-password [--check] <code>…';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | seed | root-password [--check] <code>…';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
  * the BFF's service registered with the super-admin key, the operator's account, and a client made
- * by the operator's create. The connection comes from the environment (C_STORAGE_URL and the BFF's
+ * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
+ * (the check's client, with the keys the create used; it prints how many records went). The connection comes from the environment (C_STORAGE_URL and the BFF's
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
@@ -114,6 +117,28 @@ export async function runRidge(
       const made = await createClient(client(), { code, name, madeAt: Date.now() });
       if (made === 'taken') throw new Error(`the code ${code} names a client already`);
       io.out(made.password);
+      return 0;
+    }
+
+    if (command === 'untenant') {
+      const [code] = rest;
+      if (!clientCodeSchema.safeParse(code).success) throw new Error(USAGE);
+      const held = await client().getRecord(recordKeys.client(code));
+      const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
+      // One press: a bound of 200 records is far over the check's three.
+      const done = await deleteClient(client(), {
+        code,
+        index,
+        by: 'deploy-check',
+        now: io.now ?? Date.now,
+      });
+      if (done === 'unknown') {
+        io.out(`no client ${code} to delete`);
+        return 0;
+      }
+      const left = typeof done === 'string' ? -1 : done.left;
+      if (left !== 0) throw new Error(`the client ${code} was not deleted whole`);
+      io.out(`client ${code} deleted`);
       return 0;
     }
 

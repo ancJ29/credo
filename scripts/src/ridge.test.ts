@@ -52,6 +52,13 @@ function memoryCStorage(options: { registered?: boolean } = {}) {
       tags.set(key, String(++writes));
       return reply(201);
     }
+    if (url.pathname === base && url.searchParams.has('prefix')) {
+      const prefix = url.searchParams.get('prefix') ?? '';
+      const listed = [...records.keys()]
+        .filter((key) => key.startsWith(prefix))
+        .map((key) => ({ key, data: records.get(key), tag: tags.get(key) }));
+      return reply(200, { records: listed, more: false });
+    }
     const key = decodeURIComponent(url.pathname.slice(base.length + 1));
     if (init?.method === 'DELETE') {
       if (!precondition(key)) return reply(412);
@@ -270,6 +277,43 @@ describe('what the ops scripts ask of ridge', () => {
     });
     expect((await run(['tenant', 'Bad Code', 'x'], KEYS, call)).status).toBe(1);
     expect((await run(['tenant', 'good-code'], KEYS, call)).status).toBe(1);
+  });
+
+  it('untenant deletes the client the tenant command made, every record of it, and frees the code', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+    expect(records.size).toBe(3);
+
+    const result = await run(['untenant', 'check-acme'], KEYS, call);
+
+    expect(result.err).toEqual([]);
+    expect(result).toMatchObject({ status: 0, out: ['client check-acme deleted'] });
+    expect(records.size).toBe(0);
+    expect((await run(['tenant', 'check-acme', 'Again'], KEYS, call)).status).toBe(0);
+  });
+
+  it('untenant on a code with no client is a quiet success, and a bad code is refused', async () => {
+    const { call } = memoryCStorage();
+
+    expect(await run(['untenant', 'check-none'], KEYS, call)).toMatchObject({
+      status: 0,
+      out: ['no client check-none to delete'],
+    });
+    expect((await run(['untenant', 'Bad Code'], KEYS, call)).status).toBe(1);
+  });
+
+  it('untenant names a failure when the client moved under it, and exits 1', async () => {
+    const { call } = memoryCStorage();
+    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+    const refuseIndexRemoval: typeof fetch = (input, init) =>
+      init?.method === 'DELETE' && String(input).endsWith(encodeURIComponent('client.check-acme'))
+        ? Promise.resolve(new Response('{}', { status: 412 }))
+        : call(input, init);
+
+    expect(await run(['untenant', 'check-acme'], KEYS, refuseIndexRemoval)).toMatchObject({
+      status: 1,
+      err: ['error: the client check-acme was not deleted whole'],
+    });
   });
 
   it('row 7: seed reads the real clock when none is given, and on an empty service makes nothing', async () => {

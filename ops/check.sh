@@ -29,8 +29,21 @@ WANT_BRUNO=4.2.0
 log_start check "$ENVNAME"
 mkwork
 
+# The client the check makes (set before it is made) is deleted here, which runs on every end of the
+# run, green, red or died, while the tunnel is still open. A failed delete is reported and does not
+# turn a green check red.
+CHECK_TENANT=''
 cleanup_extra() {
   rm -f "$BRUNO_DIR/environments/$ENVNAME.yml"
+  if [ -n "$CHECK_TENANT" ]; then
+    local gone
+    if gone=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
+      ridge_cli untenant "$CHECK_TENANT" 2>&1); then
+      echo "ok   $gone"
+    else
+      echo "WARN the check's client $CHECK_TENANT was not deleted (delete it in the console): $gone"
+    fi
+  fi
 }
 
 step "the tools and the collection"
@@ -147,8 +160,10 @@ if [ "$LAYER4" = 0 ]; then
 else
   bff_env_read
   # A fresh client each run, made by the operator's own create function through the tunnel (the BFF's
-  # own service and keys); it stays, three records, as each Bruno run leaves a service row.
+  # own service and keys); cleanup_extra deletes it at the run's end, by the same function and keys.
+  # (Each Bruno run still leaves a service row.)
   tenant=check-$(date -u +%Y%m%dt%H%M%Sz)
+  CHECK_TENANT=$tenant
   tenant_name="Check $tenant"
   tenant_pass=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
     ridge_cli tenant "$tenant" "$tenant_name") || die "the check's client could not be made"
