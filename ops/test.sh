@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The ops job's guards, run with no AWS, each on hand-written input: the change-set filter, the
 # choice between creating and updating a stack, an update's refusal to move the repository, the
-# deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in
+# deploy role's trust and the subject GitHub issues, the check that the code a push deploys on is main's (by hand, and in
 # the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a Bruno run,
 # the credentials bru never holds, the log's exit code after a signal, the workflow's deploy job,
 # layer four's template (env.yml read as JSON through Ruby: rows 22, 25, 26, 29, 30 and 32 of
@@ -423,30 +423,78 @@ refuses "  a template resource the change set lacks is refused" "the template ga
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
 
-echo "== ops/ is origin/main's (release, check, drill and stack run only reviewed scripts); in the deploy job, the checked-out commit's"
+echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
-mkdir -p "$WORK/repo/ops"
+# A scratch repository of the paths a script can run or deploy, and one (docs/) it cannot. Its ci.yml
+# is the reviewed base's list: ops_match_main reads it from there.
+scratch_ci() { # <the extra push paths, one a line, each already '      - "x"'>
+  printf 'name: CI\n\non:\n  push:\n    paths:\n      - "ops/**"\n      - "scripts/**"\n      - "bff/**"\n      - "shared/**"\n      - "ui/**"\n      - "package.json"\n      - ".github/workflows/ci.yml"\n%s  pull_request:\n    paths:\n      - "ops/**"\n\njobs:\n' "$1"
+}
+mkdir -p "$WORK/repo/ops" "$WORK/repo/scripts" "$WORK/repo/bff" "$WORK/repo/shared" "$WORK/repo/ui" "$WORK/repo/docs" "$WORK/repo/.github/workflows"
 git -C "$WORK/repo" init -q
 echo 'echo reviewed' >"$WORK/repo/ops/a.sh"
-git_repo add ops/a.sh
+echo 'reviewed' >"$WORK/repo/scripts/s.ts"
+echo 'reviewed' >"$WORK/repo/bff/b.ts"
+echo 'reviewed' >"$WORK/repo/shared/h.ts"
+echo 'reviewed' >"$WORK/repo/ui/u.ts"
+echo 'reviewed' >"$WORK/repo/docs/d.md"
+scratch_ci '' >"$WORK/repo/.github/workflows/ci.yml"
+git_repo add -A
 git_repo commit -q -m main
 old_sha=$(git_repo rev-parse HEAD)
 git_repo update-ref refs/remotes/origin/main HEAD
 # GITHUB_ACTIONS is set to nothing in the by-hand case: this suite runs in GitHub's own job too.
 at_repo() { GITHUB_ACTIONS='' REPO_DIR=$WORK/repo ops_match_main; }
 at_repo_job() { GITHUB_ACTIONS=true REPO_DIR=$WORK/repo ops_match_main; }
-passes "a clean ops/ passes" at_repo
+passes "a clean tree passes" at_repo
 passes "  and in the job" at_repo_job
+check "the line names the code, not the folder" "1 0" \
+  "$(at_repo 2>&1 | grep -c 'the code here (every path ci.yml deploys on) is origin/main') $(at_repo 2>&1 | grep -c 'ops/ is')"
 echo 'echo edited' >"$WORK/repo/ops/a.sh"
-refuses "an edited script is refused" "ops/ here differs from origin/main's" at_repo
-refuses "  and in the job, against its own commit" "ops/ here differs from this commit's" at_repo_job
+refuses "an edited script is refused" "the code here (every path ci.yml deploys on) differs from origin/main's" at_repo
+refuses "  and in the job, against its own commit" "the code here (every path ci.yml deploys on) differs from this commit's" at_repo_job
 git_repo checkout -q -- ops/a.sh
 echo 'echo new' >"$WORK/repo/ops/b.sh"
-refuses "a new script is refused" "ops/ here differs from origin/main's" at_repo
-refuses "  and in the job" "ops/ here differs from this commit's" at_repo_job
+refuses "a new script is refused" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
 rm "$WORK/repo/ops/b.sh"
+echo 'edited' >"$WORK/repo/scripts/s.ts"
+refuses "an edited file under scripts/ is refused by hand" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
+git_repo checkout -q -- scripts/s.ts
+echo 'new' >"$WORK/repo/scripts/n.ts"
+refuses "an untracked file under scripts/ is refused by hand" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
+rm "$WORK/repo/scripts/n.ts"
+for f in bff/b.ts shared/h.ts ui/u.ts; do
+  echo 'edited' >"$WORK/repo/$f"
+  refuses "an edited file, $f, is refused by hand" "differs from origin/main's" at_repo
+  git_repo checkout -q -- "$f"
+done
+echo 'edited' >"$WORK/repo/docs/d.md"
+echo 'new' >"$WORK/repo/docs/n.md"
+passes "an edit and a new file outside the deployed paths (docs/) do not refuse a by-hand run" at_repo
+git_repo checkout -q -- docs/d.md
+rm "$WORK/repo/docs/n.md"
 git_repo update-ref -d refs/remotes/origin/main
 refuses "an unknown origin/main is refused" "origin/main is unknown" at_repo
+# A branch main does not hold, its edit committed: the tree is clean against HEAD, which a diff
+# against HEAD passes, and the base is origin/main.
+git_repo update-ref refs/remotes/origin/main "$old_sha"
+git_repo checkout -q -b branch-edit "$old_sha"
+echo 'committed edit' >"$WORK/repo/scripts/s.ts"
+git_repo commit -q -am 'edit scripts on a branch'
+check "the branch's tree is clean against its own HEAD" 0 "$(git_repo diff --quiet HEAD && echo 0 || echo 1)"
+refuses "a worktree on a branch main does not hold is refused, though its tree is clean against HEAD" "differs from origin/main's" at_repo
+git_repo checkout -q --detach "$old_sha"
+# main moves on twice: a commit that changes scripts/ alone, then one that changes ops/ as well.
+echo 'moved on' >"$WORK/repo/scripts/s.ts"
+git_repo commit -q -am mid
+mid_sha=$(git_repo rev-parse HEAD)
+git_repo update-ref refs/remotes/origin/main "$mid_sha"
+git_repo checkout -q --detach "$old_sha"
+refuses "by hand, a clone at an earlier commit of main that differs in scripts/ alone is refused" "differs from origin/main's" at_repo
+git_repo checkout -q --detach "$mid_sha"
 # A push lands during the deploy: origin/main moves on to a commit that changes ops/, and the job
 # still holds the commit it checked out.
 echo 'echo pushed meanwhile' >"$WORK/repo/ops/a.sh"
@@ -454,13 +502,36 @@ git_repo commit -q -am newer
 new_sha=$(git_repo rev-parse HEAD)
 git_repo update-ref refs/remotes/origin/main "$new_sha"
 git_repo checkout -q --detach "$old_sha"
-refuses "by hand, a clone behind main's ops/ is refused" "ops/ here differs from origin/main's" at_repo
+refuses "by hand, a clone behind main's ops/ is refused" "differs from origin/main's" at_repo
 passes "in the job, a push that landed meanwhile does not turn a sound deploy red" at_repo_job
 git_repo checkout -q -b side "$old_sha"
 git_repo commit -q --allow-empty -m side
 side_sha=$(git_repo rev-parse HEAD)
 refuses "in the job, a commit that main does not hold is refused" "not a commit of main" at_repo_job
 git_repo checkout -q --detach "$new_sha"
+# The path set is ci.yml's, nothing in lib.sh: a path added to the push trigger is compared at once.
+mk_scratch() { # <dir> <the extra push paths for its ci.yml>
+  mkdir -p "$1/ops" "$1/extra" "$1/.github/workflows"
+  echo 'echo reviewed' >"$1/ops/a.sh"
+  echo 'reviewed' >"$1/extra/e.txt"
+  scratch_ci "$2" >"$1/.github/workflows/ci.yml"
+  git -C "$1" init -q
+  git -C "$1" add -A
+  git -C "$1" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+  git -C "$1" update-ref refs/remotes/origin/main HEAD
+}
+at_dir() { GITHUB_ACTIONS='' REPO_DIR=$1 ops_match_main; }
+mk_scratch "$WORK/repo-plain" ''
+mk_scratch "$WORK/repo-added" '      - "extra/**"
+'
+echo 'edited' >"$WORK/repo-plain/extra/e.txt"
+echo 'edited' >"$WORK/repo-added/extra/e.txt"
+passes "a path no push trigger names is not compared" at_dir "$WORK/repo-plain"
+refuses "a path added to the push trigger is compared, with no edit to lib.sh" "differs from origin/main's" at_dir "$WORK/repo-added"
+mk_scratch "$WORK/repo-bad" '      - extra/**
+'
+refuses "a push trigger the reader cannot parse stops the guard, naming the line" "      - extra/**" at_dir "$WORK/repo-bad"
+refuses "  and it is a refusal of a clean tree, never a comparison of nothing" "cannot read" at_dir "$WORK/repo-bad"
 
 echo "== mask writes its line whole (tee writes the same pipe, so it opens with a newline)"
 (GITHUB_ACTIONS=true mask thekey 3>"$WORK/fd3")
@@ -1205,6 +1276,10 @@ cport=$(free_port)
 cp -R "$OPS_DIR" "$E2E/repo/ops"
 cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
 echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+# docs/ is outside every path ci.yml deploys on: an edit there passes main_synced and meets the
+# whole-tree check against HEAD that seed.sh and root-password.sh keep.
+mkdir -p "$E2E/repo/docs"
+echo 'a note' >"$E2E/repo/docs/note.md"
 # seed.sh reads the paths a push deploys on from ci.yml, so the clone holds the real one.
 mkdir -p "$E2E/repo/.github/workflows"
 cp "$REPO_DIR/.github/workflows/ci.yml" "$E2E/repo/.github/workflows/ci.yml"
@@ -1984,7 +2059,7 @@ export OPS_LOG_DIR=$E2E/logs-rp-ops
 printf '# touched\n' >>"$E2E/repo/ops/README.md"
 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
 git -C "$E2E/repo" checkout -q -- ops/README.md
-refused_untouched "an ops/ that is not origin/main's is refused" "ops/ here differs from origin/main's"
+refused_untouched "an ops/ that is not origin/main's is refused" "the code here (every path ci.yml deploys on) differs from origin/main's"
 export OPS_LOG_DIR=$E2E/logs-rp-head
 printf 'a note\n' >"$E2E/repo/NOTES-ROOT-PASSWORD.md"
 git -C "$E2E/repo" add NOTES-ROOT-PASSWORD.md
@@ -1993,9 +2068,9 @@ rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
 git -C "$E2E/repo" reset -q --hard "$e2e_sha"
 refused_untouched "a HEAD that is no commit of main is refused" "is not a commit of main"
 export OPS_LOG_DIR=$E2E/logs-rp-dirty
-printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+printf '# touched\n' >>"$E2E/repo/docs/note.md"
 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
-git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+git -C "$E2E/repo" checkout -q -- docs/note.md
 refused_untouched "a tree that differs from its commit is refused" "this tree differs from"
 export OPS_LOG_DIR=$E2E/logs-rp-modules
 RIDGE_SCRIPTS_DIR='' rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
@@ -2127,9 +2202,9 @@ check "seed.sh seeds ridge alone: another environment is refused before any aws 
 
 e2e_fresh seed-dirty
 export OPS_LOG_DIR=$E2E/logs-seed-dirty
-printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+printf '# touched\n' >>"$E2E/repo/docs/note.md"
 e2e_run seed.sh ridge
-git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+git -C "$E2E/repo" checkout -q -- docs/note.md
 check "a tree that differs from its commit is refused before any aws call, naming why" "1 1 gone" \
   "$RC $(seed_lines '^error: this tree differs from') $(file_state "$S/aws.calls")"
 
