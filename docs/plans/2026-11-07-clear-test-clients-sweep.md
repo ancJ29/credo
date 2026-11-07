@@ -49,14 +49,17 @@ steps are `pnpm --filter @credo/scripts run typecheck`, `pnpm exec eslint .`, `p
   tagged; `docs/recaps/2026-11-07-clear-test-clients-sweep.md` with its `docs/products.md` row. *Done when:* `pnpm check`
   exits 0 and the tree is clean.
 
-## The human's points
+## Decided here, open to a veto
 
-- **(a) Two hours as the age.** The deploy deletes check clients older than two hours. A yes keeps a concurrent deploy
-  safe, since a live client lives 8 minutes at most. A no at a shorter age risks reddening a concurrent deploy; at a longer
-  one a stranded client waits for the next deploy. **Recommend yes.**
-- **(b) A failed sweep warns and does not redden the deploy**, as the existing cleanup does. A yes keeps housekeeping from
-  failing a good deploy; the cost is that a stranded client is announced only in the log, which is item 117 as written. A no
-  makes the deploy red for a stale record. **Recommend yes.**
+Neither of these is a question: both are choices about how the machine works, so they are decided here with their reasons.
+The human is asked nothing in this piece.
+
+- **Two hours as the age.** The deploy deletes check clients older than two hours, since a live client lives 8 minutes at
+  most. A shorter age risks reddening a concurrent deploy that loses its own client mid-check; a longer one means a
+  stranded client waits for the next deploy.
+- **A failed sweep warns and does not redden the deploy**, as the existing cleanup does (`ops/check.sh#L44`). It is not a
+  change. Making the deploy red for a stale record would let housekeeping fail a good deploy; the cost of the warning is that
+  a stranded client is announced only in the log, which is item 117 as written.
 
 ## The case table
 
