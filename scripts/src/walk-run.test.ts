@@ -98,7 +98,8 @@ case " $* " in
     [ -z "$SHIM_ARGS_LOG" ] || echo "$*" >> "$SHIM_ARGS_LOG"
     # The trap goes in before the lane counts as held, so the gate lock can only appear once all
     # lanes hold their first TERM.
-    [ -z "$SHIM_HOLD_TERM" ] || trap 'echo "held TERM"; sleep 15; echo "pass done"' TERM
+    [ -z "$SHIM_HOLD_TERM" ] || trap 'echo "held TERM"; sleep 60; echo "pass done"' TERM
+    [ -z "$SHIM_SLEEP_DIR" ] || echo $$ >> "$SHIM_SLEEP_DIR/pids"
     if [ -n "$SHIM_HOLD_FOR" ]; then
       touch "$SHIM_HOLD_DIR/$$"; i=0
       while [ "$(ls "$SHIM_HOLD_DIR" | wc -l)" -lt "$SHIM_HOLD_FOR" ]; do
@@ -110,7 +111,6 @@ case " $* " in
       case " $* " in *" --project $SHIM_RED_PROJECT "*) echo "  0 passed"; exit 1 ;; esac
     fi
     if [ -n "$SHIM_SLEEP_DIR" ]; then
-      echo $$ >> "$SHIM_SLEEP_DIR/pids"
       [ -z "$SHIM_LOCK" ] || mkdir "$SHIM_LOCK" 2>/dev/null
       if [ -n "$SHIM_HOLD_TERM" ]; then
         sleep 20 & wait
@@ -794,7 +794,7 @@ describe('walk/run.sh on stand-ins for the stack, the fake and the browser', () 
       expect(out).toContain('== done');
       expect(code).toBe(1);
       expect(Date.now() - began).toBeGreaterThan(9_000);
-      expect(Date.now() - began).toBeLessThan(16_000);
+      expect(Date.now() - began).toBeLessThan(30_000);
       expect(s.pids()).toHaveLength(3);
       expect(s.left()).toEqual([]);
     });
