@@ -103,13 +103,21 @@ order page, which is milestone 3.
 
 - [ ] **1. This plan.** 🤖 Opus, 12 minutes. Done when: committed; `wc -w` read; `git grep -nE '/Users/|~/'` over it
   empty. **No prettier check is claimed:** `*.md` is in `.prettierignore`, so a green on this file inspects nothing.
-- [ ] **2. The form on invented data, the cheap end to end.** 🤖 Sonnet, 28 minutes: the two wire schemas and the
+- [x] **2. The form on invented data, the cheap end to end.** 🤖 Sonnet, 28 minutes: the two wire schemas and the
   route name, the fake's two calls, the page's form and three notices, the words in both dictionaries, the two new
   scenes and the spec's four. The look comes off this build, so a no costs no server work. Done when: rows 8 to 13
   each red once, then green; three packages' five gate steps green at 100 % —
   `pnpm --filter @credo/shared --filter @credo/ui --filter @credo/visual run typecheck && eslint . && prettier --check . && pnpm --filter @credo/shared --filter @credo/ui --filter @credo/visual run test && knip`;
   `pnpm fake` serves the page; `pnpm report` builds, and against `main`'s build exactly screens 12, 13, 16 and 17
   differ.
+  *Done 2026-11-07 (14 minutes of work, gate log `20261107-1424-edit-product-step2-gate.log`, `== exit 0`):* typecheck
+  of shared, ui, visual and, beyond the plan, walk; `eslint .`; `prettier --check .`; the three packages' tests at 100 %
+  (shared 158, ui 803, visual 203); knip: all six steps ran and exited 0. Rows 8 to 12 each seen red by one named
+  mutation of the page, then green; row 13 by the `withBorder` grep and the words test. **Departure from the plan:** the
+  price box keeps `allowDecimal` and `allowNegative` and clamps nothing (`clampBehavior="none"`), because with the order
+  form's props the box itself cut a pasted `95000.5` to 95000 and dropped the minus of `-5`, the rounding the plan
+  forbids; the shared `priceSchema` now refuses both on submit, with one word. The picture comparison against `main`
+  is read in the report, not claimed here.
 - [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
 - [ ] **4. The routes against the real c-storage.** 🤖 Sonnet, 22 minutes: the `ListKind` generalisation and the two
   routes; nothing of the page changes, since step 2 bound it to the wire. Done when: rows 1 to 6 each red once, then

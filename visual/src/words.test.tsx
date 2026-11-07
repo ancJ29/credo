@@ -234,6 +234,8 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
     `heading: ${DEMO_PRODUCTS.find((one) => !hasNote(one))!.name}`,
   'admin-lists:lists-14-customer-saved': (w) => `alert: ${w.lists.customers.saved}`,
   'admin-lists:lists-15-customer-conflict': (w) => `alert: ${w.lists.customers.conflict}`,
+  'admin-lists:lists-16-product-saved': (w) => `alert: ${w.lists.products.saved}`,
+  'admin-lists:lists-17-product-conflict': (w) => `alert: ${w.lists.products.conflict}`,
   'office-orders:orders-1-list': (w) => `heading: ${w.nav.orders}`,
   // the second line is the one added by the steps; the form's own list holds the product too, as an option
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',

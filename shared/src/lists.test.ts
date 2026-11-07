@@ -15,9 +15,11 @@ import {
   importProductsReplySchema,
   PRICE_MAX,
   priceSchema,
+  productDocSchema,
   productListReplySchema,
   productSchema,
   saveCustomerRequestSchema,
+  saveProductRequestSchema,
   UNIT_MAX,
 } from './lists';
 import { recordKeys } from './records';
@@ -100,6 +102,45 @@ describe('the customer’s save', () => {
       { ...save, version: 'c1' },
     ]) {
       expect(saveCustomerRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+});
+
+describe('the product’s save', () => {
+  it('A product is read with its version, and saved over one: the name, unit, price, stock and `extra`, the code and any other field refused, and a price that is not whole and above zero', () => {
+    expect(productDocSchema.safeParse({ product: DEMO_PRODUCTS[0], version: 'p1' }).success).toBe(
+      true,
+    );
+    expect(productDocSchema.safeParse({ product: DEMO_PRODUCTS[0] }).success).toBe(false);
+    const tag = 'a'.repeat(64);
+    const save = {
+      version: tag,
+      name: ' Xi măng ',
+      unit: ' bao ',
+      price: 95000,
+      stocked: false,
+      extra: { note: 'x' },
+    };
+    expect(saveProductRequestSchema.safeParse(save).data).toEqual({
+      ...save,
+      name: 'Xi măng',
+      unit: 'bao',
+    });
+    for (const bad of [
+      { ...save, code: 'VT-2' },
+      { ...save, id },
+      { ...save, name: ' ' },
+      { ...save, unit: ' ' },
+      { ...save, unit: 'x'.repeat(UNIT_MAX + 1) },
+      { ...save, price: 0 },
+      { ...save, price: -5 },
+      { ...save, price: 95000.5 },
+      { ...save, price: '95000' },
+      { ...save, stocked: 'yes' },
+      { ...save, version: 'p1' },
+      { version: tag, name: 'Một', unit: 'bao', price: 1, stocked: true },
+    ]) {
+      expect(saveProductRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }
   });
 });
