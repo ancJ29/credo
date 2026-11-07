@@ -439,15 +439,30 @@ echo 'reviewed' >"$WORK/repo/shared/h.ts"
 echo 'reviewed' >"$WORK/repo/ui/u.ts"
 echo 'reviewed' >"$WORK/repo/docs/d.md"
 scratch_ci '' >"$WORK/repo/.github/workflows/ci.yml"
+# The repository's own ignores for what the deploy job installs and builds (the real .gitignore's lines).
+printf 'dist\nnode_modules/\ncoverage\nplaywright-report/\ntest-results/\n' >"$WORK/repo/.gitignore"
 git_repo add -A
 git_repo commit -q -m main
 old_sha=$(git_repo rev-parse HEAD)
 git_repo update-ref refs/remotes/origin/main HEAD
+# What the deploy job's installs and builds leave in the deployed paths, all ignored: it stays in the
+# tree for every case below, so each pass is a pass with the outputs present.
+mkdir -p "$WORK/repo/scripts/node_modules/x" "$WORK/repo/bff/dist" "$WORK/repo/ui/dist" "$WORK/repo/shared/coverage" "$WORK/repo/ui/test-results" "$WORK/repo/ui/playwright-report"
+echo 'built' >"$WORK/repo/scripts/node_modules/x/index.js"
+echo 'built' >"$WORK/repo/bff/dist/server.js"
+echo 'built' >"$WORK/repo/ui/dist/index.html"
+echo 'built' >"$WORK/repo/shared/coverage/c.json"
+echo 'built' >"$WORK/repo/ui/test-results/r.txt"
+echo 'built' >"$WORK/repo/ui/playwright-report/index.html"
 # GITHUB_ACTIONS is set to nothing in the by-hand case: this suite runs in GitHub's own job too.
 at_repo() { GITHUB_ACTIONS='' REPO_DIR=$WORK/repo ops_match_main; }
 at_repo_job() { GITHUB_ACTIONS=true REPO_DIR=$WORK/repo ops_match_main; }
-passes "a clean tree passes" at_repo
-passes "  and in the job" at_repo_job
+passes "a clean tree passes, with the ignored build outputs present" at_repo
+passes "in the deploy job, the checked-out commit's tree passes with ignored build outputs present" at_repo_job
+# The ignores carry that pass: without them the same outputs are untracked files in deployed paths.
+mv "$WORK/repo/.gitignore" "$WORK/gitignore.away"
+refuses "  and without the scratch .gitignore the same tree is refused, so the ignores are what carry it" "differs from this commit's" at_repo_job
+mv "$WORK/gitignore.away" "$WORK/repo/.gitignore"
 check "the line names the code, not the folder" "1 0" \
   "$(at_repo 2>&1 | grep -c 'the code here (every path ci.yml deploys on) is origin/main') $(at_repo 2>&1 | grep -c 'ops/ is')"
 echo 'echo edited' >"$WORK/repo/ops/a.sh"
