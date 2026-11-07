@@ -1,8 +1,9 @@
 # Collaboration
 
 > **Decided** 2026-10-27. Binds every person and every agent working here.
-> **Last amended** 2026-11-07, from the review of how we work, the day's two hand-made gates and the human's
-> cleanup of this memo: this file holds the rules and the reason each exists; their history is in `git log`.
+> **Last amended** 2026-11-07, from the review of how we work, the day's two hand-made gates, the human's
+> cleanup of this memo and the move of the machine's own rules into QA: this file holds the rules and
+> the reason each exists; their history is in `git log`.
 
 ## At a glance
 
@@ -218,8 +219,10 @@ flowchart LR
   renumbers the other's walk screens** — a screen moved under a look wastes the human's yes, so
   each brief says "append, never insert"; **each lane takes `main` in before its gate**, not
   after, since both will meet the other's lines in the files they share; **the gate and the
-  picture run queue**, one whole run at a time on this Mac, its lock read before every run. That
-  queue, not the work, is the real limit when two lanes are open.
+  picture run queue**, one whole run at a time on this Mac, its lock read before every run
+  ([running a check on this machine](qa.md#running-a-check-on-this-machine), which holds the lock,
+  the load and the log's shape for every kind of session). That queue, not the work, is the real
+  limit when two lanes are open.
 - **A task's size is the minutes of the last run of the same shape**, never of its kind, a
   default, a budget or a planner's estimate. A step that must find its own evidence — code in a
   worktree with its own gate — runs about its size; a step transcribed from a design already

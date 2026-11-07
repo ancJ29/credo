@@ -1,9 +1,11 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-07, from the day's parked corrections: a look is not a gate, and what a
-> package's gate is. This file holds the rules as they stand; their history is in `git log`.
-> Binds every feature's plan, every test and every merge into `main`.
+> **Last amended** 2026-11-07, from the day's parked corrections and the move of the machine's own
+> rules out of one kind's skill: a look is not a gate, what a package's gate is, and how a check is
+> run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
+> they stand; their history is in `git log`.
+> Binds every feature's plan, every test, every check run here and every merge into `main`.
 
 ## At a glance
 
@@ -158,6 +160,86 @@ The map of walks. A dash is a part of the day not built yet.
    old app's later rule. Real defensive code then gets a test that exists only to cover it, or
    is deleted, and "we choose not to cover" has nowhere to be said. *Rejected:* a threshold
    below 100, where a new untested line gets in while the number holds.
+
+## Running a check on this machine
+
+A gate is a command and a log ([rule 6](#the-rules)), and both are shaped by the one machine every
+session shares. **These rules belong to no single kind of work:** a build, a review, a diagnosis, a
+one-off script and a log read are each held to them. *Why:* they were learned over seventeen runs of
+one kind and then learned again, wrongly, by the others — two sessions on 2026-11-07 wrote a gate
+log whose own exit marker could not be read, within an hour of each other, each having worked it out
+alone.
+
+### The load, and what a red means under it
+
+- **Read the load right before a whole check and wait for it under 8; once the run starts, its own
+  load tells nothing.** The test step drives the load past 8 alone: on a quiet Mac, 1.88 at the
+  start, 8.07 a minute in, 35.42 in the middle, 12.53 near the end, from the vitest workers.
+  A solo run reaches 35, so load during a run cannot tell a contended run from an uncontended one.
+  Runs went red at load 10 to 45 on files the piece never touched, each one green on a rerun;
+  the next rule's different-failing-set test is what decides, not the load.
+- **A red made of timeouts in files the change cannot reach, with a different set of files failing
+  each time, is this machine stalling, not a red.** One red met twice is the same files twice; the
+  two are told apart only by whether the failing set changes, so the report says which it is.
+  *Guard:* run those files alone, then rerun the whole check, and **name the first red in the
+  evidence rather than hide it** — a green rerun does not unmake it, and [rule 6](#the-rules)
+  refuses a rerun as a verdict.
+- **Read each red's actual message before calling it load.** A five-second timeout and a failed
+  assertion are different findings, and a go-ahead names the non-timeout case in advance.
+- **A log ending `Failed` with no assertion line, or `exit 137` with no output, is a kill from
+  outside, not a red:** read where the log stops before calling it one.
+- **A whole `pnpm -r` run hides every package behind the first failure, and `&&` never reaches
+  knip**, so a red gate has told less than it looks: run the remaining packages on their own to see
+  what it concealed. Where load is the cause, rerun by package
+  (`pnpm -r --no-bail --workspace-concurrency=1 run test`, `ui` with `--maxWorkers=4`), then knip.
+
+### The gate lock
+
+**One whole run at a time on this machine,** held by a lock directory at the credo root's
+`.gate-lock` (`ops/full-run.sh`'s default), never held at a stop.
+
+- **Take it in one loop that also waits for the load,** rather than a bare `mkdir` that fails and
+  leaves the session deciding what to do next. That wait refuses an empty or non-numeric `uptime`
+  reading and logs each wait, or the loop takes the lock above the ceiling.
+- **Release it from a `trap` on EXIT, not as a last line, and delete the lock's `owner` file before
+  `rmdir`.** A red exit skips a last line but not a trap, and a lock left held costs the next
+  session its whole budget waiting on a run that is not there.
+- **The report says whether the lock was free at the end.**
+
+*Why:* two whole runs at once share the cores and the ports, so one's red can be the other's doing;
+`mkdir` is atomic, and there is no `flock` here. *Rejected:* a bare `mkdir` with the decision left
+to the caller, and a release on the script's last line.
+
+### The log is the receipt
+
+- **A log's name carries the date and time it was made, and the stamp is written by `date` inside
+  the script that creates the log** — never typed, never remembered. `ops/lib.sh`'s `log_start`
+  does it (`<date>-<time>-<script>-<env>.log` in the credo root's `logs/`); a log a session writes
+  by hand follows `<YYYYMMDD-HHMM>-<stem>.log`, from `$(date +%Y%m%d-%H%M)` in that same script, in
+  the same folder
+  ([the loop](collaboration.md#the-loop)). Every log a report cites is then pasted from `ls`: five
+  reports in five days sent a reader to a log that did not exist.
+- **A `== exit` line is never written by hand, and it is never read through a pipe.** Put it in a
+  small bash script that runs the check, saves `$?` into a variable, releases the lock, then appends
+  `== exit $rc` itself. A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
+  leaves `PIPESTATUS` empty (it is `pipestatus`), which is how a hard-coded `== exit 0` once stood
+  in for a status nobody had read; and unquoted, the line ends `== exit` with no code.
+  **[`ops/lib.sh`](../../ops/lib.sh) prints it correctly — call that rather than hand-roll the
+  line**, since every one of these faults was in a gate assembled by hand. *Why:* a receipt whose
+  own marker cannot be read is the same class of fault as a check that cannot fail. Five runs in
+  five days wrote one, the last two printing `== exit done`, which looks like a terminator and tells
+  a reader nothing.
+- **A rerun does not reuse its log's name.** Reruns that kept one stamped name overwrote the red
+  runs, and that evidence no longer exists: stamp each run, or suffix the rerun.
+- **A suite rerun after a fix is not one whole green run.** A one-file run's `== exit 1` may be the
+  package-wide coverage threshold rather than a failing test: say which it is, since the exit line
+  alone reads as a red.
+- **Cite which log proved which part of the stop,** since a resumed session's report is read against
+  the files on disk. A build handed for a look keeps its own log. A watcher armed with
+  `ls -t | head -1` right after a launch picks the previous log, so name the new log's path.
+- **A green measured before a later fix does not cover that fix.** Lint, prettier and knip only ever
+  saw the sha they ran on, and knip is the one that objects to a newly exported symbol: re-run over
+  the final tree, and over the merge result, before calling it done ([rule 6](#the-rules)).
 
 ## Hazards no gate catches
 

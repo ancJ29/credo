@@ -47,6 +47,22 @@ export const saveCustomerRequestSchema = z.strictObject({
 });
 export type SaveCustomerRequest = z.infer<typeof saveCustomerRequestSchema>;
 
+/** A product with the version it was read at, for a save over it. */
+export const productDocSchema = z.strictObject({ product: productSchema, version: z.string() });
+export type ProductDoc = z.infer<typeof productDocSchema>;
+
+/** Saving a product over the version read: every value a person may correct, each required since
+ * a save replaces `extra` whole. The code is not here: a new code is its own act. */
+export const saveProductRequestSchema = z.strictObject({
+  version: tagSchema,
+  name: nameSchema,
+  unit: unitSchema,
+  price: priceSchema,
+  stocked: z.boolean(),
+  extra: extraInputSchema,
+});
+export type SaveProductRequest = z.infer<typeof saveProductRequestSchema>;
+
 export const customerListReplySchema = z.strictObject({ customers: z.array(customerSchema) });
 export const productListReplySchema = z.strictObject({ products: z.array(productSchema) });
 

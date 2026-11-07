@@ -688,6 +688,19 @@ export const vi: Dictionary = {
       note: 'Ghi chú',
       notThere:
         'Không có sản phẩm này trong danh sách. Có thể sản phẩm đã bị xóa, hoặc địa chỉ sai.',
+      save: 'Lưu',
+      saved: 'Đã lưu.',
+      saveFailed: 'Chưa lưu được sản phẩm. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
+      saveForbidden:
+        'Chưa lưu được sản phẩm: bạn không còn được sửa sản phẩm. Những gì bạn nhập vẫn còn đây.',
+      saveRefused:
+        'Chưa lưu được sản phẩm: hệ thống từ chối những gì bạn nhập. Những gì bạn nhập vẫn còn đây: hãy kiểm tra từng ô.',
+      conflict: 'Có người đã lưu thông tin mới hơn trước. Thay đổi của bạn chưa được lưu.',
+      conflictReload: 'Xem thông tin mới hơn',
+      nameNeeded: 'Hãy ghi tên sản phẩm, tối đa 200 ký tự.',
+      unitNeeded: 'Hãy ghi đơn vị, tối đa 20 ký tự.',
+      priceInvalid: 'Hãy ghi một số đồng nguyên lớn hơn không.',
+      noteTooLong: 'Ghi chú này quá dài để lưu. Hãy rút ngắn lại.',
     },
   },
   orders: {
