@@ -74,6 +74,8 @@
   "Would the office know to ask the admin?": "Văn phòng có biết cần hỏi quản trị không?",
   "Would the office know this order is delivered and done?": "Văn phòng có biết đơn này đã giao xong không?",
   "Would the office take this photo as proof of delivery?": "Văn phòng có nhận ảnh này làm bằng chứng giao hàng không?",
+  "Would the office see which line’s price has moved, and what saving would make it?": "Văn phòng có thấy dòng nào đã đổi giá, và lưu sẽ thành bao nhiêu không?",
+  "Would the office know the saved draft now carries today’s price and total?": "Văn phòng có biết bản nháp đã lưu giờ mang giá và tổng tiền hôm nay không?",
   "Would the driver know what to deliver today, and where?": "Tài xế có biết hôm nay cần giao gì, và giao ở đâu không?",
   "Would the driver know what to hand over and what to collect?": "Tài xế có biết cần trao gì và cần thu gì không?",
   "Would the driver know to send it, or to take it again?": "Tài xế có biết cần gửi ảnh, hay chụp lại không?",
