@@ -54,7 +54,7 @@ understood once you know what stops without it.
 | `ui/` | The React 19 app, built by Vite: both the client app and the operator console, split by path in [`ui/src/App.tsx#L28`](../ui/src/App.tsx#L28) | a browser; files on S3 | everything a person sees. It is also the source the walks and the visual report draw screens from, so both go with it |
 | `bff/` | One Fastify app ([`bff/src/app.ts#L85`](../bff/src/app.ts#L85)) behind two entries: a listener ([`bff/src/server.ts#L29`](../bff/src/server.ts#L29)) and a Lambda handler ([`bff/src/lambda.ts`](../bff/src/lambda.ts)) | Lambda on arm64; a local process | every rule. It is the only thing that authenticates, resolves permissions and builds a record key; c-storage enforces none of that |
 | `shared/` | The wire contract and the record layout, one package, extended generically rather than split per service ([`CLAUDE.md`](../CLAUDE.md), [the app frame](plans/2026-10-27-app-frame.md#the-stack)) | imported by all of the above | the two halves drift. The key layout ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)) and the permission catalogue ([`shared/src/permissions.ts#L9`](../shared/src/permissions.ts#L9)) each have exactly one home here |
-| `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store; there is no second copy and no backup built yet |
+| `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store, and its file is the only copy: the nightly backup is designed but deferred to a signed client ([open item 6](open-items.md)) |
 | `scripts/` | The local lanes: `pnpm stack` (c-storage + BFF + UI on one machine, [`scripts/src/stack.ts`](../scripts/src/stack.ts)), `pnpm fake`, `pnpm demo`, and the ridge CLI the ops scripts drive ([`scripts/src/ridge.ts#L36`](../scripts/src/ridge.ts#L36)) | a developer's machine; the ops scripts | the ability to run or seed anything locally — and the BFF's route tests, which build the real c-storage through [`bff/tests/build.ts`](../bff/tests/build.ts) |
 | `visual/` | Builds the walks page: the app's own components drawn on jsdom through a Vite server's module loader, since CSS modules and TSX do not import in plain Node ([`visual/run.mjs#L1`](../visual/run.mjs#L1)) | `pnpm report`, in a sandbox, no browser | the visual report — the one artefact a non-coder judges a screen from |
 | `walk/` | Ten Playwright specs plus [`walk/run.sh`](../walk/run.sh), with each screen's committed base image beside the spec | a real browser, in a terminal only | the end-to-end check. `pnpm check` typechecks and lints this package but never runs it |
@@ -89,7 +89,12 @@ The part a newcomer must not get wrong: **c-storage has no concept of a tenant a
 isolation unit is the *service*, and the BFF is a single service holding every tenant
 ([`bff/src/app.ts#L69`](../bff/src/app.ts#L69)). Tenant separation is a string-prefix convention
 held entirely by the BFF; c-storage would serve one tenant's key to another tenant's request if the
-BFF built the wrong key. Key design does real work here — a person's photo and a delivery's photo
+BFF built the wrong key. This is a deliberate design with **one enforcement point**, not an
+oversight: `records.ts` says in its own opening lines that it is the layout's one home, "so no
+other file builds a key" ([`shared/src/records.ts#L3`](../shared/src/records.ts#L3)). The risk
+worth naming is therefore not the design but its guard — **nothing tests that a cross-tenant key
+cannot be built.** The convention holds exactly as long as every key keeps coming from that file,
+and no gate would notice a route that built one by hand. Key design does real work here — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
@@ -250,18 +255,32 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L244`](../ops/env.yml#L244)).
-- **Nightly backups to S3, via an S3 gateway endpoint, under a put-only role on the box** (`#L28`,
-  `#L76`, `#L97`). None of it exists: [`ops/network.yml`](../ops/network.yml) has no gateway
-  endpoint, the box has no instance role at all
-  ([`ops/env.yml#L93`](../ops/env.yml#L93)), and the backup and its restore are still open items
-  ([`products.md`](products.md)). **The SQLite file is currently the only copy of the data.**
+  ([`ops/env.yml#L244`](../ops/env.yml#L244)). **This change is recorded nowhere else** — not in
+  `docs/open-items.md`, not in the conventions, only in that one template comment and now here. It
+  is the one property of the day-one design that was given up without being written down, which is
+  worth knowing before anyone reasons about the edge from the plan.
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**
   (`#L181`). There is no Route53, ACM or custom domain anywhere in the repository; the distribution
   uses CloudFront's own certificate and name
   ([`ops/env.yml#L369`](../ops/env.yml#L369)).
 - **"Nothing is built before a client signs"** and **"no code holds it yet"** (`#L5`, `#L68`).
   ridge is built and deploys on every push to `main`. What is still unbuilt is a *client's* stack.
+
+**Not in that list: the nightly backup.** The plan's diagram shows a nightly copy to S3 through an
+S3 gateway endpoint, under a put-only role on the box (`#L28`, `#L76`, `#L97`), and none of those
+three resources exists — but that is a **deliberate deferral the project recorded the same day**,
+not something lost. [Open item 6](open-items.md) gates the backup and its restore on a signed
+client, on the reasoning that ridge, the first box, holds no real data, and it says plainly that
+"the S3 gateway endpoint and the box's put-only role come with it". So the right reading is: the
+backup is designed and postponed, and until a client signs, **the one SQLite file is the only copy
+of a deployment's data** — which is a known, accepted position for an environment holding only demo
+data, and the thing to build first for one that does not.
+
+One inconsistency inside that to be aware of when it *is* built: item 6's own first line says "the
+box's role may only put, so it cannot restore itself", in the present tense, while
+[`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role". The item describes the design; the
+template describes the machine. When the backup is built, item 6's description of the role is what
+has to be built — not a description of what is already there.
 
 ## What this page did not read
 
@@ -274,7 +293,8 @@ Stated plainly so the next reader knows which parts to trust.
   lines), `ui/src/main.tsx`, `App.tsx`, `visual/run.mjs`, `walk/run.sh`'s header and walk table,
   `scripts/src/stack.ts` (the first ~90 lines), `front.ts`'s header, `docs/products.md`,
   `docs/conventions/documentation.md`, `docs/conventions/qa.md`'s headings, the day-one plan whole,
-  and the parts of `ops/env.yml` and `ops/network.yml` cited above.
+  `docs/open-items.md`'s item 6, and the parts of `ops/env.yml` and `ops/network.yml` cited above.
+  The rest of `docs/open-items.md` — over 500 lines — was searched, not read.
 - **Read on this page's behalf by two other agents, not line by line by its author:** all of
   `c-storage/` and all of `ops/` and `.github/workflows/`. Every claim this page makes about those
   files was then checked directly against the file — the resource types in both templates, the
