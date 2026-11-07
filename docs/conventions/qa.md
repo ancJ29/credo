@@ -3,7 +3,8 @@
 > **Decided** 2026-10-27, after reading the old app's QA process.
 > **Last amended** 2026-11-07, from the day's parked corrections and the move of the machine's own
 > rules out of one kind's skill: a look is not a gate, what a package's gate is, and how a check is
-> run and logged here. This file holds the rules as they stand; their history is in `git log`.
+> run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
+> they stand; their history is in `git log`.
 > Binds every feature's plan, every test, every check run here and every merge into `main`.
 
 ## At a glance
@@ -171,9 +172,12 @@ alone.
 
 ### The load, and what a red means under it
 
-- **Read the load right before a whole check, wait for it under 8, and know it has to stay there for
-  the run's whole five to nine minutes, not only at its start.** Runs went red at load 10 to 45 on
-  files the piece never touched, each one green on a rerun.
+- **Read the load right before a whole check and wait for it under 8; once the run starts, its own
+  load tells nothing.** The test step drives the load past 8 alone: on a quiet Mac, 1.88 at the
+  start, 8.07 a minute in, 35.42 in the middle, 12.53 near the end, from the vitest workers.
+  A solo run reaches 35, so load during a run cannot tell a contended run from an uncontended one.
+  Runs went red at load 10 to 45 on files the piece never touched, each one green on a rerun;
+  the next rule's different-failing-set test is what decides, not the load.
 - **A red made of timeouts in files the change cannot reach, with a different set of files failing
   each time, is this machine stalling, not a red.** One red met twice is the same files twice; the
   two are told apart only by whether the failing set changes, so the report says which it is.

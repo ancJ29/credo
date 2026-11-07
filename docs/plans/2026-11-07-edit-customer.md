@@ -77,8 +77,8 @@ both sides. Nothing else of this piece is shared.
 - [x] **2. The form on invented data, the cheap end to end.** 🤖 Sonnet, about 35 minutes: the two wire schemas, the
   fake's two calls with a version a customer, the page's form and three notices, the words in both dictionaries, the
   two scenes, the spec's two screens. The look comes off this build, so a no costs no server work. Done when: rows 6
-  to 10 each red once, then green; `pnpm --filter @credo/shared check`,
-  `--filter @credo/ui check` and `--filter @credo/visual check` green at 100 %; `pnpm fake` serves the page;
+  to 10 each red once, then green; the gate steps over `shared`, `ui` and `visual` green at 100 % (no package has a `check` script; the
+  command first written here did not exist, and the log named below is what ran); `pnpm fake` serves the page;
   `pnpm report` builds, and against `main`'s build exactly screens 10, 11, 14 and 15 differ.
   *Done 2026-11-07, code in `3e32c71c`:* rows 6 to 9 each red from a named mutation of the page (the merge
   dropped, the empty-name check removed, a reload on conflict, the edit right forced on), then green; row 10: no
@@ -93,7 +93,8 @@ both sides. Nothing else of this piece is shared.
 - [x] **4. The route against the real c-storage.** 🤖 Sonnet, about 30 minutes: the two routes and the
   false-conflict re-read; nothing of the page changes, since step 2 bound it to the wire, not to a route still
   moving. Done when: rows 1 to 5 each red once, then green (`bff/tests/` builds the real c-storage per file);
-  `pnpm --filter @credo/bff check` green at 100 %.
+  the gate steps over `bff` green at 100 % (a per-package `check` command was written here and does not exist:
+  only the root has a `check` script, and the log named below is what ran; the code is proved by step 5's whole check).
   *Done 2026-11-07, code, tests and tick in `7e3c941c`:* `GET` and `PUT /api/customers/:id` in `bff/src/lists.ts`
   (`orders.canView` reads, `orders.canEdit` saves, the version never skipped). Rows 1 to 5 each red once (10 new
   cases failed against the old `lists.ts`), then green; the false conflict is forced, not hoped for: a wrapped
