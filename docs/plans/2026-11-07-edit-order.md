@@ -35,7 +35,11 @@ picture run; one screen re-asked and two added.
   (`#L569-L579`); every demo order is priced from `DEMO_PRODUCTS` at generation today (`#L762-L768`),
   so without this fixture no screen can show what is being fixed. Both lanes take it from the one
   data set — the fake build and the stack's generator (`scripts/src/generator.ts#L271`) — so the new
-  screens need no cue and no lane of their own.
+  screens need no cue. *Corrected at step 5 (open item 140):* the stack lane does not take the
+  fixture for free, since the generator makes every order by `POST` and the BFF prices from today's
+  list. `replayWeek` therefore sets a product to the price a line was saved at, takes the order,
+  and puts the price back to today's at once, through the product's own route, as it happens in
+  life; no other order's total moves.
 
 ## The write shape an order takes
 
@@ -96,7 +100,9 @@ false conflict on send, and item 36's findings 3, 6 and 7, stay parked with the 
 **A package's gate, named once.** No package here has a `check` script; only the root does
 (`package.json`). So [QA](../conventions/qa.md) rule 6's five steps, scoped to `<pkg>`, are
 `pnpm --filter <pkg> run typecheck`, `pnpm exec eslint .`, `pnpm exec prettier --check .`,
-`pnpm --filter <pkg> run test` and `pnpm exec knip`; the last three have no per-package form here.
+`pnpm --filter <pkg> run test` and `pnpm exec knip`; the last three have no per-package form here. *Correction (step 5):* a piece
+that changes `shared/src/demo.ts` also gates `@credo/scripts`, whose generator replays that data
+set through the BFF; step 2 did not, and the red surfaced only in the whole check.
 
 - [x] **1. This plan.** 🤖 Opus, about 15 minutes. Done when: committed, under 2,000 words, no local
       path and no name. Evidence: committed in `94dabef7`; 1,899 words by a count of word tokens (`wc -w`

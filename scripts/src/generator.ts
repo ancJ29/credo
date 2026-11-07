@@ -12,6 +12,8 @@ import {
   type OrderDoc,
   orderRoutes,
   type Product,
+  type ProductDoc,
+  productRoutes,
   type DeliveryRequest,
   type Reconciliation,
   reconciliationRoutes,
@@ -268,8 +270,27 @@ async function replayWeek(
   const drivers = await call<{ drivers: Driver[] }>('GET', ROUTES.drivers, root);
   const idOf = <T extends { id: string; code: string }>(held: T[], code: string) =>
     held.find((one) => one.code === code)!.id;
+  // A line saved at a price the list no longer has (a draft taken before a product's price rose) is
+  // made as it happens in life: the product is set to the price of the day, the order taken, and the
+  // product put back to today's price at once after, so no other order's total moves.
+  const setPrice = async (code: string, price: number) => {
+    const id = idOf(products.products, code);
+    const { product, version } = await call<ProductDoc>('GET', productRoutes.one(id), root);
+    await call<ProductDoc>('PUT', productRoutes.one(id), root, {
+      version,
+      name: product.name,
+      unit: product.unit,
+      price,
+      stocked: product.stocked,
+      extra: product.extra,
+    });
+  };
   for (const order of DEMO_ORDERS) {
     setClock(order.madeAt);
+    const moved = order.lines.filter(
+      (line) => line.price !== products.products.find((one) => one.code === line.code)!.price,
+    );
+    for (const line of moved) await setPrice(line.code, line.price);
     const saved = await call<OrderDoc>('POST', ROUTES.orders, root, {
       day: order.day,
       customerId: idOf(customers.customers, order.customer.code),
@@ -279,6 +300,9 @@ async function replayWeek(
       })),
       extra: order.extra,
     });
+    for (const line of moved) {
+      await setPrice(line.code, products.products.find((one) => one.code === line.code)!.price);
+    }
     const request = DEMO_DELIVERIES.find((one) => one.order.id === order.id);
     let doc = saved;
     if (request) {
