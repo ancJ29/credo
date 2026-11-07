@@ -1,19 +1,8 @@
 # Collaboration
 
 > **Decided** 2026-10-27. Binds every person and every agent working here.
-> **Amended** 2026-10-27 by the human: rules picked from the old repo's standing preferences.
-> **Amended** 2026-10-28 by the human: the old repo's standing preferences whose step came with
-> ridge.
-> **Amended** 2026-11-07 by the human: the confirmation point as it stands since 11-04 — a look is
-> no longer a yes, the work goes on past it, and the yes gates only the act.
-> **Amended** 2026-11-07 by the human: hand-off 2, the machine decides its own questions.
-> **Amended** 2026-11-07 by the human: hand-off 3, the gate is the touched package's; a fix brief
-> names the red and its decision rule; what the sandbox cannot run is the human's hand.
-> **Amended** 2026-11-07 by the human: hand-off 4, every text the human reads stands alone.
-> **Amended** 2026-11-07 by the human: the four stages every slice passes.
-> **Amended** 2026-11-07 by the human: pacing — several pieces at once, each in its own subagent
-> and worktree; a size read from the last run of the same shape; a remake is a copy in minutes; a
-> piece's record is its own file.
+> **Last amended** 2026-11-07 by the human, from the review of how we work: this file holds the
+> rules as they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -169,8 +158,7 @@ verdict line with its evidence for a run — one yes or no each.
   320 to 625 minutes after work of 3.5 to 83).
 - **A look is not a yes, and silence is not a yes.** An unanswered point stays open, and a
   decision only the human can make waits there as one line; the machine never reads its own
-  progress into the gap. Until 11-04 a look was taken as a yes — an exception for one demo, which
-  ended with it.
+  progress into the gap.
 - **The human's yes gates the act**: a push, a deploy, anything a partner or a client sees,
   anything that cannot be undone. Everything else the machine checks itself and records.
 - **A piece asks for few points, up to five, each told in a few sentences** (QA's rule 7), and
