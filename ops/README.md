@@ -317,7 +317,7 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
    reads the BFF's group, the function (its subnet, group and the names of its variables, never the
    values), the UI's bucket and the one commit in `/health`, the function and `index.html`, then makes a
    fresh client `check-<time>` through the tunnel and signs it in through the app's address, as a
-   partner would, with no cache in front of `/api/*`. Each run leaves that client, three records.
+   partner would, with no cache in front of `/api/*`. The run deletes that client at its end, green or red; a delete that fails is a `WARN` line, not a red.
    - **needs pnpm install done:** the client is made by `scripts/`, run under Node.
    - **no c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.

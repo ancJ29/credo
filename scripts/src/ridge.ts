@@ -1,4 +1,4 @@
-import { createClient } from '@credo/bff/clients';
+import { createClient, deleteClient } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
@@ -6,7 +6,9 @@ import {
   createCStorageClient,
   joinLinkPath,
   normaliseSignInName,
+  recordKeys,
   sameOperatorName,
+  storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll } from './demo/apply';
@@ -27,13 +29,17 @@ export type RidgeIo = {
   stdin?: () => Promise<string>;
 };
 
+/** The codes ops/check.sh gives its client: check-20261107t085500z. */
+const CHECK_CODE = /^check-\d{8}t\d{6}z$/;
+
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | seed | root-password [--check] <code>…';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | seed | root-password [--check] <code>…';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
  * the BFF's service registered with the super-admin key, the operator's account, and a client made
- * by the operator's create. The connection comes from the environment (C_STORAGE_URL and the BFF's
+ * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
+ * (the check's client, with the keys the create used; it prints how many records went). The connection comes from the environment (C_STORAGE_URL and the BFF's
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
@@ -114,6 +120,44 @@ export async function runRidge(
       const made = await createClient(client(), { code, name, madeAt: Date.now() });
       if (made === 'taken') throw new Error(`the code ${code} names a client already`);
       io.out(made.password);
+      return 0;
+    }
+
+    if (command === 'untenant') {
+      const [code] = rest;
+      // Only the code ops/check.sh makes (check-<date>t<time>z): a real client's code is refused, as
+      // this command has none of the console's gates (a live operator and a fresh passkey touch).
+      if (!code || !CHECK_CODE.test(code)) {
+        throw new Error(
+          'untenant deletes only the deploy check’s own client, check-<date>t<time>z',
+        );
+      }
+      const held = await client().getRecord(recordKeys.client(code));
+      const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
+      // One press: a bound of 200 records is far over the check's three.
+      const done = await deleteClient(client(), {
+        code,
+        index,
+        // the schema wants an operator's uuid; the terminal has none, so the nil one
+        by: '00000000-0000-0000-0000-000000000000',
+        now: io.now ?? Date.now,
+      });
+      if (done === 'unknown') {
+        io.out(`no client ${code} to delete`);
+        return 0;
+      }
+      if (done === 'busy') {
+        throw new Error(
+          `nothing was deleted: an earlier deletion under the code ${code} is still unfinished`,
+        );
+      }
+      if (done === 'moved') {
+        throw new Error(`nothing was deleted: the client ${code} changed while it was being read`);
+      }
+      if (done.left !== 0) {
+        throw new Error(`the client ${code} is out of the list but ${done.left} records are left`);
+      }
+      io.out(`client ${code} deleted`);
       return 0;
     }
 
