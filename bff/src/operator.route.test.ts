@@ -356,7 +356,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
     expect(routes).toBe(
       `${[
         '├── /api/config (GET, HEAD, PUT)',
-        '├── /api/customers (GET, HEAD)',
+        '├── /api/customers (GET, HEAD, POST)',
         '│   ├── /import (POST)',
         '│   └── /:id (GET, HEAD, PUT)',
         '├── /api/auth/sign-in (POST)',
@@ -397,7 +397,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│       ├── /code (PUT)',
         '│       ├── /email (PUT)',
         '│       └── /qr (POST)',
-        '├── /api/products (GET, HEAD)',
+        '├── /api/products (GET, HEAD, POST)',
         '│   ├── /import (POST)',
         '│   └── /:id (GET, HEAD, PUT)',
         '├── /api/deliveries (GET, HEAD)',

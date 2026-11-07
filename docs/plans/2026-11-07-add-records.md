@@ -122,11 +122,18 @@ cued on the fake lane; the stack lane adds a second record with a code it just u
   the form markup of screens 10 to 17 stayed identical only because the code box's two new attributes are written
   in add mode alone.
 - [ ] **3. The look** (👤 1, 👤 2, 👤 4); the machine goes straight on to step 4 and does not wait for it.
-- [ ] **4. The route against the real c-storage.** 🤖 Sonnet, about 20 minutes: one `app.post` on the kind's own
+- [x] **4. The route against the real c-storage.** 🤖 Sonnet, about 20 minutes: one `app.post` on the kind's own
   route inside `registerList`, lifting the import's row-parse, code search and write out of its loop so both paths
   share them; nothing of the pages changes, since step 2 bound them to the shared schemas, not to a route still
   moving. Done when: rows 1 to 6 each red once, then green (`bff/tests/` builds the real c-storage per file);
   `bff`'s typecheck and tests at 100 %. Watch the route list some tests read as text.
+  *Ticked 2026-11-07:* the import's inner body is now `addOne` in `registerList` and both the import's loop and the
+  new `app.post(kind.route)` call it (no second copy); rows 1 to 6 each red from one named mutation, then green
+  (the gate's last line, log `20261107-231321-clerk-add-records-step4-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0)`, bff 602 tests, 100 % on
+  all four figures; knip is the whole repo's, left to step 5). *The plan's misreads:* the route list the test reads as
+  text was `bff/src/operator.route.test.ts` (two lines gained `POST`); and row 6 was not a guard in fact, since the
+  existing refusal test used a person with only `orders.canView`, so swapping the import's root check for
+  `orders.canEdit` stayed green until a test with a person holding every permission was added.
 - [ ] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once under the
   shared lock, `== exit 0`. **The one place the whole gate runs:** the walk and the report typecheck against this
   piece's changes, so no single package's gate can clear it.
