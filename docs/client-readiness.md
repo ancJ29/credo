@@ -285,3 +285,259 @@ its steps.
 > **Placeholder, to be written by the reader who looked at the product half.** Append below this
 > line; nothing above it is yours to move. Keep the same habits: every structural claim with its
 > `path#Lnn`, and a short statement at the end of what you read first-hand and what you did not.
+
+**The answer is no as well, and for a different reason than the other half's.** The product's spine
+is real: one whole job runs from a telephone call to a photographed delivery and a driver's cash
+settled, and it runs in two languages on a phone. What is missing is the ordinary day around that
+spine. A clerk cannot add a customer at all, a confirmed order cannot be corrected, no price can be
+set on a line, nothing older than a week can be found, and there is no report of any kind. Two to
+three pieces of work stand between this and a first real client.
+
+### A correction, first, because the wrong version has been said twice
+
+**The order page's save route against real storage does exist.** It is
+[`bff/src/orders.ts#L280`](../bff/src/orders.ts#L280), called from
+[`ui/src/OrderPage.tsx#L124`](../ui/src/OrderPage.tsx#L124), and it has a screen of its own for the
+conflict — `orders-8-conflict` in [`visual/src/walks.ts`](../visual/src/walks.ts), which drives the
+fake with the cue `saveOrder:409`. Anyone told that the order page's write is unbuilt was told
+wrong, and the reader who repeated it had been told it twice.
+
+**The real gap is one line further down, and it is narrower and sharper.** The save refuses
+anything that is not a draft: `found.order.state !== 'draft'` answers 409 with the order as it now
+is ([`bff/src/orders.ts#L290`](../bff/src/orders.ts#L290)). So a draft is fully editable — customer,
+lines, quantities — and a **confirmed** order is not editable at all. The only remedy is Cancel,
+which also cancels the delivery request ([`#L356`](../bff/src/orders.ts#L356)), and then making the
+order again under a new number.
+
+A second correction, to this reader's own first pass: the Import button on the customers and
+products lists is **not** shown to someone who cannot use it. It is drawn only for the root
+([`ui/src/ListPage.tsx#L26`](../ui/src/ListPage.tsx#L26)). That is tidier than reported and it makes
+the gap below worse, not better: a clerk sees no way in at all, not even a refused one.
+
+### Three whole jobs that work end to end
+
+Not features — jobs a client's person could finish on a Monday.
+
+1. **An order can be taken, priced, confirmed to a named driver and a day, delivered with a photo,
+   and the delivery proved to the office.** Created at
+   [`bff/src/orders.ts#L253`](../bff/src/orders.ts#L253), a draft corrected at
+   [`#L280`](../bff/src/orders.ts#L280), confirmed or sent again at
+   [`#L353-L354`](../bff/src/orders.ts#L353), delivered by the driver with a photo at
+   [`#L467`](../bff/src/orders.ts#L467), and that photo read back by the office at
+   [`#L421`](../bff/src/orders.ts#L421). The screens exist for the wrong turns as well as the right
+   ones — `orders-1` to `orders-12` and `driver-1` to `driver-6` in
+   [`visual/src/walks.ts`](../visual/src/walks.ts) — which is what makes it a job and not a demo.
+2. **A driver's day can be settled against the cash handed in and closed for good.**
+   [`bff/src/reconciliations.ts`](../bff/src/reconciliations.ts), screens `reconcile-1` to
+   `reconcile-8`.
+3. **A company can be set up and staffed.** Departments, positions, people added one at a time or
+   from Excel, photos, per-person rights, a person switched off when they leave and back on when
+   they return, their own password, and the company's name, colour and three frame switches. The
+   menu that governs it is [`ui/src/nav.ts#L27-L85`](../ui/src/nav.ts#L27); the screens are
+   `admin-setup`, `setup-1` and `staff-1` to `staff-23`.
+
+All of it is in Vietnamese and English on phone, tablet and PC, and a signed-in session lasts seven
+days sliding ([`bff/src/sessions.ts#L13`](../bff/src/sessions.ts#L13)), so a driver signs in about
+once a week rather than every morning.
+
+### What a real business would hit in its first week
+
+In the order they would meet it, not in order of how hard each is.
+
+1. **A clerk cannot add a customer or a product. At all.** The only way a record enters either list
+   is the Excel import, and the import is the root's alone:
+   [`bff/src/lists.ts#L141`](../bff/src/lists.ts#L141) calls `mustBeRoot`, and
+   [`ui/src/ClientApp.tsx#L393`](../ui/src/ClientApp.tsx#L393) says so in its own comment — "Only
+   the root imports (case-table row 22): no permission allows it." There is no Add on either list
+   page, and the Import button is drawn for the root only
+   ([`ui/src/ListPage.tsx#L26`](../ui/src/ListPage.tsx#L26)), so a clerk sees no path whatsoever.
+   **Day one:** a new customer telephones, and the order cannot be taken until the owner signs in
+   and builds a spreadsheet. This is the one gap that blocks the first order.
+2. **A confirmed order cannot be corrected** — the correction above, and the second thing a real
+   office asks for, because a customer changes the quantity after the order is confirmed.
+3. **No price can be set on an order.** A line is a product id and a quantity, and the price always
+   comes from the product list — the schema says it in its own words, "never a price or a total"
+   ([`shared/src/orders.ts#L130-L146`](../shared/src/orders.ts#L130)). So no discount, no
+   customer-specific price, no delivery fee and no VAT line. The total must also be at least 1
+   ([`#L108`](../shared/src/orders.ts#L108)), so a free replacement delivery cannot be recorded at
+   all. This is a deliberate shape — it is what keeps a tampered total out of the store — and it
+   becomes a gap the day a client sells at agreed prices rather than list prices. Open item 136.
+4. **Nothing older than seven days can be found.** The orders route answers at most seven days
+   ([`shared/src/orders.ts#L23`](../shared/src/orders.ts#L23),
+   [`bff/src/orders.ts#L218-L226`](../bff/src/orders.ts#L218)), and the page's only way back is an
+   "Earlier" button that adds one more week and re-reads every week again
+   ([`ui/src/OrdersPage.tsx#L13-L19`](../ui/src/OrdersPage.tsx#L13),
+   [`#L83`](../ui/src/OrdersPage.tsx#L83)). There is no search by number or by customer, no filter
+   by state and no date to open at. Finding last month's order means pressing Earlier five times
+   and reading a table.
+5. **No report of any kind.** Eight pages, and not one of them is a total, a day's takings or a
+   customer's history ([`ui/src/nav.ts#L27-L85`](../ui/src/nav.ts#L27)).
+6. **Nothing sends email or SMS.** A search across `bff/src`, `ui/src`, `shared/src`, `ops` and
+   `.github` for any mail or SMS sender returns nothing. "Sign in by email" means only that the
+   email address may be typed where the code goes, against the same password
+   ([`bff/src/app.ts#L251-L268`](../bff/src/app.ts#L251)). So there is no forgotten-password path
+   for a staff member — the root types them a new one by hand — and **none at all for the root**:
+   only an operator can set it, from our console.
+7. **The app wears Adobe's logo on every page.** A client uploads its logo in Settings and sees it
+   on the sign-in door ([`ui/src/SignIn.tsx#L76`](../ui/src/SignIn.tsx#L76)), and then every page
+   inside draws Tabler's `IconBrandAdobe`, hard-coded
+   ([`ui/src/Shell.tsx#L147`](../ui/src/Shell.tsx#L147)). Already
+   [open items 76 and 103](open-items.md); it is listed here because it is the first thing the
+   client sees and the cheapest thing on this page to fix.
+8. **No stock and no goods receipts.** A product carries a flag saying its stock is kept
+   ([`shared/src/lists.ts#L31`](../shared/src/lists.ts#L31)) and there is nothing behind the flag,
+   which [`products.md`](products.md) states plainly.
+
+### What exists but is thin — the deferred items that would bite a paying client
+
+`docs/open-items.md` is the right index for this, and most of its deferred entries are untidiness
+that no client would ever meet. These are the ones that would reach a real business, and why. **None
+of them is new; what is new is saying which ones cost a client money or a record.**
+
+- **[Item 36](open-items.md), finding 5 — the money on the screen disagrees with the money to
+  collect.** A saved draft is priced from today's list, but Confirm copies the lines as they were
+  saved ([`ui/src/OrderPage.tsx#L85-L89`](../ui/src/OrderPage.tsx#L85),
+  [`bff/src/orders.ts#L303-L317`](../bff/src/orders.ts#L303)). Change a price between the draft and
+  the confirm and the driver collects a different sum from the one the office is looking at. This is
+  the one to fix first, because it is wrong in cash and nobody would notice until a customer
+  argued.
+- **[Item 41](open-items.md), finding 2 — two closes of one driver's day can overwrite each
+  other's cash.** The close writes with no precondition
+  ([`bff/src/reconciliations.ts#L41`](../bff/src/reconciliations.ts#L41)), and the reviewer proved
+  it is held by nothing: removing the precondition left all fourteen tests green. The day closes
+  *for good*, so the losing figure is not recoverable from the app.
+- **[Item 41](open-items.md), finding 7 — a cash close can be recorded against the root** instead
+  of the person who closed it
+  ([`bff/src/reconciliations.ts#L128-L140`](../bff/src/reconciliations.ts#L128)). That is the audit
+  trail on money, and a client with more than one cashier will ask who closed it.
+- **[Item 41](open-items.md), finding 5 — a close that stops part way** leaves the page showing
+  requests it has already cancelled, and the retry's words blame a delivery that never happened.
+  The person is standing at the cash desk when they read it.
+- **[Items 36 and 39](open-items.md), findings 3 and 2 — a cancel racing a delivery leaves a
+  cancelled order beside a delivered request with a photo**
+  ([`bff/src/orders.ts#L341-L347`](../bff/src/orders.ts#L341),
+  [`#L362-L365`](../bff/src/orders.ts#L362)). Goods left the yard and the books say cancelled. It
+  needs two people acting in the same seconds, which a busy office supplies.
+- **[Item 39](open-items.md), finding 4 — the driver's phone says "Not sent" for a delivery that
+  did land** ([`bff/src/orders.ts#L473-L483`](../bff/src/orders.ts#L473)), so the driver
+  photographs it a second time while the office already reads it delivered.
+- **[Item 61](open-items.md) — the root's new password door can lie.** If c-storage saves but its
+  answer misses the five-second timeout, the page says the password is as it was, while the root has
+  been signed out and now holds the new one
+  ([`bff/src/root-password.ts#L50`](../bff/src/root-password.ts#L50)). The item's own trigger is
+  "the first client's root" — which is the day a client signs.
+- **[Item 62](open-items.md) — an operator's passkey touch is not bound to the client**, so a touch
+  minted on one client's row opens another client's route inside its five minutes. The other half of
+  this page widened the item to the delete as well; on the product side it means the root password
+  of the wrong company can be reset by an operator working quickly in two tabs.
+- **The reds that are not defects.** [Items 56, 112, 113 and 114](open-items.md): `ui` and `visual`
+  tests time out under load in files a change never touched. The gate can read red with nothing
+  wrong, which means every receipt about the product takes longer to trust — and, as the other half
+  says, the only route to a fix for a client runs through that gate.
+
+What flatters the product in a demo, specifically: the demo data has one note-bearing customer and
+one without ([open item 100](open-items.md)), seven days of orders is exactly what the demo shows,
+and every price in the demo is stable for the length of a presentation — so findings 5 above and the
+seven-day list are invisible in every walk and every screenshot taken so far.
+
+### What is there only for us, and whether it could reach a client
+
+**This is the good news in this half, and it is good news because it is held by tests rather than by
+care.**
+
+- **The fake server and its invented company are compiled out of the deployed bundle, and a test
+  proves it.** [`ui/src/main.tsx#L14-L16`](../ui/src/main.tsx#L14) gates the fake on a build mode
+  that is a constant, so the bundler drops it; and
+  [`scripts/src/fake.test.ts#L42-L58`](../scripts/src/fake.test.ts#L42) builds *both* bundles in one
+  test and asserts the served one holds none of `fake.session`, `Minh Phát`, `fake-credential` or
+  `demo-join-link` — the fake's own handle, the invented company's name, the fake authenticator's
+  credential and the invited operator's link. [`ops/app.sh#L68`](../ops/app.sh#L68) uploads
+  `dist/app`; the fake builds to `dist/fake`, a folder of its own.
+- **The demo seed cannot run anywhere but ridge, and the refusal carries its reason.**
+  [`ops/seed.sh#L36`](../ops/seed.sh#L36) — "seed.sh seeds ridge alone: a client's stack must never
+  receive demo data". It also makes no client and no password, which its header says in its own
+  words.
+- **No seeded root password exists anywhere.** A new client's root gets a freshly minted random
+  password, shown once ([`bff/src/clients.ts#L70-L83`](../bff/src/clients.ts#L70)). The demo copies'
+  passwords are typed by hand into `ops/root-password.sh` and never printed.
+- **The BFF carries no test switch and no demo mode.** Its whole environment is c-storage's four
+  variables and the app's origin, every one required
+  ([`bff/src/env.ts#L4-L26`](../bff/src/env.ts#L4)).
+- **The local stack's unauthenticated seed door** ([open item 18](open-items.md)) lives in the
+  `scripts` package, which is not deployed; the deployed BFF is bundled from `bff/src/lambda-main.ts`.
+
+So **a real client's stack would carry no demo clients, no demo orders and no seeded password.** One
+thing does reach a deployment, and the other half of this page files it: the deploy check makes a
+real client in the stack it checks and deletes it on the way out
+([`ops/check.sh#L165-L171`](../ops/check.sh#L165), [open items 117 and 131](open-items.md)), so on a
+client's own stack a throwaway client would be written into the client's own records on every
+deploy, and a failed delete leaves it listed behind a `WARN` nothing reads.
+
+### What must be true before a real client's data goes in
+
+In the order a client would meet the lack, with rough sizes. Nothing here is a plan — each is the
+shape of the piece, not its steps.
+
+1. **Add a customer and a product from the page, under the orders right.** One form each over the
+   add path the import already uses. About a day, and it is the only thing on this list that blocks
+   the very first order. Open item 135.
+2. **The money defects: the repricing gap, the cash close's missing precondition, and the closer
+   recorded as the root** ([item 36 finding 5, item 41 findings 2 and 7](open-items.md)). About a
+   day for the three together — they are small changes, and they are the ones that are wrong about
+   money.
+3. **Correcting a confirmed order** — a decision about what "correct" means when a driver already
+   holds the request, then about a day. Today it is Cancel and re-make under a new number
+   ([`bff/src/orders.ts#L290`](../bff/src/orders.ts#L290), [`#L356`](../bff/src/orders.ts#L356)).
+4. **The client's own logo in the header** ([items 76 and 103](open-items.md)). An hour, and it is
+   the first thing the client sees every time they sign in.
+5. **Finding an order: a search by number or customer, and a day to open at.** Half a day to a day
+   for the page; a span longer than a few weeks needs an index, which [item 35](open-items.md)
+   already notes. Open item 137.
+6. **A password a staff member can be given back without the owner guessing, and the root-password
+   door that lies** ([item 61](open-items.md)). Half a day. Open item 139 holds the wider lack: no
+   mail or message leaves this system at all.
+7. **One report** — a day's or a customer's totals. About a day. A real business asks in its first
+   week, but it can run a month without it, which is why it is last. Open item 138.
+
+Not on this list because they belong to the other half: a client's own stack, the backup, the API's
+open address, deploys and recovery. One of that half's items is worth naming here because a product
+reader will reach for it — the sign-in's missing limit on wrong passwords
+([item 28](open-items.md)) — and its own parking note says "before the first client's own stack",
+which is now.
+
+### What this half verified first-hand, and what it did not
+
+- **Read whole, first-hand:** `docs/open-items.md` (all 129 items as they stood at `760d434f`, plus
+  130 to 134 as the other half filed them), `docs/products.md`, `ui/src/nav.ts`,
+  `shared/src/permissions.ts`, `shared/src/lists.ts`, `bff/src/env.ts`, `ui/src/OrdersPage.tsx`,
+  `ops/seed.sh`'s guard section, this week's recaps in `docs/recaps/` by their headings and the two
+  edit recaps in full.
+- **Read in part, at the lines cited and their neighbourhood:** `bff/src/orders.ts` (the list,
+  create, save, confirm and cancel routes and the deliver route's result handling),
+  `bff/src/lists.ts` (the four routes and their permission calls), `bff/src/app.ts` (the sign-in and
+  QR routes), `bff/src/clients.ts` (the client's creation), `bff/src/sessions.ts` (the lifetimes),
+  `shared/src/orders.ts` (the schemas), `shared/src/signins.ts`, `ui/src/OrderPage.tsx`,
+  `ui/src/ClientApp.tsx` (its route table), `ui/src/ListPage.tsx`, `ui/src/Shell.tsx`,
+  `ui/src/SignIn.tsx`, `ui/src/PersonPage.tsx` (its side panel and archive actions),
+  `ui/src/Settings.tsx` (the logo chooser), `ui/src/main.tsx`, `scripts/src/fake.test.ts`,
+  `ops/check.sh` (the client it makes), `visual/src/walks.ts` (its screen list, by id).
+- **Established by search rather than by reading the file:** that nothing in the product sends mail
+  or an SMS; that no route adds a customer or a product outside the root's import; that the BFF
+  holds no environment switch that weakens a behaviour; that no page in the menu is a report. Each
+  is a negative proved by a search over the whole tree — weaker than reading every file, stronger
+  than an assumption, and a file added after this page was written would not be in it.
+- **Not read:** `c-storage/`, all of `ops/` except the lines cited, every test file except
+  `scripts/src/fake.test.ts` and the two tests cited by line, the walk specs themselves, and the
+  Vietnamese and English word files. **No test, gate, walk or server was run for this half** — every
+  claim here is read from the code, so what a person would actually *see* on a screen is asserted
+  only where a walk's screen name or a cited test stands behind it. In particular this half did not
+  run the app, so nothing here is evidence about speed, about how a page reads on a real phone, or
+  about any defect that only a browser shows.
+- **Where a document and the code disagreed:** three places, all corrected in the same change as
+  this page. `products.md` said 10 Playwright walks where `walk/specs/` holds 12 and its own next
+  row says twelve. Its known-gap list still said the console cannot add or remove operators, while
+  rows B1 and B2 of the same page say both are in `main`. And
+  [`recaps/2026-11-07-edit-customer.md`](recaps/2026-11-07-edit-customer.md) called the customer
+  save "the first write anywhere in the new app", which was not true the day it was written — staff
+  and settings had written since 10-28 and 10-30, and the orders' own save already used the shape
+  that recap says the customer page invented.

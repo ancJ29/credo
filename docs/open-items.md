@@ -875,3 +875,73 @@ order. *Fix:* one script that does the three in order and reads back, or the ord
 a runbook entry. Related: item 50 (how the end-of-run search handles the keys it already holds). *Trigger:* a key
 that must be replaced — a leak found by the end-of-run search, or an operator leaving — or before a client's own
 stack.
+
+## 135. A clerk cannot add a customer or a product: the import is the root's alone and no page offers an add — the machine proposes the form, the human decides which right it sits under; *parked* until the first client takes an order (the client-readiness read, 2026-11-07)
+
+The only way a record enters the customers or the products list is the Excel import, and the import is the
+root's: `bff/src/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
+comment — "Only the root imports (case-table row 22): no permission allows it." Neither list page draws an
+Add, and the Import button is drawn for the root alone (`ui/src/ListPage.tsx#L26`), so a person with
+`orders.canEdit` sees no path at all, not even a refused one. That person can already *correct* a customer
+and a product on its page (`bff/src/lists.ts#L212`, the same right), so the gap is the add and the add only.
+**What it costs a real client:** a new customer telephones, and the order cannot be taken until the owner
+signs in and builds a spreadsheet. Of everything the client-readiness read found, this is the one that
+blocks the first order. *Fix:* one add form a list, over the add path the import already uses
+(`bff/src/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
+the cheapest answer and the weaker decision. *Severity:* High for a first client; none for ridge, where the
+demo seed writes both lists. *Trigger:* the first client takes an order.
+
+## 136. No price can be set on an order line, and a total must be at least 1 — the human decides whether a client prices by hand; *parked* until a client asks for a price of its own (the client-readiness read, 2026-11-07)
+
+A line is a product id and a quantity, and the price is always the product list's: the schema says so in its
+own words, "the customer and the lines by id and quantity, never a price or a total"
+(`shared/src/orders.ts#L130-L146`), and the BFF prices every save and every confirm from the lists
+(`bff/src/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
+fee and no VAT line, and because `total` is `z.number().int().min(1)` (`shared/src/orders.ts#L108`) an order
+worth nothing — a free replacement after a damaged delivery — cannot be recorded at all. This is a
+deliberate shape, not a defect: it is what makes the server the only pricer and keeps a tampered total out.
+It becomes a gap the moment a client sells at agreed prices rather than list prices. *Fix:* a per-line price
+the server still bounds, or a customer price list, and a decision about who may type one; the zero total is
+a separate and smaller change. *Trigger:* a client asks for a discount, a customer price or a replacement
+delivery.
+
+## 137. Nothing older than seven days can be found: no search by number or customer, and "Earlier" re-reads every week again — the machine; *parked* until a client's second week (the client-readiness read, 2026-11-07)
+
+The orders route answers at most seven days and refuses a wider span (`shared/src/orders.ts#L23`,
+`bff/src/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
+count and re-reads *every* week from today (`ui/src/OrdersPage.tsx#L13-L19`, `#L83`): at twelve weeks that
+is twelve calls of seven day-lists each. There is no search by order number, no search by customer, no
+filter by state and no day to open at. Finding last month's order means pressing Earlier five times and
+reading an unfiltered table. The delivery requests page has the same shape, a day at a time
+(`bff/src/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
+this item is the other half of it, what a person can and cannot find. *Fix:* a search by number and by
+customer, and a day to open the list at, which together need an index rather than a wider day span.
+*Trigger:* a client's second week, or the first time someone is asked for last month's order.
+
+## 138. No report of any kind — the human names the first report, since what it must show is the client's business; *parked* until a client asks (the client-readiness read, 2026-11-07)
+
+The menu holds eight pages and not one of them is a total: My deliveries, Orders, Delivery requests,
+Settings, Staff, Staff setup, Customers and Products (`ui/src/nav.ts#L27-L85`). There is no day's takings,
+no customer's history, no driver's month and no product's movement, and nothing in the BFF answers a sum —
+every orders route returns records for a page to add up. The operator console's own Usage and costs and
+Activity are "coming soon" pages (`ui/src/operatorNav.ts#L17-L18`), which is a different lack.
+**What it costs a real client:** nothing in week one, and an ask in week two; it is on the readiness list
+last for exactly that reason. *Fix:* one report the human names, which decides whether the sums are made in
+the BFF over an index or in the page over the seven-day reads (item 137). *Trigger:* a client asks.
+
+## 139. Nothing in the product sends email or an SMS, so a staff password is reset by hand and the root's only from the console — the machine proposes the sender, the human decides what may leave the system; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
+
+A search over `bff/src`, `ui/src`, `shared/src`, `ops` and `.github` for any mail or message sender finds
+none. "Sign in by email" means only that the email address may be typed where the code goes, against the
+same password (`bff/src/app.ts#L251-L268`), and the QR code is made by the root and shown on a screen for
+fifteen minutes (`shared/src/signins.ts#L29`) — it is handed over, never sent. The consequences:
+- **A staff member who forgets their password** has no self-service path; the root types them a new one
+  (the root's own screen, `staff-6-password`).
+- **The root has none at all.** Only an operator can set a client's root password, from the console, with a
+  live session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`) — and that door can report
+  "as it was" over a password that was in fact set (item 61).
+- **Nothing reaches a customer**: no order confirmation, no delivery notice.
+The walks page's partner sign-in by emailed code is Cloudflare's, not the product's, so it is no precedent.
+*Fix:* a sender, and then the human's decision on what may leave a client's system; the staff reset is the
+smallest first use and does not need one if a one-time link shown on the root's screen is accepted instead.
+*Trigger:* before a client's own stack, or the first staff member who forgets a password.

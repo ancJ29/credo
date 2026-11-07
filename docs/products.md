@@ -49,7 +49,7 @@ Usage and costs, and Activity, are menu entries with an empty "coming soon" page
 
 | Product | What it does, for whom | Runs | State | Open or start | Recap or plan |
 | --- | --- | --- | --- | --- | --- |
-| The walk specs | 10 Playwright walks (`walk/specs/`) take every screen in vi and en on three widths, on the fake and on a real stack, and compare pixels raw. | local | in `main` | `walk/specs/*.spec.ts` | [`recaps/2026-10-31-walk-steady.md`](recaps/2026-10-31-walk-steady.md) |
+| The walk specs | 12 Playwright walks (`walk/specs/`) take every screen in vi and en on three widths, on the fake and on a real stack, and compare pixels raw. | local | in `main` | `walk/specs/*.spec.ts` | [`recaps/2026-10-31-walk-steady.md`](recaps/2026-10-31-walk-steady.md) |
 | `walk/run.sh` | One command runs any walk, green only when fake, stack and stack again match pixel for pixel; it needs the human's own terminal. Many walks run in three lanes at once. It keeps a claim on its browser and says in one line if the browser is removed mid-run. | local | in `main` | `bash walk/run.sh <walk> [--moved <screen>] [--write] [--serial]` | [`recaps/2026-10-31-walk-steady.md`](recaps/2026-10-31-walk-steady.md), [`recaps/2026-11-07-browser-guard.md`](recaps/2026-11-07-browser-guard.md) |
 | `ops/full-run.sh` (the full run) | Runs all twelve walks in three lanes (run 1 writes each walk's bases on its own reads, under a lock of its own, and the verdict names what moved), then run 2 as a byte compare of run 1's pictures against the bases; green only when every count is 0. 16 minutes in the adoption run, about 70 the serial way. | local | in `main` | `bash ops/full-run.sh` in the human's terminal | [`recaps/2026-11-04-full-run-speed.md`](recaps/2026-11-04-full-run-speed.md), [`recaps/2026-11-06-walk-machinery.md`](recaps/2026-11-06-walk-machinery.md) |
 | `pnpm report` (the walks page build) | Builds the walks page: 100 screens in two languages, each shown full window, answered yes or no in one key (Yes to all per walk), with a memo on a No. | local | in `main` | `pnpm report`, open the built file from disk | [`recaps/2026-11-03-walks-page.md`](recaps/2026-11-03-walks-page.md) |
@@ -93,7 +93,7 @@ The numbers are [open items](open-items.md).
    and its restore are not built (item 6); both wait for a signed client.
 3. A client's own production stack (item 4) and the public address in front of ridge's c-storage
    (item 13) are not built.
-4. The console cannot yet add or remove operators (B1 on its branch, B2 after it), and passkeys are
-   tested in Chrome only (item 30).
+4. The console's passkeys are tested in Chrome only, and adding one in Safari may be refused
+   (item 30). Adding and removing operators is built and in `main` (rows B1 and B2 above).
 5. Two UI tests fail now and then under a heavily loaded machine (item 56), so the gate can read red
    without a defect.
