@@ -806,9 +806,9 @@ About 119.4 s summed over 47 tests, as long as the whole package. It met the pla
 `scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
 
 
-## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; *parked* until before any environment but ridge exists (the client-readiness read, 2026-11-07)
+## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; `[FIXED]` (tree guard, `138571c4`, 2026-11-07, High; was *parked*, the client-readiness read)
 
-`ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
+*Fixed in the tree guard (`687d8161` to `138571c4`, recap `docs/recaps/2026-11-07-tree-guard.md`):* `ops_match_main` now compares every path `ci.yml`'s push trigger deploys on, read from the base's own `ci.yml`, plus `.gitignore`, so the first fix below was taken and the second rejected (it leaves four scripts uncovered and passes a committed edit). As filed: `ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
 session is always a reviewed one" — and it compares `ops/` and nothing else. But `ridge_cli` runs
 `scripts/src/ridge-main.ts` out of the working copy (`ops/lib.sh#L612-L618`), and that package holds the
 client-delete command. In `main` the command is safe: `untenant` refuses any code that is not the deploy
@@ -962,3 +962,7 @@ smallest first use and does not need one if a one-time link shown on the root's 
 ## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low)
 
 `ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh#L635`), so with the variable set the code executed is not the tree the guard compared. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch (`ops/seed.sh#L43`, `ops/root-password.sh#L91`), so it cannot simply go (they test it as a presence check, not as the guard). The guard's message now names what it compares rather than claiming the code run. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`). *Trigger:* the same as item 142.
+
+## 144. `ops_match_main`'s `mktemp` is not checked, so a failed one reports a misleading cause — the machine; `[DEFERRED]` (tree guard, the recap's own read, 2026-11-07, Low)
+
+`ci=$(mktemp ...)` (`ops/lib.sh#L200`) has no check of its own. If `mktemp` fails, `ci` is empty, the redirect on the next line fails, and the function dies through its `||` branch with "ci.yml cannot be read" — failing closed, but naming the wrong cause. The same unchecked shape sits at `ops/lib.sh#L146`. *Fix:* `|| die "no temporary file could be made"` on both. *Trigger:* a reader of that message is misled, or the next edit of this function.
