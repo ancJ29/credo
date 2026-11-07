@@ -130,9 +130,15 @@ set through the BFF; step 2 did not, and the red surfaced only in the whole chec
       unpriced, row 3 the version compare dropped) and reverted; the gate (shared and bff five steps
       by name, plus `pnpm -r run typecheck` over `ui`, `visual` and `walk`) every step exit 0 in
       `logs/20261107-1928-edit-order-step4-gate.log`; no `ui/` file changed.
-- [ ] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once
+- [x] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once
       under the lock, `== exit 0`. **The one place the whole check runs:** `walk/` and `visual/`
       typecheck against this piece's changes in `ui/` and `shared/`, so no package's gate clears it.
+      Evidence: `main` (`ca8d1d0d`) already in, `docs/open-items.md` identical to main's; the first
+      whole check was red in `scripts` (item 140, the generator), fixed by `replayWeek` taking a
+      moved-price line at its day's price and restoring today's; the whole check once, five steps
+      separate, test step green in one invocation, `== exit 0 (typecheck 0 eslint 0 prettier 0 test
+      0 knip 0)`, in `logs/20261107-2000-edit-order-step5-check2.log` (the red one:
+      `...1941-edit-order-step5-check.log`).
 - [ ] **6. One review.** 🤖 Opus, about 10 minutes, not the build's model. Done when: each finding
       tagged here `[FIXED]`, `[REJECTED]` or `[DEFERRED]` with its reason.
 - [ ] **7. The picture run** (👤 4): one command, about 17 minutes. Done when: run 1 green, its
