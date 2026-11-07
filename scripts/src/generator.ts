@@ -290,18 +290,23 @@ async function replayWeek(
     const moved = order.lines.filter(
       (line) => line.price !== products.products.find((one) => one.code === line.code)!.price,
     );
-    for (const line of moved) await setPrice(line.code, line.price);
-    const saved = await call<OrderDoc>('POST', ROUTES.orders, root, {
-      day: order.day,
-      customerId: idOf(customers.customers, order.customer.code),
-      lines: order.lines.map((line) => ({
-        productId: idOf(products.products, line.code),
-        quantity: line.quantity,
-      })),
-      extra: order.extra,
-    });
-    for (const line of moved) {
-      await setPrice(line.code, products.products.find((one) => one.code === line.code)!.price);
+    let saved: OrderDoc;
+    try {
+      for (const line of moved) await setPrice(line.code, line.price);
+      saved = await call<OrderDoc>('POST', ROUTES.orders, root, {
+        day: order.day,
+        customerId: idOf(customers.customers, order.customer.code),
+        lines: order.lines.map((line) => ({
+          productId: idOf(products.products, line.code),
+          quantity: line.quantity,
+        })),
+        extra: order.extra,
+      });
+    } finally {
+      // closed even when the order fails, or the seeded list is left at yesterday's price
+      for (const line of moved) {
+        await setPrice(line.code, products.products.find((one) => one.code === line.code)!.price);
+      }
     }
     const request = DEMO_DELIVERIES.find((one) => one.order.id === order.id);
     let doc = saved;

@@ -249,11 +249,11 @@ are fixed; these stay.
 
 *Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
 
-## 35. Orders and requests: four small things left under the demo's ceremony — the machine; *parked* until the orders are next touched (orders-delivery, step 6, 2026-10-31)
+## 35. Orders and requests: four small things left under the demo's ceremony — the machine; *partly closed* by edit-an-order (2026-11-07): the first bullet is `[FIXED]`, the rest parked (orders-delivery, step 6, 2026-10-31)
 
 Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
-- **A first save that carries a `version`** is accepted and the version ignored; the create route
-  could refuse it (400). Nothing sends one.
+- **`[FIXED]` in edit-an-order, step 4 (`20ba3846`):** **a first save that carries a `version`** is
+  refused 400 and no order is made (case 6, `bff/src/orders.route.test.ts`).
 - **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
   request's cancel; the same again in the close of a driver's day, item 41 finding 3): a moved order is left as it is and the page reads the request as none, so the
   order offers to send again either way; no test moves the order between the two writes. Also a
@@ -267,7 +267,7 @@ Found while building the BFF half; none breaks a demo step or the gate, so none 
 
 *Trigger:* the orders get a second caller (a report, a driver's phone), or a reader of a test names one.
 
-## 36. Orders, review findings 3 to 8, deferred under the 11-04 demo's exception — the machine; *parked* until the orders are next touched, and worked after the demo (orders-delivery, step 7, 2026-11-01)
+## 36. Orders, review findings 3 to 8, deferred under the 11-04 demo's exception — the machine; *partly closed* by edit-an-order (2026-11-07): findings 4, 5 and 8 are `[FIXED]`, 3, 6 and 7 stay parked (orders-delivery, step 7, 2026-11-01)
 
 Found by the line 30 review; only its High and Medium findings are fixed under the demo's ceremony
 (Decide 46). None breaks a demo step or the gate.
@@ -275,11 +275,11 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
   result, so from slice 3 a request delivered between the read and the write leaves a cancelled order
   beside a delivered request. *Fix (slice 3):* on `moved`, re-read the request; if still waiting, retry
   a bounded number of times; if delivered, answer 409 with the order.
-- **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
+- **`[FIXED]` in edit-an-order (step 2: the page sends the order's stored `extra`, case 10).** **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
   included, and the BFF stores it as given (`bff/src/orders.ts#L274`); nothing writes an order's
   `extra` yet, so nothing is lost today. *Fix:* send `existing?.doc.order.extra ?? {}`, as
   `ui/src/PersonPage.tsx#L328` merges into the stored one.
-- **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
+- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
   saved draft from today's lists, but Confirm copies the saved lines, so after a price change the
   page's total and the request's total to collect differ. *Fix:* draw a saved draft at its saved
   prices and mark a line whose product's price has since moved, so that a save reprices it.
@@ -290,7 +290,7 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
   as text, so the order breaks past 99,999 requests. *Fix:* one shared comparator for both, as
   `newestOrdersFirst` (`shared/src/orders.ts#L183-L186`) compares the length first, the next time
   either is touched.
-- **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
+- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
   `version: z.string().min(1)`, outside `shared/` and looser than `tagSchema`, so a malformed version
   reads as a moved one (409), not a 400. *Fix:* a re-save schema in `shared/src/orders.ts`, beside
   item 35's first bullet.
@@ -789,6 +789,10 @@ About 119.4 s summed over 47 tests, as long as the whole package. It met the pla
 
 `scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
 
-## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[OPEN]` (edit-an-order, step 5's whole check, 2026-11-07, High)
+## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[FIXED]` (edit-an-order, step 5's whole check, 2026-11-07, High)
 
-`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. A fix needs a decision: the generator imports the products at the old price, makes the draft, then imports today's list; or the draft is written to the store directly; or the stack lane is declared not to carry the fixture and the test and the walk say so.
+`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
+
+## 141. The page's "Now X" figure is the list as read when the editor mounted — the machine; `[DEFERRED]` (edit-an-order, review of line 78, 2026-11-07, Low)
+
+`ui/src/OrderPage.tsx#L86-L92` takes the moved-price advisory from the product list read at mount, so a price moving while the page stays open shows a stale figure and a save takes another. No money diverges: the screen and the driver both carry the saved prices until a save, and the save's answer redraws the page. *Trigger:* a second office editing prices while an order is open, or a reader of a test names it.

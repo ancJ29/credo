@@ -299,7 +299,9 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     } catch (error) {
       // The write may have landed with its answer lost: the record stored is exactly the one built
       // here, state and request included, or the failure stands. A rival's confirm differs in both.
-      if (isDeepStrictEqual((await readOrder(request.tenantId, day, id))?.order, changed)) {
+      // a re-read that fails too leaves the write's failure standing, as the lists' recovery does
+      const stored = await readOrder(request.tenantId, day, id).catch(() => null);
+      if (stored !== null && isDeepStrictEqual(stored.order, changed)) {
         return await orderDoc(request.tenantId, day, id);
       }
       throw error;

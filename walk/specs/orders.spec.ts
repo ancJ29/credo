@@ -308,19 +308,29 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(proof).toHaveJSProperty('complete', true);
   await at('orders-12-proof');
 
+  // the whole mark, its number a figure of any grouping: not the template's first word, which
+  // Playwright trims to a substring that any later word of the page could match
+  const moved = page.getByText(
+    new RegExp(
+      words.orders.priceMoved
+        .split('{{price}}')
+        .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .join('\\d[\\d.,\u00a0\u202f]*'),
+    ),
+  );
   // 13. A draft taken before a price changed: its own prices, and the line that has moved.
   await open(page, language, { path: '/orders' });
   await page.getByRole('link', { name: yesterdays.number, exact: true }).click();
   await expect(
     title(words.orders.orderTitle.replace('{{number}}', yesterdays.number)),
   ).toBeVisible();
-  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0])).toBeVisible();
+  await expect(moved).toBeVisible();
   await at('orders-13-moved-price');
 
   // 14. The draft saved again: the moved line repriced, and a new total.
   await press(words.orders.saveDraft);
   await expect(page.getByRole('alert')).toContainText(words.orders.done.saved);
-  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0])).toHaveCount(0);
+  await expect(moved).toHaveCount(0);
   await at('orders-14-repriced');
 }
 

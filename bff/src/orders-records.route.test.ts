@@ -30,12 +30,22 @@ function flaky() {
       data: unknown,
       ifTag?: string | null,
     ) => 'throw' | 'lost' | 'moved' | 'bump' | 'bump-then-throw' | null;
+    /** Once a write has thrown, every read fails too. */
+    readsFailAfterThrow?: boolean;
   } = {};
+  let down = false;
   const wrap = (client: CStorageClient): CStorageClient => ({
     ...client,
+    async getRecord(key) {
+      if (down) throw new CStorageError(503, 'down');
+      return await client.getRecord(key);
+    },
     async putRecord(key, data, ifTag) {
       const what = plan.failOn?.(key, data, ifTag) ?? null;
-      if (what === 'throw') throw new CStorageError(503, 'down');
+      if (what === 'throw') {
+        down = plan.readsFailAfterThrow ?? false;
+        throw new CStorageError(503, 'down');
+      }
       if (what === 'moved') return 'moved';
       if (what === 'bump' || what === 'bump-then-throw') {
         const current = (await client.getRecord(key))!.data as Record<string, unknown>;
@@ -390,6 +400,24 @@ describe('Rows 19 and 20: every write names the tag, and a stop between two writ
       key.includes('.order.') && ifTag === null ? 'moved' : null;
 
     const reply = await w.office.call.send('POST', ROUTES.orders, w.body());
+
+    expect(reply.statusCode).toBe(503);
+  });
+
+  it('answers the write’s own 503 when a draft’s save threw and the re-read to recover it failed too', async () => {
+    const f = flaky();
+    const w = await ordersTenant(cs, { wrap: f.wrap });
+    const draft = await w.made();
+    f.plan.failOn = (key) => (key.includes('.order.') ? 'throw' : null);
+    f.plan.readsFailAfterThrow = true;
+
+    const reply = await w.office.call.send('PUT', orderRoutes.one(DAY, draft.order.id), {
+      day: DAY,
+      customerId: draft.order.customer.id,
+      lines: draft.order.lines.map(({ productId, quantity }) => ({ productId, quantity })),
+      extra: {},
+      version: draft.version,
+    });
 
     expect(reply.statusCode).toBe(503);
   });
