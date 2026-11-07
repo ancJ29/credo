@@ -90,7 +90,8 @@ and `docs/open-items.md` is the one file the live pieces share, so whichever mer
 
 ## Steps
 
-- [ ] **1. This plan.** 🤖 Opus, 15 min. *Done when:* committed, no local path.
+- [x] **1. This plan.** 🤖 Opus, 15 min. *Done when:* committed, no local path.
+      *Done 11-07:* committed at the branch's first commit; the plan carries no local path.
 - [x] **2. The switch on the join page, the cheap end to end on the fake.** 🤖 Sonnet, 15 min: the
       state and handler in `Joining`, the two props through `JoinPage`, the six unit rows. *Done
       when:* rows 1, 2, 3 and 5 each red once from their own assertion, then green; row 6's diff
@@ -111,9 +112,10 @@ and `docs/open-items.md` is the one file the live pieces share, so whichever mer
       exit 0; `visual` tests 100 % exit 0 on the rerun (first run: two timeouts in `admin-staff`,
       load). Row 8's comparison against `main`'s build and the `walk` run itself are held to step 5.
 - [ ] **4. The look** (👤 1). The machine goes straight on to step 5 and does not wait for it.
-- [ ] **5. The gates and one review.** 🤖 Sonnet, then Opus, 10 min: `main` taken in, then the whole
+- [~] **5. The gates and one review.** 🤖 Sonnet, then Opus, 10 min: `main` taken in, then the whole
       `pnpm check` once under the shared lock. *Done when:* `== exit 0` in the log, and every review
       finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`.
+      *Gates done 11-07 (review still to come):* `main` (afcda360) taken in; the one conflict, `visual/site/questions-vi.json`, resolved by the rule that its keys equal the merged `walks.ts`'s questions; typecheck, eslint, prettier, knip exit 0, `pnpm -r run test` red once on a 120 s timeout in `scripts/src/demo/apply.test.ts` row 21 (a file this piece never touched), green on its rerun (305 tests); report built from the committed tree, 122 screens; against `main`'s build exactly `pk-1-join` and `pk-5-link-dead` moved version, and the doors' shared question differs on its nine screens (row 8 holds).
 - [ ] **6. The picture run** (👤 2), the human's terminal, about 17 minutes.
 - [ ] **7. The recap.** 🤖 Sonnet, 2 min. *Done when:* committed, under 400 words, item 101 deleted,
       the products row true.
