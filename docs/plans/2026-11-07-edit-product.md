@@ -110,14 +110,16 @@ order page, which is milestone 3.
   `pnpm --filter @credo/shared --filter @credo/ui --filter @credo/visual run typecheck && eslint . && prettier --check . && pnpm --filter @credo/shared --filter @credo/ui --filter @credo/visual run test && knip`;
   `pnpm fake` serves the page; `pnpm report` builds, and against `main`'s build exactly screens 12, 13, 16 and 17
   differ.
-  *Done 2026-11-07 (14 minutes of work, gate log `20261107-1424-edit-product-step2-gate.log`, `== exit 0`):* typecheck
+  *Done 2026-11-07 (21 minutes of work, gate log `20261107-1424-edit-product-step2-gate.log`, `== exit 0`):* typecheck
   of shared, ui, visual and, beyond the plan, walk; `eslint .`; `prettier --check .`; the three packages' tests at 100 %
   (shared 158, ui 803, visual 203); knip: all six steps ran and exited 0. Rows 8 to 12 each seen red by one named
   mutation of the page, then green; row 13 by the `withBorder` grep and the words test. **Departure from the plan:** the
   price box keeps `allowDecimal` and `allowNegative` and clamps nothing (`clampBehavior="none"`), because with the order
   form's props the box itself cut a pasted `95000.5` to 95000 and dropped the minus of `-5`, the rounding the plan
-  forbids; the shared `priceSchema` now refuses both on submit, with one word. The picture comparison against `main`
-  is read in the report, not claimed here.
+  forbids; the shared `priceSchema` now refuses both on submit, with one word. *Pictures:* `pnpm report` built from the
+  committed tree `cf216840` (`walks/2026-11-07-142818-cf2168402`, 122 screens) against `main`'s `deb805aa` (120): screens
+  12 and 13 differ, 16 and 17 are new, no other screen's version moved. Gate log first two runs red (a type error and
+  four lint errors of this step's tests, then a branch-coverage gap in the page), fixed; the third is the green one.
 - [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
 - [ ] **4. The routes against the real c-storage.** 🤖 Sonnet, 22 minutes: the `ListKind` generalisation and the two
   routes; nothing of the page changes, since step 2 bound it to the wire. Done when: rows 1 to 6 each red once, then
