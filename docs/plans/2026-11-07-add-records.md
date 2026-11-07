@@ -134,9 +134,13 @@ cued on the fake lane; the stack lane adds a second record with a code it just u
   text was `bff/src/operator.route.test.ts` (two lines gained `POST`); and row 6 was not a guard in fact, since the
   existing refusal test used a person with only `orders.canView`, so swapping the import's root check for
   `orders.canEdit` stayed green until a test with a person holding every permission was added.
-- [ ] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once under the
+- [x] **5. The gates.** 🤖 Sonnet, about 15 minutes: `main` taken in, then the whole `pnpm check` once under the
   shared lock, `== exit 0`. **The one place the whole gate runs:** the walk and the report typecheck against this
   piece's changes, so no single package's gate can clear it.
+  *Ticked 2026-11-07:* `main` (`5ea0be17`) was already an ancestor of the branch, so taking it in was a no-op. The
+  five steps ran separately under the lock at load 2.07, 3 m 38 s (log
+  `20261107-231928-clerk-add-records-step5-whole-check.log`, last line `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0
+  knip 0)`); the log holds no warning or error line; the lock was free at the end.
 - [ ] **6. One review.** 🤖 Opus, about 10 minutes, not the build's model. Done when: each finding tagged here.
 - [ ] **7. The fix pass.** 🤖 Sonnet, about 8 minutes: the review's named changes, the read-then-write item filed,
   and the stale "The root's" comment on the list read corrected (`ui/src/api.ts#L542`, untrue since the list opened
