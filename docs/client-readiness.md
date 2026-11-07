@@ -282,10 +282,6 @@ its steps.
 
 ## The product — what the office can and cannot do
 
-> **Placeholder, to be written by the reader who looked at the product half.** Append below this
-> line; nothing above it is yours to move. Keep the same habits: every structural claim with its
-> `path#Lnn`, and a short statement at the end of what you read first-hand and what you did not.
-
 **The answer is no as well, and for a different reason than the other half's.** The product's spine
 is real: one whole job runs from a telephone call to a photographed delivery and a driver's cash
 settled, and it runs in two languages on a phone. What is missing is the ordinary day around that
