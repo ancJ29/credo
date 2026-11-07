@@ -393,7 +393,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 ## 43. The closed-day test sends for the order's own day — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
-`scripts/src/demo/apply.test.ts#L928`: the order's day equals its `sendFor` day, so a wrong `closedFor(day)` would still pass. *Fix:* add a case sent for the next working day. *Severity:* Low.
+`scripts/src/demo/apply.first-fill-orders.test.ts#L356`: the order's day equals its `sendFor` day, so a wrong `closedFor(day)` would still pass. *Fix:* add a case sent for the next working day. *Severity:* Low.
 
 ## 44. Time wording left from the 06:00 run — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
@@ -404,7 +404,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 *Severity:* Info.
 - `scripts/src/demo/apply.ts#L404`: when every driver is closed the draft is named "no driver who delivers".
 - `apply.ts#L359`: the "closed, sent nothing" line is logged for every closed driver, is not in `report.skipped`, and is absent from the log lines `ops/README.md` lists.
-- `scripts/src/demo/apply.test.ts#L949`: the closed record is written straight to storage, so that driver's requests stay waiting.
+- `scripts/src/demo/apply.first-fill-orders.test.ts#L377`: the closed record is written straight to storage, so that driver's requests stay waiting.
 - A close between `closedFor` and the confirm still answers 400; negligible at 03:17.
 - `ops/test.sh#L759`: the 15-minute check matches any step, and `#L754` is now redundant.
 - `docs/plans/2026-11-02-seed-demo-safe.md#L5`: "10:4x" reads 10:47.
@@ -672,10 +672,6 @@ The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spe
 
 **Done (products-cards, `02bbebc`, 2026-11-06).** The fix is the one named: all four pickers read a `hasNote` of "a string that is not empty", the page's own rule — `walk/specs/lists.spec.ts#L17-L19`, `visual/src/walks.ts#L181-L183`, `visual/src/words.test.tsx#L26-L28`, and `visual/src/walks.test.ts#L668`, whose opener check no longer reads `DEMO_CUSTOMERS[0]` by index. The customers' two records are unchanged by the new rule (only `KH-001` carries a `note`, and it is a non-empty string), which step 2's picture compare proves: 118 screens against `main`'s 116, with screens 10 and 11 byte-identical. What is left — the rule written out four times with nothing shared — is item 105.
 
-## 101. The join page draws no language switch though the mock did — the machine; `[DEFERRED]` (signin-look, build, Sonnet, 2026-11-05, Low)
-
-The mock drew the language switch on the three join screens, but `Joining` (`ui/src/OperatorApp.tsx#L57-L65`) fixes the language from the device once and holds no handler or state to change it, unlike the console beside it and the client's app. The piece's bound was the words through the caller's existing handler, and giving the join page one means a state in `Joining` and a changed way of choosing the language, so the join page's frame (`JoinPage.tsx`, unchanged) draws the header and no switch. *Fix:* hold the language in `Joining` as `Console` does (`device.setLanguage` and a state) and pass `languages={LANGUAGES}` and the handler to `JoinPage` and on to `SignInFrame`, which already takes both. *Trigger:* the human's word that the join screens should carry the switch the mock showed.
-
 ## 102. The QR landing card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
 
 `ui/src/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
@@ -761,6 +757,22 @@ Deferred from line 64.1's review, not a fault of the piece. The customer save re
 
 The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and no access log; the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L244`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
 
+## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+
+Deferred from line 72's review, not a fault of the piece. The post-join check (`walk/run.sh#L523`, `#L604`) adds a red rather than only labelling reds already collected, which was the plan's intent: a run green in every pass and comparison exits 1 if the browser vanishes in the second between the last pass and the join. `red_walks` is untouched, so `--write` still writes the bases while the run exits 1. *Trigger:* a green run turned red by that check; then make it label only.
+
+## 123. A prune undone before the join leaves no signal — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+
+Deferred from line 72's review, not a fault of the piece. `browser_lost` is set only when a pass was blocked, and the post-join check is a fresh stat, so an install that deletes and re-downloads the same revision mid-pass fails the pass silently. Harmless today. *Trigger:* a pass failing on `Executable doesn't exist` with no browser line; then record the first missing stat.
+
+## 124. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+
+Deferred from line 72's review, not a fault of the piece. `scripts/src/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
+
+## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
+
+Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now appends the way to write the claim only where writing was the failure, and names a walk in it because `--checks` alone is refused by the parser.
+
 ## 126. The 409's `current: null` arm has no case — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
 In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
@@ -768,3 +780,11 @@ In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(
 ## 127. The product page's `extra` test dropped two of its three variants — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
 In `ui/src/ListPage.test.tsx` the test that became the editable-versus-reader one kept only one of its three `extra` shapes: `{ note: 5 }` is still exercised as a save, while `{ note: '' }` is covered only through the `textIn` behaviour, and the third is gone. A change to how an emptied or non-string note is written would not fail a case of its own. *Trigger:* the next change to how a note is read or written on a detail page.
+
+## 128. `src/walk-run.test.ts` is now the `scripts` package's floor — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Medium)
+
+About 119.4 s summed over 47 tests, as long as the whole package. It met the plan's 25 % rule from the start: the plan's table missed it because the runner line it read (`src/walk-run.test.ts (34 tests | 1 failed) 67047ms`) was an aborted run, while locally the file was 86.4 s over 38 tests, 43 % of 199.98 s. The longest apply shard is about 89 s; every other file is 43 s or under. **This piece deliberately does not cover it**: a different file and a different change. *Caveat:* per-file seconds here are sums of test times, because vitest's verbose reporter prints no file totals, so the 86.7 s runner figure has no equivalent after the split. *Trigger:* the next piece that touches `scripts`' run time.
+
+## 129. The c-storage handle in `apply-support.ts` lives in two module-level variables — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Low)
+
+`scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.

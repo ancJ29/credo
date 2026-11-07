@@ -298,7 +298,7 @@ const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
  * card on the app's ground, and the one difference from the mock, named where it is looked at.
  */
 export const SIGN_IN_LOOK =
-  'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? The doors that offer two languages carry the language switch the mock showed; the three join screens do not, and keep the language the device chose. Adding it there is a small later change, if you want it.';
+  'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? Every door that offers two languages, the three join screens among them, carries the language switch the mock showed, and the language pressed is kept on the device.';
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's

@@ -1,4 +1,4 @@
-import { type JoinOptionsReply, tokenOfFragment } from '@credo/shared';
+import { type JoinOptionsReply, type Language, tokenOfFragment } from '@credo/shared';
 import { Alert, Button, Center, Loader, Stack, Text } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
@@ -11,7 +11,13 @@ import { PasskeyNotGiven, type Passkeys } from './passkeys';
 import { SignInFrame } from './SignIn';
 import { BRAND_GRADIENT } from './theme';
 
-type Props = { api: Api; device: DeviceStore; passkeys: Passkeys };
+type Props = {
+  api: Api;
+  device: DeviceStore;
+  passkeys: Passkeys;
+  languages: readonly Language[];
+  onLanguage: (language: Language) => void;
+};
 
 type Seen =
   | { phase: 'loading' | 'dead' | 'unavailable' }
@@ -26,7 +32,7 @@ const AFTER = '/operator/clients';
  * here and sent only in a request's body. A link that cannot be used says so in one sentence, since
  * which reason it is helps no one but the person who forwarded it.
  */
-export function JoinPage({ api, device, passkeys }: Props) {
+export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props) {
   const { t } = useTranslation();
   const { hash } = useLocation();
   const navigate = useNavigate();
@@ -70,7 +76,12 @@ export function JoinPage({ api, device, passkeys }: Props) {
   }
 
   return (
-    <SignInFrame brand={CREDO_BRAND} title={t('passkey.joinTitle')}>
+    <SignInFrame
+      brand={CREDO_BRAND}
+      title={t('passkey.joinTitle')}
+      languages={languages}
+      onLanguage={onLanguage}
+    >
       {seen.phase === 'loading' && (
         <Center mih={120}>
           <Loader aria-label={t('common.loading')} />

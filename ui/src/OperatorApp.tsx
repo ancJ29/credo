@@ -51,13 +51,20 @@ export function OperatorApp(props: Props) {
 
 /** The join page, in credo's look and the device's language, outside the console's sign-in. */
 function Joining({ api, device, passkeys, test }: Props) {
+  const [chosen, setChosen] = useState<Language>(() => device.language() ?? BEFORE_CONFIG.language);
+  const chooseLanguage = (next: Language) => {
+    device.setLanguage(next);
+    setChosen(next);
+  };
   return (
-    <Providers
-      colour={BEFORE_CONFIG.colour}
-      language={device.language() ?? BEFORE_CONFIG.language}
-      test={test}
-    >
-      <JoinPage api={api} device={device} passkeys={passkeys} />
+    <Providers colour={BEFORE_CONFIG.colour} language={chosen} test={test}>
+      <JoinPage
+        api={api}
+        device={device}
+        passkeys={passkeys}
+        languages={LANGUAGES}
+        onLanguage={chooseLanguage}
+      />
     </Providers>
   );
 }
