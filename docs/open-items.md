@@ -757,18 +757,18 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
 
-## 121. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, not a fault of the piece. The post-join check (`walk/run.sh#L523`, `#L604`) adds a red rather than only labelling reds already collected, which was the plan's intent: a run green in every pass and comparison exits 1 if the browser vanishes in the second between the last pass and the join. `red_walks` is untouched, so `--write` still writes the bases while the run exits 1. *Trigger:* a green run turned red by that check; then make it label only.
 
-## 122. A prune undone before the join leaves no signal — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+## 123. A prune undone before the join leaves no signal — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, not a fault of the piece. `browser_lost` is set only when a pass was blocked, and the post-join check is a fresh stat, so an install that deletes and re-downloads the same revision mid-pass fails the pass silently. Harmless today. *Trigger:* a pass failing on `Executable doesn't exist` with no browser line; then record the first missing stat.
 
-## 123. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
+## 124. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, not a fault of the piece. `scripts/src/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
 
-## 124. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
+## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now appends the way to write the claim only where writing was the failure, and names a walk in it because `--checks` alone is refused by the parser.
