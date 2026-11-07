@@ -89,10 +89,18 @@ both sides. Nothing else of this piece is shared.
   and the new 14 and 15. The stack lane's screen 15 (`someoneSavesFirst`) calls the routes of step 4 and cannot run
   before it.
 - [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
-- [ ] **4. The route against the real c-storage.** 🤖 Sonnet, about 30 minutes: the two routes and the
+- [x] **4. The route against the real c-storage.** 🤖 Sonnet, about 30 minutes: the two routes and the
   false-conflict re-read; nothing of the page changes, since step 2 bound it to the wire, not to a route still
   moving. Done when: rows 1 to 5 each red once, then green (`bff/tests/` builds the real c-storage per file);
   `pnpm --filter @credo/bff check` green at 100 %.
+  *Done 2026-11-07, code in the commit before this tick:* `GET` and `PUT /api/customers/:id` in `bff/src/lists.ts`
+  (`orders.canView` reads, `orders.canEdit` saves, the version never skipped). Rows 1 to 5 each red once (10 new
+  cases failed against the old `lists.ts`), then green; the false conflict is forced, not hoped for: a wrapped
+  `putRecord` lets the real write land and then answers `moved` (or loses its answer), a counter fails the test
+  unless that line ran, and a mutation that stops the re-read counting an equal record as saved turns exactly those
+  two cases red. Touched `operator.route.test.ts`'s exact route list (it read the routes as text). Gate over `bff`
+  (typecheck, tests at 100 %, eslint, prettier, knip; `shared` untouched), `== exit 0` in
+  `logs/20261107-0937-edit-customer-step4-gate.log` (bff 566 tests, 19 s). The stack lane's screen 15 can now run.
 - [ ] **5. The gates.** 🤖 Sonnet, about 12 minutes: `main` taken in, then the whole `pnpm check` once under the
   lock, `== exit 0`. **The one place the whole gate runs:** `walk/` and `visual/` typecheck against this piece's
   changes in `ui/` and `shared/`, so no single package's gate can clear it.
