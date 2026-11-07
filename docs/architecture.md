@@ -57,8 +57,8 @@ understood once you know what stops without it.
 | `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store, and its file is the only copy: the nightly backup is designed but deferred to a signed client ([open item 6](open-items.md)) |
 | `scripts/` | The local lanes: `pnpm stack` (c-storage + BFF + UI on one machine, [`scripts/src/stack.ts`](../scripts/src/stack.ts)), `pnpm fake`, `pnpm demo`, and the ridge CLI the ops scripts drive ([`scripts/src/ridge.ts#L36`](../scripts/src/ridge.ts#L36)) | a developer's machine; the ops scripts | the ability to run or seed anything locally — and the BFF's route tests, which build the real c-storage through [`bff/tests/build.ts`](../bff/tests/build.ts) |
 | `visual/` | Builds the walks page: the app's own components drawn on jsdom through a Vite server's module loader, since CSS modules and TSX do not import in plain Node ([`visual/run.mjs#L1`](../visual/run.mjs#L1)) | `pnpm report`, in a sandbox, no browser | the visual report — the one artefact a non-coder judges a screen from |
-| `walk/` | Ten Playwright specs plus [`walk/run.sh`](../walk/run.sh), with each screen's committed base image beside the spec | a real browser, in a terminal only | the end-to-end check. `pnpm check` typechecks and lints this package but never runs it |
-| `ops/` | Three hand-written CloudFormation templates and about twenty shell scripts, outside the workspace | a terminal with an AWS session; CI | every way to a machine. Nothing else in the repo talks to AWS |
+| `walk/` | Twelve Playwright specs plus [`walk/run.sh`](../walk/run.sh), whose walk table at [`#L7`](../walk/run.sh#L7) names all twelve, with each screen's committed base image beside the spec | a real browser, in a terminal only | the end-to-end check. `pnpm check` typechecks and lints this package but never runs it |
+| `ops/` | Three hand-written CloudFormation templates and about twenty shell scripts, outside the workspace | a terminal with an AWS session; CI | every way to a machine. Every AWS call in the repository is made by a script in here — CI reaches AWS only by assuming the role and then running them ([`.github/workflows/ci.yml#L284`](../.github/workflows/ci.yml#L284)) |
 
 Two shapes are worth naming because they are easy to miss. The BFF is **one app with two
 entries**, not two back ends: `buildBff` is shared and only the listener differs
@@ -89,12 +89,22 @@ The part a newcomer must not get wrong: **c-storage has no concept of a tenant a
 isolation unit is the *service*, and the BFF is a single service holding every tenant
 ([`bff/src/app.ts#L69`](../bff/src/app.ts#L69)). Tenant separation is a string-prefix convention
 held entirely by the BFF; c-storage would serve one tenant's key to another tenant's request if the
-BFF built the wrong key. This is a deliberate design with **one enforcement point**, not an
-oversight: `records.ts` says in its own opening lines that it is the layout's one home, "so no
-other file builds a key" ([`shared/src/records.ts#L3`](../shared/src/records.ts#L3)). The risk
-worth naming is therefore not the design but its guard — **nothing tests that a cross-tenant key
-cannot be built.** The convention holds exactly as long as every key keeps coming from that file,
-and no gate would notice a route that built one by hand. Key design does real work here — a person's photo and a delivery's photo
+BFF built the wrong key. This is a deliberate design, not an oversight: `records.ts` says in its
+own opening lines that it is the layout's one home, "so no other file builds a key"
+([`shared/src/records.ts#L3`](../shared/src/records.ts#L3)). **Isolation itself is tested, at the
+route level** — "serves the call of the client the code names, and no other"
+([`bff/src/tenants.route.test.ts#L96`](../bff/src/tenants.route.test.ts#L96)), and "reaches one
+client only" in both
+[`clients-delete.route.test.ts#L248`](../bff/src/clients-delete.route.test.ts#L248) and
+[`operator-root-password.route.test.ts#L245`](../bff/src/operator-root-password.route.test.ts#L245).
+What is narrower than it looks is the *structural* guard: **no lint rule and no test forces every
+key through `records.ts`**, so the one-home property is held by convention and review rather than
+by the gate. No hand-built key exists outside that file today.
+
+One home holds for the key *layout*, not for resolving a tenant: `resolveTenant` covers the
+client-facing routes, while the operator's routes resolve a code to an id themselves
+([`bff/src/root-password.ts#L44`](../bff/src/root-password.ts#L44), and `bff/src/clients.ts`).
+Key design does real work here — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
@@ -112,8 +122,8 @@ it cannot parse is a 400, never ignored — but a request sending *no* precondit
 whatever is there, so the guard holds only where the BFF sends the tag.
 
 The BFF's client turns 412 into the value `'moved'` rather than an error
-([`shared/src/c-storage.ts#L133`](../shared/src/c-storage.ts#L133)), and the route decides. The
-shape settled on 2026-11-07 is in
+([`shared/src/c-storage.ts#L133`](../shared/src/c-storage.ts#L133)), and **each route decides for
+itself — there is no single shared recovery.** The fullest version, settled on 2026-11-07, is in
 [`bff/src/lists.ts#L176`](../bff/src/lists.ts#L176): read the record for its tag, write over that
 version, and on either a lost answer or a `moved` outcome **re-read once** — a record that already
 holds exactly what was asked is our own write having landed, and counts as saved; anything else is
@@ -126,6 +136,16 @@ That identity compare is load-bearing and conditional, and the comment at
 only while the record has no mutable field other than the ones being written. The day a
 `changeCode`, an `archived` flag or an order's status joins a record saved this way, another
 writer's record could pass as our own save. Read that comment before copying this pattern.
+
+The other routes do not share it. [`bff/src/reconciliations.ts#L37`](../bff/src/reconciliations.ts#L37)
+recovers a lost answer in its own narrower way — it claims the key with `If-None-Match` and, if the
+write throws, re-reads and compares to tell its own landed write from another close already there —
+while the staff setup's save answers 409 at once on a `moved`
+([`bff/src/staff.ts#L171`](../bff/src/staff.ts#L171)) and the staff numbering instead **retries a
+bounded number of times** and fails 503 if the record moved on every attempt
+([`bff/src/staff.ts#L264`](../bff/src/staff.ts#L264)). Four writers, four behaviours — all of them
+keeping the token, which is the rule; none of them a shared helper. Read the route you are changing
+rather than assume `lists.ts`.
 
 ## Who may do what
 
@@ -172,9 +192,13 @@ one; a per-service `x-access-key`, stored only as a SHA-256 and compared in cons
 [`internal/store/store.go#L93`](../c-storage/internal/store/store.go#L93)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
 ([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
-[`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The BFF reads exactly five
-variables and is given exactly those ([`bff/src/env.ts#L21`](../bff/src/env.ts#L21),
-[`scripts/src/stack.ts#L79`](../scripts/src/stack.ts#L79)).
+[`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
+words, is that the variables the BFF reads are "the only ones it is given": as a listener that is
+seven — `PORT`, `HOST`, the four for c-storage and `APP_ORIGIN`, all supplied by the local stack
+([`bff/src/env.ts#L21`](../bff/src/env.ts#L21),
+[`scripts/src/stack.ts#L79`](../scripts/src/stack.ts#L79)) — and as a Lambda five, the same set
+without the listener's two, since API Gateway is the listener
+([`bff/src/env.ts#L48`](../bff/src/env.ts#L48)).
 
 ## How it reaches a machine
 
@@ -194,10 +218,11 @@ the logical id, because a replaced box deletes its disk and the database with it
 Templates are read from `origin/main`, not the working copy (`#L140`). There is no CDK, SAM or
 Terraform anywhere.
 
-**What CI does.** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs four check jobs on
-every push and pull request — `make check` in c-storage, its Bruno e2e, `pnpm check`, and the ops
-job (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates) — and then, on a push to
-`main` only, a `deploy` job in the `ridge` GitHub environment. That job ships **code, never stack
+**What CI does.** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) holds five jobs: four
+check jobs that run on every push and pull request — `check` (`make check` in c-storage, `#L56`),
+`e2e` (its Bruno collection against the built binary, `#L73`), `app` (`pnpm check`, `#L115`) and
+`ops` (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates, `#L153`) — and then,
+on a push to `main` only, `deploy` (`#L215`) in the `ridge` GitHub environment. That job ships **code, never stack
 shape** (`#L212`): c-storage's arm64 binary to the box over an Instance Connect tunnel
 ([`ops/release.sh`](../ops/release.sh)), the BFF bundle to the one Lambda and the UI files to the one
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
@@ -226,14 +251,19 @@ behind them are [QA](conventions/qa.md); this is only what each *is*.
    ([`c-storage/CLAUDE.md#L11`](../c-storage/CLAUDE.md#L11)). Note that `pnpm check` needs Go and
    loopback ports: the BFF's route tests build the real c-storage and run it per test file, so the
    product's own client meets the real server ([`bff/tests/`](../bff/tests)).
-2. **The walks.** Ten Playwright specs take every screen in Vietnamese and English at three widths,
+2. **The walks.** Twelve Playwright specs take every screen in Vietnamese and English at three widths,
    first on the fake UI, then on a real stack, then on fresh stacks again, and count **every moved
    pixel raw — no threshold, no tolerance** against base images committed beside each spec. Green
    means fake = stack = stack again, and nothing moved against the bases except the screens named
    in `--moved` ([`walk/run.sh#L7`](../walk/run.sh#L7)). It needs a real browser, so it runs in a
    terminal and never in the agent's sandbox, where Chromium cannot start; `pnpm check` only
    typechecks and lints it. Bases are rewritten with `--write`, by a human's run, once a piece.
-   [`ops/full-run.sh`](../ops/full-run.sh) is all walks in three lanes, about 16 minutes.
+   [`ops/full-run.sh`](../ops/full-run.sh) is **a piece's** full run, not every walk: two
+   `walk/run.sh` invocations over the walk list it is given — the first with `--write`, which takes
+   the pictures and writes the new and moved bases, the second a `--bytes` compare of those
+   pictures against the committed bases with no browser at all — and one local commit of the base
+   pictures alone between them, since `walk/run.sh` refuses a dirty tree. Nothing is pushed
+   ([`ops/full-run.sh#L4`](../ops/full-run.sh#L4)).
 3. **The visual report.** `pnpm report` builds the walks page without a browser at all, drawing the
    app's own components on jsdom ([`visual/run.mjs`](../visual/run.mjs)). It is the artefact a
    non-coder judges: each screen asked yes or no, a no becoming a case. The deployed copy is behind
@@ -249,13 +279,17 @@ A note for anyone reporting a check on this page: [`.prettierignore`](../.pretti
 its costs and its rejected alternatives. These parts of it are no longer true, and will mislead:
 
 - **"CloudFront → the BFF's function URL, signed by origin access control", and the API client
-  hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`). CloudFront reaches an API
+  hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`, the body hash at `#L133`).
+  CloudFront reaches an API
   Gateway HTTP API ([`ops/env.yml#L377`](../ops/env.yml#L377)); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L244`](../ops/env.yml#L244)). It is the one property of the day-one design that
+  ([`ops/env.yml#L244`](../ops/env.yml#L244)). Read "answers anyone" as *reachable*, not as
+  *unauthenticated*: a call arriving that way still meets the BFF's own checks — the client header,
+  the session, the permission — so what was lost is the network wall in front of them, not the
+  wall itself. It is the one property of the day-one design that
   was given up without anyone deciding to — it followed from the Region's limit when function URLs
   turned out not to be offered there — and until 2026-11-07 that template comment was the only
   place it was written down. It is now [open item 121](open-items.md), parked for the human until a
@@ -312,9 +346,15 @@ Stated plainly so the next reader knows which parts to trust.
   components, their routing and their data flow are summarised here from `products.md` and file
   names, not from reading them. `bff/src/app.ts` past line 220 and the other route modules
   (`orders.ts`, `staff.ts`, `operators.ts`, `reconciliations.ts`, `clients-delete.ts`) were not
-  read; `lists.ts` was read whole and is treated here as the pattern the others follow, which is
-  an inference. No test file in any language was read. `shared/src/demo.ts`, `scripts/src/demo/`
-  and the seeding path were read only through `CLAUDE.md` and `products.md`.
+  read beyond the write paths cited above; `lists.ts` was read whole. **No test file in any
+  language was read**, so any sentence here about what is or is not tested comes from a reviewer's
+  reading, not this page's — the first draft claimed cross-tenant key building was untested, and a
+  reviewer disproved it from three route tests now cited above. `shared/src/demo.ts`,
+  `scripts/src/demo/` and the seeding path were read only through `CLAUDE.md` and `products.md`.
+- **A caution from this page's own review**, worth knowing when you rely on it: of 52 citations
+  checked, 50 held — and every claim that was wrong was a *count or a summary with no line
+  attached* ("ten specs", "five variables", a script characterised without being opened), never a
+  cited line. Trust a sentence here in proportion to the specificity of what follows it.
 - **Not checked at all:** anything live. No build, test or server was run for this page, and no
   AWS or Cloudflare state was queried — so what *actually* exists in the account today is outside
   what this page can say.
