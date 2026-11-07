@@ -92,6 +92,10 @@ it. That is a claim about a job, so it is step 3's own case and the point the hu
 | 6 | The fix pass on the review's findings | `bash ops/test.sh` at exit 0 again, each finding answered with its line | 5 min |
 | 7 | The recap, before the squash into `main` | The recap committed in `docs/recaps/`, and item 130 closed with its commit | 3 min |
 
+## Ticks
+
+- [x] **1.** 2026-11-07 21:36. `ops_match_main` (`ops/lib.sh`) reads the path set through `push_paths` and compares it, tracked and untracked; both messages say "the code here (every path ci.yml deploys on)". One choice beyond the plan's words: the list is read from the base's own `ci.yml` (`git show <base>:.github/workflows/ci.yml`), not the working copy's, so an edited `ci.yml` cannot shorten the list it is judged by (it is itself a listed path, so the edit is refused). Check, in a scratch repository holding the real `ci.yml`: clean tree `exit 0`; after one appended line under `scripts/`, `exit 1`. `ops/test.sh` still expects the old wording and has no `ci.yml` in its scratch repository; step 2 brings it level.
+
 **Total 44 minutes**, the review and the whole check among them. Each size is the minutes the same
 shape took in its last rows: a guard built into a shell script 8, its cases 8 to 14, a small cases
 step on `ops/test.sh` 3, an Opus review 6 to 12, a fix pass 5 to 7, a recap 2 to 4. The piece needs

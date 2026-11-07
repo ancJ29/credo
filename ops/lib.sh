@@ -177,24 +177,31 @@ main_synced() {
   ops_match_main
 }
 
-# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) is as reviewed.
+# ops_match_main: dies unless every path ci.yml's push trigger deploys on, in the working copy
+#   (tracked and untracked files), is as reviewed. Those paths are what the scripts here execute,
+#   deploy or seed (ridge_cli runs scripts/ and the packages it imports), and the list is read from
+#   the base's own ci.yml through push_paths: one home, and a working copy cannot shorten it.
 #   By hand: equal to origin/main's.
 #   In the deploy job (GITHUB_ACTIONS=true): equal to the commit checked out, which must be a commit
 #   of origin/main. A push that lands during the run moves origin/main on, and the job still runs
 #   what it checked out; comparing with the moved ref would turn a sound deploy red.
 ops_match_main() {
-  local base=origin/main whose="origin/main's"
+  local base=origin/main whose="origin/main's" ci paths path
+  local deployed=()
   git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
   if [ "${GITHUB_ACTIONS:-}" = true ]; then
     git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main || die "the commit checked out is not a commit of main: only main is released"
     base=HEAD
     whose="this commit's"
   fi
-  if ! git -C "$REPO_DIR" diff --quiet "$base" -- ops ||
-    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
-    die "ops/ here differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
+  ci=$(git -C "$REPO_DIR" show "$base:.github/workflows/ci.yml") || die "$whose .github/workflows/ci.yml cannot be read, so the paths a push deploys on are not known: nothing was written"
+  paths=$(push_paths /dev/stdin <<<"$ci") || exit 1
+  while IFS= read -r path; do deployed+=("$path"); done <<<"$paths"
+  if ! git -C "$REPO_DIR" diff --quiet "$base" -- "${deployed[@]}" ||
+    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- "${deployed[@]}")" ]; then
+    die "the code here (every path ci.yml deploys on) differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
   fi
-  ok "ops/ is $whose"
+  ok "the code here (every path ci.yml deploys on) is $whose"
 }
 
 region_enabled() {
