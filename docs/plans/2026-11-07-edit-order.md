@@ -101,12 +101,17 @@ false conflict on send, and item 36's findings 3, 6 and 7, stay parked with the 
 - [x] **1. This plan.** 🤖 Opus, about 15 minutes. Done when: committed, under 2,000 words, no local
       path and no name. Evidence: committed in `94dabef7`; 1,899 words by a count of word tokens (`wc -w`
       says 2,039 because it counts table pipes and rules); grep for a local path or a name finds none.
-- [ ] **2. The page and the data set, the cheap end to end.** (Built and committed; rows 8 to 11 red then green by single-file runs, typecheck of shared, ui, visual and walk 0. HELD, not run: the three package gates, `pnpm fake`, `pnpm report`, the diff against `main`'s build, and row 12's `words` run at 100 % — so not ticked.) 🤖 Sonnet, about 30 minutes: the new
-      draft and its saved price, the page's prices and its marker, `extra` kept, both dictionaries,
-      the two scenes with their ids, openings and headings. The look comes off this build, so a no
-      costs no route work. Done when: rows 8 to 12 each red once, then green; `@credo/shared`,
-      `@credo/ui` and `@credo/visual` gated at 100 %; `pnpm fake` serves the new draft's page;
-      `pnpm report` builds, and against `main`'s build exactly screens 1, 13 and 14 differ.
+- [x] **2. The page and the data set, the cheap end to end.** 🤖 Sonnet, about 30 minutes. Done when:
+      rows 8 to 12 each red once, then green; `@credo/shared`, `@credo/ui` and `@credo/visual` gated
+      at 100 %; `pnpm fake` serves the new draft's page; `pnpm report` builds, and against `main`'s
+      build exactly screens 1, 13 and 14 differ. Evidence: rows 8 to 11 red then green by single-file
+      runs (row 11 is a guard, red by one mutation), row 12 by `visual`'s words and walks tests; the
+      gate over `main` taken in, every step exit 0, in
+      `logs/edit-order-step2-gate4-1107-1736.log` (an earlier run met one timeout in a file the
+      change cannot reach, green alone and green on rerun, in `...gate3-1107-1733.log`); `pnpm fake`
+      served the build holding the new words and the saved price, in one invocation, in
+      `logs/edit-order-step2-fake.log`; the two `walks.json` of `pnpm report` against `main` differ
+      in screen 1's version and in the two added screens 13 and 14, and in nothing else.
 - [ ] **3. The look** (👤 1, 👤 2, 👤 3). The machine goes straight on to step 4 and does not wait.
 - [ ] **4. The wire and the route against the real c-storage.** 🤖 Sonnet, about 20 minutes: the
       re-save schema, the create's refusal, the lost-answer recovery. Nothing of the page changes —
