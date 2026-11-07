@@ -4,6 +4,16 @@
 > **Amended** 2026-10-27 by the human: rules picked from the old repo's standing preferences.
 > **Amended** 2026-10-28 by the human: the old repo's standing preferences whose step came with
 > ridge.
+> **Amended** 2026-11-07 by the human: the confirmation point as it stands since 11-04 — a look is
+> no longer a yes, the work goes on past it, and the yes gates only the act.
+> **Amended** 2026-11-07 by the human: hand-off 2, the machine decides its own questions.
+> **Amended** 2026-11-07 by the human: hand-off 3, the gate is the touched package's; a fix brief
+> names the red and its decision rule; what the sandbox cannot run is the human's hand.
+> **Amended** 2026-11-07 by the human: hand-off 4, every text the human reads stands alone.
+> **Amended** 2026-11-07 by the human: the four stages every slice passes.
+> **Amended** 2026-11-07 by the human: pacing — several pieces at once, each in its own subagent
+> and worktree; a size read from the last run of the same shape; a remake is a copy in minutes; a
+> piece's record is its own file.
 
 ## At a glance
 
@@ -14,29 +24,32 @@ sessions under these same rules.
 ```mermaid
 flowchart LR
   need["need<br/>👤"] --> plan["plan<br/>🤖 drafts · 👤 corrects"]
-  plan --> code["code + tests<br/>🤖"]
-  code --> recap["recap + evidence<br/>🤖"]
-  recap --> evaluation["evaluation<br/>👤"]
-  evaluation --> feedback["feedback<br/>👤 → 🤖 memory"]
-  feedback -.-> need
+  plan --> build["cheap build, end to end<br/>🤖"]
+  build --> gate["gate + evidence<br/>🤖"]
+  gate --> on["the next work goes on<br/>🤖"]
+  gate --> look["a look<br/>👤 one yes or no"]
+  look -- yes --> act["the act: push · deploy · what a client sees<br/>👤"]
+  look -. a no .-> plan
 ```
 
 - **Who decides** ([who owns what](#who-owns-what)): the human, what is worth building and
-  anything touching money, a client, personal data or production. The machine decides the
-  rest, and says why.
+  anything touching money, a client, personal data or production. Every other choice, how the
+  machine works among them, is the machine's: one line, its reason, written down.
 - **The five hand-offs** ([the loop](#the-loop)): 1. the plan is made right before any code; 2. the
-  machine stops only for the human's decisions; 3. nothing is claimed that was not checked, and a
-  step the human runs is one command whose log the machine reads; 4. the recap is written for the
-  human; 5. a correction given twice becomes a rule.
-- **One piece at a time** ([pacing](#pacing-one-piece-at-a-time)): one piece per session, kept to
-  its own worktree; a surprise is logged, not chased; nothing is built before something needs it;
-  small changes ship every day; the machine commits, the human pushes.
+  machine decides and stops only for what only the human knows; 3. nothing is claimed that was not
+  read back; 4. every text the human reads stands alone, in plain words; 5. a correction given
+  twice becomes a rule.
+- **A look is not a gate** ([confirmation points](#confirmation-points)): the work goes on past it,
+  the point open; a no reopens the piece; the human's yes gates only the act.
+- **One slice at a time, several at once** ([pacing](#pacing-one-piece-at-a-time)): each piece a
+  vertical slice through [four stages](#every-piece-a-slice-through-four-stages), in its own
+  worktree; nothing is built before something calls it; the machine commits, the human pushes.
 
 ## Who owns what
 
 | | 👤 Human | 🤖 Machine |
 | --- | --- | --- |
-| **decides** | what is worth building, for whom and at what price; anything touching money, a client, personal data or production | anything derivable from the code, a convention or a measurement, and says why in one line |
+| **decides** | what is worth building, for whom and at what price; anything touching money, a client, personal data or production | anything derivable from the code, a convention or a measurement, and how the machine itself works — process, order, sizing, tooling, ceremony; says why in one line and writes it where the next session finds it |
 | **holds** | every credential, production, releases, the deploy state, the browser | what one task needs, for as long as it needs it |
 | **evaluates** | the result, in the UI, against the business | the gate: typecheck, lint, tests, all of them commands it ran |
 | **writes** | corrections, at the level of principle | plans, code, tests, recaps, all in git |
@@ -54,11 +67,17 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    phone and desktop widths, empty, loading and failed states) before app code; content may stay
    thin. Before new code, open the nearest similar code and follow it, naming that model file in
    the recap; never copy a shape a memo calls a defect.
-2. **The machine decides, says why, and stops only for the human's decisions.** Those are the
-   ones that need business sense or carry a price a human pays: a client, money, data or
-   production. Each is asked at the step that needs it, never ahead of it, as one recommendation
-   and never a menu. *Rejected:* asking the human to confirm each section, which hands back a
-   task already delegated.
+2. **The machine decides, says why, and stops only for the human's decisions.** A choice about
+   how the machine works — process, order, sizing, tooling, ceremony — and a business detail of
+   work built for a demo are the machine's own: it decides, says it in one line with its reason,
+   writes it where the next session will find it, and goes on; the human vetoes on sight. The
+   human is asked only what only the human knows: a piece's purpose, a business rule for a real
+   client, a partner's need, a credential, a push or a deploy. Each is asked at the step that
+   needs it, never ahead of it, as one recommendation and never a menu. *Rejected:* asking
+   between two workable ways, and asking the human to confirm each section, which hands back a
+   task already delegated. *Why:* each question spends the attention the work needs — one
+   campaign put over 50 such items to the human, most answered yes to the recommendation, while
+   the things worth a human's eye got the same share or less.
 
    **An act on production, a client's own stack, sits at the latest point its done-when needs
    it**, its price said in days ("up to N days"), never moved earlier to save calendar time. A
@@ -96,14 +115,86 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    script reads, until the human says it has ended; then it reads the log first. *Why:* bash reads
    a script as it runs, so an edit changes what runs next, and the log then matches no file anyone
    reviewed.
-4. **A recap is written for the evaluator.** It says what shipped, what was rejected and at what
-   price, and what remains the human's. It is never a log of commands. Anything the human must look up is named with a few words of
-   what it is and a `path#Lnn` link, never a bare label. Reviewing a recap is reading it for sense and
-   for what would make someone act wrongly; the reviewer re-runs only what it claims without
-   evidence.
+
+   **A gate is the touched package's.** The check a step runs is the one that can change its
+   conclusion: the package the step wrote in, and the whole workspace's check only where the step
+   crossed packages or before a merge. A brief that names a wider gate than the step's own done
+   check is answered with the touched package's and the reason, not obeyed. *Why:* one step gated
+   on the whole project four times over reds in files it was not allowed to touch, 32 minutes
+   against a size of 18, and none of the four reds was its own.
+
+   **A fix starts from the red, not from a guess.** A brief for a fix names the one red, its
+   error, its lines and the rule that decides between fixes, and asks for the root cause before
+   any code; it never carries a candidate fix of the briefer's own. *Why:* the brief that carried
+   the decision rule instead of a fix was answered right in five minutes, while a named candidate
+   sends the agent to defend someone else's guess.
+
+   **Three limits have no capability to ask for, so they are the human's hand, named as such.**
+   No browser starts in the agent's sandbox, so every walk and every picture run is the human's
+   own terminal, and a screenshot is read from there, never described from memory. A credentialed
+   cloud CLI is never run here; the machine hands the exact command instead. The human's
+   `experiment` worktree is never read, written, merged, pruned or cleaned — by a brief, a script
+   or a session, not even a `git status`. *Why:* the first two cannot authenticate or start at
+   all, and the third is the human's own place to try things, which any naming or cleanup rule
+   would sweep.
+4. **A recap is written for the evaluator, and so is every other text the human reads.** The
+   recap says what shipped, what was rejected and at what price, and what remains the human's;
+   it is never a log of commands. Every other text the human reads — a relayed stop, a status
+   line, a day-list line, a question — obeys the same rule: it stands alone, in plain words, and
+   says what the human saw or asked, what was found and what to open; for a look, what a yes and
+   a no each start. A sha, a path or a line number follows the words and never stands for them,
+   and a thing to look at is named as its page shows it — the walk's title, the screen's number
+   and its sentence, what changed on it — never as an id or an agent's phrase. Anything the human
+   must look up is named with a few words of what it is and a `path#Lnn` link, never a bare
+   label. Nothing written for the human is written in the machine's terms: a step number, a
+   model's name, minutes against sized tell the reader how the machine spent itself, not what
+   changed for anyone, and belong in the machine's own record. Reviewing a recap is reading it
+   for sense and for what would make someone act wrongly; the reviewer re-runs only what it
+   claims without evidence. *Why:* a compact line sends the human hunting for what it means,
+   which is the attention it was written to save — three of six corrections in one day were
+   exactly that.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
    yes. *Rejected:* a new rule after the first correction. The rules then grow faster than a
    session can read them.
+
+## Confirmation points
+
+**A confirmation point is where the human looks, and it gates the act, not the work.** Few, and
+visual or one screen: the walk or a picture page for a screen, a diagram for a structure, a
+verdict line with its evidence for a run — one yes or no each.
+
+- **The work goes on past the point.** It stays open in the piece's record while the next work
+  starts, and a no reopens its piece. *Why:* a look comes when the human is free, often hours
+  after the minutes of work it judges; work held for it stands idle all that time (looks answered
+  320 to 625 minutes after work of 3.5 to 83).
+- **A look is not a yes, and silence is not a yes.** An unanswered point stays open, and a
+  decision only the human can make waits there as one line; the machine never reads its own
+  progress into the gap. Until 11-04 a look was taken as a yes — an exception for one demo, which
+  ended with it.
+- **The human's yes gates the act**: a push, a deploy, anything a partner or a client sees,
+  anything that cannot be undone. Everything else the machine checks itself and records.
+- **A piece asks for few points, up to five, each told in a few sentences** (QA's rule 7), and
+  each asks one yes-or-no question. *Rejected:* a page or a gallery that asks nothing. It makes
+  the human read and finds nothing missing, since a picture shows only what was built.
+
+## Every piece: a slice through four stages
+
+**A piece is a vertical slice, end to end and walkable when it ends.** No layer is built ahead of
+its caller, the cheap build comes first, and hardening is a later piece only if the stake asks for
+it. *Why:* a slice can be judged the day it ends; a layer cannot, because nothing calls it yet.
+A piece too big to walk at the end of a day is cut again, never stretched.
+
+| | The stage | Read by |
+| --- | --- | --- |
+| 1 | the cheap build, end to end, on invented data wherever that is cheaper | 🤖 its own check |
+| 2 | verified locally: the touched package's gate and tests, the log read whole | 🤖 the log |
+| 3 | a visual a non-coder judges: the walk, a picture page or a diagram | 👤 one yes or no |
+| 4 | ridge, the shared pre-production environment, where others check it without reading the code | 👤 and others |
+
+**A plan that leaves out a stage names the gap and says why.** Stage 4 is stood up only for a
+piece that changes what ships — a new resource, hop or key — as hand-off 3 says; for every other
+piece stage 2 stands in its place, and the plan says so. *Why:* the confidence to deliver comes
+from every piece being checked the same way before anyone reads its code.
 
 ## Pacing: one piece at a time
 
@@ -136,6 +227,35 @@ flowchart LR
   says once what that costs. *Why:* a session's context can be thrown away only because the plan
   and the recap are kept. A second piece makes the session long, mixes two pieces' state, and
   leaves the next session to re-derive both from scrollback.
+- **Several pieces run at once, each in its own subagent and its own worktree.** The rule above
+  binds the session that holds a piece; the orchestrating session holds none of them in its own
+  hands, so independent pieces run in parallel from it, each with its own plan, gate and recap,
+  bounded only by that session's context and by the Mac's one test run at a time. Three rules
+  make two lanes safe together, each of them a cost already paid: **neither lane moves or
+  renumbers the other's walk screens** — a screen moved under a look wastes the human's yes, so
+  each brief says "append, never insert"; **each lane takes `main` in before its gate**, not
+  after, since both will meet the other's lines in the files they share; **the gate and the
+  picture run queue**, one whole run at a time on this Mac, its lock read before every run. That
+  queue, not the work, is the real limit when two lanes are open.
+- **A task's size is the minutes of the last run of the same shape**, never of its kind, a
+  default, a budget or a planner's estimate. A step that must find its own evidence — code in a
+  worktree with its own gate — runs about its size; a step transcribed from a design already
+  settled on paper, or a remake, runs at a fifth or less. A first run of a shape is about five
+  minutes a step. The budget is a different number and only a stuck task's stop: three times the
+  size and at least 15 minutes, or the same red met on two tries. *Why:* the kind's mean mixes
+  the two shapes and is wrong both ways, and a guessed size plans the day around minutes the work
+  never takes — one day's rows were sized at 405 minutes and took 203.
+- **A remake of what already works is a copy plus its changes, in minutes:** a one-off kept, a
+  script or a page for one more case. The original's checks are rerun, and there is no new test
+  suite, no lock and no review for an act that can be undone. A script for one more case is a
+  parameter on its helper in `ops/`, never a copy of its body. *Why:* the original's checks
+  already hold what a new suite would test, and a copy briefed as new work costs several times
+  its minutes.
+- **A piece's record is its own file and its row in the runs log**, never a paragraph rewritten
+  each morning: what the piece will mean when done and for whom, what is true now, what is left,
+  all in plain words. The machine's own numbers — a step count, a model, minutes against sized —
+  live in the runs log alone. *Why:* one record a piece can be read by whoever opens it, while a
+  narrative paragraph goes stale within the hour and costs its rewrite every day.
 - **Nothing enters unless something calls it now**, whether a route, a package, a page or a memo.
   *Rejected:* building for a caller still to come. Code nothing calls is still read, carried and
   kept compiling, all for nothing.
@@ -152,3 +272,8 @@ flowchart LR
   pushing, deploying and releasing stay the human's. It commits with explicit paths after
   checking the staged column, and prints the branch in the confirmation, since a branch can move
   under a session.
+- **A push is handed only when something needs it now:** a remote run that is the verdict a
+  branch waits on, a deploy, or a commit someone else needs. Everything else stays local until
+  the human's own next push, and push state — a count, an unpushed branch — is never written on a
+  status line. *Why:* the human pushes on their own schedule, so the count is noise in every
+  status read.
