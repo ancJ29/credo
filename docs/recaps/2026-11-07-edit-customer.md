@@ -22,7 +22,7 @@ The review (may merge) found the recovery holds because the compare is over the 
 
 ## Still the human's
 
-The picture run: screens 14 and 15 on the stack lane have never run anywhere. <!-- FILL: the run's verdict and log name -->
+The picture run, which had never run screens 14 and 15 on the stack lane, was green on 11-07. Run 1 moved two screens (10 and 11, the boxes) and wrote two new (14 and 15); nothing else in any walk moved. Run 2 compared every byte and every count was 0. Log: `20261107-1320-edit-customer-full-run.log`; the bases are commit `1ca8a243`.
 
 ## Evidence
 
