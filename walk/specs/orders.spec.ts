@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { addDays, type Language } from '@credo/shared';
 import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -12,8 +12,8 @@ import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * An order, sent to a driver: the office's walk of twelve screens, each in Vietnamese and in English at
- * the three widths (12 × 2 × 3 = 72). The `orders-fake` project runs it on `pnpm fake -- …` and the
+ * An order, sent to a driver: the office's walk of fourteen screens, each in Vietnamese and in English at
+ * the three widths (14 × 2 × 3 = 84). The `orders-fake` project runs it on `pnpm fake -- …` and the
  * `orders-full` project on the stack (`pnpm stack -- …`); both write their pictures for `walk/run.sh`
  * to compare, raw. Each screen opens on a client of its own, signed in as the office's manager of the
  * data set, and the browser's clock is fixed at the data set's today, so the day an order is filed
@@ -33,6 +33,10 @@ const productChoice = (code: string) => {
   return `${one.code} · ${one.name} · ${one.unit}`;
 };
 const draft = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.state === 'draft')!;
+/** The draft taken yesterday, one of whose lines was priced before its product's price moved. */
+const yesterdays = DEMO_ORDERS.find(
+  (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
+)!;
 const waiting = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
@@ -303,6 +307,21 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(proof).toBeVisible();
   await expect(proof).toHaveJSProperty('complete', true);
   await at('orders-12-proof');
+
+  // 13. A draft taken before a price changed: its own prices, and the line that has moved.
+  await open(page, language, { path: '/orders' });
+  await page.getByRole('link', { name: yesterdays.number, exact: true }).click();
+  await expect(
+    title(words.orders.orderTitle.replace('{{number}}', yesterdays.number)),
+  ).toBeVisible();
+  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0]!)).toBeVisible();
+  await at('orders-13-moved-price');
+
+  // 14. The draft saved again: the moved line repriced, and a new total.
+  await press(words.orders.saveDraft);
+  await expect(page.getByRole('alert')).toContainText(words.orders.done.saved);
+  await expect(page.getByText(words.orders.priceMoved.split('{{price}}')[0]!)).toHaveCount(0);
+  await at('orders-14-repriced');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -313,7 +332,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all twelve screens in ${name}`, async ({ page }) => {
+      test(`walks all fourteen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

@@ -563,14 +563,15 @@ export const DEMO_PRODUCT_IMPORT_ROWS: DemoListRow[] = [
 export const DEMO_TODAY = '2026-11-04';
 
 /** One order of the week: a day (counted back from today), the hour it was made, the customer and
- * the products by code, its state, and for a confirmed one the driver by code, the day it was sent
+ * the products by code (a line may name the price it was saved at, when the product's has moved
+ * since), its state, and for a confirmed one the driver by code, the day it was sent
  * for (counted from today), whether its request was cancelled since, and for one of today's the
  * time its driver delivered it. */
 type OrderSpec = {
   back: number;
   time: string;
   customer: string;
-  lines: [string, number][];
+  lines: [string, number, number?][];
   state: OrderState;
   driver?: string;
   sentFor?: number;
@@ -728,6 +729,17 @@ const WEEK_OF_ORDERS: OrderSpec[] = [
     driver: 'EMP-0006',
     sentFor: 1,
   },
+  // taken yesterday, before the cement's price rose from 90,000 to its 95,000 of today
+  {
+    back: 1,
+    time: '16:10',
+    customer: 'KH-002',
+    lines: [
+      ['VT-001', 20, 90_000],
+      ['VT-003', 5],
+    ],
+    state: 'draft',
+  },
 ];
 
 /** The minutes after an order that its request is made, in the data set. */
@@ -766,6 +778,12 @@ const WEEK = (() => {
       })),
       DEMO_PRODUCTS,
     ) as Extract<Priced, { kind: 'priced' }>; // every code is in the data set's lists, as its test reads
+    // a line named with its saved price keeps it, the amount and the total following
+    const lines = priced.lines.map((line, at) => {
+      const saved = spec.lines[at]![2];
+      return saved === undefined ? line : { ...line, price: saved, amount: saved * line.quantity };
+    });
+    const total = lines.reduce((sum, line) => sum + line.amount, 0);
     const madeAt = atVietnam(day, spec.time);
     const order: Order = {
       id: id(401 + index),
@@ -773,8 +791,8 @@ const WEEK = (() => {
       day,
       state: spec.state,
       customer: structuredClone(customer),
-      lines: priced.lines,
-      total: priced.total,
+      lines,
+      total,
       request: null,
       madeAt,
       extra: {},

@@ -1,4 +1,4 @@
-import { LANGUAGES } from '@credo/shared';
+import { addDays, LANGUAGES } from '@credo/shared';
 import {
   DEMO_CODE,
   DEMO_CONFIG,
@@ -6,6 +6,7 @@ import {
   DEMO_DELIVERIES,
   DEMO_EMPLOYEES,
   DEMO_INVITED_NAME,
+  DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
   OPERATOR_NAME,
@@ -162,6 +163,9 @@ const WAITING = DEMO_DELIVERIES.find(
 const WAITING_OF_DRIVER = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0005',
 )!;
+const DRAFT_YESTERDAY = DEMO_ORDERS.find(
+  (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
+)!;
 const DELIVERED = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'delivered',
 )!;
@@ -250,6 +254,9 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-orders:orders-11-fulfilled': (w) =>
     `heading: ${w.orders.orderTitle.replace('{{number}}', DELIVERED.order.number)}`,
   'office-orders:orders-12-proof': (w) => `heading: ${w.orders.proofTitle}`,
+  'office-orders:orders-13-moved-price': (w) =>
+    `heading: ${w.orders.orderTitle.replace('{{number}}', DRAFT_YESTERDAY.number)}`,
+  'office-orders:orders-14-repriced': (w) => `alert: ${w.orders.done.saved}`,
   'driver-deliveries:driver-1-today': (w) => `heading: ${w.nav.myDeliveries}`,
   'driver-deliveries:driver-2-request': (w) =>
     `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING_OF_DRIVER.number)}`,

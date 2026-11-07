@@ -730,6 +730,7 @@ export const en = {
     remove: 'Remove',
     removeLine: 'Remove {{name}}',
     saveDraft: 'Save draft',
+    priceMoved: 'Now {{price}}: saving takes the new price.',
     saveFailed: 'The order was not saved. What you typed is still here: try again.',
     stepFailed: 'Nothing was changed. What you typed is still here: try again.',
     conflict: 'Someone saved this order first. Your changes were not saved.',

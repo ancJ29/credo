@@ -176,6 +176,10 @@ const FILLED_OWN: Step[] = [
 /** The orders' walk's data, by the data set: today's draft the office confirms, and the request of
  * a driver the office cancels and sends again. */
 const DRAFT_TODAY = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.state === 'draft')!;
+/** The draft taken yesterday, one of whose lines was priced before its product's price moved. */
+const DRAFT_YESTERDAY = DEMO_ORDERS.find(
+  (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
+)!;
 const WAITING_TODAY = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
@@ -225,6 +229,7 @@ const CHANGED_DRAFT: Step[] = [
   ...LINE('VT-001', 1),
 ];
 const DRAFT_PATH = `/orders/${DRAFT_TODAY.day}/${DRAFT_TODAY.id}`;
+const DRAFT_YESTERDAY_PATH = `/orders/${DRAFT_YESTERDAY.day}/${DRAFT_YESTERDAY.id}`;
 
 /** The link a QR code opens, for a data-set person (a warehouse member unless another is named) and
  * the secret given. */
@@ -1553,6 +1558,33 @@ export const WALKS: Walk[] = [
           vi: 'Một yêu cầu đã giao, kèm ảnh của tài xế',
         },
         question: 'Would the office take this photo as proof of delivery?',
+      },
+      {
+        id: 'orders-13-moved-price',
+        number: 13,
+        path: 'main',
+        scene: { path: DRAFT_YESTERDAY_PATH, as: 'EMP-0001' },
+        sentence: {
+          en: 'A draft taken before a price changed: its own prices, and the line that has moved',
+          vi: 'Một bản nháp lập trước khi giá đổi: giá của chính nó, và dòng đã đổi giá',
+        },
+        question:
+          'Would the office see which line’s price has moved, and what saving would make it?',
+      },
+      {
+        id: 'orders-14-repriced',
+        number: 14,
+        path: 'main',
+        scene: {
+          path: DRAFT_YESTERDAY_PATH,
+          as: 'EMP-0001',
+          steps: [{ press: 'orders.saveDraft' }],
+        },
+        sentence: {
+          en: 'The draft saved again: the moved line repriced, and a new total',
+          vi: 'Bản nháp được lưu lại: dòng đã đổi giá được tính lại, và tổng tiền mới',
+        },
+        question: 'Would the office know the saved draft now carries today’s price and total?',
       },
     ],
   },

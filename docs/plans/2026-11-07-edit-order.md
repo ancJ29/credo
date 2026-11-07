@@ -101,7 +101,7 @@ false conflict on send, and item 36's findings 3, 6 and 7, stay parked with the 
 - [x] **1. This plan.** 🤖 Opus, about 15 minutes. Done when: committed, under 2,000 words, no local
       path and no name. Evidence: committed in `94dabef7`; 1,899 words by a count of word tokens (`wc -w`
       says 2,039 because it counts table pipes and rules); grep for a local path or a name finds none.
-- [ ] **2. The page and the data set, the cheap end to end.** 🤖 Sonnet, about 30 minutes: the new
+- [ ] **2. The page and the data set, the cheap end to end.** (Built and committed; rows 8 to 11 red then green by single-file runs, typecheck of shared, ui, visual and walk 0. HELD, not run: the three package gates, `pnpm fake`, `pnpm report`, the diff against `main`'s build, and row 12's `words` run at 100 % — so not ticked.) 🤖 Sonnet, about 30 minutes: the new
       draft and its saved price, the page's prices and its marker, `extra` kept, both dictionaries,
       the two scenes with their ids, openings and headings. The look comes off this build, so a no
       costs no route work. Done when: rows 8 to 12 each red once, then green; `@credo/shared`,

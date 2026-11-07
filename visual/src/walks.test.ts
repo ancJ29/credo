@@ -539,7 +539,7 @@ describe('the walks', () => {
       'EMP-0003',
       'EMP-0001',
       'EMP-0001',
-      ...Array<string>(12).fill('EMP-0001'),
+      ...Array<string>(14).fill('EMP-0001'),
       ...Array<string>(5).fill('EMP-0005'),
       ...Array<string>(8).fill('EMP-0001'),
     ]);
@@ -692,7 +692,7 @@ describe('the walks', () => {
     }
   });
 
-  it('puts an order sent to a driver in one walk of the office’s orders, twelve screens, each a scene and none from the mock, the three failures on the wrong path', () => {
+  it('puts an order sent to a driver in one walk of the office’s orders, fourteen screens, each a scene and none from the mock, the three failures on the wrong path', () => {
     const walk = WALKS[9];
 
     expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
@@ -709,10 +709,12 @@ describe('the walks', () => {
       ['orders-10-no-drivers', 10, 'wrong'],
       ['orders-11-fulfilled', 11, 'main'],
       ['orders-12-proof', 12, 'main'],
+      ['orders-13-moved-price', 13, 'main'],
+      ['orders-14-repriced', 14, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     // every screen is the office manager's, and the failures are cued or provoked as the spec does
-    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(12).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(14).fill('EMP-0001'));
     expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
       undefined,
       undefined,
@@ -723,6 +725,8 @@ describe('the walks', () => {
       undefined,
       'saveOrder:409',
       'confirmOrder:503',
+      undefined,
+      undefined,
       undefined,
       undefined,
       undefined,

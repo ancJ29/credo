@@ -729,6 +729,7 @@ export const vi: Dictionary = {
     remove: 'Bỏ',
     removeLine: 'Bỏ {{name}}',
     saveDraft: 'Lưu nháp',
+    priceMoved: 'Nay {{price}}: lưu sẽ lấy giá mới.',
     saveFailed: 'Chưa lưu được đơn hàng. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
     stepFailed: 'Chưa có gì thay đổi. Những gì bạn nhập vẫn còn đây: hãy thử lại.',
     conflict: 'Có người đã lưu đơn hàng này trước. Thay đổi của bạn chưa được lưu.',
