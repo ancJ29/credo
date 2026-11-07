@@ -84,6 +84,10 @@ function run(argv: string[], env: Record<string, string | undefined>, call: type
   return runRidge(argv, env, io).then((status) => ({ status, ...lines }));
 }
 
+/** The address a fetch was given, whichever of its three shapes. */
+const urlOf = (input: Parameters<typeof fetch>[0]): string =>
+  typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
 describe('what the ops scripts ask of ridge', () => {
   it('registers the BFF’s service with the super-admin key, then says it is present', async () => {
     const { call } = memoryCStorage();
@@ -321,7 +325,7 @@ describe('what the ops scripts ask of ridge', () => {
     const { records, call } = memoryCStorage();
     await run(['tenant', CHECK, 'Check Co'], KEYS, call);
     const refuseIndexRemoval: typeof fetch = (input, init) =>
-      init?.method === 'DELETE' && String(input).endsWith(encodeURIComponent(`client.${CHECK}`))
+      init?.method === 'DELETE' && urlOf(input).endsWith(encodeURIComponent(`client.${CHECK}`))
         ? Promise.resolve(new Response('{}', { status: 412 }))
         : call(input, init);
 
@@ -361,7 +365,7 @@ describe('what the ops scripts ask of ridge', () => {
     const { call } = memoryCStorage();
     await run(['tenant', CHECK, 'Check Co'], KEYS, call);
     const refuseTenantRemoval: typeof fetch = (input, init) =>
-      init?.method === 'DELETE' && decodeURIComponent(String(input)).includes('/tenant.')
+      init?.method === 'DELETE' && decodeURIComponent(urlOf(input)).includes('/tenant.')
         ? Promise.resolve(new Response('{}', { status: 412 }))
         : call(input, init);
 
