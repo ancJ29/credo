@@ -74,12 +74,20 @@ both sides. Nothing else of this piece is shared.
 ## Steps
 
 - [ ] **1. This plan.** 🤖 Opus, 25 minutes. Done when: committed, about 1,000 words or under, no local path.
-- [ ] **2. The form on invented data, the cheap end to end.** 🤖 Sonnet, about 35 minutes: the two wire schemas, the
+- [x] **2. The form on invented data, the cheap end to end.** 🤖 Sonnet, about 35 minutes: the two wire schemas, the
   fake's two calls with a version a customer, the page's form and three notices, the words in both dictionaries, the
   two scenes, the spec's two screens. The look comes off this build, so a no costs no server work. Done when: rows 6
   to 10 each red once, then green; `pnpm --filter @credo/shared check`,
   `--filter @credo/ui check` and `--filter @credo/visual check` green at 100 %; `pnpm fake` serves the page;
   `pnpm report` builds, and against `main`'s build exactly screens 10, 11, 14 and 15 differ.
+  *Done 2026-11-07, code in `3e32c71c`:* rows 6 to 9 each red from a named mutation of the page (the merge
+  dropped, the empty-name check removed, a reload on conflict, the edit right forced on), then green; row 10: no
+  `withBorder`, both dictionaries filled. Gate over shared, ui and visual (typecheck, tests at 100 %, eslint,
+  prettier, knip), `== exit 0` in `logs/20261107-0918-edit-customer-step2-gate.log` (shared 156, ui 791, visual 201
+  tests). `pnpm fake` served the page (HTTP 200). `pnpm report` built 120 screens against 118 at the plan's
+  parent commit, and the two `walks.json` differ in exactly screens 10 and 11 (sentence, and for 11 the question)
+  and the new 14 and 15. The stack lane's screen 15 (`someoneSavesFirst`) calls the routes of step 4 and cannot run
+  before it.
 - [ ] **3. The look** (👤 1, 👤 2); the machine goes straight on to step 4 and does not wait for it.
 - [ ] **4. The route against the real c-storage.** 🤖 Sonnet, about 30 minutes: the two routes and the
   false-conflict re-read; nothing of the page changes, since step 2 bound it to the wire, not to a route still
