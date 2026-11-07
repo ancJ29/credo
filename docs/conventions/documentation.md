@@ -1,14 +1,10 @@
 # Documentation
 
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
-> visualize as much as possible; for machine to read: detail". **Amended** 2026-10-27: nothing
-> machine-local or personal in a committed file. **Amended** 2026-10-27 by the human: every doc
-> opens with its human version. Read this before writing any doc, `CLAUDE.md` or code comment,
-> or committing any path. **Amended** 2026-10-27 by the human: rules picked from the old repo's
-> standing preferences. **Amended** 2026-10-28 by the human: the runbook, in what earns a line.
-> **Amended** 2026-11-02 by the human: the plan, one short page, each of its human points told;
-> its evidence in the recap. **Amended** 2026-11-03 by the human: a piece's recap keeps its row in
-> `docs/products.md` true.
+> visualize as much as possible; for machine to read: detail". Read this before writing any doc,
+> `CLAUDE.md` or code comment, or committing any path.
+> **Last amended** 2026-11-07, from the stamp block the human cut out of a principles memo: this
+> file holds the rules as they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -17,17 +13,18 @@ without it, would get the next change wrong.
 
 | Reader | Reads | Form |
 | --- | --- | --- |
-| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo and plan | **Visual first**: a diagram or a table wherever the content is a flow, a structure or a comparison. Prose only for the why |
+| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo and plan | **Visual first**: a diagram or a table for a flow, a structure or a comparison. Prose only for the why |
 | 🤖 machine | `CLAUDE.md`, and the detail below each "At a glance" | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
 | both | the code | the what. No doc copies it |
 
-- Each doc a human reads opens with a short version for the human; a README gets a newcomer
-  started in 30 minutes ([two readers](#two-readers)).
+- Each doc a human reads opens with a short version; a README starts a newcomer in 30 minutes
+  ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters; a runbook holds the steps alone and links their why
   ([what earns a line](#what-earns-a-line)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
-  rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
+  rule that holds here, never the old code's mistakes; a convention carries one `Last amended`
+  line and no changelog ([one fact, one home](#one-fact-one-home)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
   holds the evidence and keeps the piece's row in `docs/products.md` true
   ([where progress lives](#where-progress-lives-three-files-one-job-each)).
@@ -76,7 +73,7 @@ and prose between the commands hides the next one.
 
 ```text
 code comment   the rule in ≤ 3 sentences, timeless (no dates, no history); names the test that enforces it
-docs/memo/     the argument: one decision, hazard or recipe per file, stamped Decided / Amended <date>
+docs/memo/     the argument: one decision, hazard or recipe per file, under one Last amended line
 CLAUDE.md      a one-line pointer to the memo; line 2 is  Stack · Gate · Ship
 ```
 
@@ -86,7 +83,17 @@ to rot, because the change that breaks it touches no line there.
 - **A comment or doc states the rule that holds here, never how the old code got it wrong.**
 - **Before writing a WHY, grep a distinctive phrase of it.** If a home exists, extend it there.
   Delete any comment whose loss costs nothing.
-- **A Decided or Amended stamp is read from `date`, never typed from memory.**
+- **A convention or memo carries one `Last amended` line, and no changelog inside it.** The line
+  names the date and where the change came from — a correction, a review, the piece that found
+  it — and its date is read from `date` in the same command that writes it, never typed from
+  memory. Not a stamp per rule amended, and not a sentence kept to record what a rule used to
+  say: the history of the file is `git log`, which is where it is read here. A rejected
+  alternative and its price stay, since those are the argument for the rule
+  ([what earns a line](#what-earns-a-line)) and not a log of the file's own passage. *Rejected:*
+  an `Amended <date>` stamp per rule touched, what this convention asked for until 2026-11-07.
+  Seven of them went into one principles memo's header, one per rule the piece had touched, and
+  the human cut the block on sight: there are always exceptions, and logging each one is not
+  worth the reader's attention in a memo of principles.
 
 ## Where progress lives: three files, one job each
 
@@ -138,9 +145,9 @@ belong to the human and change under the doc's feet. A stale "verified" is worse
 
 ## Nothing machine-local or personal in a committed file
 
-*Amended 2026-10-27 by the human, on the second correction.* A committed file (a doc, code, a
-script or a config) names no path that exists on only one machine. That means no home directory,
-no other checkout, and no worktree folder treated as shared. It names no person either: a role is
+A committed file (a doc, code, a script or a config) names no path that exists on only one
+machine. That means no home directory, no other checkout, and no worktree folder treated as
+shared. It names no person either: a role is
 written as "the human" or "the machine". Every committed file goes to GitHub and onto each
 collaborator's machine. There a local path is wrong, and a name ties a rule or a decision to one
 of several humans. Instead:

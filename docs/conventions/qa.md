@@ -1,46 +1,45 @@
 # QA
 
-> **Decided** 2026-10-27, after reading the old app's QA process. **Amended** 2026-10-27 by the
-> human: rules 7 and 8. **Amended** 2026-10-27 by the
-> human: rules picked from the old repo's standing preferences. **Amended** 2026-10-27 by the
-> human: the gate's scope and cadence, in rule 6. **Amended** 2026-10-28 by the human: a review's
-> findings tagged, in rule 5. **Amended** 2026-10-31 by the human: rule 7, a moved pixel counted
-> raw. **Amended** 2026-11-02 by the human: rule 1, the case table the machine's whole and the
-> human's points visual, up to five, each told. **Amended** 2026-11-03 by the human: rule 7, a
-> yes held until its screen's version moves. Binds every feature's plan, every test and every
-> merge into `main`.
+> **Decided** 2026-10-27, after reading the old app's QA process.
+> **Last amended** 2026-11-07, from the day's parked corrections: a look is not a gate, and what a
+> package's gate is. This file holds the rules as they stand; their history is in `git log`.
+> Binds every feature's plan, every test and every merge into `main`.
 
 ## At a glance
 
 **The human has up to five points in a feature, each a look:** its walk, a page or a diagram,
-told in a few sentences and answered yes or no. The machine does the rest.
+told in a few sentences, answered yes or no. **A look is not a gate**
+([confirmation points](collaboration.md#confirmation-points)): the work goes on past it, the
+point open; a no reopens the piece; the human's yes gates only the act.
 
 ```mermaid
 flowchart LR
-  table["case table<br/>🤖"] --> cheap["cheap end-to-end build<br/>🤖 fake first"]
-  cheap --> look["fake walk, page or diagram<br/>👤"] --> red["red<br/>🤖 breaks each case once"]
-  red --> green["green · coverage 100 %<br/>🤖"]
+  table["case table<br/>🤖"] --> cheap["cheap build<br/>🤖 fake first"]
+  cheap --> look["fake walk<br/>👤"] --> red["red<br/>🤖 each case once"]
+  red --> green["green · 100 %<br/>🤖"]
   green --> review["review<br/>🤖 another model"]
-  review --> walks["walks<br/>👤 yes or no a screen"]
-  walks -- "all yes" --> merge["merge into main"]
+  review --> merge["merge into main<br/>🤖 whole check"]
+  merge --> on["work goes on<br/>🤖"]
+  green --> walks["walks<br/>👤 yes or no"]
+  walks -- yes --> act["the act<br/>👤 deploy · partner"]
   review -. a finding .-> red
   walks -. a no .-> table
 ```
 
-The eight rules, numbered as [below](#the-rules):
+The eight rules, [below](#the-rules):
 
-1. Each feature starts with a table of cases, one behaviour a line, all of it the machine's.
-2. A test counts only if it fails when its behaviour breaks, so each is seen failing once; a
-   route only a test calls is dead.
-3. Each case is tested as close to its code as it can be.
-4. Each test is named after its case; there is no second list.
-5. A different AI model reviews the code before it merges; each finding is fixed, rejected or
+1. Each feature starts with a case table, one behaviour a line, all the machine's.
+2. A test counts only if it fails when its behaviour breaks: each is seen red once; a route
+   only a test calls is dead.
+3. Each case is tested as near its code as it can be.
+4. Each test is named after its case; no second list.
+5. Another model reviews the code before it merges; each finding fixed, rejected or
    deferred, with its reason.
-6. A test that fails only sometimes is a bug, never rerun until it passes; and only the gate that
-   can change a conclusion is run.
-7. The screens are the final check: each person's day, on their device, yes or no a screen
-   until its look changes; the machine counts every moved pixel, raw.
-8. Every line is tested, or says why not, as in "we choose not to test this".
+6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
+   package's gate names all five `pnpm check` steps.
+7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
+   until its look changes; pixels counted raw.
+8. Every line is tested, or says why not.
 
 ## The shapes, from an invented feature
 
@@ -108,6 +107,16 @@ The map of walks. A dash is a part of the day not built yet.
    test while iterating, the touched package's gate at a commit, the whole only before shipping.
    *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
    minutes buy no verdict a smaller gate does not already give.
+
+   **A package's gate is the whole `pnpm check` on the merge result; where it is scoped to one
+   package, every one of its five steps is named and run: typecheck, eslint, prettier, that
+   package's tests, knip.** A gate that reports an exit code without naming the steps it ran has
+   not reported a gate, and a step left out is a step nobody ran. *Why:* two sessions on
+   2026-11-07 each assembled a package gate by hand, one of the five steps missing from the
+   second; the two lint errors it let through reached `main` and would have failed the deploy's
+   own job whatever else was fixed. **A branch's green describes the branch, not the tree the
+   deploy will check**, so the whole check belongs on the merge result before a merge — `main`
+   taken in first, as [pacing](collaboration.md#pacing-one-piece-at-a-time) says, then the check.
 7. **The screens are the end-to-end check.** Each person's part of the business's day is walked
    screen by screen, on that person's device. The map places each walk: the day's stages
    across, its people down; an empty cell shows what is missing. A walk shows the main path and
@@ -125,8 +134,11 @@ The map of walks. A dash is a part of the day not built yet.
    from the screen's own markup, in both languages, and the style rules that match it; its one
    home is `versionOf` in `visual/src/capture.ts`. The answers are kept in the answerer's browser,
    under the name typed there, and reach the machine as the block the answerer copies into the
-   chat. A "no" becomes a case in the table, and a feature is done when none of its walks holds
-   an open "no". *Rejected:* a gallery of every screen that asks nothing. It makes the human read,
+   chat. A "no" becomes a case in the table and reopens its piece; the walk holds neither the work
+   nor the merge, and a point not yet answered stays open in the piece's record while the next
+   work goes on ([confirmation points](collaboration.md#confirmation-points)). A feature is done
+   for the business when none of its walks holds an open "no". *Rejected:* a gallery of every
+   screen that asks nothing. It makes the human read,
    and finds nothing missing: a picture shows only what was built. *Rejected:* a base image per
    captured case, hundreds of them, rewritten by any layout change. *Rejected:* keying a yes to
    the screen's words, this rule before 2026-11-03. Its price: a screen whose look changed under

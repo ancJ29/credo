@@ -1,8 +1,8 @@
 # Collaboration
 
 > **Decided** 2026-10-27. Binds every person and every agent working here.
-> **Last amended** 2026-11-07 by the human, from the review of how we work: this file holds the
-> rules as they stand; their history is in `git log`.
+> **Last amended** 2026-11-07, from the review of how we work and the day's two hand-made gates:
+> this file holds the rules as they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -105,7 +105,8 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    a script as it runs, so an edit changes what runs next, and the log then matches no file anyone
    reviewed.
 
-   **A gate is the touched package's.** The check a step runs is the one that can change its
+   **A gate is the touched package's**, and [QA](qa.md#the-rules)'s rule 6 says what that gate
+   is, step by step. The check a step runs is the one that can change its
    conclusion: the package the step wrote in, and the whole workspace's check only where the step
    crossed packages or before a merge. A brief that names a wider gate than the step's own done
    check is answered with the touched package's and the reason, not obeyed. *Why:* one step gated
