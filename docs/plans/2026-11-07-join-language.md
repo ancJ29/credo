@@ -111,13 +111,14 @@ and `docs/open-items.md` is the one file the live pieces share, so whichever mer
       screens 1 and 5; typecheck of both, eslint, prettier, knip and `pnpm report` (120 screens)
       exit 0; `visual` tests 100 % exit 0 on the rerun (first run: two timeouts in `admin-staff`,
       load). Row 8's comparison against `main`'s build and the `walk` run itself are held to step 5.
-- [ ] **4. The look** (👤 1). The machine goes straight on to step 5 and does not wait for it.
+- [x] **4. The look** (👤 1). The machine goes straight on to step 5 and does not wait for it.
 - [~] **5. The gates and one review.** 🤖 Sonnet, then Opus, 10 min: `main` taken in, then the whole
       `pnpm check` once under the shared lock. *Done when:* `== exit 0` in the log, and every review
       finding tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`.
       *Gates done 11-07 (review still to come):* `main` (afcda360) taken in; the one conflict, `visual/site/questions-vi.json`, resolved by the rule that its keys equal the merged `walks.ts`'s questions; typecheck, eslint, prettier, knip exit 0, `pnpm -r run test` red once on a 120 s timeout in `scripts/src/demo/apply.test.ts` row 21 (a file this piece never touched), green on its rerun (305 tests); report built from the committed tree, 122 screens; against `main`'s build exactly `pk-1-join` and `pk-5-link-dead` moved version, and the doors' shared question differs on its nine screens (row 8 holds).
+      *Review 11-07, may merge:* Medium, the point's sentence promising a press the picture cannot show: `[FIXED]`, rewritten to name only what the picture shows and to attribute the press and its persistence to the three rows (a capture is static HTML, so its boxes are inert). Low, the shared question's last clause "and the language pressed is kept on the device": `[FIXED by 1]`, kept, since the old text had the same shape and dropping it would churn `visual/src/walks.ts` and `visual/site/questions-vi.json`, the file that conflicted at the merge.
 - [ ] **6. The picture run** (👤 2), the human's terminal, about 17 minutes.
-- [ ] **7. The recap.** 🤖 Sonnet, 2 min. *Done when:* committed, under 400 words, item 101 deleted,
+- [x] **7. The recap.** 🤖 Sonnet, 2 min. *Done when:* committed, under 400 words, item 101 deleted,
       the products row true.
 
 50 machine minutes. Closes item 101; opens nothing. Ridge takes it on the push to `main`, the human's
@@ -127,9 +128,13 @@ act and no step here.
 
 👤 **1. The look, after step 3.** On the walks page, open "Sign in with a passkey, and keep one's
 passkeys". Screen 1 is a join link opened, screen 5 a link that is dead; each now carries a small
-`VI` / `EN` pair at the right of the coloured header, the language you are reading filled in. Pressing
-the other one changes the page's words where you stand, and the choice follows you onto the dashboard
-and into your next visit. Everything below the header is as it was. A yes holds until that header
+`VI` / `EN` pair at the right of the coloured header, the language you are reading filled in. The
+picture is still: the boxes do nothing when pressed, so a yes is on how they look, both languages
+captured. The press and the choice that follows onto the dashboard and the next visit are held by
+three unit rows in `ui/src/JoinPage.test.tsx`: the press changes the words with one fetch
+(`#L152-L166`), the device says `vi` and the dashboard heading reads "Khách hàng" (`#L168-L180`),
+and a device already on `vi` opens the page in it (`#L182-L189`). Everything below the header is
+as it was. A yes holds until that header
 changes again; a no becomes a case in the table and is fixed before step 6.
 
 👤 **2. The picture run, step 6.** One command in your terminal, about 17 minutes, nothing else
