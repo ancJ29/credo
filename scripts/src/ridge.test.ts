@@ -279,40 +279,95 @@ describe('what the ops scripts ask of ridge', () => {
     expect((await run(['tenant', 'good-code'], KEYS, call)).status).toBe(1);
   });
 
+  const CHECK = 'check-20261107t085500z';
+
   it('untenant deletes the client the tenant command made, every record of it, and frees the code', async () => {
     const { records, call } = memoryCStorage();
-    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+    await run(['tenant', CHECK, 'Check Co'], KEYS, call);
     expect(records.size).toBe(3);
 
-    const result = await run(['untenant', 'check-acme'], KEYS, call);
+    const result = await run(['untenant', CHECK], KEYS, call);
 
     expect(result.err).toEqual([]);
-    expect(result).toMatchObject({ status: 0, out: ['client check-acme deleted'] });
+    expect(result).toMatchObject({ status: 0, out: [`client ${CHECK} deleted`] });
     expect(records.size).toBe(0);
-    expect((await run(['tenant', 'check-acme', 'Again'], KEYS, call)).status).toBe(0);
+    expect((await run(['tenant', CHECK, 'Again'], KEYS, call)).status).toBe(0);
   });
 
-  it('untenant on a code with no client is a quiet success, and a bad code is refused', async () => {
+  it('untenant on a check code with no client is a quiet success', async () => {
     const { call } = memoryCStorage();
 
-    expect(await run(['untenant', 'check-none'], KEYS, call)).toMatchObject({
+    expect(await run(['untenant', CHECK], KEYS, call)).toMatchObject({
       status: 0,
-      out: ['no client check-none to delete'],
+      out: [`no client ${CHECK} to delete`],
     });
-    expect((await run(['untenant', 'Bad Code'], KEYS, call)).status).toBe(1);
   });
 
-  it('untenant names a failure when the client moved under it, and exits 1', async () => {
-    const { call } = memoryCStorage();
-    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+  it('untenant refuses any code that is not the check’s own, and deletes nothing', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', 'acme', 'A real client'], KEYS, call);
+
+    for (const code of ['acme', 'check-acme', 'Bad Code', 'check-20261107t085500z-x']) {
+      expect(await run(['untenant', code], KEYS, call)).toMatchObject({
+        status: 1,
+        err: ['error: untenant deletes only the deploy check’s own client, check-<date>t<time>z'],
+      });
+    }
+    expect((await run(['untenant'], KEYS, call)).status).toBe(1);
+    expect(records.size).toBe(3);
+  });
+
+  it('untenant says nothing was deleted when the client moved under it, and exits 1', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', CHECK, 'Check Co'], KEYS, call);
     const refuseIndexRemoval: typeof fetch = (input, init) =>
-      init?.method === 'DELETE' && String(input).endsWith(encodeURIComponent('client.check-acme'))
+      init?.method === 'DELETE' && String(input).endsWith(encodeURIComponent(`client.${CHECK}`))
         ? Promise.resolve(new Response('{}', { status: 412 }))
         : call(input, init);
 
-    expect(await run(['untenant', 'check-acme'], KEYS, refuseIndexRemoval)).toMatchObject({
+    expect(await run(['untenant', CHECK], KEYS, refuseIndexRemoval)).toMatchObject({
       status: 1,
-      err: ['error: the client check-acme was not deleted whole'],
+      err: [`error: nothing was deleted: the client ${CHECK} changed while it was being read`],
+    });
+    expect(records.has(`client.${CHECK}`)).toBe(true);
+  });
+
+  it('untenant says nothing was deleted when another deletion under the code is unfinished', async () => {
+    const { call } = memoryCStorage();
+    await run(['tenant', CHECK, 'Check Co'], KEYS, call);
+    await call(`${KEYS.C_STORAGE_URL}/api/records/${KEYS.SERVICE_CODE}`, {
+      method: 'POST',
+      headers: { 'x-access-key': KEYS.SERVICE_ACCESS_KEY },
+      body: JSON.stringify({
+        key: recordKeys.clientDeletion(CHECK),
+        data: {
+          id: '6f1c2b1e-3c3a-4a8e-9b1d-2f4e5a6b7c8d',
+          name: 'x',
+          by: '00000000-0000-0000-0000-000000000000',
+          startedAt: 1,
+        },
+      }),
+    });
+
+    expect(await run(['untenant', CHECK], KEYS, call)).toMatchObject({
+      status: 1,
+      err: [
+        `error: nothing was deleted: an earlier deletion under the code ${CHECK} is still unfinished`,
+      ],
+    });
+  });
+
+  it('untenant says how many records are left when the sweep could not remove them', async () => {
+    const { call } = memoryCStorage();
+    await run(['tenant', CHECK, 'Check Co'], KEYS, call);
+    const refuseTenantRemoval: typeof fetch = (input, init) =>
+      init?.method === 'DELETE' && decodeURIComponent(String(input)).includes('/tenant.')
+        ? Promise.resolve(new Response('{}', { status: 412 }))
+        : call(input, init);
+
+    expect(await run(['untenant', CHECK], KEYS, refuseTenantRemoval)).toMatchObject({
+      status: 1,
+      err: [`error: the client ${CHECK} is out of the list but 2 records are left`],
     });
   });
 

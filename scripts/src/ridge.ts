@@ -29,6 +29,9 @@ export type RidgeIo = {
   stdin?: () => Promise<string>;
 };
 
+/** The codes ops/check.sh gives its client: check-20261107t085500z. */
+const CHECK_CODE = /^check-\d{8}t\d{6}z$/;
+
 const USAGE =
   'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | seed | root-password [--check] <code>…';
 
@@ -122,22 +125,38 @@ export async function runRidge(
 
     if (command === 'untenant') {
       const [code] = rest;
-      if (!clientCodeSchema.safeParse(code).success) throw new Error(USAGE);
+      // Only the code ops/check.sh makes (check-<date>t<time>z): a real client's code is refused, as
+      // this command has none of the console's gates (a live operator and a fresh passkey touch).
+      if (!code || !CHECK_CODE.test(code)) {
+        throw new Error(
+          'untenant deletes only the deploy check’s own client, check-<date>t<time>z',
+        );
+      }
       const held = await client().getRecord(recordKeys.client(code));
       const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
       // One press: a bound of 200 records is far over the check's three.
       const done = await deleteClient(client(), {
         code,
         index,
-        by: 'deploy-check',
+        // the schema wants an operator's uuid; the terminal has none, so the nil one
+        by: '00000000-0000-0000-0000-000000000000',
         now: io.now ?? Date.now,
       });
       if (done === 'unknown') {
         io.out(`no client ${code} to delete`);
         return 0;
       }
-      const left = typeof done === 'string' ? -1 : done.left;
-      if (left !== 0) throw new Error(`the client ${code} was not deleted whole`);
+      if (done === 'busy') {
+        throw new Error(
+          `nothing was deleted: an earlier deletion under the code ${code} is still unfinished`,
+        );
+      }
+      if (done === 'moved') {
+        throw new Error(`nothing was deleted: the client ${code} changed while it was being read`);
+      }
+      if (done.left !== 0) {
+        throw new Error(`the client ${code} is out of the list but ${done.left} records are left`);
+      }
       io.out(`client ${code} deleted`);
       return 0;
     }
