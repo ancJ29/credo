@@ -144,9 +144,18 @@ cued on the fake lane; the stack lane adds a second record with a code it just u
   `20261107-231928-clerk-add-records-step5-whole-check.log`, last line `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0
   knip 0)`); the log holds no warning or error line; the lock was free at the end.
 - [ ] **6. One review.** 🤖 Opus, about 10 minutes, not the build's model. Done when: each finding tagged here.
-- [ ] **7. The fix pass.** 🤖 Sonnet, about 8 minutes: the review's named changes, the read-then-write item filed,
+- [x] **7. The fix pass.** 🤖 Sonnet, about 8 minutes: the review's named changes, the read-then-write item filed,
   and the stale "The root's" comment on the list read corrected (`ui/src/api.ts#L542`, untrue since the list opened
   to `orders.canView`). Done when: the gates of the touched packages exit 0.
+  Done 2026-11-07 (commit `0876e2eb`): the add form's stock switch starts on (agrees with the import's blank cell);
+  `/customers/new` and `/products/new` also need the list's `mayOpen`; the permission count corrected to eight;
+  items 146 to 148 filed. The whole check, run as five separate steps, log
+  `logs/20261107-233422-clerk-add-records-step7-whole-check.log`: `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0
+  knip 0)` (the first run, `20261107-233125`, was red on one unrelated `OrdersPages` case under load, green alone and
+  on the rerun). `pnpm report` against main's rebuilt report: screens 1, 6 moved, 18 to 21 new, nothing else; the
+  stale "The root's" comment on the two list reads (`ui/src/api.ts#L546`, `#L578`) now says who may see orders
+  (comment-only; prettier checked, the gate not rerun for it).
+
 - [ ] **8. The picture run** (👤 3): one command in the human's terminal, about 18 minutes. Done when: run 1 green,
   its `raw.txt` naming those six screens alone; run 2 every count 0; 36 bases committed.
 - [ ] **9. The recap.** 🤖 Sonnet, about 3 minutes. Done when: committed, under 400 words, the products row true.

@@ -543,7 +543,7 @@ export function createApi({
       return await read(response, importEmployeesReplySchema);
     },
 
-    /** The root's: every customer of the company, in code order. */
+    /** Whoever may see orders: every customer of the company, in code order. */
     async listCustomers(): Promise<Customer[]> {
       const response = await send('GET', ROUTES.customers);
       if (!response.ok) throw new ApiError(response.status);
@@ -575,7 +575,7 @@ export function createApi({
       return { kind: 'added', doc: await read(response, customerDocSchema) };
     },
 
-    /** The root's: every product of the company, in code order. */
+    /** Whoever may see orders: every product of the company, in code order. */
     async listProducts(): Promise<Product[]> {
       const response = await send('GET', ROUTES.products);
       if (!response.ok) throw new ApiError(response.status);
