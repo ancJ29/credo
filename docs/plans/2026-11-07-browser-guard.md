@@ -97,9 +97,9 @@ the touched package's gate, `shellcheck -x walk/run.sh`, the step's rows each se
   `cd scripts && npx vitest run src/claim.test.ts src/walk-run.test.ts`; `scripts` at 100 %.
 - [ ] **4. One review.** Another model than the builder's, correctness only, at a fixed sha. 8
   minutes; each finding fixed, rejected or deferred with its reason.
-- [ ] **5. The whole check on the merge result.** 12 minutes. `main` taken in, then
+- [x] **5. The whole check on the merge result.** 12 minutes. `main` taken in, then
   `pnpm check`, its five steps named: typecheck, eslint, prettier, the tests, knip. Done: exit 0, and
-  `git diff --stat main...HEAD` naming no `.png`.
+  `git diff --stat main...HEAD` naming no `.png`. Done 2026-11-07 17:51: `main` (a02963fb) merged at e91b174f, one textual conflict in `docs/open-items.md` (both sides appended), kept both, items 121 to 127 once each; `pnpm check` run as its five steps, typecheck, eslint, prettier, tests, knip each exit 0, ending `== exit 0`, in 5m33s, log `logs/browser-guard-check-3.log`; no `.png` in the diff.
 
 The record sizes the piece at 45: steps 1 to 3 are 39 of it, and the review and the whole check add
 20.
