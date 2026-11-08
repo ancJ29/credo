@@ -2481,8 +2481,8 @@ case "$*" in
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
-  *"wait change-set-create-complete"*) exit 255 ;;
-  *describe-change-set*) echo "The submitted information didn't contain changes. Submit different information to create a change set." ;;
+  *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
+  *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
   *create-change-set* | *delete-change-set*) : ;;
   *send-ssh-public-key*) echo True ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
@@ -2518,6 +2518,23 @@ check "  the box's private address and the role's ARN are in neither the log nor
 check "  the app's address is printed, and the log ends on no key" "1 1" \
   "$(grep -c '^  AppAddress = https://app.example.test' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 check "  GitHub's environment was written (the run went past the outputs)" 1 "$(grep -c '^gh secret set AWS_ROLE_ARN' "$S/gh.calls" || true)"
+
+# A change set with changes: the stand-in hands back a hand-written body (FAKE_CHANGESET), so the lines the
+# operator reads before the irreversible act are the script's own.
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional --plan
+check "a Conditional change refused: exit 1, REFUSED, and no change applied" "1 1 0" \
+  "$RC $(grep -c '^REFUSED: this change set removes or replaces' "$S/out" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
+check "  and its refusal line names the property that carried it" 1 \
+  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic$' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional-taken --plan --take Box
+check "  with Box taken the plan passes, exit 0, and the verdict names what was let through" "0 1 0" \
+  "$RC $(grep -c 'nothing unsafe except what was taken: Box$' "$S/out" || true) $(grep -c 'no removal and no replacement' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-replaces.json stack_run stack-replaces-taken --plan --take Box
+check "  with Box taken the removal of OldGroup, not taken, is still refused, naming only it" "1 1 0" \
+  "$RC $(grep -c '^  OldGroup (AWS::EC2::SecurityGroup): Remove, replacement none$' "$S/out" || true) $(grep -c '^  Box (AWS::EC2::Instance): Modify, replacement' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-adds --plan
+check "  a change set that only adds and modifies keeps its old verdict" "0 1 0" \
+  "$RC $(grep -c 'ok   no removal and no replacement' "$S/out" || true) $(grep -c 'except what was taken' "$S/out" || true)"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 

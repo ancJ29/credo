@@ -73,6 +73,11 @@ working copy.
      repository's OIDC subject setting changed on GitHub (the immutable subject switched on or off,
      or the repository deleted and made again): the role's trust is not moved by a plain update;
      see [the trust in the plan](../docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
+   - A `--plan` the guard refuses prints `REFUSED` and one line per change, deletes the change set and
+     changes nothing (exit 1). A `replacement=Conditional` line is the property's class, taken from
+     `RequiresRecreation`, not a verdict on this change: read AWS's update behaviour for that property,
+     and see `docs/plans/2026-11-08-backup-policy-conditional-memo.md`. Naming the resource with
+     `--take <id>` passes the guard; do it only deliberately.
    - `env` reads the deploy role's subject from GitHub (`gh api repos/<owner>/<name>/actions/oidc/customization/sub`),
      prints it as `subject prefix:` in the log, and keeps the stack's. It stops if GitHub's differs
      from the stack's, if the settings use custom claim keys, or if it cannot read them.

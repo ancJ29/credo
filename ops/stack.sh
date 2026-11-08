@@ -220,7 +220,9 @@ if [ "$no_changes" = 1 ]; then
   fi
 else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
-  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")"' "$WORK/changes.json"
+  # Each change, then one line per detail naming the property that carried it: the change set is deleted
+  # below, so this print is the only record of a refusal's cause.
+  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-")")' "$WORK/changes.json"
 
   step "the guard: nothing removed or replaced"
   unsafe=$(jq -r --argjson take "$TAKE" -f "$OPS_DIR/unsafe-changes.jq" "$WORK/changes.json")
@@ -231,7 +233,11 @@ else
     echo "plan step, and taken with --take <LogicalId>."
     exit 1
   fi
-  ok "no removal and no replacement"
+  if [ "$TAKE" = '[]' ]; then
+    ok "no removal and no replacement"
+  else
+    ok "nothing unsafe except what was taken: $(jq -r 'join(", ")' <<<"$TAKE")"
+  fi
 
   if [ "$PLAN_ONLY" = 1 ]; then
     echo "--plan: the change set is deleted, nothing changed"
