@@ -117,9 +117,20 @@ that they do**, which is case 5 below.
   against 702), the Row 4 close case stays green, restore verified with `cmp`. Gate of `bff`, last
   line of `logs/20261108-121530-money-defects-step3-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0
   prettier 0 test 0 knip 0)`, 605 tests; lock free at the end.
-- [ ] **4. The whole check, and 100 % on the file.** `pnpm check`'s five steps, each exit 0, under
+- [x] **4. The whole check, and 100 % on the file.** `pnpm check`'s five steps, each exit 0, under
   the shared `mkdir` lock; `bff/vitest.config.ts#L21`'s four thresholds already demand 100 %.
   *Done when:* the five exit codes and the lock's times are in the recap. **Size 15.**
+  *Done 2026-11-08:* run as separate steps, never the root's `&&` chain, serially under the `mkdir`
+  lock (taken 12:17:57 at load 3.53, no wait; released 12:23:17; free at the end). Log
+  `logs/20261108-121757-money-defects-step4-whole-gate.log`, whose per-package lines read:
+  `== bff exit 0 (typecheck 0 eslint 0 prettier 0 test 0 knip 0)`, the same for `scripts`, `shared`,
+  `ui` and `visual`, and `== walk exit 0 (typecheck 0; no test script)`; last line `== exit 0`.
+  eslint, prettier and knip run once over the whole tree, so their codes repeat on each line. Tests:
+  bff 605, scripts 305, shared 159, ui 825, visual 209, none failed; statements, branches, functions and
+  lines at 100 % in all five. Neither known red appeared (`clients-delete` case 13, the `ui` orders
+  case), and nothing was retried. The "empty file skipped" lines are coverage's note on a source file
+  with no code, not a skipped test. Load at the visual test's start was 10.53, from the run's own
+  workers.
 - [ ] **5. Another model reads the close path.** QA rule 5, on the diff alone; each finding fixed,
   rejected or deferred with its reason. *Done when:* every finding has one of the three, each with
   its line. **Size 8.**
