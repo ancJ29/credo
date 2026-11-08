@@ -215,6 +215,12 @@ describe('the fake Api', () => {
       customerDocSchema,
       savedCustomer.kind === 'saved' ? savedCustomer.doc : null,
     );
+    const addedCustomer = await api.addCustomer({ code: 'kh-91', name: 'Thêm', extra: {} });
+    parses(
+      'addCustomer',
+      customerDocSchema,
+      addedCustomer.kind === 'added' ? addedCustomer.doc : null,
+    );
     parses('listProducts', productListReplySchema, { products: await api.listProducts() });
     const firstProduct = (await api.listProducts())[0];
     parses('getProduct', productDocSchema, await api.getProduct(firstProduct.id));
@@ -231,6 +237,15 @@ describe('the fake Api', () => {
       productDocSchema,
       savedProduct.kind === 'saved' ? savedProduct.doc : null,
     );
+    const addedProduct = await api.addProduct({
+      code: 'vt-91',
+      name: 'Thêm',
+      unit: 'bao',
+      price: 5000,
+      stocked: false,
+      extra: {},
+    });
+    parses('addProduct', productDocSchema, addedProduct.kind === 'added' ? addedProduct.doc : null);
     parses(
       'importCustomers',
       importCustomersReplySchema,
@@ -432,9 +447,11 @@ describe('the fake Api', () => {
         'importEmployees',
         'listCustomers',
         'getCustomer',
+        'addCustomer',
         'saveCustomer',
         'listProducts',
         'getProduct',
+        'addProduct',
         'saveProduct',
         'importCustomers',
         'importProducts',
@@ -1146,6 +1163,105 @@ describe('the fake Api’s customers and products', () => {
     expect((await api.listProducts()).map((one) => one.code)).toEqual(
       [...DEMO_PRODUCTS.map((one) => one.code), 'VT-90'].sort(),
     );
+  });
+
+  it('An add puts in the record the import would: a version of its own, the code in capitals, a code the list holds in either case refused as taken and nothing written, a body the import would refuse a 400, for whoever may edit orders alone', async () => {
+    const api = fake('', root);
+
+    const customer = await api.addCustomer({
+      code: 'kh-90',
+      name: 'Một',
+      extra: { phone: '0900' },
+    });
+    expect(customer).toMatchObject({
+      kind: 'added',
+      doc: { customer: { code: 'KH-90', name: 'Một', extra: { phone: '0900' } }, version: 'c1' },
+    });
+    const id = customer.kind === 'added' ? customer.doc.customer.id : '';
+    expect(await api.getCustomer(id)).toEqual(customer.kind === 'added' ? customer.doc : null);
+    expect(await api.addCustomer({ code: 'Kh-90', name: 'Lặp', extra: {} })).toEqual({
+      kind: 'taken',
+    });
+    expect(await api.addCustomer({ code: 'kh-001', name: 'Lặp', extra: {} })).toEqual({
+      kind: 'taken',
+    });
+    expect(await status(api.addCustomer({ code: 'a b', name: 'x', extra: {} }))).toBe(400);
+    expect(
+      await status(api.addCustomer({ id, code: 'KH-92', name: 'x', extra: {} } as never)),
+    ).toBe(400);
+    expect((await api.listCustomers()).length).toBe(DEMO_CUSTOMERS.length + 1);
+    // a save over the version the add gave is accepted, and moves it
+    expect(await api.saveCustomer(id, { version: 'c1', name: 'Hai', extra: {} })).toMatchObject({
+      kind: 'saved',
+      doc: { version: 'c2' },
+    });
+
+    const product = await api.addProduct({
+      code: 'vt-90',
+      name: 'Một',
+      unit: 'bao',
+      price: 5000,
+      stocked: false,
+      extra: {},
+    });
+    expect(product).toMatchObject({
+      kind: 'added',
+      doc: { product: { code: 'VT-90', stocked: false, price: 5000 }, version: 'p1' },
+    });
+    expect(
+      await api.addProduct({
+        code: 'VT-90',
+        name: 'Lặp',
+        unit: 'bao',
+        price: 5000,
+        stocked: false,
+        extra: {},
+      }),
+    ).toEqual({ kind: 'taken' });
+    expect(
+      await status(
+        api.addProduct({
+          code: 'VT-93',
+          name: 'x',
+          unit: 'bao',
+          price: 0,
+          stocked: false,
+          extra: {},
+        }),
+      ),
+    ).toBe(400);
+    expect((await api.listProducts()).length).toBe(DEMO_PRODUCTS.length + 1);
+
+    // the warehouse may not see orders: refused before the body is read, even a bad one
+    const staff = fake('', { client: `fake.session.${DEMO_EMPLOYEES[3]?.id}` });
+    expect(await status(staff.addCustomer({ code: 'KH-95', name: 'x', extra: {} }))).toBe(403);
+    expect(await status(staff.addProduct({} as never))).toBe(403);
+    // the office may edit orders
+    const office = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    expect(await office.addCustomer({ code: 'KH-95', name: 'x', extra: {} })).toMatchObject({
+      kind: 'added',
+    });
+  });
+
+  it('A cue on an add: 409 answers the code as taken once, 503 and 403 raise, and the add then goes on', async () => {
+    const taken = fake('addCustomer:409', root);
+    expect(await taken.addCustomer({ code: 'KH-90', name: 'x', extra: {} })).toEqual({
+      kind: 'taken',
+    });
+    expect(await taken.addCustomer({ code: 'KH-90', name: 'x', extra: {} })).toMatchObject({
+      kind: 'added',
+    });
+    const product = {
+      code: 'VT-90',
+      name: 'x',
+      unit: 'bao',
+      price: 5000,
+      stocked: false,
+      extra: {},
+    };
+    expect(await fake('addProduct:409', root).addProduct(product)).toEqual({ kind: 'taken' });
+    expect(await status(fake('addProduct:503', root).addProduct(product))).toBe(503);
+    expect(await status(fake('addCustomer:403', root).addCustomer(product))).toBe(403);
   });
 
   it('The two lists answer 403 to anyone who may not see orders, and the two imports to anyone but the root; a cue’s 403, 409 or 503 comes once, the call then answering as the data set does', async () => {

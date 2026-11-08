@@ -552,6 +552,59 @@ describe('the API client', () => {
       ]);
     });
 
+    it('adds a customer and a product by POST to the list’s own route, a code the list holds being a result and any other refusal an error', async () => {
+      const customer = { id, code: 'KH-1', name: 'Một', extra: {} };
+      const product = {
+        id,
+        code: 'VT-1',
+        name: 'Một',
+        unit: 'bao',
+        price: 5000,
+        stocked: false,
+        extra: {},
+      };
+      const { calls, api } = fake(
+        json({ customer, version: 'c1' }, 201),
+        json({}, 409),
+        json({}, 403),
+        json({ product, version: 'p1' }, 201),
+        json({}, 409),
+        json({}, 503),
+      );
+      const row = { code: 'KH-1', name: 'Một', extra: {} };
+      const item = {
+        code: 'VT-1',
+        name: 'Một',
+        unit: 'bao',
+        price: 5000,
+        stocked: false,
+        extra: {},
+      };
+
+      expect(await api.addCustomer(row)).toEqual({
+        kind: 'added',
+        doc: { customer, version: 'c1' },
+      });
+      expect(await api.addCustomer(row)).toEqual({ kind: 'taken' });
+      await expect(api.addCustomer(row)).rejects.toMatchObject({ status: 403 });
+      expect(await api.addProduct(item)).toEqual({
+        kind: 'added',
+        doc: { product, version: 'p1' },
+      });
+      expect(await api.addProduct(item)).toEqual({ kind: 'taken' });
+      await expect(api.addProduct(item)).rejects.toMatchObject({ status: 503 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/customers'],
+        ['POST', '/api/customers'],
+        ['POST', '/api/customers'],
+        ['POST', '/api/products'],
+        ['POST', '/api/products'],
+        ['POST', '/api/products'],
+      ]);
+      expect(JSON.parse(calls[0]?.init.body as string)).toEqual(row);
+      expect(JSON.parse(calls[3]?.init.body as string)).toEqual(item);
+    });
+
     it('reads one product with its version, null when there is none, and saves over the version read: a moved record is a conflict, not an error', async () => {
       const product = {
         id,

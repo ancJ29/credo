@@ -539,6 +539,25 @@ export function createFakeApi({
     }),
   });
 
+  /** One add to a list, by the import's own row rule: the same parse, the same capitals, the same
+   * taken code; a body it would refuse as `invalid` is a 400, as the BFF answers it. */
+  const addInto = <Request extends { code: string }, Held extends { id: string; code: string }>(
+    held: Map<string, Held>,
+    versions: Map<string, number>,
+    request: unknown,
+    schema: { safeParse: (row: unknown) => { success: true; data: Request } | { success: false } },
+    make: (request: Request, code: string) => Held,
+  ) => {
+    mayOnly('orders.canEdit');
+    const [result] = importInto(held, [request], schema, make).results;
+    if (result?.kind === 'added') {
+      versions.set(result.record.id, 1);
+      return result.record;
+    }
+    if (result?.reason === 'taken') return null;
+    throw new ApiError(400);
+  };
+
   const person = (id: string) => {
     const found = people.get(id);
     if (!found) throw notFound();
@@ -819,6 +838,30 @@ export function createFakeApi({
         return found ? customerDocOf(found) : null;
       }),
 
+    addCustomer: (request) =>
+      call(
+        'addCustomer',
+        () => {
+          const record = addInto(
+            customers,
+            customerVersions,
+            request,
+            addCustomerRequestSchema,
+            (row, code) =>
+              customerSchema.parse({
+                id: crypto.randomUUID(),
+                code,
+                name: row.name,
+                extra: row.extra,
+              }),
+          );
+          return record
+            ? { kind: 'added' as const, doc: customerDocOf(record) }
+            : { kind: 'taken' as const };
+        },
+        () => ({ kind: 'taken' as const }),
+      ),
+
     saveCustomer: (id, request) =>
       call(
         'saveCustomer',
@@ -849,6 +892,33 @@ export function createFakeApi({
         const found = products.get(id);
         return found ? productDocOf(found) : null;
       }),
+
+    addProduct: (request) =>
+      call(
+        'addProduct',
+        () => {
+          const record = addInto(
+            products,
+            productVersions,
+            request,
+            addProductRequestSchema,
+            (row, code) =>
+              productSchema.parse({
+                id: crypto.randomUUID(),
+                code,
+                name: row.name,
+                unit: row.unit,
+                price: row.price,
+                stocked: row.stocked,
+                extra: row.extra,
+              }),
+          );
+          return record
+            ? { kind: 'added' as const, doc: productDocOf(record) }
+            : { kind: 'taken' as const };
+        },
+        () => ({ kind: 'taken' as const }),
+      ),
 
     saveProduct: (id, request) =>
       call(

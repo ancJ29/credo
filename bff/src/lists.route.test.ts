@@ -974,3 +974,192 @@ describe('A product is read and saved on its own route, over the version it was 
     expect(reply.body).not.toContain(id);
   });
 });
+
+describe.each(LISTS)(
+  'A clerk adds one $name on the list’s own route, as the import would add the row',
+  (list) => {
+    /** What an add answers: the record under the kind's name, and its version. */
+    type Doc = Record<string, { id: string; code: string } | string>;
+    const docOf = (reply: { json: <T>() => T }) => reply.json<Doc>();
+    const noun = list.name === 'customers' ? 'customer' : 'product';
+    const editor = async (t: Tenant) =>
+      await t.staff('EDITOR', { own: { 'orders.canEdit': true } });
+
+    /** A tenant whose store logs every write or removal asked of it. */
+    async function watched() {
+      const asks: string[] = [];
+      let live = false;
+      const t = await staffTenant(cs, {
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            if (live && key.startsWith(list.prefix(t.keys))) asks.push(`put ${key}`);
+            return await client.putRecord(key, data, ifTag);
+          },
+          async removeRecord(key, ifTag) {
+            if (live) asks.push(`remove ${key}`);
+            return await client.removeRecord(key, ifTag);
+          },
+        }),
+      });
+      live = true;
+      return { t, asks };
+    }
+
+    it('row 1: writes one record under a fresh id with its code in capitals, and answers it with the version it now holds', async () => {
+      const { t, asks } = await watched();
+      const clerk = await editor(t);
+
+      const reply = await clerk.call.send('POST', list.route, list.row({ code: ' kh-9 ' }));
+
+      expect(reply.statusCode).toBe(200);
+      const doc = docOf(reply);
+      const record = doc[noun] as { id: string; code: string };
+      expect(record.code).toBe('KH-9');
+      const kept = await t.client.getRecord(list.key(t.keys, record.id));
+      expect(kept?.data).toEqual(record);
+      expect(doc.version).toBe(kept?.tag);
+      expect(asks).toEqual([`put ${list.key(t.keys, record.id)}`]);
+      expect(await codesOf(t, list)).toEqual(['KH-9']);
+    });
+
+    it('row 1: puts the same record in the list as the import does for the same row, but for its id', async () => {
+      const t = await staffTenant(cs);
+      const clerk = await editor(t);
+      const row = list.row({ extra: { phone: '0901', note: 'Gọi trước' } });
+
+      const added = docOf(
+        await clerk.call.send('POST', list.route, list.row({ ...row, code: 'a-1' })),
+      );
+      const [viaImport] = await imported(t, list, [list.row({ ...row, code: 'a-2' })]);
+
+      const clerks = added[noun] as object;
+      const imports = viaImport.kind === 'added' ? viaImport.record : (undefined as never);
+      const without = (one: object) => ({ ...one, id: undefined, code: undefined });
+      expect(without(clerks)).toEqual(without(imports));
+    });
+
+    it('row 2: a code the list holds, typed in any case, is refused 409 and nothing is written', async () => {
+      const { t, asks } = await watched();
+      const clerk = await editor(t);
+      await hold(t, list, { code: 'HELD-1', name: 'Held' });
+      asks.length = 0;
+
+      const same = await clerk.call.send('POST', list.route, list.row({ code: 'HELD-1' }));
+      const other = await clerk.call.send('POST', list.route, list.row({ code: ' held-1 ' }));
+
+      expect([same.statusCode, other.statusCode]).toEqual([409, 409]);
+      expect(asks).toEqual([]);
+      expect(await codesOf(t, list)).toEqual(['HELD-1']);
+    });
+
+    it('row 3: whoever may see orders but not edit them cannot add: 403 before the body is read, nothing written; one not signed in, 401', async () => {
+      const { t, asks } = await watched();
+      const reader = await t.staff('READER', { own: { 'orders.canView': true } });
+
+      const refused = await reader.call.send('POST', list.route, list.row());
+      const unread = await reader.call.send('POST', list.route, { nonsense: true });
+      const unsigned = await t.app.inject({
+        method: 'POST',
+        url: list.route,
+        payload: list.row(),
+        headers: { 'x-client': 'acme-co' },
+      });
+
+      expect([refused.statusCode, unread.statusCode, unsigned.statusCode]).toEqual([403, 403, 401]);
+      expect(asks).toEqual([]);
+      expect(await codesOf(t, list)).toEqual([]);
+    });
+
+    it('row 4: a body carrying an id, a version or an unknown field, or lacking what the import needs, is refused 400 and nothing is written', async () => {
+      const { t, asks } = await watched();
+      const clerk = await editor(t);
+      const bad = [
+        list.row({ id: randomUUID() }),
+        list.row({ version: 'abc' }),
+        list.row({ phone: '0901' }),
+        list.row({ code: 'A' }),
+        list.row({ name: '' }),
+        ...list.required.map((field) => {
+          const { [field]: _left, ...rest } = list.row() as Record<string, unknown>;
+          return rest;
+        }),
+      ];
+
+      for (const body of bad) {
+        const reply = await clerk.call.send('POST', list.route, body);
+        expect(reply.statusCode, JSON.stringify(body)).toBe(400);
+      }
+
+      expect(asks).toEqual([]);
+      expect(await codesOf(t, list)).toEqual([]);
+    });
+
+    it('row 5: a write that landed with its answer lost answers the record, and no second record appears', async () => {
+      let lose = false;
+      const t = await staffTenant(cs, {
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            const saved = await client.putRecord(key, data, ifTag);
+            if (lose && key.startsWith(list.prefix(t.keys))) {
+              throw new CStorageError(null, 'c-storage did not answer a put');
+            }
+            return saved;
+          },
+        }),
+      });
+      const clerk = await editor(t);
+      lose = true;
+
+      const reply = await clerk.call.send('POST', list.route, list.row({ code: 'A-1' }));
+      lose = false;
+
+      expect(reply.statusCode).toBe(200);
+      const record = docOf(reply)[noun] as { id: string };
+      expect((await t.client.listRecords(list.prefix(t.keys))).records).toHaveLength(1);
+      expect((await t.client.getRecord(list.key(t.keys, record.id)))?.data).toEqual(record);
+    });
+
+    it('row 6: the root’s import still refuses whoever is not the root, even one holding every permission, and nothing is written', async () => {
+      const { t, asks } = await watched();
+      const all = await t.staff('ALLPERMS', {
+        own: Object.fromEntries(PERMISSIONS.map((id) => [id, true])),
+      });
+
+      const refused = await all.call.send('POST', list.importRoute, { rows: [list.row()] });
+      const added = await all.call.send('POST', list.route, list.row({ code: 'B-1' }));
+
+      expect([refused.statusCode, added.statusCode]).toEqual([403, 200]);
+      expect(asks).toHaveLength(1);
+      expect(await codesOf(t, list)).toEqual(['B-1']);
+      expect(
+        (await imported(t, list, [list.row({ code: 'B-2' }), list.row({ code: 'b-1' })])).map(
+          outcome,
+        ),
+      ).toEqual(['added', 'taken']);
+    });
+
+    it('answers 503 when the store could not take the write, and the same add then lands', async () => {
+      let down = false;
+      const t = await staffTenant(cs, {
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            if (down && key.startsWith(list.prefix(t.keys))) throw new CStorageError(503, 'down');
+            return await client.putRecord(key, data, ifTag);
+          },
+        }),
+      });
+      const clerk = await editor(t);
+      down = true;
+      const refused = await clerk.call.send('POST', list.route, list.row({ code: 'A-2' }));
+      down = false;
+
+      const again = await clerk.call.send('POST', list.route, list.row({ code: 'A-2' }));
+
+      expect(refused.statusCode).toBe(503);
+      expect(again.statusCode).toBe(200);
+    });
+  },
+);

@@ -1,4 +1,5 @@
 import {
+  addProductRequestSchema,
   can,
   extraInputSchema,
   nameSchema,
@@ -148,22 +149,31 @@ function marks(language: string) {
   return { group: mark('group'), decimal: mark('decimal') };
 }
 
-function ProductForm({
+/**
+ * The product's form. An add is this form with the code box open, as the add pages draw it:
+ * `adding` says whether the code is already held by another product, and the code is then asked by
+ * the import's own rule (`addProductRequestSchema`'s code) and given to `onSave` beside the rest.
+ * A save never changes the code.
+ */
+export function ProductForm({
   doc,
   editable,
   saving,
+  adding,
   onSave,
 }: {
   doc: ProductDoc;
   editable: boolean;
   saving: boolean;
-  onSave: (values: Omit<SaveProductRequest, 'version'>) => void;
+  adding?: { taken: boolean };
+  onSave: (values: Omit<SaveProductRequest, 'version'>, code: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const { product } = doc;
+  const [code, setCode] = useState(product.code);
   const [name, setName] = useState(product.name);
   const [unit, setUnit] = useState(product.unit);
-  const [price, setPrice] = useState<number | string>(product.price);
+  const [price, setPrice] = useState<number | string>(adding ? '' : product.price);
   const [stocked, setStocked] = useState(product.stocked);
   const stored = textIn(product.extra['note']);
   const [note, setNote] = useState(stored);
@@ -180,20 +190,35 @@ function ProductForm({
     note === stored ? {} : { note: note.trim() || undefined },
   );
   const extraValue = extraInputSchema.safeParse(extra);
+  const codeValue = addProductRequestSchema.shape.code.safeParse(code.trim());
+  const codeError = !adding
+    ? undefined
+    : tried && !codeValue.success
+      ? t('lists.products.codeInvalid')
+      : adding.taken || undefined;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setTried(true);
-    if (!nameValue.success || !unitValue.success || !priceValue.success || !extraValue.success) {
+    if (
+      !nameValue.success ||
+      !unitValue.success ||
+      !priceValue.success ||
+      !extraValue.success ||
+      (adding && !codeValue.success)
+    ) {
       return;
     }
-    onSave({
-      name: nameValue.data,
-      unit: unitValue.data,
-      price: priceValue.data,
-      stocked,
-      extra: extraValue.data,
-    });
+    onSave(
+      {
+        name: nameValue.data,
+        unit: unitValue.data,
+        price: priceValue.data,
+        stocked,
+        extra: extraValue.data,
+      },
+      code.trim(),
+    );
   };
 
   return (
@@ -204,7 +229,16 @@ function ProductForm({
             <Stack gap="lg">
               <DetailCard title={t('lists.products.basic')}>
                 <FieldPair>
-                  <TextInput label={t('lists.columns.code')} readOnly value={product.code} />
+                  <TextInput
+                    label={t('lists.columns.code')}
+                    description={adding ? t('lists.write.code') : undefined}
+                    autoCapitalize={adding ? 'characters' : undefined}
+                    autoComplete={adding ? 'off' : undefined}
+                    readOnly={!adding}
+                    value={code}
+                    error={codeError}
+                    onChange={(event) => setCode(event.currentTarget.value)}
+                  />
                   <TextInput
                     label={t('lists.columns.name')}
                     readOnly={!editable}
@@ -272,7 +306,7 @@ function ProductForm({
         />
         {editable && (
           <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
-            {t('lists.products.save')}
+            {adding ? t('lists.products.create') : t('lists.products.save')}
           </Button>
         )}
       </Stack>

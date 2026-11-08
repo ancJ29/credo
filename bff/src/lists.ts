@@ -133,6 +133,32 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       return { [kind.field]: records };
     });
 
+    /** One row read as one add, by the import and by a clerk's add alike: the row parsed, its code
+     * capitalised and searched in `codes`, the record written under a fresh id. A row the add
+     * refuses is its result (`invalid`, or `taken` for a code in `codes`); a write the store could
+     * not answer for (503) is `busy`; any other failure is thrown. The code joins `codes` once
+     * written, or once a write failed 503, for it may have landed with its read-back failed. */
+    async function addOne(
+      tenantId: string,
+      raw: unknown,
+      codes: Set<string>,
+    ): Promise<Result<Record>> {
+      const row = kind.row.safeParse(raw);
+      if (!row.success) return { kind: 'refused', reason: 'invalid' };
+      const code = normaliseEmployeeCode(row.data.code);
+      if (codes.has(code)) return { kind: 'refused', reason: 'taken' };
+      const record = kind.record.parse({ ...row.data, id: randomUUID(), code });
+      try {
+        await write(tenantId, record);
+      } catch (error) {
+        if (replyFor(error).status !== 503) throw error;
+        codes.add(code);
+        return { kind: 'refused', reason: 'busy' };
+      }
+      codes.add(code);
+      return { kind: 'added', record };
+    }
+
     /** The root's import. A row the add refuses is its result (`invalid`, or `taken` for a code in
      * the list or earlier in the call); a row the store could not answer for (503) is `busy`, to be
      * sent again, and the call goes on. Any other failure ends the call as it would any route: the
@@ -144,29 +170,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
       const results: Result<Record>[] = [];
       for (const raw of call.rows) {
-        const row = kind.row.safeParse(raw);
-        if (!row.success) {
-          results.push({ kind: 'refused', reason: 'invalid' });
-          continue;
-        }
-        const code = normaliseEmployeeCode(row.data.code);
-        if (codes.has(code)) {
-          results.push({ kind: 'refused', reason: 'taken' });
-          continue;
-        }
-        const record = kind.record.parse({ ...row.data, id: randomUUID(), code });
-        try {
-          await write(request.tenantId, record);
-        } catch (error) {
-          if (replyFor(error).status !== 503) throw error;
-          // The write may have landed with its read-back failed: the code counts as held, so a
-          // later row with it is not written a second time.
-          codes.add(code);
-          results.push({ kind: 'refused', reason: 'busy' });
-          continue;
-        }
-        codes.add(code);
-        results.push({ kind: 'added', record });
+        results.push(await addOne(request.tenantId, raw, codes));
       }
       return { results };
     });
@@ -198,6 +202,22 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       if (!one) throw new HttpError(404, 'Not found');
       return one;
     }
+
+    /** A clerk's add: whoever may edit orders adds one record by the import's own `addOne`. The
+     * permission is checked before the body is read. A code the list holds is a 409 with nothing
+     * written, a body the row rule refuses a 400, a store that could not answer a 503; the record
+     * written is answered as the kind's doc, with the version it now holds. */
+    app.post(kind.route, forClient, async (request) => {
+      mustCan(await signedIn(request), 'orders.canEdit');
+      const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
+      const result = await addOne(request.tenantId, request.body, codes);
+      if (result.kind === 'added') {
+        return docOf(await mustRead(request.tenantId, result.record.id));
+      }
+      if (result.reason === 'taken') throw new HttpError(409, 'Conflict');
+      if (result.reason === 'busy') throw new HttpError(503, 'Service unavailable');
+      throw new HttpError(400, 'Bad request');
+    });
 
     app.get(kind.one(':id'), forClient, async (request) => {
       mustCan(await signedIn(request), 'orders.canView');

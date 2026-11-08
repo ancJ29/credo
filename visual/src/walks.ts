@@ -199,6 +199,20 @@ const PHONE_CHANGED: Step[] = [
   { fill: 'lists.columns.phone', text: '0903 111 999' },
   { press: 'lists.customers.save' },
 ];
+/** The customer an add types in: a new code, a name, a phone. Screen 19 types the code the list
+ * already holds, the first noted customer's, and the fake is cued to refuse it. */
+const ADDED_CUSTOMER_STEPS: Step[] = [
+  { fill: 'lists.columns.code', text: 'KH-090' },
+  { fill: 'lists.columns.name', text: 'Cửa hàng Hải Âu' },
+  { fill: 'lists.columns.phone', text: '0903 555 123' },
+  { press: 'lists.customers.create' },
+];
+const TAKEN_CUSTOMER_STEPS: Step[] = [
+  { fill: 'lists.columns.code', text: NOTED_CUSTOMER.code },
+  { fill: 'lists.columns.name', text: 'Cửa hàng Hải Âu' },
+  { fill: 'lists.columns.phone', text: '0903 555 123' },
+  { press: 'lists.customers.create' },
+];
 const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
 const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
 /** A new price typed and saved: on the product with no note for the saved notice, and on the one
@@ -1415,6 +1429,50 @@ export const WALKS: Walk[] = [
           vi: 'Người khác đã lưu sản phẩm trước, nội dung đã nhập vẫn còn',
         },
         question: 'Would the office know someone else saved first, and how to see what they saved?',
+      },
+      {
+        id: 'lists-18-customer-new',
+        number: 18,
+        path: 'main',
+        scene: { path: '/customers/new' },
+        sentence: {
+          en: 'Adding a customer: the same cards, and a code box to type in',
+          vi: 'Thêm khách hàng: các thẻ như trang khách hàng, và một ô mã để gõ vào',
+        },
+        question: 'Would the office know to type the code and the name of a new customer here?',
+      },
+      {
+        id: 'lists-19-code-taken',
+        number: 19,
+        path: 'wrong',
+        scene: { path: '/customers/new', cue: 'addCustomer:409', steps: TAKEN_CUSTOMER_STEPS },
+        sentence: {
+          en: 'A code the list already holds: refused, everything typed kept',
+          vi: 'Mã đã có trong danh sách: bị từ chối, mọi thứ đã gõ vẫn còn',
+        },
+        question: 'Would the office know the code is in use, and that nothing typed was lost?',
+      },
+      {
+        id: 'lists-20-product-new',
+        number: 20,
+        path: 'main',
+        scene: { path: '/products/new' },
+        sentence: {
+          en: 'Adding a product: the code, name, unit and price to type in, the stock switch on',
+          vi: 'Thêm sản phẩm: mã, tên, đơn vị tính và giá để gõ vào, công tắc tồn kho đang bật',
+        },
+        question: 'Would the office know what a new product needs before it can be added?',
+      },
+      {
+        id: 'lists-21-customer-added',
+        number: 21,
+        path: 'main',
+        scene: { path: '/customers/new', steps: ADDED_CUSTOMER_STEPS },
+        sentence: {
+          en: 'A customer added: on its own page, ready to be changed',
+          vi: 'Đã thêm khách hàng: mở trang riêng của khách, sẵn sàng để sửa',
+        },
+        question: 'Would the office know the customer is now in the list?',
       },
     ],
   },

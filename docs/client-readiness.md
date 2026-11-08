@@ -285,7 +285,7 @@ its steps.
 **The answer is no as well, and for a different reason than the other half's.** The product's spine
 is real: one whole job runs from a telephone call to a photographed delivery and a driver's cash
 settled, and it runs in two languages on a phone. What is missing is the ordinary day around that
-spine. A clerk cannot add a customer at all, a confirmed order cannot be corrected, no price can be
+spine. A clerk could not add a customer until 11-08 (now fixed), a confirmed order cannot be corrected, no price can be
 set on a line, nothing older than a week can be found, and there is no report of any kind. Two to
 three pieces of work stand between this and a first real client.
 
@@ -340,7 +340,7 @@ once a week rather than every morning.
 
 In the order they would meet it, not in order of how hard each is.
 
-1. **A clerk cannot add a customer or a product. At all.** The only way a record enters either list
+1. **Fixed 2026-11-08 (open item 135, [recap](recaps/2026-11-08-add-records.md)): a clerk with `orders.canEdit` now adds either from the list's Add button; the import is still the root's alone. As the page found it:** a clerk could not add a customer or a product. The only way a record enters either list
    is the Excel import, and the import is the root's alone:
    [`bff/src/lists.ts#L141`](../bff/src/lists.ts#L141) calls `mustBeRoot`, and
    [`ui/src/ClientApp.tsx#L393`](../ui/src/ClientApp.tsx#L393) says so in its own comment — "Only
@@ -348,7 +348,7 @@ In the order they would meet it, not in order of how hard each is.
    page, and the Import button is drawn for the root only
    ([`ui/src/ListPage.tsx#L26`](../ui/src/ListPage.tsx#L26)), so a clerk sees no path whatsoever.
    **Day one:** a new customer telephones, and the order cannot be taken until the owner signs in
-   and builds a spreadsheet. This is the one gap that blocks the first order.
+   and builds a spreadsheet. This was the one gap that blocked the first order.
 2. **A confirmed order cannot be corrected** — the correction above, and the second thing a real
    office asks for, because a customer changes the quantity after the order is confirmed.
 3. **No price can be set on an order.** A line is a product id and a quantity, and the price always
@@ -474,9 +474,9 @@ deploy, and a failed delete leaves it listed behind a `WARN` nothing reads.
 In the order a client would meet the lack, with rough sizes. Nothing here is a plan — each is the
 shape of the piece, not its steps.
 
-1. **Add a customer and a product from the page, under the orders right.** One form each over the
-   add path the import already uses. About a day, and it is the only thing on this list that blocks
-   the very first order. Open item 135.
+1. **Done 2026-11-08: add a customer and a product from the page, under the orders right.** One form each over the
+   add path the import already uses; it was the only thing on this list that blocked
+   the very first order. Open item 135, closed.
 2. **The money defects: the repricing gap, the cash close's missing precondition, and the closer
    recorded as the root** ([item 36 finding 5, item 41 findings 2 and 7](open-items.md)). About a
    day for the three together — they are small changes, and they are the ones that are wrong about

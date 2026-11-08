@@ -194,6 +194,9 @@ describe('reading a file', () => {
       read.kind === 'read' &&
         read.rows.slice(0, 11).map((row) => (row.request as { stocked: boolean }).stocked),
     ).toEqual([true, true, true, true, true, true, false, false, false, false, false]);
+    // The blank reading yes is on purpose and the add form agrees with it: its stock switch starts on
+    // (`AddProductPage`'s BLANK, pinned in `ListPage.test.tsx`), so a product nobody said anything
+    // about is the same record by either way in (the piece's invariant).
     // a file with no such column reads every product as stocked
     const without = readList('products', products(['SP-1', 'Một', 'bao', '5000']), none);
     expect(
