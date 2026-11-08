@@ -50,14 +50,15 @@ day for the three together".
   `closedBy` has the root's shape and the screen says so, with the person's own name
   (`ui/src/DriverDayPage.tsx#L183-L185`).
 
-**The invariant, and the one thing it rests on.** The day's sum to collect is built twice — live on
-the page (`driverDay` over the deliveries list, `ui/src/DriverDayPage.tsx#L57`, and again per
-driver at `ui/src/DeliveriesPage.tsx#L54`) and from the records in the route
-(`bff/src/reconciliations.ts#L79-L82`). Both sum the same immutable field: a request's `total` is
-written once at issue (`bff/src/orders.ts#L349`, `#L360`) and every later write to a request
-spreads the record (`#L389`, `#L493`, `#L522`), so no write moves it. The set is pinned by
-`sameIds` (`bff/src/reconciliations.ts#L92-L103`). The sums therefore agree — and **nothing asserts
-that they do**, which is case 5 below.
+**The invariant, and the one thing it rests on.** The day's sum to collect is made in **one**
+function, `driverDay` (`shared/src/reconciliations.ts#L62`), which the page
+(`ui/src/DriverDayPage.tsx#L57`), the per-driver list (`ui/src/DeliveriesPage.tsx#L54`) and the
+close route (`bff/src/reconciliations.ts#L79-L82`) all call, so the sums agree by construction.
+What can drift is its **input**: the list of requests each caller reads. That input sums one
+immutable field: a request's `total` is written once at issue (`bff/src/orders.ts#L349`, `#L360`)
+and every later write to a request spreads the record (`#L389`, `#L493`, `#L522`), so no write
+moves it. The set is pinned by `sameIds` (`bff/src/reconciliations.ts#L92-L103`). **Nothing
+asserted that the input agrees**, which is case 5 below.
 
 ## The cases
 
@@ -131,15 +132,22 @@ that they do**, which is case 5 below.
   case), and nothing was retried. The "empty file skipped" lines are coverage's note on a source file
   with no code, not a skipped test. Load at the visual test's start was 10.53, from the run's own
   workers.
-- [ ] **5. Another model reads the close path.** QA rule 5, on the diff alone; each finding fixed,
+- [x] **5. Another model reads the close path.** QA rule 5, on the diff alone; each finding fixed,
   rejected or deferred with its reason. *Done when:* every finding has one of the three, each with
   its line. **Size 8.**
-- [ ] **6. The prose the slice makes false.** Delete item 36's finding 5 and its trigger clause,
+  *Done 2026-11-08:* read-only review on the diff: may merge as it stands, no High, no Medium, three
+  Lows. Two filed as items 149 and 150; the third is this paragraph, which said "built twice" and is
+  corrected above.
+- [x] **6. The prose the slice makes false.** Delete item 36's finding 5 and its trigger clause,
   and item 41's findings 2 and 7, from `docs/open-items.md`; correct
   `docs/client-readiness.md#L393-L408` and `#L480-L483` — finding 5 done, the precondition present
   but now also held, the closer fixed — and write the recap and its `docs/products.md` row.
   *Done when:* `git grep -c 'finding 5' docs/client-readiness.md` reads 0 and case 6's grep is
   clean. **Size 12.**
+  *Done 2026-11-08:* items 36.5, 41.2 and 41.7 closed in `docs/open-items.md`; `docs/client-readiness.md`
+  corrected; item 56 rewritten around headroom; items 149 and 150 filed; the recap and the
+  Đối soát row written. Finding 5 of item 41 is left open on purpose, so the readiness page still
+  names it, and case 6's grep is read as "none called open that is closed".
 
 Total **71 machine minutes**.
 

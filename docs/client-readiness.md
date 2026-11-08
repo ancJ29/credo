@@ -390,22 +390,20 @@ In the order they would meet it, not in order of how hard each is.
 that no client would ever meet. These are the ones that would reach a real business, and why. **None
 of them is new; what is new is saying which ones cost a client money or a record.**
 
-- **[Item 36](open-items.md), finding 5 — the money on the screen disagrees with the money to
-  collect.** A saved draft is priced from today's list, but Confirm copies the lines as they were
-  saved ([`ui/src/OrderPage.tsx#L85-L89`](../ui/src/OrderPage.tsx#L85),
-  [`bff/src/orders.ts#L303-L317`](../bff/src/orders.ts#L303)). Change a price between the draft and
-  the confirm and the driver collects a different sum from the one the office is looking at. This is
-  the one to fix first, because it is wrong in cash and nobody would notice until a customer
-  argued.
-- **[Item 41](open-items.md), finding 2 — two closes of one driver's day can overwrite each
-  other's cash.** The close writes with no precondition
-  ([`bff/src/reconciliations.ts#L41`](../bff/src/reconciliations.ts#L41)), and the reviewer proved
-  it is held by nothing: removing the precondition left all fourteen tests green. The day closes
-  *for good*, so the losing figure is not recoverable from the app.
-- **[Item 41](open-items.md), finding 7 — a cash close can be recorded against the root** instead
-  of the person who closed it
-  ([`bff/src/reconciliations.ts#L128-L140`](../bff/src/reconciliations.ts#L128)). That is the audit
-  trail on money, and a client with more than one cashier will ask who closed it.
+- **[Item 36](open-items.md), finding 5 — the money on the screen disagreed with the money to
+  collect. Fixed on 2026-11-07** by the edit-an-order piece, and re-read in the code on 2026-11-08:
+  a saved draft is drawn at its saved prices and a moved line is marked
+  ([`ui/src/OrderPage.tsx#L89-L92`](../ui/src/OrderPage.tsx#L89)), so the page's total and the
+  request's agree. Kept here only so nobody fixes it twice.
+- **[Item 41](open-items.md), finding 2 — two closes of one driver's day cannot overwrite each
+  other's cash, and a test now holds it.** The close writes with a precondition
+  ([`bff/src/reconciliations.ts#L41`](../bff/src/reconciliations.ts#L41) passes `null`, which
+  c-storage sends as `if-none-match: *`); it was always there, but nothing held it: removing it left
+  all fourteen tests green. A rival-close case (2026-11-08) now goes red without it.
+- **[Item 41](open-items.md), finding 7 — a cash close recorded against the root instead of the
+  person who closed it. Fixed on 2026-11-08.** It was a race only: the closer's staff record had to
+  go between the sign-in and the close. The closer is now read before anything is written, and a
+  person who is gone is refused with nothing cancelled and nothing stored.
 - **[Item 41](open-items.md), finding 5 — a close that stops part way** leaves the page showing
   requests it has already cancelled, and the retry's words blame a delivery that never happened.
   The person is standing at the cash desk when they read it.
@@ -477,10 +475,9 @@ shape of the piece, not its steps.
 1. **Done 2026-11-08: add a customer and a product from the page, under the orders right.** One form each over the
    add path the import already uses; it was the only thing on this list that blocked
    the very first order. Open item 135, closed.
-2. **The money defects: the repricing gap, the cash close's missing precondition, and the closer
-   recorded as the root** ([item 36 finding 5, item 41 findings 2 and 7](open-items.md)). About a
-   day for the three together — they are small changes, and they are the ones that are wrong about
-   money.
+2. **Done 2026-11-08: the money defects.** Item 36 finding 5 had been fixed the day before; item 41
+   finding 2's precondition was already in the code and is now held by a test; item 41 finding 7
+   is fixed. Only item 41 finding 5's page-side reload remains, deliberately.
 3. **Correcting a confirmed order** — a decision about what "correct" means when a driver already
    holds the request, then about a day. Today it is Cancel and re-make under a new number
    ([`bff/src/orders.ts#L290`](../bff/src/orders.ts#L290), [`#L356`](../bff/src/orders.ts#L356)).
