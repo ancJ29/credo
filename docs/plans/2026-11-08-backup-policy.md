@@ -104,7 +104,7 @@ the change.
 | 1 | The cheap end-to-end build: the two attributes on `Box` and `DeleteOnTermination: false` (`ops/env.yml#L94-L117`), and a `volume_guard` beside the other template guards, through `tojson`/`must` (`ops/test.sh#L186-L223`) | `bash ops/test.sh` at exit 0 with the guard's `passes` row printing ok | 8 min |
 | 2 | Rows 1 to 7 as mutants through `mut`, on the pattern of the throttle rows (`ops/test.sh#L389-L395`) | `bash ops/test.sh` at exit 0, each row seen red once, the mutation count printed | 10 min |
 | 3 | The `ROLLBACK_COMPLETE` line (`ops/lib.sh#L294`) reads the stack's `Env` through `stack_param` and branches; rows 8 to 10 beside the row already pinning its text (`ops/test.sh#L84`), `described` extended to carry a parameter | `bash ops/test.sh` at exit 0, the three rows each red once | 6 min |
-| 4 | `ops/README.md` gains the two recovery paths; item 6 corrected to what is legal and split, its backup half left open | `git grep -nE '/Users/\|~/'` prints nothing and `bash ops/test.sh` still exits 0. **A doc step: that grep is its only machine check, and the words are the reviewer's at step 6** | 5 min |
+| 4 | `ops/README.md` gains the two recovery paths; item 6 corrected to what is legal and split, its backup half left open | the piece's own diff adds no local path (`git diff main...HEAD -U0 -- . ':!docs/plans' | grep -E '^\+' | grep -E '/Users/\|~/'` prints nothing; a whole-tree `git grep` never has, with 468 binary walk snapshots and four documents quoting the command matching before this piece) and `bash ops/test.sh` still exits 0. **A doc step: that grep is its only machine check, and the words are the reviewer's at step 6** | 5 min |
 | 5 | The `ops` job's gate as CI runs it, less cfn-lint | ShellCheck 0.11.0 `-x ops/*.sh walk/*.sh` at exit 0 and `bash ops/test.sh` at exit 0, read back from the log's own exit line. **cfn-lint is named, not run: it is CI's or the human's terminal** | 4 min |
 | 6 | One cross-model review, on a model other than the author's | A verdict line: may merge, or findings each carrying a line | 10 min |
 | 7 | The fix pass on the findings | `bash ops/test.sh` at exit 0 again, each finding answered with its line | 5 min |
@@ -138,8 +138,18 @@ awaiting the merge and step 8, backup half open, "no copy of any client's record
 volume" ask corrected; item 4's list no longer claims an S3 endpoint; the rollback citation moved `#L276` to `#L294`
 in item 6 and `docs/client-readiness.md` (the line `ROLLBACK_COMPLETE) die "... delete the stack ..."` is line 294 in
 `git show 88596afd:ops/lib.sh`), and the `ops/env.yml` device citation to `#L118-L124`. Check: the diff of this commit
-adds no match of `git grep -nE '/Users/|~/'`; the tree's matches are the convention's and plans' own quotations of
-that command and four binary snapshots, all there before. `bash ops/test.sh` not run (another agent's suite).
+adds no match of `git grep -nE '/Users/|~/'`; the tree's own matches are the convention's and two plans' quotations of
+that command and 468 binary walk snapshots, all there before (step 5 corrected the done-check above, which
+had claimed the whole-tree grep prints nothing). `bash ops/test.sh` not run (another agent's suite).
+
+Step 5 done 2026-11-08: the `ops` job's gate as CI runs it, less cfn-lint (named, not run: CI's `ops` job is its
+verdict), on the tree as it stood with steps 1, 3 and 4 together and `main` merged in (HEAD `3d4ac5f3`), load 7.89 at
+the start, the gate lock taken and released from a trap and read free after. ShellCheck 0.11.0 `-x ops/*.sh
+walk/*.sh` exit 0, `bash ops/test.sh` exit 0 ("all checks passed"), and, since step 4 changed documents and prettier
+covers the whole repository, `pnpm exec prettier --check .` exit 0 run on its own; from
+`logs/20261108-145303-ops-gate-backup-policy-step5.log` (`== exit 0 (shellcheck 0 ops/test.sh 0 prettier 0)`).
+Nothing retried. Step 4's done-check corrected: the whole-tree `git grep` never printed nothing (468 binary walk
+snapshots and four documents quoting it); it now asks that this piece's diff add no local path, which holds.
 
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell
