@@ -121,12 +121,14 @@ request. A silent gap in one is visible against the other.
   adds and a Modify of DeployRole in place, and the guard passes` with its two refusals, so the fixture update of step 1
   was right. No retry, no red, neither known flake met; the lock was free before and after. Not run: cfn-lint (pip and
   the network), as above.
-- [ ] **5. The review, another model.** Read-only, against this plan's cases: that the format names
+- [x] **5. The review, another model.** Read-only, against this plan's cases: that the format names
   nothing secret, that the guard fails for the right reason, and that no claim in the rewritten
   prose is stronger than the code. *Done when:* every finding is fixed, rejected or deferred with
   its reason, and `bash ops/test.sh` ends `0 not ok` after the last fix. *Size:* 7 minutes.
-- [ ] **6. The recap and the products row.** `docs/recaps/2026-11-08-access-log.md` and its row in
+  *Done 2026-11-08:* read-only at `8dd2a330`; it may merge with one change, the address claim (the connection's, a CDN node for calls through the distribution), plus the throttle's 429s and the `:*` caveat; fixed in prose and items only at `82a9234b`, items 153 to 155 filed; the gate after it is green (step 4's receipt).
+- [x] **6. The recap and the products row.** `docs/recaps/2026-11-08-access-log.md` and its row in
   `docs/products.md`. *Done when:* both committed. *Size:* 2 minutes.
+  *Done 2026-11-08:* both in the commit that ticks this step.
 
 Machine total: about 33 minutes.
 
