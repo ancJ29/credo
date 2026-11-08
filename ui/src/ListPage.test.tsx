@@ -155,7 +155,8 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('table')).toBeNull();
     await userEvent.click(screen.getByRole('link', { name: 'Back to the customers' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
-    expect(screen.getByRole('table')).toBeTruthy();
+    // the heading is outside the list's load; the table waits for it
+    expect(await screen.findByRole('table')).toBeTruthy();
   });
 
   it('The customer’s page shows the code and name, the phone, the address and the note, each in its own card, in English and in Vietnamese', async () => {
@@ -381,7 +382,8 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('table')).toBeNull();
     await userEvent.click(screen.getByRole('link', { name: 'Back to the products' }));
     expect(await screen.findByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
-    expect(screen.getByRole('table')).toBeTruthy();
+    // the heading is outside the list's load; the table waits for it
+    expect(await screen.findByRole('table')).toBeTruthy();
   });
 
   it('The product’s page shows the code, name, unit, price, stock and note, each in its own card, the price as the language writes a number and the stock as a switch, in English and in Vietnamese', async () => {

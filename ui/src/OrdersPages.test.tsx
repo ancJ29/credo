@@ -391,7 +391,11 @@ describe('the order’s page on the cards', () => {
       expect(columnOf(block('Details'))).toBe(0);
       expect(columnOf(block('Lines'))).toBe(0);
       expect(columnOf(block('Delivery request'))).toBe(1);
-      for (const step of steps) expect(columnOf(block(step))).toBe(1);
+      // a step's panel draws after the drivers load, a call of its own the order's heading does not wait for
+      for (const step of steps) {
+        await screen.findByRole('heading', { level: 3, name: step });
+        expect(columnOf(block(step))).toBe(1);
+      }
     },
   );
 
@@ -608,7 +612,8 @@ describe('confirming an order', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Show theirs' }));
 
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-    expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name);
+    // the form is drawn again once the customers and the products are read again
+    await waitFor(() => expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name));
   });
 
   it('A confirm over someone else’s newer one is refused too, and theirs is offered', async () => {
@@ -644,7 +649,8 @@ describe('confirming an order', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Show theirs' }));
 
     await waitFor(() => expect(drawn.api.getOrder).toHaveBeenCalledTimes(2));
-    expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name);
+    // the form is drawn again once the customers and the products are read again
+    await waitFor(() => expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name));
   });
 
   it('A save that fails keeps what was typed', async () => {
