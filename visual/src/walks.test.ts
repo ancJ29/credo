@@ -544,7 +544,12 @@ describe('the walks', () => {
     const keys = (step: Step) =>
       'press' in step
         ? [step.press, ...(step.within ? [step.within] : [])]
-        : ['fill' in step ? step.fill : 'attach' in step ? step.attach : step.choose];
+        : 'see' in step
+          ? // a cell's own words (a name from the data) are in no dictionary
+            step.text
+            ? []
+            : [step.see]
+          : ['fill' in step ? step.fill : 'attach' in step ? step.attach : step.choose];
     const used = WALKS.flatMap((walk) => walk.screens)
       .flatMap((screen) => screen.scene?.steps ?? [])
       .flatMap(keys);

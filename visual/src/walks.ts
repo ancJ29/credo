@@ -43,7 +43,12 @@ export type Step =
   | { choose: string; option: string }
   /** Puts one of the data set's files (the staff's, the customers' or the products') in the file
    * field with these words, as a person's choosing it does. */
-  | { attach: string; file: DemoFile };
+  | { attach: string; file: DemoFile }
+  /** Waits until the page shows a heading or a table cell that reads so, and does nothing to it:
+   * the screen's last step when it is about what the page draws after a press, which the page is
+   * not yet still enough to have drawn on a loaded machine. `text` says the words are the cell's
+   * own (a name from the data), not a key of the dictionary. */
+  | { see: string; text?: true };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
@@ -2121,7 +2126,12 @@ export const WALKS: Walk[] = [
         scene: {
           path: DELETE_CLIENT_PATH,
           operator: true,
-          steps: [DELETE_CODE, { press: 'operator.deleteClientMake' }],
+          steps: [
+            DELETE_CODE,
+            { press: 'operator.deleteClientMake' },
+            { see: 'nav.clients' },
+            { see: 'Bình An', text: true },
+          ],
         },
         sentence: {
           en: 'Deleted: the clients list comes back without the client',

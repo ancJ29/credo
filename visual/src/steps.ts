@@ -33,6 +33,7 @@ function wordsFor(
 }
 
 const PRESSED = 'button, a[href], input[type=radio], input[type=checkbox]';
+const SEEN = 'h1, h2, h3, h4, h5, h6, [role=heading], td, [role=cell]';
 const TYPED = 'input:not([type=radio]):not([type=checkbox]):not([type=hidden]), textarea';
 
 /** What a step acts on, and what it is called when none is found. */
@@ -46,6 +47,14 @@ function target(
       name: wordsFor(dictionary, step.press, step.with),
       within: step.within === undefined ? undefined : wordsFor(dictionary, step.within),
       kind: 'button, link or choice',
+    };
+  }
+  if ('see' in step) {
+    return {
+      selector: SEEN,
+      name: step.text ? step.see : wordsFor(dictionary, step.see),
+      within: undefined,
+      kind: 'heading or cell',
     };
   }
   if ('fill' in step) {
@@ -83,7 +92,9 @@ function find(body: HTMLElement, { selector, name, within }: ReturnType<typeof t
   return (
     scopes
       .flatMap((scope) => [...scope.querySelectorAll<HTMLElement>(selector)])
-      .find((element) => nameOf(element) === name) ?? null
+      .find(
+        (element) => (selector === SEEN ? squash(element.textContent) : nameOf(element)) === name,
+      ) ?? null
   );
 }
 
@@ -155,7 +166,9 @@ export async function runSteps(
       element = find(body, aim);
     }
     if (!element) throw fail(`found no ${aim.kind} named “${aim.name}”`);
-    if ('press' in step) element.click();
+    if ('see' in step) {
+      // Found is all it asks: the wait above is the step.
+    } else if ('press' in step) element.click();
     else if ('fill' in step) setValue(element as HTMLInputElement, step.text);
     else if ('attach' in step) attach(element as HTMLInputElement, await files(step.file));
     else {
