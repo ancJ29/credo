@@ -3,6 +3,7 @@ import {
   deliveryListReplySchema,
   deliveryRoutes,
   driverDay,
+  gapOf,
   orderRoutes,
   reconciliationListReplySchema,
   reconciliationRoutes,
@@ -179,6 +180,32 @@ describe('Rows 4, 11 and 12: the close', () => {
       code: null,
       name: d.w.t.ROOT.name,
     });
+  });
+
+  it('The sum the page builds for a driver’s day from the list the office reads is the sum the stored close holds, and the gap the page shows for the cash typed is the stored difference', async () => {
+    const d = await dayEnd();
+    const small = { lines: [{ productId: d.w.ids.sand, quantity: 1 }] };
+    await d.deliver(d.tung);
+    await d.deliver(d.tung, small);
+    await d.sentTo();
+    await d.deliver(d.nam);
+    // what the page shows before the close: its own sum over the day's list, and the gap for the typed cash
+    const page = driverDay(await d.requests(), d.tung.employee.id);
+    const typed = page.toCollect + 700;
+    const shown = { toCollect: page.toCollect, difference: gapOf(page.toCollect, typed) };
+    expect(page.delivered).toHaveLength(2);
+    expect(new Set(page.delivered.map((one) => one.total)).size).toBe(2);
+
+    const reply = await d.close(d.tung, closeRequestFor(page, typed));
+
+    expect(reply.statusCode).toBe(200);
+    const record = reconciliationSchema.parse(reply.json());
+    expect({ toCollect: record.toCollect, difference: record.difference }).toEqual(shown);
+    // and the stored record, read again, still equals what the page now builds
+    const [again] = await d.listed();
+    const after = driverDay(await d.requests(), d.tung.employee.id);
+    expect(again?.toCollect).toBe(after.toCollect);
+    expect(again?.requests.reduce((sum, one) => sum + one.total, 0)).toBe(after.toCollect);
   });
 
   it('A person whose staff record goes between their sign-in and the close closes nothing: a 401, the day’s waiting request is left as it was and no closed day is written', async () => {

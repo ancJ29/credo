@@ -102,10 +102,21 @@ that they do**, which is case 5 below.
   `null` already, so it cannot be red: the precondition was never missing, only unheld). Gate of `bff`,
   last line of `logs/20261108-120819-money-defects-step2-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0
   prettier 0 test 0 knip 0)`. `main` was taken in first, clean.
-- [ ] **3. The two sums are proved one number.** Case 5: over a day with two delivered requests
+- [x] **3. The two sums are proved one number.** Case 5: over a day with two delivered requests
   and one waiting, assert `driverDay(await requests(), driver).toCollect` equals the stored
   close's `toCollect`, and the typed gap equals the stored `difference`. *Done when:*
   `pnpm --filter @credo/bff test reconciliations` exits 0 with 17 cases. **Size 8.**
+  *Done 2026-11-08:* the new case (Row 4's group) sums a day of two delivered requests of different
+  totals, one waiting and another driver's, with `driverDay` over the list the office reads, and
+  expects the stored close's `toCollect` and `difference` to equal it and the stored requests to sum
+  to it; the file holds 17 cases. A guard, not a fix: the planner's "built twice" is one function,
+  `driverDay` (`shared/src/reconciliations.ts#L62`), called by the page, the per-driver list and the
+  route, so the sums agree by construction and what can diverge is its input. Seen red by the
+  mutation of the list route (`bff/src/orders.ts#L407-L409`) reporting a delivered request's total
+  one unit high: the page's sum then differs from the stored one (1910002 against 1910000, gap 700
+  against 702), the Row 4 close case stays green, restore verified with `cmp`. Gate of `bff`, last
+  line of `logs/20261108-121530-money-defects-step3-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0
+  prettier 0 test 0 knip 0)`, 605 tests; lock free at the end.
 - [ ] **4. The whole check, and 100 % on the file.** `pnpm check`'s five steps, each exit 0, under
   the shared `mkdir` lock; `bff/vitest.config.ts#L21`'s four thresholds already demand 100 %.
   *Done when:* the five exit codes and the lock's times are in the recap. **Size 15.**
