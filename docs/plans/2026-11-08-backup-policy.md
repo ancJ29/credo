@@ -111,6 +111,16 @@ the change.
 | 8 | 👤 The human's change set on ridge: `ops/stack.sh env ridge --plan`, then again without it | The plan's output names no change to `Box`. **If it names `Box` as a replacement the step stops**: that is the loss itself on a client's stack, and the piece reconsiders the device property | the human's |
 | 9 | The recap, before the squash into `main` | The recap committed in `docs/recaps/`, item 6's fence half closed with its commit and its backup half left open | 3 min |
 
+**Ticks.** Step 1 done 2026-11-08: `Box` carries both policies and `DeleteOnTermination: false`; `volume_guard` and
+eight rows beside it (the pass, each attribute missing, `Snapshot` on each, the device deleted on termination
+and with the setting absent, a second instance) in `ops/test.sh`, so rows 1 to 7 of the case table are held
+already and step 2 adds only what is left of them. `bash ops/test.sh` exit 0 with the guard's row ok and
+`shellcheck -x ops/*.sh` exit 0, from `logs/20261108-144249-ops-test-backup-policy-step1.log`
+(`== exit 0 (ops/test.sh 0 shellcheck 0)`). The guard reddens on the attributes removed, on `Snapshot`, on
+`DeleteOnTermination: true` and on the attributes turned into comments naming them. No fixture moved (no resource
+was added). Not shown: that applying this does not replace `Box` (row 13, step 8) and that cfn-lint accepts it
+(row 12).
+
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell
 script 8, its cases 8 to 14, a small cases step on `ops/test.sh` 3 to 6, a doc step 5, the ops gate 4,

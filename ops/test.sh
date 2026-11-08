@@ -428,6 +428,40 @@ refuses "  an access log sent to the function's group is refused" "does not go t
 refuses "  a format with the caller cut is refused" "drops the caller" \
   api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.Format |= (fromjson | del(.ip) | tojson)')"
 
+# the box's disk is the only copy of a deployment's records (plan 2026-11-08-backup-policy, step 1). Read from the
+# parsed template, never grepped: a comment naming the setting is not the setting. Retain alone is legal on an
+# instance - Snapshot is not, and CloudFormation turns it back into Delete, so it would read as protection and not be.
+volume_guard() {
+  local what
+  for what in DeletionPolicy UpdateReplacePolicy; do
+    must "$1" "Box has a $what of Snapshot, which an instance cannot take: CloudFormation turns it back into Delete" \
+      ".Resources.Box.$what != \"Snapshot\""
+    must "$1" "Box has no $what of Retain" ".Resources.Box.$what == \"Retain\""
+    must "$1" "an instance resource has no $what of Retain" \
+      "[.Resources | to_entries[] | select(.value.Type == \"AWS::EC2::Instance\") | .value.$what] | all(. == \"Retain\")"
+  done
+  must "$1" "Box's root device does not keep its disk on termination (DeleteOnTermination is not false)" \
+    '.Resources.Box.Properties.BlockDeviceMappings | length == 1 and .[0].DeviceName == "/dev/xvda" and .[0].Ebs.DeleteOnTermination == false'
+  must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
+    '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
+}
+
+passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
+refuses "  a box with no DeletionPolicy is refused" "Box has no DeletionPolicy of Retain" \
+  volume_guard "$(mut 'del(.Resources.Box.DeletionPolicy)')"
+refuses "  a box with no UpdateReplacePolicy is refused" "Box has no UpdateReplacePolicy of Retain" \
+  volume_guard "$(mut 'del(.Resources.Box.UpdateReplacePolicy)')"
+refuses "  a DeletionPolicy of Snapshot, which an instance reverts to Delete, is refused" "turns it back into Delete" \
+  volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Snapshot"')"
+refuses "  an UpdateReplacePolicy of Snapshot is refused" "turns it back into Delete" \
+  volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "Snapshot"')"
+refuses "  a root device deleted on termination is refused" "DeleteOnTermination is not false" \
+  volume_guard "$(mut '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination = true')"
+refuses "  a root device with no DeleteOnTermination (the default is true) is refused" "DeleteOnTermination is not false" \
+  volume_guard "$(mut 'del(.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination)')"
+refuses "  a second instance without both attributes is refused" "an instance resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","Properties":{}}')"
+
 # box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
 # shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
 box_port_guard() {
