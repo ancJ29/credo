@@ -845,10 +845,11 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
-  # A normal day is 8 to 10 minutes: the Seed step has 15 and the job 25, and the role's session
-  # (role-duration-seconds) outlasts the step it is taken for.
-  need "    timeout-minutes: 25"
-  grep -qxF -- '        timeout-minutes: 15' <<<"$block" || missing="${missing}[the Seed step's 15 minutes] "
+  # A normal day is 8 to 10 minutes; a run applies at most 3 days a copy, about 22 minutes: the Seed
+  # step has 30 and the job 40 (so a run started 3 hours late, at 06:17, ends before 07:00), and the
+  # role's session (role-duration-seconds) outlasts the step it is taken for.
+  need "    timeout-minutes: 40"
+  grep -qxF -- '        timeout-minutes: 30' <<<"$block" || missing="${missing}[the Seed step's 30 minutes] "
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
   steps=$(grep -c '^      - ' <<<"$block" || true)
@@ -872,15 +873,27 @@ seed_guards() {
   want_region=$(sed -n 's/^CREDO_REGION=\${CREDO_REGION:-\(.*\)}$/\1/p' "$OPS_DIR/lib.sh")
   have_region=$(sed -n 's/^ *aws-region: //p' <<<"$block")
   [ -n "$want_region" ] && [ "$want_region" = "$have_region" ] || missing="${missing}[aws-region is lib.sh's $want_region, found '$have_region'] "
+  # The notice: a last job, only on a failure, with the one write permission in it alone.
+  tell=$(awk '/^  tell:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
+  [ -n "$tell" ] || missing="${missing}[the tell job] "
+  grep -qxF -- '    needs: seed' <<<"$tell" || missing="${missing}[tell needs the seed job] "
+  grep -qxF -- '    if: failure()' <<<"$tell" || missing="${missing}[tell runs only on failure()] "
+  grep -qxF -- '      issues: write' <<<"$tell" || missing="${missing}[tell holds issues: write] "
+  [ "$(grep -c 'issues:' "$1" || true)" = 1 ] || missing="${missing}[issues: write in the tell job alone] "
+  grep -qF -- 'run: bash ops/seed-failed.sh' <<<"$tell" || missing="${missing}[tell runs ops/seed-failed.sh] "
   [ -z "$missing" ] || die "the seed workflow lacks: $missing"
 }
 passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
 sed 's/- cron: "17 20 \* \* \*"/- cron: "0 23 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
 refuses "a seed that no longer starts at 03:17 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
-sed 's/^    timeout-minutes: 25$/    timeout-minutes: 20/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
-refuses "a seed job with less than 25 minutes is refused" "timeout-minutes: 25" seed_guards "$WORK/seed-jobtime.yml"
-sed 's/^        timeout-minutes: 15$/        timeout-minutes: 10/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
-refuses "a Seed step with less than 15 minutes is refused" "the Seed step's 15 minutes" seed_guards "$WORK/seed-steptime.yml"
+sed 's/^    timeout-minutes: 40$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
+refuses "a seed job with less than 40 minutes is refused" "timeout-minutes: 40" seed_guards "$WORK/seed-jobtime.yml"
+sed 's/^        timeout-minutes: 30$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
+refuses "a Seed step with less than 30 minutes is refused" "the Seed step's 30 minutes" seed_guards "$WORK/seed-steptime.yml"
+sed '/^    if: failure()$/d' "$SEED_WORKFLOW" >"$WORK/seed-tellalways.yml"
+refuses "a notice that runs on every night, not only a failure, is refused" "tell runs only on failure()" seed_guards "$WORK/seed-tellalways.yml"
+awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
+refuses "issues: write on the seed job as well is refused" "issues: write in the tell job alone" seed_guards "$WORK/seed-issuesseed.yml"
 sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
 refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
 awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"
@@ -897,6 +910,23 @@ awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$SEED_WORKFLOW"
 refuses "a seed step that would run under act is refused" "!env.ACT" seed_guards "$WORK/seed-act.yml"
 awk '/^        run: bash ops\/seed.sh ridge$/ {print "        continue-on-error: true"} 1' "$SEED_WORKFLOW" >"$WORK/seed-continue.yml"
 refuses "a seed step that may fail and go on is refused" "continue-on-error" seed_guards "$WORK/seed-continue.yml"
+# ops/seed-failed.sh on a stand-in for gh: no open issue opens one; an open one is commented on, none opened.
+mkdir -p "$WORK/ghbin"
+cat >"$WORK/ghbin/gh" <<'GH'
+#!/usr/bin/env bash
+echo "$1 $2" >>"$GH_LOG"
+if [ "$1 $2" = "issue list" ]; then printf '%s' "${GH_OPEN:-}"; fi
+GH
+chmod +x "$WORK/ghbin/gh"
+seed_failed() { # open issue number or empty; prints gh's calls
+  : >"$WORK/gh.log"
+  PATH="$WORK/ghbin:$PATH" GH_LOG="$WORK/gh.log" GH_OPEN="$1" RUN_URL=https://example.test/run/1 bash "$OPS_DIR/seed-failed.sh" >/dev/null
+  cat "$WORK/gh.log"
+}
+check "a failed seed with no open issue opens one" "issue list
+issue create" "$(seed_failed '')"
+check "a failed seed with an issue already open comments on it and opens none" "issue list
+issue comment" "$(seed_failed 7)"
 sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$SEED_WORKFLOW" >"$WORK/seed-mask.yml"
 refuses "a seed that leaves the account id unmasked is refused" "mask-aws-account-id" seed_guards "$WORK/seed-mask.yml"
 sed 's/aws-region: ap-southeast-5/aws-region: eu-west-1/' "$SEED_WORKFLOW" >"$WORK/seed-region.yml"
@@ -2255,15 +2285,15 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and brought to yesterday, exit 0 (nothing before had written it)" "0 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 7 days applied$') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 3 of its 7 days applied, the 4 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 4); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
 check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in this log')"
 export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
-check "a second run adds nothing" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied$')"
+check "a second run goes on from the ledger, 3 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied$')"
 
 # A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the morning's run goes on.
 export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead

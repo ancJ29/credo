@@ -50,6 +50,13 @@ import { ANCHOR, dayEvents, type Person, staffAsOf, type StaffEvent } from './st
 export const HISTORY_DAYS = 7;
 /** A run applies at most this many missed days; beyond it the copy is reported and left. */
 export const MAX_CATCH_UP = 30;
+/**
+ * The days one nightly run applies to a copy, the rest left for the next nights. A day costs the
+ * heavier client about 7.5 minutes (measured 2026-11-08, the copies running side by side), so three
+ * days are about 22 minutes: inside seed.yml's 30-minute Seed step. This is what keeps MAX_CATCH_UP's
+ * 30 days from being a run of hours that the step limit kills.
+ */
+export const MAX_DAYS_PER_RUN = 3;
 const DEVICE = 'device-seed-0001';
 /** The hour a session opens on a day, before its first event. */
 const OPENING_MINUTE = 6 * 60;
@@ -61,6 +68,8 @@ export type Report = {
   filled: boolean;
   /** The days this run applied, in order. */
   days: string[];
+  /** The missed days this run left for the next ones, because of its per-run limit. */
+  remaining: number;
   /** What was left as its users had it, one line each. */
   skipped: string[];
   note: string;
@@ -613,14 +622,16 @@ export async function applyCopy(
   copy: MappedCopy,
   today: string,
   log: Log = () => undefined,
+  limit: number = Infinity,
 ): Promise<Report> {
   const through = addDays(today, -1);
   const skipped: string[] = [];
   const days: string[] = [];
   let filled = false;
+  let remaining = 0;
   const done = (status: Report['status'], note: string): Report => {
     log(`${copy.code}: ${note}`);
-    return { code: copy.code, status, filled, days, skipped, note };
+    return { code: copy.code, status, filled, days, remaining, skipped, note };
   };
 
   const index = await storage.getRecord(recordKeys.client(copy.code));
@@ -660,6 +671,10 @@ export async function applyCopy(
     return done('too-far', `${missed.length} days behind, more than ${MAX_CATCH_UP}, left`);
   }
 
+  // At most `limit` days a run, oldest first; the ledger moves a day at a time, so the next run goes on.
+  const todo = missed.slice(0, limit);
+  remaining = missed.length - todo.length;
+
   const driver = driverFor(storage, tenantId, copy.code);
   if (!ledger.filled) {
     await driver.open(atMinute(ledger.firstDay, OPENING_MINUTE));
@@ -676,7 +691,7 @@ export async function applyCopy(
   }
   const blocks: readonly SeedBlock[] = ledger.blocks ?? [];
   const delivered = { delivered: 0, largest: 0 };
-  for (const day of missed) {
+  for (const day of todo) {
     await driver.open(atMinute(day, OPENING_MINUTE));
     try {
       const events = dayEvents(copy.client, copy.scenario, day);
@@ -721,17 +736,29 @@ export async function applyCopy(
       `${copy.code}: ${delivered.delivered} requests delivered with a photo, the largest ${delivered.largest} bytes`,
     );
   }
+  if (remaining > 0) {
+    return done(
+      'ok',
+      `up to ${ledger.lastDay}, ${remaining} days still behind ${through}, left for the next runs`,
+    );
+  }
   return done('ok', `up to ${through}`);
 }
 
 /** Every copy of the mapping, or one partner's, each brought up to yesterday. A code that is not
  * in the mapping is never read. An error that stops a copy names it. */
-export async function applyAll(storage: CStorageClient, today: string, log: Log, partner?: string) {
+export async function applyAll(
+  storage: CStorageClient,
+  today: string,
+  log: Log,
+  partner?: string,
+  limit?: number,
+) {
   return await Promise.all(
     allCopies()
       .filter((copy) => partner === undefined || copy.partner === partner)
       .map((copy) =>
-        applyCopy(storage, copy, today, log).catch((error: unknown) => {
+        applyCopy(storage, copy, today, log, limit).catch((error: unknown) => {
           throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
         }),
       ),

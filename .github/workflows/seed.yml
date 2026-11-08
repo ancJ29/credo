@@ -21,7 +21,9 @@ jobs:
     # A manual run from a branch is refused here, and the environment admits main alone as well.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # 30 minutes of the Seed step and the setup before it (about 10 at the steps' own limits, a few
+    # in practice): started 3 hours late at 06:17, the job still ends before 07:00.
+    timeout-minutes: 40
     environment: ridge
     # Its own group, never `ridge`: a run waiting in a group replaces the one waiting before it, so
     # a seed queued in the deploy's group would cancel a waiting deploy. A seed that overlaps a
@@ -70,5 +72,30 @@ jobs:
       # The script masks the keys itself, before anything is printed.
       - name: Seed
         if: ${{ !env.ACT }}
-        timeout-minutes: 15
+        # 3 days a copy are about 22 minutes at the measured 7.5 a day for the heavier client.
+        timeout-minutes: 30
         run: bash ops/seed.sh ridge
+
+  # Runs only when the seed job failed or timed out. Its own token and permissions: the seed job's stay as
+  # they were. It reads the repository to run ops/seed-failed.sh, which opens one issue or comments on it.
+  tell:
+    needs: seed
+    if: failure()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check out
+        if: ${{ !env.ACT }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Open or update the issue
+        if: ${{ !env.ACT }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash ops/seed-failed.sh

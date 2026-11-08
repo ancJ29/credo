@@ -11,7 +11,7 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
-import { applyAll } from './demo/apply';
+import { applyAll, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
 import { ensureService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
@@ -162,12 +162,26 @@ export async function runRidge(
     }
 
     if (command === 'seed') {
-      const reports = await applyAll(client(), vietnamToday((io.now ?? Date.now)()), io.out);
+      const reports = await applyAll(
+        client(),
+        vietnamToday((io.now ?? Date.now)()),
+        io.out,
+        undefined,
+        MAX_DAYS_PER_RUN,
+      );
       const count = (status: (typeof reports)[number]['status']) =>
         reports.filter((report) => report.status === status).length;
       const days = reports.reduce((sum, report) => sum + report.days.length, 0);
+      const behind = reports.filter((report) => report.remaining > 0);
+      // Ends green, and says so where a person reading the log looks: before the summary line.
+      if (behind.length > 0) {
+        const most = Math.max(...behind.map((report) => report.remaining));
+        io.out(
+          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${MAX_DAYS_PER_RUN} days at most a copy, the next runs go on: ${Math.ceil(most / MAX_DAYS_PER_RUN)} more nights`,
+        );
+      }
       io.out(
-        `seed: ${reports.length} copies mapped, ${count('ok')} up to date, ${count('missing')} not on this service, ${days} days applied`,
+        `seed: ${reports.length} copies mapped, ${count('ok') - behind.length} up to date, ${count('missing')} not on this service, ${days} days applied`,
       );
       const stopped = reports.filter((r) => r.status === 'refused' || r.status === 'too-far');
       if (stopped.length > 0) {

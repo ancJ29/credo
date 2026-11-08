@@ -120,6 +120,27 @@ describe('a copy brought up to yesterday', () => {
     expect(edge.days).toHaveLength(MAX_CATCH_UP);
   });
 
+  it('row 17: a run with a limit applies the oldest days up to it, says how many it left, and the next run goes on from the ledger', async () => {
+    const storage = await fresh();
+    await make(storage, B1);
+    await applyCopy(storage, B1, TODAY);
+    const id = await tenantOf(storage, B1.code);
+    const lines: string[] = [];
+
+    const first = await applyCopy(storage, B1, addDays(TODAY, 5), (l) => lines.push(l), 2);
+
+    expect(first).toMatchObject({ status: 'ok', remaining: 3, days: ['2026-10-29', '2026-10-30'] });
+    expect((await readLedger(storage, id))!.ledger.lastDay).toBe('2026-10-30');
+    expect(lines.at(-1)).toBe(
+      `${B1.code}: up to 2026-10-30, 3 days still behind 2026-11-02, left for the next runs`,
+    );
+    const second = await applyCopy(storage, B1, addDays(TODAY, 5), undefined, 2);
+    expect(second).toMatchObject({ remaining: 1, days: ['2026-10-31', '2026-11-01'] });
+    const last = await applyCopy(storage, B1, addDays(TODAY, 5), undefined, 2);
+    expect(last).toMatchObject({ status: 'ok', remaining: 0, days: ['2026-11-02'] });
+    expect(read(await staffOf(storage, B1.code))).toEqual(standing(B1, addDays(TODAY, 5)));
+  });
+
   it('row 17: a run cut on the second of three missed days leaves the ledger on the first, and the next run applies the other two', async () => {
     const storage = await fresh();
     await make(storage, B1);
