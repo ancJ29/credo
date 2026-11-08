@@ -357,6 +357,8 @@ describe('the order’s page on the cards', () => {
   it('A draft is two columns from 992: the day, customer and lines left, the confirm and the cancel right', async () => {
     openApp(at(draftToday), { as: LAN });
     await formReady();
+    // the confirm panel draws after the drivers load, a call of its own the form does not wait for
+    await screen.findByRole('heading', { level: 3, name: 'Confirm the order' });
 
     expect(columnCount()).toBe(2);
     expect(columnOf(block('Details'))).toBe(0);
