@@ -20,7 +20,7 @@ Also filed, still open, all Low: 145 (the fake's imports set no version), 146 (a
 
 ## Evidence
 
-- Looks: yes on the four screens, 2026-11-07; screen 20, with the switch now on, awaits the human's re-confirmation.
+- Looks: yes on the four screens, 2026-11-07; and yes again on screen 20 with the stock switch on, 2026-11-08.
 - Whole check: red once at load 7.97 in an untouched test (`20261107-233125-clerk-add-records-step7-whole-check.log`, now on item 56), green on rerun (`20261107-233422-clerk-add-records-step7-whole-check.log`).
 - Picture runs green: `20261107-2343-add-records-picture-run.log` wrote the bases (`cee6a814`, 36 pictures, the six screens changed); `20261108-1143-add-records-picture-rerun.log` compared fake, stack and stack again, and the bases: 126 pictures each, nothing moved, new, unmatched or unreadable.
 - `docs/products.md`: the Customers and Products row names the add.
