@@ -1,7 +1,7 @@
 # Memo, 2026-11-08: what `Conditional` means on `Box`, and how the fence reaches ridge
 
 Not a plan. A decision memo for the backup-policy piece's step 8
-(`docs/plans/2026-11-08-backup-policy.md#L112`), which stopped: `bash ops/stack.sh env ridge --plan`
+(`docs/plans/2026-11-08-backup-policy.md#L116`), which stopped: `bash ops/stack.sh env ridge --plan`
 against `origin/main` at `89ecf7e7` built the change set and the guard refused it
 (`logs/2026-11-08-164424-stack-ridge.log`, `Modify Box (AWS::EC2::Instance) replacement=Conditional`,
 `== exit 1`). Nothing was changed on AWS and nothing is changed by this memo but this file.
@@ -130,6 +130,8 @@ first real exercise of the recovery path the recap says nobody has ever run.
 
 Option 3 changes no template and no test, so this list is short — which is itself an argument for it.
 What it falsifies is the *record of step 8*, and that record is already false as of 16:44 today.
+The line numbers below are those at `f4119f2f`, before the correction pass that fixed these lines moved
+them.
 
 | File and line | The sentence | Why it is false |
 | --- | --- | --- |
@@ -168,7 +170,7 @@ about the template, and all three hold. **Under option 1 every one of them would
 The first changes nothing and takes about a minute; read its guard line before running the second.
 
 ```
-cd /Users/hau/projects/credo && bash /Users/hau/projects/credo/ops/stack.sh env ridge --plan --take Box
+cd /Users/hau/projects/credo/main && bash /Users/hau/projects/credo/main/ops/stack.sh env ridge --plan --take Box
 ```
 
 What you will see: the same four change lines, then `ok   no removal and no replacement` instead of
@@ -176,7 +178,7 @@ What you will see: the same four change lines, then `ok   no removal and no repl
 names a resource other than `Box`, and that is a new question — stop and bring it back.
 
 ```
-cd /Users/hau/projects/credo && bash /Users/hau/projects/credo/ops/stack.sh env ridge --take Box
+cd /Users/hau/projects/credo/main && bash /Users/hau/projects/credo/main/ops/stack.sh env ridge --take Box
 ```
 
 What you will see: the change set executed, then the run's later steps. **The one line that matters

@@ -34,7 +34,7 @@ CloudFormation. Row 4 is why the second slice exists, and why this plan does not
 
 ## What the open item asks for cannot be written
 
-Item 6 (`docs/open-items.md#L44-L81`) asks for "a `DeletionPolicy`/`UpdateReplacePolicy` of
+Item 6 (`docs/open-items.md#L44-L84`) asks for "a `DeletionPolicy`/`UpdateReplacePolicy` of
 `Snapshot` or `Retain` on the volume". Both halves of that are wrong, and the plan follows the code
 rather than the item:
 
@@ -68,7 +68,7 @@ holds no endpoint today (`ops/network.yml#L21-L83`) and is the one stack every e
 client's stack imports from; a put-only instance role, which the template deliberately does not have
 ("no instance role", `ops/env.yml#L93`); a timer and unit on the box; a restore script run from the
 human's terminal over the tunnel; and a drill beside `ops/drill.sh`'s rows. The readiness page already
-prices the pair as "a day's piece, not an afternoon" (`docs/client-readiness.md#L265-L268`). The order
+prices the pair as "a day's piece, not an afternoon" (`docs/client-readiness.md#L272-L276`). The order
 is this one first, on a reason that is not convenience: the backup piece's own change sets touch `Box`
 for its instance profile, and nobody should put a change set near the box that holds the only copy
 while a replacement still destroys it.
@@ -89,14 +89,18 @@ while a replacement still destroys it.
 | 10| ~~struck at the review: Env is no longer read~~ | - | 
 | 11 | The change-set guard still refuses an unnamed replacement of `Box` | `ops/test.sh` (the row already there) |
 | 12 | cfn-lint accepts the template with both attributes | the `ops` job (`.github/workflows/ci.yml#L198-L203`) — **not runnable here** |
-| 13 | Applying the change set does not itself replace `Box` | the human's `ops/stack.sh env ridge --plan` — **not runnable here** |
+| 13 | Applying the change set does not itself replace `Box` | an executed update on ridge. A `--plan` ran there on 2026-11-08 at 16:44 and was refused with `Modify Box` at `replacement=Conditional`, which is the property's class and not a verdict on this change, so row 13 stays **open**; what to do next is the human's open question in [the memo](2026-11-08-backup-policy-conditional-memo.md) — **not runnable here** |
 | 14 | An `AWS::EC2::Volume` added later with no policy is refused. Not held: no volume resource exists, and the guard passes one green. A row for the second slice (item 6's backup half) | the second slice's `ops/test.sh` |
 
 Rows 1 to 11 run with no AWS, on hand-written input, as every row in that suite does. Rows 12 and 13
 cannot: cfn-lint needs a pip install from the network, and the local `cfn-lint` on this machine is a
 shim over a missing module. Row 13 is the only thing that can answer whether changing a root device
-replaces an instance; it is read on ridge, which holds no records, before any client's stack carries
-the change.
+replaces an instance, and it is read on ridge, which holds no records, before any client's stack
+carries the change. The `--plan` that was meant to read it ran on 2026-11-08 at 16:44 and did not:
+it reports `Conditional`, the class of the property from AWS's `RequiresRecreation`, so it answers
+neither "replaced" nor "not replaced". That is a different fact from "not yet run"; only an executed
+update settles it, and whether to run one is open in
+[the memo](2026-11-08-backup-policy-conditional-memo.md).
 
 ## Steps
 
@@ -109,7 +113,7 @@ the change.
 | 5 | The `ops` job's gate as CI runs it, less cfn-lint | ShellCheck 0.11.0 `-x ops/*.sh walk/*.sh` at exit 0 and `bash ops/test.sh` at exit 0, read back from the log's own exit line. **cfn-lint is named, not run: it is CI's or the human's terminal** | 4 min |
 | 6 | One cross-model review, on a model other than the author's | A verdict line: may merge, or findings each carrying a line | 10 min |
 | 7 | The fix pass on the findings | `bash ops/test.sh` at exit 0 again, each finding answered with its line | 5 min |
-| 8 | 👤 The human's change set on ridge: `ops/stack.sh env ridge --plan`, then again without it | The plan's output names no change to `Box`. **If it names `Box` as a replacement the step stops**: that is the loss itself on a client's stack, and the piece reconsiders the device property | the human's |
+| 8 | 👤 The human's change set on ridge: `ops/stack.sh env ridge --plan`, then again without it | The plan's output names no change to `Box`. **If it names `Box` as a replacement the step stops**: that is the loss itself on a client's stack, and the piece reconsiders the device property. *Ran 2026-11-08 at 16:44: the output named `Modify Box` at `replacement=Conditional` and the guard refused the set (nothing changed), so the done check is not met and the step is stopped, neither passed nor failed. `Conditional` is the property's class, not a replacement verdict; what comes next is open in [the memo](2026-11-08-backup-policy-conditional-memo.md).* | the human's |
 | 9 | The recap, before the squash into `main` | The recap committed in `docs/recaps/`, item 6's fence half closed with its commit and its backup half left open | 3 min |
 
 **Ticks.** Step 1 done 2026-11-08: `Box` carries both policies and `DeleteOnTermination: false`; `volume_guard` and
@@ -213,7 +217,12 @@ or a wrong delete inside the database are still unrecoverable, and nothing yet p
 readable. **Yes** takes the fence as its own piece with the backup next. **No** means hold it and
 build both together, which is the day's piece the readiness page prices.
 
-**3. The change set on ridge, at step 8.** Only a real `--plan` says whether changing a root device
-replaces the instance; no local read can. ridge holds no records, so it is the free place to find
-out. **Yes** means you run those two commands and read the one line about `Box`. **No** means the
-template change sits in `main` unapplied, and ridge keeps the old box until you choose.
+**3. The change set on ridge, at step 8.** No local read says whether changing a root device
+replaces the instance, and the `--plan` that ran on 2026-11-08 at 16:44 did not either: it reported
+`Conditional` (the property's class) and the guard refused the set. Only an executed update can
+say, and whether to run one is open in
+[the memo](2026-11-08-backup-policy-conditional-memo.md). ridge holds no records, so it is the free
+place to find out. As asked, **yes** meant you run those two commands and read the one line about
+`Box`; **no** means the template change sits in `main` unapplied, and ridge keeps the old box until
+you choose. The first command has been run and refused, so the question now stands as the memo
+puts it.

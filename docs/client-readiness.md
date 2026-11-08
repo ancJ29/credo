@@ -63,20 +63,27 @@ advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
 never held records.
 
-As of `main` after the backup-policy piece, `Box` carries `DeletionPolicy: RetainExceptOnCreate` and
-`UpdateReplacePolicy: Retain`, and the disk `DeleteOnTermination: false`, so a stack delete and a replacement
-leave the box and a termination leaves the disk. Nothing else changed: there is still no copy of any client's
-records, and no one has read a kept disk ([open item 6](open-items.md)). One condition is open: the human's change
-set (`ops/stack.sh env ridge --plan`, then without it) has not been run on ridge, so whether applying it replaces
-the box is not known.
+As of `main` after the backup-policy piece, **the template** says `Box` carries `DeletionPolicy: RetainExceptOnCreate` and
+`UpdateReplacePolicy: Retain`, and the disk `DeleteOnTermination: false`, so a stack
+delete and a replacement would leave the box and a termination would leave the disk. That is true of
+the template and of no running environment: ridge still runs the old box, without the fence, and a
+client's stack made from `main` takes it at creation. Nothing else changed: there is still no copy of any client's
+records, and no one has read a kept disk ([open item 6](open-items.md)). One condition is open: the change set
+was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it
+(`Modify Box` at `replacement=Conditional`, the property's class, not a verdict), so whether applying
+it replaces the box is not known; the reason and the open question are in
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md).
 
 One thing stands in front of it, and it is a good one: a change set that removes or replaces any
 resource is refused by default and must be named by logical id to proceed
 ([`ops/unsafe-changes.jq#L7-L9`](../ops/unsafe-changes.jq#L7), the guard step in
 [`ops/stack.sh`](../ops/stack.sh)). Before the backup-policy piece its comment said why — "a replaced box
 deletes its disk and the database with it" — and it now says the box is kept on a replacement but the new
-one comes up with an empty database (`#L4-L6`). That guard is one `--take` away from being passed, and
-behind it there is only the fence's kept box.
+one comes up with an empty database (`#L4-L6`). On 2026-11-08 at 16:44 that guard refused the
+backup-policy change set on ridge, which it was built to do; passing it takes `--take Box`, whether
+to is the human's open question in
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md), and behind the guard there is only the
+fence's kept box.
 
 ### The tree guard: `ops/` alone is compared
 
