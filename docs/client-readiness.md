@@ -174,13 +174,12 @@ all; that would need a run. What is settled, in the direction of no: Fastify is 
 from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and not on ridge:* the stage's access log, one
 JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
 `/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
-[`#L284-L286`](../ops/env.yml#L284)). **That address is the caller's own for a call straight to the
-API's address, which is the case item 121 describes; for a call through the distribution it is
-CloudFront's** (AWS documents `$context.identity.sourceIp` as the immediate TCP connection, and the
-template makes the API a CloudFront origin, `ops/env.yml#L388`), so the UI's calls and the deploy
-check's calls show an edge node. Nothing at the stage can fix that: CloudFront can forward the
-viewer's `X-Forwarded-For`, but an HTTP API's access-log format accepts only `$context` variables, and
-`$request.header.*` is not among them. It is in the template and awaits the change set, which is the
+[`#L284-L286`](../ops/env.yml#L284)). **Measured, 2026-11-08 18:11 on ridge: for a call through the
+distribution the line recorded one public address, outside AWS's published ranges (the
+orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
+edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
+connection and the template makes the API a CloudFront origin (`ops/env.yml#L388`); that was
+reasoning and the run disagrees with it. Why is not established (item 157). It is in the template and awaits the change set, which is the
 human's to run; until it is applied, ridge has the older trail only. With nothing watching the
 server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
