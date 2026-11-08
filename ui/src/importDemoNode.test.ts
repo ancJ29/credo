@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { demoImportFile } from '@credo/ui/import-demo';
+import { demoImportFile } from './importDemo';
 import { describe, expect, it } from 'vitest';
 
 // The walk spec makes the demo company's staff file in Node, outside any page, and hands its bytes

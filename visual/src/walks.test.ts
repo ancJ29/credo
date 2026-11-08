@@ -586,27 +586,10 @@ describe('the walks', () => {
     expect(config).toContain("name: 'team-full'");
     expect(config).toContain("name: 'delete-client-fake'");
     expect(config).toContain("name: 'delete-client-full'");
-    // the chromium project's whole ignore list, in order: a line that another project's testMatch also
-    // holds cannot stand in for it
-    const chromium = /name: 'chromium',\s*testIgnore: \[([^\]]*)\],/.exec(config);
-    expect(
-      chromium?.[1]
-        ?.split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ).toEqual([
-      "'piece-2.spec.ts'",
-      "'lists.spec.ts'",
-      "'orders.spec.ts'",
-      "'driver.spec.ts'",
-      "'reconcile.spec.ts'",
-      "'operator.spec.ts'",
-      "'operator-passkeys.spec.ts'",
-      "'operator-services.spec.ts'",
-      "'operator-root-password.spec.ts'",
-      "'operator-team.spec.ts'",
-      "'operator-delete-client.spec.ts'",
-    ]);
+    // the chromium project names piece 1's spec and ignores nothing, so a new spec cannot run
+    // inside piece 1's pass; no project lists an ignore at all
+    expect(config).toContain("{ name: 'chromium', testMatch: 'piece-1.spec.ts' },");
+    expect(config).not.toContain('testIgnore');
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");
     expect(config).toContain("testMatch: 'lists.spec.ts'");
