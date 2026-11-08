@@ -105,11 +105,22 @@ request. A silent gap in one is visible against the other.
   `docs/architecture.md#L287-L303` (the throttle citation moved to `ops/env.yml#L250-L252`, and a sentence on the two logs: the function's, on all along, and the stage's, in the template awaiting the change set);
   `docs/client-readiness.md#L134-L172` (heading, the quoted comment and its citation, and the bold sentence replaced by the two trails, each marked old or new and what is unverified) and its list's fourth entry (the sign-in limit alone, item 28; the log noted as split off);
   `docs/open-items.md#L781-L785` (item 121 now *partly closed*, readable half done and not yet on ridge, the wall left parked) and a new item 152 at the file's end (the record-level join, Low). The grep reads 0 lines; `glance.sh --check` passes. Documents only, no test run.
-- [ ] **4. The local gate, whole.** *Done when:* `bash ops/test.sh` exits 0 and ends `ops/test.sh: all checks passed` (it prints no `0 not ok`), and
+- [x] **4. The local gate, whole.** *Done when:* `bash ops/test.sh` exits 0 and ends `ops/test.sh: all checks passed` (it prints no `0 not ok`), and
   `shellcheck -x ops/*.sh walk/*.sh` is clean; both tee'd into the root's `logs/`. cfn-lint needs
   pip and the network and is not run here — CI's `ops` job
   (`.github/workflows/ci.yml#L198-L203`) is its verdict on the push, as the tree guard's recap
   records. *Size:* 6 minutes.
+  *Done 2026-11-08 14:17:* one whole receipt on `82a9234b`, the steps run separately, not through the root's `check`
+  (`logs/access-log-step4-whole-20261108-140928.log`), last line `== exit 0 (ops 0 shellcheck 0 eslint 0 prettier 0 knip 0)`.
+  Per package: bff, scripts, shared, ui and visual each `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0 knip 0)`
+  (605, 305, 159, 825 and 209 tests); walk the same with `test n/a`, since it has no test script. Ops:
+  `ops/test.sh: all checks passed`, exit 0, 533 ok lines, and `shellcheck -x ops/*.sh walk/*.sh` exit 0. Quoted from that
+  run: `api_log_guard`'s one pass and three refusals (`the API stage logs every call to ApiLogs, in a format of time,
+  caller, path, route and answer`; `a stage with no access log settings is refused`; `an access log sent to the function's
+  group is refused`; `a format with the caller cut is refused`), and `adds_and_one_modify`'s `layer four's change set is
+  adds and a Modify of DeployRole in place, and the guard passes` with its two refusals, so the fixture update of step 1
+  was right. No retry, no red, neither known flake met; the lock was free before and after. Not run: cfn-lint (pip and
+  the network), as above.
 - [ ] **5. The review, another model.** Read-only, against this plan's cases: that the format names
   nothing secret, that the guard fails for the right reason, and that no claim in the rewritten
   prose is stronger than the code. *Done when:* every finding is fixed, rejected or deferred with
