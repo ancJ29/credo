@@ -20,5 +20,5 @@ The day's sum is made by one function, `driverDay` (`shared/src/reconciliations.
 
 - Whole check green, 100 per cent coverage: `20261108-121757-money-defects-step4-whole-gate.log`, last line `== exit 0`.
 - Review: may merge as it stands; no High, no Medium, three Lows (two filed, one the plan's "built twice", corrected).
-- Look: one null proof, that no screen moved and the Closed card reads as before; awaiting the picture run's answer.
+- Look: one null proof, that no screen moved and the Closed card reads as before: green on 2026-11-08, six comparisons over 84 pictures, every count 0.
 - `docs/products.md`: the Đối soát row names the fixes.
