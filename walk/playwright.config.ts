@@ -28,22 +28,9 @@ export default defineConfig({
     launchOptions: { args: ['--disable-partial-raster'] },
   },
   projects: [
-    {
-      name: 'chromium',
-      testIgnore: [
-        'piece-2.spec.ts',
-        'lists.spec.ts',
-        'orders.spec.ts',
-        'driver.spec.ts',
-        'reconcile.spec.ts',
-        'operator.spec.ts',
-        'operator-passkeys.spec.ts',
-        'operator-services.spec.ts',
-        'operator-root-password.spec.ts',
-        'operator-team.spec.ts',
-        'operator-delete-client.spec.ts',
-      ],
-    },
+    // Piece 1's walk, named, not the other eleven ignored: a spec added later runs in no project
+    // until it names its own, instead of inside this one with piece 1's shots folder.
+    { name: 'chromium', testMatch: 'piece-1.spec.ts' },
     // The fake takes the same screens as the full run, and each picture takes at least two shots.
     { name: 'fake', testMatch: 'piece-2.spec.ts', timeout: 120_000 },
     {
