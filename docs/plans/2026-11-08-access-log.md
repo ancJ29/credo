@@ -5,7 +5,7 @@
 The one API stage in front of the BFF records nothing it serves: `ops/env.yml#L244` says so in its
 own words, "No access log. The API's own address answers anyone". This piece gives that stage a log
 group and an access-log format, so that a call to a client's back end leaves a line naming when it
-came, from what address (the immediate connection's: the caller's own for a call straight to the API, CloudFront's for one through the distribution), over what path and what it was answered — and gives that property a guard
+came, from what address (written as the immediate connection's, CloudFront's for a call through the distribution; **measured otherwise on ridge, 2026-11-08 18:11: see the correction at step 5's look**), over what path and what it was answered — and gives that property a guard
 that reddens if a later change takes it away. It is the readable half of
 [open item 121](../open-items.md), and the log half of the fourth thing
 [client readiness](../client-readiness.md) asks for before real client data goes in, where it
@@ -55,7 +55,7 @@ request. A silent gap in one is visible against the other.
 | 5 | The group is the API's own, not the function's, and keeps 14 days | `ops/test.sh`, `check` on `.Resources.ApiLogs` |
 | 6 | The template still reads as JSON in long form, and cfn-lint is silent on it | `ops/test.sh#L214`; CI's `ops` job |
 | 7 | No committed file outside `docs/plans/` and `docs/recaps/` still says the API has no access log | `grep -c` reads 0 |
-| 8 | A call through ridge's edge leaves one line naming when, which connection (CloudFront's, through the edge), what path and what answer | the human's read, point 2 |
+| 8 | A call through ridge's edge leaves one line naming when, which connection (written as CloudFront's, through the edge; measured as the caller's own address, see the correction at step 5's look), what path and what answer | the human's read, point 2 |
 
 ## The steps
 
@@ -125,7 +125,7 @@ request. A silent gap in one is visible against the other.
   nothing secret, that the guard fails for the right reason, and that no claim in the rewritten
   prose is stronger than the code. *Done when:* every finding is fixed, rejected or deferred with
   its reason, and `bash ops/test.sh` ends `0 not ok` after the last fix. *Size:* 7 minutes.
-  *Done 2026-11-08:* read-only at `8dd2a330`; it may merge with one change, the address claim (the connection's, a CDN node for calls through the distribution), plus the throttle's 429s and the `:*` caveat; fixed in prose and items only at `82a9234b`, items 153 to 155 filed; the gate after it is green (step 4's receipt).
+  *Done 2026-11-08:* read-only at `8dd2a330`; it may merge with one change, the address claim (the connection's, a CDN node for calls through the distribution; **overturned by the run of 2026-11-08 18:11, see the correction at step 5's look**), plus the throttle's 429s and the `:*` caveat; fixed in prose and items only at `82a9234b`, items 153 to 155 filed; the gate after it is green (step 4's receipt).
 - [x] **6. The recap and the products row.** `docs/recaps/2026-11-08-access-log.md` and its row in
   `docs/products.md`. *Done when:* both committed. *Size:* 2 minutes.
   *Done 2026-11-08:* both in the commit that ticks this step.
@@ -152,11 +152,17 @@ edit, replacing the value with
 **2. The lines themselves, after the change set.** There is no screen in this piece, so this is the
 look that stands in for one. The deploy check already makes a client and signs in through the edge
 on every run, so lines will be there; read the newest few of
-`/aws/apigateway/credo-ridge` in the console. The address in a line is that of whoever opened the connection: the caller's own for a call
-straight to the API's address (the item-121 case the log was built for), CloudFront's for a call
-through the distribution, which is what the UI's and the deploy check's calls are, so those lines
-show an edge node and not the caller. The question is whether a person who is not a programmer can
-answer "when, over what path, and what did it answer" from one line, and "from whom" only for a call
-straight to the API. A
+`/aws/apigateway/credo-ridge` in the console. **Correction, 2026-11-08 18:11, measured:** this paragraph was written, and then corrected by a
+review, to say the address is an edge node for a call through the distribution. The human's run
+(`logs/20261108-1809-ridge-access-log-read.log`, outside git; `one-off/20261108-1809-ridge-access-log-read.sh`,
+whose line 81 calls the stack's `AppAddress`, the distribution) sent three calls that way and read
+three lines with one and the same address: a public address outside AWS's published ranges
+(checked by the orchestrating session on that date against the whole published list, not re-run
+since), consistent with the caller's own, and not an edge node. **Why is not known**: the field is
+documented as the immediate connection's address, and the measurement disagrees with the plain
+reading of that. One run, one caller, one network; the cause is an open question (item 157), not
+a mechanism. The question for the look is whether a person who is not a programmer can answer
+"when, over what path, and what did it answer" from one line, and the run suggests "from whom" as
+well. A
 yes closes the readable half of item 121. A no reopens step 1 to change the format's fields, which
 is one property and another change set.

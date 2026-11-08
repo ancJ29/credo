@@ -21,7 +21,7 @@ At the merge base the suite's stand-in answered every run with "no changes" (`op
 
 ## A trap kept
 
-`ops/stack.sh#L44-L45` is order-dependent. `[ $# -ge 2 ] || usage` must stay above `[ -n "$2" ] || usage`: under `set -euo pipefail` (`ops/stack.sh#L11`) the reverse turns a final `--take` from a usage message and exit 2 into `$2: unbound variable` and exit 1. The reviewer measured both orders. No check holds the order yet: item 157.
+`ops/stack.sh#L44-L45` is order-dependent. `[ $# -ge 2 ] || usage` must stay above `[ -n "$2" ] || usage`: under `set -euo pipefail` (`ops/stack.sh#L11`) the reverse turns a final `--take` from a usage message and exit 2 into `$2: unbound variable` and exit 1. The reviewer measured both orders. No check holds the order yet: item 158.
 
 ## What this is not
 
