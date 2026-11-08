@@ -121,6 +121,17 @@ already and step 2 adds only what is left of them. `bash ops/test.sh` exit 0 wit
 was added). Not shown: that applying this does not replace `Box` (row 13, step 8) and that cfn-lint accepts it
 (row 12).
 
+Step 3 done 2026-11-08: `rolled_back_refusal` in `ops/lib.sh` reads `Env` through `stack_param`; ridge is told it
+holds demo data and may be deleted (the box and disk stay behind, running and billing); any other Env, and a
+description naming no Env, is told it holds records, that a delete would not destroy the retained box and disk but
+would leave them outside any stack, and is pointed at the recovery paths in `ops/README.md` (step 4 writes them;
+nobody has tried them). `described` takes a third argument, `Env`. Rows 8 to 10 sit beside the pinned row, which now
+names ridge. `bash ops/test.sh` exit 0 and `shellcheck -x ops/*.sh` exit 0, from
+`logs/20261108-144740-ops-test-backup-policy-step3.log` (`== exit 0 (ops/test.sh 0 shellcheck 0)`). Each mutation of
+`lib.sh`, restored and `cmp`-verified, reddened its own rows: one message everywhere (records text; ridge text), the
+branch inverted, and a missing Env falling to ridge's side (only the two no-Env rows red). Not shown: that the
+README's recovery paths exist (step 4) or work.
+
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell
 script 8, its cases 8 to 14, a small cases step on `ops/test.sh` 3 to 6, a doc step 5, the ops gate 4,

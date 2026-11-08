@@ -73,15 +73,30 @@ change_type() { # a describe-stacks body, or nothing
   choose_change_type
   echo "$CS_TYPE"
 }
-described() { # <status> [<Repository>]
-  jq -nc --arg s "$1" --arg r "${2:-}" \
-    '{Stacks: [{StackName: "ridge", StackStatus: $s, Parameters: (if $r == "" then [] else [{ParameterKey: "Repository", ParameterValue: $r}] end)}]}'
+described() { # <status> [<Repository>] [<Env>]
+  jq -nc --arg s "$1" --arg r "${2:-}" --arg e "${3:-}" \
+    '{Stacks: [{StackName: "ridge", StackStatus: $s, Parameters: ((if $r == "" then [] else [{ParameterKey: "Repository", ParameterValue: $r}] end) + (if $e == "" then [] else [{ParameterKey: "Env", ParameterValue: $e}] end))}]}'
 }
 check "no stack is a creation" CREATE "$(change_type '')"
 check "a stack that holds only a change set (REVIEW_IN_PROGRESS) is a creation" CREATE "$(change_type "$(described REVIEW_IN_PROGRESS)")"
 check "a made stack (CREATE_COMPLETE) is an update" UPDATE "$(change_type "$(described CREATE_COMPLETE)")"
 check "an updated stack (UPDATE_COMPLETE) is an update" UPDATE "$(change_type "$(described UPDATE_COMPLETE)")"
-refuses "a rolled-back stack is not touched: delete the stack" "delete the stack" change_type "$(described ROLLBACK_COMPLETE)"
+refuses "a rolled-back stack is not touched: delete the stack" "delete the stack" change_type "$(described ROLLBACK_COMPLETE '' ridge)"
+refuses "a rolled-back ridge says it holds demo data only" "ridge holds demo data only" change_type "$(described ROLLBACK_COMPLETE '' ridge)"
+rolled_back_text() { # <Env, or none>: the refusal's text for a rolled-back stack of that Env
+  local e=${1:-}
+  [ "$e" = none ] && e=''
+  ( change_type "$(described ROLLBACK_COMPLETE '' "$e")" ) 2>&1 || true
+}
+prod_text=$(rolled_back_text acme)
+refuses "a rolled-back stack of another Env is still refused, naming the Env and the records" "its Env is acme, so it is treated as holding records" \
+  change_type "$(described ROLLBACK_COMPLETE '' acme)"
+check "  and it offers the README's recovery paths" yes "$(grep -qF 'recovery paths in ops/README.md' <<<"$prod_text" && echo yes || echo no)"
+check "  and it does not offer the delete" no "$(grep -qF 'delete the stack' <<<"$prod_text" && echo yes || echo no)"
+none_text=$(rolled_back_text none)
+refuses "a rolled-back stack naming no Env is treated as holding records" "it names no Env, so it is treated as holding records" \
+  change_type "$(described ROLLBACK_COMPLETE)"
+check "  and does not offer the delete" no "$(grep -qF 'delete the stack' <<<"$none_text" && echo yes || echo no)"
 
 echo "== an update never moves the deploy role's repository"
 STACK_JSON=$(described UPDATE_COMPLETE owner/name)
