@@ -21,6 +21,12 @@ import {
 import { stepWords } from './scene';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
+/** Every spec file under the specs folder at any depth, as a path inside it: Playwright finds a
+ * spec in a sub-folder too, so a read of the top level alone misses it. */
+const specFiles = () =>
+  readdirSync(SPECS, { recursive: true, encoding: 'utf8' }).filter((name) =>
+    name.endsWith('.spec.ts'),
+  );
 const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
 
 /** Piece 2's walks, which start at the staff setup whatever walks come before them. */
@@ -155,11 +161,9 @@ describe('the walks', () => {
   });
 
   it('names every screen of every walk as the walk specs do, which makes their base images', () => {
-    const inSpecs = readdirSync(SPECS)
-      .filter((name) => name.endsWith('.spec.ts'))
-      .flatMap((name) =>
-        [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
-      );
+    const inSpecs = specFiles().flatMap((name) =>
+      [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
+    );
 
     expect(inSpecs.sort()).toEqual(
       WALKS.flatMap((walk) => walk.screens.map((screen) => screen.id)).sort(),
@@ -175,7 +179,7 @@ describe('the walks', () => {
         default: { projects: { name: string; testMatch?: string | string[] }[] };
       }
     ).default;
-    const specs = readdirSync(SPECS).filter((name) => name.endsWith('.spec.ts'));
+    const specs = specFiles();
     // a project with no testMatch runs every spec, as Playwright's default does
     const runs = (project: (typeof config.projects)[number], spec: string) =>
       project.testMatch === undefined || [project.testMatch].flat().includes(spec);
@@ -209,7 +213,7 @@ describe('the walks', () => {
       DEVICE_WIDTH.phone,
     ]);
     expect(read('support.ts')).toContain('`${screen}-${language}-${width}.png`');
-    for (const name of readdirSync(SPECS).filter((file) => file.endsWith('.spec.ts'))) {
+    for (const name of specFiles()) {
       expect(read(`specs/${name}`), name).toContain("from '../support'");
       expect(read(`specs/${name}`), name).toContain('Object.entries(WIDTHS)');
     }
