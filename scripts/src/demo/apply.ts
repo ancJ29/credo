@@ -51,7 +51,7 @@ export const HISTORY_DAYS = 7;
 /** A run applies at most this many missed days; beyond it the copy is reported and left. */
 export const MAX_CATCH_UP = 30;
 /**
- * The days one nightly run applies to a copy, the rest left for the next nights. A day costs the
+ * The days one run applies to a copy, the rest left for the next run somebody asks for. A day costs the
  * heavier client about 7.5 minutes (measured 2026-11-08, the copies running side by side), so three
  * days are about 22 minutes: inside seed.yml's 30-minute Seed step. This is what keeps MAX_CATCH_UP's
  * 30 days from being a run of hours that the step limit kills.

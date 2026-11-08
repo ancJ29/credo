@@ -10,8 +10,8 @@
 #   touching none of them deploys nothing), since records written by one commit's code are read by
 #   another's BFF; then the seed, with the keys read from the box and masked first. Nothing is
 #   written before they have passed.
-# Runs each morning in GitHub's job (.github/workflows/seed.yml), and by hand from a worktree at main
-# while Actions is down, or for a copy just made. Needs pnpm install done and layer four.
+# Runs when somebody asks, never on a schedule: in GitHub's job (.github/workflows/seed.yml, "Run workflow"
+# on main), or by hand from a worktree at main while Actions is down, or for a copy just made. Needs pnpm install done and layer four.
 # Ridge alone: a client's stack must never receive demo data. Expected length: about a minute, a few
 # minutes for a first fill of six copies.
 set -euo pipefail

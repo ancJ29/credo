@@ -105,7 +105,7 @@ describe('ridge_cli seed', () => {
     for (const night of [first, second, third, fourth]) expect(night.status).toBe(0);
     expect(first.out.at(-2)).toBe(
       'seed: STILL BEHIND, 1 copies have days left (' +
-        `${copies[0].code} 4); this run applied 3 days at most a copy, the next runs go on: 2 more nights`,
+        `${copies[0].code} 4); this run applied 3 days at most a copy, run it again to go on: 2 more runs`,
     );
     expect(first.out.at(-1)).toBe(
       'seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied',

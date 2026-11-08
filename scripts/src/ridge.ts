@@ -177,7 +177,7 @@ export async function runRidge(
       if (behind.length > 0) {
         const most = Math.max(...behind.map((report) => report.remaining));
         io.out(
-          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${MAX_DAYS_PER_RUN} days at most a copy, the next runs go on: ${Math.ceil(most / MAX_DAYS_PER_RUN)} more nights`,
+          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${MAX_DAYS_PER_RUN} days at most a copy, run it again to go on: ${Math.ceil(most / MAX_DAYS_PER_RUN)} more runs`,
         );
       }
       io.out(

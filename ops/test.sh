@@ -822,20 +822,27 @@ refuses "  an app job that never names Node 24 is refused" "node-version: 24" ap
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
 
-echo "== the seed workflow (a schedule and a manual run, main alone, environment ridge, its own group, never under act; row 24)"
+echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
-# seed_guards <workflow>: dies naming each condition of the plan's "The daily run" that the seed
-# workflow lacks. As in the deploy job, the job's own `if` cannot read env, so every step carries
+# seed_guards <workflow>: dies naming each condition of the seed workflow that it lacks: since 2026-11-08 it
+# is run on demand only, so a schedule, any other trigger, a second job and any permission but the OIDC
+# token are refused (the plan's "The daily run" is history). As in the deploy job, the job's own `if` cannot read env, so every step carries
 # `if: ${{ !env.ACT }}` for act, which has no AWS.
 seed_guards() {
-  local block missing='' steps guarded role inst run want_region have_region
+  local block missing='' steps guarded role inst run want_region have_region ontrig jobs
   [ -f "$1" ] || die "no seed workflow"
   block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  grep -qxF -- '    - cron: "17 20 * * *"' "$1" || missing="${missing}[the schedule: 20:17 UTC, 03:17 in Vietnam, so the run ends before 07:00 even started 3 hours late] "
   grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
-  if grep -qE '^  (push|pull_request|pull_request_target|workflow_run):' "$1"; then missing="${missing}[no trigger but the schedule and the manual run] "; fi
+  # Read the parsed shape, not words: a comment may name a schedule, a block may not hold one.
+  if grep -qE '^ *(schedule:|- *cron:|cron:)' "$1"; then missing="${missing}[no schedule: the seed is run when somebody asks] "; fi
+  ontrig=$(awk '/^on:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z_-]+:/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$ontrig" = 'workflow_dispatch: ' ] || missing="${missing}[no trigger but the manual run, found: $ontrig] "
+  jobs=$(awk '/^jobs:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z_-]+:$/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$jobs" = 'seed: ' ] || missing="${missing}[the seed job alone, found: $jobs] "
+  [ "$(grep -cE '^ +[a-z-]+: (write|read-all|write-all)$' "$1" || true)" = 1 ] || missing="${missing}[no permission but id-token: write] "
+  if grep -qE '^ +(issues|actions|checks|deployments|discussions|packages|pages|pull-requests|security-events|statuses|attestations):' "$1"; then missing="${missing}[no permission but id-token and contents: read] "; fi
   need "    if: github.ref == 'refs/heads/main'"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
@@ -845,9 +852,9 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
-  # A normal day is 8 to 10 minutes; a run applies at most 3 days a copy, about 22 minutes: the Seed
-  # step has 30 and the job 40 (so a run started 3 hours late, at 06:17, ends before 07:00), and the
-  # role's session (role-duration-seconds) outlasts the step it is taken for.
+  # A run applies at most 3 days a copy, about 22 minutes: the Seed step has 30 and the job 40, the
+  # setup's own limits (at most 9) and the step's 30 with room to spare. Kept from the nightly run:
+  # a run asked for is no shorter, and a stuck step must not hold the role for long.
   need "    timeout-minutes: 40"
   grep -qxF -- '        timeout-minutes: 30' <<<"$block" || missing="${missing}[the Seed step's 30 minutes] "
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
@@ -873,31 +880,29 @@ seed_guards() {
   want_region=$(sed -n 's/^CREDO_REGION=\${CREDO_REGION:-\(.*\)}$/\1/p' "$OPS_DIR/lib.sh")
   have_region=$(sed -n 's/^ *aws-region: //p' <<<"$block")
   [ -n "$want_region" ] && [ "$want_region" = "$have_region" ] || missing="${missing}[aws-region is lib.sh's $want_region, found '$have_region'] "
-  # The notice: a last job, only on a failure, with the one write permission in it alone.
-  tell=$(awk '/^  tell:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
-  [ -n "$tell" ] || missing="${missing}[the tell job] "
-  grep -qxF -- '    needs: seed' <<<"$tell" || missing="${missing}[tell needs the seed job] "
-  grep -qxF -- '    if: failure()' <<<"$tell" || missing="${missing}[tell runs only on failure()] "
-  grep -qxF -- '      issues: write' <<<"$tell" || missing="${missing}[tell holds issues: write] "
-  [ "$(grep -c 'issues:' "$1" || true)" = 1 ] || missing="${missing}[issues: write in the tell job alone] "
-  grep -qF -- 'run: bash ops/seed-failed.sh' <<<"$tell" || missing="${missing}[tell runs ops/seed-failed.sh] "
   [ -z "$missing" ] || die "the seed workflow lacks: $missing"
 }
 passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
-sed 's/- cron: "17 20 \* \* \*"/- cron: "0 23 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
-refuses "a seed that no longer starts at 03:17 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
+# A schedule block put back before the manual run, comment and keyword both real: the decision it guards.
+awk '/^  workflow_dispatch:$/ {print "  schedule:"; print "    - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
+refuses "a seed that regains a schedule is refused" "no schedule" seed_guards "$WORK/seed-cron.yml"
+# The guard reads the document, not words: a comment that names the keyword is not a schedule.
+awk '/^  workflow_dispatch:$/ {print "  # schedule: - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron-comment.yml"
+passes "a comment that names a schedule is not one" seed_guards "$WORK/seed-cron-comment.yml"
 sed 's/^    timeout-minutes: 40$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
 refuses "a seed job with less than 40 minutes is refused" "timeout-minutes: 40" seed_guards "$WORK/seed-jobtime.yml"
 sed 's/^        timeout-minutes: 30$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
 refuses "a Seed step with less than 30 minutes is refused" "the Seed step's 30 minutes" seed_guards "$WORK/seed-steptime.yml"
-sed '/^    if: failure()$/d' "$SEED_WORKFLOW" >"$WORK/seed-tellalways.yml"
-refuses "a notice that runs on every night, not only a failure, is refused" "tell runs only on failure()" seed_guards "$WORK/seed-tellalways.yml"
 awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
-refuses "issues: write on the seed job as well is refused" "issues: write in the tell job alone" seed_guards "$WORK/seed-issuesseed.yml"
+refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
+awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
+refuses "contents: write in place of read is refused" "no permission but id-token: write" seed_guards "$WORK/seed-contentswrite.yml"
+{ cat "$SEED_WORKFLOW"; printf '\n  tell:\n    needs: seed\n    if: failure()\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n'; } >"$WORK/seed-secondjob.yml"
+refuses "a second job beside the seed is refused" "the seed job alone" seed_guards "$WORK/seed-secondjob.yml"
 sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
 refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
 awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"
-refuses "a seed that also runs on a push is refused" "no trigger but the schedule" seed_guards "$WORK/seed-push.yml"
+refuses "a seed that also runs on a push is refused" "no trigger but the manual run" seed_guards "$WORK/seed-push.yml"
 sed "s/^    if: github.ref == 'refs\/heads\/main'\$/    if: true/" "$SEED_WORKFLOW" >"$WORK/seed-branch.yml"
 refuses "a seed job that also runs from a branch is refused" "github.ref == 'refs/heads/main'" seed_guards "$WORK/seed-branch.yml"
 sed '/^    environment: ridge$/d' "$SEED_WORKFLOW" >"$WORK/seed-env.yml"
@@ -910,23 +915,6 @@ awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$SEED_WORKFLOW"
 refuses "a seed step that would run under act is refused" "!env.ACT" seed_guards "$WORK/seed-act.yml"
 awk '/^        run: bash ops\/seed.sh ridge$/ {print "        continue-on-error: true"} 1' "$SEED_WORKFLOW" >"$WORK/seed-continue.yml"
 refuses "a seed step that may fail and go on is refused" "continue-on-error" seed_guards "$WORK/seed-continue.yml"
-# ops/seed-failed.sh on a stand-in for gh: no open issue opens one; an open one is commented on, none opened.
-mkdir -p "$WORK/ghbin"
-cat >"$WORK/ghbin/gh" <<'GH'
-#!/usr/bin/env bash
-echo "$1 $2" >>"$GH_LOG"
-if [ "$1 $2" = "issue list" ]; then printf '%s' "${GH_OPEN:-}"; fi
-GH
-chmod +x "$WORK/ghbin/gh"
-seed_failed() { # open issue number or empty; prints gh's calls
-  : >"$WORK/gh.log"
-  PATH="$WORK/ghbin:$PATH" GH_LOG="$WORK/gh.log" GH_OPEN="$1" RUN_URL=https://example.test/run/1 bash "$OPS_DIR/seed-failed.sh" >/dev/null
-  cat "$WORK/gh.log"
-}
-check "a failed seed with no open issue opens one" "issue list
-issue create" "$(seed_failed '')"
-check "a failed seed with an issue already open comments on it and opens none" "issue list
-issue comment" "$(seed_failed 7)"
 sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$SEED_WORKFLOW" >"$WORK/seed-mask.yml"
 refuses "a seed that leaves the account id unmasked is refused" "mask-aws-account-id" seed_guards "$WORK/seed-mask.yml"
 sed 's/aws-region: ap-southeast-5/aws-region: eu-west-1/' "$SEED_WORKFLOW" >"$WORK/seed-region.yml"
@@ -2295,7 +2283,7 @@ export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
 check "a second run goes on from the ledger, 3 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied$')"
 
-# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the morning's run goes on.
+# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the next run somebody asks for goes on.
 export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead
 printf 'a note\n' >"$E2E/repo/NOTES.md"
 git -C "$E2E/repo" add NOTES.md

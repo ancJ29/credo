@@ -1,16 +1,17 @@
-# The demo copies on ridge get a day each night: 03:17 in Vietnam (20:17 UTC), and by hand. GitHub starts a
-# scheduled run up to about 3 hours late, so the run ends before 07:00 and never lands in a morning demo. The job
-# runs ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy
-# up to yesterday, through the BFF's own code over the tunnel. It writes nothing unless /health
-# names this commit, or an earlier one that differs from it in no path ci.yml deploys on, and the
-# BFF's function names the same. A red here is a defect to fix, never a run to repeat: the next morning catches the day up.
-# It runs under the deploy role, so a change here or to ops/seed.sh acts on ridge the next morning;
-# ops/test.sh reads this file as it reads the deploy job. Why: docs/plans/2026-10-29-demo-seed.md.
+# Brings the demo copies on ridge up to yesterday, when somebody asks for it: "Run workflow" on main (or
+# `gh workflow run seed`). It has no schedule and nothing in it starts it, so nothing runs it unseen and
+# no run fails unseen; ridge's data is only as fresh as the last time somebody asked. The job runs
+# ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy up to
+# yesterday, through the BFF's own code over the tunnel, at most 3 days a copy a run (a run that meets a
+# longer backlog ends green and says STILL BEHIND; ask again). It writes nothing unless /health names this
+# commit, or an earlier one that differs from it in no path ci.yml deploys on, and the BFF's function names
+# the same. A red run is read, then run again by hand once its cause is gone.
+# It runs under the deploy role, so a change here or to ops/seed.sh acts on ridge the next time it is run;
+# ops/test.sh reads this file as it reads the deploy job, and refuses a schedule, any trigger but the manual
+# run, and any permission but the OIDC token. Why: docs/plans/2026-10-29-demo-seed.md.
 name: seed
 
 on:
-  schedule:
-    - cron: "17 20 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,13 +22,13 @@ jobs:
     # A manual run from a branch is refused here, and the environment admits main alone as well.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    # 30 minutes of the Seed step and the setup before it (about 10 at the steps' own limits, a few
-    # in practice): started 3 hours late at 06:17, the job still ends before 07:00.
+    # The Seed step's 30 minutes and the setup before it (at most 9 at the steps' own limits, a few in
+    # practice); the job's own limit holds the sum, so a stuck step cannot hold the role for longer.
     timeout-minutes: 40
     environment: ridge
     # Its own group, never `ridge`: a run waiting in a group replaces the one waiting before it, so
     # a seed queued in the deploy's group would cancel a waiting deploy. A seed that overlaps a
-    # release meets about a second of 503s and ends red; the next run catches the day up.
+    # release meets about a second of 503s and ends red; run it again once the release is green.
     concurrency:
       group: ridge-seed
       cancel-in-progress: false
@@ -75,27 +76,3 @@ jobs:
         # 3 days a copy are about 22 minutes at the measured 7.5 a day for the heavier client.
         timeout-minutes: 30
         run: bash ops/seed.sh ridge
-
-  # Runs only when the seed job failed or timed out. Its own token and permissions: the seed job's stay as
-  # they were. It reads the repository to run ops/seed-failed.sh, which opens one issue or comments on it.
-  tell:
-    needs: seed
-    if: failure()
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      issues: write
-    steps:
-      - name: Check out
-        if: ${{ !env.ACT }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Open or update the issue
-        if: ${{ !env.ACT }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: bash ops/seed-failed.sh

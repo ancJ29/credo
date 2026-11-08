@@ -229,7 +229,7 @@ bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) v
 third-party code builds *before* the AWS role is assumed (`#L254`), and the role itself is narrow
 to the point of naming the one function and the one instance
 ([`ops/env.yml#L433`](../ops/env.yml#L433)). Two other workflows:
-[`seed.yml`](../.github/workflows/seed.yml) adds a day to ridge's demo copies nightly, and
+[`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
 Access — the only deploy target that is not AWS.
 
