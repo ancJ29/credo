@@ -23,12 +23,12 @@ copy goes, and they do not have one fix:
 
 | # | The act | Fenced by this piece |
 | --- | --- | --- |
-| 1 | A stack delete terminates `Box` | yes — `DeletionPolicy: Retain` |
+| 1 | A stack delete terminates `Box` | yes — `DeletionPolicy: RetainExceptOnCreate` (plain `Retain` also kept a box whose creation rolled back, leaving a stack that could not be deleted) |
 | 2 | A change set replaces `Box` (an image or instance-type change taken with `--take Box`) | yes — `UpdateReplacePolicy: Retain` |
-| 3 | The `ROLLBACK_COMPLETE` advice, "delete the stack" (`ops/lib.sh#L294`), read on a stack holding records | yes — 1 and 2, plus the message |
+| 3 | ~~The `ROLLBACK_COMPLETE` advice, "delete the stack" (`ops/lib.sh#L294`), read on a stack holding records~~ | struck at the review: that status exists only after a failed creation and allows only a delete, so such a stack never held records; with `RetainExceptOnCreate` its rollback deleted the box too |
 | 4 | A termination, a torn file, a bad write or a wrong delete *outside* CloudFormation | **no** — only a backup, and `DeleteOnTermination: false` for the termination alone |
 
-Rows 1 to 3 are stack operations, which is the whole reach of both policy attributes: AWS's pages say
+Rows 1 and 2 are stack operations, which is the whole reach of both policy attributes: AWS's pages say
 they execute on a stack deletion and on a replacement during a stack update, and name no act outside
 CloudFormation. Row 4 is why the second slice exists, and why this plan does not claim recovery.
 
@@ -77,19 +77,20 @@ while a replacement still destroys it.
 
 | # | The case: one behaviour, one sentence | Held by |
 | --- | --- | --- |
-| 1 | A stack delete does not take the box: `Box` carries `DeletionPolicy: Retain` | `ops/test.sh` |
+| 1 | A stack delete does not take the box: `Box` carries `DeletionPolicy` of `Retain` or `RetainExceptOnCreate` | `ops/test.sh` |
 | 2 | A replacement does not take the box: `Box` carries `UpdateReplacePolicy: Retain` | `ops/test.sh` |
 | 3 | `Snapshot` on `Box` is refused, because CloudFormation turns it back into `Delete` | `ops/test.sh` |
 | 4 | Either attribute missing is refused | `ops/test.sh` |
 | 5 | The root device is refused unless `DeleteOnTermination` is false, so a termination outside CloudFormation leaves the disk | `ops/test.sh` |
 | 6 | Any second instance resource added later without both attributes is refused | `ops/test.sh` |
 | 7 | The device is still gp3, encrypted, at its parameter's size | `ops/test.sh` |
-| 8 | A rolled-back stack is still refused, and on an environment that is not ridge the line names the environment and what the box holds, and offers the runbook, not a delete | `ops/test.sh` |
-| 9 | On ridge the line still offers the delete, ridge holding no records | `ops/test.sh` |
-| 10 | A stack description naming no `Env` is treated as one that holds records | `ops/test.sh` |
+| 8 | ~~Rolled-back stack, by Env~~ Replaced at the review: a rolled-back stack of any kind (environment, network, github) is told its creation failed and to delete it, then run again; the text never reads Env | `ops/test.sh` |
+| 9| ~~struck at the review: Env is no longer read~~ | - | 
+| 10| ~~struck at the review: Env is no longer read~~ | - | 
 | 11 | The change-set guard still refuses an unnamed replacement of `Box` | `ops/test.sh` (the row already there) |
 | 12 | cfn-lint accepts the template with both attributes | the `ops` job (`.github/workflows/ci.yml#L198-L203`) — **not runnable here** |
 | 13 | Applying the change set does not itself replace `Box` | the human's `ops/stack.sh env ridge --plan` — **not runnable here** |
+| 14 | An `AWS::EC2::Volume` added later with no policy is refused. Not held: no volume resource exists, and the guard passes one green. A row for the second slice (item 6's backup half) | the second slice's `ops/test.sh` |
 
 Rows 1 to 11 run with no AWS, on hand-written input, as every row in that suite does. Rows 12 and 13
 cannot: cfn-lint needs a pip install from the network, and the local `cfn-lint` on this machine is a
@@ -150,6 +151,23 @@ covers the whole repository, `pnpm exec prettier --check .` exit 0 run on its ow
 `logs/20261108-145303-ops-gate-backup-policy-step5.log` (`== exit 0 (shellcheck 0 ops/test.sh 0 prettier 0)`).
 Nothing retried. Step 4's done-check corrected: the whole-tree `git grep` never printed nothing (468 binary walk
 snapshots and four documents quoting it); it now asks that this piece's diff add no local path, which holds.
+
+Step 7 done 2026-11-08 (fix pass on the cross-model review, verdict was must fix first): the chain behind
+Highs 1 and 2 held and was built. AWS's DeletionPolicy page says `RetainExceptOnCreate` retains on every act
+except the one that created the resource, and deletes it if that creation rolls back; so a `ROLLBACK_COMPLETE`
+stack (a failed creation) holds no box, and `rolled_back_refusal` now reads no `Env`, branches on nothing, and
+says the creation failed and to delete the stack, then run again (network and github stacks included). `Box`'s
+`DeletionPolicy` is `RetainExceptOnCreate`, `UpdateReplacePolicy` stays `Retain`; the guard accepts `Retain` or
+`RetainExceptOnCreate` for deletion, `Retain` alone for replacement, and loops both attributes and the
+`DeleteOnTermination` check over every instance. The old rows 8 to 10 are replaced by three rows for each of
+ridge, another Env, no Env, a network stack and a github stack. Mutations, each restored and `cmp`-verified: the
+message saying "records" reddened all five kinds' text rows; the Env branch put back reddened every kind but ridge,
+network and github among them; `Delete` and an `UpdateReplacePolicy` of `RetainExceptOnCreate` reddened the guard
+(other guard rows go red beside them, because the guard dies at its first failing check). Not verified: the exact
+AWS sentence that `ROLLBACK_COMPLETE` exists only after a failed creation and allows only a delete was not found
+on a page fetched here (the stack-status pages did not load that text); it rests on the review's reading and
+CloudFormation's behaviour as known. `bash ops/test.sh` exit 0, `shellcheck -x ops/*.sh walk/*.sh` exit 0, from
+`/Users/hau/projects/credo/logs/20261108-1528-ops-gate-backup-policy-step7b.log` (`== exit 0 (ops/test.sh 0 shellcheck 0)`); prettier `--check .` exit 0 run on its own. cfn-lint named, not run.
 
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell

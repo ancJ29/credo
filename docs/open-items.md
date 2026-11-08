@@ -71,10 +71,10 @@ change set has been read on ridge.** The box's root volume holds the one SQLite 
 `DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` "on the volume". Neither half could
 be written: there is no volume resource (the disk is a `BlockDeviceMappings` entry of `Box`,
 `ops/env.yml#L118-L124`), and `Snapshot` on an `AWS::EC2::Instance` silently reverts to `Delete`, so
-it would have read as protection and deleted the disk. What was done instead: `Retain` for both
-policies on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
-neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that stops
-telling a human to delete a stack holding records, and the two ways to read what is kept
+it would have read as protection and deleted the disk. What was done instead: `RetainExceptOnCreate` (deletion) and `Retain` (replacement)
+on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
+neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that says the
+stack holds nothing (that status exists only after a failed creation, whose rollback deleted the box), and the two ways to read what is kept
 ([the runbook](../ops/README.md#reading-what-the-fence-kept), untested). **Three named losses become
 survivable; nothing else changes.** A termination, a torn file, a bad write or a wrong delete inside
 the database are still unrecoverable, and the template is not applied to ridge until the human runs

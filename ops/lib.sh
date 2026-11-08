@@ -277,20 +277,14 @@ stack_param() {
   jq -r --arg k "$1" '.Stacks[0].Parameters // [] | map(select(.ParameterKey == $k))[0].ParameterValue // empty' <<<"$STACK_JSON"
 }
 
-# rolled_back_refusal: dies on a stack in ROLLBACK_COMPLETE, by what its Env says it holds. Ridge holds
-# demo data and may be deleted. Any other Env holds records, and so does a stack whose description
-# names no Env: an unknown environment is treated as precious, never as disposable. The box and its
-# disk are retained (DeletionPolicy, UpdateReplacePolicy, DeleteOnTermination), so a delete does not
-# destroy them - it leaves them outside any stack, and getting at them is the README's recovery paths.
+# rolled_back_refusal: dies on a stack in ROLLBACK_COMPLETE, whatever kind of stack it is. That status
+# exists only after a failed stack creation, and only a delete is allowed on such a stack: the creation's
+# rollback deleted what it had made, Box included (its DeletionPolicy is RetainExceptOnCreate, which retains
+# on every operation but the one that created it), so no box, disk or record can be in it. Delete the stack,
+# then run again. It never reads Env: network and github stacks carry none, and a missing Env says "not an
+# environment stack", not "holds records".
 rolled_back_refusal() {
-  local env who
-  env=$(stack_param Env)
-  if [ "$env" = ridge ]; then
-    die "the stack is in ROLLBACK_COMPLETE: ridge holds demo data only, so delete the stack (console or aws cloudformation delete-stack), then run this again. The box and its disk are retained, so the delete leaves them running and billing: remove them by hand afterwards"
-  fi
-  who="it names no Env"
-  [ -z "$env" ] || who="its Env is $env"
-  die "the stack is in ROLLBACK_COMPLETE and $who, so it is treated as holding records: do not delete it to run this again. The box and its disk are retained, so a delete would not destroy them, but it would leave them outside any stack, and reading the records then takes the recovery paths in ops/README.md (a retained box, a left-behind volume), which nobody has yet tried. Stop and ask the person who owns these records"
+  die "the stack is in ROLLBACK_COMPLETE: its creation failed and was rolled back, and it holds nothing a delete could lose, so delete the stack (console or aws cloudformation delete-stack), then run this again"
 }
 
 # choose_change_type: sets CS_TYPE from STACK_JSON. No stack, or one that only holds a change set

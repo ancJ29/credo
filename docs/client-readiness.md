@@ -55,17 +55,20 @@ ridge holds no real records ([open item 6](open-items.md)). That is a documented
 something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
 simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role").
 
-What the item does not say is what the box's disk does. The root volume holding that file carries
-`DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot
-([`ops/env.yml#L118-L124`](../ops/env.yml#L118) now holds the device; the `true` below is its value before 2026-11-08). So anything that terminates or replaces the
-instance takes every record with it, permanently: a stack delete, an image or instance-type change
-taken with `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the
-stack" ([`ops/lib.sh#L294`](../ops/lib.sh#L294)), which names no environment and would be read the
-same way on a client's stack as on a fresh one.
+What the item did not say is what the box's disk did. As of `88596afd` the root volume holding that file
+carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
+[`ops/env.yml#L118-L124`](../ops/env.yml#L118)). So anything that terminated or replaced the instance took every
+record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
+advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `88596afd`),
+looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
+never held records.
 
-On the `backup-policy` branch (not merged, not applied to any stack) the box carries `Retain` and the disk
-`DeleteOnTermination: false`, so those three losses become survivable, and nothing else changes: there is
-still no copy of any client's records, and no one has read a kept disk ([open item 6](open-items.md)).
+As of `main` after the backup-policy piece, `Box` carries `DeletionPolicy: RetainExceptOnCreate` and
+`UpdateReplacePolicy: Retain`, and the disk `DeleteOnTermination: false`, so a stack delete and a replacement
+leave the box and a termination leaves the disk. Nothing else changed: there is still no copy of any client's
+records, and no one has read a kept disk ([open item 6](open-items.md)). One condition is open: the human's change
+set (`ops/stack.sh env ridge --plan`, then without it) has not been run on ridge, so whether applying it replaces
+the box is not known.
 
 One thing stands in front of it, and it is a good one: a change set that removes or replaces any
 resource is refused by default and must be named by logical id to proceed

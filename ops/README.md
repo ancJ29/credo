@@ -51,8 +51,9 @@ working copy.
      this log` is not a key: redact it in this log, nothing is replaced ([the check](#the-check)).
    - The log reads the box over the tunnel (arm64, swap on, the SSM agent stopped), then GitHub's
      environment admitting `main` alone, and its secret `AWS_ROLE_ARN`.
-   - A stack that stays in `ROLLBACK_COMPLETE` is deleted by hand in the console before the script
-     is run again; the script stops and says so.
+   - A stack that stays in `ROLLBACK_COMPLETE` (its creation failed and was rolled back, so it holds
+     nothing) is deleted by hand in the console before the script is run again; the script stops and
+     says so.
 
 ## A change to a template
 
@@ -75,7 +76,8 @@ working copy.
 3. Run it again without `--plan`.
    - **REFUSED:** the change set removes or replaces something and nothing changed. If the plan's
      step names that change on purpose, run again with `--take <LogicalId>`; otherwise change the
-     template.
+     template. `--take Box` leaves the old box running with the only copy of the records while the
+     new box comes up empty: read [Reading what the fence kept](#reading-what-the-fence-kept) first.
    - **no changes:** the stack already matches the template.
 
 ## The first deploy was refused at the role
@@ -361,7 +363,7 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
 
 ## Reading what the fence kept
 
-`Box` carries `Retain` on a stack delete and on a replacement, and its root disk carries
+`Box` carries `RetainExceptOnCreate` on a stack delete (it retains on every act but the rollback of its own creation, which deletes a box that never served) and `Retain` on a replacement, and its root disk carries
 `DeleteOnTermination: false` (`ops/env.yml`, the comment above `Box`). That keeps a disk. It does not
 make the records come back, and **nobody has done either path below**: every step is written from
 what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked

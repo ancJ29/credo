@@ -81,22 +81,21 @@ check "no stack is a creation" CREATE "$(change_type '')"
 check "a stack that holds only a change set (REVIEW_IN_PROGRESS) is a creation" CREATE "$(change_type "$(described REVIEW_IN_PROGRESS)")"
 check "a made stack (CREATE_COMPLETE) is an update" UPDATE "$(change_type "$(described CREATE_COMPLETE)")"
 check "an updated stack (UPDATE_COMPLETE) is an update" UPDATE "$(change_type "$(described UPDATE_COMPLETE)")"
-refuses "a rolled-back stack is not touched: delete the stack" "delete the stack" change_type "$(described ROLLBACK_COMPLETE '' ridge)"
-refuses "a rolled-back ridge says it holds demo data only" "ridge holds demo data only" change_type "$(described ROLLBACK_COMPLETE '' ridge)"
-rolled_back_text() { # <Env, or none>: the refusal's text for a rolled-back stack of that Env
-  local e=${1:-}
-  [ "$e" = none ] && e=''
-  ( change_type "$(described ROLLBACK_COMPLETE '' "$e")" ) 2>&1 || true
+# a stack in ROLLBACK_COMPLETE is one whose creation failed and was rolled back: it holds nothing, whatever its kind.
+# Its refusal never reads Env (network has no Env parameter, github no Parameters block at all) and says delete it.
+net_rolled=$(jq -nc '{Stacks: [{StackName: "network", StackStatus: "ROLLBACK_COMPLETE", Parameters: [{ParameterKey: "Cidr", ParameterValue: "10.0.0.0/16"}]}]}')
+gh_rolled=$(jq -nc '{Stacks: [{StackName: "github", StackStatus: "ROLLBACK_COMPLETE"}]}')
+rolled_back_text() { # <a describe-stacks body>: the refusal's text for it
+  ( change_type "$1" ) 2>&1 || true
 }
-prod_text=$(rolled_back_text acme)
-refuses "a rolled-back stack of another Env is still refused, naming the Env and the records" "its Env is acme, so it is treated as holding records" \
-  change_type "$(described ROLLBACK_COMPLETE '' acme)"
-check "  and it offers the README's recovery paths" yes "$(grep -qF 'recovery paths in ops/README.md' <<<"$prod_text" && echo yes || echo no)"
-check "  and it does not offer the delete" no "$(grep -qF 'delete the stack' <<<"$prod_text" && echo yes || echo no)"
-none_text=$(rolled_back_text none)
-refuses "a rolled-back stack naming no Env is treated as holding records" "it names no Env, so it is treated as holding records" \
-  change_type "$(described ROLLBACK_COMPLETE)"
-check "  and does not offer the delete" no "$(grep -qF 'delete the stack' <<<"$none_text" && echo yes || echo no)"
+for kind_body in "ridge:$(described ROLLBACK_COMPLETE '' ridge)" "acme:$(described ROLLBACK_COMPLETE '' acme)" "no-Env:$(described ROLLBACK_COMPLETE)" "network:$net_rolled" "github:$gh_rolled"; do
+  kind=${kind_body%%:*}
+  body=${kind_body#*:}
+  text=$(rolled_back_text "$body")
+  refuses "a rolled-back stack ($kind) is not touched: delete the stack, then run again" "delete the stack" change_type "$body"
+  check "  ($kind) it says the creation failed and the delete loses nothing" yes "$(grep -qF 'creation failed and was rolled back, and it holds nothing a delete could lose' <<<"$text" && echo yes || echo no)"
+  check "  ($kind) it does not call the stack precious or send anyone to the README" no "$(grep -qE 'records|Stop and ask|README|retained' <<<"$text" && echo yes || echo no)"
+done
 
 echo "== an update never moves the deploy role's repository"
 STACK_JSON=$(described UPDATE_COMPLETE owner/name)
@@ -445,30 +444,40 @@ refuses "  a format with the caller cut is refused" "drops the caller" \
 
 # the box's disk is the only copy of a deployment's records (plan 2026-11-08-backup-policy, step 1). Read from the
 # parsed template, never grepped: a comment naming the setting is not the setting. Retain alone is legal on an
-# instance - Snapshot is not, and CloudFormation turns it back into Delete, so it would read as protection and not be.
+# instance - Snapshot is not, and the UpdateReplacePolicy page documents CloudFormation reverting it to Delete, so it would read as protection and not be.
 volume_guard() {
-  local what
-  for what in DeletionPolicy UpdateReplacePolicy; do
-    must "$1" "Box has a $what of Snapshot, which an instance cannot take: CloudFormation turns it back into Delete" \
-      ".Resources.Box.$what != \"Snapshot\""
-    must "$1" "Box has no $what of Retain" ".Resources.Box.$what == \"Retain\""
-    must "$1" "an instance resource has no $what of Retain" \
-      "[.Resources | to_entries[] | select(.value.Type == \"AWS::EC2::Instance\") | .value.$what] | all(. == \"Retain\")"
-  done
+  local inst='.Resources | to_entries[] | select(.value.Type == "AWS::EC2::Instance") | .value'
+  # DeletionPolicy may be Retain or RetainExceptOnCreate (retain on every act but the creation's own rollback, which
+  # deletes a box that never served); UpdateReplacePolicy takes Retain alone, RetainExceptOnCreate being a
+  # DeletionPolicy value only.
+  must "$1" "Box has a DeletionPolicy of Snapshot, which an instance cannot take: the UpdateReplacePolicy page documents CloudFormation reverting it to Delete" \
+    '.Resources.Box.DeletionPolicy != "Snapshot"'
+  must "$1" "Box has an UpdateReplacePolicy of Snapshot, which an instance cannot take: CloudFormation reverts it to Delete" \
+    '.Resources.Box.UpdateReplacePolicy != "Snapshot"'
+  must "$1" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+    '.Resources.Box.DeletionPolicy == "Retain" or .Resources.Box.DeletionPolicy == "RetainExceptOnCreate"'
+  must "$1" "Box has no UpdateReplacePolicy of Retain" '.Resources.Box.UpdateReplacePolicy == "Retain"'
+  must "$1" "an instance resource has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+    "[$inst | .DeletionPolicy] | all(. == \"Retain\" or . == \"RetainExceptOnCreate\")"
+  must "$1" "an instance resource has no UpdateReplacePolicy of Retain" \
+    "[$inst | .UpdateReplacePolicy] | all(. == \"Retain\")"
   must "$1" "Box's root device does not keep its disk on termination (DeleteOnTermination is not false)" \
     '.Resources.Box.Properties.BlockDeviceMappings | length == 1 and .[0].DeviceName == "/dev/xvda" and .[0].Ebs.DeleteOnTermination == false'
+  must "$1" "an instance resource has a disk that does not keep itself on termination (DeleteOnTermination is not false)" \
+    "[$inst | (.Properties.BlockDeviceMappings // []) as \$m | (\$m | length > 0) and all(\$m[]; .Ebs.DeleteOnTermination == false)] | all"
   must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
     '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
+  # Not held yet (second slice, item 6's backup half): an AWS::EC2::Volume added later with no policy passes this guard.
 }
 
 passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
-refuses "  a box with no DeletionPolicy is refused" "Box has no DeletionPolicy of Retain" \
+refuses "  a box with no DeletionPolicy is refused" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
   volume_guard "$(mut 'del(.Resources.Box.DeletionPolicy)')"
 refuses "  a box with no UpdateReplacePolicy is refused" "Box has no UpdateReplacePolicy of Retain" \
   volume_guard "$(mut 'del(.Resources.Box.UpdateReplacePolicy)')"
-refuses "  a DeletionPolicy of Snapshot, which an instance reverts to Delete, is refused" "turns it back into Delete" \
+refuses "  a DeletionPolicy of Snapshot, which an instance reverts to Delete, is refused" "DeletionPolicy of Snapshot" \
   volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Snapshot"')"
-refuses "  an UpdateReplacePolicy of Snapshot is refused" "turns it back into Delete" \
+refuses "  an UpdateReplacePolicy of Snapshot is refused" "UpdateReplacePolicy of Snapshot" \
   volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "Snapshot"')"
 refuses "  a root device deleted on termination is refused" "DeleteOnTermination is not false" \
   volume_guard "$(mut '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination = true')"
@@ -476,6 +485,13 @@ refuses "  a root device with no DeleteOnTermination (the default is true) is re
   volume_guard "$(mut 'del(.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination)')"
 refuses "  a second instance without both attributes is refused" "an instance resource has no DeletionPolicy" \
   volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","Properties":{}}')"
+passes "  a DeletionPolicy of plain Retain is accepted too" volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Retain"')"
+refuses "  a Delete DeletionPolicy is refused" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+  volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Delete"')"
+refuses "  an UpdateReplacePolicy of RetainExceptOnCreate (a DeletionPolicy value only) is refused" "Box has no UpdateReplacePolicy of Retain" \
+  volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "RetainExceptOnCreate"')"
+refuses "  a second instance with both attributes but a disk deleted on termination is refused" "an instance resource has a disk that does not keep itself" \
+  volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","DeletionPolicy":"Retain","UpdateReplacePolicy":"Retain","Properties":{"BlockDeviceMappings":[{"DeviceName":"/dev/xvda","Ebs":{"DeleteOnTermination":true}}]}}')"
 
 # box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
 # shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
