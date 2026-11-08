@@ -55,11 +55,11 @@ ridge holds no real records ([open item 6](open-items.md)). That is a documented
 something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
 simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role").
 
-What the item did not say is what the box's disk did. As of `88596afd` the root volume holding that file
+What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
-[`ops/env.yml#L118-L124`](../ops/env.yml#L118)). So anything that terminated or replaced the instance took every
+[`ops/env.yml#L122-L128`](../ops/env.yml#L122)). So anything that terminated or replaced the instance took every
 record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
-advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `88596afd`),
+advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `0f7d69c1`),
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
 never held records.
 
@@ -72,10 +72,11 @@ the box is not known.
 
 One thing stands in front of it, and it is a good one: a change set that removes or replaces any
 resource is refused by default and must be named by logical id to proceed
-([`ops/unsafe-changes.jq#L6-L8`](../ops/unsafe-changes.jq#L6), the guard step in
-[`ops/stack.sh`](../ops/stack.sh)). The refusal says in its own words why — "a replaced box deletes
-its disk and the database with it". That guard is one `--take` away from being passed, and behind it
-there is nothing.
+([`ops/unsafe-changes.jq#L7-L9`](../ops/unsafe-changes.jq#L7), the guard step in
+[`ops/stack.sh`](../ops/stack.sh)). Before the backup-policy piece its comment said why — "a replaced box
+deletes its disk and the database with it" — and it now says the box is kept on a replacement but the new
+one comes up with an empty database (`#L4-L6`). That guard is one `--take` away from being passed, and
+behind it there is only the fence's kept box.
 
 ### The tree guard: `ops/` alone is compared
 

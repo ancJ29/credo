@@ -62,15 +62,15 @@ reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a re
 knows a copy would be readable.
 
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
-in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed when that piece merges and its
-change set has been read on ridge.** The box's root volume holds the one SQLite file
+in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
+human's change set has still not been run on ridge.** The box's root volume holds the one SQLite file
 (`ops/c-storage.service#L20`). Before the piece it carried `DeleteOnTermination: true` with no
 `DeletionPolicy` and no snapshot, so a stack delete, an image or instance-type change taken with
 `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the stack"
-(`ops/lib.sh#L294`, as of `88596afd`) — took every record with it. The item first asked for a
+(`ops/lib.sh#L294`, as of `0f7d69c1`, `main` before the piece) — took every record with it. The item first asked for a
 `DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` "on the volume". Neither half could
 be written: there is no volume resource (the disk is a `BlockDeviceMappings` entry of `Box`,
-`ops/env.yml#L118-L124`), and `Snapshot` on an `AWS::EC2::Instance` silently reverts to `Delete`, so
+`ops/env.yml#L122-L128`), and on an `AWS::EC2::Instance`, which cannot snapshot, AWS's `UpdateReplacePolicy` page says CloudFormation reverts `Snapshot` to `Delete`, so
 it would have read as protection and deleted the disk. What was done instead: `RetainExceptOnCreate` (deletion) and `Retain` (replacement)
 on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
 neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that says the

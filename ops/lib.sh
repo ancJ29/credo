@@ -278,13 +278,16 @@ stack_param() {
 }
 
 # rolled_back_refusal: dies on a stack in ROLLBACK_COMPLETE, whatever kind of stack it is. That status
-# exists only after a failed stack creation, and only a delete is allowed on such a stack: the creation's
+# exists only after a failed (or cancelled) stack creation, and only a delete is allowed on such a stack: the creation's
 # rollback deleted what it had made, Box included (its DeletionPolicy is RetainExceptOnCreate, which retains
 # on every operation but the one that created it), so no box, disk or record can be in it. Delete the stack,
 # then run again. It never reads Env: network and github stacks carry none, and a missing Env says "not an
 # environment stack", not "holds records".
+# Source of both claims: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/view-stack-events.html,
+# "Stack status codes", the ROLLBACK_COMPLETE row ("exists only after a failed stack creation", "only a delete
+# operation can be performed"; the row also covers an explicitly canceled creation).
 rolled_back_refusal() {
-  die "the stack is in ROLLBACK_COMPLETE: its creation failed and was rolled back, and it holds nothing a delete could lose, so delete the stack (console or aws cloudformation delete-stack), then run this again"
+  die "the stack is in ROLLBACK_COMPLETE: its creation did not complete and was rolled back, and it holds nothing a delete could lose, so delete the stack (console or aws cloudformation delete-stack), then run this again"
 }
 
 # choose_change_type: sets CS_TYPE from STACK_JSON. No stack, or one that only holds a change set

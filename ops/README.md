@@ -51,9 +51,12 @@ working copy.
      this log` is not a key: redact it in this log, nothing is replaced ([the check](#the-check)).
    - The log reads the box over the tunnel (arm64, swap on, the SSM agent stopped), then GitHub's
      environment admitting `main` alone, and its secret `AWS_ROLE_ARN`.
-   - A stack that stays in `ROLLBACK_COMPLETE` (its creation failed and was rolled back, so it holds
-     nothing) is deleted by hand in the console before the script is run again; the script stops and
-     says so.
+   - A stack that stays in `ROLLBACK_COMPLETE` (its creation did not complete and was rolled back, so
+     it holds nothing) is deleted by hand in the console before the script is run again; the script
+     stops and says so. A rolled-back creation's box is terminated, and `DeleteOnTermination: false`
+     (`ops/env.yml#L128`) leaves its empty root disk behind as an `available` volume, a few cents a
+     month: remove it. *Reasoned, not seen:* CloudFormation's deletion of the instance terminates it,
+     so EC2's attribute governs (high confidence, never tried).
 
 ## A change to a template
 

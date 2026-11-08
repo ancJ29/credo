@@ -93,7 +93,7 @@ for kind_body in "ridge:$(described ROLLBACK_COMPLETE '' ridge)" "acme:$(describ
   body=${kind_body#*:}
   text=$(rolled_back_text "$body")
   refuses "a rolled-back stack ($kind) is not touched: delete the stack, then run again" "delete the stack" change_type "$body"
-  check "  ($kind) it says the creation failed and the delete loses nothing" yes "$(grep -qF 'creation failed and was rolled back, and it holds nothing a delete could lose' <<<"$text" && echo yes || echo no)"
+  check "  ($kind) it says the creation did not complete and the delete loses nothing" yes "$(grep -qF 'creation did not complete and was rolled back, and it holds nothing a delete could lose' <<<"$text" && echo yes || echo no)"
   check "  ($kind) it does not call the stack precious or send anyone to the README" no "$(grep -qE 'records|Stop and ask|README|retained' <<<"$text" && echo yes || echo no)"
 done
 

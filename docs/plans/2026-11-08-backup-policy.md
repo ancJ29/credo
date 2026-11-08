@@ -3,7 +3,7 @@
 ## At a glance
 
 A deployment's records are one SQLite file on one box's root disk
-(`ops/c-storage.service#L20`, `DB_PATH=/var/lib/c-storage/c-storage.db`). That disk is a property of
+(`ops/c-storage.service#L20`, `DB_PATH=/var/lib/c-storage/c-storage.db`). The line numbers below that name `ops/env.yml`, `ops/test.sh` or `ops/lib.sh` before the piece's own edits are at `0f7d69c1`, `main` where the branch began. That disk is a property of
 the box, not a resource of its own (`ops/env.yml#L111-L117`), it carries `DeleteOnTermination: true`,
 and nothing in `ops/` or `.github/` holds a `DeletionPolicy`, an `UpdateReplacePolicy` or a snapshot —
 the one retention setting in the tree is a log group's 14 days (`ops/env.yml#L173`). So any act that
@@ -34,7 +34,7 @@ CloudFormation. Row 4 is why the second slice exists, and why this plan does not
 
 ## What the open item asks for cannot be written
 
-Item 6 (`docs/open-items.md#L44-L70`) asks for "a `DeletionPolicy`/`UpdateReplacePolicy` of
+Item 6 (`docs/open-items.md#L44-L81`) asks for "a `DeletionPolicy`/`UpdateReplacePolicy` of
 `Snapshot` or `Retain` on the volume". Both halves of that are wrong, and the plan follows the code
 rather than the item:
 
@@ -68,7 +68,7 @@ holds no endpoint today (`ops/network.yml#L21-L83`) and is the one stack every e
 client's stack imports from; a put-only instance role, which the template deliberately does not have
 ("no instance role", `ops/env.yml#L93`); a timer and unit on the box; a restore script run from the
 human's terminal over the tunnel; and a drill beside `ops/drill.sh`'s rows. The readiness page already
-prices the pair as "a day's piece, not an afternoon" (`docs/client-readiness.md#L233-L236`). The order
+prices the pair as "a day's piece, not an afternoon" (`docs/client-readiness.md#L265-L268`). The order
 is this one first, on a reason that is not convenience: the backup piece's own change sets touch `Box`
 for its instance profile, and nobody should put a change set near the box that holds the only copy
 while a replacement still destroys it.
@@ -79,7 +79,7 @@ while a replacement still destroys it.
 | --- | --- | --- |
 | 1 | A stack delete does not take the box: `Box` carries `DeletionPolicy` of `Retain` or `RetainExceptOnCreate` | `ops/test.sh` |
 | 2 | A replacement does not take the box: `Box` carries `UpdateReplacePolicy: Retain` | `ops/test.sh` |
-| 3 | `Snapshot` on `Box` is refused, because CloudFormation turns it back into `Delete` | `ops/test.sh` |
+| 3 | `Snapshot` on `Box` is refused, because AWS's `UpdateReplacePolicy` page documents CloudFormation turning it back into `Delete` | `ops/test.sh` |
 | 4 | Either attribute missing is refused | `ops/test.sh` |
 | 5 | The root device is refused unless `DeleteOnTermination` is false, so a termination outside CloudFormation leaves the disk | `ops/test.sh` |
 | 6 | Any second instance resource added later without both attributes is refused | `ops/test.sh` |
@@ -103,7 +103,7 @@ the change.
 | # | Step | Done when | Size |
 | --- | --- | --- | --- |
 | 1 | The cheap end-to-end build: the two attributes on `Box` and `DeleteOnTermination: false` (`ops/env.yml#L94-L117`), and a `volume_guard` beside the other template guards, through `tojson`/`must` (`ops/test.sh#L186-L223`) | `bash ops/test.sh` at exit 0 with the guard's `passes` row printing ok | 8 min |
-| 2 | Rows 1 to 7 as mutants through `mut`, on the pattern of the throttle rows (`ops/test.sh#L389-L395`) | `bash ops/test.sh` at exit 0, each row seen red once, the mutation count printed | 10 min |
+| 2 | Rows 1 to 7 as mutants through `mut`, on the pattern of the throttle rows (`ops/test.sh#L415-L421` at `0f7d69c1`) | `bash ops/test.sh` at exit 0, each row seen red once, the mutation count printed | 10 min |
 | 3 | The `ROLLBACK_COMPLETE` line (`ops/lib.sh#L294`) reads the stack's `Env` through `stack_param` and branches; rows 8 to 10 beside the row already pinning its text (`ops/test.sh#L84`), `described` extended to carry a parameter | `bash ops/test.sh` at exit 0, the three rows each red once | 6 min |
 | 4 | `ops/README.md` gains the two recovery paths; item 6 corrected to what is legal and split, its backup half left open | the piece's own diff adds no local path (`git diff main...HEAD -U0 -- . ':!docs/plans' | grep -E '^\+' | grep -E '/Users/\|~/'` prints nothing; a whole-tree `git grep` never has, with 468 binary walk snapshots and four documents quoting the command matching before this piece) and `bash ops/test.sh` still exits 0. **A doc step: that grep is its only machine check, and the words are the reviewer's at step 6** | 5 min |
 | 5 | The `ops` job's gate as CI runs it, less cfn-lint | ShellCheck 0.11.0 `-x ops/*.sh walk/*.sh` at exit 0 and `bash ops/test.sh` at exit 0, read back from the log's own exit line. **cfn-lint is named, not run: it is CI's or the human's terminal** | 4 min |
@@ -138,7 +138,7 @@ volume), every step marked untested where the repository cannot show it; item 6 
 awaiting the merge and step 8, backup half open, "no copy of any client's records") and its `Snapshot`/"on the
 volume" ask corrected; item 4's list no longer claims an S3 endpoint; the rollback citation moved `#L276` to `#L294`
 in item 6 and `docs/client-readiness.md` (the line `ROLLBACK_COMPLETE) die "... delete the stack ..."` is line 294 in
-`git show 88596afd:ops/lib.sh`), and the `ops/env.yml` device citation to `#L118-L124`. Check: the diff of this commit
+`git show 0f7d69c1:ops/lib.sh`), and the `ops/env.yml` device citation to `#L118-L124` (both moved at the reread: the device is `#L122-L128`). Check: the diff of this commit
 adds no match of `git grep -nE '/Users/|~/'`; the tree's own matches are the convention's and two plans' quotations of
 that command and 468 binary walk snapshots, all there before (step 5 corrected the done-check above, which
 had claimed the whole-tree grep prints nothing). `bash ops/test.sh` not run (another agent's suite).
@@ -168,6 +168,21 @@ AWS sentence that `ROLLBACK_COMPLETE` exists only after a failed creation and al
 on a page fetched here (the stack-status pages did not load that text); it rests on the review's reading and
 CloudFormation's behaviour as known. `bash ops/test.sh` exit 0, `shellcheck -x ops/*.sh walk/*.sh` exit 0, from
 `/Users/hau/projects/credo/logs/20261108-1528-ops-gate-backup-policy-step7b.log` (`== exit 0 (ops/test.sh 0 shellcheck 0)`); prettier `--check .` exit 0 run on its own. cfn-lint named, not run.
+
+Step 9 done 2026-11-08: `docs/recaps/2026-11-08-backup-policy.md`, item 6's fence half closed with this commit (backup
+half open, first line unchanged), `docs/products.md` unchanged (no operator-visible row). Three document fixes rode with
+it from the reread: every line citation this piece carries re-read at its target (the device is `ops/env.yml#L122-L128`,
+no longer `#L118-L124`, in `docs/client-readiness.md` and `docs/open-items.md`; the `unsafe-changes.jq` guard is `#L7-L9`;
+`main` before the piece is `0f7d69c1`, not `88596afd`, for the `ops/lib.sh#L294` and `DeleteOnTermination: true` claims);
+the README says a rolled-back creation's empty root disk is left behind (reasoned, not seen); `Snapshot`'s revert is
+attributed to AWS's `UpdateReplacePolicy` page. Step 7's "AWS sentence not verified" is now sourced: the "Stack status
+codes" table of AWS's `view-stack-events` page, `ROLLBACK_COMPLETE` row, says it "exists only after a failed stack
+creation" and "only a delete operation can be performed", and also covers an explicitly cancelled creation; the source is
+in `ops/lib.sh`'s comment and the message now says the creation "did not complete". `shellcheck -x ops/*.sh walk/*.sh`
+0, `bash ops/test.sh` 0 ("all checks passed", 0 FAIL), prettier on its own 0, from
+`20261108-1636-ops-gate-backup-policy-step9b.log` (`== exit 0 (shellcheck 0 ops/test.sh 0 prettier 0)`; the first try,
+`...-1635-...step9.log`, stopped on the sandbox's Go build cache and was rerun with a `GOCACHE` under the temp folder).
+Not run: cfn-lint, the human's change set.
 
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell
