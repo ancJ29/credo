@@ -57,11 +57,15 @@ simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instan
 
 What the item does not say is what the box's disk does. The root volume holding that file carries
 `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot
-([`ops/env.yml#L111-L117`](../ops/env.yml#L111)). So anything that terminates or replaces the
+([`ops/env.yml#L118-L124`](../ops/env.yml#L118) now holds the device; the `true` below is its value before 2026-11-08). So anything that terminates or replaces the
 instance takes every record with it, permanently: a stack delete, an image or instance-type change
 taken with `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the
-stack" ([`ops/lib.sh#L276`](../ops/lib.sh#L276)), which names no environment and would be read the
+stack" ([`ops/lib.sh#L294`](../ops/lib.sh#L294)), which names no environment and would be read the
 same way on a client's stack as on a fresh one.
+
+On the `backup-policy` branch (not merged, not applied to any stack) the box carries `Retain` and the disk
+`DeleteOnTermination: false`, so those three losses become survivable, and nothing else changes: there is
+still no copy of any client's records, and no one has read a kept disk ([open item 6](open-items.md)).
 
 One thing stands in front of it, and it is a good one: a change set that removes or replaces any
 resource is refused by default and must be named by logical id to proceed

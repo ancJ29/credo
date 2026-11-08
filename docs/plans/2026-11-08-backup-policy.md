@@ -132,6 +132,15 @@ names ridge. `bash ops/test.sh` exit 0 and `shellcheck -x ops/*.sh` exit 0, from
 branch inverted, and a missing Env falling to ridge's side (only the two no-Env rows red). Not shown: that the
 README's recovery paths exist (step 4) or work.
 
+Step 4 done 2026-11-08: `ops/README.md` gains "Reading what the fence kept" (a retained box, a left-behind
+volume), every step marked untested where the repository cannot show it; item 6 retitled, split (fence half built and
+awaiting the merge and step 8, backup half open, "no copy of any client's records") and its `Snapshot`/"on the
+volume" ask corrected; item 4's list no longer claims an S3 endpoint; the rollback citation moved `#L276` to `#L294`
+in item 6 and `docs/client-readiness.md` (the line `ROLLBACK_COMPLETE) die "... delete the stack ..."` is line 294 in
+`git show 88596afd:ops/lib.sh`), and the `ops/env.yml` device citation to `#L118-L124`. Check: the diff of this commit
+adds no match of `git grep -nE '/Users/|~/'`; the tree's matches are the convention's and plans' own quotations of
+that command and four binary snapshots, all there before. `bash ops/test.sh` not run (another agent's suite).
+
 **51 machine minutes**, the review and the whole gate among them, plus the human's step 8. Each size
 is the minutes the same shape took in its last rows of the task ledger: a guard built into a shell
 script 8, its cases 8 to 14, a small cases step on `ops/test.sh` 3 to 6, a doc step 5, the ops gate 4,

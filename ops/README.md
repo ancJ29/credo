@@ -359,6 +359,82 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
    - **a key is in this log:** as in [the check](#the-check).
    - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
+## Reading what the fence kept
+
+`Box` carries `Retain` on a stack delete and on a replacement, and its root disk carries
+`DeleteOnTermination: false` (`ops/env.yml`, the comment above `Box`). That keeps a disk. It does not
+make the records come back, and **nobody has done either path below**: every step is written from
+what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked
+*untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. There
+is still no copy of any client's records anywhere else ([open item 6](../docs/open-items.md)). The
+first real run of either path is a drill, and until then treat these as notes for a bad day, not a
+rehearsed procedure. Region `ap-southeast-5`, your own AWS session, every `aws` line yours to run.
+
+The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`).
+The unit is `DynamicUser=yes` with `StateDirectoryMode=0700`, so only root reads it: `sudo` on the
+box (`ops/release.sh` uses `sudo` for everything). *Untested:* systemd documents that a dynamic-user
+service keeps its state under `/var/lib/private/c-storage`, with `/var/lib/c-storage` a link to it.
+
+### A retained box
+
+The stack was deleted (or a replacement set the old box aside) and the instance is still running,
+outside any stack.
+
+1. Find it. `BoxId` was a stack output and went with the stack, so look the instance up by the tag
+   `ops/env.yml` gives it, `Name` = `credo-<env>`:
+   `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name,LaunchTime]' --output text`.
+   After a replacement two boxes carry the name: the older `LaunchTime` is the retained one. *Untested:*
+   that the tag survives on a retained instance (the tag is the template's own property, so it should).
+2. Do not use `ops/tunnel.sh`, `check.sh` or `release.sh` on it: `box_open` reads `BoxId` from the
+   stack and stops with "stack <env> does not exist" (`ops/lib.sh`). Do by hand what `box_open` does:
+   a throwaway key (`ssh-keygen -t ed25519 -N '' -f <keyfile>`), then
+   `aws ec2-instance-connect send-ssh-public-key --instance-id <id> --availability-zone <zone> --instance-os-user ec2-user --ssh-public-key file://<keyfile>.pub`,
+   then within 60 seconds
+   `ssh -i <keyfile> -o IdentitiesOnly=yes -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id %h" ec2-user@<id>`.
+   *Untested:* that the endpoint (the network stack's, which an environment's delete leaves) still
+   reaches it. The way in is `BoxGroup`'s port-22 rule, and `BoxGroup` is in the stack that went:
+   the kept instance still uses it, so a delete is expected to stop there, but nobody has seen it.
+   If the group is gone, the box has no way in, and the way to read it is to stop the instance, detach its disk and follow the left-behind volume below.
+3. On the box, stop the service so the file is whole (`sudo systemctl stop c-storage`): the memo
+   says a copy taken while it runs can miss commits held in the `-wal` file
+   ([the memo](../docs/memo/c-storage.md#the-file-is-the-only-copy)). Then
+   `sudo ls -la /var/lib/c-storage/` and expect the `.db` file with no `-wal` beside it. *Untested:*
+   that a clean stop leaves it so; if a `-wal` is there, copy the whole folder and keep all three files.
+4. Copy it out over the same connection, the way `ops/release.sh` sends files the other way:
+   `ssh <the options above> ec2-user@<id> 'sudo cat /var/lib/c-storage/c-storage.db' > <local file>`,
+   then `sudo sha256sum` on the box against `shasum -a 256` here. Both sums equal is the only proof
+   the copy is the file.
+5. Reading the copy is *untested and unwritten*: `DB_PATH` is the one setting that names the file, so
+   pointing a local c-storage at the copy is the expected way, but the keys in
+   `/etc/c-storage/keys.env` (root's alone, on the box) are what a client of it needs, and no step here
+   has been tried.
+6. Only after step 5 has read real records, remove the box. Nothing removes it for you, and it bills.
+
+Running `ops/stack.sh env <name>` again does **not** bring the old records back: it makes a new box
+and a new, empty database beside the retained one.
+
+### A left-behind volume
+
+The instance was terminated (console, or any act outside CloudFormation) and its disk is still there,
+status `available`.
+
+1. Find it: `aws ec2 describe-volumes --region ap-southeast-5 --filters Name=status,Values=available --query 'Volumes[].[VolumeId,Size,AvailabilityZone,CreateTime]' --output text`.
+   Pick by size (the stack's `VolumeSize`), by zone and by a `CreateTime` close to the box's launch.
+   *Untested:* the template tags the instance, not the disk, so expect no name on the volume.
+2. Launch any instance in the same zone and attach the volume to it as a second disk
+   (`aws ec2 attach-volume --volume-id <id> --instance-id <new> --device /dev/sdf`). The disk is
+   encrypted under the account's default EBS key (`ops/env.yml` sets `Encrypted: true` and no key id),
+   so the same account reads it. *Untested:* a way in to that instance: the repository only shows a box
+   reached through the endpoint with `BoxGroup`'s port-22 rule, so the easy case is a new instance in
+   the same subnet with that group, which exists only while the environment stack does.
+3. On it, find the disk with `lsblk`, and mount its root partition read-only. *Untested, expected:*
+   the root is XFS (`ops/env.yml`'s UserData comment), and XFS refuses a second filesystem with the
+   running root's id, so `sudo mount -o ro,nouuid /dev/<partition> /mnt`.
+4. Stop at `/mnt/var/lib/c-storage/c-storage.db` (or `/mnt/var/lib/private/c-storage/`): copy and
+   compare as in the retained box's step 4. Nothing was running on it, so no `-wal` is expected beyond what
+   the last stop left.
+5. Remove the volume and the helper instance when the copy has been read, not before.
+
 ## The drill
 
 Once on a new box, and again when the unit, the templates or the box change. It breaks the known

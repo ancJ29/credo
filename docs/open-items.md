@@ -26,7 +26,7 @@ plan, since it decides each walk's words.
 
 Home: [the ridge plan](plans/2026-10-28-ridge.md#the-templates). Hand-written CloudFormation, shipped
 through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with no internet
-gateway, its Instance Connect Endpoint; the S3 gateway endpoint with its first caller),
+gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet, it comes with the backup, item 6),
 `ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. A signed client's stack is one more from
@@ -41,7 +41,10 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The nightly backup and its restore, with no copy of the records yet — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+
+**There is no copy of any client's records. This item's backup half is open, and nothing below it is
+built.** The fence half is the backup-policy piece's (below).
 
 The box's role may only put, so it cannot restore itself: the restore runs from the human's
 terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
@@ -52,22 +55,30 @@ is taken with the service stopped: a plain tarball taken mid-write can miss save
 file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
 
 ridge, the first box, holds no real data, so the backup still waits for a signed client
-([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint and the box's
-put-only role come with it.
+([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint (`ops/network.yml`
+holds none) and the box's put-only role (`ops/env.yml#L93`: "no instance role") come with it. Still
+to do, as one piece: the copy, a restore script run from the human's terminal, and a drill that
+reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a restored file, nobody
+knows a copy would be readable.
 
-**Widened by the client-readiness read (2026-11-07), and it belongs here rather than in an item of
-its own, since one piece closes both.** The box's root volume, which holds the one SQLite file
-(`ops/c-storage.service#L20`), carries `DeleteOnTermination: true` with no `DeletionPolicy` and no
-snapshot (`ops/env.yml#L111-L117`). So until this item is built, anything that terminates or
-replaces the instance takes every record with it: a stack delete, an image or instance-type change
-taken with `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the
-stack" (`ops/lib.sh#L276`), which names no environment and reads the same on a client's stack as on
-a fresh one. One guard stands in front of it and says so in its own words — a change set that
-removes or replaces any resource is refused unless its logical id is named, because "a replaced box
-deletes its disk and the database with it" (`ops/unsafe-changes.jq#L1-L8`, the guard step in
-`ops/stack.sh`) — and behind that guard there is nothing. So the backup's piece carries two more
-things: a `DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` on the volume, and a
-`ROLLBACK_COMPLETE` message that does not tell a human to delete a stack holding real data.
+**The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
+in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed when that piece merges and its
+change set has been read on ridge.** The box's root volume holds the one SQLite file
+(`ops/c-storage.service#L20`). Before the piece it carried `DeleteOnTermination: true` with no
+`DeletionPolicy` and no snapshot, so a stack delete, an image or instance-type change taken with
+`--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the stack"
+(`ops/lib.sh#L294`, as of `88596afd`) — took every record with it. The item first asked for a
+`DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` "on the volume". Neither half could
+be written: there is no volume resource (the disk is a `BlockDeviceMappings` entry of `Box`,
+`ops/env.yml#L118-L124`), and `Snapshot` on an `AWS::EC2::Instance` silently reverts to `Delete`, so
+it would have read as protection and deleted the disk. What was done instead: `Retain` for both
+policies on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
+neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that stops
+telling a human to delete a stack holding records, and the two ways to read what is kept
+([the runbook](../ops/README.md#reading-what-the-fence-kept), untested). **Three named losses become
+survivable; nothing else changes.** A termination, a torn file, a bad write or a wrong delete inside
+the database are still unrecoverable, and the template is not applied to ridge until the human runs
+its change set.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
