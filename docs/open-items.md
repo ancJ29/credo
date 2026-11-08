@@ -1024,4 +1024,18 @@ A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so 
 
 **What is not known.** Whether the two lines can be joined by a shared request id, and whether the BFF should write one line of its own with the client's code and the record read. Neither was looked at; this item records the gap so it is not left silent.
 
+**Also not known: the end user's own address.** The stage's `$context.identity.sourceIp` is the immediate TCP connection, so for a call through the distribution (the UI's and the deploy check's) it is a CloudFront edge node, and an HTTP API's access-log format cannot carry the viewer's `X-Forwarded-For` (only `$context` variables, and `$request.header.*` is not among them). The function's trail cannot recover it either: Fastify is built with no `trustProxy` (none in `bff/src`). Whether the adapter gives Fastify a remote address at all would need a run. So no trail is known to name the end user's address for a call through the distribution; only a call straight to the API's address shows the caller's own.
+
 **Trigger:** a client signs, or real client data reaches any deployment, whichever comes first, the same as item 121's wall. *Fix, a sketch and not a design:* join the two trails on one id, or have the BFF log the client's code on a read, whichever the reading shows is cheaper.
+
+## 153. The access log's route field carries no information — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+The stage is the default stage with a single catch-all route, so `"route":"$context.routeKey"` in the format (`ops/env.yml`, `ApiStage`'s `AccessLogSettings`) is the constant `$default` on every line. It is one of the five fields `api_log_guard` insists on and one of the things `docs/plans/2026-11-08-access-log.md` says the line holds. *Fix:* drop it, or keep it for the day a second route exists and say so. *Trigger:* the next change of the format.
+
+## 154. The access-log format is hand-built JSON with three caller-controlled values interpolated unescaped — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+The user agent, the path and the integration error (which can itself be JSON) are written into the line as they arrive. A `"` or `\` in any of them would make that line invalid JSON, so a structured query over the log fails on it, and a guessing run is exactly the traffic that would carry one. The line stays human-readable, so this degrades machine parsing only. AWS's own pages say nothing about escaping and nothing local can settle it; the first lines on ridge are what would. *Fix, if it shows:* drop the three fields from the JSON or move to a format that tolerates them. *Trigger:* the first query over the log that skips a line.
+
+## 155. The access-log guard holds five of the format's ten fields — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+`api_log_guard` in `ops/test.sh` requires the five field groups of the plan's case 1; the other five rest on step 1's exact-equality check, which is a literal copy of the format and so the first thing any deliberate format change edits. After such an edit nothing would catch a variable that does not exist, such as the payload-2.0 spelling `$context.http.method`, a natural mistake in this very template. *Fix:* the guard's list should carry every field the format claims. *Trigger:* the next change of the format.

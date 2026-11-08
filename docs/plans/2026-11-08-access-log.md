@@ -5,7 +5,7 @@
 The one API stage in front of the BFF records nothing it serves: `ops/env.yml#L244` says so in its
 own words, "No access log. The API's own address answers anyone". This piece gives that stage a log
 group and an access-log format, so that a call to a client's back end leaves a line naming when it
-came, from what address, over what path and what it was answered — and gives that property a guard
+came, from what address (the immediate connection's: the caller's own for a call straight to the API, CloudFront's for one through the distribution), over what path and what it was answered — and gives that property a guard
 that reddens if a later change takes it away. It is the readable half of
 [open item 121](../open-items.md), and the log half of the fourth thing
 [client readiness](../client-readiness.md) asks for before real client data goes in, where it
@@ -48,14 +48,14 @@ request. A silent gap in one is visible against the other.
 
 | # | The case: one behaviour, one sentence | Held by |
 | --- | --- | --- |
-| 1 | The stage sends its access log to this environment's own group, in a format holding the time, the caller, the path, the route and the answer | `ops/test.sh`, `api_log_guard` under `passes` |
+| 1 | The stage sends its access log to this environment's own group, in a format holding the time, the address of whoever opened the connection, the path, the route and the answer | `ops/test.sh`, `api_log_guard` under `passes` |
 | 2 | A stage with no `AccessLogSettings` is refused | `ops/test.sh`, `refuses` on `mut` |
 | 3 | A destination that is not this environment's own group is refused | `ops/test.sh`, `refuses` on `mut` |
-| 4 | A format that drops the caller, the time, the path or the answer is refused | `ops/test.sh`, `refuses` on `mut` |
+| 4 | A format that drops the connection's address, the time, the path or the answer is refused | `ops/test.sh`, `refuses` on `mut` |
 | 5 | The group is the API's own, not the function's, and keeps 14 days | `ops/test.sh`, `check` on `.Resources.ApiLogs` |
 | 6 | The template still reads as JSON in long form, and cfn-lint is silent on it | `ops/test.sh#L214`; CI's `ops` job |
 | 7 | No committed file outside `docs/plans/` and `docs/recaps/` still says the API has no access log | `grep -c` reads 0 |
-| 8 | A call through ridge's edge leaves one line naming when, from where, what path and what answer | the human's read, point 2 |
+| 8 | A call through ridge's edge leaves one line naming when, which connection (CloudFront's, through the edge), what path and what answer | the human's read, point 2 |
 
 ## The steps
 
@@ -105,7 +105,7 @@ request. A silent gap in one is visible against the other.
   `docs/architecture.md#L287-L303` (the throttle citation moved to `ops/env.yml#L250-L252`, and a sentence on the two logs: the function's, on all along, and the stage's, in the template awaiting the change set);
   `docs/client-readiness.md#L134-L172` (heading, the quoted comment and its citation, and the bold sentence replaced by the two trails, each marked old or new and what is unverified) and its list's fourth entry (the sign-in limit alone, item 28; the log noted as split off);
   `docs/open-items.md#L781-L785` (item 121 now *partly closed*, readable half done and not yet on ridge, the wall left parked) and a new item 152 at the file's end (the record-level join, Low). The grep reads 0 lines; `glance.sh --check` passes. Documents only, no test run.
-- [ ] **4. The local gate, whole.** *Done when:* `bash ops/test.sh` exits 0 with `0 not ok`, and
+- [ ] **4. The local gate, whole.** *Done when:* `bash ops/test.sh` exits 0 and ends `ops/test.sh: all checks passed` (it prints no `0 not ok`), and
   `shellcheck -x ops/*.sh walk/*.sh` is clean; both tee'd into the root's `logs/`. cfn-lint needs
   pip and the network and is not run here — CI's `ops` job
   (`.github/workflows/ci.yml#L198-L203`) is its verdict on the push, as the tree guard's recap
@@ -125,14 +125,25 @@ Machine total: about 33 minutes.
 human's change set. Run `ops/stack.sh env ridge --plan` and read the changes — one log group added,
 one stage modified, nothing else — then `ops/stack.sh env ridge`. A yes starts ridge recording every
 call to its API. A no leaves the template change sitting in `main` with ridge unchanged, which
-breaks nothing. If the change set fails on permissions, that is the cause to look at first: turning
-logging on makes API Gateway write a resource policy on the group, so the identity executing the
-change set needs `logs:PutResourcePolicy`.
+breaks nothing. If the change set fails on permissions, that is the first cause to look at: AWS lists
+eight permissions for turning HTTP API logging on, and the identity executing the change set needs
+all of them: `logs:CreateLogDelivery`, `logs:PutResourcePolicy`, `logs:UpdateLogDelivery`,
+`logs:DeleteLogDelivery`, `logs:CreateLogGroup`, `logs:DescribeResourcePolicies`,
+`logs:GetLogDelivery` and `logs:ListLogDeliveries`. **A second cause to look at:** the template gives
+`DestinationArn: !GetAtt ApiLogs.Arn`, which returns an ARN ending in `:*`, and whether
+`AccessLogSettings.DestinationArn` accepts that suffix is not documented either way, so nothing
+local can settle it; the change set is what answers. If it is refused for that, the fallback is one
+edit, replacing the value with
+`!Sub arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/apigateway/credo-${Env}`.
 
 **2. The lines themselves, after the change set.** There is no screen in this piece, so this is the
 look that stands in for one. The deploy check already makes a client and signs in through the edge
 on every run, so lines will be there; read the newest few of
-`/aws/apigateway/credo-ridge` in the console. The question is whether a person who is not a
-programmer can answer "who called, when, over what path, and what did it answer" from one line. A
+`/aws/apigateway/credo-ridge` in the console. The address in a line is that of whoever opened the connection: the caller's own for a call
+straight to the API's address (the item-121 case the log was built for), CloudFront's for a call
+through the distribution, which is what the UI's and the deploy check's calls are, so those lines
+show an edge node and not the caller. The question is whether a person who is not a programmer can
+answer "when, over what path, and what did it answer" from one line, and "from whom" only for a call
+straight to the API. A
 yes closes the readable half of item 121. A no reopens step 1 to change the format's fields, which
 is one property and another change set.

@@ -228,14 +228,14 @@ shape** (`#L212`): c-storage's arm64 binary to the box over an Instance Connect 
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
 third-party code builds *before* the AWS role is assumed (`#L254`), and the role itself is narrow
 to the point of naming the one function and the one instance
-([`ops/env.yml#L433`](../ops/env.yml#L433)). Two other workflows:
+([`ops/env.yml#L444`](../ops/env.yml#L444)). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) adds a day to ridge's demo copies nightly, and
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
 Access — the only deploy target that is not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
-([`ops/env.yml#L211`](../ops/env.yml#L211), [`ops/README.md`](../ops/README.md)).
+([`ops/env.yml#L218`](../ops/env.yml#L218), [`ops/README.md`](../ops/README.md)).
 
 ## How it is checked
 
@@ -281,7 +281,7 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"CloudFront → the BFF's function URL, signed by origin access control", and the API client
   hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`, the body hash at `#L133`).
   CloudFront reaches an API
-  Gateway HTTP API ([`ops/env.yml#L377`](../ops/env.yml#L377)); function URLs are not offered in the
+  Gateway HTTP API ([`ops/env.yml#L388`](../ops/env.yml#L388)); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
@@ -304,7 +304,7 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**
   (`#L181`). There is no Route53, ACM or custom domain anywhere in the repository; the distribution
   uses CloudFront's own certificate and name
-  ([`ops/env.yml#L369`](../ops/env.yml#L369)).
+  ([`ops/env.yml#L380`](../ops/env.yml#L380)).
 - **"Nothing is built before a client signs"** and **"no code holds it yet"** (`#L5`, `#L68`).
   ridge is built and deploys on every push to `main`. What is still unbuilt is a *client's* stack.
 

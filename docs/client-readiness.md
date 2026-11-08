@@ -148,19 +148,30 @@ guess at a password: the sign-in routes and one's own password route answer ever
 the stage's throttle is the only brake ([open item 28](open-items.md), which the owner already
 placed before a client's own stack). **Two trails record a call, and they are not the same age.**
 *The older one has been there all along:* the function writes a line per request to
-`/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, so
-`server.ts#L9`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
+`/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
+`options` to an empty object and hands it on (`#L12`), so `server.ts#L9`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
 `LoggingConfig` names that group ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). An earlier
 version of this page said a guessing run would leave no trace at all; that was wrong when it was
 written. What this page has not verified is what a Fastify request line holds (read as: a method,
-a path and an answer, not checked here) or whether it holds the caller's own address behind the
-Lambda adapter. *The newer one is in the template and not on ridge:* the stage's access log, one
-JSON line a call with the time, the caller's address, the path and the answer, into
+a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
+all; that would need a run. What is settled, in the direction of no: Fastify is built with no
+`trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
+from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and not on ridge:* the stage's access log, one
+JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
 `/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
-[`#L284-L286`](../ops/env.yml#L284)). It is in the template and awaits the change set, which is the
+[`#L284-L286`](../ops/env.yml#L284)). **That address is the caller's own for a call straight to the
+API's address, which is the case item 121 describes; for a call through the distribution it is
+CloudFront's** (AWS documents `$context.identity.sourceIp` as the immediate TCP connection, and the
+template makes the API a CloudFront origin, `ops/env.yml#L388`), so the UI's calls and the deploy
+check's calls show an edge node. Nothing at the stage can fix that: CloudFront can forward the
+viewer's `X-Forwarded-For`, but an HTTP API's access-log format accepts only `$context` variables, and
+`$request.header.*` is not among them. It is in the template and awaits the change set, which is the
 human's to run; until it is applied, ridge has the older trail only. With nothing watching the
 server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
-in the function's log that someone could read afterwards, and nobody is told to read them.** The
+in the function's log that someone could read afterwards, and nobody is told to read them.
+Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
+so they leave nothing in the function's log and appear only in the stage's log, which is what this
+piece adds and what is not yet on ridge.** The
 sign-in limit and the watching are each accepted on their own; together they mean the record
 exists and a person has to think to look. Neither trail says whose records were read, since the
 client's code is in a header the stage's format cannot name ([open item 152](open-items.md)). The same is true of a read taken the other way: a person with the AWS
@@ -231,7 +242,7 @@ between the two leaves the new commit's name on old code, and the seed's own pre
 passes against a BFF a commit behind ([`ops/seed.sh#L75-L76`](../ops/seed.sh#L75)). The UI is safer
 than it looks — assets go first and `index.html` last
 ([`ops/app.sh#L152-L155`](../ops/app.sh#L152)) and the deploy role cannot delete from the bucket
-([`ops/env.yml#L414-L417`](../ops/env.yml#L414)) — so a stop leaves the old app whole.
+([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
 gate that is known to go red under load with nothing broken**: items 27, 56, 112, 113 and 114 are
