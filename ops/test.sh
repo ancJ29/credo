@@ -213,6 +213,15 @@ tojson() {
 tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
+# the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
+# environment's own group, and the group is the API's own, kept 14 days
+# shellcheck disable=SC2016 # the format's $context names, in single quotes
+api_log_wanted='{"DestinationArn":{"Fn::GetAtt":["ApiLogs","Arn"]},"Format":"{\"requestId\":\"$context.requestId\",\"time\":\"$context.requestTime\",\"ip\":\"$context.identity.sourceIp\",\"method\":\"$context.httpMethod\",\"path\":\"$context.path\",\"route\":\"$context.routeKey\",\"status\":\"$context.status\",\"latencyMs\":\"$context.responseLatency\",\"userAgent\":\"$context.identity.userAgent\",\"integrationError\":\"$context.integration.error\"}"}'
+check "the API stage sends its access log to ApiLogs, in one JSON line of when, who, what path, route and answer" \
+  "$api_log_wanted" "$(jq -c '.Resources.ApiStage.Properties.AccessLogSettings' "$WORK/env.json")"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+check "ApiLogs is the API's own group, kept 14 days" '{"LogGroupName":{"Fn::Sub":"/aws/apigateway/credo-${Env}"},"RetentionInDays":14}' \
+  "$(jq -c '.Resources.ApiLogs.Properties' "$WORK/env.json")"
 # mut <jq program> → the path of a copy of the template's JSON with the program applied: a template broken one way
 mut() {
   jq -c "$1" "$WORK/env.json" >"$WORK/env-mut.json"
@@ -319,6 +328,23 @@ throttle_guard() {
     '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | test("^arn:[$][{]AWS::Partition[}]:execute-api:[$][{]AWS::Region[}]:[$][{]AWS::AccountId[}]:[$][{]Api[}]/"))'
 }
 
+# the API stage's access log (plan 2026-11-08-access-log, step 2): the stage sends its log to ApiLogs, in a format holding
+# the time, the caller, the path, the route and the answer. Read from the parsed template, never grepped.
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+api_log_guard() {
+  must "$1" "the stage has no AccessLogSettings" '.Resources.ApiStage.Properties.AccessLogSettings | type == "object"'
+  must "$1" "the stage's access log does not go to ApiLogs" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn == {"Fn::GetAtt":["ApiLogs","Arn"]}'
+  must "$1" "the stage's access log format is not JSON" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.Format | type == "string" and (try (fromjson | type == "object") catch false)'
+  local what field
+  for what in 'the time:$context.requestTime' 'the caller:$context.identity.sourceIp' 'the path:$context.path' 'the route:$context.routeKey' 'the answer:$context.status'; do
+    field=${what#*:}
+    must "$1" "the stage's access log format drops ${what%%:*} ($field)" \
+      ".Resources.ApiStage.Properties.AccessLogSettings.Format | fromjson | [.[]] | index(\"$field\") != null"
+  done
+}
+
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
 refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
   bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
@@ -393,6 +419,14 @@ refuses "  no throttle is refused" "throttled to 10 a second" \
   throttle_guard "$(mut 'del(.Resources.ApiStage.Properties.DefaultRouteSettings)')"
 refuses "  an invoke permission for every API is refused" "this API alone" \
   throttle_guard "$(mut '.Resources.ApiInvoke.Properties.SourceArn = "*"')"
+
+passes "the API stage logs every call to ApiLogs, in a format of time, caller, path, route and answer" api_log_guard "$WORK/env.json"
+refuses "  a stage with no access log settings is refused" "has no AccessLogSettings" \
+  api_log_guard "$(mut 'del(.Resources.ApiStage.Properties.AccessLogSettings)')"
+refuses "  an access log sent to the function's group is refused" "does not go to ApiLogs" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn = {"Fn::GetAtt":["BffLogs","Arn"]}')"
+refuses "  a format with the caller cut is refused" "drops the caller" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.Format |= (fromjson | del(.ip) | tojson)')"
 
 # box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
 # shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
@@ -822,20 +856,27 @@ refuses "  an app job that never names Node 24 is refused" "node-version: 24" ap
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
 
-echo "== the seed workflow (a schedule and a manual run, main alone, environment ridge, its own group, never under act; row 24)"
+echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
-# seed_guards <workflow>: dies naming each condition of the plan's "The daily run" that the seed
-# workflow lacks. As in the deploy job, the job's own `if` cannot read env, so every step carries
+# seed_guards <workflow>: dies naming each condition of the seed workflow that it lacks: since 2026-11-08 it
+# is run on demand only, so a schedule, any other trigger, a second job and any permission but the OIDC
+# token are refused (the plan's "The daily run" is history). As in the deploy job, the job's own `if` cannot read env, so every step carries
 # `if: ${{ !env.ACT }}` for act, which has no AWS.
 seed_guards() {
-  local block missing='' steps guarded role inst run want_region have_region
+  local block missing='' credmin steps guarded role inst run want_region have_region ontrig jobs stepmin jobmin rolesec maxdays
   [ -f "$1" ] || die "no seed workflow"
-  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
+  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  grep -qxF -- '    - cron: "17 20 * * *"' "$1" || missing="${missing}[the schedule: 20:17 UTC, 03:17 in Vietnam, so the run ends before 07:00 even started 3 hours late] "
   grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
-  if grep -qE '^  (push|pull_request|pull_request_target|workflow_run):' "$1"; then missing="${missing}[no trigger but the schedule and the manual run] "; fi
+  # Read the parsed shape, not words: a comment may name a schedule, a block may not hold one.
+  if grep -qE '^ *(schedule:|- *cron:|cron:)' "$1"; then missing="${missing}[no schedule: the seed is run when somebody asks] "; fi
+  ontrig=$(awk '/^on:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$ontrig" = 'workflow_dispatch: ' ] || missing="${missing}[no trigger but the manual run, found: $ontrig] "
+  jobs=$(awk '/^jobs:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:$/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$jobs" = 'seed: ' ] || missing="${missing}[the seed job alone, found: $jobs] "
+  [ "$(grep -cE '^ +[a-z-]+: (write|read-all|write-all)$' "$1" || true)" = 1 ] || missing="${missing}[no permission but id-token: write] "
+  if grep -qE '^ +(issues|actions|checks|deployments|discussions|packages|pages|pull-requests|security-events|statuses|attestations):' "$1"; then missing="${missing}[no permission but id-token and contents: read] "; fi
   need "    if: github.ref == 'refs/heads/main'"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
@@ -845,10 +886,27 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
-  # A normal day is 8 to 10 minutes: the Seed step has 15 and the job 25, and the role's session
-  # (role-duration-seconds) outlasts the step it is taken for.
-  need "    timeout-minutes: 25"
-  grep -qxF -- '        timeout-minutes: 15' <<<"$block" || missing="${missing}[the Seed step's 15 minutes] "
+  # The chain that must hold: days a run x 7.5 minutes a day (measured) x 1.2 <= the Seed step's limit,
+  # which, after the credentials step's own limit (the role's life starts inside that step), ends a
+  # minute or more before the role's life, which the job outlasts by the setup's 9. At 2 days: 15 (18
+  # with the margin) <= 18, 18 + 1 = 19 <= 20 - 1, and 18 + 9 = 27 <= 30. At 3 days a full catch-up
+  # (about 22) outlived its own credentials. The pins stay exact; the sums are checked beside them.
+  need "    timeout-minutes: 30"
+  grep -qxF -- '        timeout-minutes: 18' <<<"$block" || missing="${missing}[the Seed step's 18 minutes] "
+  credmin=$(awk '/^      - name: Take the deploy role$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
+  stepmin=$(awk '/^      - name: Seed$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
+  jobmin=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  rolesec=$(sed -n 's/^ *role-duration-seconds: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  maxdays=$(sed -n 's/^export const MAX_DAYS_PER_RUN = \([0-9][0-9]*\);$/\1/p' "$REPO_DIR/scripts/src/demo/apply.ts")
+  if [ -n "$credmin" ] && [ -n "$stepmin" ] && [ -n "$jobmin" ] && [ -n "$rolesec" ] && [ -n "$maxdays" ]; then
+    [ $((credmin * 60 + stepmin * 60 + 60)) -le "$rolesec" ] ||
+      missing="${missing}[the credentials step's $credmin and the Seed step's $stepmin minutes end a minute or more before the role's $rolesec s] "
+    [ $((maxdays * 90)) -le $((stepmin * 10)) ] ||
+      missing="${missing}[the Seed step's $stepmin minutes hold $maxdays days at 7.5 minutes a day with a fifth over] "
+    [ $((stepmin + 9)) -le "$jobmin" ] || missing="${missing}[the job's $jobmin minutes hold the Seed step's $stepmin and the setup's 9] "
+  else
+    missing="${missing}[the credentials step's, the Seed step's, the job's and the role's limits and MAX_DAYS_PER_RUN, all readable] "
+  fi
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
   steps=$(grep -c '^      - ' <<<"$block" || true)
@@ -875,16 +933,46 @@ seed_guards() {
   [ -z "$missing" ] || die "the seed workflow lacks: $missing"
 }
 passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
-sed 's/- cron: "17 20 \* \* \*"/- cron: "0 23 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
-refuses "a seed that no longer starts at 03:17 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
-sed 's/^    timeout-minutes: 25$/    timeout-minutes: 20/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
-refuses "a seed job with less than 25 minutes is refused" "timeout-minutes: 25" seed_guards "$WORK/seed-jobtime.yml"
-sed 's/^        timeout-minutes: 15$/        timeout-minutes: 10/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
-refuses "a Seed step with less than 15 minutes is refused" "the Seed step's 15 minutes" seed_guards "$WORK/seed-steptime.yml"
+# A schedule block put back before the manual run, comment and keyword both real: the decision it guards.
+awk '/^  workflow_dispatch:$/ {print "  schedule:"; print "    - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
+refuses "a seed that regains a schedule is refused" "no schedule" seed_guards "$WORK/seed-cron.yml"
+# The guard reads the document, not words: a comment that names the keyword is not a schedule.
+awk '/^  workflow_dispatch:$/ {print "  # schedule: - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron-comment.yml"
+passes "a comment that names a schedule is not one" seed_guards "$WORK/seed-cron-comment.yml"
+sed 's/^    timeout-minutes: 30$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
+refuses "a seed job with less than 30 minutes is refused" "timeout-minutes: 30" seed_guards "$WORK/seed-jobtime.yml"
+sed 's/^        timeout-minutes: 18$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
+refuses "a Seed step with less than 18 minutes is refused" "the Seed step's 18 minutes" seed_guards "$WORK/seed-steptime.yml"
+# The step that outlives its credentials: the step and the job moved together (30 and 40, the old pair), so every
+# pin above is met only by the sums, and the role's 20 minutes are what refuses it.
+sed -e 's/^        timeout-minutes: 18$/        timeout-minutes: 30/' -e 's/^    timeout-minutes: 30$/    timeout-minutes: 40/' "$SEED_WORKFLOW" >"$WORK/seed-outlives.yml"
+refuses "a Seed step that outlives the role's credentials is refused" "end a minute or more before the role" seed_guards "$WORK/seed-outlives.yml"
+# The credentials step given its old two minutes: 2 + 18 + the spare minute is 21 against the role's 20.
+awk '/^      - name: Take the deploy role$/ {f = 1} f && $0 == "        timeout-minutes: 1" {print "        timeout-minutes: 2"; f = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-credtime.yml"
+refuses "a credentials step allowed 2 minutes, which leaves the Seed step no spare minute inside the role, is refused" "end a minute or more before the role" seed_guards "$WORK/seed-credtime.yml"
+# A job whose name holds a digit is a second job all the same: the name class once had no digits. Its step carries
+# the act guard, so only the job list can refuse it (a bare step would be refused for lacking the guard, hiding the hole).
+# shellcheck disable=SC2016 # a literal workflow expression
+{ cat "$SEED_WORKFLOW"; printf '\n  tell2:\n    needs: seed\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n        if: ${{ !env.ACT }}\n'; } >"$WORK/seed-digitjob.yml"
+refuses "a second job whose name holds a digit is refused" "the seed job alone, found: seed: tell2:" seed_guards "$WORK/seed-digitjob.yml"
+# The role's life cut short under the same step: the other end of the same sum.
+sed 's/^\( *\)role-duration-seconds: 1200$/\1role-duration-seconds: 1080/' "$SEED_WORKFLOW" >"$WORK/seed-shortrole.yml"
+refuses "a role that does not outlast the credentials and Seed steps by a minute is refused" "end a minute or more before the role" seed_guards "$WORK/seed-shortrole.yml"
+# More days a run than the step holds (the constant raised, the workflow untouched), against a scratch copy of the tree.
+mkdir -p "$WORK/seed-days/scripts/src/demo"
+sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
+seed_guards_days() { REPO_DIR="$WORK/seed-days" seed_guards "$SEED_WORKFLOW"; }
+refuses "three days a run in an 18-minute Seed step is refused" "hold 3 days at 7.5 minutes a day" seed_guards_days
+awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
+refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
+awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
+refuses "contents: write in place of read is refused" "no permission but id-token: write" seed_guards "$WORK/seed-contentswrite.yml"
+{ cat "$SEED_WORKFLOW"; printf '\n  tell:\n    needs: seed\n    if: failure()\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n'; } >"$WORK/seed-secondjob.yml"
+refuses "a second job beside the seed is refused" "the seed job alone" seed_guards "$WORK/seed-secondjob.yml"
 sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
 refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
 awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"
-refuses "a seed that also runs on a push is refused" "no trigger but the schedule" seed_guards "$WORK/seed-push.yml"
+refuses "a seed that also runs on a push is refused" "no trigger but the manual run" seed_guards "$WORK/seed-push.yml"
 sed "s/^    if: github.ref == 'refs\/heads\/main'\$/    if: true/" "$SEED_WORKFLOW" >"$WORK/seed-branch.yml"
 refuses "a seed job that also runs from a branch is refused" "github.ref == 'refs/heads/main'" seed_guards "$WORK/seed-branch.yml"
 sed '/^    environment: ridge$/d' "$SEED_WORKFLOW" >"$WORK/seed-env.yml"
@@ -2255,17 +2343,17 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and brought to yesterday, exit 0 (nothing before had written it)" "0 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 7 days applied$') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 2 of its 7 days applied, the 5 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 5); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
 check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in this log')"
 export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
-check "a second run adds nothing" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied$')"
+check "a second run goes on from the ledger, 2 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$')"
 
-# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the morning's run goes on.
+# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the next run somebody asks for goes on.
 export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead
 printf 'a note\n' >"$E2E/repo/NOTES.md"
 git -C "$E2E/repo" add NOTES.md

@@ -17,7 +17,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
-| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
+| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -199,8 +199,7 @@ click; nothing else of the copy changes. The six demo copies of `scripts/src/dem
 client's own stack is the console's. The why is
 [the plan](../docs/plans/2026-11-02-ridge-root-password.md).
 
-1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs
-   (from 03:17 in Vietnam, and GitHub may start it up to about 3 hours late), naming the codes of the copies one person holds, for example
+1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs, naming the codes of the copies one person holds, for example
    `ops/root-password.sh ridge <code> <code>`. Type the password at each prompt (8 to 128 characters, a
    capital, a small letter, a digit, one of `@$!%*?&`, no space at either end). Send it to the person
    by your own channel; the script never shows it again.
@@ -217,29 +216,27 @@ client's own stack is the console's. The why is
 
 ## The seed
 
-The demo copies on ridge get a day each night from `.github/workflows/seed.yml` (03:17 in Vietnam,
-and a manual run), which runs `ops/seed.sh ridge` under the deploy role. The script makes no client and
+The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
+somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
+runs `ops/seed.sh ridge` under the deploy role, at most 2 days a copy a run (about 15 minutes; the Seed step is limited to 18, inside the role's 20). The script makes no client and
 no password: the human makes each copy at `/operator` first, under its mapped code. The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
 
 1. Make a copy at `/operator` under its code from the mapping (`scripts/src/demo/mapping.ts`), and
    send its link and root password privately. Then run `ops/seed.sh ridge` by hand from a worktree at
-   `main` with `pnpm install` done, or wait for the morning's run.
+   `main` with `pnpm install` done, or run the workflow.
 2. Read the log's lines: `seed: <n> copies mapped, <n> up to date, <n> not on this service, <n> days
    applied`, then `seeded <sha>`.
    - **<code>: not on this service, left:** that mapped code has no client on ridge. Make it at
      `/operator`; a mistyped code is not in the mapping, so it stays empty.
    - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
      stays as it is; make a new copy under a new code.
-   - **<code>: <n> days behind, more than 30, left:** the schedule stopped for a month; the run ends red.
-     Run it again after reading why.
    - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
      <S>**, for the scenario): the copy was filled for another client or trade than the mapping now
      maps to that code. It is refused and left, never switched; make a new copy under a new code.
    - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's, and not an earlier
      one that differs from it in no path `ci.yml` deploys on (a push touching none deploys nothing, so
-     the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green; the
-     next morning catches the day up.
+     the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green.
    - **ci.yml's push trigger holds a line this script cannot read:** the seed reads the paths a push
      deploys on from `ci.yml`, and only as `      - "<path>"` or `      - "<path>/**"`; the line
      named is quoted another way, commented or a deeper glob. Nothing was written; write the entry in
@@ -248,9 +245,12 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
    - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
-3. A red scheduled run is a defect, never a run to repeat. GitHub disables a public repository's
-   schedules after 60 days without activity: if the last green is older than two days, run the workflow
-   by hand (`gh workflow run seed`, or Actions, "Run workflow", on `main`).
+3. A run that ends `seed: STILL BEHIND` is green: it applied 2 days a copy and the line names what is
+   left and how many more runs it takes; run it again to go on, at once if you like, each run takes off 2
+   days whatever the backlog (a month's gap is about 15 runs of about 15 minutes; no backlog is refused).
+   A gap of N days takes N/2 runs, so a week's gap is 4 runs one after the other (about an hour in all);
+   a single run asked once a week falls 5 days further behind each time, and never catches up. A red run is read before it is run again. Ridge's data is only as fresh as
+   the last run, so run the workflow before anyone checks anything against it.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
    - **a key is in this log:** as in [the check](#the-check).
 
@@ -381,8 +381,8 @@ Run the same three before pushing an `ops/` change:
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,
-   no `continue-on-error`, the Region, and the account id's mask; and the seed workflow's (a schedule
-   and a manual run, `main` alone, environment `ridge`, the group `ridge-seed`, `!env.ACT` on each step).
+   no `continue-on-error`, the Region, and the account id's mask; and the seed workflow's (a manual run
+   and nothing else, no schedule and no permission but the OIDC token, `main` alone, environment `ridge`, the group `ridge-seed`, `!env.ACT` on each step).
 
 Under `act` two things are act's own, not the scripts': the `check` job's "Post actions/setup-go"
 fails (act's copy of the action lacks its cache-save module, and its cache server is unreachable),

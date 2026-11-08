@@ -302,7 +302,7 @@ describe('ridge_cli root-password', () => {
     const next = await run(['seed'], { now: MORNING + 24 * 3_600_000 });
     expect(next.status).toBe(0);
     expect(next.out.at(-1)).toBe(
-      'seed: 6 copies mapped, 1 up to date, 5 not on this service, 1 days applied',
+      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
     );
   });
 
