@@ -483,9 +483,11 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 *Trigger:* the next change to either script.
 
-## 56. Two ui tests failed once in a whole `pnpm check` at load 12.6 — the machine; *parked* until after the 11-04 demo (2026-11-02)
+## 56. Three ui tests failed once each in a whole `pnpm check`, at load 12.6 and at 7.97 — the machine; *parked* until after the 11-04 demo (2026-11-02)
 
 In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two ui tests failed in files the change did not touch, and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times. *Fix:* find what each waits on that load starves, and hold it by the test's own signal, not a time.
+
+**A third file, at a lower load:** on 2026-11-07 at 23:31 one case in [`OrdersPages.test.tsx`](../ui/src/OrdersPages.test.tsx), "a confirmed order whose request is gone", failed in a whole check (`== exit 1 (typecheck 0 eslint 0 prettier 0 test 1 knip 0)`) at load 7.97, under the gate's limit of 8, and passed alone and on the rerun (`logs/20261107-233125-clerk-add-records-step7-whole-check.log` red, `logs/20261107-233422-clerk-add-records-step7-whole-check.log` green). So the load that does it is lower than 12.6 and the file list was incomplete.
 
 Seen again on 2026-11-03 at load about 12, in the walks page's step 2: `MyDeliveries.test.tsx` alone, the same no call, with nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
 
