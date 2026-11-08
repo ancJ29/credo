@@ -146,7 +146,7 @@ client's store on a laptop. The same script makes a client and signs in through 
 run ([`#L165-L171`](../ops/check.sh#L165)), and each Bruno run leaves a service row behind
 ([`#L164`](../ops/check.sh#L164)). Open items 131 and 132.
 
-### Two logs record a call, one of them not yet on ridge, and nothing slows a guess
+### Two logs record a call, both on ridge, and nothing slows a guess
 
 The API in front of the BFF answers anyone, which the template states in its own words: one
 catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
@@ -171,7 +171,7 @@ written. What this page has not verified is what a Fastify request line holds (r
 a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
 all; that would need a run. What is settled, in the direction of no: Fastify is built with no
 `trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
-from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and not on ridge:* the stage's access log, one
+from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and on ridge:* the stage's access log, one
 JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
 `/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
 [`#L284-L286`](../ops/env.yml#L284)). **Measured, 2026-11-08 18:11 on ridge: for a call through the
