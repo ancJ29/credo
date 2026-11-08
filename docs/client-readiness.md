@@ -131,13 +131,13 @@ client's store on a laptop. The same script makes a client and signs in through 
 run ([`#L165-L171`](../ops/check.sh#L165)), and each Bruno run leaves a service row behind
 ([`#L164`](../ops/check.sh#L164)). Open items 131 and 132.
 
-### No access log, and nothing slows a guess
+### Two logs record a call, one of them not yet on ridge, and nothing slows a guess
 
 The API in front of the BFF answers anyone, which the template states in its own words: one
-catch-all route, one stage, 10 requests a second with bursts of 50, "**No access log.** The API's
-own address answers anyone; the throttle bounds what that costs"
-([`ops/env.yml#L244`](../ops/env.yml#L244), the stage at
-[`#L271-L275`](../ops/env.yml#L271)). That the address is reachable is recorded, with its history,
+catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
+answers anyone; the throttle bounds what that costs"
+([`ops/env.yml#L251`](../ops/env.yml#L251), the stage at
+[`#L275-L286`](../ops/env.yml#L275)). That the address is reachable is recorded, with its history,
 as [open item 121](open-items.md): nobody decided it, it followed from the Region not offering
 Lambda function URLs, and it is parked until a client signs. Read "answers anyone" as *reachable*,
 not *unauthenticated* — a call arriving that way still meets the client header, the session and the
@@ -146,10 +146,35 @@ permission check.
 What is worth adding to that item is the cost of the half of it nobody parked. Nothing slows a
 guess at a password: the sign-in routes and one's own password route answer every try, and on ridge
 the stage's throttle is the only brake ([open item 28](open-items.md), which the owner already
-placed before a client's own stack). With no access log and nothing watching the server
-([open item 1](open-items.md)), **a guessing run against a real client would leave no trace anyone
-could read afterwards.** The two items are each accepted on their own; together they mean there is
-no record of who knocked. The same is true of a read taken the other way: a person with the AWS
+placed before a client's own stack). **Two trails record a call, and they are not the same age.**
+*The older one has been there all along:* the function writes a line per request to
+`/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
+`options` to an empty object and hands it on (`#L12`), so `server.ts#L9`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
+`LoggingConfig` names that group ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). An earlier
+version of this page said a guessing run would leave no trace at all; that was wrong when it was
+written. What this page has not verified is what a Fastify request line holds (read as: a method,
+a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
+all; that would need a run. What is settled, in the direction of no: Fastify is built with no
+`trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
+from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and not on ridge:* the stage's access log, one
+JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
+`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
+[`#L284-L286`](../ops/env.yml#L284)). **That address is the caller's own for a call straight to the
+API's address, which is the case item 121 describes; for a call through the distribution it is
+CloudFront's** (AWS documents `$context.identity.sourceIp` as the immediate TCP connection, and the
+template makes the API a CloudFront origin, `ops/env.yml#L388`), so the UI's calls and the deploy
+check's calls show an edge node. Nothing at the stage can fix that: CloudFront can forward the
+viewer's `X-Forwarded-For`, but an HTTP API's access-log format accepts only `$context` variables, and
+`$request.header.*` is not among them. It is in the template and awaits the change set, which is the
+human's to run; until it is applied, ridge has the older trail only. With nothing watching the
+server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
+in the function's log that someone could read afterwards, and nobody is told to read them.
+Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
+so they leave nothing in the function's log and appear only in the stage's log, which is what this
+piece adds and what is not yet on ridge.** The
+sign-in limit and the watching are each accepted on their own; together they mean the record
+exists and a person has to think to look. Neither trail says whose records were read, since the
+client's code is in a header the stage's format cannot name ([open item 152](open-items.md)). The same is true of a read taken the other way: a person with the AWS
 session can reach the box and the file, and nothing but the box's own journal says they did.
 
 ### Two touches bound to the operator, not to the client
@@ -217,7 +242,7 @@ between the two leaves the new commit's name on old code, and the seed's own pre
 passes against a BFF a commit behind ([`ops/seed.sh#L75-L76`](../ops/seed.sh#L75)). The UI is safer
 than it looks — assets go first and `index.html` last
 ([`ops/app.sh#L152-L155`](../ops/app.sh#L152)) and the deploy role cannot delete from the bucket
-([`ops/env.yml#L414-L417`](../ops/env.yml#L414)) — so a stop leaves the old app whole.
+([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
 gate that is known to go red under load with nothing broken**: items 27, 56, 112, 113 and 114 are
@@ -240,8 +265,11 @@ its steps.
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`, and a terminal path to a
    client's root password.** Hours each. Without them a client's stack is deployable but not
    operable, and one deploy check puts its admin key on a laptop.
-4. **The sign-in limit (item 28) together with an access log on the one API stage.** A short piece,
-   and the log half is nearly free. It is what turns "nothing bad has happened" into something a
+4. **The sign-in limit (item 28).** The owner's to place; a short piece. Without it the stage's
+   throttle is the only brake on a guess. *The access log that used to share this entry is split
+   off:* it is the machine's, written into the template and awaiting the change set on ridge
+   (`docs/plans/2026-11-08-access-log.md`), and it is the readable half of item 121. With the
+   function's own request lines it is what turns "nothing bad has happened" into something a
    person can check.
 5. **The two touches bound to the client's code, and an unfinished deletion readable somewhere an
    operator can see it.** A small piece.

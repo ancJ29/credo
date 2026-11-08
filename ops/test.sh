@@ -213,6 +213,15 @@ tojson() {
 tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
+# the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
+# environment's own group, and the group is the API's own, kept 14 days
+# shellcheck disable=SC2016 # the format's $context names, in single quotes
+api_log_wanted='{"DestinationArn":{"Fn::GetAtt":["ApiLogs","Arn"]},"Format":"{\"requestId\":\"$context.requestId\",\"time\":\"$context.requestTime\",\"ip\":\"$context.identity.sourceIp\",\"method\":\"$context.httpMethod\",\"path\":\"$context.path\",\"route\":\"$context.routeKey\",\"status\":\"$context.status\",\"latencyMs\":\"$context.responseLatency\",\"userAgent\":\"$context.identity.userAgent\",\"integrationError\":\"$context.integration.error\"}"}'
+check "the API stage sends its access log to ApiLogs, in one JSON line of when, who, what path, route and answer" \
+  "$api_log_wanted" "$(jq -c '.Resources.ApiStage.Properties.AccessLogSettings' "$WORK/env.json")"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+check "ApiLogs is the API's own group, kept 14 days" '{"LogGroupName":{"Fn::Sub":"/aws/apigateway/credo-${Env}"},"RetentionInDays":14}' \
+  "$(jq -c '.Resources.ApiLogs.Properties' "$WORK/env.json")"
 # mut <jq program> → the path of a copy of the template's JSON with the program applied: a template broken one way
 mut() {
   jq -c "$1" "$WORK/env.json" >"$WORK/env-mut.json"
@@ -319,6 +328,23 @@ throttle_guard() {
     '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | test("^arn:[$][{]AWS::Partition[}]:execute-api:[$][{]AWS::Region[}]:[$][{]AWS::AccountId[}]:[$][{]Api[}]/"))'
 }
 
+# the API stage's access log (plan 2026-11-08-access-log, step 2): the stage sends its log to ApiLogs, in a format holding
+# the time, the caller, the path, the route and the answer. Read from the parsed template, never grepped.
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+api_log_guard() {
+  must "$1" "the stage has no AccessLogSettings" '.Resources.ApiStage.Properties.AccessLogSettings | type == "object"'
+  must "$1" "the stage's access log does not go to ApiLogs" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn == {"Fn::GetAtt":["ApiLogs","Arn"]}'
+  must "$1" "the stage's access log format is not JSON" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.Format | type == "string" and (try (fromjson | type == "object") catch false)'
+  local what field
+  for what in 'the time:$context.requestTime' 'the caller:$context.identity.sourceIp' 'the path:$context.path' 'the route:$context.routeKey' 'the answer:$context.status'; do
+    field=${what#*:}
+    must "$1" "the stage's access log format drops ${what%%:*} ($field)" \
+      ".Resources.ApiStage.Properties.AccessLogSettings.Format | fromjson | [.[]] | index(\"$field\") != null"
+  done
+}
+
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
 refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
   bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
@@ -393,6 +419,14 @@ refuses "  no throttle is refused" "throttled to 10 a second" \
   throttle_guard "$(mut 'del(.Resources.ApiStage.Properties.DefaultRouteSettings)')"
 refuses "  an invoke permission for every API is refused" "this API alone" \
   throttle_guard "$(mut '.Resources.ApiInvoke.Properties.SourceArn = "*"')"
+
+passes "the API stage logs every call to ApiLogs, in a format of time, caller, path, route and answer" api_log_guard "$WORK/env.json"
+refuses "  a stage with no access log settings is refused" "has no AccessLogSettings" \
+  api_log_guard "$(mut 'del(.Resources.ApiStage.Properties.AccessLogSettings)')"
+refuses "  an access log sent to the function's group is refused" "does not go to ApiLogs" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn = {"Fn::GetAtt":["BffLogs","Arn"]}')"
+refuses "  a format with the caller cut is refused" "drops the caller" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.Format |= (fromjson | del(.ip) | tojson)')"
 
 # box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
 # shellcheck disable=SC2016 # jq programs and the template's text, in single quotes

@@ -38,6 +38,16 @@
       "Type": "Resource",
       "ResourceChange": {
         "Action": "Add",
+        "LogicalResourceId": "ApiLogs",
+        "ResourceType": "AWS::Logs::LogGroup",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
         "LogicalResourceId": "BffRole",
         "ResourceType": "AWS::IAM::Role",
         "Scope": [],
