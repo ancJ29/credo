@@ -150,15 +150,40 @@ describe('ridge_cli seed', () => {
     );
   });
 
-  it('row 7: a copy too many days behind ends the run red, naming its code, as a refused one does', async () => {
+  it('row 7: a copy far behind is not refused: the run ends green, applies its two days, and says how many runs it still needs', async () => {
     const { storage, run } = await ridge(['seed']);
     await make(storage, 0);
     expect((await run()).status).toBe(0);
 
     const result = await run(['seed'], MORNING + 40 * 24 * 3_600_000);
 
-    expect(result.status).toBe(1);
-    expect(result.err).toEqual([`error: left as they were, see above: ${copies[0].code}`]);
-    expect(result.out).toContain(`${copies[0].code}: 45 days behind, more than 30, left`);
+    expect(result.status).toBe(0);
+    expect(result.err).toEqual([]);
+    expect(result.out.at(-2)).toBe(
+      'seed: STILL BEHIND, 1 copies have days left (' +
+        `${copies[0].code} 43); this run applied 2 days at most a copy, run it again to go on: 22 more runs`,
+    );
+    expect(result.out.at(-1)).toBe(
+      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
+    );
+  });
+
+  it('row 7: a copy another run holds, still with days to go, is counted as left, never as a negative number of copies up to date', async () => {
+    const { storage, run } = await ridge(['seed']);
+    await make(storage, 0);
+    expect((await run()).status).toBe(0);
+
+    const both = await Promise.all([run(), run()]);
+
+    expect(both.map((night) => night.status).sort()).toEqual([0, 1]);
+    for (const night of both) {
+      expect(night.out.at(-1)).toMatch(/^seed: 6 copies mapped, \d+ up to date, /);
+    }
+    const loser = both.find((night) => night.status === 1)!;
+    expect(loser.out.join('\n')).toContain('the ledger moved under the run, stopped');
+    expect(loser.out.join('\n')).not.toContain('STILL BEHIND');
+    expect(loser.out.at(-1)).toMatch(
+      /^seed: 6 copies mapped, 0 up to date, 5 not on this service, \d+ days applied$/,
+    );
   });
 });

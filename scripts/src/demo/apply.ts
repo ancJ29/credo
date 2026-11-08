@@ -48,14 +48,13 @@ import { ANCHOR, dayEvents, type Person, staffAsOf, type StaffEvent } from './st
 
 /** A first fill holds the last week: this many days, the last of them yesterday. */
 export const HISTORY_DAYS = 7;
-/** A run applies at most this many missed days; beyond it the copy is reported and left. */
-export const MAX_CATCH_UP = 30;
 /**
- * The days one run applies to a copy, the rest left for the next run somebody asks for. A day costs the
- * heavier client about 7.5 minutes (measured 2026-11-08, the copies running side by side), so two
- * days are about 15 minutes: inside seed.yml's 18-minute Seed step, which ends inside the deploy role's
- * 20 minutes (three days, about 22, would outlive the credentials). This is what keeps MAX_CATCH_UP's
- * 30 days from being a run of hours that the step limit kills. ops/test.sh reads this number.
+ * The days one run applies to a copy, the rest left for the next run somebody asks for, however far behind
+ * the copy is: there is no backlog a copy is refused for, because a refusal nobody can clear would be a
+ * dead end (a re-run never shortens a backlog it does not touch). A day costs the heavier client about
+ * 7.5 minutes (measured 2026-11-08, the copies running side by side), so two days are about 15 minutes:
+ * inside seed.yml's 18-minute Seed step, which ends inside the deploy role's 20 minutes (three days,
+ * about 22, would outlive the credentials). ops/test.sh reads this number.
  */
 export const MAX_DAYS_PER_RUN = 2;
 const DEVICE = 'device-seed-0001';
@@ -64,7 +63,7 @@ const OPENING_MINUTE = 6 * 60;
 
 export type Report = {
   code: string;
-  status: 'ok' | 'refused' | 'missing' | 'too-far';
+  status: 'ok' | 'refused' | 'missing';
   /** Whether this run did the copy's first fill. */
   filled: boolean;
   /** The days this run applied, in order. */
@@ -668,10 +667,6 @@ export async function applyCopy(
   }
 
   const missed = daysBetween(addDays(ledger.lastDay, 1), addDays(through, 1));
-  if (missed.length > MAX_CATCH_UP) {
-    return done('too-far', `${missed.length} days behind, more than ${MAX_CATCH_UP}, left`);
-  }
-
   // At most `limit` days a run, oldest first; the ledger moves a day at a time, so the next run goes on.
   const todo = missed.slice(0, limit);
   remaining = missed.length - todo.length;

@@ -43,7 +43,7 @@ const USAGE =
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
- * copy it had to leave (used first, or too far behind) ends it red after the others are done.
+ * copy it had to leave (used first, or held by another run) ends it red after the others are done.
  * `root-password` sets the named demo copies' roots to the password on the standard input and
  * prints no password; `--check` needs no connection. Returns the exit status: 2 for what was
  * refused before anything was written, 1 for a failure.
@@ -172,7 +172,9 @@ export async function runRidge(
       const count = (status: (typeof reports)[number]['status']) =>
         reports.filter((report) => report.status === status).length;
       const days = reports.reduce((sum, report) => sum + report.days.length, 0);
-      const behind = reports.filter((report) => report.remaining > 0);
+      // Only a copy that ended ok is behind: a refused one can carry a count too (the ledger moved under
+      // the run after the days were counted), and it is named in the error below, not subtracted from ok.
+      const behind = reports.filter((report) => report.status === 'ok' && report.remaining > 0);
       // Ends green, and says so where a person reading the log looks: before the summary line.
       if (behind.length > 0) {
         const most = Math.max(...behind.map((report) => report.remaining));
@@ -183,7 +185,7 @@ export async function runRidge(
       io.out(
         `seed: ${reports.length} copies mapped, ${count('ok') - behind.length} up to date, ${count('missing')} not on this service, ${days} days applied`,
       );
-      const stopped = reports.filter((r) => r.status === 'refused' || r.status === 'too-far');
+      const stopped = reports.filter((r) => r.status === 'refused');
       if (stopped.length > 0) {
         throw new Error(`left as they were, see above: ${stopped.map((r) => r.code).join(', ')}`);
       }

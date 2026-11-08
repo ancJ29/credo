@@ -61,17 +61,19 @@ jobs:
         run: pnpm install --frozen-lockfile
       # The same exchange as the deploy's: GitHub's token for environment ridge for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
+      # One minute, not more: the role's 20 minutes start inside this step, so its limit is part of the sum
+      # that must stay under them (ops/test.sh): 1 + the Seed step's 18 = 19, with a minute to spare.
       - name: Take the deploy role
         if: ${{ !env.ACT }}
-        timeout-minutes: 2
+        timeout-minutes: 1
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-southeast-5
           mask-aws-account-id: true
           role-skip-session-tagging: true
-          # Never widened to make more work fit: the Seed step's 18 minutes end inside these 20, so an
-          # overrun is a clear timeout and never credentials that expired under a running step.
+          # Never widened to make more work fit: this step's 1 minute and the Seed step's 18 end inside
+          # these 20, so an overrun is a clear timeout and never credentials that expired under a running step.
           role-duration-seconds: 1200
       # The script masks the keys itself, before anything is printed.
       - name: Seed

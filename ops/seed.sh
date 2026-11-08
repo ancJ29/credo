@@ -12,8 +12,10 @@
 #   written before they have passed.
 # Runs when somebody asks, never on a schedule: in GitHub's job (.github/workflows/seed.yml, "Run workflow"
 # on main), or by hand from a worktree at main while Actions is down, or for a copy just made. Needs pnpm install done and layer four.
-# Ridge alone: a client's stack must never receive demo data. Expected length: about a minute, a few
-# minutes for a first fill of six copies.
+# Ridge alone: a client's stack must never receive demo data. Expected length: up to about 15 minutes, since a
+# run applies at most 2 days a copy at about 7.5 minutes a day for the heavier client; a first fill of a
+# new copy has not been measured and may take longer. Long silences are normal: nothing is printed per
+# write, and a block of orders can take three minutes between lines. It is not hung; do not stop it.
 set -euo pipefail
 
 # shellcheck source=lib.sh

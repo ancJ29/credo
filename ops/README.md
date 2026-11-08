@@ -17,7 +17,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
-| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
+| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -231,8 +231,6 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      `/operator`; a mistyped code is not in the mapping, so it stays empty.
    - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
      stays as it is; make a new copy under a new code.
-   - **<code>: <n> days behind, more than 30, left:** nobody ran the seed for a month; the run ends red.
-     Run it again after reading why.
    - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
      <S>**, for the scenario): the copy was filled for another client or trade than the mapping now
      maps to that code. It is refused and left, never switched; make a new copy under a new code.
@@ -248,7 +246,10 @@ no password: the human makes each copy at `/operator` first, under its mapped co
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
    - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
 3. A run that ends `seed: STILL BEHIND` is green: it applied 2 days a copy and the line names what is
-   left; run it again to go on. A red run is read before it is run again. Ridge's data is only as fresh as
+   left and how many more runs it takes; run it again to go on, at once if you like, each run takes off 2
+   days whatever the backlog (a month's gap is about 15 runs of about 15 minutes; no backlog is refused).
+   A gap of N days takes N/2 runs, so a week's gap is 4 runs one after the other (about an hour in all);
+   a single run asked once a week falls 5 days further behind each time, and never catches up. A red run is read before it is run again. Ridge's data is only as fresh as
    the last run, so run the workflow before anyone checks anything against it.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
    - **a key is in this log:** as in [the check](#the-check).

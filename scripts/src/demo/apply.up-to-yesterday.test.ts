@@ -1,7 +1,7 @@
 import { ROOT_NAME } from '@credo/bff/clients';
 import { employeeRoutes, normaliseSignInName, recordKeys, tenantConfigSchema } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
-import { applyCopy, HISTORY_DAYS, MAX_CATCH_UP } from './apply';
+import { applyCopy, HISTORY_DAYS } from './apply';
 import { addDays, atMinute } from './days';
 import { readLedger, SEED_BLOCKS } from './ledger';
 import { staffAsOf } from './staff';
@@ -105,19 +105,22 @@ describe('a copy brought up to yesterday', () => {
     expect(read(await staffOf(storage, B1.code))).toEqual(standing(B1, addDays(TODAY, 3)));
   });
 
-  it('row 17: more than 30 missed days is reported and left, nothing applied', async () => {
+  it('row 17: a copy far behind is never refused: each run applies its limit and reports what is left, so the backlog only shrinks', async () => {
     const storage = await fresh();
     await make(storage, A1);
     await applyCopy(storage, A1, TODAY);
-    const before = JSON.stringify(await everything(storage, A1.code));
+    const id = await tenantOf(storage, A1.code);
+    const far = addDays(TODAY, 45);
 
-    const report = await applyCopy(storage, A1, addDays(TODAY, MAX_CATCH_UP + 1));
+    const first = await applyCopy(storage, A1, far, () => undefined, 2);
+    const second = await applyCopy(storage, A1, far, () => undefined, 2);
 
-    expect(report).toMatchObject({ status: 'too-far', days: [] });
-    expect(JSON.stringify(await everything(storage, A1.code))).toBe(before);
-    const edge = await applyCopy(storage, A1, addDays(TODAY, MAX_CATCH_UP));
-    expect(edge.status).toBe('ok');
-    expect(edge.days).toHaveLength(MAX_CATCH_UP);
+    expect(first).toMatchObject({ status: 'ok', remaining: 43 });
+    expect(first.days).toHaveLength(2);
+    expect(second).toMatchObject({ status: 'ok', remaining: 41 });
+    expect(second.days).toHaveLength(2);
+    expect(second.days[0]).toBe(addDays(first.days[1], 1));
+    expect((await readLedger(storage, id))!.ledger.lastDay).toBe(second.days[1]);
   });
 
   it('row 17: a run with a limit applies the oldest days up to it, says how many it left, and the next run goes on from the ledger', async () => {

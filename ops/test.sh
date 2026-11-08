@@ -829,17 +829,17 @@ SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
 # token are refused (the plan's "The daily run" is history). As in the deploy job, the job's own `if` cannot read env, so every step carries
 # `if: ${{ !env.ACT }}` for act, which has no AWS.
 seed_guards() {
-  local block missing='' steps guarded role inst run want_region have_region ontrig jobs stepmin jobmin rolesec maxdays
+  local block missing='' credmin steps guarded role inst run want_region have_region ontrig jobs stepmin jobmin rolesec maxdays
   [ -f "$1" ] || die "no seed workflow"
-  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
+  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
   grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
   # Read the parsed shape, not words: a comment may name a schedule, a block may not hold one.
   if grep -qE '^ *(schedule:|- *cron:|cron:)' "$1"; then missing="${missing}[no schedule: the seed is run when somebody asks] "; fi
-  ontrig=$(awk '/^on:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z_-]+:/ {print $1}' "$1" | tr '\n' ' ')
+  ontrig=$(awk '/^on:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:/ {print $1}' "$1" | tr '\n' ' ')
   [ "$ontrig" = 'workflow_dispatch: ' ] || missing="${missing}[no trigger but the manual run, found: $ontrig] "
-  jobs=$(awk '/^jobs:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z_-]+:$/ {print $1}' "$1" | tr '\n' ' ')
+  jobs=$(awk '/^jobs:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:$/ {print $1}' "$1" | tr '\n' ' ')
   [ "$jobs" = 'seed: ' ] || missing="${missing}[the seed job alone, found: $jobs] "
   [ "$(grep -cE '^ +[a-z-]+: (write|read-all|write-all)$' "$1" || true)" = 1 ] || missing="${missing}[no permission but id-token: write] "
   if grep -qE '^ +(issues|actions|checks|deployments|discussions|packages|pages|pull-requests|security-events|statuses|attestations):' "$1"; then missing="${missing}[no permission but id-token and contents: read] "; fi
@@ -853,23 +853,25 @@ seed_guards() {
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
   # The chain that must hold: days a run x 7.5 minutes a day (measured) x 1.2 <= the Seed step's limit,
-  # which ends 2 or more minutes before the role's life, which the job outlasts by the setup's 9. At 2
-  # days: 15 (18 with the margin) <= 18 <= 20 - 2, and 18 + 9 = 27 <= 30. At 3 days a full catch-up
+  # which, after the credentials step's own limit (the role's life starts inside that step), ends a
+  # minute or more before the role's life, which the job outlasts by the setup's 9. At 2 days: 15 (18
+  # with the margin) <= 18, 18 + 1 = 19 <= 20 - 1, and 18 + 9 = 27 <= 30. At 3 days a full catch-up
   # (about 22) outlived its own credentials. The pins stay exact; the sums are checked beside them.
   need "    timeout-minutes: 30"
   grep -qxF -- '        timeout-minutes: 18' <<<"$block" || missing="${missing}[the Seed step's 18 minutes] "
+  credmin=$(awk '/^      - name: Take the deploy role$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
   stepmin=$(awk '/^      - name: Seed$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
   jobmin=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
   rolesec=$(sed -n 's/^ *role-duration-seconds: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
   maxdays=$(sed -n 's/^export const MAX_DAYS_PER_RUN = \([0-9][0-9]*\);$/\1/p' "$REPO_DIR/scripts/src/demo/apply.ts")
-  if [ -n "$stepmin" ] && [ -n "$jobmin" ] && [ -n "$rolesec" ] && [ -n "$maxdays" ]; then
-    [ $((stepmin * 60 + 120)) -le "$rolesec" ] ||
-      missing="${missing}[the Seed step's $stepmin minutes end 2 or more minutes before the role's $rolesec s] "
+  if [ -n "$credmin" ] && [ -n "$stepmin" ] && [ -n "$jobmin" ] && [ -n "$rolesec" ] && [ -n "$maxdays" ]; then
+    [ $((credmin * 60 + stepmin * 60 + 60)) -le "$rolesec" ] ||
+      missing="${missing}[the credentials step's $credmin and the Seed step's $stepmin minutes end a minute or more before the role's $rolesec s] "
     [ $((maxdays * 90)) -le $((stepmin * 10)) ] ||
       missing="${missing}[the Seed step's $stepmin minutes hold $maxdays days at 7.5 minutes a day with a fifth over] "
     [ $((stepmin + 9)) -le "$jobmin" ] || missing="${missing}[the job's $jobmin minutes hold the Seed step's $stepmin and the setup's 9] "
   else
-    missing="${missing}[the Seed step's, the job's and the role's limits and MAX_DAYS_PER_RUN, all readable] "
+    missing="${missing}[the credentials step's, the Seed step's, the job's and the role's limits and MAX_DAYS_PER_RUN, all readable] "
   fi
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
@@ -910,10 +912,18 @@ refuses "a Seed step with less than 18 minutes is refused" "the Seed step's 18 m
 # The step that outlives its credentials: the step and the job moved together (30 and 40, the old pair), so every
 # pin above is met only by the sums, and the role's 20 minutes are what refuses it.
 sed -e 's/^        timeout-minutes: 18$/        timeout-minutes: 30/' -e 's/^    timeout-minutes: 30$/    timeout-minutes: 40/' "$SEED_WORKFLOW" >"$WORK/seed-outlives.yml"
-refuses "a Seed step that outlives the role's credentials is refused" "end 2 or more minutes before the role" seed_guards "$WORK/seed-outlives.yml"
+refuses "a Seed step that outlives the role's credentials is refused" "end a minute or more before the role" seed_guards "$WORK/seed-outlives.yml"
+# The credentials step given its old two minutes: 2 + 18 + the spare minute is 21 against the role's 20.
+awk '/^      - name: Take the deploy role$/ {f = 1} f && $0 == "        timeout-minutes: 1" {print "        timeout-minutes: 2"; f = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-credtime.yml"
+refuses "a credentials step allowed 2 minutes, which leaves the Seed step no spare minute inside the role, is refused" "end a minute or more before the role" seed_guards "$WORK/seed-credtime.yml"
+# A job whose name holds a digit is a second job all the same: the name class once had no digits. Its step carries
+# the act guard, so only the job list can refuse it (a bare step would be refused for lacking the guard, hiding the hole).
+# shellcheck disable=SC2016 # a literal workflow expression
+{ cat "$SEED_WORKFLOW"; printf '\n  tell2:\n    needs: seed\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n        if: ${{ !env.ACT }}\n'; } >"$WORK/seed-digitjob.yml"
+refuses "a second job whose name holds a digit is refused" "the seed job alone, found: seed: tell2:" seed_guards "$WORK/seed-digitjob.yml"
 # The role's life cut short under the same step: the other end of the same sum.
 sed 's/^\( *\)role-duration-seconds: 1200$/\1role-duration-seconds: 1080/' "$SEED_WORKFLOW" >"$WORK/seed-shortrole.yml"
-refuses "a role that does not outlast the Seed step by 2 minutes is refused" "end 2 or more minutes before the role" seed_guards "$WORK/seed-shortrole.yml"
+refuses "a role that does not outlast the credentials and Seed steps by a minute is refused" "end a minute or more before the role" seed_guards "$WORK/seed-shortrole.yml"
 # More days a run than the step holds (the constant raised, the workflow untouched), against a scratch copy of the tree.
 mkdir -p "$WORK/seed-days/scripts/src/demo"
 sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
