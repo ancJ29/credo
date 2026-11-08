@@ -106,6 +106,13 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
         details: 'a day that adds up to the most or less',
       });
     }
+    // The closer is read before the first write: a person whose record has gone since the sign-in
+    // closes nothing (the root alone has no record), so the day is never signed with the root's
+    // shape and another's name.
+    const person = who.employeeId
+      ? await readEmployee(storage, request.tenantId, who.employeeId)
+      : null;
+    if (who.employeeId && !person) throw new HttpError(401, 'Unauthorized');
     for (const waiting of figures.waiting) {
       const tag = listed.find((one) => one.record.id === waiting.id)!.tag;
       const cancelled = { ...waiting, state: 'cancelled' };
@@ -125,9 +132,6 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
         );
       }
     }
-    const person = who.employeeId
-      ? await readEmployee(storage, request.tenantId, who.employeeId)
-      : null;
     const closed: Reconciliation = {
       day,
       driver,

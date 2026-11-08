@@ -27,9 +27,17 @@ const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 
 /** A client that fails or moves the write of a chosen key, while its plan names it. */
 function flaky() {
-  const plan: { on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | null } = {};
+  const plan: {
+    on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | null;
+    /** Runs before a read of the key, once the plan sets it, e.g. to take a record away. */
+    beforeGet?: (key: string) => Promise<void>;
+  } = {};
   const wrap = (client: CStorageClient): CStorageClient => ({
     ...client,
+    async getRecord(key) {
+      await plan.beforeGet?.(key);
+      return client.getRecord(key);
+    },
     async putRecord(key, data, ifTag) {
       const what = plan.on?.(key) ?? null;
       if (what === 'throw') throw new CStorageError(503, 'down');
@@ -167,6 +175,30 @@ describe('Rows 4, 11 and 12: the close', () => {
       code: null,
       name: d.w.t.ROOT.name,
     });
+  });
+
+  it('A person whose staff record goes between their sign-in and the close closes nothing: a 401, the day’s waiting request is left as it was and no closed day is written', async () => {
+    const f = flaky();
+    const d = await dayEnd({ wrap: f.wrap });
+    await d.deliver();
+    const waiting = await d.sentTo();
+    const body = await d.asked(d.tung, 0);
+    const person = d.w.t.keys.employee(d.w.office.employee.id);
+    // the office person holds the right to close; their record goes as the close looks for the day
+    f.plan.beforeGet = async (key) => {
+      if (!key.includes('.reconciliation.')) return;
+      f.plan.beforeGet = undefined;
+      await d.w.t.client.removeRecord(person);
+    };
+
+    const reply = await d.close(d.tung, body);
+    f.plan.beforeGet = undefined;
+
+    expect(reply.statusCode).toBe(401);
+    // read by the root: the office person is gone
+    const left = await d.w.requestDoc(DAY, waiting.request.request.id, d.w.t.rootCall);
+    expect(left.request.state).toBe('waiting');
+    expect(await d.listed(DAY, d.w.t.rootCall)).toEqual([]);
   });
 
   it('A driver whose only request was cancelled closes with nothing to collect and 0', async () => {

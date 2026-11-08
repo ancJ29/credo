@@ -72,7 +72,7 @@ that they do**, which is case 5 below.
 
 ## The steps
 
-- [ ] **1. The closer is read before the first write, and a person who is gone is a 401.** Move the
+- [x] **1. The closer is read before the first write, and a person who is gone is a 401.** Move the
   `readEmployee` of `bff/src/reconciliations.ts#L128-L130` above the cancel loop at `#L109`; the
   root keeps the no-id branch, and anyone else whose record cannot be read throws
   `HttpError(401, 'Unauthorized')`, the wording `bff/src/app.ts#L83` already uses. Cases 2, 3, 4. There is no fake
@@ -80,6 +80,15 @@ that they do**, which is case 5 below.
   through the real c-storage the route tests already start.
   *Done when:* `pnpm --filter @credo/bff test reconciliations` exits 0, case 2's assertion having
   been seen red against the old order of the reads. **Size 14.**
+  *Done 2026-11-08:* the read sits just above the cancel loop; case 2 (person's record removed as the
+  close looks for the day) is 401 with the waiting request untouched and no closed day. Seen red
+  twice, each restore verified with `cmp`: the old file gives 200 for 401, and the new order with
+  the `throw` dropped gives 200 for 401. Gate of `bff`, last line of
+  `logs/20261108-120230-money-defects-step1-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0
+  prettier 0 test 0 knip 0)`, 587 tests. A first whole run
+  (`logs/20261108-120141-money-defects-step1-bff-gate.log`, exit 1) timed out one case in
+  `clients-delete.route.test.ts`, a file this step cannot reach, and is recorded as a red; the rerun
+  was green. 41.7 is closed by this step; the item's prose is deleted in step 6.
 - [ ] **2. The precondition is held by a check that reddens when it goes.** A `flaky` mode beside
   `'theirs'` (`reconciliations.route.test.ts#L29-L48`) that lands another close under the key and
   then lets ours through to c-storage with its own `null`; case 1 expects 409 and the first
