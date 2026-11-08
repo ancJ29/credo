@@ -66,13 +66,15 @@ never held records.
 As of `main` after the backup-policy piece, **the template** says `Box` carries `DeletionPolicy: RetainExceptOnCreate` and
 `UpdateReplacePolicy: Retain`, and the disk `DeleteOnTermination: false`, so a stack
 delete and a replacement would leave the box and a termination would leave the disk. That is true of
-the template and of no running environment: ridge still runs the old box, without the fence, and a
+the template and of ridge, where it was applied on 2026-11-08 at 17:10 and read off the running box
+afterwards (the same instance, launched 2026-10-28, its root device `Keep: false`, no unattached
+volume; the project's logs folder, `logs/20261108-1715-ridge-box-fence-receipt.log`), and a
 client's stack made from `main` takes it at creation. Nothing else changed: there is still no copy of any client's
-records, and no one has read a kept disk ([open item 6](open-items.md)). One condition is open: the change set
+records, and no one has read a kept disk ([open item 6](open-items.md)). The change set
 was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it
-(`Modify Box` at `replacement=Conditional`, the property's class, not a verdict), so whether applying
-it replaces the box is not known; the reason and the open question are in
-[the memo](plans/2026-11-08-backup-policy-conditional-memo.md).
+(`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md)); it was then re-run with `--take Box`
+at 17:10, ended `== exit 0`, and the box was not replaced (`logs/2026-11-08-171042-stack-ridge.log`).
 
 One thing stands in front of it, and it is a good one: a change set that removes or replaces any
 resource is refused by default and must be named by logical id to proceed
@@ -80,9 +82,8 @@ resource is refused by default and must be named by logical id to proceed
 [`ops/stack.sh`](../ops/stack.sh)). Before the backup-policy piece its comment said why — "a replaced box
 deletes its disk and the database with it" — and it now says the box is kept on a replacement but the new
 one comes up with an empty database (`#L4-L6`). On 2026-11-08 at 16:44 that guard refused the
-backup-policy change set on ridge, which it was built to do; passing it takes `--take Box`, whether
-to is the human's open question in
-[the memo](plans/2026-11-08-backup-policy-conditional-memo.md), and behind the guard there is only the
+backup-policy change set on ridge, which it was built to do; passing it took `--take Box` at 17:10
+([the memo](plans/2026-11-08-backup-policy-conditional-memo.md) has the reasoning), and behind the guard there is only the
 fence's kept box.
 
 ### The tree guard: `ops/` alone is compared

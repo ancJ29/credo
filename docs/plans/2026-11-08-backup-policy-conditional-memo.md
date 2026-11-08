@@ -1,5 +1,7 @@
 # Memo, 2026-11-08: what `Conditional` means on `Box`, and how the fence reaches ridge
 
+*Status, added 2026-11-08 after 17:10: option 3 was taken. The change set was re-run with `--take Box` at 17:10 and ended `== exit 0`, and the box was read back as the same instance with the fence on its root device; nothing below is open as to how to proceed. The body is kept as written at 16:44.*
+
 Not a plan. A decision memo for the backup-policy piece's step 8
 (`docs/plans/2026-11-08-backup-policy.md#L116`), which stopped: `bash ops/stack.sh env ridge --plan`
 against `origin/main` at `89ecf7e7` built the change set and the guard refused it

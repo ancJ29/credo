@@ -64,8 +64,8 @@ knows a copy would be readable.
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
 in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
 human's change set was run on ridge as `--plan` on 2026-11-08 at 16:44 and refused by the guard
-(`Modify Box` at `replacement=Conditional`), so it is still not applied there; the reason and the
-open question are in [the memo](plans/2026-11-08-backup-policy-conditional-memo.md).** The box's root volume holds the one SQLite file
+(`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md)), and then re-run on ridge at 17:10 with `--take Box` (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`: the guard passed on the take, UPDATE complete, `== exit 0`, the execute step 32 seconds). **The fence is live on ridge**, and it is proved on the running box by the receipt, not inferred from the 32 seconds: read off the live machine afterwards (`logs/20261108-1715-ridge-box-fence-receipt.log`): the same instance, launched 2026-10-28 and running, so it was not replaced; the root device with `Keep: false`, which is the fence read off the box and not off the template; and no unattached volume.** The box's root volume holds the one SQLite file
 (`ops/c-storage.service#L20`). Before the piece it carried `DeleteOnTermination: true` with no
 `DeletionPolicy` and no snapshot, so a stack delete, an image or instance-type change taken with
 `--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the stack"
@@ -79,9 +79,10 @@ neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` mes
 stack holds nothing (that status exists only after a failed creation, whose rollback deleted the box), and the two ways to read what is kept
 ([the runbook](../ops/README.md#reading-what-the-fence-kept), untested). **Three named losses become
 survivable; nothing else changes.** A termination, a torn file, a bad write or a wrong delete inside
-the database are still unrecoverable, and the template is not applied to ridge: its change set was run
-as `--plan` on 2026-11-08 at 16:44 and the guard refused it, and how to proceed is open in
-[the memo](plans/2026-11-08-backup-policy-conditional-memo.md).
+the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
+`--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
+`--take Box`), is not a backup: no copy exists and no restore has been run.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
