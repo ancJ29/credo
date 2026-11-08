@@ -166,6 +166,37 @@ describe('the walks', () => {
     );
   });
 
+  it('runs every spec file in some project, and every project runs exactly one spec', async () => {
+    // the config itself, loaded as Playwright loads it, not its text; the path is a variable so
+    // this package's typecheck does not follow it into a package it has no Playwright in
+    const path = new URL('../../walk/playwright.config.ts', import.meta.url).pathname;
+    const config = (
+      (await import(/* @vite-ignore */ path)) as {
+        default: { projects: { name: string; testMatch?: string | string[] }[] };
+      }
+    ).default;
+    const specs = readdirSync(SPECS).filter((name) => name.endsWith('.spec.ts'));
+    // a project with no testMatch runs every spec, as Playwright's default does
+    const runs = (project: (typeof config.projects)[number], spec: string) =>
+      project.testMatch === undefined || [project.testMatch].flat().includes(spec);
+
+    expect(specs.length).toBeGreaterThan(0);
+    // a spec that no project names runs nowhere, and the suite stays green
+    for (const spec of specs) {
+      expect(
+        config.projects.filter((project) => runs(project, spec)).map((project) => project.name),
+        `${spec}: the projects that run it`,
+      ).not.toHaveLength(0);
+    }
+    // a project that runs two specs would write the second one's pictures into the first's folder
+    for (const project of config.projects) {
+      expect(
+        specs.filter((spec) => runs(project, spec)),
+        `${project.name}: the specs it runs`,
+      ).toHaveLength(1);
+    }
+  });
+
   it('shoots every walk at the widths the report draws, the width in each image’s name', () => {
     const widths =
       /export const WIDTHS = \{ pc: (\d+), tablet: (\d+), phone: (\d+) \} as const/.exec(
