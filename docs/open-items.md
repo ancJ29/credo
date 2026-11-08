@@ -879,7 +879,9 @@ a runbook entry. Related: item 50 (how the end-of-run search handles the keys it
 that must be replaced — a leak found by the end-of-run search, or an operator leaving — or before a client's own
 stack.
 
-## 135. A clerk cannot add a customer or a product: the import is the root's alone and no page offers an add — the machine proposes the form, the human decides which right it sits under; *parked* until the first client takes an order (the client-readiness read, 2026-11-07)
+## 135. A clerk cannot add a customer or a product: the import is the root's alone and no page offers an add — the machine proposes the form, the human decides which right it sits under; `[FIXED]` (add records, `4552e6ea` to `cee6a814`, 2026-11-08, High; was *parked*, the client-readiness read)
+
+*Fixed in add records (`4552e6ea` to `cee6a814`, recap `docs/recaps/2026-11-08-add-records.md`):* an Add path now exists beside the import on both lists, for whoever holds `orders.canEdit`: `POST /api/customers` and `POST /api/products` through the import's own row rule and write, an Add button on each list, and a page that copies the detail form with the code box open. **The import is still root-only**, deliberately, and a review re-proved it with a test using a person holding every permission; the closure does not open it. The right chosen is `orders.canEdit`, because the catalogue holds no `orders.canCreate` and that right already makes records on these pages. As filed:
 
 The only way a record enters the customers or the products list is the Excel import, and the import is the
 root's: `bff/src/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
