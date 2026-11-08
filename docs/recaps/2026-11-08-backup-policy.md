@@ -6,6 +6,8 @@ Three named losses became survivable: a stack delete, a replacement of the box (
 
 **This is not "backup: done". There is still no copy of any client's records.** A termination by a person, a torn file, a bad write and a wrong delete inside the database are as unrecoverable as before.
 
+The change set was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it: `Modify Box` came back at `replacement=Conditional`, the property's class and not a verdict on this change, and nothing was changed on AWS. That was the state at 16:44. The set was then re-run at 17:10 with `--take Box` (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`, `== exit 0`), and the box was read back afterwards as the same instance, launched 2026-10-28, with its root device `Keep: false` and no unattached volume (`logs/20261108-1715-ridge-box-fence-receipt.log`): the fence is live on ridge. [The memo](../plans/2026-11-08-backup-policy-conditional-memo.md) explains why `Conditional` was never a verdict.
+
 ## What it cost, and its real history
 
 Three rounds, each finding the previous round's confident sentence untrue:
@@ -18,8 +20,7 @@ The reread then found the fix pass had broken the citation it repaired; fixed he
 
 ## Still open
 
-- The change set was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it: `Modify Box` came back at `replacement=Conditional`, the property's class and not a verdict on this change, and nothing was changed on AWS. That was the state at 16:44. The set was then re-run at 17:10 with `--take Box` (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`, `== exit 0`), and the box was read back afterwards as the same instance, launched 2026-10-28, with its root device `Keep: false` and no unattached volume (`logs/20261108-1715-ridge-box-fence-receipt.log`): the fence is live on ridge. [The memo](../plans/2026-11-08-backup-policy-conditional-memo.md) explains why `Conditional` was never a verdict.
-- cfn-lint has not run locally; CI's `ops` job is its verdict.
+- cfn-lint has not run locally, and this sandbox cannot run it (it needs a pip install from the network, and the local `cfn-lint` is a shim over a missing module); CI's `ops` job is its verdict, and whether CI has run it on these commits is not known here.
 - No recovery path has ever been tried; the runbook's are marked untested. A rolled-back creation's empty root disk is left behind, reasoned and not seen.
 - The second slice, the copy, the restore and the drill, is not built. Item 6's backup half stays open (`docs/open-items.md`, item 6); its fence half closes with this commit.
 
