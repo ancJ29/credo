@@ -1,13 +1,36 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: pnpm check; make check in c-storage/ · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: six commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
+
+## The gate
+
+Six commands cover this repository, and this is the whole list; which of them a step runs is
+[QA](docs/conventions/qa.md#the-rules)'s rule 6. Each is run from the repository root unless its row
+says otherwise.
+
+| # | Command | What it covers | In CI |
+| --- | --- | --- | --- |
+| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip (`package.json#L10`) | `.github/workflows/ci.yml#L145` |
+| 2 | `make check`, in `c-storage/` | gofmt, `go vet`, the race tests at 100 % through `scripts/cover.sh`, and the box's arm64 cross-compile (`c-storage/Makefile`) | `ci.yml#L69` |
+| 3 | `shellcheck -x ops/*.sh walk/*.sh` | every tracked `.sh` but `c-storage/scripts/cover.sh` and `e2e.sh`, which no tool reads ([open item 160](docs/open-items.md)) | `ci.yml#L197`, ShellCheck 0.11.0 |
+| 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml#L198-L203`, cfn-lint 1.46.0 |
+| 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
+| 6 | `bash scripts/e2e.sh`, in `c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
+
+Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
+operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the
+Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts#L39` reads `BUNDLE_NODE`, which
+only the `app` job sets (`ci.yml#L130-L136`), so locally that one assertion is skipped while row 1
+otherwise runs whole.
 
 ## Non-obvious facts
 
 - **Read [collaboration](docs/conventions/collaboration.md) before working here,
   [documentation](docs/conventions/documentation.md) before writing any doc, `CLAUDE.md` or
-  comment, or committing any path, and [QA](docs/conventions/qa.md) before writing any test or
+  comment, or committing any path, [code](docs/conventions/code.md) before adding or changing any
+  code, and
+  [QA](docs/conventions/qa.md) before writing any test or
   feature plan, and before running any check on this machine or writing its log.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
