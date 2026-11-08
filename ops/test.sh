@@ -213,6 +213,15 @@ tojson() {
 tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
+# the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
+# environment's own group, and the group is the API's own, kept 14 days
+# shellcheck disable=SC2016 # the format's $context names, in single quotes
+api_log_wanted='{"DestinationArn":{"Fn::GetAtt":["ApiLogs","Arn"]},"Format":"{\"requestId\":\"$context.requestId\",\"time\":\"$context.requestTime\",\"ip\":\"$context.identity.sourceIp\",\"method\":\"$context.httpMethod\",\"path\":\"$context.path\",\"route\":\"$context.routeKey\",\"status\":\"$context.status\",\"latencyMs\":\"$context.responseLatency\",\"userAgent\":\"$context.identity.userAgent\",\"integrationError\":\"$context.integration.error\"}"}'
+check "the API stage sends its access log to ApiLogs, in one JSON line of when, who, what path, route and answer" \
+  "$api_log_wanted" "$(jq -c '.Resources.ApiStage.Properties.AccessLogSettings' "$WORK/env.json")"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+check "ApiLogs is the API's own group, kept 14 days" '{"LogGroupName":{"Fn::Sub":"/aws/apigateway/credo-${Env}"},"RetentionInDays":14}' \
+  "$(jq -c '.Resources.ApiLogs.Properties' "$WORK/env.json")"
 # mut <jq program> → the path of a copy of the template's JSON with the program applied: a template broken one way
 mut() {
   jq -c "$1" "$WORK/env.json" >"$WORK/env-mut.json"

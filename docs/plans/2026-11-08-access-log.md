@@ -59,7 +59,7 @@ request. A silent gap in one is visible against the other.
 
 ## The steps
 
-- [ ] **1. The group and the stage's settings.** `ApiLogs`, an `AWS::Logs::LogGroup` named
+- [x] **1. The group and the stage's settings.** `ApiLogs`, an `AWS::Logs::LogGroup` named
   `/aws/apigateway/credo-${Env}` with `RetentionInDays: 14`, beside `BffLogs` and on its pattern
   (`ops/env.yml#L169-L174`); then `AccessLogSettings` on `ApiStage` (`ops/env.yml#L267-L275`), its
   `DestinationArn` the group's `Arn` and its `Format` one JSON object of `$context.requestId`,
@@ -68,6 +68,13 @@ request. A silent gap in one is visible against the other.
   requires it to exist and imposes no name prefix. *Done when:* a new `check` in `ops/test.sh`'s
   template section reads `.Resources.ApiStage.Properties.AccessLogSettings` out of the `tojson` read
   at `ops/test.sh#L213` and matches, and `bash ops/test.sh` ends `0 not ok`. *Size:* 6 minutes.
+  *Done 2026-11-08 13:06:* `ApiLogs` and `ApiStage`'s `AccessLogSettings` in `ops/env.yml`; two new `check`s in
+  `ops/test.sh` (the stage's settings whole, and `ApiLogs`' name and 14 days); `ApiLogs` added to
+  `ops/testdata/changeset-app.json`, which the layer-four change-set rows pin to the template's resource list.
+  `ops/test.sh` has no `not ok` line: it ends `ops/test.sh: all checks passed`, exit 0
+  (`logs/ops-test-83-step1-20261108-125647.log`). Red-first, each one mutation of `ops/env.yml` and a `cmp`-verified
+  restore: the destination moved to `BffLogs`, the settings replaced by a comment naming them, and the caller cut
+  from the format; each reddened the new check alone.
 - [ ] **2. The guard that reddens.** `api_log_guard`, on `bff_keys_guard`'s shape
   (`ops/test.sh#L305`): `must` for the destination being `ApiLogs` and for each of the five
   field groups of case 1 being in the format. `passes` on the real template, and `refuses` on three
