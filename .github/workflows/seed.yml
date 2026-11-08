@@ -2,7 +2,7 @@
 # `gh workflow run seed`). It has no schedule and nothing in it starts it, so nothing runs it unseen and
 # no run fails unseen; ridge's data is only as fresh as the last time somebody asked. The job runs
 # ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy up to
-# yesterday, through the BFF's own code over the tunnel, at most 3 days a copy a run (a run that meets a
+# yesterday, through the BFF's own code over the tunnel, at most 2 days a copy a run (a run that meets a
 # longer backlog ends green and says STILL BEHIND; ask again). It writes nothing unless /health names this
 # commit, or an earlier one that differs from it in no path ci.yml deploys on, and the BFF's function names
 # the same. A red run is read, then run again by hand once its cause is gone.
@@ -22,9 +22,10 @@ jobs:
     # A manual run from a branch is refused here, and the environment admits main alone as well.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    # The Seed step's 30 minutes and the setup before it (at most 9 at the steps' own limits, a few in
-    # practice); the job's own limit holds the sum, so a stuck step cannot hold the role for longer.
-    timeout-minutes: 40
+    # The Seed step's 18 minutes and the setup before it (at most 9, counting the checkout and Node that
+    # carry no limit of their own); the job's own limit holds the sum, 27, with 3 to spare. The chain that
+    # must hold: 2 days x 7.5 minutes = 15 < the Seed step's 18 < the role's 20 (1200 s) < the job's 30.
+    timeout-minutes: 30
     environment: ridge
     # Its own group, never `ridge`: a run waiting in a group replaces the one waiting before it, so
     # a seed queued in the deploy's group would cancel a waiting deploy. A seed that overlaps a
@@ -69,10 +70,13 @@ jobs:
           aws-region: ap-southeast-5
           mask-aws-account-id: true
           role-skip-session-tagging: true
+          # Never widened to make more work fit: the Seed step's 18 minutes end inside these 20, so an
+          # overrun is a clear timeout and never credentials that expired under a running step.
           role-duration-seconds: 1200
       # The script masks the keys itself, before anything is printed.
       - name: Seed
         if: ${{ !env.ACT }}
-        # 3 days a copy are about 22 minutes at the measured 7.5 a day for the heavier client.
-        timeout-minutes: 30
+        # 2 days a copy are about 15 minutes at the measured 7.5 a day for the heavier client; 18 is
+        # 20 per cent over that and 2 minutes inside the role's 20, so a slow run is killed by this limit.
+        timeout-minutes: 18
         run: bash ops/seed.sh ridge

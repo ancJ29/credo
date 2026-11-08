@@ -87,7 +87,7 @@ describe('ridge_cli seed', () => {
     expect(result.err).toEqual([]);
   });
 
-  it('row 7: it fills a copy the operator made, at most three days a night, ending green and saying how far behind it still is; a copy up to date gets nothing; no key or password is printed', async () => {
+  it('row 7: it fills a copy the operator made, at most two days a run, ending green and saying how far behind it still is; a copy up to date gets nothing; no key or password is printed', async () => {
     const { storage, run } = await ridge(['seed']);
     const password = await make(storage, 0);
     const id = storedClientSchema.parse(
@@ -96,32 +96,37 @@ describe('ridge_cli seed', () => {
     const lastDay = async () => (await readLedger(storage, id))?.ledger.lastDay;
 
     const first = await run();
-    expect(await lastDay()).toBe('2026-10-25');
+    expect(await lastDay()).toBe('2026-10-24');
     const second = await run();
-    expect(await lastDay()).toBe('2026-10-28');
+    expect(await lastDay()).toBe('2026-10-26');
     const third = await run();
+    expect(await lastDay()).toBe('2026-10-28');
     const fourth = await run();
+    const fifth = await run();
 
-    for (const night of [first, second, third, fourth]) expect(night.status).toBe(0);
+    for (const night of [first, second, third, fourth, fifth]) expect(night.status).toBe(0);
     expect(first.out.at(-2)).toBe(
       'seed: STILL BEHIND, 1 copies have days left (' +
-        `${copies[0].code} 4); this run applied 3 days at most a copy, run it again to go on: 2 more runs`,
+        `${copies[0].code} 5); this run applied 2 days at most a copy, run it again to go on: 3 more runs`,
     );
     expect(first.out.at(-1)).toBe(
-      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied',
+      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
     );
     expect(second.out.at(-1)).toBe(
-      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied',
+      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
     );
     expect(third.out.at(-1)).toBe(
+      'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
+    );
+    expect(fourth.out.at(-1)).toBe(
       'seed: 6 copies mapped, 1 up to date, 5 not on this service, 1 days applied',
     );
-    expect(third.out.join('\n')).not.toContain('STILL BEHIND');
+    expect(fourth.out.join('\n')).not.toContain('STILL BEHIND');
     expect(await lastDay()).toBe('2026-10-29');
-    expect(fourth.out.at(-1)).toBe(
+    expect(fifth.out.at(-1)).toBe(
       'seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied',
     );
-    const printed = [...first.out, ...first.err, ...fourth.out, ...fourth.err].join('\n');
+    const printed = [...first.out, ...first.err, ...fifth.out, ...fifth.err].join('\n');
     expect(printed).not.toContain(password);
     for (const key of first.keys) expect(printed).not.toContain(key);
   });
@@ -141,7 +146,7 @@ describe('ridge_cli seed', () => {
     expect(result.err).toEqual([`error: left as they were, see above: ${copies[0].code}`]);
     expect(result.out).toContain(`${copies[0].code}: holds more than a new client does, left`);
     expect(result.out.at(-1)).toBe(
-      'seed: 6 copies mapped, 0 up to date, 4 not on this service, 3 days applied',
+      'seed: 6 copies mapped, 0 up to date, 4 not on this service, 2 days applied',
     );
   });
 
@@ -154,6 +159,6 @@ describe('ridge_cli seed', () => {
 
     expect(result.status).toBe(1);
     expect(result.err).toEqual([`error: left as they were, see above: ${copies[0].code}`]);
-    expect(result.out).toContain(`${copies[0].code}: 44 days behind, more than 30, left`);
+    expect(result.out).toContain(`${copies[0].code}: 45 days behind, more than 30, left`);
   });
 });

@@ -829,7 +829,7 @@ SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
 # token are refused (the plan's "The daily run" is history). As in the deploy job, the job's own `if` cannot read env, so every step carries
 # `if: ${{ !env.ACT }}` for act, which has no AWS.
 seed_guards() {
-  local block missing='' steps guarded role inst run want_region have_region ontrig jobs
+  local block missing='' steps guarded role inst run want_region have_region ontrig jobs stepmin jobmin rolesec maxdays
   [ -f "$1" ] || die "no seed workflow"
   block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
@@ -852,11 +852,25 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
-  # A run applies at most 3 days a copy, about 22 minutes: the Seed step has 30 and the job 40, the
-  # setup's own limits (at most 9) and the step's 30 with room to spare. Kept from the nightly run:
-  # a run asked for is no shorter, and a stuck step must not hold the role for long.
-  need "    timeout-minutes: 40"
-  grep -qxF -- '        timeout-minutes: 30' <<<"$block" || missing="${missing}[the Seed step's 30 minutes] "
+  # The chain that must hold: days a run x 7.5 minutes a day (measured) x 1.2 <= the Seed step's limit,
+  # which ends 2 or more minutes before the role's life, which the job outlasts by the setup's 9. At 2
+  # days: 15 (18 with the margin) <= 18 <= 20 - 2, and 18 + 9 = 27 <= 30. At 3 days a full catch-up
+  # (about 22) outlived its own credentials. The pins stay exact; the sums are checked beside them.
+  need "    timeout-minutes: 30"
+  grep -qxF -- '        timeout-minutes: 18' <<<"$block" || missing="${missing}[the Seed step's 18 minutes] "
+  stepmin=$(awk '/^      - name: Seed$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
+  jobmin=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  rolesec=$(sed -n 's/^ *role-duration-seconds: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  maxdays=$(sed -n 's/^export const MAX_DAYS_PER_RUN = \([0-9][0-9]*\);$/\1/p' "$REPO_DIR/scripts/src/demo/apply.ts")
+  if [ -n "$stepmin" ] && [ -n "$jobmin" ] && [ -n "$rolesec" ] && [ -n "$maxdays" ]; then
+    [ $((stepmin * 60 + 120)) -le "$rolesec" ] ||
+      missing="${missing}[the Seed step's $stepmin minutes end 2 or more minutes before the role's $rolesec s] "
+    [ $((maxdays * 90)) -le $((stepmin * 10)) ] ||
+      missing="${missing}[the Seed step's $stepmin minutes hold $maxdays days at 7.5 minutes a day with a fifth over] "
+    [ $((stepmin + 9)) -le "$jobmin" ] || missing="${missing}[the job's $jobmin minutes hold the Seed step's $stepmin and the setup's 9] "
+  else
+    missing="${missing}[the Seed step's, the job's and the role's limits and MAX_DAYS_PER_RUN, all readable] "
+  fi
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
   steps=$(grep -c '^      - ' <<<"$block" || true)
@@ -889,10 +903,22 @@ refuses "a seed that regains a schedule is refused" "no schedule" seed_guards "$
 # The guard reads the document, not words: a comment that names the keyword is not a schedule.
 awk '/^  workflow_dispatch:$/ {print "  # schedule: - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron-comment.yml"
 passes "a comment that names a schedule is not one" seed_guards "$WORK/seed-cron-comment.yml"
-sed 's/^    timeout-minutes: 40$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
-refuses "a seed job with less than 40 minutes is refused" "timeout-minutes: 40" seed_guards "$WORK/seed-jobtime.yml"
-sed 's/^        timeout-minutes: 30$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
-refuses "a Seed step with less than 30 minutes is refused" "the Seed step's 30 minutes" seed_guards "$WORK/seed-steptime.yml"
+sed 's/^    timeout-minutes: 30$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
+refuses "a seed job with less than 30 minutes is refused" "timeout-minutes: 30" seed_guards "$WORK/seed-jobtime.yml"
+sed 's/^        timeout-minutes: 18$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
+refuses "a Seed step with less than 18 minutes is refused" "the Seed step's 18 minutes" seed_guards "$WORK/seed-steptime.yml"
+# The step that outlives its credentials: the step and the job moved together (30 and 40, the old pair), so every
+# pin above is met only by the sums, and the role's 20 minutes are what refuses it.
+sed -e 's/^        timeout-minutes: 18$/        timeout-minutes: 30/' -e 's/^    timeout-minutes: 30$/    timeout-minutes: 40/' "$SEED_WORKFLOW" >"$WORK/seed-outlives.yml"
+refuses "a Seed step that outlives the role's credentials is refused" "end 2 or more minutes before the role" seed_guards "$WORK/seed-outlives.yml"
+# The role's life cut short under the same step: the other end of the same sum.
+sed 's/^\( *\)role-duration-seconds: 1200$/\1role-duration-seconds: 1080/' "$SEED_WORKFLOW" >"$WORK/seed-shortrole.yml"
+refuses "a role that does not outlast the Seed step by 2 minutes is refused" "end 2 or more minutes before the role" seed_guards "$WORK/seed-shortrole.yml"
+# More days a run than the step holds (the constant raised, the workflow untouched), against a scratch copy of the tree.
+mkdir -p "$WORK/seed-days/scripts/src/demo"
+sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
+seed_guards_days() { REPO_DIR="$WORK/seed-days" seed_guards "$SEED_WORKFLOW"; }
+refuses "three days a run in an 18-minute Seed step is refused" "hold 3 days at 7.5 minutes a day" seed_guards_days
 awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
 refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
 awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
@@ -2273,15 +2299,15 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and 3 of its 7 days applied, the 4 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 4); ') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 2 of its 7 days applied, the 5 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 5); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
 check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in this log')"
 export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
-check "a second run goes on from the ledger, 3 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 3 days applied$')"
+check "a second run goes on from the ledger, 2 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$')"
 
 # A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the next run somebody asks for goes on.
 export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead

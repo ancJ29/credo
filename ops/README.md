@@ -218,7 +218,7 @@ client's own stack is the console's. The why is
 
 The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
 somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
-runs `ops/seed.sh ridge` under the deploy role, at most 3 days a copy a run. The script makes no client and
+runs `ops/seed.sh ridge` under the deploy role, at most 2 days a copy a run (about 15 minutes; the Seed step is limited to 18, inside the role's 20). The script makes no client and
 no password: the human makes each copy at `/operator` first, under its mapped code. The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
 
@@ -247,7 +247,7 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
    - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
-3. A run that ends `seed: STILL BEHIND` is green: it applied 3 days a copy and the line names what is
+3. A run that ends `seed: STILL BEHIND` is green: it applied 2 days a copy and the line names what is
    left; run it again to go on. A red run is read before it is run again. Ridge's data is only as fresh as
    the last run, so run the workflow before anyone checks anything against it.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
