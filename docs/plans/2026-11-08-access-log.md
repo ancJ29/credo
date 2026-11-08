@@ -81,7 +81,7 @@ request. A silent gap in one is visible against the other.
   `mut` programs — the settings deleted, the destination moved to `BffLogs`, and the format with the
   caller cut. *Done when:* `bash ops/test.sh` shows the one pass and the three refusals and ends
   `0 not ok`; the run's check count is four higher than before. *Size:* 6 minutes.
-  *Done 2026-11-08 13:20:* `api_log_guard` in `ops/test.sh` beside `bff_keys_guard`, on its shape (`must` over the
+  *Done 2026-11-08 13:16:* `api_log_guard` in `ops/test.sh` beside `bff_keys_guard`, on its shape (`must` over the
   parsed template, the format read with `fromjson`, never grepped): the stage has settings, the destination is
   `ApiLogs`, the format is a JSON object, and each of time, caller, path, route and answer is in it. One `passes` and
   three `refuses` (settings deleted, destination moved to `BffLogs`, caller cut). `ops/test.sh` prints no `0 not ok`:
