@@ -89,11 +89,19 @@ that they do**, which is case 5 below.
   (`logs/20261108-120141-money-defects-step1-bff-gate.log`, exit 1) timed out one case in
   `clients-delete.route.test.ts`, a file this step cannot reach, and is recorded as a red; the rerun
   was green. 41.7 is closed by this step; the item's prose is deleted in step 6.
-- [ ] **2. The precondition is held by a check that reddens when it goes.** A `flaky` mode beside
+- [x] **2. The precondition is held by a check that reddens when it goes.** A `flaky` mode beside
   `'theirs'` (`reconciliations.route.test.ts#L29-L48`) that lands another close under the key and
   then lets ours through to c-storage with its own `null`; case 1 expects 409 and the first
   close's cash. *Done when:* the case is green, and red with the `null` at
   `bff/src/reconciliations.ts#L41` removed — both runs quoted in the recap. **Size 14.**
+  *Done 2026-11-08:* a `flaky` mode `'rival'` lands another close (`handedIn` 1) under the key through
+  the real client, then lets our write through with its own `null`; the new case in Row 16 expects 409
+  and the first close's cash. Seen red two ways, each restore from `git show HEAD:` verified with `cmp`:
+  `null` dropped at `reconciliations.ts#L41` gives 200 for 409, and `shared/src/c-storage.ts` turned to
+  send no `if-none-match` for `null` gives 200 for 409 (the pre-piece `reconciliations.ts` holds the
+  `null` already, so it cannot be red: the precondition was never missing, only unheld). Gate of `bff`,
+  last line of `logs/20261108-120819-money-defects-step2-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0
+  prettier 0 test 0 knip 0)`. `main` was taken in first, clean.
 - [ ] **3. The two sums are proved one number.** Case 5: over a day with two delivered requests
   and one waiting, assert `driverDay(await requests(), driver).toCollect` equals the stored
   close's `toCollect`, and the typed gap equals the stored `difference`. *Done when:*

@@ -28,7 +28,7 @@ const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 /** A client that fails or moves the write of a chosen key, while its plan names it. */
 function flaky() {
   const plan: {
-    on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | null;
+    on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | 'rival' | null;
     /** Runs before a read of the key, once the plan sets it, e.g. to take a record away. */
     beforeGet?: (key: string) => Promise<void>;
   } = {};
@@ -46,6 +46,10 @@ function flaky() {
         // another close lands first, and ours fails with its answer lost
         await client.putRecord(key, { ...(data as object), handedIn: 1 }, null);
         throw new CStorageError(503, 'answer lost');
+      }
+      if (what === 'rival') {
+        // another close lands first, and ours goes on to c-storage with the precondition it was given
+        await client.putRecord(key, { ...(data as object), handedIn: 1 }, null);
       }
       const saved = await client.putRecord(key, data, ifTag);
       // the write landed and its answer was lost
@@ -433,6 +437,20 @@ describe('Row 16: the close’s writes', () => {
     expect((await e.close(e.tung, asked)).statusCode).toBe(409);
     f.plan.on = undefined;
     expect((await e.listed()).map((one) => one.handedIn)).toEqual([1]);
+  });
+
+  it('A close whose write reaches c-storage after another close landed under the key is refused by c-storage with a 409, and the record stays the first close’s', async () => {
+    const f = flaky();
+    const d = await dayEnd({ wrap: f.wrap });
+    await d.deliver();
+    const asked = await d.asked(d.tung, 5);
+    f.plan.on = (key) => (key.includes('.reconciliation.') ? 'rival' : null);
+
+    const reply = await d.close(d.tung, asked);
+    f.plan.on = undefined;
+
+    expect(reply.statusCode).toBe(409);
+    expect((await d.listed()).map((one) => one.handedIn)).toEqual([1]);
   });
 
   it('An order that moved meanwhile is left as it is: its request reads cancelled whatever it names', async () => {
