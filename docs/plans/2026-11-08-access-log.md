@@ -91,7 +91,7 @@ request. A silent gap in one is visible against the other.
   `AccessLogSettings`, `DestinationArn`, `ApiLogs` and `$context` variables (guard and step 1's check red); the
   destination moved to `BffLogs`; the settings removed; and step 1's open gap closed, `ApiLogs` kept 30 days (its
   check red).
-- [ ] **3. The prose this makes false.** `ops/env.yml#L243-L244`'s comment; `docs/architecture.md#L287-L289`;
+- [x] **3. The prose this makes false.** `ops/env.yml#L243-L244`'s comment; `docs/architecture.md#L287-L289`;
   `docs/client-readiness.md#L134-L152`, whose heading and whose "would leave no trace anyone could
   read afterwards" are both now wrong — the first because the stage logs, the second because the
   Lambda group already held a line per request when that page was written; its readiness list at
@@ -101,6 +101,10 @@ request. A silent gap in one is visible against the other.
   line names the client whose records were read. *Done when:*
   `grep -rn "no access log" ops docs --include="*.yml" --include="*.md" -i | grep -v "docs/plans/\|docs/recaps/"`
   reads 0 lines. *Size:* 6 minutes.
+  *Done 2026-11-08 13:19:* the passages were found by their text, not the plan's lines, which had moved. `ops/env.yml#L250-L252` (the comment, two lines now, names `ApiLogs` and `BffLogs`);
+  `docs/architecture.md#L287-L303` (the throttle citation moved to `ops/env.yml#L250-L252`, and a sentence on the two logs: the function's, on all along, and the stage's, in the template awaiting the change set);
+  `docs/client-readiness.md#L134-L172` (heading, the quoted comment and its citation, and the bold sentence replaced by the two trails, each marked old or new and what is unverified) and its list's fourth entry (the sign-in limit alone, item 28; the log noted as split off);
+  `docs/open-items.md#L781-L785` (item 121 now *partly closed*, readable half done and not yet on ridge, the wall left parked) and a new item 152 at the file's end (the record-level join, Low). The grep reads 0 lines; `glance.sh --check` passes. Documents only, no test run.
 - [ ] **4. The local gate, whole.** *Done when:* `bash ops/test.sh` exits 0 with `0 not ok`, and
   `shellcheck -x ops/*.sh walk/*.sh` is clean; both tee'd into the root's `logs/`. cfn-lint needs
   pip and the network and is not run here — CI's `ops` job

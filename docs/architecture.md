@@ -286,14 +286,21 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L244`](../ops/env.yml#L244)). Read "answers anyone" as *reachable*, not as
+  ([`ops/env.yml#L250-L252`](../ops/env.yml#L250)). Read "answers anyone" as *reachable*, not as
   *unauthenticated*: a call arriving that way still meets the BFF's own checks — the client header,
   the session, the permission — so what was lost is the network wall in front of them, not the
   wall itself. It is the one property of the day-one design that
   was given up without anyone deciding to — it followed from the Region's limit when function URLs
   turned out not to be offered there — and until 2026-11-07 that template comment was the only
   place it was written down. It is now [open item 121](open-items.md), parked for the human until a
-  client signs or real client data reaches a deployment.
+  client signs or real client data reaches a deployment. Two logs record a call, and they are not
+  the same age. The function has written a line per request to its own group all along: nothing in
+  `bff/src/lambda-main.ts#L3` turns the logger off, so `server.ts#L9`'s default stands
+  (`app.ts#L86`), and the function's `LoggingConfig` names that group
+  ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). The stage's own access log, `ApiLogs`
+  ([`#L176-L181`](../ops/env.yml#L176), [`#L284-L286`](../ops/env.yml#L284)), is in the template
+  and runs on a stack only once the change set for it has been applied. Neither names the client
+  whose records were read ([open item 152](open-items.md)).
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**
   (`#L181`). There is no Route53, ACM or custom domain anywhere in the repository; the distribution
   uses CloudFront's own certificate and name
