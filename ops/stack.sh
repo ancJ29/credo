@@ -42,6 +42,7 @@ while [ $# -gt 0 ]; do
     --plan) PLAN_ONLY=1 ;;
     --take)
       [ $# -ge 2 ] || usage
+      [ -n "$2" ] || usage # a blank id names nothing and would still print as an authorisation
       TAKE=$(jq -c --arg id "$2" '. + [$id]' <<<"$TAKE")
       shift
       ;;
@@ -221,7 +222,7 @@ if [ "$no_changes" = 1 ]; then
 else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
   # Each change, then one line per detail naming the property that carried it: the change set is deleted
-  # below, so this print is the only record of a refusal's cause.
+  # on the way out, so this print is the only record of a refusal's cause.
   jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-")")' "$WORK/changes.json"
 
   step "the guard: nothing removed or replaced"

@@ -1,0 +1,17 @@
+{
+  "ChangeSetName": "ops-20261028-000000",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
+        "LogicalResourceId": "Box",
+        "ResourceType": "AWS::EC2::Instance",
+        "Scope": []
+      }
+    }
+  ]
+}

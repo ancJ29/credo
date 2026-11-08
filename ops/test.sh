@@ -2536,6 +2536,18 @@ FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-adds --plan
 check "  a change set that only adds and modifies keeps its old verdict" "0 1 0" \
   "$RC $(grep -c 'ok   no removal and no replacement' "$S/out" || true) $(grep -c 'except what was taken' "$S/out" || true)"
 
+# A change carrying no Details key at all: the `?` on .Details[] in stack.sh keeps it from dying before the guard.
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-nodetails.json stack_run stack-nodetails --plan
+check "a change with no Details key still prints its change line and reaches a verdict" "0 1 1" \
+  "$RC $(grep -c '^  Add Box (AWS::EC2::Instance) replacement=none$' "$S/out" || true) $(grep -c 'ok   no removal and no replacement' "$S/out" || true)"
+# A blank --take names nothing yet would print as an authorisation: it is a usage error, first or after a good one.
+stack_run stack-take-blank --plan --take ''
+check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0" \
+  "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
+check "  and so is a blank one after a good one" "2 0" \
+  "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
 echo "== the walks page's deploy: Access's refusal, the folder's digest, the newest deploy (walks.yml reads them)"
