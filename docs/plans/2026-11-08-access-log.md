@@ -75,12 +75,22 @@ request. A silent gap in one is visible against the other.
   (`logs/ops-test-83-step1-20261108-125647.log`). Red-first, each one mutation of `ops/env.yml` and a `cmp`-verified
   restore: the destination moved to `BffLogs`, the settings replaced by a comment naming them, and the caller cut
   from the format; each reddened the new check alone.
-- [ ] **2. The guard that reddens.** `api_log_guard`, on `bff_keys_guard`'s shape
+- [x] **2. The guard that reddens.** `api_log_guard`, on `bff_keys_guard`'s shape
   (`ops/test.sh#L305`): `must` for the destination being `ApiLogs` and for each of the five
   field groups of case 1 being in the format. `passes` on the real template, and `refuses` on three
   `mut` programs — the settings deleted, the destination moved to `BffLogs`, and the format with the
   caller cut. *Done when:* `bash ops/test.sh` shows the one pass and the three refusals and ends
   `0 not ok`; the run's check count is four higher than before. *Size:* 6 minutes.
+  *Done 2026-11-08 13:20:* `api_log_guard` in `ops/test.sh` beside `bff_keys_guard`, on its shape (`must` over the
+  parsed template, the format read with `fromjson`, never grepped): the stage has settings, the destination is
+  `ApiLogs`, the format is a JSON object, and each of time, caller, path, route and answer is in it. One `passes` and
+  three `refuses` (settings deleted, destination moved to `BffLogs`, caller cut). `ops/test.sh` prints no `0 not ok`:
+  it ends `ops/test.sh: all checks passed`, exit 0, 533 ok lines, four more than step 1's
+  (`logs/ops-test-83-step2-clean-20261108-131020.log`). Mutations of `ops/env.yml`, each run, red, restored and
+  `cmp`-verified (`logs/ops-test-83-step2-mutations-20261108-131535.log`): the settings deleted with a comment naming
+  `AccessLogSettings`, `DestinationArn`, `ApiLogs` and `$context` variables (guard and step 1's check red); the
+  destination moved to `BffLogs`; the settings removed; and step 1's open gap closed, `ApiLogs` kept 30 days (its
+  check red).
 - [ ] **3. The prose this makes false.** `ops/env.yml#L243-L244`'s comment; `docs/architecture.md#L287-L289`;
   `docs/client-readiness.md#L134-L152`, whose heading and whose "would leave no trace anyone could
   read afterwards" are both now wrong — the first because the stage logs, the second because the
