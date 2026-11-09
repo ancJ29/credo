@@ -11,10 +11,12 @@
 > convention's own line — docs describe *absent* code: a plan, or a rejected option
 > ([documentation](conventions/documentation.md#what-earns-a-line)).
 >
-> **This page is outside the citation check's set of living documents** (`scripts/src/citations.ts`'s
-> `LIVING`), which is deliberate: it describes code that does not exist, so a check that its symbols
-> resolve would be checking the wrong thing. The citations it carries to code that *does* exist came
-> from `architecture.md`, where they were checked, and the piece that builds this reads them again.
+> **This page is one of the citation check's living documents** (`scripts/src/citations.ts`'s
+> `LIVING`), so every name it cites is greped in the file that is named and the gate reds when one
+> stops resolving. That it describes code not yet written is no reason to leave it out: the check
+> only verifies what *is* cited, and the names below that already exist — the store, the writer, the
+> gate's `Makefile`, the package's own rules — are exactly the ones that will rot when this work
+> lands.
 
 **What exists, and it is the only fact on this page.** `audit-backbone/` holds a finished Go
 service: 22 Go files, nine internal packages and `cmd/server`, its own SQLite file, its own gate,
