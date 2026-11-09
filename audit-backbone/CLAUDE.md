@@ -65,6 +65,13 @@ token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../CLAU
   `internal/lifecycle`'s, which run the process on real sockets because the
   shutdown order is only visible there.
 
+## State in this repository
+
+- **It is here and nothing in this repository calls it.** The BFF does not reach it, `ops/` ships
+  nothing of it, and the CI workflow has no job for it (c-storage's `make check` job is the model).
+  `pnpm check` does not run it, and the root `.prettierignore` and `knip.json` name `c-storage/`
+  but not this directory. How it integrates is the next decision, not made yet.
+
 ## Documentation
 
 Read [`documentation.md`](../docs/conventions/documentation.md)
