@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  ATTEMPTS,
   type AddEmployeeRequest,
   addEmployeeRequestSchema,
   archiveEmployeeRequestSchema,
@@ -47,7 +48,6 @@ import { z } from 'zod';
 import { HttpError, parse, replyFor } from './errors';
 import { hashPassword, madePassword } from './password';
 import {
-  ATTEMPTS,
   namesBack,
   NO_SETUP_VERSION,
   readEmailClaim,

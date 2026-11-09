@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  ATTEMPTS,
   type CStorageClient,
   CStorageError,
   recordKeys,
@@ -17,8 +18,6 @@ import { createRecord } from './clients';
 
 /** A link works for a day. */
 export const LINK_MS = 24 * 60 * 60 * 1000;
-/** How often a write on a moved record is re-read and tried again before giving up. */
-export const ATTEMPTS = 3;
 
 const NO_PASSKEYS: StoredAccount = {
   passkeys: [],

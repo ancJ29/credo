@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  ATTEMPTS,
   CStorageError,
   type CStorageClient,
   type Employee,
@@ -53,9 +54,6 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
   const parsed = found ? storedUserSchema.safeParse(found.data) : null;
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
 }
-
-/** How often a write on a record that moved without cause is re-read and tried again. */
-export const ATTEMPTS = 3;
 
 /**
  * Gives a sign-in record a new password hash, the one write that ends every session of it: a fresh

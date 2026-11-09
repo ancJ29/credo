@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
+  ATTEMPTS,
   addDays,
   byCode,
   cancelRequestSchema,
@@ -43,9 +44,6 @@ import { z } from 'zod';
 import { HttpError, parse } from './errors';
 import { readSetup } from './staff-records';
 import type { Deps } from './staff';
-
-/** How often a number is raised again over a record that moved, before the call is given up (503). */
-const ATTEMPTS = 3;
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 const notFound = () => new HttpError(404, 'Not found');

@@ -9,6 +9,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
+  ATTEMPTS,
   AUTH_HEADER,
   type CStorageClient,
   type ConfirmAct,
@@ -34,7 +35,7 @@ import {
 } from '@credo/shared';
 import { type Purpose, createChallenges, CHALLENGE_MS } from './challenge';
 import { HttpError, parse } from './errors';
-import { ATTEMPTS, readAccount, readLiveLink, readRoster } from './operators';
+import { readAccount, readLiveLink, readRoster } from './operators';
 import { createSessions, OPERATOR_SESSION } from './sessions';
 
 const RP_NAME = 'Credo';
