@@ -1272,6 +1272,6 @@ The loop's cell in `collaboration.md` describes the gate as steps a session runs
 
 The comment above `run_each` says the loop is `--no-bail`; the loop is a plain `for d in $dirs` over `pnpm --filter` calls, which runs every package whatever one did but is not pnpm's flag. A comment saying the wrong mechanism sends a reader to look for a flag that is not there. It is in `main`'s script, not in the convention's diff, so it was filed, not fixed. *Fix:* reword the comment when `ops/gate.sh` is next touched.
 
-## 195. A package outside the pnpm gate must be added to the root's ignore lists, and no document says so — the machine; `[OPEN]` (the audit backbone's move, 2026-11-09, Medium)
+## 200. A package outside the pnpm gate must be added to the root's ignore lists, and no document says so — the machine; `[OPEN]` (the audit backbone's move, 2026-11-09, Medium)
 
 The one-gate-command convention gives every package one check command, and the root's steps run over the whole tree. A Go package has no `package.json`, so it has no `check` script, yet the root formatter and the unused-code check still reach its files: the audit backbone arrived with its own `make check` green and 17 of its files reported by the root formatter. The fix is two lines, one in `.prettierignore` and one in `knip.json`, and it was found by running the formatter on the moved tree, not by any rule. *Cheapest fix:* one sentence in the gate convention naming both files, so the next non-pnpm package costs two lines rather than an unexpected red.
