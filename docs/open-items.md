@@ -777,10 +777,6 @@ In `found_in_compare` (`ops/full-run.sh`) a named screen that moved in one walk 
 `walk/run.sh`'s write (`rm -f …/*.png`, then a copy loop over `$run/full-1/$w/*.png`) leaves the folder empty and writes one literal `*.png` copy attempt if a green walk produced no picture. Unreachable today: a green walk has its tests passed, each of which takes pictures, and the shape is the old block's. It becomes reachable if a walk with no pictures is added. *Trigger:* a walk that takes no picture; then guard the loop with `[ -e "$picture" ] || continue`.
 
 
-## 117. A delete that fails in the deploy check shows only to whoever opens the log or the Clients list — the machine; `[DEFERRED]` (deploy-check-cleanup, review, 2026-11-07, Low)
-
-`ops/check.sh`'s `cleanup_extra` prints a `WARN the check's client … was not deleted` line when `untenant` fails, and nothing in `ops/lib.sh` or `.github/workflows/ci.yml` reads `WARN`. This is the asked-for behaviour (a failed delete must not turn the check red); it is written down because it is the one way the old symptom, the Clients list refilling after each deploy, could come back unannounced. *Trigger:* a `check-…` client seen in ridge's Clients list after a deploy; then read the deploy's log for the `WARN`, and if it recurs make the workflow surface it.
-
 ## 118. An over-8 KB save answers 400 and the page says to try again, which cannot work — the machine; `[DEFERRED]` (edit-customer, review of line 64.1, 2026-11-07, Low)
 
 Deferred from line 64.1's review, not a fault of the piece. `extra` is bounded at 8 KB (`shared/src/extra.ts#L34`); a customer save past it answers 400 and the page shows "What you typed is still here: try again", which is true but useless, since trying again cannot succeed. The form caps nothing. Not data loss: what was typed stays. *Trigger:* the product page copying this save shape; then give the form a cap and the 400 a notice of its own.

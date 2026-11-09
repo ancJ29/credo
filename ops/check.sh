@@ -159,6 +159,15 @@ if [ "$LAYER4" = 0 ]; then
   echo "skipped: $ENVNAME's stack holds no layer four yet"
 else
   bff_env_read
+  # First the stranded ones: every check client older than two hours (an earlier run's delete failed or
+  # the run died) goes, inside this tunnel with the same keys. A failed sweep is a WARN and never turns
+  # a green check red, as cleanup_extra's delete does.
+  if swept=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
+    ridge_cli clear-checks 2>&1); then
+    echo "ok   $swept"
+  else
+    echo "WARN the sweep of stranded check clients did not finish (delete them in the console): $swept"
+  fi
   # A fresh client each run, made by the operator's own create function through the tunnel (the BFF's
   # own service and keys); cleanup_extra deletes it at the run's end, by the same function and keys.
   # (Each Bruno run still leaves a service row.)

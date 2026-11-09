@@ -1370,6 +1370,10 @@ else
 fi
 check "check.sh writes its environment through that writer alone" "1 0" \
   "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
+check "check.sh sweeps stranded check clients after bff_env_read and before it makes its own, once" "1 yes" \
+  "$(grep -c 'ridge_cli clear-checks' "$OPS_DIR/check.sh" || true) $(awk '/^  bff_env_read$/ {a = NR} /ridge_cli clear-checks/ {b = NR} /ridge_cli tenant / {c = NR} END {print (a && a < b && b < c) ? "yes" : "no"}' "$OPS_DIR/check.sh")"
+check "check.sh warns on a failed sweep and does not die on it" "1 0" \
+  "$(grep -c 'WARN the sweep of stranded check clients' "$OPS_DIR/check.sh" || true) $(grep -cE 'ridge_cli clear-checks.*(die|exit)' "$OPS_DIR/check.sh" || true)"
 
 echo "== a refused write removes nothing, even through on_exit; a second signal does not cut on_exit short"
 cat >"$WORK/refused.sh" <<'CHILD'

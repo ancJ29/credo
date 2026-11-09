@@ -44,10 +44,13 @@ steps are `pnpm --filter @credo/scripts run typecheck`, `pnpm exec eslint .`, `p
   *Done 2026-11-09:* rows 1 to 5 red on the old `ridge.ts`, rows 2 to 4 each shown red by a named mutation of the new code
   and reverted; the five steps exit 0, last line `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0 knip 0)`, 314 tests,
   `logs/20261109-0908-scripts-gate-clear-test-clients.log`. The deletion is one shared helper, `untenant` calling it too.
-- [ ] **2. `ops/check.sh` runs it, 8 min.** One `ridge_cli clear-checks` after `bff_env_read` and before the create
+- [x] **2. `ops/check.sh` runs it, 8 min.** One `ridge_cli clear-checks` after `bff_env_read` and before the create
   (`ops/check.sh#L161-L169`), **inside the tunnel that block already opened**, warning on failure like `#L44` rather than
   reddening the run. **Closes `docs/open-items.md` item 117**; the entry is deleted. *Done when:*
   `shellcheck -x ops/*.sh walk/*.sh` and `bash ops/test.sh` exit 0, plus the `scripts` five steps.
+  *Done 2026-11-09:* the sweep is an `if` that prints `WARN` on failure; two `ops/test.sh` lines pin its place and its warning;
+  item 117 deleted. Last line `== exit 0 (shellcheck 0 ops-test 0 typecheck 0 eslint 0 prettier 0 test 0 knip 0)`,
+  `logs/20261109-0913-ops-gate-clear-test-clients.log`.
 - [ ] **3. The whole check, the review, the recap, 5 min.** The root `pnpm check` once; one cross-model review, each finding
   tagged; `docs/recaps/2026-11-07-clear-test-clients-sweep.md` with its `docs/products.md` row. *Done when:* `pnpm check`
   exits 0 and the tree is clean.
