@@ -39,7 +39,7 @@ places, nothing failing when a copy is missed.
   ([one home](#one-home-for-one-decision)).
 - **Where two patterns compete the winner is named**, and the loser is not copied again
   ([the winner](#the-winner-named)).
-- **One rule here is held by a check, and every other by a reader**
+- **One mechanism is held by a check, and every other rule by a reader**
   ([how to read a rule](#how-to-read-a-rule)).
 - **Where a client's difference lands, and no cache for server data, are the human's decisions**,
   with what a yes commits to, in [that memo](../memo/divergence-and-caching.md).
@@ -61,11 +61,10 @@ never renumbered or reused**, the discipline [`open-items.md`](../open-items.md)
 a table that reports on the rules is read against the ids, and a rule that is retired leaves its id
 unused. **How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
 typed into this file:** it prints each count with its blind spot beside it, never reds, and ends with
-the table of the living documents' citations. **One of the sixteen is held by a check**: the registration function that appends a
+the table of the living documents' citations. **Two of the sixteen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
-`TestEveryRegisteredRouteIsListed`), and it was written before the review. It is named twice below —
-as the rule [one home](#one-home-for-one-decision) states and as the shape [the patterns to
-copy](#the-patterns-to-copy) names — and it is one mechanism in one file. **The other fifteen are
+`TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
+makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fourteen are
 `reader`**, which is what the structure review's own open item exists to change, one check at a time
 ([open item 160](../open-items.md)).
 
@@ -152,7 +151,7 @@ end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten 
 `shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/staff-records.ts`,
 `bff/src/operators.ts`, `bff/src/orders.ts` and `bff/src/sessions.ts`), so whoever found one believed
 they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-six screens (`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/CustomerPage.tsx`'s `CustomerPage`,
+five screens (`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/CustomerPage.tsx`'s `CustomerPage`,
 `ui/src/ProductPage.tsx`'s `ProductPage`, `ui/src/PersonPage.tsx`'s `PersonPage`, and
 `ui/src/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
 (now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
