@@ -265,7 +265,7 @@ at all, covering a flow or a whole app rather than one screen, so several would 
 to sit in. So meeting that shape in another repository is not a precedent here.
 **A package being reorganised writes its directory set into its own `CLAUDE.md` in the same change as
 the move, never before** — a guideline naming a folder that does not exist yet is wrong for as long
-as the move takes — which is why `ui` and `bff` name no set yet.
+as the move takes — as `ui/CLAUDE.md` does, written in the change that moved `ui`; `bff` names no set yet.
 
 *Why:* nothing in the gate reads a directory, so a layer folder, a copied folder set and a package
 whose `CLAUDE.md` names none of its folders all pass green; the mark is `reader` because the reader

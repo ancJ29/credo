@@ -18,14 +18,18 @@ Its only door to the back end is the object `ui/src/api.ts`'s `createApi` makes.
 
 ## The directories of `ui/src`
 
-Each finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17; a
-directory not on this list is not a directory, and a file with no sentence stays at the top.
+Each but the last finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17;
+a directory of your own making is not on this list and is not a directory (vitest's own
+`__snapshots__/` beside a test aside), and a file with no sentence stays at the top.
 
 - **`pages/client/`**: a screen the client app mounts at a path, and nothing else mounts
   (`ui/src/pages/client/ListPage.tsx`'s `ListPage`).
 - **`pages/operator/`**: a screen the operator console mounts at a path
   (`ui/src/pages/operator/ClientsPage.tsx`'s `ClientsPage`).
-- **`pages/`, loose**: a screen both apps mount (`ui/src/pages/SignIn.tsx`'s `SignIn`).
+- **`pages/`, loose**: a screen both apps mount at a path (`ui/src/pages/MorePage.tsx`'s `MorePage`,
+  routed by `ui/src/ClientApp.tsx` and `ui/src/OperatorApp.tsx` alike). A screen's own frame that both
+  apps reach lives beside that screen, not in `frame/` (`ui/src/pages/SignIn.tsx`'s `SignInFrame`;
+  `SignIn` itself is the client's alone and is drawn outside any route).
 - **`frame/`**: the frame a screen is drawn inside: the shell, the providers, the boot, the load
   state (`ui/src/frame/Shell.tsx`'s `Shell`, `ui/src/frame/Loaded.tsx`'s `Loaded`).
 - **`parts/`**: a piece a screen is built from, that no route mounts
@@ -37,7 +41,11 @@ directory not on this list is not a directory, and a file with no sentence stays
   look, a sheet, a port (`ui/src/api.ts`'s `createApi`, `ui/src/theme.ts`).
 
 A test sits beside its subject, and beside the app where the subject is the app
-(`ui/src/App.test.tsx`).
+(`ui/src/App.test.tsx`). A flow test with no source of its name (`ui/src/pages/client/Access.test.tsx`,
+`ui/src/pages/operator/OperatorWalk.test.tsx`) sits in the directory of the screens it walks, and one
+that walks the frame or the dictionary sits in `frame/` or `i18n/` (`ui/src/i18n/words.test.tsx`). A
+stylesheet sits with the one directory that imports it (`ui/src/pages/client/staffList.module.css`),
+or in `frame/` when importers stand on both sides (`ui/src/frame/frame.module.css`).
 
 ## The file to copy
 

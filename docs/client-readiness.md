@@ -404,8 +404,8 @@ In the order they would meet it, not in order of how hard each is.
    ([`shared/src/orders.ts#L23`](../shared/src/orders.ts#L23),
    [`bff/src/orders.ts#L218-L226`](../bff/src/orders.ts#L218)), and the page's only way back is an
    "Earlier" button that adds one more week and re-reads every week again
-   ([`ui/src/pages/client/OrdersPage.tsx`](../ui/src/pages/client/OrdersPage.tsx)'s `readWeeks`,
-   and its button `orders.earlier`). There is no search by number or by customer, no filter
+   ([`ui/src/pages/client/OrdersPage.tsx`](../ui/src/pages/client/OrdersPage.tsx)'s `readWeeks` and
+   `OrdersPage`, whose "Earlier" button adds the week). There is no search by number or by customer, no filter
    by state and no date to open at. Finding last month's order means pressing Earlier five times
    and reading a table.
 5. **No report of any kind.** Eight pages, and not one of them is a total, a day's takings or a
@@ -417,9 +417,9 @@ In the order they would meet it, not in order of how hard each is.
    for a staff member — the root types them a new one by hand — and **none at all for the root**:
    only an operator can set it, from our console.
 7. **The app wears Adobe's logo on every page.** A client uploads its logo in Settings and sees it
-   on the sign-in door ([`ui/src/pages/SignIn.tsx`](../ui/src/pages/SignIn.tsx)'s `brand.logo`), and then every page
+   on the sign-in door ([`ui/src/pages/SignIn.tsx`](../ui/src/pages/SignIn.tsx)'s `SignInFrame`, which draws the client's logo), and then every page
    inside draws Tabler's `IconBrandAdobe`, hard-coded
-   ([`ui/src/frame/Shell.tsx`](../ui/src/frame/Shell.tsx)'s `IconBrandAdobe`). Already
+   ([`ui/src/frame/Shell.tsx`](../ui/src/frame/Shell.tsx)'s `Shell`, which draws the `IconBrandAdobe` icon). Already
    [open items 76 and 103](open-items.md); it is listed here because it is the first thing the
    client sees and the cheapest thing on this page to fix.
 8. **No stock and no goods receipts.** A product carries a flag saying its stock is kept
@@ -435,7 +435,7 @@ of them is new; what is new is saying which ones cost a client money or a record
 - **[Item 36](open-items.md), finding 5 — the money on the screen disagreed with the money to
   collect. Fixed on 2026-11-07** by the edit-an-order piece, and re-read in the code on 2026-11-08:
   a saved draft is drawn at its saved prices and a moved line is marked
-  ([`ui/src/pages/client/OrderPage.tsx`](../ui/src/pages/client/OrderPage.tsx)'s `moved`), so the page's total and the
+  ([`ui/src/pages/client/OrderPage.tsx`](../ui/src/pages/client/OrderPage.tsx)'s `FormFields`), so the page's total and the
   request's agree. Kept here only so nobody fixes it twice.
 - **[Item 41](open-items.md), finding 2 — two closes of one driver's day cannot overwrite each
   other's cash, and a test now holds it.** The close writes with a precondition
