@@ -72,6 +72,8 @@ function Page({ later = false }: { later?: boolean }) {
       {shown && (
         <>
           <h2>Late list</h2>
+          <h3>Late Bình An</h3>
+          <div role="alert">Late notice</div>
           <table>
             <tbody>
               <tr>
@@ -211,7 +213,23 @@ describe('a scene’s steps', () => {
     expect(out()).toBe('');
     await expect(
       runSteps(document.body, [{ see: 'Nobody', text: true }], {}, QUICK),
-    ).rejects.toThrow('found no heading or cell named “Nobody”');
+    ).rejects.toThrow('found no heading, alert or cell named “Nobody”');
+  });
+
+  it('wait for an alert by its own words, or by the dictionary’s with a word filled, and touch nothing', async () => {
+    draw({ later: true });
+
+    await runSteps(
+      document.body,
+      [
+        { see: 'Late notice', text: true },
+        { see: 'form.title', with: { name: 'Bình An' } },
+      ],
+      { form: { title: 'Late {{name}}' } },
+      { ...QUICK, findFor: 1000 },
+    );
+
+    expect(out()).toBe('');
   });
 
   it('stop at a step that finds nothing, naming its place and what it was', async () => {
@@ -278,8 +296,8 @@ describe('a scene’s steps', () => {
     draw({ later: true });
     const began = Date.now();
 
-    // the late button shows at 60 ms or after and is the page's one change: still for 100 ms
-    // after it is no sooner than 100 ms past that
+    // the late button, headings, alert and cell show together at 60 ms or after and are the page's one
+    // change: still for 100 ms after it is no sooner than 100 ms past that
     await runSteps(document.body, [], WORDS, { findFor: 50, stillFor: 100, stillAtMost: 3000 });
 
     expect(Date.now() - began).toBeGreaterThanOrEqual(150);
