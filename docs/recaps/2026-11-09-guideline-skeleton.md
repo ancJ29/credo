@@ -29,9 +29,9 @@ A read on a second model said the piece may merge with two sentences corrected.
 
 ## What remains the human's
 
-Run `pnpm counts` in `main` once this merges and read the five counts with their blind spots. Items 195 to 198 hold what the review filed. No `docs/products.md` row is added, as in the day's other three recaps.
+Run `pnpm counts` in `main` once this merges and read the five counts with their blind spots. Items 195 to 198 hold what the review filed. No `docs/products.md` row is added, as in the day's other three recaps (item 201).
 
 ## Evidence
 
 - Commits `1caca15b` to `b95c9965` (`git log main..HEAD`); the review's fixes are `675b98d0`, `d409d7b1`, `14442a17`, `d423bd2d`, `260945bf`.
-- Whole check on the merge result: `2026-11-09-145640-gate-all.log`, `typecheck 0 eslint 0 prettier 0 test 0+1skipped knip 0`, `== green`, last line `== exit 0`, run on `b95c9965`; the only change since is this recap.
+- Whole check on the merge result: `2026-11-09-145640-gate-all.log`, `typecheck 0 eslint 0 prettier 0 test 0+1skipped knip 0`, `== green`, last line `== exit 0`, it started seven seconds after the merge commit `b95c9965` (committed 14:56:33, the gate started 14:56:40), and the only changes since are documents.
