@@ -1,97 +1,170 @@
 # How credo is built
 
-> **Written** 2026-11-07, for an engineer new to this codebase — which includes a fresh session of
-> the machine's own. It is the pair of [`products.md`](products.md): **products says what each part
-> does for whom, this page says how it is put together.** Every structural claim names the file
-> that makes it true, so any sentence here can be followed to the code; what was not read is named
-> at the end. The first-day plan, [`plans/2026-10-27-architecture.md`](plans/2026-10-27-architecture.md),
-> keeps the cost reasoning and the rejected alternatives, and is stale on several facts — see
-> [what the day-one plan gets wrong](#what-the-day-one-plan-now-gets-wrong).
-> **Last amended** 2026-11-09, by the piece that put the audit backbone on this page: a ninth
-> package, and the decided-but-unbuilt path to it, which is marked as such in
-> [its own section](#the-activity-log-intended-and-not-built).
+> **Written** 2026-11-07 and **rearranged 2026-11-09** so that a person can read the first screen
+> and a session can read on for the detail it needs. It is the pair of [`products.md`](products.md):
+> **products says what each part does for whom, this page says how it is put together.**
 
 ## At a glance
 
-One React app, one back end, one key-value store. A browser reaches CloudFront; files come from a
-private S3 bucket and every `/api/*` call goes uncached to an HTTP API, then to the BFF on Lambda
-inside a VPC with no internet route, which calls c-storage over the private network. c-storage is a
-small Go service on one EC2 box, holding **one SQLite file**. Locally the same path runs with
-`scripts/src/front.ts` standing where CloudFront and the HTTP API stand, so the app the walks
-picture is the app that deploys.
+**credo works by turning everything a person does on screen into one call to a single back end,
+which decides who is calling and what they may do, and then saves the result as one record under one
+key in a store that knows none of those rules.**
 
-A ninth package, `audit-backbone/`, is in the repository and **nothing calls it**: a second Go
-service with its own SQLite file, meant to become this project's activity log. The dashed path
-below is the only thing that would ever reach it, and it is not built —
-[the activity log](#the-activity-log-intended-and-not-built) says what was decided and what has to
-come first.
+That back end is the only part that decides anything: **the React app only draws what it is given,
+and the store only keeps what it is handed** — which is why the picture below has so few arrows,
+and why the walk under it is short.
+
+**The system, and what passes between its parts.**
 
 ```mermaid
 flowchart LR
-  browser["a browser<br/>PC, tablet or phone"]
-  cdn["CloudFront<br/>one per environment"]
-  s3[("the UI's files<br/>S3, private, OAC")]
-  api["API Gateway<br/>HTTP API, one $default route"]
-  subgraph vpc["one VPC · no internet route"]
-    bff["the BFF<br/>Lambda, arm64, in the subnet"]
-    subgraph box["the environment's box · EC2 t4g.nano"]
-      cs["c-storage<br/>Go, systemd, Restart=always"]
-      db[("one SQLite file")]
+  browser["a person's browser<br/>[client] PC, tablet or phone"]
+  cdn["CloudFront<br/>[CDN] one distribution per environment"]
+  s3[("the UI's files<br/>[S3 bucket] private, reached only by CloudFront")]
+  api["API Gateway<br/>[HTTP API] one route for everything, throttled"]
+  subgraph vpc["one VPC · no route out to the internet"]
+    bff["the BFF<br/>[Lambda, arm64] every rule in the system"]
+    subgraph box["the environment's box<br/>[EC2 t4g.nano]"]
+      cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
+      db[("the records<br/>[one SQLite file] the only copy there is")]
     end
   end
-  browser -- "HTTPS" --> cdn
-  cdn -- "every other path, cached" --> s3
-  cdn -- "/api/* uncached" --> api
-  api -- "payload 2.0 events" --> bff
-  bff -- "x-internal-access-key + x-access-key" --> cs
-  cs --> db
-  subgraph soon["INTENDED · nothing calls it · where it runs is not decided"]
-    ab["audit-backbone<br/>Go, in the repo, uncalled"]
-    adb[("its own SQLite file")]
-  end
-  bff -. "intended: one middleware<br/>600 ms, fail open" .-> ab
-  ab --> adb
+  ab["audit-backbone<br/>[Go service, in the repo] its own SQLite file"]
+  browser -- "asks for a screen, then calls /api/*" --> cdn
+  cdn -- "serves the UI's files, cached" --> s3
+  cdn -- "forwards every /api/* call, never cached" --> api
+  api -- "invokes, handing over the request as an event" --> bff
+  bff -- "reads and writes records, under two keys" --> cs
+  cs -- "stores each record under its key" --> db
+  bff -. "would post one activity entry · NOT BUILT" .-> ab
   classDef intended stroke-dasharray: 6 4
-  class ab,adb intended
+  class ab intended
 ```
 
-Drawn from [`ops/env.yml`](../ops/env.yml) (the distribution at `#L361`, its `/api/*` behaviour at
-`#L397`, the HTTP API at `#L245`, the function at `#L216`, the box at `#L95`),
-[`bff/src/lambda.ts`](../bff/src/lambda.ts), [`shared/src/c-storage.ts#L100`](../shared/src/c-storage.ts#L100)
-and [`c-storage/internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39). The
-dashed part is drawn from the decisions in
-[the activity log](#the-activity-log-intended-and-not-built) and from no code: nothing in this
-repository implements it.
+**Key.** Each box names a thing that runs and, in square brackets, what it runs on. A rounded box is
+a store. A box drawn inside a frame runs inside it. **Every arrow is one way, from the caller to the
+thing it calls, and says what passes.** A **dashed** box and arrow are **decided and not built**:
+`audit-backbone/` is in this repository, nothing calls it, and where it would run is not decided —
+the whole of that is [`docs/activity-log.md`](activity-log.md).
 
-## The parts, and what each would break
+**On this machine the picture is the same.** `scripts/src/front.ts` stands where CloudFront and the
+HTTP API stand, so the app the walks picture is the app that deploys.
 
-Six packages are in the pnpm workspace ([`pnpm-workspace.yaml`](../pnpm-workspace.yaml));
-`c-storage/`, `audit-backbone/` and `ops/` are deliberately outside it. Nine parts in all, and the
-ninth is in the repository with no caller. The last column is the point of the list: a part is only
+Drawn from [`ops/env.yml`](../ops/env.yml) (`ops/env.yml`'s `Distribution`, `Api`, `Bff` and `Box`),
+`bff/src/lambda.ts`, `shared/src/c-storage.ts`'s `createCStorageClient` and
+`c-storage/internal/server/server.go`'s `func Build(`. The dashed part is drawn from no code.
+
+## One request, end to end
+
+**A person changes a customer's phone number.** Every other action a person takes travels the same
+path; what differs between them is the permission asked at step 6, the key built at step 8 and the
+record written at step 9 — never the shape.
+
+1. **The screen.** The form is `ui/src/CustomerPage.tsx`. It was handed one object to reach the back
+   end with, and holds no rule of its own. The version it read the customer at goes back with the
+   change.
+2. **The call.** That object is `ui/src/api.ts`. It sends one `PUT` to the customer's own address,
+   carrying three headers that identify the call: the device, the client's code, and the session
+   handle the device keeps. No cookie, and nothing in the body says who is calling.
+3. **The door.** CloudFront matches the call's path, passes it on uncached to the HTTP API, and the
+   HTTP API invokes the BFF's one Lambda function.
+4. **The company.** The BFF's first hook reads the client's code from its header, finds the one index
+   record that maps that code to the client's minted id, and puts the id on the request. **It scopes
+   and never authenticates.**
+5. **Who is calling.** The route asks for the signed-in person: the session handle is hashed, its
+   record read, checked against the device it was issued to and against the sign-in's generation,
+   then slid forward.
+6. **What they may do.** One boolean — may this person edit orders? The three permission layers are
+   read on **every** call, department then position then the person's own. A no is a 403 here, before
+   the body is read. **This is the only place the question is asked.** The menu asks the same
+   question, but only to decide what to draw.
+7. **The body.** Only now is the request's JSON parsed, against the schema `shared/` declares and
+   both halves use. A refusal is a 400 naming the field that failed, which is what the form shows.
+8. **The key.** The customer's key is built in one place, `shared/src/records.ts`: `tenant.`, the
+   client's minted id, `customer.`, then the customer's id. **Nothing else in the repository builds a
+   key** — which is why the store can be told apart from the rules at all.
+9. **The write.** `bff/src/lists.ts` reads the record, lays the new values over it, and writes it with
+   the version it read as a precondition. `shared/src/c-storage.ts` turns that into one `PUT` over the
+   private network, carrying the internal key and the BFF's own service key, under a five-second
+   bound.
+10. **The store.** c-storage hashes the stored text to a tag, compares that tag with the precondition
+    inside the write's own transaction, and either writes or answers 412. **It knows nothing about
+    customers, clients or permissions:** a key, some JSON, and which service asked.
+11. **And back.** A 412 is not an error to the BFF. It reads the record once more; a record that
+    already holds exactly what was asked is its own write having landed, and counts as saved.
+    Anything else is a 409 carrying the record as it is now, and the screen offers the conflict. **The
+    version is never skipped.**
+
+## The codemap
+
+Nine parts, and this is where to look for the thing that does X. **One line each on purpose: each
+part's own internals — what belongs in it, the file to copy, its own rules — are in that part's own
+`CLAUDE.md`, and are not restated here.** The last column is the point of the list: a part is only
 understood once you know what stops without it.
 
-| Part | What it is | Runs | Gone, this breaks |
-| --- | --- | --- | --- |
-| `ui/` | The React 19 app, built by Vite: both the client app and the operator console, split by path in [`ui/src/App.tsx#L28`](../ui/src/App.tsx#L28) | a browser; files on S3 | everything a person sees. It is also the source the walks and the visual report draw screens from, so both go with it |
-| `bff/` | One Fastify app ([`bff/src/app.ts#L85`](../bff/src/app.ts#L85)) behind two entries: a listener ([`bff/src/server.ts#L29`](../bff/src/server.ts#L29)) and a Lambda handler ([`bff/src/lambda.ts`](../bff/src/lambda.ts)) | Lambda on arm64; a local process | every rule. It is the only thing that authenticates, resolves permissions and builds a record key; c-storage enforces none of that |
-| `shared/` | The wire contract and the record layout, one package, extended generically rather than split per service ([`CLAUDE.md`](../CLAUDE.md), [the app frame](plans/2026-10-27-app-frame.md#the-stack)) | imported by all of the above | the two halves drift. The key layout ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)) and the permission catalogue ([`shared/src/permissions.ts#L9`](../shared/src/permissions.ts#L9)) each have exactly one home here |
-| `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`c-storage/internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store, and its file is the only copy: the nightly backup is designed but deferred to a signed client ([open item 6](open-items.md)) |
-| `audit-backbone/` | A second standalone Go service, **in the repository and called by nothing**: 22 Go files, nine internal packages of one job each plus `cmd/server` wiring, its own SQLite file, its own gate (`audit-backbone/CLAUDE.md`'s `Gate: make check`) | nowhere. No systemd unit, no ship step, no CI job | nothing today. It is the intended home of the activity log ([below](#the-activity-log-intended-and-not-built)), and the recap of its move is [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md) |
-| `scripts/` | The local lanes: `pnpm stack` (c-storage + BFF + UI on one machine, [`scripts/src/stack.ts`](../scripts/src/stack.ts)), `pnpm fake`, `pnpm demo`, and the ridge CLI the ops scripts drive ([`scripts/src/ridge.ts#L36`](../scripts/src/ridge.ts#L36)) | a developer's machine; the ops scripts | the ability to run or seed anything locally — and the BFF's route tests, which build the real c-storage through [`bff/tests/build.ts`](../bff/tests/build.ts) |
-| `visual/` | Builds the walks page: the app's own components drawn on jsdom through a Vite server's module loader, since CSS modules and TSX do not import in plain Node ([`visual/run.mjs#L1`](../visual/run.mjs#L1)) | `pnpm report`, in a sandbox, no browser | the visual report — the one artefact a non-coder judges a screen from |
-| `walk/` | Twelve Playwright specs plus [`walk/run.sh`](../walk/run.sh), whose walk table at [`#L7`](../walk/run.sh#L7) names all twelve, with each screen's committed base image beside the spec | a real browser, in a terminal only | the end-to-end check. `pnpm check` typechecks and lints this package but never runs it |
-| `ops/` | Three hand-written CloudFormation templates and about twenty shell scripts, outside the workspace | a terminal with an AWS session; CI | every way to a machine. Every AWS call in the repository is made by a script in here — CI reaches AWS only by assuming the role and then running them ([`.github/workflows/ci.yml#L284`](../.github/workflows/ci.yml#L284)) |
+| Part | The thing it does | Gone, this breaks |
+| --- | --- | --- |
+| `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
+| `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
+| `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
+| `c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
+| `audit-backbone/` | a second Go service, in this repository and called by nothing | nothing today ([the activity log](activity-log.md)) |
+| `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
+| `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
+| `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
+| `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
 
-Two shapes are worth naming because they are easy to miss. The BFF is **one app with two
-entries**, not two back ends: `buildBff` is shared and only the listener differs
-([`bff/src/server.ts#L6`](../bff/src/server.ts#L6)). And the UI is **one bundle with two apps in
-it** — the operator console is not a separate deployment, only the path `/operator`
-([`ui/src/App.tsx#L26`](../ui/src/App.tsx#L26)).
+Six of the nine are in the pnpm workspace ([`pnpm-workspace.yaml`](../pnpm-workspace.yaml));
+`c-storage/`, `audit-backbone/` and `ops/` are deliberately outside it. Two shapes are easy to miss:
+the BFF is **one app with two entries**, not two back ends (`bff/src/server.ts`'s `buildBff` is
+shared and only the listener differs), and the UI is **one bundle with two apps in it** — the
+operator console is not a separate deployment, only the path it is opened at (`ui/src/App.tsx`'s
+`isOperatorPath`).
+
+## What is never there
+
+The most useful thing to know about a system is often what it never does. Each row below is an
+absence this codebase holds today — **and the second column says, honestly, whether anything stops a
+breach.** Most are held by a reader of the diff, which is worth knowing before relying on one.
+
+| What is never there | What stops a breach |
+| --- | --- |
+| **No `fetch` in `bff/src`.** The back end reaches storage only through the one client built for it | nothing. A reviewer reading the diff. Verified by search: no non-test file in `bff/src` holds the word |
+| **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
+| **No clock, no randomness and no `node:` import in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. Verified by search: one test file in the package names `node:` and no other file does |
+| **No second file builds a record key.** The layout has one home | nothing — and this is the one absence worth the most, because tenant separation is a string prefix and nothing else |
+| **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level |
+| **No record carries who changed it, or what it held before** | nothing, and **this one is a gap and not a property** — it is the first thing [the activity log](activity-log.md) has to fix |
+| **No directory named for a layer** anywhere: no `utils/`, no `helpers/`, no `constants/` | nothing. Verified by search over every tracked path |
+| **No untested statement, branch, function or line** in the five TypeScript packages that have tests — `ui`, `bff`, `shared`, `scripts`, `visual` — nor outside `cmd/server` in either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 % (`ui/vitest.config.ts`'s `thresholds`, and the same line in the other four), run as a step of `pnpm check`; the Go services' own `make check` holds theirs |
+| **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
+| **No dependency that quietly needs cgo** | **the gate.** Both Go gates cross-compile for the box's `arm64`, so it fails here rather than at ship time |
+| **No change set that removes or replaces a resource** | **a script.** `ops/stack.sh` refuses one by default; the human must name the logical id, because a replaced box deletes its disk |
+| **No route out of the VPC to the internet** | **the template.** `ops/network.yml` declares no NAT gateway and no internet gateway at all; its one route table has no route out |
+
+---
+
+## Below the line: the detail a session reads
+
+Everything above answers "how does this system work". Everything below answers a question a session
+has while changing something, and **carries the file behind each claim**, so any sentence can be
+followed to the code. The root [`CLAUDE.md`](../CLAUDE.md) asks a session for the sections above and
+the one section below that its piece touches; the whole page only when a piece crosses a layer.
+
+**Nothing was shortened when this page was rearranged** ([open item 202](open-items.md)): the detail
+moved to the page beside the code it describes — each part's own `CLAUDE.md` for that part's
+internals, and [`docs/activity-log.md`](activity-log.md) for the activity log, a page of decisions
+about work not yet started. The first-day plan,
+[`plans/2026-10-27-architecture.md`](plans/2026-10-27-architecture.md), keeps the cost reasoning and
+the rejected alternatives and is stale on several facts — see
+[what the day-one plan gets wrong](#what-the-day-one-plan-now-gets-wrong). What was not read for
+this page is named at [the end](#what-this-page-did-not-read).
 
 ## The data
 
-**Where it lives.** One SQLite file per deployment, at `DB_PATH` on the box
-([`ops/c-storage.service#L20`](../ops/c-storage.service#L20)), opened in WAL with
+**Where it lives.** One SQLite file per deployment, at the path the box's systemd unit names
+(`ops/c-storage.service`'s `DB_PATH`), served by a unit that restarts the process whenever it stops
+(`ops/c-storage.service`'s `Restart=always`), opened in WAL with
 `_txlock=immediate` ([`c-storage/internal/sqlitedb/open.go#L33`](../c-storage/internal/sqlitedb/open.go#L33)).
 The whole schema is two `STRICT` tables — `services(code, hashed_access_key)` and
 `records(service_code, key, data)` — in
@@ -99,13 +172,6 @@ The whole schema is two `STRICT` tables — `services(code, hashed_access_key)` 
 timestamps, no indexes beyond the primary keys and no migration chain: the schema is applied only
 to a file with no tables, stamped `user_version = 1`, and a file at any other version stops the
 process at start-up ([`open.go#L56`](../c-storage/internal/sqlitedb/open.go#L56)).
-
-**A second store exists in the repository and on no machine.** `audit-backbone` opens its own SQLite
-file at its own `DB_PATH`, with its own schema and its own single writer: `Store` in
-`audit-backbone/internal/activity/store.go`, every write funnelled through `Writer.Do` in
-`audit-backbone/internal/batch/writer.go`, which blocks until the commit
-(`audit-backbone/CLAUDE.md`'s `AB3`). Nothing writes to it and nothing deploys it, so the paragraph
-above is still the whole truth of every deployment: **one SQLite file, and it is the only copy.**
 
 **What a tenant is — and where it is not.** A client is a tenant. Its records sit under its minted
 id, and its human-readable code reaches that id through one index record; the layout has one home,
@@ -271,12 +337,6 @@ to the point of naming the one function and the one instance
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
 Access — the only deploy target that is not AWS.
 
-**Nothing ships the audit backbone.** There is no systemd unit for it, no release step and no CI
-job: `ci.yml` does not mention it at all — zero hits, against a control of `c-storage`, which the
-same file names in its path filters and its Go version — and its `Makefile`'s own first line says
-nothing there calls `make dist` yet. Where it would run is not decided; see
-[the activity log](#the-activity-log-intended-and-not-built).
-
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
 ([`ops/env.yml#L218`](../ops/env.yml#L218), [`ops/README.md`](../ops/README.md)).
@@ -290,14 +350,12 @@ behind them are [QA](conventions/qa.md) and the whole list of gate commands is
 1. **The gate.** `pnpm check` is one command with five steps — typecheck, ESLint, Prettier,
    every package's tests at 100 % statement coverage, and knip for unused code
    ([`package.json`](../package.json)). A gate reported without naming its five steps has not been
-   reported ([QA rule 6](conventions/qa.md)). **Both Go packages have a gate of their own:
-   `make check`, run from inside the package** — c-storage's (`c-storage/CLAUDE.md`'s
-   `Gate: make check`) and audit-backbone's (`audit-backbone/CLAUDE.md`'s `Gate: make check`), each
-   cross-compiling in the gate so a dependency quietly needing cgo fails here rather than at ship
-   time; audit-backbone's also holds 100 % of statements outside `cmd/server`
-   (`audit-backbone/CLAUDE.md`'s `AB1`). **Both cross-compiles target `arm64`, the box's
-   architecture** ([`c-storage/Makefile`](../c-storage/Makefile),
-   [`audit-backbone/Makefile`](../audit-backbone/Makefile)). **`pnpm check` reaches neither**: neither package has a
+   reported ([QA rule 6](conventions/qa.md)). **Each Go service has a gate of its own: `make check`,
+   run from inside the package** — c-storage's (`c-storage/CLAUDE.md`'s `Gate: make check`),
+   cross-compiling for the box's `arm64` so a dependency quietly needing cgo fails here rather than
+   at ship time ([`c-storage/Makefile`](../c-storage/Makefile)); audit-backbone's is the same shape,
+   and the detail of it is [the activity log](activity-log.md)'s.
+   **`pnpm check` reaches neither**: neither package has a
    `package.json`, and the root's two ignore lists name both, so the root formatter and the
    unused-code step do not claim files a Go gate owns ([`.prettierignore`](../.prettierignore),
    [`knip.json`](../knip.json)). Those two lines are all the root knows about either package, and
@@ -326,154 +384,6 @@ behind them are [QA](conventions/qa.md) and the whole list of gate commands is
 
 A note for anyone reporting a check on this page: [`.prettierignore`](../.prettierignore) excludes
 `*.md`, so Prettier inspects nothing here and a green from it means nothing.
-
-## The activity log: intended, and not built
-
-> **Nothing below the first paragraph is in the code.** It is a set of decisions about work not yet
-> started, written on this page because [`CLAUDE.md`](../CLAUDE.md) makes the page part of every
-> session's opening: a session sent at this work should read its destination rather than invent one.
-> Read every line of it as **what was decided**, never as what is there. What permits it here is the
-> documentation convention's own line — docs describe *absent* code: a plan, or a rejected
-> option ([documentation](conventions/documentation.md#what-earns-a-line)) — and what earns each line
-> below is a decision with the alternative it beat, or a hazard no gate catches.
-
-**What exists, and it is the only fact in this section.** `audit-backbone/` holds a finished Go
-service: 22 Go files, nine internal packages and `cmd/server`, its own SQLite file, its own gate,
-five rules `AB1` to `AB5`. **Nothing in this repository calls it** — the BFF does not reach it,
-`ops/` ships nothing of it, and the CI workflow has no job for it
-(`audit-backbone/CLAUDE.md`'s `Nothing in this repository calls this package yet`). Its single write
-path is `Writer.Do` in `audit-backbone/internal/batch/writer.go` and its store is `Store` in
-`audit-backbone/internal/activity/store.go`. What was changed on the way in and what was left
-behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
-
-### The intended path
-
-```mermaid
-flowchart LR
-  req["a request"]
-  ctl["the handler<br/>declares what it is about to do"]
-  work["the work<br/>permission, read, write — or a refusal"]
-  mw["the middleware<br/>records intent + outcome"]
-  res["the response"]
-  ab["audit-backbone<br/>not built, not reached"]
-  req --> ctl --> work --> mw --> res
-  mw -. "the entry, before the response<br/>600 ms, fail open" .-> ab
-  classDef intended stroke-dasharray: 6 4
-  class ab intended
-```
-
-**Drawn from the decisions in this section and from no code.** The first sketch of it was
-`request → controller → audit-backbone-logger-middleware → response`, with the handler handing its
-intent on *after* doing the work. **The decision to log attempts as well as successes is what moves
-the declaration in front of the work:** a handler that threw never reaches the line that would have
-handed anything over, so a refused or failed change could not be logged at all. The shape above is
-that decision carried through, not a correction of it.
-
-**One middleware ships the entry; the handler decides what is in it.** A handler that declares
-nothing is never logged, which is this design's strongest property — see the hot paths below.
-
-### The two prerequisites, and why the middleware cannot come first
-
-1. **The actor is not on the request** ([who may do what](#who-may-do-what)): of 39 deliberate write
-   sites, 11 have the identity in scope and 28 do not, and the customer and product writes carry no
-   actor at all. A middleware built before that would record 28 of 39 deliberate acts as having been
-   done by nobody. **So the actor is the first piece of work and the middleware is the second.**
-2. **Fifteen write sites must never be logged**, and this design excludes them by construction
-   rather than by a list. The hottest is `spendTouch` in `bff/src/operator-auth.ts`, which rewrites
-   an operator's whole account — a passkey counter, a `lastUsedAt` stamp and the pruning of the
-   spent-challenge list at once — on **every** passkey sign-in and every confirm touch. Next is the
-   session renewal inside `resolve` in `bff/src/sessions.ts`, a side effect of *reading* a session on
-   the authenticated path of every request. Then the two numbering counters, the sign-in and link
-   bookkeeping, the client-deletion sweep, and the two photo writes whose base64 bytes must never
-   enter an entry. **A handler that declares no intent is never logged, so none of the fifteen needs
-   an exemption.**
-
-**A mutating route that declares no audit intent is a test failure.** A route therefore either names
-what it logs or declares itself exempt on the record. *Why:* a check that passes by staying silent is
-exactly what this repository spent 2026-11-09 removing. *Price:* one line on every new mutating
-route, and a named reason on every exemption.
-
-### Where it runs: open, and cheap to leave open
-
-The box is a `t4g.nano` (`ops/env.yml`'s `Default: t4g.nano`, and `ops/stack.sh`'s
-`offers t4g.nano` refuses a region with no zone that offers one). AWS's published spec for that type
-is 512 MB of memory — **AWS's number, not a measurement of ours** — and this project's own build adds
-2 GiB of swap, which a release holds a floor under (`ops/lib.sh`'s `FLOOR_SWAP_MB`) and whose comment
-there says a `t4g.nano` needs it.
-
-**Whether a second Go service, with a second SQLite file and a second WAL, fits beside `c-storage` is
-unmeasured in this project's own records.** `docs/open-items.md`'s `The nano is read on the first box`
-has been parked since 2026-10-27 on exactly that reading — its memory and any OOM kill — and the
-measurement needs the environment running, which is the human's hand.
-
-**So it is not decided here, and deferring it costs nothing: the middleware points at a URL.** The
-same box or a box of its own is then a configuration value and a deploy, not a rewrite. Build against
-a URL, measure once the environment is back, and decide then; [open item 2](open-items.md) is the
-thing that decides it.
-
-### What is guaranteed, and what cannot be
-
-**A failed audit write must not fail the user's request.** That is decided, and it bounds everything
-else, because the back end is a Lambda: `createLambdaHandler` in `bff/src/lambda.ts` is the entry API
-Gateway calls, and a release ships that one function (`ops/lib.sh`'s `lambda_wait`). **A Lambda's
-execution environment freezes once the response is returned**, so an in-process queue that ships the
-entry afterwards has nowhere to live and no guarantee of ever running. *Never fails the request* and
-*never loses an entry* therefore cannot both be had in-process, and the first was chosen.
-
-**Decided: the entry is written before the response, under a 600 ms timeout, and a failure to write
-it is swallowed.** The mechanism is already in this repository and is to be copied rather than
-invented: the storage client passes an abort signal to its fetch
-(`shared/src/c-storage.ts`'s `signal: AbortSignal.timeout(timeoutMs)`) under a declared bound
-(`shared/src/c-storage.ts`'s `DEFAULT_TIMEOUT_MS`, 5,000 ms). The audit call is that same mechanism
-with a tighter bound, and the tightness is deliberate: **a write nobody is waiting on gets a fraction
-of the budget of a read the answer depends on.**
-
-**Why 600 ms.** A comparable key-value store's observed latency profile is a sub-millisecond median
-with a long tail: a p99 near 110 ms and a worst observed call near 545 ms. A bound of 600 ms sits
-above that worst case, which is the property that matters — a timeout then means the service is
-*unavailable* rather than merely slow, and no entry is discarded during ordinary operation. A round
-500 ms would have cut off the worst call in that profile.
-
-**The one implementation note this page owes whoever builds it: a `try`/`catch` alone is not
-enough.** Without the abort signal the catch does not fire at 600 ms; it waits for the socket's own
-default, which can be far longer. **The timeout is what makes the `try`/`catch` honest.** And the
-bound is a named `UPPER_SNAKE` constant declared once beside its client, never a number typed where
-it is used — one decision, one home (`docs/conventions/code.md`'s `One decision, one home`) — which
-is why the storage bounds already sit together (`shared/CLAUDE.md`'s `SH2`).
-
-**What it costs when the audit service is slow or down, and the two states of knowledge here are not
-the same.** Lambda is billed by duration, so a deliberate change then pays **up to 600 ms more**, in
-latency and in billed time. **What that is a multiple of is unknown:** this project's own per-call
-duration has never been measured, and the figure the plan costs on — about 100 ms of Lambda a call —
-is a planning assumption whose own item opens by saying so
-(`docs/open-items.md`'s `The plan's assumptions are unmeasured`, [open item 2](open-items.md), parked
-2026-10-27). So the timeout has a measured basis and its cost does not, and this page keeps the two
-apart rather than blurring them into one confident paragraph. *The mitigation, and it is not built:*
-a Lambda keeps module-level state while its container is warm, so one "last failure" timestamp would
-let the middleware stop trying for a while after a run of failures. **Build it only if the service is
-ever actually seen to be down** — this project builds when something needs it, and either way the
-failures are visible in the request log.
-
-**Where a lost entry shows up, which the guarantee must not gloss.** If the audit service cannot be
-reached, that failure cannot be recorded *in* the audit log; it goes to the back end's own request
-log, the one the function has written a line per request to all along. So **the guarantee, in one
-sentence: an entry is attempted before the response, a failure to write it is recorded in the request
-log, and the user's request succeeds either way** — and a lost entry is then findable only by someone
-reading that log. Not "nothing is lost".
-
-### The alternative that was not taken
-
-**Writing the entries as records through `c-storage`, which the BFF already calls on every request.**
-No second service, no second port, no second database file, no new secret and no second network hop:
-the entries would be records under the tenant's own prefix, two keys each, because c-storage lists
-one literal prefix and holds no secondary index. **An earlier costing of this very question
-recommended it**, on the reasoning that the nano's headroom is unmeasured and that the separate
-service's one real gain — its own write lock, so that audit writes do not queue behind the app's own
-data — is far from being needed at this project's write rate. Its price: every entry written twice,
-and every activity write behind the single SQLite write lock the app's data already queues on.
-**The human chose the separate service, and that decision stands;** the alternative is recorded here
-so that nobody re-derives it from scratch in six weeks. That costing is not in this repository — see
-[what this page did not read](#what-this-page-did-not-read).
 
 ## What the day-one plan now gets wrong
 
@@ -544,7 +454,7 @@ Stated plainly so the next reader knows which parts to trust.
   `scripts/src/stack.ts` (the first ~90 lines), `front.ts`'s header, `docs/products.md`,
   `docs/conventions/documentation.md`, `docs/conventions/qa.md`'s headings, the day-one plan whole,
   `docs/open-items.md`'s item 6, and the parts of `ops/env.yml` and `ops/network.yml` cited above.
-  The rest of `docs/open-items.md` — over 500 lines — was searched, not read.
+  The rest of `docs/open-items.md` — over 1,300 lines — was searched, not read.
 - **Read on this page's behalf by two other agents, not line by line by its author:** all of
   `c-storage/` and all of `ops/` and `.github/workflows/`. Every claim this page makes about those
   files was then checked directly against the file — the resource types in both templates, the
@@ -566,28 +476,30 @@ Stated plainly so the next reader knows which parts to trust.
   reading, not this page's — the first draft claimed cross-tenant key building was untested, and a
   reviewer disproved it from three route tests now cited above. `shared/src/demo.ts`,
   `scripts/src/demo/` and the seeding path were read only through `CLAUDE.md` and `products.md`.
+- **The write-site counts in [who may do what](#who-may-do-what) are relayed, not re-derived** — the
+  39 deliberate write sites, the 11 with the actor in scope and the 28 without come from an earlier
+  costing of that question that is **not in this repository**. The one negative re-checked directly
+  here is `request.user`: zero hits in `bff/src/`, against a control that hits.
+- **For the 2026-11-09 rearrangement** (the one sentence, the diagram, the walk, the codemap and the
+  absences) the walk was traced first-hand through the files it names, in order:
+  `ui/src/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
+  `resolveTenant` and `mustCan`, `bff/src/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
+  key layout, `shared/src/c-storage.ts`'s `putRecord`, and
+  `c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5's session check is
+  the one step not re-read for the walk:** it is restated from this page's own
+  [who may do what](#who-may-do-what), where it was written first-hand. **Every absence in
+  [what is never there](#what-is-never-there) was established by search with a control that hits**,
+  so a file added later would not be in it: `fetch` in `bff/src`, `node:` in `shared`, `request.user`
+  in `bff/src`, a layer-named directory in any tracked path, and a NAT or internet gateway in
+  `ops/network.yml`. The nine parts' one-line descriptions were read off each part's own `CLAUDE.md`,
+  and nothing of their internals was re-derived here.
 - **A caution from this page's own review**, worth knowing when you rely on it: of 52 citations
   checked, 50 held — and every claim that was wrong was a *count or a summary with no line
   attached* ("ten specs", "five variables", a script characterised without being opened), never a
-  cited line. Trust a sentence here in proportion to the specificity of what follows it.
-- **For the 2026-11-09 amendment** (the ninth package and the activity-log section), read
-  first-hand: `audit-backbone/CLAUDE.md` and its `Makefile` whole,
-  `audit-backbone/internal/config/config.go`, and
-  the declarations of `Writer.Do` and `Store` and nothing else of their files; `pnpm-workspace.yaml`,
-  `.prettierignore`, `knip.json`, `ci.yml`'s job names and path filters, `ops/env.yml`'s instance-type
-  parameter, `ops/lib.sh`'s floors and `lambda_wait`, `ops/app.sh`'s Lambda calls,
-  `shared/src/c-storage.ts`'s timeout lines, `shared/CLAUDE.md`'s `SH2`, `docs/open-items.md` items 2
-  and 200, the audit backbone's recap whole, and `docs/conventions/documentation.md` whole. **The
-  service's 22 Go files were not read:** everything here about its behaviour comes from its own
-  guideline and the two declarations cited.
-- **The counts in the activity-log section are relayed, not re-derived** — the 39 deliberate write
-  sites, the 11 with the actor in scope and the 28 without, and the 15 that must never be logged come
-  from an earlier costing of this question that is **not in this repository**. The one negative
-  re-checked directly here is `request.user`: zero hits in `bff/src/`, against a control that hits.
-  The latency profile behind the 600 ms bound is likewise an observation from elsewhere, not a
-  measurement of this project.
-- **The memory figure for a `t4g.nano` is AWS's published spec, not a measurement**, and no reading of
-  the box's own memory exists anywhere in this repository ([open item 2](open-items.md)).
+  cited line. Trust a sentence here in proportion to the specificity of what follows it. **And a
+  line citation's line is never checked at all** ([open item 203](open-items.md)): five of this
+  page's own, in the diagram's sources, named unrelated lines and were replaced by named resources
+  in the 2026-11-09 rearrangement.
 - **Not checked at all:** anything live. Nothing was run for this page beyond this repository's own
   citation check and `pnpm counts`, both of which read committed files and nothing live, and no
   AWS or Cloudflare state was queried — so what *actually* exists in the account today is outside

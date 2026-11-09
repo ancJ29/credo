@@ -81,7 +81,8 @@ reach us" faster than reading anything.
 | --- | --- | --- |
 | [`README.md`](../README.md) | what credo is, and three ways to run it on this machine | anyone |
 | [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's six commands, and the facts the code does not show | the machine |
-| [`docs/architecture.md`](architecture.md) | **how the system is put together** — the request path, the parts and what each would break, the data, how it reaches a machine, how it is checked | both |
+| [`docs/architecture.md`](architecture.md) | **how the system is put together** — one sentence, the diagram, one request walked end to end, the nine parts and what each would break, and what is never there; below its line, the data, who may do what, how it reaches a machine and how it is checked | both |
+| [`docs/activity-log.md`](activity-log.md) | the activity log, **decided and not built**: what `audit-backbone/` already is, the intended path, the two prerequisites, what is guaranteed and what cannot be | the machine |
 | [`docs/products.md`](products.md) | what each part does for whom, and how far each has got | the human |
 | [`docs/client-readiness.md`](client-readiness.md) | can we take a real client: what would happen to their data and access, and what the office cannot do yet | the human |
 | [`conventions/code.md`](conventions/code.md) | **where new code goes, what to copy, and the one file to open first for a part of the system** | the machine, then the human |
