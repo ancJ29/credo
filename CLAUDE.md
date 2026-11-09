@@ -32,9 +32,11 @@ otherwise runs whole.
   code, and
   [QA](docs/conventions/qa.md) before writing any test or
   feature plan, and before running any check on this machine or writing its log.**
-  **And for the big picture, read [`docs/architecture.md`](docs/architecture.md)'s `## At a glance` (one
-  screen) and the one section of it that names your piece's package; the whole page only when the
-  piece crosses a layer.**
+  **And for the big picture, read [`docs/architecture.md`](docs/architecture.md)'s `## At a glance`
+  and `## One request, end to end` — two short sections which are the whole system — then
+  `## The codemap` and `## What is never there` for your piece's part and what it must not break.
+  That part's own `CLAUDE.md` holds its internals; the sections below that page's line only as your
+  piece needs them, and the whole page only when the piece crosses a layer.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`

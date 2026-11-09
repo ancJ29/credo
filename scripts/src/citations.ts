@@ -17,6 +17,7 @@ const LIVING: { show: string; test: RegExp }[] = [
   { show: 'CLAUDE.md, at any depth', test: /(^|\/)CLAUDE\.md$/ },
   { show: 'docs/conventions/*.md', test: /^docs\/conventions\/[^/]+\.md$/ },
   { show: 'docs/architecture.md', test: /^docs\/architecture\.md$/ },
+  { show: 'docs/activity-log.md', test: /^docs\/activity-log\.md$/ },
   { show: 'docs/README.md', test: /^docs\/README\.md$/ },
   { show: 'docs/client-readiness.md', test: /^docs\/client-readiness\.md$/ },
 ];
