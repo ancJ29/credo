@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/batch"
+	"credo/audit-backbone/internal/batch"
 )
 
 // Schema is applied at start-up and is the whole data model.

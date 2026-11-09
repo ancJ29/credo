@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/auth"
+	"credo/audit-backbone/internal/auth"
 )
 
 // readKey mints and checks the tokens these tests read with, as the open

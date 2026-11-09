@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/activity"
-	"github.com/consocia/credo-audit-backbone/internal/auth"
-	"github.com/consocia/credo-audit-backbone/internal/config"
-	"github.com/consocia/credo-audit-backbone/internal/server"
-	"github.com/consocia/credo-audit-backbone/internal/sqlitedb"
+	"credo/audit-backbone/internal/activity"
+	"credo/audit-backbone/internal/auth"
+	"credo/audit-backbone/internal/config"
+	"credo/audit-backbone/internal/server"
+	"credo/audit-backbone/internal/sqlitedb"
 )
 
 const writeKey = "lifecycle-write-key"

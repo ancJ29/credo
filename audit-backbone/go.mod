@@ -1,4 +1,4 @@
-module github.com/consocia/credo-audit-backbone
+module credo/audit-backbone
 
 go 1.25.0
 

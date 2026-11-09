@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/batch"
-	"github.com/consocia/credo-audit-backbone/internal/sqlitedb"
+	"credo/audit-backbone/internal/batch"
+	"credo/audit-backbone/internal/sqlitedb"
 )
 
 func newStore(t *testing.T) (*Store, *sql.DB) {

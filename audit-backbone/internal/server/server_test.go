@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/activity"
-	"github.com/consocia/credo-audit-backbone/internal/auth"
+	"credo/audit-backbone/internal/activity"
+	"credo/audit-backbone/internal/auth"
 )
 
 const (

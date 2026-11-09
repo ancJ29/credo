@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/activity"
-	"github.com/consocia/credo-audit-backbone/internal/batch"
-	"github.com/consocia/credo-audit-backbone/internal/config"
-	"github.com/consocia/credo-audit-backbone/internal/server"
-	"github.com/consocia/credo-audit-backbone/internal/sqlitedb"
+	"credo/audit-backbone/internal/activity"
+	"credo/audit-backbone/internal/batch"
+	"credo/audit-backbone/internal/config"
+	"credo/audit-backbone/internal/server"
+	"credo/audit-backbone/internal/sqlitedb"
 )
 
 // shutdownGrace bounds how long in-flight requests have to finish committing

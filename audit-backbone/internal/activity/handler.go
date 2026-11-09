@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/auth"
-	"github.com/consocia/credo-audit-backbone/internal/httpx"
-	"github.com/consocia/credo-audit-backbone/internal/reqlog"
+	"credo/audit-backbone/internal/auth"
+	"credo/audit-backbone/internal/httpx"
+	"credo/audit-backbone/internal/reqlog"
 )
 
 // Prefix is the base path every caller already holds.

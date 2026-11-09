@@ -11,8 +11,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/consocia/credo-audit-backbone/internal/config"
-	"github.com/consocia/credo-audit-backbone/internal/lifecycle"
+	"credo/audit-backbone/internal/config"
+	"credo/audit-backbone/internal/lifecycle"
 )
 
 // buildVersion is the commit `make dist` was given (-X main.buildVersion);

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/consocia/credo-audit-backbone/internal/httpx"
+	"credo/audit-backbone/internal/httpx"
 )
 
 // KeyHeader is the name every caller of the activity writer already sends.
