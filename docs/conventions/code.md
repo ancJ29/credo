@@ -65,7 +65,7 @@ the table of the living documents' citations. **Two of the sixteen carry the mar
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
 makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fourteen carry the
-mark `reader`; five of them are also counted**, which is what the structure review's own open item exists to change, one check at a time
+mark `reader`; five of them are also counted**. Making them checks is what the structure review's own open item exists to do, one check at a time
 ([open item 160](../open-items.md)).
 
 ## Where a new thing goes
