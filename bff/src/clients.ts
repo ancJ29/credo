@@ -15,6 +15,7 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from './password';
+import { recordTools } from './records';
 
 export const ROOT_NAME = 'root';
 
@@ -91,18 +92,19 @@ export async function createClient(
  * names the kind and not the key.
  */
 export async function listClients(storage: CStorageClient): Promise<ClientListItem[]> {
-  const listed = await storage.listRecords(recordKeys.clientPrefix);
-  if (listed.more) throw new Error('the client list is longer than c-storage returns');
-  return listed.records
-    .map((record) => {
-      const index = storedClientSchema.safeParse(record.data);
-      const code = clientCodeSchema.safeParse(record.key.slice(recordKeys.clientPrefix.length));
-      if (!index.success) throw new Error('a client index record does not parse');
+  const listed = await recordTools(storage).every(
+    recordKeys.clientPrefix,
+    storedClientSchema,
+    'client index',
+  );
+  return listed
+    .map(({ key, record: index }) => {
+      const code = clientCodeSchema.safeParse(key.slice(recordKeys.clientPrefix.length));
       if (!code.success) throw new Error('a client index key holds no client code');
       return {
         code: code.data,
-        name: index.data.name,
-        madeAt: index.data.madeAt ?? null,
+        name: index.name,
+        madeAt: index.madeAt ?? null,
         link: clientLinkPath(code.data),
       };
     })

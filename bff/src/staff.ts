@@ -46,6 +46,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { HttpError, parse, replyFor } from './errors';
+import { recordTools } from './records';
 import { hashPassword, madePassword } from './password';
 import {
   namesBack,
@@ -105,6 +106,7 @@ function idOf(request: FastifyRequest) {
  * resolved from the layers, and the root-only ones by the root flag alone. */
 export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   const { storage, now, forClient, signedIn, mustBeRoot, mustCan } = deps;
+  const { every } = recordTools(storage);
 
   const setupDoc = (tenantId: string) => readSetup(storage, tenantId);
 
@@ -175,13 +177,12 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   /** Every person, those who left too. Never a short list that looks whole: more than c-storage
    * returns, or a record that does not parse, is a 500 that names the kind and not the key. */
   async function everyone(tenantId: string) {
-    const listed = await storage.listRecords(recordKeys.tenant(tenantId).employeePrefix);
-    if (listed.more) throw new Error('the employee list is longer than c-storage returns');
-    return listed.records.map((record) => {
-      const parsed = employeeSchema.safeParse(record.data);
-      if (!parsed.success) throw new Error('an employee record does not parse');
-      return parsed.data;
-    });
+    const listed = await every(
+      recordKeys.tenant(tenantId).employeePrefix,
+      employeeSchema,
+      'employee',
+    );
+    return listed.map(({ record }) => record);
   }
 
   app.get(ROUTES.employees, forClient, async (request) => {

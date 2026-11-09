@@ -5,8 +5,6 @@ import {
   addDays,
   byCode,
   cancelRequestSchema,
-  CStorageError,
-  type CStorageClient,
   customerSchema,
   type DeliveryDoc,
   type DeliveryRequest,
@@ -42,6 +40,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { HttpError, parse } from './errors';
+import { recordTools } from './records';
 import { readSetup } from './staff-records';
 import type { Deps } from './staff';
 
@@ -50,41 +49,6 @@ const notFound = () => new HttpError(404, 'Not found');
 const forbidden = () => new HttpError(403, 'Forbidden');
 
 const idSchema = z.uuid();
-
-/** The three reads and writes the record routes share, over one storage client. */
-export function recordTools(storage: CStorageClient) {
-  /** A record read under its schema; one that does not parse is a fault naming its kind. */
-  function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: unknown }) {
-    const result = schema.safeParse(stored.data);
-    if (!result.success) throw new Error(`${kind} record does not parse`);
-    return result.data;
-  }
-
-  /** Every record under a prefix, never short. */
-  async function every<T>(prefix: string, schema: z.ZodType<T>, kind: string) {
-    const listed = await storage.listRecords(prefix);
-    if (listed.more) throw new Error(`the ${kind} list is longer than c-storage returns`);
-    return listed.records.map((stored) => ({
-      record: parsed(schema, `a ${kind}`, stored),
-      tag: stored.tag,
-    }));
-  }
-
-  /** One record written once under its fresh key. The write may have landed while its answer was
-   * lost: the record is there, or the failure stands. */
-  async function writeNew(key: string, record: unknown) {
-    let written: 'saved' | 'moved';
-    try {
-      written = await storage.putRecord(key, record, null);
-    } catch (error) {
-      if (!(await storage.getRecord(key))) throw error;
-      written = 'saved';
-    }
-    if (written === 'moved') throw new CStorageError(412, 'a record already sat under a fresh id');
-  }
-
-  return { parsed, every, writeNew };
-}
 
 /** The orders' and the delivery requests' routes. An order and a request are each one record under
  * their day and id; confirm and send write the order first and then the request, and cancel writes
