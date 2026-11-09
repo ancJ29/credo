@@ -13,7 +13,7 @@ says otherwise.
 | --- | --- | --- | --- |
 | 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip (`package.json#L10`) | `.github/workflows/ci.yml#L145` |
 | 2 | `make check`, in `c-storage/` | gofmt, `go vet`, the race tests at 100 % through `scripts/cover.sh`, and the box's arm64 cross-compile (`c-storage/Makefile`) | `ci.yml#L69` |
-| 3 | `shellcheck -x ops/*.sh walk/*.sh` | every tracked `.sh` but `c-storage/scripts/cover.sh` and `e2e.sh`, which no tool reads ([open item 161](docs/open-items.md)) | `ci.yml#L197`, ShellCheck 0.11.0 |
+| 3 | `shellcheck -x ops/*.sh walk/*.sh c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
 | 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml#L198-L203`, cfn-lint 1.46.0 |
 | 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
 | 6 | `bash scripts/e2e.sh`, in `c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
@@ -32,6 +32,9 @@ otherwise runs whole.
   code, and
   [QA](docs/conventions/qa.md) before writing any test or
   feature plan, and before running any check on this machine or writing its log.**
+  **And for the big picture, read [`docs/architecture.md`](docs/architecture.md)'s `## At a glance` (one
+  screen) and the one section of it that names your piece's package; the whole page only when the
+  piece crosses a layer.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`

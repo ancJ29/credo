@@ -87,7 +87,7 @@ the thing it serves, never for its layer, and a screen's test sits beside it as
 | what is on screen before any data, and when the service does not answer | `ui/src/Boot.tsx#L19` | the verdict is `ui/src/ClientApp.tsx#L79`, at `#L99` for the failing case |
 | what one page shows while loading or after a failed load | `ui/src/Loaded.tsx#L12` | `ui/src/page.ts#L31` (`useLoad`), the state it draws |
 | what every screen is handed | `ui/src/page.ts#L6` (`PageProps`) | built at `ui/src/ClientApp.tsx`; see [the winner](#the-winner-named)'s third row before assuming it |
-| the words a screen shows | `ui/src/i18n/en.ts#L2`, whose shape `vi.ts` must match (`en.ts#L1`) | — |
+| the words a screen shows | `ui/src/i18n/en.ts#L2`, whose shape `vi.ts` must match (`ui/src/i18n/en.ts`'s `en`) | — |
 | a list of customers or of products | `ui/src/listSheet.ts#L29` (`LISTS`), drawn by `ui/src/ListPage.tsx#L14` | `bff/src/lists.ts` serves both |
 | the day an order is filed under | `ui/src/day.ts#L29` — the browser's calendar day, not the server's clock | — |
 | whether a call is allowed | `bff/src/app.ts#L188-L192` (`mustCan`); the note at `#L184` is why the UI is never the guard | who the caller is, `#L157` (`signedIn`); the booleans, `shared/src/permissions.ts#L48`; the catalogue, `#L9` |
@@ -111,7 +111,7 @@ the thing it serves, never for its layer, and a screen's test sits beside it as
 | name, bound, status meaning or wire shape | `shared/src/<area>.ts`, re-exported from `shared/src/index.ts` — 15 lines, one an area, and `demo` deliberately absent from it | `shared/src/records.ts`, `shared/src/permissions.ts` | [one home](#one-home-for-one-decision) |
 | c-storage route | `c-storage/internal/server/`, registered through the function that appends its pattern | `c-storage/internal/server/server.go#L51-L54` | [the patterns to copy](#the-patterns-to-copy) |
 | local command | `scripts/src/<name>.ts` holding the work, with a `<name>-main.ts` of wiring only — `fake-main.ts` is four lines | `scripts/src/fake-main.ts` with `fake.ts` | [the patterns to copy](#the-patterns-to-copy), entry points hold no logic |
-| walk | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh#L7`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
+| walk | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh`'s `WALKS`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
 | screen on the walks page | `visual/src/` | `visual/src/walks.ts` | [before a new screen](#before-a-new-screen) |
 | ops script or template | `ops/`, its steps added to the runbook in `ops/README.md` | its siblings in `ops/` | [the gate](../../CLAUDE.md#the-gate)'s rows 3 to 5 are what an `ops/` change needs |
 
@@ -145,12 +145,12 @@ dropped when the operator console replaced it with `CREDO_OPERATOR_LINK`, and a 
 The review's worst instances, as the shape to recognise: eleven environment names minted in
 `scripts/src/cli.ts` (ten of them at `#L132-L141`, `CREDO_COPIES` at `#L210`) and read as string
 literals in twelve `walk/specs/*.spec.ts`; the
-retry bound as four constants all `3` (`bff/src/staff-records.ts#L58`, `operators.ts#L21`,
-`orders.ts#L48`, `sessions.ts#L27`), so whoever finds one believes they have found the bound; what a
-403 means re-decided in six screens (`ui/src/AddCustomerPage.tsx#L41`, `CustomerPage.tsx#L49`,
-`ProductPage.tsx#L69`, `PersonPage.tsx#L660`, and `SettingsPage.tsx#L32`, which re-implements the
+retry bound as four constants all `3` (`bff/src/staff-records.ts#L58`, `bff/src/operators.ts`'s `ATTEMPTS`,
+`bff/src/orders.ts`'s `ATTEMPTS`, `bff/src/sessions.ts`'s `ATTEMPTS`), so whoever finds one believes they have found the bound; what a
+403 means re-decided in six screens (`ui/src/AddCustomerPage.tsx#L41`, `ui/src/CustomerPage.tsx`'s `CustomerPage`,
+`ui/src/ProductPage.tsx`'s `ProductPage`, `ui/src/PersonPage.tsx`'s `PersonPage`, and `ui/src/SettingsPage.tsx`'s `SettingsPage`, which re-implements the
 helper rather than calling it); "list under a prefix, refuse a truncated answer, parse each one"
-written four times (`bff/src/clients.ts#L95`, `lists.ts#L105`, `orders.ts#L68`, `staff.ts#L179`)
+written four times (`bff/src/clients.ts#L95`, `bff/src/lists.ts`'s `everyone`, `bff/src/orders.ts`'s `every`, `bff/src/staff.ts`'s `everyone`)
 while `bff/src/orders.ts#L66` is already the general version; and the three screen widths declared
 four times (`visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`,
 `ui/src/mock/Frame.tsx#L8`), held level only by a regex in `visual/src/walks.test.ts` that reads one
@@ -164,7 +164,7 @@ test; everywhere else nothing fails.
 **Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
 `ui/src/CustomerPage.tsx#L23-L111` and `ui/src/ProductPage.tsx#L43-L139` are the same page shell
 written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
-(`AddCustomerPage.tsx#L21-L78`, `AddProductPage.tsx#L24-L79`); a third kind pays it a
+(`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/AddProductPage.tsx`'s `AddProductPage`); a third kind pays it a
 third time, and changing how a conflict is offered is an edit in two files nothing makes you find.
 *Why:* the lists already prove the cheaper shape — `bff/src/lists.ts` serves both from one 169-line
 body registered twice (`#L94-L262`) and `ui/src/ListPage.tsx#L14` draws both from one table.
@@ -183,8 +183,8 @@ written again.
 | a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | 6 of 13 forms draw a field error, 3 use a `tried` flag, 10 use a guard clause and one alert (`ui/src/OwnPasswordPage.tsx#L26-L52`) |
 | storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts#L22` | 34 of 98 calls, against 64 inline in `staff.ts`, `orders.ts`, `lists.ts`, `reconciliations.ts` |
 | a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | 24 of 62 screens import it directly, 38 take what they need; re-counted 2026-11-09, still 24 of 62 |
-| an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `operator-auth.ts#L435`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
-| a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts#L51-L205` is a seven-arm chain under one catch that turns a new failure into exit 1; `walks.ts#L160-L193` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
+| an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
+| a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 
 **A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
 storage** (`bff/src/staff.ts#L417`). `[holds · reader]` *Why:* all 63 route registrations keep it
