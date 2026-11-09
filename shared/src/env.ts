@@ -1,7 +1,8 @@
 /**
  * The names of the environment variables the stack and the demo hand to a command, and the walks
  * read. The one place they are spelled: `scripts/src/cli.ts` builds its blocks from these keys and
- * the walk specs read through them, so a renamed or misspelled name is a type error where it is used.
+ * the walk specs read through them, so in TypeScript a renamed or misspelled name is a type error where
+ * it is used. That does not reach shell: `walk/run.sh` writes some of the names by hand.
  * Each value is branded, so a name typed out by hand, even a right one, is not accepted where an
  * environment name is asked for: only these are.
  */
@@ -20,5 +21,5 @@ export const STACK_ENV = {
   CREDO_PEOPLE: envName('CREDO_PEOPLE'),
   CREDO_SEED_URL: envName('CREDO_SEED_URL'),
   CREDO_COPIES: envName('CREDO_COPIES'),
-};
+} as const;
 export type StackEnvName = keyof typeof STACK_ENV;

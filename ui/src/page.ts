@@ -19,9 +19,10 @@ export type PageProps = {
  * reads who the person is again. */
 export type Refusal = Pick<PageProps, 'onSignedOut'> & Partial<Pick<PageProps, 'onForbidden'>>;
 
-/** What a 403 means, decided once: the BFF refuses this person the act, whatever the page was doing.
- * Reader-held: a predicate is a value, so a page that wants its own wording asks here and nothing
- * but review stops a sixth copy of the status check. */
+/** What a 403 means on a page's own save: the BFF refuses this person the act, whatever the page was
+ * doing. Only that. A 403 read elsewhere means something else (`changePassword` in `api.ts` reads it
+ * as the current password being wrong, `newOperatorLink` as oneself), so those do not ask here.
+ * Reader-held: a predicate is a value, so nothing but review stops another copy of this check. */
 export function isForbidden(error: unknown) {
   return error instanceof ApiError && error.status === 403;
 }
