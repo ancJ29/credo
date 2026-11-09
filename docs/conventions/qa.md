@@ -108,7 +108,7 @@ The map of walks. A dash is a part of the day not built yet.
    **Run what can change a conclusion:** nothing for a read-only task; while iterating, whatever
    answers the session's question (a typecheck, one test), which is not the gate and is never
    reported as one; the gate, one command, before a stop or a commit: the touched package's at a
-   commit, the whole only before shipping. *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
+   commit, the whole on the merge result before a merge. *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
    minutes buy no verdict a smaller gate does not already give.
 
    **The gate is one command: `pnpm check` for all six TypeScript packages, on the merge result,
