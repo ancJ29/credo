@@ -16,7 +16,7 @@ import (
 )
 
 // buildVersion is the commit `make dist` was given (-X main.buildVersion);
-// /health answers it and opus/ops/verify compares it with what it shipped.
+// /health answers it, so a ship can compare it with what it shipped.
 var buildVersion = "unknown"
 
 func main() {

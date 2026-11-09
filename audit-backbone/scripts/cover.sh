@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The gate's tests: one run under -race, held at 100 % coverage
-# (opus/docs/conventions/dead-code-philosophy.md, "Coverage"). A statement no
+# (docs/conventions/qa.md at the repository root, "Coverage is 100 %"). A statement no
 # test runs fails the gate, named by file and line; nobody reads a report.
 set -euo pipefail
 
@@ -10,8 +10,8 @@ module="$(go list -m)"
 
 # The one file left out is the entry point: no in-process test can start it.
 # scripts/smoke.sh reads back each path it keeps — /health on both ports, a bad
-# config and a taken port exiting 1, SIGTERM exiting 0 — and opus/ops/verify
-# reads /health after every ship.
+# config and a taken port exiting 1, SIGTERM exiting 0 — and a ship
+# reads /health afterwards.
 measured="$(go list ./... | grep -vx "$module/cmd/server")"
 
 # A package without a test file of its own is measured through -coverpkg; asked

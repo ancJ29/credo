@@ -12,8 +12,8 @@ import (
 	"strings"
 )
 
-// Config is the box's .env: opus/ops writes PORT, OPEN_PORT and DB_PATH from the
-// app's row, the rest comes from the env's own file.
+// Config is the box's .env: a ship writes PORT, OPEN_PORT and DB_PATH, the rest
+// comes from the env's own file.
 type Config struct {
 	// Port carries the keyed listener, OpenPort the open one.
 	Port     string

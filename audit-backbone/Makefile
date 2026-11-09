@@ -1,4 +1,4 @@
-# The project's gate and its build. opus/ops/build calls `make dist`.
+# The project's gate and its build. Nothing here calls `make dist` yet (no ship path for this service).
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := check

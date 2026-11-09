@@ -33,7 +33,7 @@ docs: |-
 
   It is the one unauthenticated answer on the keyed listener, and it says two
   things: an unauthenticated body is where an environment leaks. `buildVersion`
-  is the commit the binary was built from, which `opus/ops/verify` compares
+  is the commit the binary was built from, which a ship compares
   with what it shipped.
 
   `/healthz`, `/version` and `/status` stay what any unknown path is: 401

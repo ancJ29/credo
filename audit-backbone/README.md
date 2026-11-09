@@ -67,7 +67,7 @@ make dist BUILD_COMMIT=<sha>  # dist/credo-audit-backbone for the box; its /heal
 On a server, `PORT` is the keyed listener's port and `OPEN_PORT` the open
 one's; `ACTIVITY_WRITE_KEY` is the keyed listener's key, `DB_PATH` the SQLite
 file, and `LOG_LEVEL` is `info` unless set. Any mistake in them stops it at
-start-up. `opus/ops` builds, ships and verifies it.
+start-up. No ship path builds or verifies it in this repository yet.
 
 ## Why it is built this way
 

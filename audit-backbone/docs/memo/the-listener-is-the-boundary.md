@@ -37,7 +37,7 @@ in the browser of everyone on the client's staff, people the key is kept from.
 The catch-all also suppresses net/http's own 405, so a wrong verb on a real
 route reads as 404. That cost is priced and accepted.
 
-**`/health` on both listeners, two fields.** After a ship, `opus/ops/verify`
+**`/health` on both listeners, two fields.** After a ship, the verify step
 reads `buildVersion` on every hostname in the app's row, so the door callers
 use is the door verified. It is the one answer before either gate, and only
 for GET; the open listener's preflight is the other. The platform once had a health

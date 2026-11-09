@@ -101,7 +101,7 @@ type healthBody struct {
 
 // health answers GET /health on both listeners, before either gate, with two
 // fields and no more: an unauthenticated body is where an environment leaks.
-// opus/ops/verify reads buildVersion on each hostname after a ship.
+// A ship reads buildVersion on each hostname to verify what it shipped.
 func (s *Server) health(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/health" {

@@ -1,14 +1,13 @@
 # audit-backbone
-Stack: Go 1.25 · Gate: make check · Ship: opus/ops/deploy.sh --env <env> --app audit-backbone · Lifecycle: active
+Stack: Go 1.25 · Gate: make check · Ship: none yet · Lifecycle: active
 
 The activity log: one Go binary, one SQLite file, a keyed writer and a
-token-gated reader on two loopback ports. Repo-wide rules: [`opus/CLAUDE.md`](../../../CLAUDE.md).
+token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../CLAUDE.md).
 
 ## Non-obvious facts
 
 - **`make check` is the whole gate; `pnpm check` never reaches this
-  directory.** It has no `package.json`, and `opus/credo/.prettierignore` names
-  it. The cross-compile for the box is in the gate, because a dependency that
+  directory.** It has no `package.json`. The cross-compile for the box is in the gate, because a dependency that
   quietly needs cgo would otherwise show up only at ship time.
 - **The gate holds 100 % of statements outside `cmd/server`**
   (`scripts/cover.sh`), and names each line no test runs. `main.go` keeps
@@ -45,7 +44,7 @@ token-gated reader on two loopback ports. Repo-wide rules: [`opus/CLAUDE.md`](..
   grows forever with every test green
   ([retention-is-a-predicate](docs/memo/retention-is-a-predicate.md)).
 - **`activities.db` is backed up by ops, not by this service:** nightly on an
-  EC2 box, restored by script ([`opus/ops/backups/`](../../../ops/backups/)).
+  EC2 box, restored by script; no backup job for it exists in this repository yet.
   Between nights it is the only copy of what was written since.
 - **The `#` rule in `validateID` stays while the DynamoDB service still
   answers.** An input that one service accepts and the other rejects is a
@@ -57,7 +56,7 @@ token-gated reader on two loopback ports. Repo-wide rules: [`opus/CLAUDE.md`](..
 - **`bruno/environments/local.yml` and `scripts/dev-up.sh` share a
   development key**, so `bru run --env local` works on a fresh clone. Change
   one and change the other. Every other environment file is git-ignored, but a
-  client env's, whose key is a Bruno secret (`opus/ops/envs/<client>.md`).
+  client env's, whose key is a Bruno secret.
 - **`scripts/smoke.sh` and `dev-up.sh` build through `make dist` for the host.**
   That way the flags that ship are the flags tested. They run a built binary
   rather than `go run`, because `go run`'s child keeps the port after a kill.
@@ -68,6 +67,6 @@ token-gated reader on two loopback ports. Repo-wide rules: [`opus/CLAUDE.md`](..
 
 ## Documentation
 
-Read [`document-philosophy.md`](../../../docs/conventions/document-philosophy.md)
+Read [`documentation.md`](../docs/conventions/documentation.md)
 before editing docs, comments, or this file. The index is
 [`docs/README.md`](docs/README.md).
