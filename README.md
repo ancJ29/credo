@@ -12,7 +12,7 @@ pnpm install
 pnpm mock
 ```
 
-Then open `ui/dist/mock/mock.html` in a browser. The page's filters narrow it to a language, a
+Then open the page built from `ui/mock.html`, which the build writes under `ui/dist/mock/`, in a browser. The page's filters narrow it to a language, a
 theme or a width.
 
 ## Try the stack

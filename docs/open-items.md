@@ -1272,6 +1272,26 @@ The loop's cell in `collaboration.md` describes the gate as steps a session runs
 
 The comment above `run_each` says the loop is `--no-bail`; the loop is a plain `for d in $dirs` over `pnpm --filter` calls, which runs every package whatever one did but is not pnpm's flag. A comment saying the wrong mechanism sends a reader to look for a flag that is not there. It is in `main`'s script, not in the convention's diff, so it was filed, not fixed. *Fix:* reword the comment when `ops/gate.sh` is next touched.
 
+## 195. `describeRun` never prints `report.empty`, so a citation scope pattern that has gone stale shows only as a red in the gate — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+`scripts/src/citations.ts`'s `describeRun` lists the documents found and the counts but not which scope pattern matched nothing, so a `LIVING` entry that no tracked file matches any more is seen only when `citations.test.ts` reds inside the gate, never in `pnpm counts`. *Trigger:* the next change to `LIVING`, or a move of files.
+
+## 196. A citation to a file that is written but not yet staged reds the gate until `git add` — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+The citation test reads `git ls-files`, so a living document that cites a newly written, unstaged file is red with "the file is not there". Recommended: accept it and add one sentence to `docs/conventions/documentation.md`'s citation section ("stage a new file before the gate reads the page that cites it"), since reading the working tree instead would let a cited file pass that is never committed. *Trigger:* the next piece that cites a file it has just written.
+
+## 197. `shared/CLAUDE.md`'s SH6 says `isHexColour` is "the one other spelling", which is true of exports only — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+Two private helpers also break the `<thing>IsValid` suffix: `shared/src/extra.ts`'s `isBoundedJson` and `shared/src/fields.ts`'s `keyIsReadable`. Recommended: say "the one other exported spelling" in SH6 and leave the helpers, since a private name binds no caller. *Trigger:* the next edit to SH6.
+
+## 198. The counted rules' scope patterns are bound to a flat package layout, and piece 100 moves files — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Medium; **piece 100 reads this first**)
+
+`scripts/src/counts.ts`'s `RULES` match `^bff/src/[^/]+\.ts$` (C5, C7) and `^ui/src/[^/]+\.tsx$` (C6, C4). After a move into folders, C5 and C7 print "0 of 0" and C6 reports every screen compliant, silently, because a screen in a subfolder is simply not in scope. Piece 100 must update those patterns in the same change as the move and read `pnpm counts` before and after; the cheaper guard is for `counts` to refuse (exit 1) when a rule's scope matches no file. *Trigger:* piece 100.
+
 ## 200. A package outside the pnpm gate must be added to the root's ignore lists, and no document says so — the machine; `[OPEN]` (the audit backbone's move, 2026-11-09, Medium)
 
 The one-gate-command convention gives every package one check command, and the root's steps run over the whole tree. A Go package has no `package.json`, so it has no `check` script, yet the root formatter and the unused-code check still reach its files: the audit backbone arrived with its own `make check` green and 17 of its files reported by the root formatter. The fix is two lines, one in `.prettierignore` and one in `knip.json`, and it was found by running the formatter on the moved tree, not by any rule. *Cheapest fix:* one sentence in the gate convention naming both files, so the next non-pnpm package costs two lines rather than an unexpected red.
+
+## 201. A piece that ships no product owes its recap a `docs/products.md` row the convention does not need — the machine; `[OPEN]` (the guideline skeleton's recap, 2026-11-09, Low)
+
+`docs/conventions/documentation.md` requires a piece's recap to add or change the piece's row in `docs/products.md` in the same commit, with no exemption. Four recaps written on 2026-11-09 added none: the gate command, the one-home piece, the gate convention and the guideline skeleton. All four are internal and change no product anyone opens. Recommended (a recommendation, not a decision): the convention gains an explicit exemption for a piece that ships no product, with the recap saying "no row" in its evidence, rather than four rows being owed. *Trigger:* the next recap of an internal piece.

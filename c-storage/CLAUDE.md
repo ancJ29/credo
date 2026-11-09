@@ -6,6 +6,40 @@ listener. Six routes, each with a caller in [the app frame](../docs/plans/2026-1
 [the employee list](../docs/plans/2026-10-29-employee-list.md#the-records).
 Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decision or hazard.
 
+## What belongs here, and what does not
+
+A route belongs only with a caller named above ([collaboration](../docs/conventions/collaboration.md):
+"Nothing enters unless something calls it now"). A record's meaning is the BFF's.
+
+## The file to copy
+
+- **A route:** a method like `func (s *Server) getRecord(` in `c-storage/internal/server/handlers.go`, registered in
+  `Build`, with a row in `everyRoute` and a request in `bruno/`.
+- **A store method:** `Store.Get` in `c-storage/internal/store/store.go`.
+- **A test:** `TestLoadRefusesEachFatalMisconfiguration` in `c-storage/internal/config/config_test.go`
+  (a table), `TestAWriteNamingAMovedRecordIsRefused` in `c-storage/internal/server/server_test.go`.
+
+## This package's own rules
+
+Marks: [How to read a rule](../docs/conventions/code.md#how-to-read-a-rule). "entry points
+hold wiring" and [one home for one decision](../docs/conventions/code.md#one-home-for-one-decision)
+bind as written there.
+
+- **GO1 · holds · check:** format and vet are the gate. Go has no linter, on purpose: open item
+  164, in hand.
+- **GO2 · holds · reader:** an outcome another package branches on is a sentinel (`ErrMoved` in
+  `c-storage/internal/store/store.go`), matched with `errors.Is`. A start-up step's error is wrapped
+  with `%w` and a phrase naming the step (`Run` in `c-storage/internal/lifecycle/lifecycle.go`); the
+  store returns the driver's bare. Both stand; this binds the next file.
+- **GO3 · holds · reader:** standard `testing` only, a real database in `t.TempDir()`, a test named
+  for its behaviour as a sentence, server tests through `Build`. Many inputs to one check are a map
+  of named cases under `t.Run` (`everyRoute`'s plain loop stays). `cover.sh` sets `-race`: a new statement needs a test.
+- **GO4 · holds · reader:** SQL only in `store`, the driver only in `sqlitedb`, the environment only
+  in `config`, status writing only in `httpx`; `server` is mux, gates and handlers; `lifecycle` joins
+  them and owns the shutdown order. `cmd/server` adds only logging, signals and exit codes.
+- **GO5 · holds · check:** a route is registered through `Server.handle`, held by
+  `TestEveryRegisteredRouteIsListed`.
+
 ## Non-obvious facts
 
 - **`make check` is the whole gate; `pnpm check` never reaches this directory.** Format, vet, race
@@ -51,3 +85,8 @@ Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decis
   "nothing enters unless called": on 10-27 he asked for a collection ("bruno is simple and help
   human a lot when need debug"), then for c-storage verified end to end in GitHub Actions, as the
   QA proof of how a service is delivered with confidence. Nobody deletes them as unconsumed.
+
+## Where the rest is
+
+[The big picture](../docs/architecture.md#at-a-glance), [the cross-package rules](../docs/conventions/code.md),
+sibling to copy: none, the only Go package.

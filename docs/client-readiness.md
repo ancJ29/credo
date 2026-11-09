@@ -165,7 +165,7 @@ the stage's throttle is the only brake ([open item 28](open-items.md), which the
 placed before a client's own stack). **Two trails record a call, and they are not the same age.**
 *The older one has been there all along:* the function writes a line per request to
 `/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
-`options` to an empty object and hands it on (`#L12`), so `server.ts#L9`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
+`options` to an empty object and hands it on (`#L12`), so `bff/src/server.ts`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
 `LoggingConfig` names that group ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). An earlier
 version of this page said a guessing run would leave no trace at all; that was wrong when it was
 written. What this page has not verified is what a Fastify request line holds (read as: a method,
