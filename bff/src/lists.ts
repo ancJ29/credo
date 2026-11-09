@@ -20,6 +20,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { HttpError, parse, replyFor } from './errors';
+import { recordTools } from './records';
 import type { Deps } from './staff';
 
 /** What one list is to the routes: where its records sit, how a row is read, how a record is
@@ -93,6 +94,7 @@ type Result<Record> =
  * one add, one after another, and answers one result for each row. */
 export function registerListRoutes(app: FastifyInstance, deps: Deps) {
   const { storage, forClient, signedIn, mustBeRoot, mustCan } = deps;
+  const { every } = recordTools(storage);
 
   function registerList<
     Record extends { id: string; code: string },
@@ -101,13 +103,8 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
     /** Every record of the list. Never a short list that looks whole: more than c-storage returns,
      * or a record that does not parse, is a 500 that names the kind and not the key. */
     async function everyone(tenantId: string) {
-      const listed = await storage.listRecords(kind.prefix(tenantId));
-      if (listed.more) throw new Error(`the ${kind.name} list is longer than c-storage returns`);
-      return listed.records.map((stored) => {
-        const parsed = kind.record.safeParse(stored.data);
-        if (!parsed.success) throw new Error(`a ${kind.name} record does not parse`);
-        return parsed.data;
-      });
+      const listed = await every(kind.prefix(tenantId), kind.record, kind.name);
+      return listed.map(({ record }) => record);
     }
 
     /** One record written once under its fresh id. The write may have landed while its answer was

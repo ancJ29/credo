@@ -17,7 +17,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { HttpError, parse } from './errors';
-import { recordTools } from './orders';
+import { recordTools } from './records';
 import { readEmployee } from './staff-records';
 import type { Deps } from './staff';
 

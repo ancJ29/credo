@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
@@ -50,7 +50,7 @@ async function open(page: Page, language: Language, { path, operator, cue }: Ope
   }
   // A failure stubbed for an earlier screen is not this one's.
   await page.unrouteAll();
-  const handle = operator ? required('CREDO_OPERATOR_HANDLE') : '';
+  const handle = operator ? required(STACK_ENV.CREDO_OPERATOR_HANDLE) : '';
   await page.addInitScript(
     ([chosen, kept]) => {
       localStorage.setItem('credo.language', chosen);

@@ -27,7 +27,6 @@ import {
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router';
-import { ApiError } from './api';
 import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import {
@@ -38,7 +37,7 @@ import {
   ownTextsOf,
   refusedFields,
 } from './ownFields';
-import { type PageProps, refusal, useLoad } from './page';
+import { isForbidden, type PageProps, refusal, useLoad } from './page';
 import { PermissionEditor } from './PermissionEditor';
 import { PhotoPanel } from './PhotoPanel';
 import { EmailPanel, QrPanel } from './SignInPanels';
@@ -656,8 +655,7 @@ export function PersonPage(page: PageProps) {
         setFormKey((n) => n + 1);
         setOutcome('saved');
       },
-      (error) =>
-        setOutcome(error instanceof ApiError && error.status === 403 ? 'forbidden' : 'failed'),
+      (error) => setOutcome(isForbidden(error) ? 'forbidden' : 'failed'),
     );
     setSaving(false);
   }

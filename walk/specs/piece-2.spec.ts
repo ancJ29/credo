@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DEMO_CODE, DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
 import { demoImportFile } from '@credo/ui/import-demo';
 import { DICTIONARIES } from '@credo/ui/words';
@@ -43,7 +43,7 @@ const handleOf = (code?: string) =>
 /** A client of its own, made by the stack from the data set: an add or an archive cannot be undone,
  * so no screen opens on a client an earlier one changed. */
 async function seed(): Promise<Seeded> {
-  const reply = await fetch(required('CREDO_SEED_URL'), { method: 'POST' });
+  const reply = await fetch(required(STACK_ENV.CREDO_SEED_URL), { method: 'POST' });
   if (!reply.ok) throw new Error(`the stack's seed door answered ${reply.status}`);
   return (await reply.json()) as Seeded;
 }

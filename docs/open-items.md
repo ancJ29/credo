@@ -1220,6 +1220,38 @@ defect a formatter would have caught.
 
 Six packages each have a `check` script that calls `ops/gate.sh`, so `pnpm -r run check` starts six gates on one lock (they queue) and runs eslint, prettier and knip six times. The right command is `pnpm check` (the root's, over every package). *Cheapest fix:* one line in the gate's header and one in `ops/README.md` saying so.
 
+## 177. `walk/run.sh` writes the stack's environment names by hand, outside any typecheck, and still carries the dead `CREDO_OPERATOR_PASSWORD` — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`walk/run.sh#L296` lists the names a spec listing needs (`CREDO_URL`, `CREDO_SEED_URL`, `CREDO_CLIENT_CODE`, `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME`, plus `CREDO_OPERATOR_PASSWORD`) in shell, where `STACK_ENV`'s type error does not reach. `CREDO_OPERATOR_PASSWORD` is the name dropped when the operator console replaced it with `CREDO_OPERATOR_LINK`. *Trigger:* the next change to that line, which then reads the names from a check against `shared/src/env.ts`.
+
+## 178. The walk config and the legacy capture spell the PC width by hand — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`walk/playwright.config.ts#L28` has `viewport: { width: 1280, height: 800 }` and `walk/legacy-capture.ts#L211` the same pair: `WIDTHS.pc` written out, in a file the one-home piece edited. *Trigger:* the next change to either file.
+
+## 179. The two plain-JS mock pages hold the three widths again, so the widths were six spellings, not the four the structure review named — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`ui/frame-mock/frame.js` (the width buttons, `#L264`) and `ui/signin-mock/signin.js` (`#L278`, 1280 and 390) spell the widths in JS with no typecheck, beyond reach of `shared/src/widths.ts`. *Trigger:* the next change to either page.
+
+## 180. `scripts/src/demo/apply-support.ts`'s `staffOf` lists under a prefix and parses each record with no truncation guard at all — the machine; *parked* (the one-home review, 2026-11-09, Medium)
+
+**A live failure mode:** `staffOf` (`#L60`) reads `listed.records` and never asks `listed.more`, so a staff list longer than one answer is read short and every caller goes on with part of the staff, silently. Its sibling `demo/apply.ts`'s `isFresh` does guard. The package cannot import the back end's one home (`bff/src/records.ts`), so the guard must be written here or lifted to `shared`. *Trigger:* any demo copy with a long staff list; the fix is small and need not wait.
+
+## 181. `bff/src/lists.ts`'s `readOne` parses one record inline with its own message — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`#L184`, while the one home's helper (`bff/src/records.ts`) is already imported in that file. *Trigger:* the next change to `lists.ts`.
+
+## 182. What a 401 means is declared twice, and the new 403 home spells `401` inline — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`ClientApp.tsx#L62` and `OperatorApp.tsx` each hold their own `SIGNED_OUT = 401`, and `ui/src/page.ts`'s `refusal` writes `401` inline. The next shape of this kind, not the one-home piece's. *Trigger:* the next change to any of the three.
+
+## 183. `visual/src/walks.test.ts`'s replacement assertion trips on a reformat of the re-export line, not on a fifth copy — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+It checks that `walk/support.ts` contains `export { WIDTHS } from '@credo/shared';` as text. What really holds the report and the walks level is the re-export's identity and the type derived from `shared/src/widths.ts`; the text check is the weaker part. *Trigger:* piece 98's conformance work.
+
+## 184. The settings save's 401 now sets `'failed'` where the old chain left it null, and no run has shown the redraw wins — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+One-home step 2 collapsed `SettingsPage`'s own status check into `refusal`; a 401 on the save now signs out and also sets the outcome to failed. The reviewer reasoned the sign-out redraw replaces the page and did not run it; the test pins the outcome, not the redraw. No data effect. *Trigger:* a run of the settings save under a 401 in the walk or the browser.
+
 ## 190. A mixed-indent `pnpm-workspace.yaml` gives the gate a shorter package list, which it checks and calls green — the machine; `[OPEN]` (the one-gate-command piece's reread, R3, 2026-11-09, Medium)
 
 The gate's M1 refusal fires on *no* packages, not on *fewer packages than the file lists*. `dirs` is read by `sed -n 's/^  - //p'`, which needs exactly two spaces: a list with one line indented differently yields a shorter `dirs`, and the whole-repo gate then checks only those packages, prints `== green` and exits 0. Only CI's count-of-six assertion catches it, never the local gate. It is the same shape as the empty-list refusal, narrowed. *Cheapest fix when it bites:* count the `- ` lines of the file by a looser pattern (`^ *- `) and refuse when the two counts differ.

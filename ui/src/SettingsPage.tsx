@@ -1,6 +1,7 @@
 import type { ConfigDoc, TenantConfig } from '@credo/shared';
 import { useState } from 'react';
 import { type Api, ApiError } from './api';
+import { refusal } from './page';
 import { Settings } from './Settings';
 
 type Props = {
@@ -28,15 +29,11 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
       if (result.kind === 'saved') onDoc(result.doc);
       setOutcome(result.kind === 'saved' ? 'saved' : 'conflict');
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) onSignedOut();
-      else if (error instanceof ApiError && error.status === 403) {
-        // No longer theirs to change: the app reads who they are again, and the redraw replaces
-        // this page if the right is gone.
-        onForbidden();
-        setOutcome('failed');
-      }
+      // A 401 signs out and a 403 reads who they are again, the redraw replacing this page if the
+      // right is gone; the page itself only tells a 400 from the rest.
+      refusal(error, { onSignedOut, onForbidden });
       // A 400 is the BFF refusing these settings: trying again as they are can never succeed.
-      else setOutcome(error instanceof ApiError && error.status === 400 ? 'refused' : 'failed');
+      setOutcome(error instanceof ApiError && error.status === 400 ? 'refused' : 'failed');
     } finally {
       setSaving(false);
     }

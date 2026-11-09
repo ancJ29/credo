@@ -1,7 +1,10 @@
 import { type CStorageClient, CStorageError, recordKeys, type StoredUser } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
-import { ATTEMPTS, setSignInPassword } from './staff-records';
+import { setSignInPassword } from './staff-records';
 
+// The bound as the test's own number, deliberately not the shared `TRIES`: a test that reads the
+// constant it guards follows it to any value and cannot go red when it changes.
+const TRIES = 3;
 const TENANT = '3f2c1d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f';
 const KEY = recordKeys.tenant(TENANT).user('root');
 const ROOT: StoredUser = {
@@ -98,8 +101,8 @@ describe('The write that gives a sign-in record a password and ends its sessions
   });
 
   it('reads again after a moved tag and writes over the new one, up to three tries', async () => {
-    const twice = store(ROOT, ATTEMPTS - 1);
-    const never = store(ROOT, ATTEMPTS);
+    const twice = store(ROOT, TRIES - 1);
+    const never = store(ROOT, TRIES);
 
     expect(
       await setSignInPassword(
@@ -111,7 +114,7 @@ describe('The write that gives a sign-in record a password and ends its sessions
         () => 1,
       ),
     ).toBe('set');
-    expect(twice.state.reads).toBe(ATTEMPTS);
+    expect(twice.state.reads).toBe(TRIES);
     await expect(
       setSignInPassword(
         never.storage,
@@ -123,6 +126,6 @@ describe('The write that gives a sign-in record a password and ends its sessions
       ),
     ).rejects.toThrow(CStorageError);
     expect(never.state.writes).toEqual([]);
-    expect(never.state.reads).toBe(ATTEMPTS);
+    expect(never.state.reads).toBe(TRIES);
   });
 });
