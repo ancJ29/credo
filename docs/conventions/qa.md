@@ -1,9 +1,9 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-07, from the day's parked corrections and the move of the machine's own
-> rules out of one kind's skill: a look is not a gate, what a package's gate is, and how a check is
-> run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
+> **Last amended** 2026-11-09, from piece 99: a package's gate is the one command `ops/gate.sh`
+> runs, no longer five steps a session names; and from 2026-11-07's day: a look is not a gate, how
+> a check is run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
 > they stand; their history is in `git log`.
 > Binds every feature's plan, every test, every check run here and every merge into `main`.
 
@@ -38,7 +38,7 @@ The eight rules, [below](#the-rules):
 5. Another model reviews the code before it merges; each finding fixed, rejected or
    deferred, with its reason.
 6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
-   package's gate names all five `pnpm check` steps.
+   package's gate is the one command, `pnpm --filter @credo/<pkg> check`.
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
    until its look changes; pixels counted raw.
 8. Every line is tested, or says why not.
@@ -105,18 +105,35 @@ The map of walks. A dash is a part of the day not built yet.
    several worktrees running at once, load is the normal case. *Rejected:* a retry setting,
    which greens the real red too; a longer timeout, which hides the cause.
 
-   **Run the gate that can change a conclusion:** nothing for a read-only task, typecheck and one
-   test while iterating, the touched package's gate at a commit, the whole only before shipping.
-   *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
-   minutes buy no verdict a smaller gate does not already give.
+   **Run what can change a conclusion:** nothing for a read-only task; while iterating, whatever
+   answers the session's question (a typecheck, one test), which is not the gate and is never
+   reported as one; the gate, one command, before a stop or a commit: the touched package's at a
+   commit, the whole on the merge result before a merge. *Rejected:* the whole gate at every
+   step. Several worktrees run at once, and a full run's minutes buy no verdict a smaller gate
+   does not already give.
 
-   **A package's gate is the whole `pnpm check` on the merge result; where it is scoped to one
-   package, every one of its five steps is named and run: typecheck, eslint, prettier, that
-   package's tests, knip.** A gate that reports an exit code without naming the steps it ran has
-   not reported a gate, and a step left out is a step nobody ran. *Why:* two sessions on
-   2026-11-07 each assembled a package gate by hand, one of the five steps missing from the
-   second; the two lint errors it let through reached `main` and would have failed the deploy's
-   own job whatever else was fixed. **A branch's green describes the branch, not the tree the
+   **The gate is one command: `pnpm check` for all six TypeScript packages, on the merge result,
+   and `pnpm --filter @credo/<pkg> check` for one package.** The root's is `package.json`'s
+   `scripts.check` (`bash ops/gate.sh`), each package's is its own `scripts.check`
+   (`bash ../ops/gate.sh <pkg>`), and both run [`ops/gate.sh`](../../ops/gate.sh), which runs
+   typecheck and test through `run_each` and eslint, prettier and knip through `run_step`, each
+   whatever any other did, waits for the load and the gate lock, and writes one log ending
+   `== exit <code>`. **A session reports the gate by running that command and citing its log; it
+   builds no gate from steps.** A step the package lacks is named in the log's `== steps:` line as
+   skipped, and a skip is not a pass, but the standing skip is not a red: `walk` has no `test`
+   script, so every whole gate, green ones included, ends `0+1skipped` for tests. A new skip is
+   the one to question. A `<pkg>` that does not exist aborts before three of the steps and writes
+   no `== steps:` line, so a log without that line is itself the signal.
+   *Why:* two sessions on 2026-11-07 each assembled a package gate by hand, one of the five steps
+   missing from the second; the two lint errors it let through reached `main` and would have
+   failed the deploy's own job whatever else was fixed. **What the command does not do:** it does
+   not cover c-storage, whose gate is `make check` in `c-storage/`; a bare `walk/run.sh` takes no
+   lock, so a gate started during one still reddens it; and `pnpm -r run check` exists and is the
+   wrong command (six gates on one lock, with eslint, prettier and knip run six times). Its
+   details are in `ops/README.md`'s "The gate". **A plan in `docs/plans/` written before
+   2026-11-09 may spell a hand-assembled chain of the five steps: it was true when written and is
+   a dated record, not a living document, so it is never read as the current way and never
+   edited to match.** **A branch's green describes the branch, not the tree the
    deploy will check**, so the whole check belongs on the merge result before a merge — `main`
    taken in first, as [pacing](collaboration.md#pacing-one-piece-at-a-time) says, then the check.
 7. **The screens are the end-to-end check.** Each person's part of the business's day is walked
@@ -188,10 +205,18 @@ alone.
   assertion are different findings, and a go-ahead names the non-timeout case in advance.
 - **A log ending `Failed` with no assertion line, or `exit 137` with no output, is a kill from
   outside, not a red:** read where the log stops before calling it one.
-- **A whole `pnpm -r` run hides every package behind the first failure, and `&&` never reaches
-  knip**, so a red gate has told less than it looks: run the remaining packages on their own to see
-  what it concealed. Where load is the cause, rerun by package
-  (`pnpm -r --no-bail --workspace-concurrency=1 run test`, `ui` with `--maxWorkers=4`), then knip.
+- **A chain of steps hides everything after the first failure, and `&&` never reaches knip**, so a
+  chain's red has told less than it looks. The gate command does not chain: it runs every step
+  whatever another did, and a red names its step with the others still shown. Where load is the
+  cause, rerun the one command by package (`pnpm --filter @credo/<pkg> check`), not a hand-built
+  chain.
+- **`ui`'s tests have failed in whole checks in files the change did not touch**, and passed on a
+  rerun at lower load (`docs/open-items.md`, item 56, which names `SignIns.test.tsx` and
+  `MyDeliveries.test.tsx` and holds the later sightings; it records the cause as not known for
+  `ui`, so load is a suspect there, not a finding). The one command passes no worker flag, so the
+  old `--maxWorkers=4` is not available through it: a `ui` red is run alone and then
+  the command rerun, per the failing-set test above, and the first red is named in the evidence,
+  never tuned away.
 
 ### The gate lock
 
@@ -221,7 +246,7 @@ to the caller, and a release on the script's last line.
   reports in five days sent a reader to a log that did not exist.
 - **A `== exit` line is never written by hand, and it is never read through a pipe.** Put it in a
   small bash script that runs the check, saves `$?` into a variable, releases the lock, then appends
-  `== exit $rc` itself. A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
+  `== exit $rc` itself (that is for a one-off script; a gate is the one command, which writes it). A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
   leaves `PIPESTATUS` empty (it is `pipestatus`), which is how a hard-coded `== exit 0` once stood
   in for a status nobody had read; and unquoted, the line ends `== exit` with no code.
   **[`ops/lib.sh`](../../ops/lib.sh) prints it correctly — call that rather than hand-roll the
