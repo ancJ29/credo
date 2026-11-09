@@ -3,9 +3,8 @@ import { Alert, Button, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
-import { ApiError } from './api';
 import { CustomerForm } from './CustomerPage';
-import { type PageProps, refusal } from './page';
+import { isForbidden, type PageProps, refusal } from './page';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
@@ -38,7 +37,7 @@ export function AddCustomerPage(page: PageProps) {
       }
     } catch (error) {
       refusal(error, page);
-      setOutcome(error instanceof ApiError && error.status === 403 ? 'forbidden' : 'failed');
+      setOutcome(isForbidden(error) ? 'forbidden' : 'failed');
     }
     setSaving(false);
   }

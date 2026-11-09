@@ -3,12 +3,11 @@ import { Alert, Button, Stack, Text, Textarea, TextInput, Title } from '@mantine
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
-import { ApiError } from './api';
 import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import { textIn } from './listSheet';
 import { mergeExtra } from './ownFields';
-import { type PageProps, refusal, useLoad } from './page';
+import { isForbidden, type PageProps, refusal, useLoad } from './page';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
 
@@ -46,7 +45,7 @@ export function CustomerPage(page: PageProps) {
       }
     } catch (error) {
       refusal(error, page);
-      setOutcome(error instanceof ApiError && error.status === 403 ? 'forbidden' : 'failed');
+      setOutcome(isForbidden(error) ? 'forbidden' : 'failed');
     }
     setSaving(false);
   }

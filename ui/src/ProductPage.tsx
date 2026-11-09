@@ -28,7 +28,7 @@ import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { Loaded } from './Loaded';
 import { textIn } from './listSheet';
 import { mergeExtra } from './ownFields';
-import { type PageProps, refusal, useLoad } from './page';
+import { isForbidden, type PageProps, refusal, useLoad } from './page';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
 
@@ -66,7 +66,7 @@ export function ProductPage(page: PageProps) {
       }
     } catch (error) {
       refusal(error, page);
-      const forbidden = error instanceof ApiError && error.status === 403;
+      const forbidden = isForbidden(error);
       const refused = error instanceof ApiError && error.status === 400;
       setOutcome(forbidden ? 'forbidden' : refused ? 'refused' : 'failed');
     }
