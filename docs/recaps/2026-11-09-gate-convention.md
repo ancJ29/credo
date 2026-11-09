@@ -8,7 +8,7 @@ One gate command landed in `main` this morning ([the recap before this](2026-11-
 
 - The gate is named as one command with its real spellings: `pnpm check`, and `pnpm --filter @credo/<pkg> check`, as `package.json`'s `scripts.check` has them.
 - A session runs it and reports its log, which ends `== exit <code>`; it builds no gate from steps. While iterating it runs whatever answers its question and does not call that the gate.
-- The ten old plans that carry a hand-assembled chain are covered by one dated clause, and none was edited.
+- The old plans that carry a hand-assembled chain are covered by one dated clause, and none was edited.
 - The `ui` load fact is kept as what item 56 supports: `ui` reds are recorded, their cause is not known, and the command passes no worker flag.
 - What the command does not do is stated: c-storage, a bare `walk/run.sh`, and `pnpm -r run check`.
 
