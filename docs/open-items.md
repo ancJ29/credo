@@ -1147,10 +1147,13 @@ and the `weeks` state. Not a cache: it is the trigger that would otherwise argue
 
 28 screens mount in one app, 18 in the other, four in common, and the layout says none of it. A
 reader told to add a screen cannot tell where it goes or what it may reuse, and a change meant for
-one app can land in a file the other mounts. No convention states the flat layout, so nothing is
-being contradicted. *Fix:* three directories, `client/`, `operator/`, `common/`, moves only — the one
-structural change every piece in the coming weeks would feel. *Trigger:* before the next several
-screens, since the move gets dearer with each one.
+one app can land in a file the other mounts. A convention now says how a package decides its own
+directories ([the shape of a package](conventions/code.md#the-shape-of-a-package)), and `ui` is one of
+the two packages that has yet to write its set, so the undivided directory is no longer the stated
+shape. *Fix:* the layout the human approved for piece 100, moves only, with `ui`'s own directory set
+written into `ui/CLAUDE.md` in the same change — the one structural change every piece in the coming
+weeks would feel. *Trigger:* before the next several screens, since the move gets dearer with each
+one.
 
 ## 167. Where a test goes is unstated, and two tests live in the wrong package — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 

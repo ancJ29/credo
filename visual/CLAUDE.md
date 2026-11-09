@@ -19,6 +19,12 @@ file a non-coder opens and answers yes or no. No browser, no picture.
 - **A question in Vietnamese:** a line of `visual/site/questions-vi.json`, keyed by the English text.
 - **A walk's test:** `walks.test.ts`'s "puts the client delete walk last".
 
+**`visual/src` has no directories, and flat is this package's decision:** 15 files, each already
+named for what it is, and the one thing that reads long is `visual/src/walks.ts` at 2,190 lines,
+which no directory divides — a file that size is split by taking data or a kind of step out of it,
+not by a folder around it
+([the shape of a package](../docs/conventions/code.md#the-shape-of-a-package)).
+
 ## This package's own rules
 
 What a screen owes is [Before a new screen](../docs/conventions/code.md#before-a-new-screen); these

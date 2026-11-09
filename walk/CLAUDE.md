@@ -19,6 +19,11 @@ and on a stack, the pictures counted raw against each other and the committed ba
 - **Its table row:** the `WALKS` line in `walk/run.sh`; **its projects:** the `-fake` and `-full` pair
   in `walk/playwright.config.ts`'s `projects`.
 
+**This package's one directory is `walk/specs`, and that is already the answer:** everything in it is
+a walk spec, each with its base images in a folder beside it, and the harness every spec shares stays
+at the package root. Nothing else here divides
+([the shape of a package](../docs/conventions/code.md#the-shape-of-a-package)).
+
 ## This package's own rules
 
 Marks: [How to read a rule](../docs/conventions/code.md#how-to-read-a-rule). What a new screen owes

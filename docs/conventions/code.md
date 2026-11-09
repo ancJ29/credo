@@ -16,8 +16,9 @@
 > [a client's own difference, a screen's behaviour, and server
 > data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
 > in `git log`.
-> **Last amended** 2026-11-09, from the guideline skeleton (piece 98): the sixteen rules given stable ids,
-> the citations made to name a symbol, and the typed-in counts replaced by the command that makes them.
+> **Last amended** 2026-11-09, from the directory structure the human approved (piece 100): the claim
+> that every TypeScript package is one undivided directory of files retired, and C17 minted for how a
+> package decides its own directories.
 
 ## At a glance
 
@@ -55,16 +56,16 @@ places, nothing failing when a copy is missed.
 | `check` | following the rule makes a check: a command in [the gate](../../CLAUDE.md#the-gate) goes red on a breach |
 | `reader` | nothing goes red. A reviewer reading the diff is the guard, and for C1, C4, C5, C6 and C7 `pnpm counts` also shows the drift without stopping it |
 
-Sixteen rules stand in the sections below, and the glance table above is a view of them, marked the
-same way. **Each carries an id, `C1` to `C16`, in the order the sections hold them, minted once and
+Seventeen rules stand in the sections below, and the glance table above is a view of them, marked the
+same way. **Each carries an id, `C1` to `C17`, in the order the sections hold them, minted once and
 never renumbered or reused**, the discipline [`open-items.md`](../open-items.md) keeps for its items:
 a table that reports on the rules is read against the ids, and a rule that is retired leaves its id
 unused. **How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
 typed into this file:** it prints each count with its blind spot beside it, never reds, and ends with
-the table of the living documents' citations. **Two of the sixteen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
+the table of the living documents' citations. **Two of the seventeen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
-makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fourteen carry the
+makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fifteen carry the
 mark `reader`; five of them are also counted**. Making them checks is what the structure review's own open item exists to do, one check at a time
 ([open item 160](../open-items.md)).
 
@@ -75,12 +76,12 @@ and which file decides each part, and every row links the rule that binds it. Fo
 put together, read [`architecture.md`](../architecture.md); this section answers only where the
 code lives.
 
-**The shape of a package:** each TypeScript package is one flat folder of files with every test
-beside its source — `bff/src`, `shared/src` and `visual/src` have no layer folders at all, and
-`ui/src`'s only folders inside are `i18n`, `mock` and its snapshots, as `scripts/src`'s only one
-is `demo`. Go is divided by internal package instead (`c-storage/internal`). A file is named for
-the thing it serves, never for its layer, and a screen's test sits beside it as
-`<Name>Page.test.tsx`.
+**The shape of a package:** which directories a package has is that package's own decision, made by
+[the shape of a package](#the-shape-of-a-package) and written in that package's own `CLAUDE.md`, so a
+reader asking where a file goes opens the guideline of the package it goes in — this section does not
+hold a layout for all of them. Go is divided by internal package instead (`c-storage/internal`), one
+package to a thing in the running system. A file is named for the thing it serves, never for its
+layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 
 ### The one file to open, by part
 
@@ -239,3 +240,37 @@ them:** the page, the fake (`ui/src/fake.ts`), its route in the app shell, both 
 test, a walk scene and a base image before the visual report can show it. `[next copy · reader]`
 *Why:* a screen that reaches the walks page without its scene and base is a screen the human cannot
 judge, and the project is about to add screens faster than it has.
+
+## The shape of a package
+
+**C17 · A package divides by what its files are — a screen, a part, the frame, a route module, a
+record's reads and writes — never by their layer, and a directory earns its name only where
+"everything in here is a ___" finishes in a word the product itself uses.** `[next copy · reader]`
+So there is no `utils/`, no `constants/` and no `helpers/`: **a directory whose name the product does
+not use is not a directory**, and the files that would have filled it stay where they are. **The
+directory set is each package's own**, read off what that package's files are and **written in that
+package's own `CLAUDE.md`; no package copies another's folders because the two are the same kind of
+thing** — the two back ends read for this rule share no directory set, and neither one's is a subset
+of the other's, so the kind of a package predicts nothing about its folders. **Where no sentence
+finishes, the package stays flat, and flat is the answer rather than the absence of one:**
+`shared/src` and `visual/src` are flat because every file in them is already named for the thing it
+serves. **A test sits beside its subject, and beside the app where the subject is the app.**
+
+**A further level inside a directory is added on a count of this code base, never by imitation of
+another layout.** A folder per feature or module under the screens was measured and refused: the
+modules it would need cannot be built, because one list screen and one import screen each serve both
+kinds of record (`ui/src/ListPage.tsx`'s `ListPage` and `ui/src/ListImportPage.tsx`'s
+`ListImportPage`, both taking `kind`), and 13 of the UI's test files today have no same-named source
+at all, covering a flow or a whole app rather than one screen, so several would have no module
+to sit in. So meeting that shape in another repository is not a precedent here.
+**A package being reorganised writes its directory set into its own `CLAUDE.md` in the same change as
+the move, never before** — a guideline naming a folder that does not exist yet is wrong for as long
+as the move takes — which is why `ui` and `bff` name no set yet.
+
+*Why:* nothing in the gate reads a directory, so a layer folder, a copied folder set and a package
+whose `CLAUDE.md` names none of its folders all pass green; the mark is `reader` because the reader
+of the diff is the only guard there is. **What would make it a `check` is a per-package tree
+generated beside `pnpm counts`** — one line a directory, the package's own sentence for it written by
+hand and its file and line counts generated, with the gate regenerating the tree and diffing it so a
+stale one goes red. **That is not built**, and until it is a generated tree is the worse answer: a
+reader trusts it and it lies with nothing red anywhere.

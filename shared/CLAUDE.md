@@ -27,6 +27,11 @@ and where it lands. The package's tests run at 100 % of statements, branches, fu
 A new area is `shared/src/<area>.ts` with `<area>.test.ts` beside it, one line added to `index.ts`.
 Copy `lists.ts` for a shape and its bounds: `customerSchema` and the type `Customer` from it.
 
+**`shared/src` has no directories, and that is this package's answer rather than a gap:** each of its
+39 files is already named for the one thing it serves, so no "everything in here is a ___" finishes
+over any group of them, and a new area is a file beside the others
+([the shape of a package](../docs/conventions/code.md#the-shape-of-a-package)).
+
 ## This package's own rules
 
 - **SH5. A schema of ours is `z.strictObject`**. `z.object` or `z.looseObject` only where
