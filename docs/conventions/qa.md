@@ -204,6 +204,13 @@ alone.
   whatever another did, and a red names its step with the others still shown. Where load is the
   cause, rerun the one command by package (`pnpm --filter @credo/<pkg> check`), not a hand-built
   chain.
+- **`ui`'s tests have failed in whole checks in files the change did not touch**, and passed on a
+  rerun at lower load (`docs/open-items.md`, item 56, which names `SignIns.test.tsx` and
+  `MyDeliveries.test.tsx` and holds the later sightings; it records the cause as not known for
+  `ui`, so load is a suspect there, not a finding). The one command passes no worker flag, so the
+  old `--maxWorkers=4` is not available through it: a `ui` red under load is run alone and then
+  the command rerun, per the failing-set test above, and the first red is named in the evidence,
+  never tuned away.
 
 ### The gate lock
 
