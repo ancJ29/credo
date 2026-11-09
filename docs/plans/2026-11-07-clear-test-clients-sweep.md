@@ -51,9 +51,10 @@ steps are `pnpm --filter @credo/scripts run typecheck`, `pnpm exec eslint .`, `p
   *Done 2026-11-09:* the sweep is an `if` that prints `WARN` on failure; two `ops/test.sh` lines pin its place and its warning;
   item 117 deleted. Last line `== exit 0 (shellcheck 0 ops-test 0 typecheck 0 eslint 0 prettier 0 test 0 knip 0)`,
   `logs/20261109-0913-ops-gate-clear-test-clients.log`.
-- [ ] **3. The whole check, the review, the recap, 5 min.** The root `pnpm check` once; one cross-model review, each finding
+- [x] **3. The whole check, the review, the recap, 5 min.** The root `pnpm check` once; one cross-model review, each finding
   tagged; `docs/recaps/2026-11-07-clear-test-clients-sweep.md` with its `docs/products.md` row. *Done when:* `pnpm check`
   exits 0 and the tree is clean.
+  *Done 2026-11-09 (the whole check and the recap; the cross-model review was read apart from this tick):* `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0 knip 0)`, `logs/20261109-0920-root-check-clear-test-clients.log`; recap `docs/recaps/2026-11-09-clear-test-clients-sweep.md`; no products row owed.
 
 ## Decided here, open to a veto
 
