@@ -53,8 +53,9 @@ token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../CLAU
   `TestBackdatedEntryKeepsInsertOrderButExpiresEarlier`.
 - **`bruno/environments/local.yml` and `scripts/dev-up.sh` share a
   development key**, so `bru run --env local` works on a fresh clone. Change
-  one and change the other. Every other environment file is git-ignored, except one
-  whose write key is a Bruno secret, never a value in the file.
+  one and change the other. This package carries only that local
+  environment; an environment for anything deployed is not in this repository, on purpose, and
+  the folder's `.gitignore` keeps any other environment file out.
 - **`scripts/smoke.sh` and `dev-up.sh` build through `make dist` for the host.**
   That way the flags that ship are the flags tested. They run a built binary
   rather than `go run`, because `go run`'s child keeps the port after a kill.
