@@ -16,6 +16,29 @@ Its only door to the back end is the object `ui/src/api.ts`'s `createApi` makes.
 - **A rule the server must hold belongs in `bff/`;** a screen never guards.
 - **`ui/frame-mock/` and `ui/signin-mock/` are static looks, outside lint,** not product code.
 
+## The directories of `ui/src`
+
+Each finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17; a
+directory not on this list is not a directory, and a file with no sentence stays at the top.
+
+- **`pages/client/`**: a screen the client app mounts at a path, and nothing else mounts
+  (`ui/src/pages/client/ListPage.tsx`'s `ListPage`).
+- **`pages/operator/`**: a screen the operator console mounts at a path
+  (`ui/src/pages/operator/ClientsPage.tsx`'s `ClientsPage`).
+- **`pages/`, loose**: a screen both apps mount (`ui/src/pages/SignIn.tsx`'s `SignIn`).
+- **`frame/`**: the frame a screen is drawn inside: the shell, the providers, the boot, the load
+  state (`ui/src/frame/Shell.tsx`'s `Shell`, `ui/src/frame/Loaded.tsx`'s `Loaded`).
+- **`parts/`**: a piece a screen is built from, that no route mounts
+  (`ui/src/parts/DetailCards.tsx`'s `DetailCard`).
+- **`i18n/`**: the dictionary (`ui/src/i18n/en.ts`'s `en`).
+- **`mock/`**: the standalone harness that draws a screen on fake data
+  (`ui/src/mock/MockPage.tsx`'s `MockPage`).
+- **The top level**: an entry, a route table, or a module with no screen in it: the API client, the
+  look, a sheet, a port (`ui/src/api.ts`'s `createApi`, `ui/src/theme.ts`).
+
+A test sits beside its subject, and beside the app where the subject is the app
+(`ui/src/App.test.tsx`).
+
 ## The file to copy
 
 - **A screen:** `ui/src/pages/client/ListPage.tsx`'s `ListPage`, which takes `PageProps`, reads through `useLoad`
