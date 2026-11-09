@@ -96,11 +96,12 @@ which is every branch running this gate.
 
 ## The steps
 
-- [ ] **1. `ops/gate.sh <pkg>`, end to end on the cheapest package, 15 min.** The five steps, each
+- [x] **1. `ops/gate.sh <pkg>`, end to end on the cheapest package, 15 min.** The five steps, each
       run and its result kept whatever the one before did (`set -uo pipefail` without `-e`, as
       `ops/full-run.sh#L45`), `ops/lib.sh`'s `log_start`, `step`, `ok`, `red` and `verdict`; no
       lock yet. *Done when:* `bash <root>/ops/gate.sh shared` prints five `[n/5]` lines and
       `== green`, and the log's last line is `== exit 0`.
+      *Evidence:* logs/2026-11-09-095423-gate-shared.log, five `[n/5]` lines, `== green`, `== exit 0`; forced prettier red logs/2026-11-09-095504-gate-shared.log, `== exit 1`, other four steps ran.
 - [ ] **2. The step list from each package's own `scripts`, and the whole-tree call, 10 min.**
       *Done when:* `ops/gate.sh walk`'s log holds `skipped: @credo/walk has no test script`; a call
       with no package names six typecheck results and five test results; `grep -c vitest
