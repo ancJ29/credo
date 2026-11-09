@@ -5,9 +5,9 @@ SHELL := /bin/bash
 
 BINARY       := credo-audit-backbone
 BUILD_COMMIT ?= unknown
-# The box's arch. A host build for scripts/smoke.sh overrides both.
+# The box is arm64 (t4g.nano). A host build for scripts/smoke.sh overrides both.
 DIST_OS      ?= linux
-DIST_ARCH    ?= amd64
+DIST_ARCH    ?= arm64
 DIST_DIR     ?= dist
 
 # CGO_ENABLED=0 keeps the binary static: modernc.org/sqlite is pure Go, so no
