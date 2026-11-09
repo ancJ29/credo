@@ -1372,8 +1372,14 @@ check "check.sh writes its environment through that writer alone" "1 0" \
   "$(grep -c 'bruno_env_write' "$OPS_DIR/check.sh" || true) $(grep -c 'cat >' "$OPS_DIR/check.sh" || true)"
 check "check.sh sweeps stranded check clients after bff_env_read and before it makes its own, once" "1 yes" \
   "$(grep -c 'ridge_cli clear-checks' "$OPS_DIR/check.sh" || true) $(awk '/^  bff_env_read$/ {a = NR} /ridge_cli clear-checks/ {b = NR} /ridge_cli tenant / {c = NR} END {print (a && a < b && b < c) ? "yes" : "no"}' "$OPS_DIR/check.sh")"
-check "check.sh warns on a failed sweep and does not die on it" "1 0" \
-  "$(grep -c 'WARN the sweep of stranded check clients' "$OPS_DIR/check.sh" || true) $(grep -cE 'ridge_cli clear-checks.*(die|exit)' "$OPS_DIR/check.sh" || true)"
+# Under set -e a bare assignment from a failing command ends the script, an if's condition does not:
+# the sweep is a warning only while it stays `if swept=$(…); then … else WARN … fi` with no die or exit in it.
+sweep_form() {
+  printf '%s %s ' "$(grep -cE '^  if swept=[$][(]' "$1" || true)" "$(grep -cE '^ *swept=[$][(]' "$1" || true)"
+  awk '/^  if swept=[$][(]/ {on = 1} on && /WARN the sweep of stranded check clients/ {warn = 1} on && /(^|[ ;])(die|exit)[ ;]/ {bad = 1} on && /^  fi$/ {on = 0} END {print (warn && !bad) ? "warns" : "broken"}' "$1"
+}
+check "check.sh runs the sweep as an if condition that warns, with no die or exit inside it" "1 0 warns" \
+  "$(sweep_form "$OPS_DIR/check.sh")"
 
 echo "== a refused write removes nothing, even through on_exit; a second signal does not cut on_exit short"
 cat >"$WORK/refused.sh" <<'CHILD'

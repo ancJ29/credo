@@ -457,20 +457,22 @@ describe('what the ops scripts ask of ridge', () => {
       const { records, call } = memoryCStorage();
       await tenant(call, OLD);
       await tenant(call, OLD_TOO);
-      const refuseOneIndex: typeof fetch = (input, init) =>
-        init?.method === 'DELETE' && urlOf(input).endsWith(encodeURIComponent(`client.${OLD}`))
+      // OLD_TOO sorts first (older stamps are made first, ties go by code), so the failure comes
+      // before the delete that must still run.
+      const refuseFirstIndex: typeof fetch = (input, init) =>
+        init?.method === 'DELETE' && urlOf(input).endsWith(encodeURIComponent(`client.${OLD_TOO}`))
           ? Promise.resolve(new Response('{}', { status: 412 }))
           : call(input, init);
 
-      const result = await sweep(refuseOneIndex);
+      const result = await sweep(refuseFirstIndex);
 
       expect(result).toMatchObject({
         status: 1,
-        err: [`error: nothing was deleted: the client ${OLD} changed while it was being read`],
-        out: [`client ${OLD_TOO} deleted`, 'clear-checks: 1 deleted, 1 failed'],
+        err: [`error: nothing was deleted: the client ${OLD_TOO} changed while it was being read`],
+        out: [`client ${OLD} deleted`, 'clear-checks: 1 deleted, 1 failed'],
       });
-      expect(records.has(`client.${OLD}`)).toBe(true);
-      expect(records.has(`client.${OLD_TOO}`)).toBe(false);
+      expect(records.has(`client.${OLD_TOO}`)).toBe(true);
+      expect(records.has(`client.${OLD}`)).toBe(false);
     });
 
     it('on a service with no clients, says nothing was due', async () => {

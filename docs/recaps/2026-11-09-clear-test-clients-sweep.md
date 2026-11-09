@@ -12,7 +12,7 @@
 - **The chore was already half solved.** Since 11-07 the check deletes its own client at every end of the run ([the cleanup recap](2026-11-07-deploy-check-cleanup.md)), so the clients the human saw were historical. The one way a new one could still appear was a delete that failed and only warned. This piece clears those too.
 - **The command:** `ridge clear-checks` lists the clients and deletes each whose code is a check code with a stamp more than two hours old, the rest still going after a failure, exit 1 if any failed (`scripts/src/ridge.ts`; the age comes from the code, no new field). The deletion is `untenant`'s, now one shared helper.
 - **The call:** `ops/check.sh` runs it once, after the BFF's keys are read and before the check makes its own client, inside the tunnel already open.
-- **A failed sweep still only warns.** It is an `if` condition with no `die`, so the exit 1 becomes a `WARN` line, never a red deploy. This closes item 117 (deleted from `docs/open-items.md`) without making a good deploy fail on housekeeping; the cost is that a failure is announced only in the log.
+- **A failed sweep still only warns.** It is an `if` condition with no `die`, so the exit 1 becomes a `WARN` line, never a red deploy. This closes item 117 without making a good deploy fail on housekeeping; the cost is that nothing reads the `WARN`, which item 159 now records (with a half-swept client the sweep cannot resume).
 
 ## Rejected and why
 

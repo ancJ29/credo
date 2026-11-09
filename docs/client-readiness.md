@@ -144,8 +144,8 @@ key** into a file on the operator's own machine ([`#L120`](../ops/check.sh#L120)
 for a client's stack. The file is 0600, git-ignored and removed at the run's end
 ([`ops/lib.sh#L107`](../ops/lib.sh#L107)), which is careful, and it is still the admin key of a
 client's store on a laptop. The same script makes a client and signs in through the edge on every
-run ([`#L165-L171`](../ops/check.sh#L165)), and each Bruno run leaves a service row behind
-([`#L164`](../ops/check.sh#L164)). Open items 131 and 132.
+run ([`#L174-L180`](../ops/check.sh#L174)), and each Bruno run leaves a service row behind
+([`#L173`](../ops/check.sh#L173)). Open items 131 and 132.
 
 ### Two logs record a call, both on ridge, and nothing slows a guess
 
@@ -505,9 +505,10 @@ care.**
 So **a real client's stack would carry no demo clients, no demo orders and no seeded password.** One
 thing does reach a deployment, and the other half of this page files it: the deploy check makes a
 real client in the stack it checks and deletes it on the way out
-([`ops/check.sh#L165-L171`](../ops/check.sh#L165), [open items 117 and 131](open-items.md)), so on a
+([`ops/check.sh#L174-L180`](../ops/check.sh#L174), [open items 131 and 159](open-items.md)), so on a
 client's own stack a throwaway client would be written into the client's own records on every
-deploy, and a failed delete leaves it listed behind a `WARN` nothing reads.
+deploy, and a failed delete leaves it listed behind a `WARN` nothing reads (the next deploy's
+sweep clears it once it is two hours old).
 
 ### What must be true before a real client's data goes in
 

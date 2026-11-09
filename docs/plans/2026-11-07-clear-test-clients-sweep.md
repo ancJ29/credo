@@ -27,7 +27,7 @@ fail, and an unrelated run would go red. Too long is cosmetic only.
 non-ridge **environment**, because they would land another stack's admin keys on a person's disk. The sweep does not cross
 that gate: it opens no tunnel, holds no keys of its own, and runs inside the tunnel `check.sh` already opened, only where
 the workflow already holds that environment's keys. **Its guard is `CHECK_CODE`** (`scripts/src/ridge.ts#L33`): the selector
-is the regex, so a real client's code cannot enter the sweep at all.
+is the regex, so no code an operator has typed enters the sweep (nothing reserves the `check-` shape, so a client deliberately named `check-20260101t000000z` would).
 
 ## The steps
 
