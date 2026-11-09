@@ -4,7 +4,7 @@ import { ClientApp } from './ClientApp';
 import type { DeviceStore } from './device';
 import { OperatorApp } from './OperatorApp';
 import type { Passkeys } from './passkeys';
-import type { Look } from './Providers';
+import type { Look } from './frame/Providers';
 
 type Props = {
   api: Api;

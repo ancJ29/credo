@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { BEFORE_CONFIG } from '../brand';
-import { Boot } from '../Boot';
-import { Settings } from '../Settings';
-import { Shell } from '../Shell';
-import { SignIn } from '../SignIn';
-import { UnknownClient } from '../UnknownClient';
+import { Boot } from '../frame/Boot';
+import { Settings } from '../parts/Settings';
+import { Shell } from '../frame/Shell';
+import { SignIn } from '../pages/SignIn';
+import { UnknownClient } from '../pages/client/UnknownClient';
 import { FILLED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
