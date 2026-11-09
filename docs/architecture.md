@@ -240,7 +240,8 @@ One hazard the split creates: a change set that updates the `Bff` resource can r
 ## How it is checked
 
 Four things, and a newcomer meeting the third without warning will not know what it is. The rules
-behind them are [QA](conventions/qa.md); this is only what each *is*.
+behind them are [QA](conventions/qa.md) and the whole list of gate commands is
+[`CLAUDE.md`](../CLAUDE.md#the-gate); this is only what each *is*.
 
 1. **The gate.** `pnpm check` is one command with five steps — typecheck, ESLint, Prettier,
    every package's tests at 100 % statement coverage, and knip for unused code

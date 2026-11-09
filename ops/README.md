@@ -463,7 +463,7 @@ the real c-storage, built there, so Go must be installed. The guards also need R
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
 
-1. `shellcheck -x ops/*.sh`
+1. `shellcheck -x ops/*.sh walk/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,

@@ -1072,3 +1072,126 @@ Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-rea
 ## 159. A failed sweep or a failed check-client delete is announced only by a `WARN` nothing reads, and a half-swept client cannot be resumed — the machine; `[DEFERRED]` (clear-test-clients-sweep, review of line 77.1, 2026-11-09, Low)
 
 Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.github/workflows/*.yml` reads `WARN`: the two echo lines (`ops/check.sh#L169` for the sweep, `#L44` for the check's own delete) are the whole announcement. Second shape, pre-existing in `untenant`: `deleteClient` removes the client's index before its records (`bff/src/clients.ts#L148-L152`), so a delete that stops midway leaves the client out of `listClients` and no later sweep can resume it. Unreachable today (a check client holds 3 records against `DELETE_BOUND = 200`). Third: nothing reserves the `check-<stamp>` code shape (`shared/src/records.ts#L77` admits it), so a client typed with such a code and an old stamp would be swept. *Trigger:* a `check-…` client surviving two deploys; then make the workflow surface `WARN`, and for the other two a reservation or a resumable delete as a piece of their own.
+## 160. The convention's rules that a check should hold instead of prose — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+[The code convention](conventions/code.md) states these rules in prose, which holds them only while
+someone reads the diff. Each row below is its own small piece, and the review's model for all of
+them is `c-storage/internal/server/server.go#L51-L54`, where the function that registers a route
+appends its pattern to the list a test reads (`server_test.go#L106`).
+
+| The rule it would hold | The check |
+| --- | --- |
+| no screen imports the API client; nothing in `bff/src` calls `fetch` | an eslint import-boundary rule (`no-restricted-imports` on `./api` outside `ui/src/api.ts` and the two app shells) in `eslint.config.js`, which today is 35 lines with one configured rule |
+| every `CREDO_*` name comes from one declaration | export the eleven names at `scripts/src/cli.ts#L132-L141` from `shared/` and import them in the twelve `walk/specs/*.spec.ts` and `walk/run.sh`, so a dropped name is a compile error rather than an `undefined` |
+| the three screen widths are declared once | one exported set in `shared/`, replacing `visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`, `ui/src/mock/Frame.tsx#L8` — and retiring the regex in `visual/src/walks.test.ts` that reads one of them as source text |
+| the retry bound is one number | one export imported by `bff/src/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
+| the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/staff.ts` and `bff/src/orders.ts` (single closures of 629 and 453 lines) |
+| the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 161 is the two it misses today) |
+| one `refuse()` and one log opener, one shebang | two greps in `ops/test.sh`: `ops/lib.sh#L75`'s opener used by all seventeen scripts, and `#!/usr/bin/env bash` on each — four scripts the human runs by hand pin `#!/bin/bash` (bash 3.2) and define `refuse()` separately, one of them already using newer-bash arrays |
+| no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
+| a walk has one identity | `walk/playwright.config.ts#L30-L96` derives its projects from the table at `walk/run.sh#L45-L57`, or one test fails when the two disagree |
+
+## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+`c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `c-storage/scripts/e2e.sh` (the
+end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
+(`.github/workflows/ci.yml#L197`, glob `ops/*.sh walk/*.sh`), outside lint and outside the
+formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Worse, `cover.sh#L29`
+and `#L37` carry suppression comments written for a checker that never reads them, telling the next
+reader the opposite of the truth. The small Node file that proves a request run actually asserted
+something (`c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
+`c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
+correct the two comments. *Trigger:* none needed; it is one line and a read.
+
+## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+
+Recorded so the next session sizes them right, not as work to start. `ops/test.sh`: 2,771 lines, 95
+functions, 42 sections, every section sharing one temp directory and one failure flag, with no way
+to run one — the cheap half is an optional section name that skips the rest, which splits nothing.
+`ui/src/fake.ts`: 1,466 lines, 201 branches, a second implementation of the server's behaviour used
+by the fake build, the walks page and 25 test files; its existence is a stated decision, its being
+one undivided file is not, and the `const fake: Api` binding would keep a split by feature honest.
+`ui/src/PersonPage.tsx`: 732 lines, five components, 25 pieces of state, with one 302-line form
+taking 21 props — the file split is separable from the 21-prop boundary, which should wait for the
+record-page shell. `scripts/src/ridge.ts#L51`: 155 lines, 40 branch points, seven unrelated commands
+in one `try` whose shared catch turns a new failure into exit 1. `visual/site/page.ts`: 811 lines in
+one bare block with no seam, driven through the DOM by a 971-line test. `visual/src/walks.ts`: 1,813
+lines of screen data, where only navigation costs anything. `ops/lib.sh`: 896 lines of small
+functions with no section markers. **Not a fault:** `ui/src/api.ts` at 829 lines is a flat list of
+independent calls, and its one-place property is worth more than its length.
+
+## 163. The two compiler flags governing index and optional access are off — the machine; *parked* until it is a piece of its own (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`tsconfig.base.json#L14` sets `strict: true` and neither `noUncheckedIndexedAccess` nor
+`exactOptionalPropertyTypes`; across 372 TypeScript files the escape hatches are essentially unused
+(no `@ts-expect-error`, no `@ts-ignore`, no `any` annotation, three `eslint-disable` lines each with
+its reason), so the gate is strong where it is configured. Turning either flag on is a repo-wide
+piece. *Trigger:* a defect that either flag would have caught, or a quiet week.
+
+## 164. Go has `gofmt` and `go vet` and no linter — the machine; *parked* until a second internal package (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`c-storage`'s gate is `make check`: `gofmt -l`, `go vet ./...`, the race tests at 100 % through
+`scripts/cover.sh`, and the box's cross-compile. Over 16 Go files that is proportionate; a linter
+earns its place at a second internal package. *Trigger:* the second internal package.
+
+## 165. The orders page discards the weeks it already read — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`ui/src/OrdersPage.tsx#L14` makes one call per week and `weeks` is state (`#L28`), so "7 more days"
+refetches the weeks already on screen. It is the one file the data-and-cache reading names as worth
+fixing, and the one place where accumulation, not volume, bites first — orders is already paged a
+week at a time. *Fix:* keep the weeks already read and ask only for the new one, inside `readWeeks`
+and the `weeks` state. Not a cache: it is the trigger that would otherwise argue for one
+([the code convention](conventions/code.md#server-data-and-client-state)).
+
+## 166. Which of the 148 flat UI files belongs to which app is readable only by opening the two app files — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+28 screens mount in one app, 18 in the other, four in common, and the layout says none of it. A
+reader told to add a screen cannot tell where it goes or what it may reuse, and a change meant for
+one app can land in a file the other mounts. No convention states the flat layout, so nothing is
+being contradicted. *Fix:* three directories, `client/`, `operator/`, `common/`, moves only — the one
+structural change every piece in the coming weeks would feel. *Trigger:* before the next several
+screens, since the move gets dearer with each one.
+
+## 167. Where a test goes is unstated, and two tests live in the wrong package — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+`visual/src/import-file.test.ts` tests code that lives in the UI, under Node, so whoever changes
+that UI file runs the UI's own tests green and hears nothing: a move and one import.
+`visual/src/walks.test.ts` makes 15 assertions over the *source text* of twelve `walk/` files, one a
+whitespace-exact regex over a function body, so a reformat in `walk/` reddens another package — the
+two that are really rules about the walk (no screenshot comparator, the raster flag) move into
+`walk/`, and the whitespace regex waits for a check on behaviour. And nothing says which test covers
+what: in the UI 12 test files have no same-named source and 40 sources have no same-named test,
+including the five largest screens; in the tooling 17 sources have no same-named test,
+`scripts/src/cli.ts` among them. The 100 % gate means the cases exist, nothing says where. *Fix:*
+the two moves, and one line in each grouping test naming what it covers; any renaming is parked.
+
+## 168. `knip.json` does not set `includeEntryExports`, so unused exports in 26 entry files are invisible to the gate — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`knip.json` is 12 lines, and the six packages declare 26 entry files between them — the
+widest-surface files in the repo. The legacy project's own rule, which this base has never written,
+is that unconsumed code is dead code and how hard liveness is to prove depends on where the caller
+lives, with the warning that an unused-export checker cannot answer route reachability because a
+test is a reference. *Fix:* set the option, run it once and read what it prints; that run settles
+whether this is theoretical. *Trigger:* none needed.
+
+## 169. Four structural duplications named for the record, each needing a designed signature rather than a move — the machine; *parked* until one is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+
+A walk's opening is hand-written in eleven specs, whose per-spec differences need a designed
+signature, not a copy (the two pure helpers it also found, `exactly()` in eight specs and
+`unfocus()` in five, are byte-identical and a move each). A page is split from its form three
+different ways. Route paths have three homes in `shared` (`wire.ts`, `signins.ts`, `import.ts`).
+And every screen's flow is described twice — declaratively in `visual/src/walks.ts`, imperatively in
+its spec — with only the screen *names* held in agreement, so a step added to one and not the other
+leaves both green while the two draw different states. Four derivations of the repository root and
+its logs folder also cannot share a shell helper and stay as they are (`walk/run.sh#L70`,
+`c-storage/scripts/e2e.sh#L38`, `visual/src/home.ts#L48`, `scripts/src/demo-files-main.ts#L6`).
+*Trigger:* the next change to any one of them.
+
+## 170. None of the 121 Markdown files is formatted or checked, and there is no commit hook — the machine; *parked*, and both may be deliberate (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`.prettierignore` excludes `*.md`, so `prettier --check` on a Markdown file inspects nothing, and
+every "prettier passed" receipt on a docs-only change here has read no Markdown. The repository has
+no `core.hooksPath`, no `.githooks` and no hook package, and the stated convention is that the local
+gate and CI are the checks. Both are recorded because a receipt naming a check that cannot fail is a
+shape this project keeps paying for, not because either is a defect. *Trigger:* the first Markdown
+defect a formatter would have caught.
