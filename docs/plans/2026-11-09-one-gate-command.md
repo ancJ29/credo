@@ -116,10 +116,11 @@ which is every branch running this gate.
       12. *Done when:* with `.gate-lock` present the run logs its wait and the owner; after a
       forced red the lock is gone; `CI=1` logs the skip.
       *Evidence:* held lock waits with its owner and gives up leaving it (GATE_LOCK scratch, GATE_WAIT_MAX); forced prettier red logs/2026-11-09-101222-gate-shared.log: taken 10:12:22, released 10:12:50, free at the end, `.gate-lock` absent; `CI=1` logs/2026-11-09-101250-gate-shared.log: skip line, no lock. Nesting: GATE_HOLDER equal to the owner pid skips the take, a stale one waits. Unreadable load refuses.
-- [ ] **4. The seven `check` scripts; the root's chain goes, 8 min.** Six packages call
+- [x] **4. The seven `check` scripts; the root's chain goes, 8 min.** Six packages call
       `bash ../ops/gate.sh <pkg>`; the root calls it with every package. *Done when:*
       `pnpm --filter @credo/shared check` ends `== exit 0`; `git grep -c '"check":' -- '*/package.json'`
       counts 6; the root's `check` holds no `&&`.
+      *Evidence:* logs/2026-11-09-110758-gate-shared.log via `pnpm --filter @credo/shared check`, `== exit 0`; six files hold `"check":`; root check is `bash ops/gate.sh`. Surprise: with prettier no longer named in a script, knip reported it an unused devDependency (logs/2026-11-09-110651-gate-shared.log, `== exit 1`); `knip.json` now lists it in the root workspace's `ignoreDependencies`. A real nested gate (logs/2026-11-09-110831-gate-shared.log) logged `not taken, held by the calling gate` and left the outer lock.
 - [ ] **5. The cases in `ops/test.sh`, the five forced reds by stand-in, 17 min.** Each case red
       once ([QA](../conventions/qa.md) rule 2), the five positions driven by a PATH stand-in that
       exits 1. *Done when:* `bash ops/test.sh` prints 0 `FAIL`, each of the 13 cases has been seen
