@@ -66,14 +66,20 @@ bind as written there.
   backup, never as a file ([why](../docs/memo/c-storage.md#the-file-is-the-only-copy)).
 - **Tests bind loopback ports** (`internal/lifecycle`'s, on real sockets). In the sandbox: `GOCACHE` under `$TMPDIR`, `GOPROXY=off GOFLAGS=-mod=mod`; `/usr/bin/make` may print
   `couldn't create cache file … xcrun_db` and run anyway.
-- **`make check` never runs the Bruno collection; the CI `e2e` job does, through `scripts/e2e.sh`.**
-  A changed route or answer updates its request in `bruno/` in the same commit; `bash scripts/e2e.sh`
-  from here is the check. `make check` holds that every route has a request and
-  every request a tests script (`internal/server/collection_test.go`). `e2e.sh` holds that every
-  file ran and asserted, the report no key, and the entry point's three outcomes, why
-  `cover.sh` leaves `cmd/server` out. See the [README](README.md).
-- **The Bruno collection and the e2e job are the human's call,** asked for on 10-27 as the QA proof.
-  Nobody deletes them as unconsumed.
+- **`make check` never runs the Bruno collection; the `e2e` job in CI does, through
+  `scripts/e2e.sh`.** A route or answer that changes updates its request in `bruno/` in the same
+  commit, and `bash scripts/e2e.sh` from here is the check (needs Bruno CLI 4.2.0). `make check`
+  does hold that every route has a request outside `03-the-boundary`, none reaches a route the
+  service lacks, and every request has a tests script, because `bru` exits 0 for a request that
+  asserts nothing (`internal/server/collection_test.go`). `e2e.sh` also holds that every request
+  file ran, passed and asserted (`bru` exits 0 for a file it cannot parse), that the HTML report
+  carries no key, and the entry point's three outcomes (a bad configuration exits 1, a port
+  already taken exits 1, SIGTERM exits 0), which is why `scripts/cover.sh` leaves `cmd/server` out
+  as `elsewhere`. See the [README](README.md).
+- **The Bruno collection and the e2e job are the human's call,** not a request that fell out of
+  "nothing enters unless called": on 10-27 he asked for a collection ("bruno is simple and help
+  human a lot when need debug"), then for c-storage verified end to end in GitHub Actions, as the
+  QA proof of how a service is delivered with confidence. Nobody deletes them as unconsumed.
 
 ## Where the rest is
 
