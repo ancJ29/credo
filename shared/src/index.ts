@@ -1,5 +1,6 @@
 export * from './c-storage';
 export * from './config';
+export * from './env';
 export * from './extra';
 export * from './fields';
 export * from './hash';

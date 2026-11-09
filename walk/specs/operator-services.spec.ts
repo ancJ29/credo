@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DEMO_SERVICES } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
@@ -112,7 +112,7 @@ const SERVICES = '**/api/operator/services*';
 async function walkFull(page: Page, language: Language, width: number) {
   const picture = (screen: string) => shot(page, screen, language, width);
   const words = DICTIONARIES[language];
-  const handle = required('CREDO_OPERATOR_HANDLE');
+  const handle = required(STACK_ENV.CREDO_OPERATOR_HANDLE);
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const service = (name: string) => page.getByLabel(name, { exact: true });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();

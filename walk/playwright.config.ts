@@ -1,3 +1,4 @@
+import { STACK_ENV } from '@credo/shared';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -21,7 +22,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env['CREDO_URL'],
+    baseURL: process.env[STACK_ENV.CREDO_URL],
     colorScheme: 'light',
     ...devices['Desktop Chrome'],
     viewport: { width: 1280, height: 800 },

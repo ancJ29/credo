@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DEMO_CLIENTS } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
@@ -49,7 +49,7 @@ async function open(page: Page, language: Language, { cue }: { cue?: string } = 
       localStorage.setItem('credo.language', chosen);
       localStorage.setItem('credo.operator', kept);
     },
-    [language, required('CREDO_OPERATOR_HANDLE')],
+    [language, required(STACK_ENV.CREDO_OPERATOR_HANDLE)],
   );
   if (cue) {
     await page.route(`**/api/operator/clients/${CODE}`, (route) =>
@@ -77,7 +77,9 @@ async function walk(page: Page, language: Language, width: number) {
   const authenticator = FULL() ? await virtualAuthenticator(page) : null;
   if (authenticator) {
     await authenticator.hold(
-      JSON.parse(required('CREDO_OPERATOR_PASSKEY')) as Parameters<typeof authenticator.hold>[0],
+      JSON.parse(required(STACK_ENV.CREDO_OPERATOR_PASSKEY)) as Parameters<
+        typeof authenticator.hold
+      >[0],
     );
   }
 
