@@ -1,0 +1,40 @@
+info:
+  name: /health answers only status and buildVersion
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{keyedUrl}}/health"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200 without a key, on the keyed listener", function() {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("two fields, and no more", function() {
+          expect(Object.keys(res.getBody()).sort()).to.deep.equal(["buildVersion", "status"]);
+          expect(res.getBody().status).to.equal("OK");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  **Expected: 200 `{ status: "OK", buildVersion }`**, here and on
+  `{{openUrl}}/health`, without a key.
+
+  It is the one unauthenticated answer on the keyed listener, and it says two
+  things: an unauthenticated body is where an environment leaks. `buildVersion`
+  is the commit the binary was built from, which `opus/ops/verify` compares
+  with what it shipped.
+
+  `/healthz`, `/version` and `/status` stay what any unknown path is: 401
+  without the listener's credential, on either one.

@@ -1,0 +1,53 @@
+info:
+  name: A keyed route refuses a missing key (401)
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{keyedUrl}}/api/activities"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "activities": [
+          { "clientId": "{{clientId}}", "actorId": "{{actorId}}", "action": "smoke.write" }
+        ]
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401 — writes still have a credential", function() {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+        test("the 401 body names neither the key nor the header", function() {
+          // Which of the key, the header name, or the format was wrong is precisely
+          // what a prober wants to learn.
+          const body = JSON.stringify(res.getBody() ?? "").toLowerCase();
+          expect(body).to.not.include("key");
+          expect(body).to.not.include("x-internal-access-key");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The same write as `01-activities/01`, with the key header removed.
+  **Expected: 401.**
+
+  The key guards the writer and the mint; a read token guards the reads (05,
+  06) and opens neither of these.
+
+  The key is compared in constant time, and a listener cannot be turned into an
+  open one by losing its key: `config.Load` refuses to boot without it, and
+  `auth.New` panics on an empty string.

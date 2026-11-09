@@ -1,0 +1,7 @@
+*.json
+*.bru
+!*.bru.example
+*.yml
+!*.yml.example
+# Loopback development keys, the same as scripts/dev-up.sh: not secrets.
+!local.yml

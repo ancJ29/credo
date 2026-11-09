@@ -1,0 +1,95 @@
+info:
+  name: Log Activities
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{keyedUrl}}/api/activities"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{writeKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "activities": [
+          {
+            "clientId": "{{clientId}}",
+            "actorId": "{{actorId}}",
+            "action": "employee.update",
+            "targetId": "{{targetId}}",
+            "memo": { "field": "name", "oldValue": "Alice", "newValue": "Alice B." }
+          },
+          {
+            "clientId": "{{clientId}}",
+            "actorId": "{{actorId}}",
+            "action": "employee.toggleStatus",
+            "memo": { "isActive": false }
+          }
+        ]
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("201", function() {
+          expect(res.getStatus()).to.equal(201);
+        });
+
+        test("one id per accepted entry", function() {
+          const ids = res.getBody().ids;
+          expect(ids).to.be.an('array');
+          expect(ids.length).to.equal(2);
+        });
+
+        test("never returns an id it did not write", function() {
+          // A caller treats a returned id as proof of durability, and the write path
+          // answers only after the commit — so an empty or duplicated id is not
+          // cosmetic.
+          const ids = res.getBody().ids;
+          ids.forEach((id) => expect(id).to.be.a('string').and.not.empty);
+          expect(new Set(ids).size).to.equal(ids.length);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Append a batch. **Keyed URL with `{{writeKey}}`**, like the mint: neither is
+  ever reachable from a browser.
+
+  **It writes** two rows into the log it reaches, kept 180 days. Against a
+  live env, `clientId` names a tenant no real feed reads.
+
+  **Body** — one JSON object; anything after it but whitespace is a 400, and a
+  body over 8 MiB a 413.
+
+  - `activities` — 1 to 1000 entries. An empty array is a 400.
+  - `clientId` — tenant, **required**. Leads every index, which is what makes a
+    query structurally unable to cross tenants.
+  - `actorId` — who acted, **required**.
+  - `action` — `{module}.{verb}`, **required**.
+  - `targetId` — optional. Present ⇒ the entry also appears in `by-target`. The
+    second entry omits it on purpose, so you can see it in `by-actor` and *not*
+    in `by-target`.
+  - `memo` — a JSON object; absent or `null` reads back `{}`, anything else is a
+    400. Stored re-encoded: keys sorted, numbers as doubles, so an integer past
+    2^53 reads back rounded. Never logged: memos carry business data.
+  - `timestamp` — RFC 3339 with an offset, as `2026-10-04T09:15:00+07:00`; a
+    date alone or no offset is a 400. Absent, it is receipt time. Reads back as
+    `createdAt`, UTC to the millisecond. Feeds display and retention only,
+    never ordering.
+
+  **Returns** `201 { ids: string[] }`, one id per entry.
+
+  **A request commits whole or not at all**, so a 201 names every entry. A
+  caller left without one retries the batch whole: a duplicate is visible, where
+  a gap is not.

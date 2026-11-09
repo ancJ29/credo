@@ -1,0 +1,37 @@
+info:
+  name: A wrong verb on a real route is 404, not 405
+  type: http
+  seq: 4
+
+http:
+  method: PUT
+  url: "{{openUrl}}/api/activities/by-actor/{{actorId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{readToken}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("404 — this service answers no 405, anywhere", function() {
+          expect(res.getStatus()).to.equal(404);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  `PUT`, with the token, against a path this listener really does serve, for
+  `GET`. **Expected: 404.**
+
+  A read token sits in every browser of the client's staff, so a 405 here is a
+  fact about the service handed to people the key is kept from: "this path
+  exists". The cost is priced
+  and accepted: a caller who sends the wrong verb sees a 404. The catch-all
+  that produces it also suppresses net/http's own 405, so this is uniform.
+  `TestThisServiceNeverAnswers405` keeps it a decision.

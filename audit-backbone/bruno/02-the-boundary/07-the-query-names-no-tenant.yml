@@ -1,0 +1,45 @@
+info:
+  name: A clientId in the query names no tenant
+  type: http
+  seq: 7
+
+http:
+  method: GET
+  url: "{{openUrl}}/api/activities/by-actor/{{actorId}}?clientId=another-tenant"
+  headers:
+    - name: Authorization
+      value: "Bearer {{readToken}}"
+  params:
+    - name: clientId
+      value: another-tenant
+      type: query
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200, the token's tenant's entries", function() {
+          expect(res.getStatus()).to.equal(200);
+          expect(res.getBody().activities).to.not.be.empty;
+        });
+
+        test("none of the tenant the query names", function() {
+          res.getBody().activities.forEach((a) => {
+            expect(a.clientId).to.equal(bru.getEnvVar("clientId"));
+          });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  The token from *Mint a Read Token*, with `?clientId=another-tenant`.
+  **Expected: 200 with the token's tenant's entries alone.**
+
+  The feeds read the tenant the token was minted for and nothing else, so a
+  browser holding one tenant's token reads no other tenant's log, whatever URL
+  it builds.
