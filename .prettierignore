@@ -3,6 +3,7 @@ pnpm-lock.yaml
 *.md
 # A Go project with its own face and gate (its CLAUDE.md line 2).
 c-storage/
+audit-backbone/
 node_modules/
 dist/
 coverage/
