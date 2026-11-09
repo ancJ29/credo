@@ -53,6 +53,10 @@ const codeOf = (text: string) =>
     .filter((row) => !/^\s*(\*|\/\/|\/\*)/.test(row))
     .join('\n');
 const isTest = (path: string) => /\.test\.tsx?$/.test(path);
+/** Every `.tsx` under ui/src at any depth except the standalone harness in mock/, which stays outside the screens' scope as it was when the package was flat. */
+const UI_SCREENS = /^ui\/src\/(?!mock\/).+\.tsx$/;
+/** An import of the API module from wherever a file now stands: `./api`, `../api`, `../../api`. */
+const UI_API = /from '(\.\.?\/)+api'/;
 const ui = (names: string) => names.split(' ').map((name) => `ui/src/${name}.tsx`);
 
 export const RULES: Rules = {
@@ -73,7 +77,9 @@ export const RULES: Rules = {
     {
       name: 'what a 403 means',
       home: { file: 'ui/src/page.ts', name: 'isForbidden' },
-      sites: ui('AddCustomerPage CustomerPage ProductPage PersonPage SettingsPage'),
+      sites: ui(
+        'pages/client/AddCustomerPage pages/client/CustomerPage pages/client/ProductPage pages/client/PersonPage pages/client/SettingsPage',
+      ),
       copy: /status === 403/,
     },
     {
@@ -96,18 +102,18 @@ export const RULES: Rules = {
   ],
   forms: {
     files: ui(
-      'AddOperatorPage AddPersonPage CustomerPage DeleteClientPage NewClient OrderParts PersonPage OwnPasswordPage ProductPage RootPasswordPage Settings SignIn SignInPanels',
+      'pages/operator/AddOperatorPage pages/client/AddPersonPage pages/client/CustomerPage pages/operator/DeleteClientPage parts/NewClient parts/OrderParts pages/client/PersonPage pages/client/OwnPasswordPage pages/client/ProductPage pages/operator/RootPasswordPage parts/Settings pages/SignIn parts/SignInPanels',
     ),
     fieldError: /\berror=\{/,
     marker: /<form\b|component="form"/,
-    where: /^ui\/src\/[^/]+\.tsx$/,
+    where: UI_SCREENS,
   },
   storage: {
     client: { file: 'shared/src/c-storage.ts', type: 'CStorageClient' },
     where: /^bff\/src\/[^/]+\.ts$/,
     registration: /^\s*\w+\.(get|put|post|delete|patch)\(/m,
   },
-  screens: { where: /^ui\/src\/[^/]+\.tsx$/, direct: /from '\.\/api'/ },
+  screens: { where: UI_SCREENS, direct: UI_API },
   errors: {
     where: /^bff\/src\/[^/]+\.ts$/,
     registration: /^\s*\w+\.(get|put|post|delete|patch)\(/,
@@ -248,7 +254,7 @@ function countScreens(io: Io, tracked: string[], rules: Rules): Count {
     what: 'screens take what they need without importing the API module',
     notes: [`importing it: ${direct.length}`],
     blind:
-      "scope is the non-test `.tsx` files directly in ui/src, the app shells and the entry included; the `.tsx` files in ui/src/mock are not in it. Importing `./api` is not importing the client: `ApiError`, `hopOf` and the result types come from it too, and many of the importing files take only the `Api` type or only an error class, which by the rule's own words is not the breach it is about (only the entry builds the client with `createApi`), so the honest reading of this count is much closer to compliant than the number looks.",
+      "scope is the non-test `.tsx` files in ui/src at any depth, the app shells and the entry included; the `.tsx` files in ui/src/mock are not in it. Importing the api module (`./api`, `../api` or `../../api`) is not importing the client: `ApiError`, `hopOf` and the result types come from it too, and many of the importing files take only the `Api` type or only an error class, which by the rule's own words is not the breach it is about (only the entry builds the client with `createApi`), so the honest reading of this count is much closer to compliant than the number looks.",
   };
 }
 
