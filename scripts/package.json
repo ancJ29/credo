@@ -13,6 +13,7 @@
     "stack": "node --import tsx src/main.ts",
     "demo": "node --import tsx src/demo-main.ts",
     "demo-files": "node --import tsx src/demo-files-main.ts",
+    "counts": "node --import tsx src/counts-main.ts",
     "fake": "node --import tsx src/fake-main.ts",
     "walks": "node --import tsx src/walks-main.ts"
   },

@@ -13,7 +13,8 @@
     "stack": "pnpm --filter @credo/scripts run stack",
     "demo": "pnpm --filter @credo/scripts run demo",
     "demo-files": "pnpm --filter @credo/scripts run demo-files",
-    "fake": "pnpm --filter @credo/scripts run fake"
+    "fake": "pnpm --filter @credo/scripts run fake",
+    "counts": "pnpm --filter @credo/scripts run counts"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

@@ -23,7 +23,7 @@ The machine's own commands: bringing the product up on this Mac, and the steps a
 - **SC5. Exit 0 done, 1 a failure, 2 refused before anything was acted on or a call that cannot be read,** stated once in the dispatch's doc comment (`runRidge`, `walksCommand`). It is the 2 every `ops/` script uses. `runRidge` exits 1 on an unknown verb: the one slip, and the next file exits 2.
 - **SC6. A verb command keeps one `USAGE` constant naming every verb,** printed for a verb it does not know.
 - **SC7. A new entry is reachable:** a `package.json` script `scripts.<name>` running `node --import tsx src/<name>-main.ts`, or, when only a shell script calls it, a line in `knip.json`'s `workspaces.scripts.entry`.
-- **SC8. A new entry is excluded from coverage** in `vitest.config.ts`'s `coverage.exclude`, with an `elsewhere:` comment naming the test that runs its function in this process. All six entries are.
+- **SC8. A new entry is excluded from coverage** in `vitest.config.ts`'s `coverage.exclude`, with an `elsewhere:` comment naming the test that runs its function in this process. All seven entries are.
 
 ## Non-obvious facts
 

@@ -17,7 +17,7 @@
 > data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
 > in `git log`.
 > **Last amended** 2026-11-09, from the guideline skeleton (piece 98): the sixteen rules given stable ids,
-> and the citations made to name a symbol where piece 97 moved the code.
+> the citations made to name a symbol, and the typed-in counts replaced by the command that makes them.
 
 ## At a glance
 
@@ -59,7 +59,9 @@ Sixteen rules stand in the sections below, and the glance table above is a view 
 same way. **Each carries an id, `C1` to `C16`, in the order the sections hold them, minted once and
 never renumbered or reused**, the discipline [`open-items.md`](../open-items.md) keeps for its items:
 a table that reports on the rules is read against the ids, and a rule that is retired leaves its id
-unused. **One of the sixteen is held by a check**: the registration function that appends a
+unused. **How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
+typed into this file:** it prints each count with its blind spot beside it, never reds, and ends with
+the table of the living documents' citations. **One of the sixteen is held by a check**: the registration function that appends a
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), and it was written before the review. It is named twice below —
 as the rule [one home](#one-home-for-one-decision) states and as the shape [the patterns to
@@ -184,17 +186,17 @@ user surprise or confuse", and two behaviours in one app is itself the surprise.
 `[next copy · reader]`: each is the minority shape today, and nothing goes red when the other is
 written again.
 
-| The job | The one way | Copy | What the 2026-11-08 review counted |
+| The job | The one way | Copy | How much of the code follows it, and what the 2026-11-08 review found |
 | --- | --- | --- | --- |
-| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | 6 of 13 forms draw a field error, 3 use a `tried` flag, 10 use a guard clause and one alert (`ui/src/OwnPasswordPage.tsx#L26-L52`) |
-| C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts`'s `readEmployee` | 34 of 98 calls, against 64 inline in `staff.ts`, `orders.ts`, `lists.ts`, `reconciliations.ts` |
-| C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | 24 of 62 screens import it directly, 38 take what they need; re-counted 2026-11-09, still 24 of 62 |
+| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/OwnPasswordPage.tsx`'s `change`) |
+| C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts`'s `readEmployee` | `pnpm counts` (C5: the calls made in a file that registers routes, against those made in a module) |
+| C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | `pnpm counts` (C6) |
 | C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
 | C8 · a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 
 **C9 · A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
-storage** (`bff/src/staff.ts`'s `app.put(employeeRoutes.one(':id')`). `[holds · reader]` *Why:* all 63 route registrations keep it
-and nothing holds them to it, so a route that parses before it authorises passes every check in the
+storage** (`bff/src/staff.ts`'s `app.put(employeeRoutes.one(':id')`). `[holds · reader]` *Why:* every route registration keeps it
+(`pnpm counts` counts them under C7) and nothing holds them to it, so a route that parses before it authorises passes every check in the
 repo.
 
 **C10 · The next route added to `bff/src/staff.ts` or `bff/src/orders.ts` goes in its own module**, as the
