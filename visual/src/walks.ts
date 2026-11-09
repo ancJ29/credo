@@ -44,11 +44,12 @@ export type Step =
   /** Puts one of the data set's files (the staff's, the customers' or the products') in the file
    * field with these words, as a person's choosing it does. */
   | { attach: string; file: DemoFile }
-  /** Waits until the page shows a heading or a table cell that reads so, and does nothing to it:
-   * the screen's last step when it is about what the page draws after a press, which the page is
-   * not yet still enough to have drawn on a loaded machine. `text` says the words are the cell's
-   * own (a name from the data), not a key of the dictionary. */
-  | { see: string; text?: true };
+  /** Waits until the page shows a heading, an alert or a table cell that reads so, and does
+   * nothing to it: the screen's last step when it is about what the page draws after a press or a
+   * load, which the page is not yet still enough to have drawn on a loaded machine. `text` says
+   * the words are the cell's own (a name from the data), not a key of the dictionary; `with` fills
+   * a word's `{{name}}`. */
+  | { see: string; text?: true; with?: Record<string, string> };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
@@ -157,6 +158,7 @@ const ROOT_TYPED: Step[] = [
 /** A client's delete page: the data set's second client, whose code the walk types and deletes. */
 const DELETE_CLIENT_CODE = 'hoa-sen';
 const DELETE_CLIENT_PATH = `/operator/clients/${DELETE_CLIENT_CODE}/delete`;
+const DELETE_CLIENT_NAME = 'Hoa Sen';
 const DELETE_CODE: Step = { fill: 'operator.deleteClientCodeLabel', text: DELETE_CLIENT_CODE };
 
 /** The add-operator form's name, typed as the operator types it. */
@@ -2076,7 +2078,11 @@ export const WALKS: Walk[] = [
         id: 'dc-1-page',
         number: 1,
         path: 'main',
-        scene: { path: DELETE_CLIENT_PATH, operator: true },
+        scene: {
+          path: DELETE_CLIENT_PATH,
+          operator: true,
+          steps: [{ see: 'operator.deleteClientTitle', with: { name: DELETE_CLIENT_NAME } }],
+        },
         sentence: {
           en: 'The delete page before anything is pressed: the company, what goes and cannot come back, the code to type, the red button',
           vi: 'Trang xóa trước khi bấm gì: tên công ty, những gì sẽ mất và không thể khôi phục, mã cần nhập, nút đỏ',
@@ -2094,6 +2100,7 @@ export const WALKS: Walk[] = [
           steps: [
             { fill: 'operator.deleteClientCodeLabel', text: 'binh-an' },
             { press: 'operator.deleteClientMake' },
+            { see: 'operator.rootCodeWrong' },
           ],
         },
         sentence: {
@@ -2110,7 +2117,11 @@ export const WALKS: Walk[] = [
           path: DELETE_CLIENT_PATH,
           operator: true,
           cue: 'deleteClient:503',
-          steps: [DELETE_CODE, { press: 'operator.deleteClientMake' }],
+          steps: [
+            DELETE_CODE,
+            { press: 'operator.deleteClientMake' },
+            { see: 'operator.deleteClientFailed' },
+          ],
         },
         sentence: {
           en: 'The service failed: the client may not be fully deleted, look at the list and press again',

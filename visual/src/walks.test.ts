@@ -555,6 +555,14 @@ describe('the walks', () => {
       .flatMap(keys);
 
     expect(used.length).toBeGreaterThan(25);
+    // a 'see' step carrying `text` is a cell's own words: one shaped like a dictionary key
+    // (`nav.clients`) is a key given the flag by mistake, and escapes the check below
+    for (const step of WALKS.flatMap((walk) => walk.screens).flatMap(
+      (screen) => screen.scene?.steps ?? [],
+    )) {
+      if ('see' in step && step.text)
+        expect(step.see, step.see).not.toMatch(/^[a-z]+(\.[a-zA-Z]+)+$/);
+    }
     for (const key of used) {
       expect(typeof words('en', key), key).toBe('string');
       expect(typeof words('vi', key), key).toBe('string');
