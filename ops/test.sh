@@ -21,6 +21,7 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 fail=0
+BASE_PATH=$PATH # before the stand-ins below put their folders in front: the gate cases want the real tools
 check() { # name wanted got
   if [ "$2" = "$3" ]; then echo "  ok   $1"; else echo "  FAIL $1: wanted '$2', got '$3'"; fail=1; fi
 }
@@ -2776,6 +2777,170 @@ check "  and an asked screen that is in no walk is said, not left to a diff" 1 "
 check "  and the run still ends green on its counts, exit 0" 0 "$FR_RC"
 fr --moved s1,s2
 check "with nothing seen, the verdict says none for each" 1 "$(grep -c '^== verdict: green: .*moved none, new none, named but not moved none' "$FRW/out" || true)"
+
+# ---- ops/gate.sh (docs/plans/2026-11-09-one-gate-command.md, cases 1 to 13 and the three that step 2 to 4 added)
+# pnpm and uptime are stand-ins on PATH: pnpm logs its arguments to GATE_CALLS and exits 1 when they hold GATE_FAIL,
+# uptime prints a file. The gate's lock, log folder and polling are the overrides its own header names, so no run
+# touches the real .gate-lock or logs/, and none waits more than a couple of seconds.
+echo "== ops/gate.sh (the five steps, the lock, the skips)"
+GW=$WORK/gate
+mkdir -p "$GW/bin"
+cat >"$GW/bin/pnpm" <<'STUB'
+#!/bin/sh
+echo "$*" >>"$GATE_CALLS"
+[ -z "${GATE_SLOW:-}" ] || sleep "$GATE_SLOW"
+if [ -n "${GATE_FAIL:-}" ]; then
+  case "$*" in *"$GATE_FAIL"*) exit 1 ;; esac
+fi
+exit 0
+STUB
+cat >"$GW/bin/uptime" <<'STUB'
+#!/bin/sh
+cat "$GATE_UPTIME_FILE"
+STUB
+chmod +x "$GW/bin/pnpm" "$GW/bin/uptime"
+echo "14:00  up 1 day,  2:00, 3 users,  load averages: 1.00 1.00 1.00" >"$GW/load-ok"
+echo "14:00  up 1 day,  2:00, 3 users,  load averages: 9.50 9.00 9.00" >"$GW/load-high"
+echo "garbage" >"$GW/load-bad"
+GN=0 GRC=0 GOUT='' GLOG='' GCALLS=''
+# gate_run [VAR=value ...] -- <gate.sh arguments>: sets GRC, GOUT (the terminal), GLOG (the log), GCALLS (pnpm's calls)
+gate_run() {
+  local envs=()
+  while [ "$1" != -- ]; do
+    envs+=("$1")
+    shift
+  done
+  shift
+  GN=$((GN + 1))
+  GCALLS=$GW/calls-$GN
+  GOUT=$GW/out-$GN
+  : >"$GCALLS"
+  GRC=0
+  env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" \
+    GATE_UPTIME_FILE="$GW/load-ok" GATE_POLL=1 GATE_WAIT_MAX=2 \
+    ${envs[@]+"${envs[@]}"} bash "$OPS_DIR/gate.sh" "$@" >"$GOUT" 2>&1 || GRC=$?
+  GLOG=$(find "$GW/logs-$GN" -name '*.log' 2>/dev/null | head -1 || true)
+}
+hits() { grep -cF -- "$2" "$1" || true; } # <file> <fixed text>: how many lines hold it
+lastline() { tail -n 1 "$1"; }
+seenre() { if grep -q -- "$1" "$2"; then echo 1; else echo 0; fi; } # <regex> <file>: 1 if any line matches
+
+# case 1: five steps, each named with its result
+gate_run -- shared
+check "case 1: a package's gate exits 0" 0 "$GRC"
+check "  prints five numbered steps" 5 "$(grep -c '^\[[1-5]/5\]' "$GOUT" || true)"
+check "  and the verdict is green" 1 "$(hits "$GOUT" '== green')"
+check "  and the log's last line is == exit 0" "== exit 0" "$(lastline "$GLOG")"
+check "  and the summary names all five steps passed" "== steps: typecheck 0 eslint 0 prettier 0 test 0 knip 0" "$(grep '^== steps' "$GLOG")"
+check "  and the typecheck ran on the package alone" 1 "$(hits "$GCALLS" '--filter @credo/shared run typecheck')"
+
+# case 5: the test step is the package's own script
+check "case 5: the test step calls the package's own test script" 1 "$(hits "$GCALLS" '--filter @credo/shared run test')"
+check "  and gate.sh never spells vitest" 0 "$(grep -c vitest "$OPS_DIR/gate.sh" || true)"
+
+# case 6: the repo-wide steps run once in a scoped call
+check "case 6: eslint ran once" 1 "$(hits "$GCALLS" 'exec eslint')"
+check "  and prettier once" 1 "$(hits "$GCALLS" 'exec prettier')"
+check "  and knip once" 1 "$(hits "$GCALLS" 'exec knip')"
+
+# cases 2 and 3: a red step stops nothing, and the exit line is 1, in each of the five positions
+for pos in "typecheck|run typecheck" "eslint|exec eslint" "prettier|exec prettier" "test|run test" "knip|exec knip"; do
+  name=${pos%%|*}
+  pat=${pos#*|}
+  gate_run GATE_FAIL="$pat" -- shared
+  check "case 3: a red $name exits 1" 1 "$GRC"
+  check "  the log ends == exit 1" "== exit 1" "$(lastline "$GLOG")"
+  check "  the summary names $name as the red one" 1 "$(grep -c "^== steps:.* $name 1" "$GLOG" || true)"
+  check "case 2: and all five steps still ran ($name red)" 5 "$(grep -c '^\[[1-5]/5\]' "$GLOG" || true)"
+  check "  and the verdict is red" 1 "$(hits "$GLOG" '== red')"
+done
+
+# case 4 and the skip's own marker: a package with no test script is a named skip, shown as skip, not as a pass
+gate_run -- walk
+check "case 4: a package with no test script is a named skip" 1 "$(hits "$GLOG" 'skipped: @credo/walk has no test script')"
+check "  and does not redden the run" 0 "$GRC"
+check "  and the summary shows it as skip, not 0" 1 "$(grep -c '^== steps:.* test skip ' "$GLOG" || true)"
+check "  and walk's test script was never called" 0 "$(hits "$GCALLS" '@credo/walk run test')"
+
+# case 7: no package, every package's typecheck and test, none hiding the rest
+gate_run -- 
+check "case 7: the whole-tree call exits 0" 0 "$GRC"
+check "  names six typecheck results" 6 "$(grep -c '^ok   typecheck @credo/' "$GLOG" || true)"
+check "  and five test results" 5 "$(grep -c '^ok   test @credo/' "$GLOG" || true)"
+check "  and the repo-wide steps once" 1 "$(hits "$GCALLS" 'exec knip')"
+check "  and the skipped package shows beside the passes in the summary" 1 "$(grep -c '^== steps:.* test 0+1skipped ' "$GLOG" || true)"
+gate_run GATE_FAIL="@credo/ui run typecheck" -- 
+check "  and a red package typecheck does not stop the others (6 ran)" 6 "$(grep -c 'run typecheck' "$GCALLS" || true)"
+check "  and the other five tests still ran" 5 "$(grep -c 'run test' "$GCALLS" || true)"
+check "  and the red package is named" 1 "$(hits "$GLOG" 'RED  typecheck @credo/ui exit 1')"
+gate_run -- a b
+check "a call with two packages is a usage refusal, exit 2" 2 "$GRC"
+
+# case 13: the verdict names the gate it is not
+gate_run -- shared
+check "case 13: the log names make check as c-storage's own gate" 1 "$(grep -c "make check in c-storage" "$GLOG" || true)"
+
+# case 8: the load is waited for, and the wait is logged
+gate_run GATE_UPTIME_FILE="$GW/load-high" -- shared
+check "case 8: above the load ceiling it logs its wait" 1 "$(seenre '^waiting: one-minute load 9.50 is not under 8' "$GLOG")"
+check "  and gives up with exit 1, no step run" 1 "$GRC"
+check "  and took no lock" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and ran no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+# a held lock names its owner
+mkdir "$GW/lock"
+echo "pid=99999 log=other-lane.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "case 8: a held lock is waited for, naming its owner" 1 "$(seenre '^waiting: lock .* is held by: pid=99999 log=other-lane.log' "$GLOG")"
+check "  and the run gives up with exit 1" 1 "$GRC"
+check "  and ran no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+# the step-3 property that matters most: a giving-up run leaves a foreign lock exactly where it was
+check "case 10b: a giving-up run leaves the foreign lock's owner as it was" "pid=99999 log=other-lane.log started=T" "$(cat "$GW/lock/owner")"
+check "  and the lock itself" 1 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+# case 11: a nested call, whose holder is the lock's owner, does not take it, and the outer lock survives
+echo "pid=4242 log=outer started=T" >"$GW/lock/owner"
+gate_run GATE_HOLDER=4242 -- shared
+check "case 11: a nested call runs the steps" 0 "$GRC"
+check "  says it did not take the lock" 1 "$(hits "$GLOG" 'lock: not taken, held by the calling gate (pid 4242)')"
+check "  and runs all five steps" 5 "$(grep -c '^\[[1-5]/5\]' "$GLOG" || true)"
+check "  and the outer lock and its owner survive" "pid=4242 log=outer started=T" "$(cat "$GW/lock/owner")"
+# a stale holder (not the owner) is not a nested call: it waits
+gate_run GATE_HOLDER=1111 -- shared
+check "case 11b: a holder that is not the owner waits like anyone" 1 "$(seenre '^waiting: lock' "$GLOG")"
+# case 12: under CI there is no lock and no load wait, and the log says so, even with the lock held and the load high
+gate_run CI=1 GATE_UPTIME_FILE="$GW/load-high" -- shared
+check "case 12: under CI the gate runs green past a held lock and a high load" 0 "$GRC"
+check "  and the log says it skipped both" 1 "$(hits "$GLOG" 'lock: skipped, CI is set')"
+check "  and the foreign lock was left alone" "pid=4242 log=outer started=T" "$(cat "$GW/lock/owner")"
+rm -f "$GW/lock/owner"
+rmdir "$GW/lock"
+# case 9: an unreadable load refuses rather than taking the lock
+gate_run GATE_UPTIME_FILE="$GW/load-bad" -- shared
+check "case 9: an unreadable uptime reading refuses, exit 1" 1 "$GRC"
+check "  names why" 1 "$(grep -c "load could not be read from uptime" "$GLOG" || true)"
+check "  and took no lock" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+# case 10: the lock is released from the trap on a red, with its time and "free at the end"
+gate_run GATE_FAIL="exec knip" -- shared
+check "case 10: after a red the lock is gone" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and the log says it was released and free at the end" 1 "$(grep -c "released [0-9:]*: lock free at the end: yes" "$GLOG" || true)"
+check "  and the release is logged before the exit line" "== exit 1" "$(lastline "$GLOG")"
+# case 10: and on a signal. The gate runs slowly under the stand-in; SIGTERM arrives during its first step.
+GN=$((GN + 1))
+GCALLS=$GW/calls-$GN
+: >"$GCALLS"
+env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" \
+  GATE_UPTIME_FILE="$GW/load-ok" GATE_SLOW=3 bash "$OPS_DIR/gate.sh" shared >"$GW/out-$GN" 2>&1 &
+GPID=$!
+for _ in $(seq 1 50); do
+  [ -s "$GCALLS" ] && break
+  sleep 0.2
+done
+kill -TERM "$GPID" 2>/dev/null || true
+GRC=0
+wait "$GPID" || GRC=$?
+GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
+check "case 10: a SIGTERM during a step exits 143" 143 "$GRC"
+check "  and the lock is gone" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and the log ends == exit 143" "== exit 143" "$(lastline "$GLOG")"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

@@ -121,10 +121,11 @@ which is every branch running this gate.
       `pnpm --filter @credo/shared check` ends `== exit 0`; `git grep -c '"check":' -- '*/package.json'`
       counts 6; the root's `check` holds no `&&`.
       *Evidence:* logs/2026-11-09-110758-gate-shared.log via `pnpm --filter @credo/shared check`, `== exit 0`; six files hold `"check":`; root check is `bash ops/gate.sh`. Surprise: with prettier no longer named in a script, knip reported it an unused devDependency (logs/2026-11-09-110651-gate-shared.log, `== exit 1`); `knip.json` now lists it in the root workspace's `ignoreDependencies`. A real nested gate (logs/2026-11-09-110831-gate-shared.log) logged `not taken, held by the calling gate` and left the outer lock.
-- [ ] **5. The cases in `ops/test.sh`, the five forced reds by stand-in, 17 min.** Each case red
+- [x] **5. The cases in `ops/test.sh`, the five forced reds by stand-in, 17 min.** Each case red
       once ([QA](../conventions/qa.md) rule 2), the five positions driven by a PATH stand-in that
       exits 1. *Done when:* `bash ops/test.sh` prints 0 `FAIL`, each of the 13 cases has been seen
       red once, and `shellcheck -x ops/*.sh` exits 0.
+      *Evidence:* `GOCACHE=<scratch> bash ops/test.sh` prints 0 FAIL (654 ok lines, `all checks passed`; the Go cache must be moved into the sandbox). The gate section holds the 13 cases plus the skip marker, giving-up-leaves-a-foreign-lock, the nested call and a stale holder, usage; 17 one-line mutations of `ops/gate.sh`, each run on a gate-only copy and each seen red, then reverted. The log-name collision is filed as open item 160, not fixed.
 - [ ] **6. The real forced red in each position, and the whole gate on the merge result, 22 min.**
       A genuinely broken line per position on `shared` (a type error, a lint error, an unformatted
       line, a failing assertion, an unused export), put back after each. *Done when:* five logs,
