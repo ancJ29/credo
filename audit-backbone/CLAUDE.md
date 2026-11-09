@@ -69,8 +69,8 @@ token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../CLAU
 
 - **It is here and nothing in this repository calls it.** The BFF does not reach it, `ops/` ships
   nothing of it, and the CI workflow has no job for it (c-storage's `make check` job is the model).
-  `pnpm check` does not run it, and the root `.prettierignore` and `knip.json` name `c-storage/`
-  but not this directory. How it integrates is the next decision, not made yet.
+  `pnpm check` does not run it: the root `.prettierignore` and `knip.json` leave it out, as they
+  do `c-storage/`. How it integrates is the next decision, not made yet.
 
 ## Documentation
 
