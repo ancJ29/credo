@@ -22,6 +22,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
+| a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -463,7 +464,7 @@ the real c-storage, built there, so Go must be installed. The guards also need R
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
 
-1. `shellcheck -x ops/*.sh`
+1. `shellcheck -x ops/*.sh walk/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,

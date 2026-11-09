@@ -125,7 +125,7 @@ which is every branch running this gate.
       once ([QA](../conventions/qa.md) rule 2), the five positions driven by a PATH stand-in that
       exits 1. *Done when:* `bash ops/test.sh` prints 0 `FAIL`, each of the 13 cases has been seen
       red once, and `shellcheck -x ops/*.sh` exits 0.
-      *Evidence:* `GOCACHE=<scratch> bash ops/test.sh` prints 0 FAIL (654 ok lines, `all checks passed`; the Go cache must be moved into the sandbox). The gate section holds the 13 cases plus the skip marker, giving-up-leaves-a-foreign-lock, the nested call and a stale holder, usage; 17 one-line mutations of `ops/gate.sh`, each run on a gate-only copy and each seen red, then reverted. The log-name collision is filed as open item 160, not fixed.
+      *Evidence:* `GOCACHE=<scratch> bash ops/test.sh` prints 0 FAIL (654 ok lines, `all checks passed`; the Go cache must be moved into the sandbox). The gate section holds the 13 cases plus the skip marker, giving-up-leaves-a-foreign-lock, the nested call and a stale holder, usage; 17 one-line mutations of `ops/gate.sh`, each run on a gate-only copy and each seen red, then reverted. The log-name collision is filed as open item 171, not fixed.
 - [ ] **6. The real forced red in each position, and the whole gate on the merge result, 22 min.**
       A genuinely broken line per position on `shared` (a type error, a lint error, an unformatted
       line, a failing assertion, an unused export), put back after each. *Done when:* five logs,

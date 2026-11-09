@@ -3,6 +3,8 @@
 > **Decided** 2026-10-29: the machine's decision for every record a client's UI shows, written with
 > the employee list's first group ([the plan](../plans/2026-10-29-employee-list.md#extra)). The
 > human asked that a client's own logic customise the UI without breaking the BFF.
+> **Last amended** 2026-11-09, by the 2026-11-08 structure review: the ladder for a client's own logic was
+> drawn here in the legacy's order and is now the code convention's, corrected.
 
 ## At a glance
 
@@ -11,11 +13,9 @@ A client's request changes the UI first and the BFF never.
 
 ```mermaid
 flowchart LR
-  need["a client wants<br/>its own logic"] --> rung1["1 · config<br/>the staff setup's<br/>switches and fields"]
-  rung1 -- "config cannot<br/>say it" --> rung2["2 · a variant module<br/>in the UI"]
-  rung2 -- "still not" --> rung3["3 · a page for that client<br/>beside a default"]
-  rung3 -. "data stays in" .-> extra["extra<br/>on the record"]
-  rung1 -. "data stays in" .-> extra
+  val["a value a client<br/>wants on a record"] --> q{"must the BFF or<br/>c-storage trust it?"}
+  q -- no --> extra["extra<br/>a JSON object<br/>on the record"]
+  q -- yes --> typed["a typed field,<br/>in a change of its own"]
 ```
 
 - **What `extra` is:** a JSON object on a person, a department, a position and the staff setup.
@@ -36,10 +36,10 @@ flowchart LR
 - **A field the server must trust leaves `extra` in a change of its own:** the code, the name, the
   links to a department and a position, the permissions and the archive are typed. *Why:* a value in
   `extra` is whatever the browser sent.
-- **The ladder for a client's own logic, each rung tried before the next:** config (the staff
-  setup's switches and the company's own fields), then a variant module in the UI, then a page for
-  that client beside a default one. Data stays in `extra`, behaviour in the display layer; the store
-  and the BFF are never forked, and no client is named in shared code. The second and third rungs
-  enter with the first client whose logic config cannot say: nothing calls them yet.
+- **Where a client's own *behaviour* goes is the [code
+  convention](../conventions/code.md#where-a-clients-difference-lands)'s, not this memo's.** Here
+  only the data half holds: data stays in `extra`, behaviour in the display layer, and the store and
+  the BFF are never forked. Nothing calls that second tier yet; it enters with the first client
+  whose difference config cannot say.
 - **Piece 1's settings take no `extra`.** It enters with the first client whose own setting no typed
   field holds.
