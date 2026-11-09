@@ -3,8 +3,9 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-09, from the guideline skeleton (piece 98): the rule for how a living document
-> cites code, which lived only on the board and in a design page. This file holds the rules as they stand; their
+> **Last amended** 2026-11-09, from the human's read of the architecture page: the list of documents
+> that must open with their human version now names every page a human reads, and a separate human-facing
+> summary is read as a symptom of the pages that lack one. This file holds the rules as they stand; their
 > history is in `git log`.
 
 ## At a glance
@@ -14,12 +15,12 @@ without it, would get the next change wrong.
 
 | Reader | Reads | Form |
 | --- | --- | --- |
-| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo and plan | **Visual first**: a diagram or a table for a flow, a structure or a comparison. Prose only for the why |
+| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo, plan and page written for them | **Visual first, in the order things happen**: a diagram or a table for a flow, a structure or a comparison. Prose only for the why |
 | 🤖 machine | `CLAUDE.md`, and the detail below each "At a glance" | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
 | both | the code | the what. No doc copies it |
 
-- Each doc a human reads opens with a short version; a README starts a newcomer in 30 minutes
-  ([two readers](#two-readers)).
+- Each doc a human reads opens with a short version in its own file, never a separate summary of
+  it; a README starts a newcomer in 30 minutes ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters; a runbook holds the steps alone and links their why
   ([what earns a line](#what-earns-a-line)).
@@ -40,15 +41,30 @@ without it, would get the next change wrong.
 The table [at a glance](#at-a-glance) says who reads what.
 
 - **Every doc a human reads opens with its human version, in the same file**, under
-  `## At a glance`: each convention, memo and plan. A recap is the human's already; `CLAUDE.md`
-  stays the machine's alone. The human version fits one screen: about 150 words of plain prose,
-  no jargon, a diagram or a table first, and each line pointing to the rule or section below
-  that holds it. The machine's detail follows, unchanged in kind. Nothing in the human version
-  is new: it is a view of the detail, which stays the one home. *Rejected:* a separate human
-  file per doc. It is a second home for the same rules, and the copy is the one that rots: the
-  change that alters a rule touches no line there. *Hazard no gate catches:* the two drift
-  apart. *Guard:* a change to a rule changes its line in the human version in the same commit,
-  and [QA](qa.md)'s rule 5 reviewer reads both.
+  `## At a glance`: each convention, memo and plan, **and every page written for the human or for
+  both** — today [`docs/architecture.md`](../architecture.md), the index
+  [`docs/README.md`](../README.md), [`docs/products.md`](../products.md) and
+  [`docs/client-readiness.md`](../client-readiness.md). **A page this list does not name and a person
+  is handed anyway joins the list the moment that happens**: written to no reader it takes the
+  machine's register by default, and nobody sees that until a human is reading it. A recap is the
+  human's already; the operator's runbook and the numbered log have their own shapes below;
+  `CLAUDE.md` stays the machine's alone. The human version fits one screen: about 150 words of
+  plain prose, no jargon, a diagram or a table first, **ordered by what happens next — one
+  request, one record, one change followed through — and not as a tour of the parts**, each line
+  pointing to the rule or section below that holds it. *Why that order:* a page can be visual,
+  short and still unreadable. The page that set this rule off opened with a diagram and a plain
+  summary, and the diagram was all the human could read; the project they held up as readable
+  followed one statement through the system instead. The machine's detail follows, unchanged in
+  kind. Nothing in the human version is new: it is a view of the detail, which stays the one
+  home. *Rejected:* a separate human file per doc. It is a second home for the same rules, and
+  the copy is the one that rots: the change that alters a rule touches no line there. **So a
+  separate human-facing summary is a symptom, not a service.** Where one is kept because the
+  other documents cannot be understood, those documents are the ones missing their human
+  version, and the fix is upstream, in them. *The test:* the summary shrinks as each document it
+  compensates for gains its own. One kept for exactly that reason had four of its numbers
+  corrected in a single day, which is this rejection coming true rather than an argument for the
+  summary. *Hazard no gate catches:* the two drift apart. *Guard:* a change to a rule changes its
+  line in the human version in the same commit, and [QA](qa.md)'s rule 5 reviewer reads both.
 - **A README lets a newcomer grasp the project in 30 minutes**: what it is in three plain
   sentences, then a tested "try it in 10 minutes"; internals last.
 - **A diagram is drawn from committed code and names the files it is drawn from.** A change to
