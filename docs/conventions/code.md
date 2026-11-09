@@ -63,7 +63,7 @@ route's pattern to the list a test reads (`c-storage/internal/server/server.go#L
 as the rule [one home](#one-home-for-one-decision) states and as the shape [the patterns to
 copy](#the-patterns-to-copy) names — and it is one mechanism in one file. **The other fifteen are
 `reader`**, which is what the structure review's own open item exists to change, one check at a time
-([open item 159](../open-items.md)).
+([open item 160](../open-items.md)).
 
 ## Where a new thing goes
 

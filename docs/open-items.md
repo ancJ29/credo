@@ -1073,7 +1073,7 @@ Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-rea
 
 `ops/stack.sh#L44-L45` must keep `[ $# -ge 2 ] || usage` above `[ -n "$2" ] || usage`: under `set -euo pipefail`, the reverse order turns `--take` as the final argument from a usage message with exit 2 into `$2: unbound variable` with exit 1. The two new rows (`ops/test.sh#L2544-L2549`) assert exit 2 and no verdict line, but both pass `--take ''`, so `$2` exists and both orders exit 2 there; only the final-argument case differs, and no row runs it. So a future edit could swap the two lines and every check would stay green, while an operator's mistyped `--take` died on an unbound variable instead of being told what it got wrong. A small, real gap, not a defect. *Fix:* one row asserting that `--take` as the final argument, with nothing after it, exits 2 specifically. *Trigger:* the next edit of that parser.
 
-## 159. The convention's rules that a check should hold instead of prose — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 160. The convention's rules that a check should hold instead of prose — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
 [The code convention](conventions/code.md) states these rules in prose, which holds them only while
 someone reads the diff. Each row below is its own small piece, and the review's model for all of
@@ -1087,12 +1087,12 @@ appends its pattern to the list a test reads (`server_test.go#L106`).
 | the three screen widths are declared once | one exported set in `shared/`, replacing `visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`, `ui/src/mock/Frame.tsx#L8` — and retiring the regex in `visual/src/walks.test.ts` that reads one of them as source text |
 | the retry bound is one number | one export imported by `bff/src/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
 | the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/staff.ts` and `bff/src/orders.ts` (single closures of 629 and 453 lines) |
-| the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 160 is the two it misses today) |
+| the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 161 is the two it misses today) |
 | one `refuse()` and one log opener, one shebang | two greps in `ops/test.sh`: `ops/lib.sh#L75`'s opener used by all seventeen scripts, and `#!/usr/bin/env bash` on each — four scripts the human runs by hand pin `#!/bin/bash` (bash 3.2) and define `refuse()` separately, one of them already using newer-bash arrays |
 | no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
 | a walk has one identity | `walk/playwright.config.ts#L30-L96` derives its projects from the table at `walk/run.sh#L45-L57`, or one test fails when the two disagree |
 
-## 160. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
 `c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `c-storage/scripts/e2e.sh` (the
 end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
@@ -1104,7 +1104,7 @@ something (`c-storage/scripts/bruno-proof.cjs`, three callers) is read by no too
 `c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
 correct the two comments. *Trigger:* none needed; it is one line and a read.
 
-## 161. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
 
 Recorded so the next session sizes them right, not as work to start. `ops/test.sh`: 2,771 lines, 95
 functions, 42 sections, every section sharing one temp directory and one failure flag, with no way
@@ -1121,7 +1121,7 @@ lines of screen data, where only navigation costs anything. `ops/lib.sh`: 896 li
 functions with no section markers. **Not a fault:** `ui/src/api.ts` at 829 lines is a flat list of
 independent calls, and its one-place property is worth more than its length.
 
-## 162. The two compiler flags governing index and optional access are off — the machine; *parked* until it is a piece of its own (the 2026-11-08 structure review, 2026-11-09, Low)
+## 163. The two compiler flags governing index and optional access are off — the machine; *parked* until it is a piece of its own (the 2026-11-08 structure review, 2026-11-09, Low)
 
 `tsconfig.base.json#L14` sets `strict: true` and neither `noUncheckedIndexedAccess` nor
 `exactOptionalPropertyTypes`; across 372 TypeScript files the escape hatches are essentially unused
@@ -1129,13 +1129,13 @@ independent calls, and its one-place property is worth more than its length.
 its reason), so the gate is strong where it is configured. Turning either flag on is a repo-wide
 piece. *Trigger:* a defect that either flag would have caught, or a quiet week.
 
-## 163. Go has `gofmt` and `go vet` and no linter — the machine; *parked* until a second internal package (the 2026-11-08 structure review, 2026-11-09, Low)
+## 164. Go has `gofmt` and `go vet` and no linter — the machine; *parked* until a second internal package (the 2026-11-08 structure review, 2026-11-09, Low)
 
 `c-storage`'s gate is `make check`: `gofmt -l`, `go vet ./...`, the race tests at 100 % through
 `scripts/cover.sh`, and the box's cross-compile. Over 16 Go files that is proportionate; a linter
 earns its place at a second internal package. *Trigger:* the second internal package.
 
-## 164. The orders page discards the weeks it already read — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+## 165. The orders page discards the weeks it already read — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
 
 `ui/src/OrdersPage.tsx#L14` makes one call per week and `weeks` is state (`#L28`), so "7 more days"
 refetches the weeks already on screen. It is the one file the data-and-cache reading names as worth
@@ -1144,7 +1144,7 @@ week at a time. *Fix:* keep the weeks already read and ask only for the new one,
 and the `weeks` state. Not a cache: it is the trigger that would otherwise argue for one
 ([the code convention](conventions/code.md#server-data-and-client-state)).
 
-## 165. Which of the 148 flat UI files belongs to which app is readable only by opening the two app files — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 166. Which of the 148 flat UI files belongs to which app is readable only by opening the two app files — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
 28 screens mount in one app, 18 in the other, four in common, and the layout says none of it. A
 reader told to add a screen cannot tell where it goes or what it may reuse, and a change meant for
@@ -1153,7 +1153,7 @@ being contradicted. *Fix:* three directories, `client/`, `operator/`, `common/`,
 structural change every piece in the coming weeks would feel. *Trigger:* before the next several
 screens, since the move gets dearer with each one.
 
-## 166. Where a test goes is unstated, and two tests live in the wrong package — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 167. Where a test goes is unstated, and two tests live in the wrong package — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
 `visual/src/import-file.test.ts` tests code that lives in the UI, under Node, so whoever changes
 that UI file runs the UI's own tests green and hears nothing: a move and one import.
@@ -1166,7 +1166,7 @@ including the five largest screens; in the tooling 17 sources have no same-named
 `scripts/src/cli.ts` among them. The 100 % gate means the cases exist, nothing says where. *Fix:*
 the two moves, and one line in each grouping test naming what it covers; any renaming is parked.
 
-## 167. `knip.json` does not set `includeEntryExports`, so unused exports in 26 entry files are invisible to the gate — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+## 168. `knip.json` does not set `includeEntryExports`, so unused exports in 26 entry files are invisible to the gate — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
 
 `knip.json` is 12 lines, and the six packages declare 26 entry files between them — the
 widest-surface files in the repo. The legacy project's own rule, which this base has never written,
@@ -1175,7 +1175,7 @@ lives, with the warning that an unused-export checker cannot answer route reacha
 test is a reference. *Fix:* set the option, run it once and read what it prints; that run settles
 whether this is theoretical. *Trigger:* none needed.
 
-## 168. Four structural duplications named for the record, each needing a designed signature rather than a move — the machine; *parked* until one is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+## 169. Four structural duplications named for the record, each needing a designed signature rather than a move — the machine; *parked* until one is touched (the 2026-11-08 structure review, 2026-11-09, Low)
 
 A walk's opening is hand-written in eleven specs, whose per-spec differences need a designed
 signature, not a copy (the two pure helpers it also found, `exactly()` in eight specs and
@@ -1188,7 +1188,7 @@ its logs folder also cannot share a shell helper and stay as they are (`walk/run
 `c-storage/scripts/e2e.sh#L38`, `visual/src/home.ts#L48`, `scripts/src/demo-files-main.ts#L6`).
 *Trigger:* the next change to any one of them.
 
-## 169. None of the 121 Markdown files is formatted or checked, and there is no commit hook — the machine; *parked*, and both may be deliberate (the 2026-11-08 structure review, 2026-11-09, Low)
+## 170. None of the 121 Markdown files is formatted or checked, and there is no commit hook — the machine; *parked*, and both may be deliberate (the 2026-11-08 structure review, 2026-11-09, Low)
 
 `.prettierignore` excludes `*.md`, so `prettier --check` on a Markdown file inspects nothing, and
 every "prettier passed" receipt on a docs-only change here has read no Markdown. The repository has
