@@ -83,6 +83,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(
     page.getByRole('button', { name: words.passkey.makeButton, exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole('group', { name: words.user.language })).toBeVisible();
   await at('pk-1-join');
 
   // 2. One's own passkeys: when each was added and last used.
@@ -109,6 +110,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 5. A link used, too old or replaced: the opening answers a 404 once.
   await open(page, language, { path: JOIN_LINK, cue: 'operatorJoinOptions:404' });
   await alert(words.passkey.dead);
+  await expect(page.getByRole('group', { name: words.user.language })).toBeVisible();
   await at('pk-5-link-dead');
 
   // 6. The sign-in ended mid-task: the make answers a 401 once, under the form that was typed.

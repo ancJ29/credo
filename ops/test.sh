@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The ops job's guards, run with no AWS, each on hand-written input: the change-set filter, the
 # choice between creating and updating a stack, an update's refusal to move the repository, the
-# deploy role's trust and the subject GitHub issues, the check that ops/ is main's (by hand, and in
+# deploy role's trust and the subject GitHub issues, the check that the code a push deploys on is main's (by hand, and in
 # the deploy job), the box's floor, the keys' checksum, wait_build's retry, the proof of a Bruno run,
 # the credentials bru never holds, the log's exit code after a signal, the workflow's deploy job,
 # layer four's template (env.yml read as JSON through Ruby: rows 22, 25, 26, 29, 30 and 32 of
@@ -73,15 +73,29 @@ change_type() { # a describe-stacks body, or nothing
   choose_change_type
   echo "$CS_TYPE"
 }
-described() { # <status> [<Repository>]
-  jq -nc --arg s "$1" --arg r "${2:-}" \
-    '{Stacks: [{StackName: "ridge", StackStatus: $s, Parameters: (if $r == "" then [] else [{ParameterKey: "Repository", ParameterValue: $r}] end)}]}'
+described() { # <status> [<Repository>] [<Env>]
+  jq -nc --arg s "$1" --arg r "${2:-}" --arg e "${3:-}" \
+    '{Stacks: [{StackName: "ridge", StackStatus: $s, Parameters: ((if $r == "" then [] else [{ParameterKey: "Repository", ParameterValue: $r}] end) + (if $e == "" then [] else [{ParameterKey: "Env", ParameterValue: $e}] end))}]}'
 }
 check "no stack is a creation" CREATE "$(change_type '')"
 check "a stack that holds only a change set (REVIEW_IN_PROGRESS) is a creation" CREATE "$(change_type "$(described REVIEW_IN_PROGRESS)")"
 check "a made stack (CREATE_COMPLETE) is an update" UPDATE "$(change_type "$(described CREATE_COMPLETE)")"
 check "an updated stack (UPDATE_COMPLETE) is an update" UPDATE "$(change_type "$(described UPDATE_COMPLETE)")"
-refuses "a rolled-back stack is not touched: delete the stack" "delete the stack" change_type "$(described ROLLBACK_COMPLETE)"
+# a stack in ROLLBACK_COMPLETE is one whose creation failed and was rolled back: it holds nothing, whatever its kind.
+# Its refusal never reads Env (network has no Env parameter, github no Parameters block at all) and says delete it.
+net_rolled=$(jq -nc '{Stacks: [{StackName: "network", StackStatus: "ROLLBACK_COMPLETE", Parameters: [{ParameterKey: "Cidr", ParameterValue: "10.0.0.0/16"}]}]}')
+gh_rolled=$(jq -nc '{Stacks: [{StackName: "github", StackStatus: "ROLLBACK_COMPLETE"}]}')
+rolled_back_text() { # <a describe-stacks body>: the refusal's text for it
+  ( change_type "$1" ) 2>&1 || true
+}
+for kind_body in "ridge:$(described ROLLBACK_COMPLETE '' ridge)" "acme:$(described ROLLBACK_COMPLETE '' acme)" "no-Env:$(described ROLLBACK_COMPLETE)" "network:$net_rolled" "github:$gh_rolled"; do
+  kind=${kind_body%%:*}
+  body=${kind_body#*:}
+  text=$(rolled_back_text "$body")
+  refuses "a rolled-back stack ($kind) is not touched: delete the stack, then run again" "delete the stack" change_type "$body"
+  check "  ($kind) it says the creation did not complete and the delete loses nothing" yes "$(grep -qF 'creation did not complete and was rolled back, and it holds nothing a delete could lose' <<<"$text" && echo yes || echo no)"
+  check "  ($kind) it does not call the stack precious or send anyone to the README" no "$(grep -qE 'records|Stop and ask|README|retained' <<<"$text" && echo yes || echo no)"
+done
 
 echo "== an update never moves the deploy role's repository"
 STACK_JSON=$(described UPDATE_COMPLETE owner/name)
@@ -213,6 +227,15 @@ tojson() {
 tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
+# the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
+# environment's own group, and the group is the API's own, kept 14 days
+# shellcheck disable=SC2016 # the format's $context names, in single quotes
+api_log_wanted='{"DestinationArn":{"Fn::GetAtt":["ApiLogs","Arn"]},"Format":"{\"requestId\":\"$context.requestId\",\"time\":\"$context.requestTime\",\"ip\":\"$context.identity.sourceIp\",\"method\":\"$context.httpMethod\",\"path\":\"$context.path\",\"route\":\"$context.routeKey\",\"status\":\"$context.status\",\"latencyMs\":\"$context.responseLatency\",\"userAgent\":\"$context.identity.userAgent\",\"integrationError\":\"$context.integration.error\"}"}'
+check "the API stage sends its access log to ApiLogs, in one JSON line of when, who, what path, route and answer" \
+  "$api_log_wanted" "$(jq -c '.Resources.ApiStage.Properties.AccessLogSettings' "$WORK/env.json")"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+check "ApiLogs is the API's own group, kept 14 days" '{"LogGroupName":{"Fn::Sub":"/aws/apigateway/credo-${Env}"},"RetentionInDays":14}' \
+  "$(jq -c '.Resources.ApiLogs.Properties' "$WORK/env.json")"
 # mut <jq program> → the path of a copy of the template's JSON with the program applied: a template broken one way
 mut() {
   jq -c "$1" "$WORK/env.json" >"$WORK/env-mut.json"
@@ -319,6 +342,23 @@ throttle_guard() {
     '.Resources.ApiInvoke.Properties | .Principal == "apigateway.amazonaws.com" and .FunctionName == {"Ref":"Bff"} and (.SourceArn["Fn::Sub"] | test("^arn:[$][{]AWS::Partition[}]:execute-api:[$][{]AWS::Region[}]:[$][{]AWS::AccountId[}]:[$][{]Api[}]/"))'
 }
 
+# the API stage's access log (plan 2026-11-08-access-log, step 2): the stage sends its log to ApiLogs, in a format holding
+# the time, the caller, the path, the route and the answer. Read from the parsed template, never grepped.
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+api_log_guard() {
+  must "$1" "the stage has no AccessLogSettings" '.Resources.ApiStage.Properties.AccessLogSettings | type == "object"'
+  must "$1" "the stage's access log does not go to ApiLogs" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn == {"Fn::GetAtt":["ApiLogs","Arn"]}'
+  must "$1" "the stage's access log format is not JSON" \
+    '.Resources.ApiStage.Properties.AccessLogSettings.Format | type == "string" and (try (fromjson | type == "object") catch false)'
+  local what field
+  for what in 'the time:$context.requestTime' 'the caller:$context.identity.sourceIp' 'the path:$context.path' 'the route:$context.routeKey' 'the answer:$context.status'; do
+    field=${what#*:}
+    must "$1" "the stage's access log format drops ${what%%:*} ($field)" \
+      ".Resources.ApiStage.Properties.AccessLogSettings.Format | fromjson | [.[]] | index(\"$field\") != null"
+  done
+}
+
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
 refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
   bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
@@ -394,6 +434,65 @@ refuses "  no throttle is refused" "throttled to 10 a second" \
 refuses "  an invoke permission for every API is refused" "this API alone" \
   throttle_guard "$(mut '.Resources.ApiInvoke.Properties.SourceArn = "*"')"
 
+passes "the API stage logs every call to ApiLogs, in a format of time, caller, path, route and answer" api_log_guard "$WORK/env.json"
+refuses "  a stage with no access log settings is refused" "has no AccessLogSettings" \
+  api_log_guard "$(mut 'del(.Resources.ApiStage.Properties.AccessLogSettings)')"
+refuses "  an access log sent to the function's group is refused" "does not go to ApiLogs" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.DestinationArn = {"Fn::GetAtt":["BffLogs","Arn"]}')"
+refuses "  a format with the caller cut is refused" "drops the caller" \
+  api_log_guard "$(mut '.Resources.ApiStage.Properties.AccessLogSettings.Format |= (fromjson | del(.ip) | tojson)')"
+
+# the box's disk is the only copy of a deployment's records (plan 2026-11-08-backup-policy, step 1). Read from the
+# parsed template, never grepped: a comment naming the setting is not the setting. Retain alone is legal on an
+# instance - Snapshot is not, and the UpdateReplacePolicy page documents CloudFormation reverting it to Delete, so it would read as protection and not be.
+volume_guard() {
+  local inst='.Resources | to_entries[] | select(.value.Type == "AWS::EC2::Instance") | .value'
+  # DeletionPolicy may be Retain or RetainExceptOnCreate (retain on every act but the creation's own rollback, which
+  # deletes a box that never served); UpdateReplacePolicy takes Retain alone, RetainExceptOnCreate being a
+  # DeletionPolicy value only.
+  must "$1" "Box has a DeletionPolicy of Snapshot, which an instance cannot take: the UpdateReplacePolicy page documents CloudFormation reverting it to Delete" \
+    '.Resources.Box.DeletionPolicy != "Snapshot"'
+  must "$1" "Box has an UpdateReplacePolicy of Snapshot, which an instance cannot take: CloudFormation reverts it to Delete" \
+    '.Resources.Box.UpdateReplacePolicy != "Snapshot"'
+  must "$1" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+    '.Resources.Box.DeletionPolicy == "Retain" or .Resources.Box.DeletionPolicy == "RetainExceptOnCreate"'
+  must "$1" "Box has no UpdateReplacePolicy of Retain" '.Resources.Box.UpdateReplacePolicy == "Retain"'
+  must "$1" "an instance resource has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+    "[$inst | .DeletionPolicy] | all(. == \"Retain\" or . == \"RetainExceptOnCreate\")"
+  must "$1" "an instance resource has no UpdateReplacePolicy of Retain" \
+    "[$inst | .UpdateReplacePolicy] | all(. == \"Retain\")"
+  must "$1" "Box's root device does not keep its disk on termination (DeleteOnTermination is not false)" \
+    '.Resources.Box.Properties.BlockDeviceMappings | length == 1 and .[0].DeviceName == "/dev/xvda" and .[0].Ebs.DeleteOnTermination == false'
+  must "$1" "an instance resource has a disk that does not keep itself on termination (DeleteOnTermination is not false)" \
+    "[$inst | (.Properties.BlockDeviceMappings // []) as \$m | (\$m | length > 0) and all(\$m[]; .Ebs.DeleteOnTermination == false)] | all"
+  must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
+    '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
+  # Not held yet (second slice, item 6's backup half): an AWS::EC2::Volume added later with no policy passes this guard.
+}
+
+passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
+refuses "  a box with no DeletionPolicy is refused" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+  volume_guard "$(mut 'del(.Resources.Box.DeletionPolicy)')"
+refuses "  a box with no UpdateReplacePolicy is refused" "Box has no UpdateReplacePolicy of Retain" \
+  volume_guard "$(mut 'del(.Resources.Box.UpdateReplacePolicy)')"
+refuses "  a DeletionPolicy of Snapshot, which an instance reverts to Delete, is refused" "DeletionPolicy of Snapshot" \
+  volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Snapshot"')"
+refuses "  an UpdateReplacePolicy of Snapshot is refused" "UpdateReplacePolicy of Snapshot" \
+  volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "Snapshot"')"
+refuses "  a root device deleted on termination is refused" "DeleteOnTermination is not false" \
+  volume_guard "$(mut '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination = true')"
+refuses "  a root device with no DeleteOnTermination (the default is true) is refused" "DeleteOnTermination is not false" \
+  volume_guard "$(mut 'del(.Resources.Box.Properties.BlockDeviceMappings[0].Ebs.DeleteOnTermination)')"
+refuses "  a second instance without both attributes is refused" "an instance resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","Properties":{}}')"
+passes "  a DeletionPolicy of plain Retain is accepted too" volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Retain"')"
+refuses "  a Delete DeletionPolicy is refused" "Box has no DeletionPolicy of Retain or RetainExceptOnCreate" \
+  volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Delete"')"
+refuses "  an UpdateReplacePolicy of RetainExceptOnCreate (a DeletionPolicy value only) is refused" "Box has no UpdateReplacePolicy of Retain" \
+  volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "RetainExceptOnCreate"')"
+refuses "  a second instance with both attributes but a disk deleted on termination is refused" "an instance resource has a disk that does not keep itself" \
+  volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","DeletionPolicy":"Retain","UpdateReplacePolicy":"Retain","Properties":{"BlockDeviceMappings":[{"DeviceName":"/dev/xvda","Ebs":{"DeleteOnTermination":true}}]}}')"
+
 # box_port_guard <stack.sh>: dies unless the stack's parameters take BoxPort, for a creation and an update, from the unit's port
 # shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
 box_port_guard() {
@@ -423,30 +522,99 @@ refuses "  a template resource the change set lacks is refused" "the template ga
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
 
-echo "== ops/ is origin/main's (release, check, drill and stack run only reviewed scripts); in the deploy job, the checked-out commit's"
+echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
-mkdir -p "$WORK/repo/ops"
+# A scratch repository of the paths a script can run or deploy, and one (docs/) it cannot. Its ci.yml
+# is the reviewed base's list: ops_match_main reads it from there.
+scratch_ci() { # <the extra push paths, one a line, each already '      - "x"'>
+  printf 'name: CI\n\non:\n  push:\n    paths:\n      - "ops/**"\n      - "scripts/**"\n      - "bff/**"\n      - "shared/**"\n      - "ui/**"\n      - "package.json"\n      - ".github/workflows/ci.yml"\n%s  pull_request:\n    paths:\n      - "ops/**"\n\njobs:\n' "$1"
+}
+mkdir -p "$WORK/repo/ops" "$WORK/repo/scripts" "$WORK/repo/bff" "$WORK/repo/shared" "$WORK/repo/ui" "$WORK/repo/docs" "$WORK/repo/.github/workflows"
 git -C "$WORK/repo" init -q
 echo 'echo reviewed' >"$WORK/repo/ops/a.sh"
-git_repo add ops/a.sh
+echo 'reviewed' >"$WORK/repo/scripts/s.ts"
+echo 'reviewed' >"$WORK/repo/bff/b.ts"
+echo 'reviewed' >"$WORK/repo/shared/h.ts"
+echo 'reviewed' >"$WORK/repo/ui/u.ts"
+echo 'reviewed' >"$WORK/repo/docs/d.md"
+scratch_ci '' >"$WORK/repo/.github/workflows/ci.yml"
+# The repository's own ignores for what the deploy job installs and builds (the real .gitignore's lines).
+printf 'dist\nnode_modules/\ncoverage\nplaywright-report/\ntest-results/\n' >"$WORK/repo/.gitignore"
+git_repo add -A
 git_repo commit -q -m main
 old_sha=$(git_repo rev-parse HEAD)
 git_repo update-ref refs/remotes/origin/main HEAD
+# What the deploy job's installs and builds leave in the deployed paths, all ignored: it stays in the
+# tree for every case below, so each pass is a pass with the outputs present.
+mkdir -p "$WORK/repo/scripts/node_modules/x" "$WORK/repo/bff/dist" "$WORK/repo/ui/dist" "$WORK/repo/shared/coverage" "$WORK/repo/ui/test-results" "$WORK/repo/ui/playwright-report"
+echo 'built' >"$WORK/repo/scripts/node_modules/x/index.js"
+echo 'built' >"$WORK/repo/bff/dist/server.js"
+echo 'built' >"$WORK/repo/ui/dist/index.html"
+echo 'built' >"$WORK/repo/shared/coverage/c.json"
+echo 'built' >"$WORK/repo/ui/test-results/r.txt"
+echo 'built' >"$WORK/repo/ui/playwright-report/index.html"
 # GITHUB_ACTIONS is set to nothing in the by-hand case: this suite runs in GitHub's own job too.
 at_repo() { GITHUB_ACTIONS='' REPO_DIR=$WORK/repo ops_match_main; }
 at_repo_job() { GITHUB_ACTIONS=true REPO_DIR=$WORK/repo ops_match_main; }
-passes "a clean ops/ passes" at_repo
-passes "  and in the job" at_repo_job
+passes "a clean tree passes, with the ignored build outputs present" at_repo
+passes "in the deploy job, the checked-out commit's tree passes with ignored build outputs present" at_repo_job
+# The ignores carry that pass: a base commit without the .gitignore, the same outputs untracked.
+git_repo rm -q .gitignore
+git_repo commit -q -m 'no ignores'
+git_repo update-ref refs/remotes/origin/main HEAD
+refuses "  and with a base that lacks the .gitignore the same tree is refused, so the ignores are what carry it" "differs from this commit's" at_repo_job
+git_repo reset -q --hard "$old_sha"
+git_repo update-ref refs/remotes/origin/main "$old_sha"
+echo '# one local line' >>"$WORK/repo/.gitignore"
+refuses "a clean tree with one line appended to .gitignore is refused, which would hide any new file" "differs from origin/main's" at_repo
+git_repo checkout -q -- .gitignore
+check "the line names the code, not the folder" "1 0" \
+  "$(at_repo 2>&1 | grep -c 'the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) is origin/main') $(at_repo 2>&1 | grep -c 'ops/ is')"
 echo 'echo edited' >"$WORK/repo/ops/a.sh"
-refuses "an edited script is refused" "ops/ here differs from origin/main's" at_repo
-refuses "  and in the job, against its own commit" "ops/ here differs from this commit's" at_repo_job
+refuses "an edited script is refused" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from origin/main's" at_repo
+refuses "  and in the job, against its own commit" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from this commit's" at_repo_job
 git_repo checkout -q -- ops/a.sh
 echo 'echo new' >"$WORK/repo/ops/b.sh"
-refuses "a new script is refused" "ops/ here differs from origin/main's" at_repo
-refuses "  and in the job" "ops/ here differs from this commit's" at_repo_job
+refuses "a new script is refused" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
 rm "$WORK/repo/ops/b.sh"
+echo 'edited' >"$WORK/repo/scripts/s.ts"
+refuses "an edited file under scripts/ is refused by hand" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
+git_repo checkout -q -- scripts/s.ts
+echo 'new' >"$WORK/repo/scripts/n.ts"
+refuses "an untracked file under scripts/ is refused by hand" "differs from origin/main's" at_repo
+refuses "  and in the job" "differs from this commit's" at_repo_job
+rm "$WORK/repo/scripts/n.ts"
+for f in bff/b.ts shared/h.ts ui/u.ts; do
+  echo 'edited' >"$WORK/repo/$f"
+  refuses "an edited file, $f, is refused by hand" "differs from origin/main's" at_repo
+  git_repo checkout -q -- "$f"
+done
+echo 'edited' >"$WORK/repo/docs/d.md"
+echo 'new' >"$WORK/repo/docs/n.md"
+passes "an edit and a new file outside the deployed paths (docs/) do not refuse a by-hand run" at_repo
+git_repo checkout -q -- docs/d.md
+rm "$WORK/repo/docs/n.md"
 git_repo update-ref -d refs/remotes/origin/main
 refuses "an unknown origin/main is refused" "origin/main is unknown" at_repo
+# A branch main does not hold, its edit committed: the tree is clean against HEAD, which a diff
+# against HEAD passes, and the base is origin/main.
+git_repo update-ref refs/remotes/origin/main "$old_sha"
+git_repo checkout -q -b branch-edit "$old_sha"
+echo 'committed edit' >"$WORK/repo/scripts/s.ts"
+git_repo commit -q -am 'edit scripts on a branch'
+check "the branch's tree is clean against its own HEAD" 0 "$(git_repo diff --quiet HEAD && echo 0 || echo 1)"
+refuses "a worktree on a branch main does not hold is refused, though its tree is clean against HEAD" "differs from origin/main's" at_repo
+git_repo checkout -q --detach "$old_sha"
+# main moves on twice: a commit that changes scripts/ alone, then one that changes ops/ as well.
+echo 'moved on' >"$WORK/repo/scripts/s.ts"
+git_repo commit -q -am mid
+mid_sha=$(git_repo rev-parse HEAD)
+git_repo update-ref refs/remotes/origin/main "$mid_sha"
+git_repo checkout -q --detach "$old_sha"
+refuses "by hand, a clone at an earlier commit of main that differs in scripts/ alone is refused" "differs from origin/main's" at_repo
+git_repo checkout -q --detach "$mid_sha"
 # A push lands during the deploy: origin/main moves on to a commit that changes ops/, and the job
 # still holds the commit it checked out.
 echo 'echo pushed meanwhile' >"$WORK/repo/ops/a.sh"
@@ -454,13 +622,36 @@ git_repo commit -q -am newer
 new_sha=$(git_repo rev-parse HEAD)
 git_repo update-ref refs/remotes/origin/main "$new_sha"
 git_repo checkout -q --detach "$old_sha"
-refuses "by hand, a clone behind main's ops/ is refused" "ops/ here differs from origin/main's" at_repo
+refuses "by hand, a clone behind main's ops/ is refused" "differs from origin/main's" at_repo
 passes "in the job, a push that landed meanwhile does not turn a sound deploy red" at_repo_job
 git_repo checkout -q -b side "$old_sha"
 git_repo commit -q --allow-empty -m side
 side_sha=$(git_repo rev-parse HEAD)
 refuses "in the job, a commit that main does not hold is refused" "not a commit of main" at_repo_job
 git_repo checkout -q --detach "$new_sha"
+# The path set is ci.yml's, nothing in lib.sh: a path added to the push trigger is compared at once.
+mk_scratch() { # <dir> <the extra push paths for its ci.yml>
+  mkdir -p "$1/ops" "$1/extra" "$1/.github/workflows"
+  echo 'echo reviewed' >"$1/ops/a.sh"
+  echo 'reviewed' >"$1/extra/e.txt"
+  scratch_ci "$2" >"$1/.github/workflows/ci.yml"
+  git -C "$1" init -q
+  git -C "$1" add -A
+  git -C "$1" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+  git -C "$1" update-ref refs/remotes/origin/main HEAD
+}
+at_dir() { GITHUB_ACTIONS='' REPO_DIR=$1 ops_match_main; }
+mk_scratch "$WORK/repo-plain" ''
+mk_scratch "$WORK/repo-added" '      - "extra/**"
+'
+echo 'edited' >"$WORK/repo-plain/extra/e.txt"
+echo 'edited' >"$WORK/repo-added/extra/e.txt"
+passes "a path no push trigger names is not compared" at_dir "$WORK/repo-plain"
+refuses "a path added to the push trigger is compared, with no edit to lib.sh" "differs from origin/main's" at_dir "$WORK/repo-added"
+mk_scratch "$WORK/repo-bad" '      - extra/**
+'
+refuses "a push trigger the reader cannot parse stops the guard, naming the line" "      - extra/**" at_dir "$WORK/repo-bad"
+check "  and it never reaches the comparison: no ok line is printed" 0 "$(at_dir "$WORK/repo-bad" 2>&1 | grep -c '^ok' || true)"
 
 echo "== mask writes its line whole (tee writes the same pipe, so it opens with a newline)"
 (GITHUB_ACTIONS=true mask thekey 3>"$WORK/fd3")
@@ -730,20 +921,27 @@ refuses "  an app job that never names Node 24 is refused" "node-version: 24" ap
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
 
-echo "== the seed workflow (a schedule and a manual run, main alone, environment ridge, its own group, never under act; row 24)"
+echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
-# seed_guards <workflow>: dies naming each condition of the plan's "The daily run" that the seed
-# workflow lacks. As in the deploy job, the job's own `if` cannot read env, so every step carries
+# seed_guards <workflow>: dies naming each condition of the seed workflow that it lacks: since 2026-11-08 it
+# is run on demand only, so a schedule, any other trigger, a second job and any permission but the OIDC
+# token are refused (the plan's "The daily run" is history). As in the deploy job, the job's own `if` cannot read env, so every step carries
 # `if: ${{ !env.ACT }}` for act, which has no AWS.
 seed_guards() {
-  local block missing='' steps guarded role inst run want_region have_region
+  local block missing='' credmin steps guarded role inst run want_region have_region ontrig jobs stepmin jobmin rolesec maxdays
   [ -f "$1" ] || die "no seed workflow"
-  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1")
+  block=$(awk '/^  seed:$/ {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1")
   [ -n "$block" ] || die "no seed job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  grep -qxF -- '    - cron: "17 20 * * *"' "$1" || missing="${missing}[the schedule: 20:17 UTC, 03:17 in Vietnam, so the run ends before 07:00 even started 3 hours late] "
   grep -qxF -- '  workflow_dispatch:' "$1" || missing="${missing}[a manual run] "
-  if grep -qE '^  (push|pull_request|pull_request_target|workflow_run):' "$1"; then missing="${missing}[no trigger but the schedule and the manual run] "; fi
+  # Read the parsed shape, not words: a comment may name a schedule, a block may not hold one.
+  if grep -qE '^ *(schedule:|- *cron:|cron:)' "$1"; then missing="${missing}[no schedule: the seed is run when somebody asks] "; fi
+  ontrig=$(awk '/^on:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$ontrig" = 'workflow_dispatch: ' ] || missing="${missing}[no trigger but the manual run, found: $ontrig] "
+  jobs=$(awk '/^jobs:$/ {f = 1; next} f && /^[A-Za-z_]/ {exit} f && /^  [A-Za-z0-9_-]+:$/ {print $1}' "$1" | tr '\n' ' ')
+  [ "$jobs" = 'seed: ' ] || missing="${missing}[the seed job alone, found: $jobs] "
+  [ "$(grep -cE '^ +[a-z-]+: (write|read-all|write-all)$' "$1" || true)" = 1 ] || missing="${missing}[no permission but id-token: write] "
+  if grep -qE '^ +(issues|actions|checks|deployments|discussions|packages|pages|pull-requests|security-events|statuses|attestations):' "$1"; then missing="${missing}[no permission but id-token and contents: read] "; fi
   need "    if: github.ref == 'refs/heads/main'"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
@@ -753,10 +951,27 @@ seed_guards() {
   need "      contents: read"
   need "          mask-aws-account-id: true"
   grep -qE '^    timeout-minutes: [0-9]+$' <<<"$block" || missing="${missing}[a job timeout] "
-  # A normal day is 8 to 10 minutes: the Seed step has 15 and the job 25, and the role's session
-  # (role-duration-seconds) outlasts the step it is taken for.
-  need "    timeout-minutes: 25"
-  grep -qxF -- '        timeout-minutes: 15' <<<"$block" || missing="${missing}[the Seed step's 15 minutes] "
+  # The chain that must hold: days a run x 7.5 minutes a day (measured) x 1.2 <= the Seed step's limit,
+  # which, after the credentials step's own limit (the role's life starts inside that step), ends a
+  # minute or more before the role's life, which the job outlasts by the setup's 9. At 2 days: 15 (18
+  # with the margin) <= 18, 18 + 1 = 19 <= 20 - 1, and 18 + 9 = 27 <= 30. At 3 days a full catch-up
+  # (about 22) outlived its own credentials. The pins stay exact; the sums are checked beside them.
+  need "    timeout-minutes: 30"
+  grep -qxF -- '        timeout-minutes: 18' <<<"$block" || missing="${missing}[the Seed step's 18 minutes] "
+  credmin=$(awk '/^      - name: Take the deploy role$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
+  stepmin=$(awk '/^      - name: Seed$/ {f = 1} f && /^        timeout-minutes: [0-9]+$/ {print $2; exit}' <<<"$block")
+  jobmin=$(sed -n 's/^    timeout-minutes: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  rolesec=$(sed -n 's/^ *role-duration-seconds: \([0-9][0-9]*\)$/\1/p' <<<"$block" | head -n 1)
+  maxdays=$(sed -n 's/^export const MAX_DAYS_PER_RUN = \([0-9][0-9]*\);$/\1/p' "$REPO_DIR/scripts/src/demo/apply.ts")
+  if [ -n "$credmin" ] && [ -n "$stepmin" ] && [ -n "$jobmin" ] && [ -n "$rolesec" ] && [ -n "$maxdays" ]; then
+    [ $((credmin * 60 + stepmin * 60 + 60)) -le "$rolesec" ] ||
+      missing="${missing}[the credentials step's $credmin and the Seed step's $stepmin minutes end a minute or more before the role's $rolesec s] "
+    [ $((maxdays * 90)) -le $((stepmin * 10)) ] ||
+      missing="${missing}[the Seed step's $stepmin minutes hold $maxdays days at 7.5 minutes a day with a fifth over] "
+    [ $((stepmin + 9)) -le "$jobmin" ] || missing="${missing}[the job's $jobmin minutes hold the Seed step's $stepmin and the setup's 9] "
+  else
+    missing="${missing}[the credentials step's, the Seed step's, the job's and the role's limits and MAX_DAYS_PER_RUN, all readable] "
+  fi
   grep -qE '^        uses: aws-actions/configure-aws-credentials@[0-9a-f]{40} # v[0-9.]+$' <<<"$block" ||
     missing="${missing}[credentials step pinned by sha] "
   steps=$(grep -c '^      - ' <<<"$block" || true)
@@ -783,16 +998,46 @@ seed_guards() {
   [ -z "$missing" ] || die "the seed workflow lacks: $missing"
 }
 passes "the seed workflow holds every condition" seed_guards "$SEED_WORKFLOW"
-sed 's/- cron: "17 20 \* \* \*"/- cron: "0 23 * * *"/' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
-refuses "a seed that no longer starts at 03:17 in Vietnam is refused" "the schedule" seed_guards "$WORK/seed-cron.yml"
-sed 's/^    timeout-minutes: 25$/    timeout-minutes: 20/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
-refuses "a seed job with less than 25 minutes is refused" "timeout-minutes: 25" seed_guards "$WORK/seed-jobtime.yml"
-sed 's/^        timeout-minutes: 15$/        timeout-minutes: 10/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
-refuses "a Seed step with less than 15 minutes is refused" "the Seed step's 15 minutes" seed_guards "$WORK/seed-steptime.yml"
+# A schedule block put back before the manual run, comment and keyword both real: the decision it guards.
+awk '/^  workflow_dispatch:$/ {print "  schedule:"; print "    - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron.yml"
+refuses "a seed that regains a schedule is refused" "no schedule" seed_guards "$WORK/seed-cron.yml"
+# The guard reads the document, not words: a comment that names the keyword is not a schedule.
+awk '/^  workflow_dispatch:$/ {print "  # schedule: - cron: \"17 20 * * *\""} 1' "$SEED_WORKFLOW" >"$WORK/seed-cron-comment.yml"
+passes "a comment that names a schedule is not one" seed_guards "$WORK/seed-cron-comment.yml"
+sed 's/^    timeout-minutes: 30$/    timeout-minutes: 25/' "$SEED_WORKFLOW" >"$WORK/seed-jobtime.yml"
+refuses "a seed job with less than 30 minutes is refused" "timeout-minutes: 30" seed_guards "$WORK/seed-jobtime.yml"
+sed 's/^        timeout-minutes: 18$/        timeout-minutes: 15/' "$SEED_WORKFLOW" >"$WORK/seed-steptime.yml"
+refuses "a Seed step with less than 18 minutes is refused" "the Seed step's 18 minutes" seed_guards "$WORK/seed-steptime.yml"
+# The step that outlives its credentials: the step and the job moved together (30 and 40, the old pair), so every
+# pin above is met only by the sums, and the role's 20 minutes are what refuses it.
+sed -e 's/^        timeout-minutes: 18$/        timeout-minutes: 30/' -e 's/^    timeout-minutes: 30$/    timeout-minutes: 40/' "$SEED_WORKFLOW" >"$WORK/seed-outlives.yml"
+refuses "a Seed step that outlives the role's credentials is refused" "end a minute or more before the role" seed_guards "$WORK/seed-outlives.yml"
+# The credentials step given its old two minutes: 2 + 18 + the spare minute is 21 against the role's 20.
+awk '/^      - name: Take the deploy role$/ {f = 1} f && $0 == "        timeout-minutes: 1" {print "        timeout-minutes: 2"; f = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-credtime.yml"
+refuses "a credentials step allowed 2 minutes, which leaves the Seed step no spare minute inside the role, is refused" "end a minute or more before the role" seed_guards "$WORK/seed-credtime.yml"
+# A job whose name holds a digit is a second job all the same: the name class once had no digits. Its step carries
+# the act guard, so only the job list can refuse it (a bare step would be refused for lacking the guard, hiding the hole).
+# shellcheck disable=SC2016 # a literal workflow expression
+{ cat "$SEED_WORKFLOW"; printf '\n  tell2:\n    needs: seed\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n        if: ${{ !env.ACT }}\n'; } >"$WORK/seed-digitjob.yml"
+refuses "a second job whose name holds a digit is refused" "the seed job alone, found: seed: tell2:" seed_guards "$WORK/seed-digitjob.yml"
+# The role's life cut short under the same step: the other end of the same sum.
+sed 's/^\( *\)role-duration-seconds: 1200$/\1role-duration-seconds: 1080/' "$SEED_WORKFLOW" >"$WORK/seed-shortrole.yml"
+refuses "a role that does not outlast the credentials and Seed steps by a minute is refused" "end a minute or more before the role" seed_guards "$WORK/seed-shortrole.yml"
+# More days a run than the step holds (the constant raised, the workflow untouched), against a scratch copy of the tree.
+mkdir -p "$WORK/seed-days/scripts/src/demo"
+sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
+seed_guards_days() { REPO_DIR="$WORK/seed-days" seed_guards "$SEED_WORKFLOW"; }
+refuses "three days a run in an 18-minute Seed step is refused" "hold 3 days at 7.5 minutes a day" seed_guards_days
+awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
+refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
+awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
+refuses "contents: write in place of read is refused" "no permission but id-token: write" seed_guards "$WORK/seed-contentswrite.yml"
+{ cat "$SEED_WORKFLOW"; printf '\n  tell:\n    needs: seed\n    if: failure()\n    runs-on: ubuntu-24.04\n    steps:\n      - run: true\n'; } >"$WORK/seed-secondjob.yml"
+refuses "a second job beside the seed is refused" "the seed job alone" seed_guards "$WORK/seed-secondjob.yml"
 sed '/^  workflow_dispatch:$/d' "$SEED_WORKFLOW" >"$WORK/seed-nodispatch.yml"
 refuses "a seed with no manual run is refused" "a manual run" seed_guards "$WORK/seed-nodispatch.yml"
 awk '/^  workflow_dispatch:$/ {print "  push:"; print "    branches: [main]"} 1' "$SEED_WORKFLOW" >"$WORK/seed-push.yml"
-refuses "a seed that also runs on a push is refused" "no trigger but the schedule" seed_guards "$WORK/seed-push.yml"
+refuses "a seed that also runs on a push is refused" "no trigger but the manual run" seed_guards "$WORK/seed-push.yml"
 sed "s/^    if: github.ref == 'refs\/heads\/main'\$/    if: true/" "$SEED_WORKFLOW" >"$WORK/seed-branch.yml"
 refuses "a seed job that also runs from a branch is refused" "github.ref == 'refs/heads/main'" seed_guards "$WORK/seed-branch.yml"
 sed '/^    environment: ridge$/d' "$SEED_WORKFLOW" >"$WORK/seed-env.yml"
@@ -1205,6 +1450,10 @@ cport=$(free_port)
 cp -R "$OPS_DIR" "$E2E/repo/ops"
 cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
 echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+# docs/ is outside every path ci.yml deploys on: an edit there passes main_synced and meets the
+# whole-tree check against HEAD that seed.sh and root-password.sh keep.
+mkdir -p "$E2E/repo/docs"
+echo 'a note' >"$E2E/repo/docs/note.md"
 # seed.sh reads the paths a push deploys on from ci.yml, so the clone holds the real one.
 mkdir -p "$E2E/repo/.github/workflows"
 cp "$REPO_DIR/.github/workflows/ci.yml" "$E2E/repo/.github/workflows/ci.yml"
@@ -1984,7 +2233,7 @@ export OPS_LOG_DIR=$E2E/logs-rp-ops
 printf '# touched\n' >>"$E2E/repo/ops/README.md"
 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
 git -C "$E2E/repo" checkout -q -- ops/README.md
-refused_untouched "an ops/ that is not origin/main's is refused" "ops/ here differs from origin/main's"
+refused_untouched "an ops/ that is not origin/main's is refused" "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from origin/main's"
 export OPS_LOG_DIR=$E2E/logs-rp-head
 printf 'a note\n' >"$E2E/repo/NOTES-ROOT-PASSWORD.md"
 git -C "$E2E/repo" add NOTES-ROOT-PASSWORD.md
@@ -1993,9 +2242,9 @@ rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
 git -C "$E2E/repo" reset -q --hard "$e2e_sha"
 refused_untouched "a HEAD that is no commit of main is refused" "is not a commit of main"
 export OPS_LOG_DIR=$E2E/logs-rp-dirty
-printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+printf '# touched\n' >>"$E2E/repo/docs/note.md"
 rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
-git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+git -C "$E2E/repo" checkout -q -- docs/note.md
 refused_untouched "a tree that differs from its commit is refused" "this tree differs from"
 export OPS_LOG_DIR=$E2E/logs-rp-modules
 RIDGE_SCRIPTS_DIR='' rp_run "$NEWPW"$'\n'"$NEWPW" ridge "$c1"
@@ -2127,9 +2376,9 @@ check "seed.sh seeds ridge alone: another environment is refused before any aws 
 
 e2e_fresh seed-dirty
 export OPS_LOG_DIR=$E2E/logs-seed-dirty
-printf '# touched\n' >>"$E2E/repo/c-storage/bruno/opencollection.yml"
+printf '# touched\n' >>"$E2E/repo/docs/note.md"
 e2e_run seed.sh ridge
-git -C "$E2E/repo" checkout -q -- c-storage/bruno/opencollection.yml
+git -C "$E2E/repo" checkout -q -- docs/note.md
 check "a tree that differs from its commit is refused before any aws call, naming why" "1 1 gone" \
   "$RC $(seed_lines '^error: this tree differs from') $(file_state "$S/aws.calls")"
 
@@ -2159,17 +2408,17 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and brought to yesterday, exit 0 (nothing before had written it)" "0 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 7 days applied$') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 2 of its 7 days applied, the 5 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 5); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
 check "  and the log's search for the keys ran" 1 "$(seed_lines '^ok   no key in this log')"
 export OPS_LOG_DIR=$E2E/logs-seed-second
 e2e_run seed.sh ridge
-check "a second run adds nothing" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 1 up to date, 5 not on this service, 0 days applied$')"
+check "a second run goes on from the ledger, 2 more days" "0 1" "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$')"
 
-# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the morning's run goes on.
+# A push touching none of ci.yml's paths deploys nothing: ridge stays on the commit before it, and the next run somebody asks for goes on.
 export OPS_LOG_DIR=$E2E/logs-seed-docs-ahead
 printf 'a note\n' >"$E2E/repo/NOTES.md"
 git -C "$E2E/repo" add NOTES.md
@@ -2232,8 +2481,8 @@ case "$*" in
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
-  *"wait change-set-create-complete"*) exit 255 ;;
-  *describe-change-set*) echo "The submitted information didn't contain changes. Submit different information to create a change set." ;;
+  *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
+  *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
   *create-change-set* | *delete-change-set*) : ;;
   *send-ssh-public-key*) echo True ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
@@ -2269,6 +2518,35 @@ check "  the box's private address and the role's ARN are in neither the log nor
 check "  the app's address is printed, and the log ends on no key" "1 1" \
   "$(grep -c '^  AppAddress = https://app.example.test' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 check "  GitHub's environment was written (the run went past the outputs)" 1 "$(grep -c '^gh secret set AWS_ROLE_ARN' "$S/gh.calls" || true)"
+
+# A change set with changes: the stand-in hands back a hand-written body (FAKE_CHANGESET), so the lines the
+# operator reads before the irreversible act are the script's own.
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional --plan
+check "a Conditional change refused: exit 1, REFUSED, and no change applied" "1 1 0" \
+  "$RC $(grep -c '^REFUSED: this change set removes or replaces' "$S/out" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
+check "  and its refusal line names the property that carried it" 1 \
+  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic$' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional-taken --plan --take Box
+check "  with Box taken the plan passes, exit 0, and the verdict names what was let through" "0 1 0" \
+  "$RC $(grep -c 'nothing unsafe except what was taken: Box$' "$S/out" || true) $(grep -c 'no removal and no replacement' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-replaces.json stack_run stack-replaces-taken --plan --take Box
+check "  with Box taken the removal of OldGroup, not taken, is still refused, naming only it" "1 1 0" \
+  "$RC $(grep -c '^  OldGroup (AWS::EC2::SecurityGroup): Remove, replacement none$' "$S/out" || true) $(grep -c '^  Box (AWS::EC2::Instance): Modify, replacement' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-adds --plan
+check "  a change set that only adds and modifies keeps its old verdict" "0 1 0" \
+  "$RC $(grep -c 'ok   no removal and no replacement' "$S/out" || true) $(grep -c 'except what was taken' "$S/out" || true)"
+
+# A change carrying no Details key at all: the `?` on .Details[] in stack.sh keeps it from dying before the guard.
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-nodetails.json stack_run stack-nodetails --plan
+check "a change with no Details key still prints its change line and reaches a verdict" "0 1 1" \
+  "$RC $(grep -c '^  Add Box (AWS::EC2::Instance) replacement=none$' "$S/out" || true) $(grep -c 'ok   no removal and no replacement' "$S/out" || true)"
+# A blank --take names nothing yet would print as an authorisation: it is a usage error, first or after a good one.
+stack_run stack-take-blank --plan --take ''
+check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0" \
+  "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
+check "  and so is a blank one after a good one" "2 0" \
+  "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 

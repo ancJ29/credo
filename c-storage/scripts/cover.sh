@@ -34,7 +34,7 @@ go test -race -count=1 -timeout 3m -coverpkg="$(echo $measured | tr ' ' ,)" -cov
 # binary loaded has no line in the profile at all. A file that declares no
 # function has none either, so only a file with one is expected there.
 files=""
-# shellcheck disable=SC2086
+# shellcheck disable=SC2086,SC2016 # the list splits on whitespace as go list wrote it; the braces are Go template text, not shell
 for pair in $(go list -f '{{$p := .ImportPath}}{{$d := .Dir}}{{range .GoFiles}}{{$p}}/{{.}}={{$d}}/{{.}} {{end}}' $measured); do
   if grep -q '^func ' "${pair#*=}"; then files+="${pair%%=*} "; fi
 done

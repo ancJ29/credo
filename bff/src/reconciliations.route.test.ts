@@ -3,6 +3,7 @@ import {
   deliveryListReplySchema,
   deliveryRoutes,
   driverDay,
+  gapOf,
   orderRoutes,
   reconciliationListReplySchema,
   reconciliationRoutes,
@@ -27,9 +28,17 @@ const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 
 /** A client that fails or moves the write of a chosen key, while its plan names it. */
 function flaky() {
-  const plan: { on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | null } = {};
+  const plan: {
+    on?: (key: string) => 'throw' | 'moved' | 'lost' | 'theirs' | 'rival' | null;
+    /** Runs before a read of the key, once the plan sets it, e.g. to take a record away. */
+    beforeGet?: (key: string) => Promise<void>;
+  } = {};
   const wrap = (client: CStorageClient): CStorageClient => ({
     ...client,
+    async getRecord(key) {
+      await plan.beforeGet?.(key);
+      return client.getRecord(key);
+    },
     async putRecord(key, data, ifTag) {
       const what = plan.on?.(key) ?? null;
       if (what === 'throw') throw new CStorageError(503, 'down');
@@ -38,6 +47,10 @@ function flaky() {
         // another close lands first, and ours fails with its answer lost
         await client.putRecord(key, { ...(data as object), handedIn: 1 }, null);
         throw new CStorageError(503, 'answer lost');
+      }
+      if (what === 'rival') {
+        // another close lands first, and ours goes on to c-storage with the precondition it was given
+        await client.putRecord(key, { ...(data as object), handedIn: 1 }, null);
       }
       const saved = await client.putRecord(key, data, ifTag);
       // the write landed and its answer was lost
@@ -167,6 +180,56 @@ describe('Rows 4, 11 and 12: the close', () => {
       code: null,
       name: d.w.t.ROOT.name,
     });
+  });
+
+  it('The sum the page builds for a driver’s day from the list the office reads is the sum the stored close holds, and the gap the page shows for the cash typed is the stored difference', async () => {
+    const d = await dayEnd();
+    const small = { lines: [{ productId: d.w.ids.sand, quantity: 1 }] };
+    await d.deliver(d.tung);
+    await d.deliver(d.tung, small);
+    await d.sentTo();
+    await d.deliver(d.nam);
+    // what the page shows before the close: its own sum over the day's list, and the gap for the typed cash
+    const page = driverDay(await d.requests(), d.tung.employee.id);
+    const typed = page.toCollect + 700;
+    const shown = { toCollect: page.toCollect, difference: gapOf(page.toCollect, typed) };
+    expect(page.delivered).toHaveLength(2);
+    expect(new Set(page.delivered.map((one) => one.total)).size).toBe(2);
+
+    const reply = await d.close(d.tung, closeRequestFor(page, typed));
+
+    expect(reply.statusCode).toBe(200);
+    const record = reconciliationSchema.parse(reply.json());
+    expect({ toCollect: record.toCollect, difference: record.difference }).toEqual(shown);
+    // and the stored record, read again, still equals what the page now builds
+    const [again] = await d.listed();
+    const after = driverDay(await d.requests(), d.tung.employee.id);
+    expect(again?.toCollect).toBe(after.toCollect);
+    expect(again?.requests.reduce((sum, one) => sum + one.total, 0)).toBe(after.toCollect);
+  });
+
+  it('A person whose staff record goes between their sign-in and the close closes nothing: a 401, the day’s waiting request is left as it was and no closed day is written', async () => {
+    const f = flaky();
+    const d = await dayEnd({ wrap: f.wrap });
+    await d.deliver();
+    const waiting = await d.sentTo();
+    const body = await d.asked(d.tung, 0);
+    const person = d.w.t.keys.employee(d.w.office.employee.id);
+    // the office person holds the right to close; their record goes as the close looks for the day
+    f.plan.beforeGet = async (key) => {
+      if (!key.includes('.reconciliation.')) return;
+      f.plan.beforeGet = undefined;
+      await d.w.t.client.removeRecord(person);
+    };
+
+    const reply = await d.close(d.tung, body);
+    f.plan.beforeGet = undefined;
+
+    expect(reply.statusCode).toBe(401);
+    // read by the root: the office person is gone
+    const left = await d.w.requestDoc(DAY, waiting.request.request.id, d.w.t.rootCall);
+    expect(left.request.state).toBe('waiting');
+    expect(await d.listed(DAY, d.w.t.rootCall)).toEqual([]);
   });
 
   it('A driver whose only request was cancelled closes with nothing to collect and 0', async () => {
@@ -401,6 +464,20 @@ describe('Row 16: the close’s writes', () => {
     expect((await e.close(e.tung, asked)).statusCode).toBe(409);
     f.plan.on = undefined;
     expect((await e.listed()).map((one) => one.handedIn)).toEqual([1]);
+  });
+
+  it('A close whose write reaches c-storage after another close landed under the key is refused by c-storage with a 409, and the record stays the first close’s', async () => {
+    const f = flaky();
+    const d = await dayEnd({ wrap: f.wrap });
+    await d.deliver();
+    const asked = await d.asked(d.tung, 5);
+    f.plan.on = (key) => (key.includes('.reconciliation.') ? 'rival' : null);
+
+    const reply = await d.close(d.tung, asked);
+    f.plan.on = undefined;
+
+    expect(reply.statusCode).toBe(409);
+    expect((await d.listed()).map((one) => one.handedIn)).toEqual([1]);
   });
 
   it('An order that moved meanwhile is left as it is: its request reads cancelled whatever it names', async () => {

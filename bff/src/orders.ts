@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import {
   addDays,
   byCode,
@@ -30,6 +31,8 @@ import {
   resolvePermissions,
   ROUTES,
   numberText,
+  firstSaveOrderRequestSchema,
+  resaveOrderRequestSchema,
   saveOrderRequestSchema,
   sendableOn,
   sendOrderRequestSchema,
@@ -252,7 +255,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
 
   app.post(ROUTES.orders, forClient, async (request, reply) => {
     mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(saveOrderRequestSchema, request.body);
+    const body = parse(firstSaveOrderRequestSchema, request.body);
     const { customer, lines, total } = await priced(request.tenantId, body);
     const given = await nextNumber(request.tenantId, 'orders');
     const order: Order = {
@@ -279,10 +282,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
 
   app.put(orderRoutes.one(':day', ':id'), forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(
-      saveOrderRequestSchema.safeExtend({ version: z.string().min(1) }),
-      request.body,
-    );
+    const body = parse(resaveOrderRequestSchema, request.body);
     const found = await mustFindOrder(request);
     const { day, id } = found.order;
     if (body.day !== day)
@@ -293,9 +293,20 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     const { customer, lines, total } = await priced(request.tenantId, body);
     const changed: Order = { ...found.order, customer, lines, total, extra: body.extra };
     const key = recordKeys.tenant(request.tenantId).order(day, id);
-    if ((await storage.putRecord(key, changed, found.tag)) === 'moved') {
-      throw conflict(await orderDoc(request.tenantId, day, id));
+    let outcome: 'saved' | 'moved';
+    try {
+      outcome = await storage.putRecord(key, changed, found.tag);
+    } catch (error) {
+      // The write may have landed with its answer lost: the record stored is exactly the one built
+      // here, state and request included, or the failure stands. A rival's confirm differs in both.
+      // a re-read that fails too leaves the write's failure standing, as the lists' recovery does
+      const stored = await readOrder(request.tenantId, day, id).catch(() => null);
+      if (stored !== null && isDeepStrictEqual(stored.order, changed)) {
+        return await orderDoc(request.tenantId, day, id);
+      }
+      throw error;
     }
+    if (outcome === 'moved') throw conflict(await orderDoc(request.tenantId, day, id));
     return await orderDoc(request.tenantId, day, id);
   });
 

@@ -11,7 +11,7 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
-import { applyAll } from './demo/apply';
+import { applyAll, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
 import { ensureService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
@@ -43,7 +43,7 @@ const USAGE =
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
- * copy it had to leave (used first, or too far behind) ends it red after the others are done.
+ * copy it had to leave (used first, or held by another run) ends it red after the others are done.
  * `root-password` sets the named demo copies' roots to the password on the standard input and
  * prints no password; `--check` needs no connection. Returns the exit status: 2 for what was
  * refused before anything was written, 1 for a failure.
@@ -162,14 +162,30 @@ export async function runRidge(
     }
 
     if (command === 'seed') {
-      const reports = await applyAll(client(), vietnamToday((io.now ?? Date.now)()), io.out);
+      const reports = await applyAll(
+        client(),
+        vietnamToday((io.now ?? Date.now)()),
+        io.out,
+        undefined,
+        MAX_DAYS_PER_RUN,
+      );
       const count = (status: (typeof reports)[number]['status']) =>
         reports.filter((report) => report.status === status).length;
       const days = reports.reduce((sum, report) => sum + report.days.length, 0);
+      // Only a copy that ended ok is behind: a refused one can carry a count too (the ledger moved under
+      // the run after the days were counted), and it is named in the error below, not subtracted from ok.
+      const behind = reports.filter((report) => report.status === 'ok' && report.remaining > 0);
+      // Ends green, and says so where a person reading the log looks: before the summary line.
+      if (behind.length > 0) {
+        const most = Math.max(...behind.map((report) => report.remaining));
+        io.out(
+          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${MAX_DAYS_PER_RUN} days at most a copy, run it again to go on: ${Math.ceil(most / MAX_DAYS_PER_RUN)} more runs`,
+        );
+      }
       io.out(
-        `seed: ${reports.length} copies mapped, ${count('ok')} up to date, ${count('missing')} not on this service, ${days} days applied`,
+        `seed: ${reports.length} copies mapped, ${count('ok') - behind.length} up to date, ${count('missing')} not on this service, ${days} days applied`,
       );
-      const stopped = reports.filter((r) => r.status === 'refused' || r.status === 'too-far');
+      const stopped = reports.filter((r) => r.status === 'refused');
       if (stopped.length > 0) {
         throw new Error(`left as they were, see above: ${stopped.map((r) => r.code).join(', ')}`);
       }

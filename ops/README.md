@@ -17,7 +17,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
-| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | about a minute, a few for a first fill |
+| the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -51,8 +51,12 @@ working copy.
      this log` is not a key: redact it in this log, nothing is replaced ([the check](#the-check)).
    - The log reads the box over the tunnel (arm64, swap on, the SSM agent stopped), then GitHub's
      environment admitting `main` alone, and its secret `AWS_ROLE_ARN`.
-   - A stack that stays in `ROLLBACK_COMPLETE` is deleted by hand in the console before the script
-     is run again; the script stops and says so.
+   - A stack that stays in `ROLLBACK_COMPLETE` (its creation did not complete and was rolled back, so
+     it holds nothing) is deleted by hand in the console before the script is run again; the script
+     stops and says so. A rolled-back creation's box is terminated, and `DeleteOnTermination: false`
+     (`ops/env.yml#L128`) leaves its empty root disk behind as an `available` volume, a few cents a
+     month: remove it. *Reasoned, not seen:* CloudFormation's deletion of the instance terminates it,
+     so EC2's attribute governs (high confidence, never tried).
 
 ## A change to a template
 
@@ -69,13 +73,19 @@ working copy.
      repository's OIDC subject setting changed on GitHub (the immutable subject switched on or off,
      or the repository deleted and made again): the role's trust is not moved by a plain update;
      see [the trust in the plan](../docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
+   - A `--plan` the guard refuses prints `REFUSED` and one line per change, deletes the change set and
+     changes nothing (exit 1). A `replacement=Conditional` line is the property's class, taken from
+     `RequiresRecreation`, not a verdict on this change: read AWS's update behaviour for that property,
+     and see `docs/plans/2026-11-08-backup-policy-conditional-memo.md`. Naming the resource with
+     `--take <id>` passes the guard; do it only deliberately.
    - `env` reads the deploy role's subject from GitHub (`gh api repos/<owner>/<name>/actions/oidc/customization/sub`),
      prints it as `subject prefix:` in the log, and keeps the stack's. It stops if GitHub's differs
      from the stack's, if the settings use custom claim keys, or if it cannot read them.
 3. Run it again without `--plan`.
    - **REFUSED:** the change set removes or replaces something and nothing changed. If the plan's
      step names that change on purpose, run again with `--take <LogicalId>`; otherwise change the
-     template.
+     template. `--take Box` leaves the old box running with the only copy of the records while the
+     new box comes up empty: read [Reading what the fence kept](#reading-what-the-fence-kept) first.
    - **no changes:** the stack already matches the template.
 
 ## The first deploy was refused at the role
@@ -199,8 +209,7 @@ click; nothing else of the copy changes. The six demo copies of `scripts/src/dem
 client's own stack is the console's. The why is
 [the plan](../docs/plans/2026-11-02-ridge-root-password.md).
 
-1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs
-   (from 03:17 in Vietnam, and GitHub may start it up to about 3 hours late), naming the codes of the copies one person holds, for example
+1. Run it from a worktree at `main` with `pnpm install` done, in a terminal, not while the seed runs, naming the codes of the copies one person holds, for example
    `ops/root-password.sh ridge <code> <code>`. Type the password at each prompt (8 to 128 characters, a
    capital, a small letter, a digit, one of `@$!%*?&`, no space at either end). Send it to the person
    by your own channel; the script never shows it again.
@@ -217,29 +226,27 @@ client's own stack is the console's. The why is
 
 ## The seed
 
-The demo copies on ridge get a day each night from `.github/workflows/seed.yml` (03:17 in Vietnam,
-and a manual run), which runs `ops/seed.sh ridge` under the deploy role. The script makes no client and
+The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
+somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
+runs `ops/seed.sh ridge` under the deploy role, at most 2 days a copy a run (about 15 minutes; the Seed step is limited to 18, inside the role's 20). The script makes no client and
 no password: the human makes each copy at `/operator` first, under its mapped code. The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
 
 1. Make a copy at `/operator` under its code from the mapping (`scripts/src/demo/mapping.ts`), and
    send its link and root password privately. Then run `ops/seed.sh ridge` by hand from a worktree at
-   `main` with `pnpm install` done, or wait for the morning's run.
+   `main` with `pnpm install` done, or run the workflow.
 2. Read the log's lines: `seed: <n> copies mapped, <n> up to date, <n> not on this service, <n> days
    applied`, then `seeded <sha>`.
    - **<code>: not on this service, left:** that mapped code has no client on ridge. Make it at
      `/operator`; a mistyped code is not in the mapping, so it stays empty.
    - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
      stays as it is; make a new copy under a new code.
-   - **<code>: <n> days behind, more than 30, left:** the schedule stopped for a month; the run ends red.
-     Run it again after reading why.
    - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
      <S>**, for the scenario): the copy was filled for another client or trade than the mapping now
      maps to that code. It is refused and left, never switched; make a new copy under a new code.
    - **/health names <sha>, not <sha>:** ridge runs another commit than the seed's, and not an earlier
      one that differs from it in no path `ci.yml` deploys on (a push touching none deploys nothing, so
-     the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green; the
-     next morning catches the day up.
+     the seed goes on). Nothing was written. After a deploy, run it again once the deploy is green.
    - **ci.yml's push trigger holds a line this script cannot read:** the seed reads the paths a push
      deploys on from `ci.yml`, and only as `      - "<path>"` or `      - "<path>/**"`; the line
      named is quoted another way, commented or a deeper glob. Nothing was written; write the entry in
@@ -248,9 +255,12 @@ no password: the human makes each copy at `/operator` first, under its mapped co
      the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
    - **this tree differs from <sha>:** commit or drop the change; the seed runs the code in this tree.
-3. A red scheduled run is a defect, never a run to repeat. GitHub disables a public repository's
-   schedules after 60 days without activity: if the last green is older than two days, run the workflow
-   by hand (`gh workflow run seed`, or Actions, "Run workflow", on `main`).
+3. A run that ends `seed: STILL BEHIND` is green: it applied 2 days a copy and the line names what is
+   left and how many more runs it takes; run it again to go on, at once if you like, each run takes off 2
+   days whatever the backlog (a month's gap is about 15 runs of about 15 minutes; no backlog is refused).
+   A gap of N days takes N/2 runs, so a week's gap is 4 runs one after the other (about an hour in all);
+   a single run asked once a week falls 5 days further behind each time, and never catches up. A red run is read before it is run again. Ridge's data is only as fresh as
+   the last run, so run the workflow before anyone checks anything against it.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
    - **a key is in this log:** as in [the check](#the-check).
 
@@ -359,6 +369,82 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
    - **a key is in this log:** as in [the check](#the-check).
    - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
+## Reading what the fence kept
+
+`Box` carries `RetainExceptOnCreate` on a stack delete (it retains on every act but the rollback of its own creation, which deletes a box that never served) and `Retain` on a replacement, and its root disk carries
+`DeleteOnTermination: false` (`ops/env.yml`, the comment above `Box`). That keeps a disk. It does not
+make the records come back, and **nobody has done either path below**: every step is written from
+what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked
+*untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. There
+is still no copy of any client's records anywhere else ([open item 6](../docs/open-items.md)). The
+first real run of either path is a drill, and until then treat these as notes for a bad day, not a
+rehearsed procedure. Region `ap-southeast-5`, your own AWS session, every `aws` line yours to run.
+
+The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`).
+The unit is `DynamicUser=yes` with `StateDirectoryMode=0700`, so only root reads it: `sudo` on the
+box (`ops/release.sh` uses `sudo` for everything). *Untested:* systemd documents that a dynamic-user
+service keeps its state under `/var/lib/private/c-storage`, with `/var/lib/c-storage` a link to it.
+
+### A retained box
+
+The stack was deleted (or a replacement set the old box aside) and the instance is still running,
+outside any stack.
+
+1. Find it. `BoxId` was a stack output and went with the stack, so look the instance up by the tag
+   `ops/env.yml` gives it, `Name` = `credo-<env>`:
+   `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name,LaunchTime]' --output text`.
+   After a replacement two boxes carry the name: the older `LaunchTime` is the retained one. *Untested:*
+   that the tag survives on a retained instance (the tag is the template's own property, so it should).
+2. Do not use `ops/tunnel.sh`, `check.sh` or `release.sh` on it: `box_open` reads `BoxId` from the
+   stack and stops with "stack <env> does not exist" (`ops/lib.sh`). Do by hand what `box_open` does:
+   a throwaway key (`ssh-keygen -t ed25519 -N '' -f <keyfile>`), then
+   `aws ec2-instance-connect send-ssh-public-key --instance-id <id> --availability-zone <zone> --instance-os-user ec2-user --ssh-public-key file://<keyfile>.pub`,
+   then within 60 seconds
+   `ssh -i <keyfile> -o IdentitiesOnly=yes -o ProxyCommand="aws ec2-instance-connect open-tunnel --instance-id %h" ec2-user@<id>`.
+   *Untested:* that the endpoint (the network stack's, which an environment's delete leaves) still
+   reaches it. The way in is `BoxGroup`'s port-22 rule, and `BoxGroup` is in the stack that went:
+   the kept instance still uses it, so a delete is expected to stop there, but nobody has seen it.
+   If the group is gone, the box has no way in, and the way to read it is to stop the instance, detach its disk and follow the left-behind volume below.
+3. On the box, stop the service so the file is whole (`sudo systemctl stop c-storage`): the memo
+   says a copy taken while it runs can miss commits held in the `-wal` file
+   ([the memo](../docs/memo/c-storage.md#the-file-is-the-only-copy)). Then
+   `sudo ls -la /var/lib/c-storage/` and expect the `.db` file with no `-wal` beside it. *Untested:*
+   that a clean stop leaves it so; if a `-wal` is there, copy the whole folder and keep all three files.
+4. Copy it out over the same connection, the way `ops/release.sh` sends files the other way:
+   `ssh <the options above> ec2-user@<id> 'sudo cat /var/lib/c-storage/c-storage.db' > <local file>`,
+   then `sudo sha256sum` on the box against `shasum -a 256` here. Both sums equal is the only proof
+   the copy is the file.
+5. Reading the copy is *untested and unwritten*: `DB_PATH` is the one setting that names the file, so
+   pointing a local c-storage at the copy is the expected way, but the keys in
+   `/etc/c-storage/keys.env` (root's alone, on the box) are what a client of it needs, and no step here
+   has been tried.
+6. Only after step 5 has read real records, remove the box. Nothing removes it for you, and it bills.
+
+Running `ops/stack.sh env <name>` again does **not** bring the old records back: it makes a new box
+and a new, empty database beside the retained one.
+
+### A left-behind volume
+
+The instance was terminated (console, or any act outside CloudFormation) and its disk is still there,
+status `available`.
+
+1. Find it: `aws ec2 describe-volumes --region ap-southeast-5 --filters Name=status,Values=available --query 'Volumes[].[VolumeId,Size,AvailabilityZone,CreateTime]' --output text`.
+   Pick by size (the stack's `VolumeSize`), by zone and by a `CreateTime` close to the box's launch.
+   *Untested:* the template tags the instance, not the disk, so expect no name on the volume.
+2. Launch any instance in the same zone and attach the volume to it as a second disk
+   (`aws ec2 attach-volume --volume-id <id> --instance-id <new> --device /dev/sdf`). The disk is
+   encrypted under the account's default EBS key (`ops/env.yml` sets `Encrypted: true` and no key id),
+   so the same account reads it. *Untested:* a way in to that instance: the repository only shows a box
+   reached through the endpoint with `BoxGroup`'s port-22 rule, so the easy case is a new instance in
+   the same subnet with that group, which exists only while the environment stack does.
+3. On it, find the disk with `lsblk`, and mount its root partition read-only. *Untested, expected:*
+   the root is XFS (`ops/env.yml`'s UserData comment), and XFS refuses a second filesystem with the
+   running root's id, so `sudo mount -o ro,nouuid /dev/<partition> /mnt`.
+4. Stop at `/mnt/var/lib/c-storage/c-storage.db` (or `/mnt/var/lib/private/c-storage/`): copy and
+   compare as in the retained box's step 4. Nothing was running on it, so no `-wal` is expected beyond what
+   the last stop left.
+5. Remove the volume and the helper instance when the copy has been read, not before.
+
 ## The drill
 
 Once on a new box, and again when the unit, the templates or the box change. It breaks the known
@@ -381,8 +467,8 @@ Run the same three before pushing an `ops/` change:
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,
-   no `continue-on-error`, the Region, and the account id's mask; and the seed workflow's (a schedule
-   and a manual run, `main` alone, environment `ridge`, the group `ridge-seed`, `!env.ACT` on each step).
+   no `continue-on-error`, the Region, and the account id's mask; and the seed workflow's (a manual run
+   and nothing else, no schedule and no permission but the OIDC token, `main` alone, environment `ridge`, the group `ridge-seed`, `!env.ACT` on each step).
 
 Under `act` two things are act's own, not the scripts': the `check` job's "Post actions/setup-go"
 fails (act's copy of the action lacks its cache-save module, and its cache server is unreachable),

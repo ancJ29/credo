@@ -33,6 +33,10 @@ export default defineConfig({
       //
       // elsewhere: demo-files-main.ts only finds the credo root from git and binds src/demo-files.ts's
       // writeDemoFiles to it; src/demo-files.test.ts runs writeDemoFiles on a temporary folder.
+      //
+      // elsewhere: src/demo/apply-support.ts is what the ten src/demo/apply.*.test.ts files share, the
+      // helpers that used to sit at the top of one test file (which this list leaves out already). Its
+      // guards ('taken', a sort's other side) are the test's own and only a failing setup reaches them.
       exclude: [
         'src/walks-main.ts',
         'src/**/*.test.ts',
@@ -41,6 +45,7 @@ export default defineConfig({
         'src/ridge-main.ts',
         'src/demo-main.ts',
         'src/demo-files-main.ts',
+        'src/demo/apply-support.ts',
       ],
       reporter: [['text', { skipFull: true }]],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },

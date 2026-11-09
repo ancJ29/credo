@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { can, type Language } from '@credo/shared';
 import { Anchor, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -8,7 +8,7 @@ import { type PageProps, useLoad } from './page';
 
 /**
  * The company's customers or products as the BFF lists them, in code order, with the root's way to
- * import more from Excel. Whoever may see orders has these pages (the root alone imports), and the
+ * import more from Excel and an Add for whoever may edit orders. Whoever may see orders has these pages (the root alone imports), and the
  * BFF checks the same on every call. A price is shown as the language writes a number.
  */
 export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
@@ -23,11 +23,18 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title order={2}>{t(`nav.${kind}`)}</Title>
-        {page.user.root && (
-          <Button component={Link} to={`/${kind}/import`} variant="default">
-            {t('lists.import')}
-          </Button>
-        )}
+        <Group gap="xs">
+          {page.user.root && (
+            <Button component={Link} to={`/${kind}/import`} variant="default">
+              {t('lists.import')}
+            </Button>
+          )}
+          {can(page.user, 'orders.canEdit') && (
+            <Button component={Link} to={`/${kind}/new`}>
+              {t(`lists.${kind}.newButton`)}
+            </Button>
+          )}
+        </Group>
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {rows.length === 0 ? (

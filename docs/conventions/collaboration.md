@@ -1,9 +1,8 @@
 # Collaboration
 
-> **Decided** 2026-10-27. Binds every person and every agent working here.
-> **Last amended** 2026-11-07, from the review of how we work, the day's two hand-made gates, the human's
-> cleanup of this memo and the move of the machine's own rules into QA: this file holds the rules and
-> the reason each exists; their history is in `git log`.
+> **Decided** 2026-10-27. Binds every person and every agent working here. This file holds the rules
+> and the reason each exists; their history is in `git log`.
+> **Last amended** 2026-11-08, by piece 89's cut of the rules that were being said twice.
 
 ## At a glance
 
@@ -131,10 +130,11 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    says what the human saw or asked, what was found and what to open; for a look, what a yes and
    a no each start. A sha, a path or a line number follows the words and never stands for them,
    and a thing to look at is named as its page shows it — the walk's title, the screen's number
-   and its sentence, what changed on it — never as an id or an agent's phrase. Anything the human
-   must look up is named with a few words of what it is and a `path#Lnn` link, never a bare
-   label. Nothing written for the human is written in the machine's terms: a step number, a
-   model's name, minutes against sized tell the reader how the machine spent itself, not what
+   and its sentence, what changed on it, where the page marks it, and whether the human's own
+   answers already hold it — never as an id or an agent's phrase. Anything the human must look up
+   is named with a few words of what it is and a `path#Lnn` link, never a bare label. Nothing
+   written for the human is written in the machine's terms: a step number, a model's name, minutes
+   against sized tell the reader how the machine spent itself, not what
    changed for anyone, and belong in the machine's own record. Reviewing a recap is reading it
    for sense and for what would make someone act wrongly; the reviewer re-runs only what it
    claims without evidence. *Why:* a compact line sends the human hunting for what it means,
@@ -176,9 +176,9 @@ A piece too big to walk at the end of a day is cut again, never stretched.
 | 4 | ridge, the shared pre-production environment, where others check it without reading the code | 👤 and others |
 
 **A plan that leaves out a stage names the gap and says why.** Stage 4 is stood up only for a
-piece that changes what ships — a new resource, hop or key — as hand-off 3 says; for every other
-piece stage 2 stands in its place, and the plan says so. *Why:* the confidence to deliver comes
-from every piece being checked the same way before anyone reads its code.
+piece that changes what ships (hand-off 3); for every other piece stage 2 stands in its place, and
+the plan says so. *Why:* the confidence to deliver comes from every piece being checked the same
+way before anyone reads its code.
 
 ## Pacing: one piece at a time
 
@@ -239,9 +239,9 @@ flowchart LR
   its minutes.
 - **A piece's record is its own file and its row in the runs log**, never a paragraph rewritten
   each morning: what the piece will mean when done and for whom, what is true now, what is left,
-  all in plain words. The machine's own numbers — a step count, a model, minutes against sized —
-  live in the runs log alone. *Why:* one record a piece can be read by whoever opens it, while a
-  narrative paragraph goes stale within the hour and costs its rewrite every day.
+  all in plain words. The machine's own numbers live in the runs log alone (hand-off 4). *Why:* one
+  record a piece can be read by whoever opens it, while a narrative paragraph goes stale within the
+  hour and costs its rewrite every day.
 - **Nothing enters unless something calls it now**, whether a route, a package, a page or a memo.
   *Rejected:* building for a caller still to come. Code nothing calls is still read, carried and
   kept compiling, all for nothing.

@@ -69,6 +69,18 @@ function Page({ later = false }: { later?: boolean }) {
         </label>
       </div>
       {shown && <button onClick={() => setSaved('late')}>Late</button>}
+      {shown && (
+        <>
+          <h2>Late list</h2>
+          <table>
+            <tbody>
+              <tr>
+                <td>Bình An</td>
+              </tr>
+            </tbody>
+          </table>
+        </>
+      )}
       <p data-testid="out">{saved}</p>
       <p data-testid="allowed">{allowed}</p>
       <p data-testid="chosen">{chosen}</p>
@@ -184,6 +196,22 @@ describe('a scene’s steps', () => {
     );
 
     expect(out()).toBe('late');
+  });
+
+  it('wait for a heading by the dictionary’s words and a cell by its own, and touch neither', async () => {
+    draw({ later: true });
+
+    await runSteps(
+      document.body,
+      [{ see: 'form.list' }, { see: 'Bình An', text: true }],
+      { form: { list: 'Late list' } },
+      { ...QUICK, findFor: 1000 },
+    );
+
+    expect(out()).toBe('');
+    await expect(
+      runSteps(document.body, [{ see: 'Nobody', text: true }], {}, QUICK),
+    ).rejects.toThrow('found no heading or cell named “Nobody”');
   });
 
   it('stop at a step that finds nothing, naming its place and what it was', async () => {

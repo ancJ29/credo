@@ -357,6 +357,8 @@ describe('the order’s page on the cards', () => {
   it('A draft is two columns from 992: the day, customer and lines left, the confirm and the cancel right', async () => {
     openApp(at(draftToday), { as: LAN });
     await formReady();
+    // the confirm panel draws after the drivers load, a call of its own the form does not wait for
+    await screen.findByRole('heading', { level: 3, name: 'Confirm the order' });
 
     expect(columnCount()).toBe(2);
     expect(columnOf(block('Details'))).toBe(0);
@@ -389,7 +391,11 @@ describe('the order’s page on the cards', () => {
       expect(columnOf(block('Details'))).toBe(0);
       expect(columnOf(block('Lines'))).toBe(0);
       expect(columnOf(block('Delivery request'))).toBe(1);
-      for (const step of steps) expect(columnOf(block(step))).toBe(1);
+      // a step's panel draws after the drivers load, a call of its own the order's heading does not wait for
+      for (const step of steps) {
+        await screen.findByRole('heading', { level: 3, name: step });
+        expect(columnOf(block(step))).toBe(1);
+      }
     },
   );
 
@@ -606,7 +612,8 @@ describe('confirming an order', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Show theirs' }));
 
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-    expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name);
+    // the form is drawn again once the customers and the products are read again
+    await waitFor(() => expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name));
   });
 
   it('A confirm over someone else’s newer one is refused too, and theirs is offered', async () => {
@@ -642,7 +649,8 @@ describe('confirming an order', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Show theirs' }));
 
     await waitFor(() => expect(drawn.api.getOrder).toHaveBeenCalledTimes(2));
-    expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name);
+    // the form is drawn again once the customers and the products are read again
+    await waitFor(() => expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name));
   });
 
   it('A save that fails keeps what was typed', async () => {
@@ -726,5 +734,78 @@ describe('cancelling and sending again', () => {
       DEMO_DELIVERIES.some((one) => one.order.id === unsent.id && one.state === 'cancelled'),
     ).toBe(true);
     expect(screen.queryByRole('heading', { level: 3, name: 'Send it again' })).toBeNull();
+  });
+});
+
+describe('a draft read at the prices it was saved at', () => {
+  const draftYesterday = DEMO_ORDERS.find(
+    (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
+  )!;
+  const MOVED = 'Now 95,000: saving takes the new price.';
+
+  it('A saved draft’s lines are drawn at the prices they were saved at, never at the list’s prices today, and its total is theirs', async () => {
+    openApp(at(draftYesterday), { as: LAN });
+    await heading(`Order ${draftYesterday.number}`);
+    await formReady();
+
+    // the cement was saved at 90,000 and the list now says 95,000
+    expect(rows()[1]?.slice(0, 5)).toEqual([
+      'VT-001 · Xi măng PCB40',
+      'bao',
+      '90,000Now 95,000: saving takes the new price.',
+      '20',
+      '1,800,000',
+    ]);
+    expect(rows().at(-1)).toEqual(['Total', money(draftYesterday.total), '']);
+    expect(draftYesterday.total).toBe(1_800_000 + 5 * 410_000);
+  });
+
+  it('A line whose product’s price has moved since is marked with what a save would make it; a line whose price has not moved is not marked, and a draft with none moved has no mark', async () => {
+    openApp(at(draftYesterday), { as: LAN });
+    await formReady();
+
+    expect(screen.getAllByText(MOVED)).toHaveLength(1);
+    expect(rows()[1]?.[2]).toContain(MOVED);
+    expect(rows()[2]?.[2]).toBe('410,000');
+    // a moved price is a change a save makes, though nothing was typed
+    expect(screen.getByRole('button', { name: 'Save draft' }).hasAttribute('disabled')).toBe(false);
+    cleanupPage();
+
+    openApp(at(draftToday), { as: LAN });
+    await formReady();
+    expect(screen.queryByText(/saving takes the new price/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save draft' }).hasAttribute('disabled')).toBe(true);
+  });
+
+  it('A save keeps the extra keys the form never shows', async () => {
+    const kept = { note: 'Gọi trước', nested: { a: [1, 2] } };
+    const drawn = openApp(at(draftToday), {
+      as: LAN,
+      override: (spied, original) =>
+        spied.getOrder.mockImplementation(async (orderDay, orderId) => {
+          const doc = await original.getOrder(orderDay, orderId);
+          return { ...doc, order: { ...doc.order, extra: kept } };
+        }),
+    });
+    await heading(`Order ${draftToday.number}`);
+    await formReady();
+    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[1].id);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+
+    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(drawn.api.saveOrder.mock.calls[0]?.[2].extra).toEqual(kept);
+  });
+
+  it('A confirmed, a fulfilled and a cancelled order draw no form, no Save and no marker', async () => {
+    const fulfilled = DEMO_ORDERS.find((one) => one.state === 'fulfilled')!;
+    for (const order of [sentToday, fulfilled, cancelledOrder]) {
+      openApp(at(order), { as: LAN });
+      await heading(`Order ${order.number}`);
+      expect(screen.queryByRole('button', { name: 'Save draft' }), order.state).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Add line' }), order.state).toBeNull();
+      expect(screen.queryByText(/saving takes the new price/), order.state).toBeNull();
+      cleanupPage();
+    }
   });
 });

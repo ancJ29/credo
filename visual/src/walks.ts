@@ -43,7 +43,12 @@ export type Step =
   | { choose: string; option: string }
   /** Puts one of the data set's files (the staff's, the customers' or the products') in the file
    * field with these words, as a person's choosing it does. */
-  | { attach: string; file: DemoFile };
+  | { attach: string; file: DemoFile }
+  /** Waits until the page shows a heading or a table cell that reads so, and does nothing to it:
+   * the screen's last step when it is about what the page draws after a press, which the page is
+   * not yet still enough to have drawn on a loaded machine. `text` says the words are the cell's
+   * own (a name from the data), not a key of the dictionary. */
+  | { see: string; text?: true };
 
 /**
  * A screen drawn as the app itself on the fake, as a person meets it: opened at `path`, signed in
@@ -176,6 +181,10 @@ const FILLED_OWN: Step[] = [
 /** The orders' walk's data, by the data set: today's draft the office confirms, and the request of
  * a driver the office cancels and sends again. */
 const DRAFT_TODAY = DEMO_ORDERS.find((one) => one.day === DEMO_TODAY && one.state === 'draft')!;
+/** The draft taken yesterday, one of whose lines was priced before its product's price moved. */
+const DRAFT_YESTERDAY = DEMO_ORDERS.find(
+  (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
+)!;
 const WAITING_TODAY = DEMO_DELIVERIES.find(
   (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
 )!;
@@ -194,6 +203,20 @@ const NOTE_WRITTEN: Step[] = [
 const PHONE_CHANGED: Step[] = [
   { fill: 'lists.columns.phone', text: '0903 111 999' },
   { press: 'lists.customers.save' },
+];
+/** The customer an add types in: a new code, a name, a phone. Screen 19 types the code the list
+ * already holds, the first noted customer's, and the fake is cued to refuse it. */
+const ADDED_CUSTOMER_STEPS: Step[] = [
+  { fill: 'lists.columns.code', text: 'KH-090' },
+  { fill: 'lists.columns.name', text: 'Cửa hàng Hải Âu' },
+  { fill: 'lists.columns.phone', text: '0903 555 123' },
+  { press: 'lists.customers.create' },
+];
+const TAKEN_CUSTOMER_STEPS: Step[] = [
+  { fill: 'lists.columns.code', text: NOTED_CUSTOMER.code },
+  { fill: 'lists.columns.name', text: 'Cửa hàng Hải Âu' },
+  { fill: 'lists.columns.phone', text: '0903 555 123' },
+  { press: 'lists.customers.create' },
 ];
 const NOTED_PRODUCT = DEMO_PRODUCTS.find(hasNote)!;
 const PLAIN_PRODUCT = DEMO_PRODUCTS.find((one) => !hasNote(one))!;
@@ -231,6 +254,7 @@ const CHANGED_DRAFT: Step[] = [
   ...LINE('VT-001', 1),
 ];
 const DRAFT_PATH = `/orders/${DRAFT_TODAY.day}/${DRAFT_TODAY.id}`;
+const DRAFT_YESTERDAY_PATH = `/orders/${DRAFT_YESTERDAY.day}/${DRAFT_YESTERDAY.id}`;
 
 /** The link a QR code opens, for a data-set person (a warehouse member unless another is named) and
  * the secret given. */
@@ -293,7 +317,7 @@ const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
  * card on the app's ground, and the one difference from the mock, named where it is looked at.
  */
 export const SIGN_IN_LOOK =
-  'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? The doors that offer two languages carry the language switch the mock showed; the three join screens do not, and keep the language the device chose. Adding it there is a small later change, if you want it.';
+  'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? Every door that offers two languages, the three join screens among them, carries the language switch the mock showed, and the language pressed is kept on the device.';
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
@@ -1411,6 +1435,50 @@ export const WALKS: Walk[] = [
         },
         question: 'Would the office know someone else saved first, and how to see what they saved?',
       },
+      {
+        id: 'lists-18-customer-new',
+        number: 18,
+        path: 'main',
+        scene: { path: '/customers/new' },
+        sentence: {
+          en: 'Adding a customer: the same cards, and a code box to type in',
+          vi: 'Thêm khách hàng: các thẻ như trang khách hàng, và một ô mã để gõ vào',
+        },
+        question: 'Would the office know to type the code and the name of a new customer here?',
+      },
+      {
+        id: 'lists-19-code-taken',
+        number: 19,
+        path: 'wrong',
+        scene: { path: '/customers/new', cue: 'addCustomer:409', steps: TAKEN_CUSTOMER_STEPS },
+        sentence: {
+          en: 'A code the list already holds: refused, everything typed kept',
+          vi: 'Mã đã có trong danh sách: bị từ chối, mọi thứ đã gõ vẫn còn',
+        },
+        question: 'Would the office know the code is in use, and that nothing typed was lost?',
+      },
+      {
+        id: 'lists-20-product-new',
+        number: 20,
+        path: 'main',
+        scene: { path: '/products/new' },
+        sentence: {
+          en: 'Adding a product: the code, name, unit and price to type in, the stock switch on',
+          vi: 'Thêm sản phẩm: mã, tên, đơn vị tính và giá để gõ vào, công tắc tồn kho đang bật',
+        },
+        question: 'Would the office know what a new product needs before it can be added?',
+      },
+      {
+        id: 'lists-21-customer-added',
+        number: 21,
+        path: 'main',
+        scene: { path: '/customers/new', steps: ADDED_CUSTOMER_STEPS },
+        sentence: {
+          en: 'A customer added: on its own page, ready to be changed',
+          vi: 'Đã thêm khách hàng: mở trang riêng của khách, sẵn sàng để sửa',
+        },
+        question: 'Would the office know the customer is now in the list?',
+      },
     ],
   },
   {
@@ -1585,6 +1653,33 @@ export const WALKS: Walk[] = [
           vi: 'Một yêu cầu đã giao, kèm ảnh của tài xế',
         },
         question: 'Would the office take this photo as proof of delivery?',
+      },
+      {
+        id: 'orders-13-moved-price',
+        number: 13,
+        path: 'main',
+        scene: { path: DRAFT_YESTERDAY_PATH, as: 'EMP-0001' },
+        sentence: {
+          en: 'A draft taken before a price changed: its own prices, and the line that has moved',
+          vi: 'Một bản nháp lập trước khi giá đổi: giá của chính nó, và dòng đã đổi giá',
+        },
+        question:
+          'Would the office see which line’s price has moved, and what saving would make it?',
+      },
+      {
+        id: 'orders-14-repriced',
+        number: 14,
+        path: 'main',
+        scene: {
+          path: DRAFT_YESTERDAY_PATH,
+          as: 'EMP-0001',
+          steps: [{ press: 'orders.saveDraft' }],
+        },
+        sentence: {
+          en: 'The draft saved again: the moved line repriced, and a new total',
+          vi: 'Bản nháp được lưu lại: dòng đã đổi giá được tính lại, và tổng tiền mới',
+        },
+        question: 'Would the office know the saved draft now carries today’s price and total?',
       },
     ],
   },
@@ -2031,7 +2126,12 @@ export const WALKS: Walk[] = [
         scene: {
           path: DELETE_CLIENT_PATH,
           operator: true,
-          steps: [DELETE_CODE, { press: 'operator.deleteClientMake' }],
+          steps: [
+            DELETE_CODE,
+            { press: 'operator.deleteClientMake' },
+            { see: 'nav.clients' },
+            { see: 'Bình An', text: true },
+          ],
         },
         sentence: {
           en: 'Deleted: the clients list comes back without the client',

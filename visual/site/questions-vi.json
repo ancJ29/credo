@@ -74,6 +74,8 @@
   "Would the office know to ask the admin?": "Văn phòng có biết cần hỏi quản trị không?",
   "Would the office know this order is delivered and done?": "Văn phòng có biết đơn này đã giao xong không?",
   "Would the office take this photo as proof of delivery?": "Văn phòng có nhận ảnh này làm bằng chứng giao hàng không?",
+  "Would the office see which line’s price has moved, and what saving would make it?": "Văn phòng có thấy dòng nào đã đổi giá, và lưu sẽ thành bao nhiêu không?",
+  "Would the office know the saved draft now carries today’s price and total?": "Văn phòng có biết bản nháp đã lưu giờ mang giá và tổng tiền hôm nay không?",
   "Would the driver know what to deliver today, and where?": "Tài xế có biết hôm nay cần giao gì, và giao ở đâu không?",
   "Would the driver know what to hand over and what to collect?": "Tài xế có biết cần trao gì và cần thu gì không?",
   "Would the driver know to send it, or to take it again?": "Tài xế có biết cần gửi ảnh, hay chụp lại không?",
@@ -107,5 +109,9 @@
   "Would the office know someone else saved first, and how to see what they saved?": "Văn phòng có biết người khác đã lưu trước, và cách xem họ đã lưu gì không?",
   "Does this show the office what the old app showed about a product?": "Trang này có cho văn phòng thấy những gì ứng dụng cũ đã cho thấy về một sản phẩm không?",
   "Does a product with no note offer an empty note to write one into?": "Sản phẩm chưa có ghi chú có cho một thẻ ghi chú trống để viết vào không?",
-  "Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? The doors that offer two languages carry the language switch the mock showed; the three join screens do not, and keep the language the device chose. Adding it there is a small later change, if you want it.": "Các cửa đăng nhập có giống cùng một ứng dụng không: thanh đầu có màu cùng biểu tượng và tên, thẻ nằm trên nền xám của ứng dụng, không có menu bên? Các cửa có hai ngôn ngữ mang nút chuyển ngôn ngữ như bản vẽ thử; ba màn hình tham gia thì không, và giữ ngôn ngữ mà thiết bị đã chọn. Thêm nút đó vào là một thay đổi nhỏ về sau, nếu bạn muốn."
+  "Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? Every door that offers two languages, the three join screens among them, carries the language switch the mock showed, and the language pressed is kept on the device.": "Các cửa đăng nhập có giống cùng một ứng dụng không: thanh đầu có màu cùng biểu tượng và tên, thẻ nằm trên nền xám của ứng dụng, không có menu bên? Mọi cửa có hai ngôn ngữ, kể cả ba màn hình tham gia, đều mang nút chuyển ngôn ngữ như bản vẽ thử, và ngôn ngữ đã bấm được giữ lại trên thiết bị.",
+  "Would the office know to type the code and the name of a new customer here?": "Văn phòng có biết gõ mã và tên của khách hàng mới vào đây không?",
+  "Would the office know the code is in use, and that nothing typed was lost?": "Văn phòng có biết mã này đã có người dùng, và những gì đã gõ không bị mất không?",
+  "Would the office know what a new product needs before it can be added?": "Văn phòng có biết một sản phẩm mới cần những gì trước khi thêm được không?",
+  "Would the office know the customer is now in the list?": "Văn phòng có biết khách hàng giờ đã có trong danh sách không?"
 }

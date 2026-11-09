@@ -510,6 +510,7 @@ describe('Row 12: a save or a confirm over someone else’s newer one is refused
       expect(reply.json<{ current: { version: string } }>().current.version).toBe(newer.version);
     }
     expect((await w.read(DAY, draft.order.id)).order.total).toBe(150000);
+    expect((await w.read(DAY, draft.order.id)).version).toBe(newer.version);
     expect(
       deliveryListReplySchema.parse((await w.office.call.get(deliveryRoutes.list(DAY))).json())
         .deliveries,
@@ -542,5 +543,145 @@ describe('Row 12: a save or a confirm over someone else’s newer one is refused
 
     expect(driverListReplySchema.parse(drivers.json()).drivers).toEqual([]);
     expect(confirm.statusCode).toBe(400);
+  });
+});
+
+/** The re-save of a draft, row by row of the edit-an-order plan. */
+describe('Edit row 1: a draft’s save stores the customer, the lines and the order’s own extra', () => {
+  it('stores them, keeps the number, and answers the order with its new version', async () => {
+    const w = await ordersTenant(cs);
+    const draft = await w.made({ extra: { note: 'gate code 4' } });
+
+    const saved = w.orderDoc(
+      await w.office.call.send('PUT', orderRoutes.one(DAY, draft.order.id), {
+        ...w.body({
+          customerId: w.ids.lan,
+          lines: [{ productId: w.ids.fee, quantity: 2 }],
+          extra: { note: 'gate code 4', floor: 3 },
+        }),
+        version: draft.version,
+      }),
+    );
+
+    const stored = await w.read(DAY, draft.order.id);
+    expect(saved).toEqual(stored);
+    expect(saved.version).not.toBe(draft.version);
+    expect(saved.order).toMatchObject({
+      number: draft.order.number,
+      state: 'draft',
+      total: 100000,
+      extra: { note: 'gate code 4', floor: 3 },
+    });
+    expect(saved.order.customer.code).toBe('KH-2');
+    expect(saved.order.lines.map((line) => [line.code, line.quantity])).toEqual([['DV-1', 2]]);
+  });
+});
+
+describe('Edit row 4: only a draft is saved; a confirmed, a fulfilled and a cancelled order are refused', () => {
+  it('answers 409 with the order as it is now to each, and writes nothing', async () => {
+    const w = await ordersTenant(cs);
+    const driver = await w.t.staff('DRV-S', { department: { 'deliveries.canDeliver': true } });
+    const confirmed = await w.confirmed(await w.made());
+    const toDeliver = await w.confirmed(await w.made(), driver);
+    const request = await w.requestDoc(DAY, toDeliver.order.request!.id, driver.call);
+    const delivered = await driver.call.send(
+      'POST',
+      deliveryRoutes.deliver(DAY, request.request.id),
+      {
+        version: request.version,
+        photo: `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`,
+      },
+    );
+    expect(delivered.statusCode).toBe(200);
+    const fulfilled = await w.read(DAY, toDeliver.order.id);
+    const cancelled = await w.cancelled(await w.made());
+    expect([confirmed, fulfilled, cancelled].map((doc) => doc.order.state)).toEqual([
+      'confirmed',
+      'fulfilled',
+      'cancelled',
+    ]);
+
+    for (const doc of [confirmed, fulfilled, cancelled]) {
+      const before = await w.t.client.getRecord(w.t.keys.order(DAY, doc.order.id));
+      const reply = await w.office.call.send('PUT', orderRoutes.one(DAY, doc.order.id), {
+        ...w.body({ lines: [{ productId: w.ids.fee, quantity: 1 }] }),
+        version: doc.version,
+      });
+
+      expect(reply.statusCode).toBe(409);
+      expect(reply.json<{ current: unknown }>().current).toEqual(await w.read(DAY, doc.order.id));
+      expect(await w.t.client.getRecord(w.t.keys.order(DAY, doc.order.id))).toEqual(before);
+    }
+  });
+});
+
+describe('Edit row 5: a version that is not a tag is a 400, never a conflict', () => {
+  it('refuses a version that is no tag, whatever the order’s state', async () => {
+    const w = await ordersTenant(cs);
+    const draft = await w.made();
+    const sent = await w.confirmed(await w.made());
+    const url = (doc: typeof draft) => orderRoutes.one(DAY, doc.order.id);
+    const bad = ['x', 'A'.repeat(64), 'a'.repeat(63), 7, null];
+
+    const replies = await Promise.all(
+      [draft, sent].flatMap((doc) =>
+        bad.map((version) => w.office.call.send('PUT', url(doc), { ...w.body(), version })),
+      ),
+    );
+
+    expect(replies.map((reply) => reply.statusCode)).toEqual(bad.concat(bad).map(() => 400));
+    expect((await w.read(DAY, draft.order.id)).version).toBe(draft.version);
+  });
+});
+
+describe('Edit row 6: a first save carrying a version is refused', () => {
+  it('answers 400 and makes no order, whether the version is a tag or not', async () => {
+    const w = await ordersTenant(cs);
+
+    const replies = await Promise.all(
+      ['a'.repeat(64), 'x'].map((version) =>
+        w.office.call.send('POST', ROUTES.orders, { ...w.body(), version }),
+      ),
+    );
+
+    expect(replies.map((reply) => reply.statusCode)).toEqual([400, 400]);
+    expect(await listed(w.office.call, DAY, DAY)).toEqual([]);
+    expect(
+      documentNumberingSchema.safeParse(
+        (await w.t.client.getRecord(w.t.keys.documentNumbering))?.data,
+      ).success,
+    ).toBe(false);
+  });
+});
+
+describe('Edit row 7: a save reprices every line at the products’ prices as they are now', () => {
+  it('takes today’s price for a line whose product moved, and answers the repriced total', async () => {
+    const w = await ordersTenant(cs);
+    const draft = await w.made();
+    expect(draft.order.total).toBe(1_590_000);
+    await w.t.client.putRecord(w.t.keys.product(w.ids.cement), {
+      id: w.ids.cement,
+      code: 'VT-1',
+      name: 'Xi măng',
+      unit: 'bao',
+      price: 100000,
+      stocked: true,
+      extra: {},
+    });
+    expect((await w.read(DAY, draft.order.id)).order.total).toBe(1_590_000);
+
+    const saved = w.orderDoc(
+      await w.office.call.send('PUT', orderRoutes.one(DAY, draft.order.id), {
+        ...w.body(),
+        version: draft.version,
+      }),
+    );
+
+    expect(saved.order.lines.map((line) => [line.code, line.price, line.amount])).toEqual([
+      ['VT-1', 100000, 1_000_000],
+      ['VT-2', 320000, 640000],
+    ]);
+    expect(saved.order.total).toBe(1_640_000);
+    expect((await w.read(DAY, draft.order.id)).order.total).toBe(1_640_000);
   });
 });

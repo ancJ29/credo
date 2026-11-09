@@ -52,8 +52,9 @@ type Existing = {
 
 type Lines = { productId: string; quantity: number }[];
 
-/** The draft's customer and lines as the form edits them, and priced at the lists' prices as the
- * BFF prices them: the amounts shown are the ones saved. */
+/** The draft's customer and lines as the form edits them. A line already saved is drawn at the price
+ * it was saved at, as Confirm will copy it, and marked when its product's price has moved since,
+ * since a save takes the new one; a line added now is drawn at the list's price. */
 function FormFields({
   page,
   existing,
@@ -84,7 +85,11 @@ function FormFields({
 
   const priced = lines.flatMap((line) => {
     const product = products.find((one) => one.id === line.productId);
-    return product ? [{ ...line, product, amount: product.price * line.quantity }] : [];
+    if (!product) return [];
+    const saved = doc?.order.lines.find((one) => one.productId === line.productId)?.price;
+    const price = saved ?? product.price;
+    const moved = price === product.price ? null : product.price;
+    return [{ ...line, product, price, moved, amount: price * line.quantity }];
   });
   const total = priced.reduce((sum, line) => sum + line.amount, 0);
   const dirty =
@@ -97,6 +102,8 @@ function FormFields({
         })) ?? [],
       );
   const complete = customerId !== '' && lines.length > 0;
+  // a moved price is a change a save makes, though nothing was typed
+  const worthSaving = dirty || priced.some((line) => line.moved !== null);
 
   /** A product added twice is one line: its quantity grows. */
   const addLine = () => {
@@ -114,7 +121,7 @@ function FormFields({
   async function save() {
     setSaving(true);
     setOutcome(null);
-    const request: SaveOrderRequest = { day, customerId, lines, extra: {} };
+    const request: SaveOrderRequest = { day, customerId, lines, extra: doc?.order.extra ?? {} };
     try {
       if (!existing) {
         const made = await page.api.createOrder(request);
@@ -201,13 +208,20 @@ function FormFields({
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {priced.map(({ product, quantity: count, amount }) => (
+                {priced.map(({ product, price, moved, quantity: count, amount }) => (
                   <Table.Tr key={product.id}>
                     <Table.Td>
                       {product.code} · {product.name}
                     </Table.Td>
                     <Table.Td>{product.unit}</Table.Td>
-                    <Table.Td ta="right">{number.format(product.price)}</Table.Td>
+                    <Table.Td ta="right">
+                      {number.format(price)}
+                      {moved !== null && (
+                        <Text size="xs" c="orange.9">
+                          {t('orders.priceMoved', { price: number.format(moved) })}
+                        </Text>
+                      )}
+                    </Table.Td>
                     <Table.Td ta="right">{number.format(count)}</Table.Td>
                     <Table.Td ta="right">{number.format(amount)}</Table.Td>
                     <Table.Td ta="right">
@@ -242,7 +256,7 @@ function FormFields({
       <Group>
         <Button
           loading={saving}
-          disabled={!complete || (doc !== null && !dirty)}
+          disabled={!complete || (doc !== null && !worthSaving)}
           onClick={() => void save()}
         >
           {t('orders.saveDraft')}

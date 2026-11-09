@@ -128,7 +128,8 @@ export const deliveryListReplySchema = z.strictObject({
 export const driverListReplySchema = z.strictObject({ drivers: z.array(driverSchema) });
 
 /** A draft's save: the customer and the lines by id and quantity, never a price or a total. A
- * product twice is refused. `version` is absent for the first save and is the tag read after it. */
+ * product twice is refused. `version` is absent for the first save and is the tag read after it;
+ * the two routes each hold it to one of those, below. */
 export const saveOrderRequestSchema = z.strictObject({
   day: daySchema,
   customerId: z.uuid(),
@@ -144,6 +145,13 @@ export const saveOrderRequestSchema = z.strictObject({
   version: tagSchema.optional(),
 });
 export type SaveOrderRequest = z.infer<typeof saveOrderRequestSchema>;
+
+/** The first save, which makes the order: a body carrying a `version` is refused, not ignored. */
+export const firstSaveOrderRequestSchema = saveOrderRequestSchema.omit({ version: true });
+
+/** A save again: the tag the page read is required, and a malformed one is a 400, never read as a
+ * version that moved. */
+export const resaveOrderRequestSchema = saveOrderRequestSchema.safeExtend({ version: tagSchema });
 
 /** Confirming a draft, or sending a confirmed order again: the driver and the day. */
 export const sendOrderRequestSchema = z.strictObject({

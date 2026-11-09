@@ -26,7 +26,7 @@ plan, since it decides each walk's words.
 
 Home: [the ridge plan](plans/2026-10-28-ridge.md#the-templates). Hand-written CloudFormation, shipped
 through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with no internet
-gateway, its Instance Connect Endpoint; the S3 gateway endpoint with its first caller),
+gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet, it comes with the backup, item 6),
 `ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. A signed client's stack is one more from
@@ -41,7 +41,10 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The nightly backup and its restore — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The nightly backup and its restore, with no copy of the records yet — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+
+**There is no copy of any client's records. This item's backup half is open, and nothing below it is
+built.** The fence half is the backup-policy piece's (below).
 
 The box's role may only put, so it cannot restore itself: the restore runs from the human's
 terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
@@ -52,8 +55,34 @@ is taken with the service stopped: a plain tarball taken mid-write can miss save
 file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
 
 ridge, the first box, holds no real data, so the backup still waits for a signed client
-([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint and the box's
-put-only role come with it.
+([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint (`ops/network.yml`
+holds none) and the box's put-only role (`ops/env.yml#L93`: "no instance role") come with it. Still
+to do, as one piece: the copy, a restore script run from the human's terminal, and a drill that
+reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a restored file, nobody
+knows a copy would be readable.
+
+**The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
+in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
+human's change set was run on ridge as `--plan` on 2026-11-08 at 16:44 and refused by the guard
+(`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md)), and then re-run on ridge at 17:10 with `--take Box` (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`: the guard passed on the take, UPDATE complete, `== exit 0`, the execute step 32 seconds). **The fence is live on ridge**, and it is proved on the running box by the receipt, not inferred from the 32 seconds: read off the live machine afterwards (`logs/20261108-1715-ridge-box-fence-receipt.log`): the same instance, launched 2026-10-28 and running, so it was not replaced; the root device with `Keep: false`, which is the fence read off the box and not off the template; and no unattached volume.** The box's root volume holds the one SQLite file
+(`ops/c-storage.service#L20`). Before the piece it carried `DeleteOnTermination: true` with no
+`DeletionPolicy` and no snapshot, so a stack delete, an image or instance-type change taken with
+`--take Box`, or the advice printed on a stack left in `ROLLBACK_COMPLETE` — "delete the stack"
+(`ops/lib.sh#L294`, as of `0f7d69c1`, `main` before the piece) — took every record with it. The item first asked for a
+`DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` "on the volume". Neither half could
+be written: there is no volume resource (the disk is a `BlockDeviceMappings` entry of `Box`,
+`ops/env.yml#L122-L128`), and on an `AWS::EC2::Instance`, which cannot snapshot, AWS's `UpdateReplacePolicy` page says CloudFormation reverts `Snapshot` to `Delete`, so
+it would have read as protection and deleted the disk. What was done instead: `RetainExceptOnCreate` (deletion) and `Retain` (replacement)
+on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
+neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that says the
+stack holds nothing (that status exists only after a failed creation, whose rollback deleted the box), and the two ways to read what is kept
+([the runbook](../ops/README.md#reading-what-the-fence-kept), untested). **Three named losses become
+survivable; nothing else changes.** A termination, a torn file, a bad write or a wrong delete inside
+the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
+`--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
+[the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
+`--take Box`), is not a backup: no copy exists and no restore has been run.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
@@ -249,11 +278,11 @@ are fixed; these stay.
 
 *Trigger:* the lists get a by-hand add or edit, or a reader of a test names one of these three.
 
-## 35. Orders and requests: four small things left under the demo's ceremony — the machine; *parked* until the orders are next touched (orders-delivery, step 6, 2026-10-31)
+## 35. Orders and requests: four small things left under the demo's ceremony — the machine; *partly closed* by edit-an-order (2026-11-07): the first bullet is `[FIXED]`, the rest parked (orders-delivery, step 6, 2026-10-31)
 
 Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
-- **A first save that carries a `version`** is accepted and the version ignored; the create route
-  could refuse it (400). Nothing sends one.
+- **`[FIXED]` in edit-an-order, step 4 (`20ba3846`):** **a first save that carries a `version`** is
+  refused 400 and no order is made (case 6, `bff/src/orders.route.test.ts`).
 - **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
   request's cancel; the same again in the close of a driver's day, item 41 finding 3): a moved order is left as it is and the page reads the request as none, so the
   order offers to send again either way; no test moves the order between the two writes. Also a
@@ -267,7 +296,7 @@ Found while building the BFF half; none breaks a demo step or the gate, so none 
 
 *Trigger:* the orders get a second caller (a report, a driver's phone), or a reader of a test names one.
 
-## 36. Orders, review findings 3 to 8, deferred under the 11-04 demo's exception — the machine; *parked* until the orders are next touched, and worked after the demo (orders-delivery, step 7, 2026-11-01)
+## 36. Orders, review findings 3 to 8, deferred under the 11-04 demo's exception — the machine; *partly closed* by edit-an-order (2026-11-07): findings 4, 5 and 8 are `[FIXED]`, 3, 6 and 7 stay parked; finding 5 re-read and confirmed fixed by money-defects on 2026-11-08 (orders-delivery, step 7, 2026-11-01)
 
 Found by the line 30 review; only its High and Medium findings are fixed under the demo's ceremony
 (Decide 46). None breaks a demo step or the gate.
@@ -275,11 +304,11 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
   result, so from slice 3 a request delivered between the read and the write leaves a cancelled order
   beside a delivered request. *Fix (slice 3):* on `moved`, re-read the request; if still waiting, retry
   a bounded number of times; if delivered, answer 409 with the order.
-- **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
+- **`[FIXED]` in edit-an-order (step 2: the page sends the order's stored `extra`, case 10).** **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
   included, and the BFF stores it as given (`bff/src/orders.ts#L274`); nothing writes an order's
   `extra` yet, so nothing is lost today. *Fix:* send `existing?.doc.order.extra ?? {}`, as
   `ui/src/PersonPage.tsx#L328` merges into the stored one.
-- **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
+- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** *Fixed by that earlier piece on 2026-11-07, not by money-defects; the money-defects piece (2026-11-08; it was thought still open from `docs/client-readiness.md`) built nothing for it and only re-read the code and corrected the stale prose (recap `docs/recaps/2026-11-08-money-defects.md`). The form draws a saved draft at its saved prices and marks a moved line (`ui/src/OrderPage.tsx#L89-L92`), a moved price alone makes the save worth making (`#L106`), and the moved price is shown (`#L219-L222`).* As filed: **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
   saved draft from today's lists, but Confirm copies the saved lines, so after a price change the
   page's total and the request's total to collect differ. *Fix:* draw a saved draft at its saved
   prices and mark a line whose product's price has since moved, so that a save reprices it.
@@ -290,7 +319,7 @@ Found by the line 30 review; only its High and Medium findings are fixed under t
   as text, so the order breaks past 99,999 requests. *Fix:* one shared comparator for both, as
   `newestOrdersFirst` (`shared/src/orders.ts#L183-L186`) compares the length first, the next time
   either is touched.
-- **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
+- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
   `version: z.string().min(1)`, outside `shared/` and looser than `tagSchema`, so a malformed version
   reads as a moved one (409), not a 400. *Fix:* a re-save schema in `shared/src/orders.ts`, beside
   item 35's first bullet.
@@ -370,16 +399,16 @@ Found by the line 32 review; only its Medium finding is fixed under the demo's c
 
 *Trigger:* the next red that names a key where an address matched.
 
-## 41. Slice 4, đối soát: line 35's review findings 1 to 11, deferred under the 11-04 demo's exception — the machine; *parked* until the day's end is next touched, and worked after the demo (driver-reconcile, step 6, 2026-11-01)
+## 41. Slice 4, đối soát: line 35's review findings 1 to 11, deferred under the 11-04 demo's exception — the machine; *partly closed* by money-defects (`f6a12579` to `333a7f2d`, 2026-11-08): findings 2 and 7 are `[FIXED]`, finding 5 half so, the rest stay parked until the day's end is next touched (driver-reconcile, step 6, 2026-11-01)
 
 Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; its file is `logs/20261101-1427-driver-reconcile-review.md`, its runs `logs/20261101-1424-driver-reconcile-review-runs.log`). It found no High and no Medium, so under the demo's ceremony (Decide 46) nothing is fixed now; each finding is `[DEFERRED]` here. None breaks a demo step or the gate.
 - **Finding 1, `docs/plans/2026-11-01-driver-reconcile.md`, step 5's evidence:** row 5's two clauses were seen red only through other rows' assertions (the BFF's through the 409 body, the UI's through the Closed table). *Fix:* none in code; the reviewer's runs 1 and 3 hold them (BFF `bff/src/reconciliations.route.test.ts#L220`, UI `ui/src/Reconcile.test.tsx#L379`) and step 6's tick names that log.
-- **Finding 2, `bff/src/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
+- **`[FIXED]` in money-defects (`bc5ddb24`, 2026-11-08, Low as filed, on money; it was a missing test, not a missing safeguard).** *The precondition was always in the code: `bff/src/reconciliations.ts#L41` passes `null` and `shared/src/c-storage.ts#L105-L107` turns it into `if-none-match: *`, so two closes could never overwrite each other's cash. What was missing was anything holding it, and `bc5ddb24` adds that: a `'rival'` mode that lands a rival close under the key and lets our write through, so the precondition itself refuses it (409, the first close's cash kept); with the `null` dropped the case is red. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 2, `bff/src/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
 - **Finding 3, `bff/src/reconciliations.ts#L115-L126`, tests `#L153-L154` and `#L420-L432`:** the order's free and its guard are held by no test, item 35's second bullet a second time. *Fix:* assert the stored order's `request` in the close test; at `#L420` make the order name another request id and expect it kept.
 - **Finding 4, `bff/src/reconciliations.route.test.ts#L406` and `#L371-L372`:** a test name and a comment say more than their tests hold (a throwing order write, not a `moved` one; a fresh body, not the old). *Fix:* rename `#L406` and add the `moved` case (200, the order left); at `#L372` send the old body first (409), then the fresh one (200).
-- **Finding 5, `ui/src/DriverDayPage.tsx#L69-L72`, `bff/src/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
+- **Half `[FIXED]` in money-defects (`f6a12579`, 2026-11-08); the page's reload stays open on purpose.** *The closer is now read before the first write, so a gone person stops the close with nothing cancelled. The `catch` calling `loaded.reload()` was out of this piece's scope and stays open; the 409 wording still blames a delivery.* As filed: **Finding 5, `ui/src/DriverDayPage.tsx#L69-L72`, `bff/src/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
 - **Finding 6, `ui/src/i18n/en.ts#L172`, `ui/src/i18n/vi.ts#L173`, `shared/src/permissions.ts#L6-L7`:** the editors' words for `orders.canEdit` do not say it closes a driver's day. *Fix:* a code comment now; the words with the next change to piece 2's editors or the cashier right (re-asks their screens).
-- **Finding 7, `bff/src/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
+- **`[FIXED]` in money-defects (`f6a12579`, 2026-11-08, Low as filed, on money; a race only).** *Reached only when the closer's staff record went between the sign-in's read and the close's, a window that spanned the whole cancel loop; then the close was stored with the root's shape and the cashier's own name. The read now sits above the cancel loop and a gone record is a 401 with nothing cancelled and nothing written; the root alone has no id, so the mis-attribution branch is unreachable for anyone else. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 7, `bff/src/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
 - **Finding 8, `ui/src/fake.ts#L449-L456` and `#L364-L370`:** the fake looks for the driver (404) before parsing the body (400), frees the order whatever it names, and refuses no extra key. *Fix:* when the fake is next touched, parse `closeDayRequestSchema` first.
 - **Finding 9, `shared/src/reconciliations.ts#L65`:** `driverDay` sorts request numbers as text, item 36's finding 7 in another place. *Fix:* the shared comparator that item 36 names.
 - **Finding 10, `ui/src/i18n/en.ts#L685` (and `vi.ts#L685`), `ui/src/fake.test.tsx#L1908-L1939`:** the moved words name two of the 409's causes; the fake's test asserts less than its name. *Fix:* the words on a no at step 8 or 12 (re-asks screen 7); assert that Nam's two waiting requests still wait.
@@ -393,19 +422,19 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 ## 43. The closed-day test sends for the order's own day — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
-`scripts/src/demo/apply.test.ts#L928`: the order's day equals its `sendFor` day, so a wrong `closedFor(day)` would still pass. *Fix:* add a case sent for the next working day. *Severity:* Low.
+`scripts/src/demo/apply.first-fill-orders.test.ts#L356`: the order's day equals its `sendFor` day, so a wrong `closedFor(day)` would still pass. *Fix:* add a case sent for the next working day. *Severity:* Low.
 
 ## 44. Time wording left from the 06:00 run — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
-`ops/seed.sh#L13` "Runs each morning" and `#L15` "about a minute" (now 8 to 10); `.github/workflows/seed.yml#L6-L7`, `ops/README.md#L199` and `#L214` "next morning" and "the morning's run". *Fix:* say night, 03:17 +07, and the run's real length. *Severity:* Low.
+`ops/seed.sh#L13` "Runs each morning" and `#L15` "about a minute" (now 8 to 10); `.github/workflows/seed.yml#L6-L7`, `ops/README.md#L199` and `#L214` "next morning" and "the morning's run". *Fix:* say night, 03:17 +07, and the run's real length. *Severity:* Low. *(Half done, half moot, 2026-11-08: the "each morning" and "next morning" wording is moot, since the schedule is gone and `seed.yml`'s header and `ops/README.md` were rewritten for an on-demand run, see item 151. The other defect, `ops/seed.sh`'s length line, was not fixed by that removal and is done in the fix pass of the same day: the header and the `ops/README.md` table row now say about 15 minutes for a run, longer for a first fill.)*
 
 ## 45. The closed-day change: small things — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
 *Severity:* Info.
 - `scripts/src/demo/apply.ts#L404`: when every driver is closed the draft is named "no driver who delivers".
 - `apply.ts#L359`: the "closed, sent nothing" line is logged for every closed driver, is not in `report.skipped`, and is absent from the log lines `ops/README.md` lists.
-- `scripts/src/demo/apply.test.ts#L949`: the closed record is written straight to storage, so that driver's requests stay waiting.
-- A close between `closedFor` and the confirm still answers 400; negligible at 03:17.
+- `scripts/src/demo/apply.first-fill-orders.test.ts#L377`: the closed record is written straight to storage, so that driver's requests stay waiting.
+- A close between `closedFor` and the confirm still answers 400. *Corrected 2026-11-08:* it was called negligible at 03:17, and there is no 03:17 any more: the seed runs when somebody asks, in the daytime, when a tester may be closing a driver's day, so a collision is likelier, not negligible. What it does when it happens: the 400 is no 404 or 409, so `unlessChanged` does not skip it and the copy's run stops with an error; the run ends red, the ledger stays on the last finished day, and running the seed again repeats that day (orders already there are skipped, the closed driver is now left out), so nothing is doubled. One thing is lost: the order whose confirm took the 400 stays a draft for good (the repeat sees it "already there" and skips it), so that day on ridge ends one delivered order short. Cheapest fix if it bites: treat that one 400 as a skip like the 409. It is not made.
 - `ops/test.sh#L759`: the 15-minute check matches any step, and `#L754` is now redundant.
 - `docs/plans/2026-11-02-seed-demo-safe.md#L5`: "10:4x" reads 10:47.
 
@@ -469,13 +498,22 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 *Trigger:* the next change to either script.
 
-## 56. Two ui tests failed once in a whole `pnpm check` at load 12.6 — the machine; *parked* until after the 11-04 demo (2026-11-02)
+## 56. Two reds filed as one cause are probably two faults: a `bff` case near its own time limit (measured), and a `ui` case that never found its element (cause not known) — the machine; `[OPEN]` (2026-11-02, rewritten 2026-11-08, corrected the same day)
 
-In a whole `pnpm check` at load 12.6 (the gate's limit is 8) on 2026-11-02, two ui tests failed in files the change did not touch, and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times. *Fix:* find what each waits on that load starves, and hold it by the test's own signal, not a time.
+**History, so the next reader meets no third confident claim.** This item first said the reds were load. This morning it was rewritten to say they were headroom, one shared cause for the `bff` case and for "some `ui` tests". That shared cause was asserted and then withdrawn the same day: only the `bff` half was ever measured.
 
-Seen again on 2026-11-03 at load about 12, in the walks page's step 2: `MyDeliveries.test.tsx` alone, the same no call, with nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
+**Measured, for the `bff` case only.** `bff/src/clients-delete.route.test.ts` case 13 was run alone, three times on an idle machine, and took **4155 ms, 4132 ms and 4175 ms against a 5000 ms limit**, about **82 per cent of its own timeout every run** (`logs/20261108-1205-money-defects-clients-delete-alone.log`). A case that close to its limit reddens at any load, which is why "the load that does it" was never a stable number. *Fix:* make that case cheaper or give it a limit that leaves room, and hold what it waits on by the test's own signal, not a time.
 
-*Trigger:* the next red of either, or a quiet machine's whole check.
+**Not known, for the `ui` cases.** No `ui` case was ever timed alone, so nothing says they sit near a limit. The best evidence of how one fails is the sighting from GitHub below: an element that never appeared, which is not a clock running out. The two may well be unrelated faults filed under one number; the first step for the `ui` side is to time that case alone and to read why "Send it again" was not on the page, before any fix.
+
+**The sightings, as history, with their loads:**
+- 2026-11-02, load 12.6 (the gate's limit is 8), a whole `pnpm check`: two `ui` tests failed in files the change did not touch and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times.
+- 2026-11-03, load about 12: `MyDeliveries.test.tsx` alone, the same no call, nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
+- 2026-11-07 14:22Z, **the first sighting from GitHub rather than from this machine, and the first with a real error message**: CI run `42380906824`, commit `5073bbc9bebc2bc881e7f05a46c6ede0f3e54379`, job `app`, step `pnpm check`. In [`OrdersPages.test.tsx`](../ui/src/OrdersPages.test.tsx), "the order's page on the cards > a confirmed order whose request is gone puts its facts and lines left, its request and its steps right", at line 354: `TestingLibraryElementError: Unable to find an accessible element with the role "heading" and name "Send it again"`. The summary was `Test Files 1 failed | 62 passed (63)` and `Tests 1 failed | 811 passed (812)`. The `shared` and `bff` parts of the same check were green. No load is known for a GitHub runner (`logs/20261108-1214-github-reds-run-42380906824.failed.txt`).
+- 2026-11-07 23:31, load 7.97, under the limit of 8: the same `OrdersPages.test.tsx` case failed in a whole check (`logs/20261107-233125-clerk-add-records-step7-whole-check.log` red, `logs/20261107-233422-clerk-add-records-step7-whole-check.log` green). Its error was not read for this item, so whether it is the same missing heading is not known.
+- 2026-11-08, load 3.4: a further red. The same morning money-defects' first run of `bff` timed out one case in `clients-delete.route.test.ts` (`logs/20261108-120141-money-defects-step1-bff-gate.log`, exit 1; the rerun was green), which the measurement above then explained.
+
+*Trigger:* the next red of any of them, or any edit that adds time to a near-limit case.
 
 ## 58. `appStyles` and `pageScript` save and restore `NODE_ENV` at once — the machine; *parked* until after the 11-04 demo (the walks page, review of step 2, 2026-11-03)
 
@@ -502,9 +540,11 @@ c-storage saves the root's record but its answer misses the BFF's 5-second timeo
 
 *Trigger:* the first client's root, or the next change to the route.
 
-## 62. The root-password touch is not tied to the client — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
+## 62. The root-password touch is not tied to the client, and nor is the delete's — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low; widened 2026-11-07)
 
 Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
+
+**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/operator-auth.ts#L266-L275`, `bff/src/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
 
 *Trigger:* before a second operator or a client signs.
 
@@ -672,10 +712,6 @@ The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spe
 
 **Done (products-cards, `02bbebc`, 2026-11-06).** The fix is the one named: all four pickers read a `hasNote` of "a string that is not empty", the page's own rule — `walk/specs/lists.spec.ts#L17-L19`, `visual/src/walks.ts#L181-L183`, `visual/src/words.test.tsx#L26-L28`, and `visual/src/walks.test.ts#L668`, whose opener check no longer reads `DEMO_CUSTOMERS[0]` by index. The customers' two records are unchanged by the new rule (only `KH-001` carries a `note`, and it is a non-empty string), which step 2's picture compare proves: 118 screens against `main`'s 116, with screens 10 and 11 byte-identical. What is left — the rule written out four times with nothing shared — is item 105.
 
-## 101. The join page draws no language switch though the mock did — the machine; `[DEFERRED]` (signin-look, build, Sonnet, 2026-11-05, Low)
-
-The mock drew the language switch on the three join screens, but `Joining` (`ui/src/OperatorApp.tsx#L57-L65`) fixes the language from the device once and holds no handler or state to change it, unlike the console beside it and the client's app. The piece's bound was the words through the caller's existing handler, and giving the join page one means a state in `Joining` and a changed way of choosing the language, so the join page's frame (`JoinPage.tsx`, unchanged) draws the header and no switch. *Fix:* hold the language in `Joining` as `Console` does (`device.setLanguage` and a state) and pass `languages={LANGUAGES}` and the handler to `JoinPage` and on to `SignInFrame`, which already takes both. *Trigger:* the human's word that the join screens should carry the switch the mock showed.
-
 ## 102. The QR landing card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
 
 `ui/src/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
@@ -757,9 +793,11 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
 
-## 121. The API address in front of the BFF answers anyone — the human; *parked* until a client signs or real client data reaches a deployment (the architecture page, 2026-11-07)
+## 121. The API address in front of the BFF answers anyone — the human; *partly closed* by the access log (2026-11-08): the readable half is done and live on ridge, its change set run and three lines read back (2026-11-08); the wall, a signed origin, a key or a WAF, stays *parked* until a client signs or real client data reaches a deployment (the architecture page, 2026-11-07)
 
-The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and no access log; the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L244`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
+*Readable half, done in the access log (`docs/plans/2026-11-08-access-log.md`):* the one stage now has an access log, `ApiLogs` at `/aws/apigateway/credo-${Env}` for 14 days, and a guard in `ops/test.sh` (`api_log_guard`) that reddens if a later change takes it away. **It is live on ridge**: the change set ran green there at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`) and three lines were read back at 18:12 (`logs/20261108-1809-ridge-access-log-read.log`). **The wall is not done and stays open and parked as the human's**; this closure covers only the readable half, never the signed origin, the key or the WAF. The log does not name the client whose records were read (item 152). **More useful than written, measured 2026-11-08 18:11:** a call through the distribution left a line carrying one public address consistent with the caller's own, so a guessing run against a real client would leave its own address in the log, which is what this item wanted to be able to read; one run, cause open (item 157). As filed:
+
+The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and, then, nothing logged at the stage (the function's own group already held a line per request, which this item did not say); the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L250-L252`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
 
 ## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
@@ -784,3 +822,253 @@ In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(
 ## 127. The product page's `extra` test dropped two of its three variants — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
 In `ui/src/ListPage.test.tsx` the test that became the editable-versus-reader one kept only one of its three `extra` shapes: `{ note: 5 }` is still exercised as a save, while `{ note: '' }` is covered only through the `textIn` behaviour, and the third is gone. A change to how an emptied or non-string note is written would not fail a case of its own. *Trigger:* the next change to how a note is read or written on a detail page.
+
+## 128. `src/walk-run.test.ts` is now the `scripts` package's floor — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Medium)
+
+About 119.4 s summed over 47 tests, as long as the whole package. It met the plan's 25 % rule from the start: the plan's table missed it because the runner line it read (`src/walk-run.test.ts (34 tests | 1 failed) 67047ms`) was an aborted run, while locally the file was 86.4 s over 38 tests, 43 % of 199.98 s. The longest apply shard is about 89 s; every other file is 43 s or under. **This piece deliberately does not cover it**: a different file and a different change. *Caveat:* per-file seconds here are sums of test times, because vitest's verbose reporter prints no file totals, so the 86.7 s runner figure has no equivalent after the split. *Trigger:* the next piece that touches `scripts`' run time.
+
+## 129. The c-storage handle in `apply-support.ts` lives in two module-level variables — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Low)
+
+`scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
+
+
+## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; `[FIXED]` (tree guard, `138571c4`, 2026-11-07, High; was *parked*, the client-readiness read)
+
+*Fixed in the tree guard (`687d8161` to `138571c4`, recap `docs/recaps/2026-11-07-tree-guard.md`):* `ops_match_main` now compares every path `ci.yml`'s push trigger deploys on, read from the base's own `ci.yml`, plus `.gitignore`, so the first fix below was taken and the second rejected (it leaves four scripts uncovered and passes a committed edit). As filed: `ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
+session is always a reviewed one" — and it compares `ops/` and nothing else. But `ridge_cli` runs
+`scripts/src/ridge-main.ts` out of the working copy (`ops/lib.sh#L612-L618`), and that package holds the
+client-delete command. In `main` the command is safe: `untenant` refuses any code that is not the deploy
+check's own (`scripts/src/ridge.ts#L126-L134`), saying in its comment that it has none of the console's gates.
+Nothing proves the `scripts/` on disk is that `main`. `ops/seed.sh#L41` and `ops/root-password.sh#L89` close it
+for themselves with `git diff --quiet HEAD` ("the write would run code /health cannot name");
+`ops/check.sh`, `ops/app.sh` and `ops/operator.sh` do not, and `check.sh` calls `untenant` from
+`cleanup_extra` on every exit path including a refusal (`ops/check.sh#L36-L47` through `ops/lib.sh#L106`).
+So an uncommitted edit, or a worktree on a branch, runs against whatever environment the script is given with
+the box's keys. *Fix:* either `ops_match_main` covers `scripts/` as well, or the three scripts gain the
+clean-tree check the other two already have. *Severity:* High against a client's stack; on ridge it risks demo
+data alone. *Trigger:* before any environment but ridge exists.
+
+## 131. `ops/check.sh` puts the box's internal and super-admin keys on an operator's machine, for any environment — the machine; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
+
+`ops/tunnel.sh#L35-L36` refuses every environment but ridge, in its own words, because "another stack's admin
+keys would land on this disk, and the collection would write test records into it". `ops/check.sh` does both and
+refuses no environment: it opens its own connection to the box (`#L80`), reads the keys (`#L114`) and writes the
+internal access key and the super-admin key into a Bruno environment file on the machine running it (`#L120`,
+through `ops/lib.sh#L530-L552`). The file is 0600, git-ignored and removed by `on_exit` (`ops/lib.sh#L107`), and
+the deploy job runs this script, so the same would be true of a client's stack's keys on a runner. It also makes
+a client and signs in through the edge each run (`#L165-L171`), and each Bruno run leaves a service row behind
+(`#L164`). *Fix:* `check.sh` takes ridge alone until the guard `tunnel.sh` names exists, or gets a client-stack
+mode that skips the collection and the client it makes. *Trigger:* before a client's own stack.
+
+## 132. Six of the nine `ops/` scripts take any environment name, and a client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07)
+
+Three scripts refuse any environment but ridge and each says why: `ops/tunnel.sh#L35-L36` (another stack's admin
+keys on this disk), `ops/root-password.sh#L79` ("a client's own stack is the console's, never this") and
+`ops/seed.sh#L36` ("a client's stack must never receive demo data"). `ops/stack.sh`, `ops/release.sh`,
+`ops/app.sh`, `ops/check.sh`, `ops/drill.sh` and `ops/operator.sh` carry no such test. On a client's stack today a
+person could therefore make and change the stack, release c-storage, ship the BFF and the UI, run the deploy
+check (item 131), run the crash drill — which kills c-storage and reboots the box, `ops/drill.sh#L4-L7` — and make
+the operator with a one-time join link, `--replace` being the way back from lost passkeys
+(`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
+that client's root password from a terminal**: the only path is the console's route, which needs a live operator
+session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
+*Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
+the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
+*Trigger:* a client's own stack.
+
+## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
+
+`deleteClient` removes the index first — from that write the client is out of the list and every session of it is
+refused — then sweeps at most 200 records a press (`bff/src/clients.ts#L112-L174`), and a press after the index is
+gone resumes on the session alone (`bff/src/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
+in the file for good, reachable by nothing: `listClients` reads the index prefix alone (`clients.ts#L93-L94`), and
+the deletion record's only two readers are inside `clients.ts` itself (`#L67`, `#L145`) — no route, no page and no
+script lists one. The code is held, so the client cannot be made again (`#L67`), which is right; what is missing is
+anyone being told. *Fix:* a read of the deletion records on the Clients page or in the operator's own view, so an
+unfinished deletion is visible and can be pressed on. *Severity:* Low on ridge, where the data is invented; it is
+what makes the delete's promise in `docs/products.md` true or not for a real client. *Trigger:* a client's deletion
+seen stopping part way, or the first deletion of real records.
+
+## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; *parked* until a key must be replaced, or before a client's own stack (the client-readiness read, 2026-11-07)
+
+c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
+never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L487-L490`). The
+BFF's own service code and access key are made once the same way (`ops/app.sh#L99-L114`, "present, left as it is").
+Nothing in `ops/` rotates any of the four: there is no script, and no order written down. The two the BFF needs sit
+in the function's environment as plain variables (`ops/app.sh#L131-L137`), so anyone in the account who can read a
+function's configuration reads them, which `ops/check.sh#L140` notes while taking care not to print them. Rotating
+by hand means editing the box's file, re-pushing the function's environment and re-registering the service, in that
+order. *Fix:* one script that does the three in order and reads back, or the order written into `ops/README.md` as
+a runbook entry. Related: item 50 (how the end-of-run search handles the keys it already holds). *Trigger:* a key
+that must be replaced — a leak found by the end-of-run search, or an operator leaving — or before a client's own
+stack.
+
+## 135. A clerk cannot add a customer or a product: the import is the root's alone and no page offers an add — the machine proposes the form, the human decides which right it sits under; `[FIXED]` (add records, `4552e6ea` to `cee6a814`, 2026-11-08, High; was *parked*, the client-readiness read)
+
+*Fixed in add records (`4552e6ea` to `cee6a814`, recap `docs/recaps/2026-11-08-add-records.md`):* an Add path now exists beside the import on both lists, for whoever holds `orders.canEdit`: `POST /api/customers` and `POST /api/products` through the import's own row rule and write, an Add button on each list, and a page that copies the detail form with the code box open. **The import is still root-only**, deliberately, and a review re-proved it with a test using a person holding every permission; the closure does not open it. The right chosen is `orders.canEdit`, because the catalogue holds no `orders.canCreate` and that right already makes records on these pages. As filed:
+
+The only way a record enters the customers or the products list is the Excel import, and the import is the
+root's: `bff/src/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
+comment — "Only the root imports (case-table row 22): no permission allows it." Neither list page draws an
+Add, and the Import button is drawn for the root alone (`ui/src/ListPage.tsx#L26`), so a person with
+`orders.canEdit` sees no path at all, not even a refused one. That person can already *correct* a customer
+and a product on its page (`bff/src/lists.ts#L212`, the same right), so the gap is the add and the add only.
+**What it costs a real client:** a new customer telephones, and the order cannot be taken until the owner
+signs in and builds a spreadsheet. Of everything the client-readiness read found, this is the one that
+blocks the first order. *Fix:* one add form a list, over the add path the import already uses
+(`bff/src/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
+the cheapest answer and the weaker decision. *Severity:* High for a first client; none for ridge, where the
+demo seed writes both lists. *Trigger:* the first client takes an order.
+
+## 136. No price can be set on an order line, and a total must be at least 1 — the human decides whether a client prices by hand; *parked* until a client asks for a price of its own (the client-readiness read, 2026-11-07)
+
+A line is a product id and a quantity, and the price is always the product list's: the schema says so in its
+own words, "the customer and the lines by id and quantity, never a price or a total"
+(`shared/src/orders.ts#L130-L146`), and the BFF prices every save and every confirm from the lists
+(`bff/src/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
+fee and no VAT line, and because `total` is `z.number().int().min(1)` (`shared/src/orders.ts#L108`) an order
+worth nothing — a free replacement after a damaged delivery — cannot be recorded at all. This is a
+deliberate shape, not a defect: it is what makes the server the only pricer and keeps a tampered total out.
+It becomes a gap the moment a client sells at agreed prices rather than list prices. *Fix:* a per-line price
+the server still bounds, or a customer price list, and a decision about who may type one; the zero total is
+a separate and smaller change. *Trigger:* a client asks for a discount, a customer price or a replacement
+delivery.
+
+## 137. Nothing older than seven days can be found: no search by number or customer, and "Earlier" re-reads every week again — the machine; *parked* until a client's second week (the client-readiness read, 2026-11-07)
+
+The orders route answers at most seven days and refuses a wider span (`shared/src/orders.ts#L23`,
+`bff/src/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
+count and re-reads *every* week from today (`ui/src/OrdersPage.tsx#L13-L19`, `#L83`): at twelve weeks that
+is twelve calls of seven day-lists each. There is no search by order number, no search by customer, no
+filter by state and no day to open at. Finding last month's order means pressing Earlier five times and
+reading an unfiltered table. The delivery requests page has the same shape, a day at a time
+(`bff/src/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
+this item is the other half of it, what a person can and cannot find. *Fix:* a search by number and by
+customer, and a day to open the list at, which together need an index rather than a wider day span.
+*Trigger:* a client's second week, or the first time someone is asked for last month's order.
+
+## 138. No report of any kind — the human names the first report, since what it must show is the client's business; *parked* until a client asks (the client-readiness read, 2026-11-07)
+
+The menu holds eight pages and not one of them is a total: My deliveries, Orders, Delivery requests,
+Settings, Staff, Staff setup, Customers and Products (`ui/src/nav.ts#L27-L85`). There is no day's takings,
+no customer's history, no driver's month and no product's movement, and nothing in the BFF answers a sum —
+every orders route returns records for a page to add up. The operator console's own Usage and costs and
+Activity are "coming soon" pages (`ui/src/operatorNav.ts#L17-L18`), which is a different lack.
+**What it costs a real client:** nothing in week one, and an ask in week two; it is on the readiness list
+last for exactly that reason. *Fix:* one report the human names, which decides whether the sums are made in
+the BFF over an index or in the page over the seven-day reads (item 137). *Trigger:* a client asks.
+
+## 139. Nothing in the product sends email or an SMS, so a staff password is reset by hand and the root's only from the console — the machine proposes the sender, the human decides what may leave the system; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
+
+A search over `bff/src`, `ui/src`, `shared/src`, `ops` and `.github` for any mail or message sender finds
+none. "Sign in by email" means only that the email address may be typed where the code goes, against the
+same password (`bff/src/app.ts#L251-L268`), and the QR code is made by the root and shown on a screen for
+fifteen minutes (`shared/src/signins.ts#L29`) — it is handed over, never sent. The consequences:
+- **A staff member who forgets their password** has no self-service path; the root types them a new one
+  (the root's own screen, `staff-6-password`).
+- **The root has none at all.** Only an operator can set a client's root password, from the console, with a
+  live session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`) — and that door can report
+  "as it was" over a password that was in fact set (item 61).
+- **Nothing reaches a customer**: no order confirmation, no delivery notice.
+The walks page's partner sign-in by emailed code is Cloudflare's, not the product's, so it is no precedent.
+*Fix:* a sender, and then the human's decision on what may leave a client's system; the staff reset is the
+smallest first use and does not need one if a one-time link shown on the root's screen is accepted instead.
+*Trigger:* before a client's own stack, or the first staff member who forgets a password.
+
+## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[FIXED]` (edit-an-order, step 5's whole check, 2026-11-07, High)
+
+`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
+
+## 141. The page's "Now X" figure is the list as read when the editor mounted — the machine; `[DEFERRED]` (edit-an-order, review of line 64, milestone 3, 2026-11-07, Low)
+
+`ui/src/OrderPage.tsx#L86-L92` takes the moved-price advisory from the product list read at mount, so a price moving while the page stays open shows a stale figure and a save takes another. No money diverges: the screen and the driver both carry the saved prices until a save, and the save's answer redraws the page. *Trigger:* a second office editing prices while an order is open, or a reader of a test names it.
+
+## 142. Files under `scripts/node_modules/` are executed by the ops scripts and nothing compares them with the lock — the machine; `[OPEN]` (tree guard, review of the guard, 2026-11-07, Low)
+
+`ridge_cli` runs `node --import tsx src/ridge-main.ts` out of `scripts/` (`ops/lib.sh#L635`), and node loads the packages in `scripts/node_modules/` as well as the source. The tree guard (`ops_match_main`, `ops/lib.sh#L180-L218`) compares the tracked and untracked files git does not ignore under the paths `ci.yml` deploys on, plus `.gitignore`; `node_modules/` is ignored (`.gitignore#L41`), so a changed file there is not compared, and nothing verifies the install against `pnpm-lock.yaml`. The deploy job installs with a frozen lock on a fresh checkout, so the hole is the by-hand run on a machine whose install was altered. Its message says only what is compared. *Fix:* a check by hand that the install matches the lock (`pnpm install --offline --frozen-lockfile` leaving nothing changed, or a stamp of the lock's hash written at install and read by the guard). *Trigger:* before a second person runs the ops scripts by hand, or a client's own stack.
+
+## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low)
+
+`ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh#L635`), so with the variable set the code executed is not the tree the guard compared. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch (`ops/seed.sh#L43`, `ops/root-password.sh#L91`), so it cannot simply go (they test it as a presence check, not as the guard). The guard's message now names what it compares rather than claiming the code run. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`). *Trigger:* the same as item 142.
+
+## 144. `ops_match_main`'s `mktemp` is not checked, so a failed one reports a misleading cause — the machine; `[DEFERRED]` (tree guard, the recap's own read, 2026-11-07, Low)
+
+`ci=$(mktemp ...)` (`ops/lib.sh#L200`) has no check of its own. If `mktemp` fails, `ci` is empty, the redirect on the next line fails, and the function dies through its `||` branch with "ci.yml cannot be read" — failing closed, but naming the wrong cause. The same unchecked shape sits at `ops/lib.sh#L146`. *Fix:* `|| die "no temporary file could be made"` on both. *Trigger:* a reader of that message is misled, or the next edit of this function.
+
+## 145. The fake's imports add records with no version, so an imported customer or product saves to "NaN" — the machine; `[OPEN]` (add-records, step 2, 2026-11-07, Low)
+
+`ui/src/fake.ts`'s `importInto` puts a record in its list but never sets its entry in `customerVersions` or `productVersions`, so a record the fake imported reads at version `cundefined`, and a save over it moves the version to `NaN`. The new add (`addInto`) sets version 1 itself, so an added record is right; an imported one is not. Only the fake lane is touched (the real BFF versions by c-storage's tag), and no walk imports and then edits the same record. *Fix:* set the version inside `importInto` and let `addInto` rely on it. *Trigger:* a walk or a test that edits a record the fake imported.
+
+## 146. A taken code reddens the code box with no message in it, and the red outlasts the retyping — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
+
+`ui/src/CustomerPage.tsx#L124` and `ui/src/ProductPage.tsx#L194` pass `adding.taken || undefined` to a prop that takes a node, so a taken code reddens the box with no message in it (the words are in the orange alert above). `adding.taken` also stays true while the clerk retypes the code and clears only on the next press, so the box stays red over a code that may now be free. The same shape is in the save form the human approved, so it was left. *Fix:* pass the words as the box's error, and clear `taken` when the code box changes. *Trigger:* a clerk misreading the red box, or the next edit of either form.
+
+## 147. A customer's name over 200 characters is sent, refused 400 and shown as the generic "could not add" — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
+
+`CustomerForm.submit` checks only `!name.trim()` (`ui/src/CustomerPage.tsx#L128`) while `nameSchema` allows 200 (`shared/src/staff.ts#L36`), so a 250-character name goes to the server, comes back 400 and shows the generic alert, where the import refuses the same row with its own word (`ui/src/listSheet.ts#L203`). The save form has the same shape. *Fix:* refuse on the page with the import's word, before any call. *Trigger:* a clerk pasting a long text into the name box, or the next edit of the form.
+
+## 148. An add's uniqueness is read-then-write, so two adds of one code can both land, and a lost answer can duplicate — the machine; `[OPEN]` (add-records, plan and review, 2026-11-07, Low)
+
+A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.
+
+## 149. The 409 case's post-condition is narrower than its sentence — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
+
+`bff/src/reconciliations.route.test.ts#L478` asserts only `handedIn === 1` of the surviving record. The rival the `'rival'` mode writes is our own record with `handedIn` forced, so its `difference` is still the one computed for 5 and the stored record is internally inconsistent. The 409 and the surviving cash both hold, so nothing is wrong today, but an assertion over the whole stored record would also catch a future change that merged fields. It is a pre-existing pattern inherited from the `'theirs'` mode (`#L45-L48`). *Fix:* assert the whole stored record, with a rival that is consistent. *Trigger:* the next edit of the close route or of that mode.
+
+## 150. The day page's pre-close sum is held by pixels, not by an assertion — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
+
+`ui/src/DriverDayPage.tsx#L108` renders `money(figures.toCollect)`. The only holder is `walk/specs/reconcile.spec.ts`, whose own `CASH` is derived from `driverDay` (`#L23`) and so is tautological on the UI side; what actually pins the rendered number is the base-image byte compare. `ui/src/fake.test.tsx#L2301`'s literal pins the fake Api's arithmetic, not the render. *Fix:* one `ui` test that mounts the page over a known day and asserts the rendered sum as a literal. *Trigger:* the next edit of the page's figures.
+
+## 151. The nightly seed of ridge is killed by GitHub's 15-minute step limit, with no error of its own, and nobody is told — the machine; `[CLOSED BY REMOVAL, NOT FIXED]` (the nightly schedule and its failure notice removed from `seed.yml`, 2026-11-08, Medium; the GitHub reds read, 2026-11-08)
+
+**Closed by removal, not by fix, 2026-11-08 (branch `seed-timeout`).** The timeout was not solved as a nightly job; the nightly job was taken away. The human decided the seed comes out of GitHub Actions' schedule: `seed.yml` has no `schedule`, no `tell` job and no `issues: write`, and `ops/seed-failed.sh` is deleted. `workflow_dispatch` stays, so ridge can still be seeded by OIDC without anyone holding long-lived AWS keys, and a workflow with no schedule cannot fail on one. What the removal costs: **ridge's data now refreshes only when somebody asks**, and ridge is what others check their work against, so run the workflow ("Run workflow" on `main`, or `gh workflow run seed`) before anyone is asked to check anything on ridge against a recent day. What stays from the built work below, *as corrected the same day (branch `seed-timeout`): the 30-minute step and 40-minute job and the three-day bound became an 18-minute step, a 30-minute job and a two-day bound, because three days (about 22 minutes at the measured 7.5 a day) outlived the deploy role's 20 minutes (`role-duration-seconds: 1200`, deliberately not widened); the chain is now 2 days x 7.5 = 15 < 18 < 20 < 30, and `ops/test.sh` checks the sums*: the step and job limits and the day bound per copy and run, since a manual run after a long gap still meets a backlog (it ends green and prints `seed: STILL BEHIND, ... run it again to go on`). Not done and no longer needed: the first-fill cost measurement and the unexplained red of run 42316272960, both about a schedule that is gone. `ops/test.sh` now refuses a seed workflow that regains a schedule, gains any other trigger, a second job or any permission but `id-token: write` and `contents: read`.
+
+**What is known**, all from GitHub's own log for the scheduled `seed` workflow, run `42426192862`, on commit `5ea0be17f048fa9299a159e57713c92a162b7356` (`main`'s tip), created 2026-11-07T23:38:54Z. Job `seed`, step `Seed`. It checked out, set up Node 26 and pnpm 12.10.1, installed, assumed its AWS role by OIDC, and ran `bash ops/seed.sh ridge`. Its stages `[1/5]` to `[4/5]` ended by 23:39:31 (the box had 275 MiB of memory available, 2459 MiB of swap and 4270 MiB of disk free; `/health` and the BFF's function both named the commit); `[5/5] the seed` began at 23:39:32 and printed per-tenant lines. The last such line is at 23:53:14, and at 23:54:30 came `##[error]The action 'Seed' has timed out after 15 minutes.` The step's `timeout-minutes: 15` is in `.github/workflows/seed.yml`.
+
+**What is not there:** no error from the seed script itself and no completion line. So it was ended by GitHub's step limit. It is not a credentials failure (the role was assumed and the stages ran) and not a failure the script announced. **Whether it hung or merely ran long cannot be told from the excerpt.** One thing leans toward "ran long": the lines kept coming, with silences of up to about three minutes between them earlier (23:49:07 to 23:52:05), so the 76 seconds before the kill is not unusual; the three `vat-lieu-quang-tin-dat` tenants had printed "up to 2026-11-07" by 23:47:26 while the three `phan-phoi-loc-vuong-hai` tenants, which write about twice the orders a day, were still on 2026-11-07 when the limit came. That is a reading, not a finding.
+
+**One detail, not a cause:** `phan-phoi-loc-vuong-hai-3: NV-004 is not in the list, left as it is`, at 23:45:35. The other two `phan-phoi` tenants printed "applied, 1 events" for the same day without it, so only tenant 3 lacked that code. It reads as the script's own harmless skip.
+
+**Not read:** the whole failed log, `logs/20261108-1214-github-reds-run-42426192862.failed.txt` (339 lines), has not been read by a person. The 100 or so lines of the seed itself were skimmed for this item; the answer to hung or long is most likely in a full read, in the time each tenant took on earlier nights (earlier runs of the same workflow), and in `ops/seed.sh` itself.
+
+**Why it mattered, as filed.** It was a scheduled job, so it failed quietly every night it ran long and no one was told. Ridge's data was perhaps partly seeded or stale (there, at least the `phan-phoi` tenants' 2026-11-07 day was cut off before its orders), and ridge is what other people check things against. *Fix, after the cause is read:* if it ran long, give the step more room or run the tenants so that they finish in time; if it hung, find the call that waited; either way, make a timed-out seed report itself to someone. *Trigger:* the next red of the `seed` workflow, or before anyone is asked to check anything on ridge against a night's data.
+
+**A check that cannot be checked yet (not a leak).** The read script's count `AWS access key ids: 2 line(s)` (`one-off/20261108-1214-github-reds.sh`, line 129) is not trustworthy as a count of keys, for three reasons. It does not print the pattern it searched with, so a reader of the output alone cannot reproduce it. The pattern, once read in the source, matches role ids too (`AROA` is the prefix of a role's unique id, not of an access key), and it is not anchored, so it can match inside longer strings. And the two lines it counted are one line twice: the `Authenticated as assumedRoleId …` line the AWS action prints at 23:39:17, which sits once in the seed's failed log and once more in the script's own log, which copies that file. So there is no access key in the files, but one unmasked role id is, which is an identifier and not a secret. The same script's `arn prefixes` count has the same weakness: the pattern `arn:` also matches `yarn:`, and the hits were `yarn:` in the Node setup output. *Fix:* anchor both patterns (`\bAKIA`, `\barn:`), count `AROA` apart, print the patterns in the output, and count a line once even when two files hold it.
+
+**Built first, then removed (2026-11-08, branch `seed-timeout`; none of this is in `main`, and the files and limits named are gone or changed).** The cause was a three-day backlog in a one-night window, not a hang. The first design gave the Seed step 30 minutes and the job 40, applied at most three days a copy, ended green printing `seed: STILL BEHIND, ...`, and added a last job, `tell`, that opened or commented on one GitHub issue when the seed job failed (`ops/seed-failed.sh`, holding `issues: write`). That design was never merged: three days (about 22 minutes) outlived the deploy role's 20, and the human then took the seed off its schedule, so the `tell` job, `ops/seed-failed.sh` and the permission were deleted, and the limits became the 18-minute step, 30-minute job and two-day bound named above. **What was left unmeasured and is still so:** a fresh copy's first fill (the fill plus 2 days in an 18-minute step), and run 42316272960's red, never explained. A first fill that is cut off by the step limit is not lost, though not because of the ledger: the ledger's `filled` flag flips in one write after the whole fill returns, so a killed fill repeats from its start. What makes the repeats converge is the fill's own idempotence: every write it makes is skipped when its record is already there, so each repeat only does what the cut-off one did not reach. A fill longer than the step could thus take several runs, each ending in a clean timeout (read from the code, not run).
+
+## 152. No line names the client whose records were read: the stage's access log cannot carry the client's code — the machine; `[OPEN]` (the access log, 2026-11-08, Low: ridge holds no real client records today, and the path already names a record id on detail routes, so the gap costs nothing until a client signs)
+
+**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
+
+**What is not known.** Whether the two lines can be joined by a shared request id, and whether the BFF should write one line of its own with the client's code and the record read. Neither was looked at; this item records the gap so it is not left silent.
+
+**Also not known: the end user's own address.** The stage's `$context.identity.sourceIp` is the immediate TCP connection, and it was read here as a CloudFront edge node for a call through the distribution; **the run of 2026-11-08 18:11 on ridge overturned that** (three calls through the distribution, three lines, one public address outside AWS's published ranges, consistent with the caller's own; see item 157). An HTTP API's access-log format still cannot carry the viewer's `X-Forwarded-For` (only `$context` variables, and `$request.header.*` is not among them), which is a reading of the template, not measured. The function's trail cannot recover it either: Fastify is built with no `trustProxy` (none in `bff/src`). Whether the adapter gives Fastify a remote address at all would need a run. So the stage's log is now measured to name a caller's address for a call through the distribution, once; the function's trail is not known to.
+
+**Trigger:** a client signs, or real client data reaches any deployment, whichever comes first, the same as item 121's wall. *Fix, a sketch and not a design:* join the two trails on one id, or have the BFF log the client's code on a read, whichever the reading shows is cheaper.
+
+## 153. The access log's route field carries no information — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+The stage is the default stage with a single catch-all route, so `"route":"$context.routeKey"` in the format (`ops/env.yml`, `ApiStage`'s `AccessLogSettings`) is the constant `$default` on every line. It is one of the five fields `api_log_guard` insists on and one of the things `docs/plans/2026-11-08-access-log.md` says the line holds. *Fix:* drop it, or keep it for the day a second route exists and say so. *Trigger:* the next change of the format.
+
+## 154. The access-log format is hand-built JSON with three caller-controlled values interpolated unescaped — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+The user agent, the path and the integration error (which can itself be JSON) are written into the line as they arrive. A `"` or `\` in any of them would make that line invalid JSON, so a structured query over the log fails on it, and a guessing run is exactly the traffic that would carry one. The line stays human-readable, so this degrades machine parsing only. AWS's own pages say nothing about escaping and nothing local can settle it; the first lines on ridge are what would. *Fix, if it shows:* drop the three fields from the JSON or move to a format that tolerates them. *Trigger:* the first query over the log that skips a line.
+
+## 155. The access-log guard holds five of the format's ten fields — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
+
+`api_log_guard` in `ops/test.sh` requires the five field groups of the plan's case 1; the other five rest on step 1's exact-equality check, which is a literal copy of the format and so the first thing any deliberate format change edits. After such an edit nothing would catch a variable that does not exist, such as the payload-2.0 spelling `$context.http.method`, a natural mistake in this very template. *Fix:* the guard's list should carry every field the format claims. *Trigger:* the next change of the format.
+
+## 156. The seed's 7.5 minutes a day is written nowhere a check can read, and the checks hold consistency, not the policy of never widening the role — the machine; `[OPEN]` (the seed-timeout piece's review, 2026-11-08, Low)
+
+The seed's whole sizing rests on one measured rate, about 7.5 minutes of writes a day for the heavier client (run 42426192862, 2026-11-08). It stands as prose in `scripts/src/demo/apply.ts` (above `MAX_DAYS_PER_RUN`), `.github/workflows/seed.yml` (the job's and the Seed step's comments), `ops/seed.sh` (the header) and, as the 15 minutes it makes, `ops/README.md`, and in `ops/test.sh`'s `seed_guards` only as the literals of `days x 7.5 x 1.2 <= the Seed step` (`days * 90 <= step * 10`). **If the real rate rises, every check stays green while two days no longer fit the step**; the first sign would be a Seed step ended by its own timeout. Nothing measures the rate again: the run's log carries no per-day time. *Fix:* have the seed print each day's elapsed minutes (one line a day in `apply.ts`), and let a check, or a person reading the first long run, compare it with the rate in the check; or hold the rate in one named constant that the check, the comment and the README read. *Second, and separate:* the three checks (the step ends before the role does, the days fit the step, the step plus its setup fit the job) enforce **consistency between the numbers, not the policy that the role is never widened to make more work fit**. A role of 1800 s, a step of 27, a job of 36 and 3 days a run would pass all three once their exact pins are edited in the same change; only a comment in `seed.yml` forbids it. *Trigger:* the first change to `MAX_DAYS_PER_RUN`, to the step's or the role's limit, or the first run of the seed that ends in a timeout.
+
+## 157. The access log holds callers' real public addresses for 14 days, and nothing says who may read them or whether a client is told — the human; `[OPEN]` (the access log, 2026-11-08, to decide)
+
+Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-read.log`, outside git): three calls through the distribution left three lines in `/aws/apigateway/credo-ridge` carrying one and the same public address, outside AWS's published ranges (the orchestrating session's check of that date, not re-run) and consistent with the caller's own. The earlier prose in `docs/client-readiness.md`, `docs/products.md` and the access log's plan and recap said an edge node would be there instead; that was reasoning and is corrected. So the log group, 14 days of retention, holds callers' real public addresses: a person's address is personal data in some places, and no document recorded that it was being kept.
+
+*To decide, not decided here:* (1) who the addresses are acceptable to, and who may read the group; (2) whether a client must be told its API's callers' addresses are kept; (3) whether 14 days is the right retention. *Also open, smaller:* why the field shows the caller and not an edge node, when `$context.identity.sourceIp` is documented as the immediate connection's address; one run, one caller, one network, and no mechanism is claimed. *Trigger:* before a client signs, or before real client data reaches a deployment, whichever comes first, the same as item 121's wall.
+
+## 158. The blank-`--take` rows pin the symptom, not the order of the two lines that produce it — the machine; `[DEFERRED]` (the change-set-cause piece's review, 2026-11-08, Low)
+
+`ops/stack.sh#L44-L45` must keep `[ $# -ge 2 ] || usage` above `[ -n "$2" ] || usage`: under `set -euo pipefail`, the reverse order turns `--take` as the final argument from a usage message with exit 2 into `$2: unbound variable` with exit 1. The two new rows (`ops/test.sh#L2544-L2549`) assert exit 2 and no verdict line, but both pass `--take ''`, so `$2` exists and both orders exit 2 there; only the final-argument case differs, and no row runs it. So a future edit could swap the two lines and every check would stay green, while an operator's mistyped `--take` died on an unbound variable instead of being told what it got wrong. A small, real gap, not a defect. *Fix:* one row asserting that `--take` as the final argument, with nothing after it, exits 2 specifically. *Trigger:* the next edit of that parser.

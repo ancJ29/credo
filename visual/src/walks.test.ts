@@ -21,6 +21,12 @@ import {
 import { stepWords } from './scene';
 
 const SPECS = new URL('../../walk/specs/', import.meta.url);
+/** Every spec file under the specs folder at any depth, as a path inside it: Playwright finds a
+ * spec in a sub-folder too, so a read of the top level alone misses it. */
+const specFiles = () =>
+  readdirSync(SPECS, { recursive: true, encoding: 'utf8' }).filter((name) =>
+    name.endsWith('.spec.ts'),
+  );
 const read = (path: string) => readFileSync(new URL(`../../walk/${path}`, import.meta.url), 'utf8');
 
 /** Piece 2's walks, which start at the staff setup whatever walks come before them. */
@@ -155,15 +161,44 @@ describe('the walks', () => {
   });
 
   it('names every screen of every walk as the walk specs do, which makes their base images', () => {
-    const inSpecs = readdirSync(SPECS)
-      .filter((name) => name.endsWith('.spec.ts'))
-      .flatMap((name) =>
-        [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
-      );
+    const inSpecs = specFiles().flatMap((name) =>
+      [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
+    );
 
     expect(inSpecs.sort()).toEqual(
       WALKS.flatMap((walk) => walk.screens.map((screen) => screen.id)).sort(),
     );
+  });
+
+  it('runs every spec file in some project, and every project runs exactly one spec', async () => {
+    // the config itself, loaded as Playwright loads it, not its text; the path is a variable so
+    // this package's typecheck does not follow it into a package it has no Playwright in
+    const path = new URL('../../walk/playwright.config.ts', import.meta.url).pathname;
+    const config = (
+      (await import(/* @vite-ignore */ path)) as {
+        default: { projects: { name: string; testMatch?: string | string[] }[] };
+      }
+    ).default;
+    const specs = specFiles();
+    // a project with no testMatch runs every spec, as Playwright's default does
+    const runs = (project: (typeof config.projects)[number], spec: string) =>
+      project.testMatch === undefined || [project.testMatch].flat().includes(spec);
+
+    expect(specs.length).toBeGreaterThan(0);
+    // a spec that no project names runs nowhere, and the suite stays green
+    for (const spec of specs) {
+      expect(
+        config.projects.filter((project) => runs(project, spec)).map((project) => project.name),
+        `${spec}: the projects that run it`,
+      ).not.toHaveLength(0);
+    }
+    // a project that runs two specs would write the second one's pictures into the first's folder
+    for (const project of config.projects) {
+      expect(
+        specs.filter((spec) => runs(project, spec)),
+        `${project.name}: the specs it runs`,
+      ).toHaveLength(1);
+    }
   });
 
   it('shoots every walk at the widths the report draws, the width in each image’s name', () => {
@@ -178,7 +213,7 @@ describe('the walks', () => {
       DEVICE_WIDTH.phone,
     ]);
     expect(read('support.ts')).toContain('`${screen}-${language}-${width}.png`');
-    for (const name of readdirSync(SPECS).filter((file) => file.endsWith('.spec.ts'))) {
+    for (const name of specFiles()) {
       expect(read(`specs/${name}`), name).toContain("from '../support'");
       expect(read(`specs/${name}`), name).toContain('Object.entries(WIDTHS)');
     }
@@ -509,7 +544,12 @@ describe('the walks', () => {
     const keys = (step: Step) =>
       'press' in step
         ? [step.press, ...(step.within ? [step.within] : [])]
-        : ['fill' in step ? step.fill : 'attach' in step ? step.attach : step.choose];
+        : 'see' in step
+          ? // a cell's own words (a name from the data) are in no dictionary
+            step.text
+            ? []
+            : [step.see]
+          : ['fill' in step ? step.fill : 'attach' in step ? step.attach : step.choose];
     const used = WALKS.flatMap((walk) => walk.screens)
       .flatMap((screen) => screen.scene?.steps ?? [])
       .flatMap(keys);
@@ -539,7 +579,7 @@ describe('the walks', () => {
       'EMP-0003',
       'EMP-0001',
       'EMP-0001',
-      ...Array<string>(12).fill('EMP-0001'),
+      ...Array<string>(14).fill('EMP-0001'),
       ...Array<string>(5).fill('EMP-0005'),
       ...Array<string>(8).fill('EMP-0001'),
     ]);
@@ -586,27 +626,10 @@ describe('the walks', () => {
     expect(config).toContain("name: 'team-full'");
     expect(config).toContain("name: 'delete-client-fake'");
     expect(config).toContain("name: 'delete-client-full'");
-    // the chromium project's whole ignore list, in order: a line that another project's testMatch also
-    // holds cannot stand in for it
-    const chromium = /name: 'chromium',\s*testIgnore: \[([^\]]*)\],/.exec(config);
-    expect(
-      chromium?.[1]
-        ?.split(',')
-        .map((entry) => entry.trim())
-        .filter(Boolean),
-    ).toEqual([
-      "'piece-2.spec.ts'",
-      "'lists.spec.ts'",
-      "'orders.spec.ts'",
-      "'driver.spec.ts'",
-      "'reconcile.spec.ts'",
-      "'operator.spec.ts'",
-      "'operator-passkeys.spec.ts'",
-      "'operator-services.spec.ts'",
-      "'operator-root-password.spec.ts'",
-      "'operator-team.spec.ts'",
-      "'operator-delete-client.spec.ts'",
-    ]);
+    // the chromium project names piece 1's spec and ignores nothing, so a new spec cannot run
+    // inside piece 1's pass; no project lists an ignore at all
+    expect(config).toContain("{ name: 'chromium', testMatch: 'piece-1.spec.ts' },");
+    expect(config).not.toContain('testIgnore');
     expect(config).toContain("name: 'lists-fake'");
     expect(config).toContain("name: 'lists-full'");
     expect(config).toContain("testMatch: 'lists.spec.ts'");
@@ -621,7 +644,7 @@ describe('the walks', () => {
     expect(config).toContain("testMatch: 'reconcile.spec.ts'");
   });
 
-  it('puts the customers and products from Excel in one walk of the admin’s set-up, seventeen screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
+  it('puts the customers and products from Excel in one walk of the admin’s set-up, twenty-one screens, each a scene and none from the mock, the file without the code column on the wrong path', () => {
     const walk = WALKS[8];
 
     expect(walk).toMatchObject({ id: 'admin-lists', person: 'admin', part: 'setup' });
@@ -643,6 +666,10 @@ describe('the walks', () => {
       ['lists-15-customer-conflict', 15, 'wrong'],
       ['lists-16-product-saved', 16, 'main'],
       ['lists-17-product-conflict', 17, 'wrong'],
+      ['lists-18-customer-new', 18, 'main'],
+      ['lists-19-code-taken', 19, 'wrong'],
+      ['lists-20-product-new', 20, 'main'],
+      ['lists-21-customer-added', 21, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     expect(walk.screens[4].scene!.steps).toEqual([
@@ -666,7 +693,7 @@ describe('the walks', () => {
       // a customer's or a product's page is reached from the list by the name's link: on the stack
       // the BFF mints the id, so the spec opens the list and clicks the data set's record by name
       const before = openings.get(screen.id)!;
-      const opened = [...before.matchAll(/await open\(page, language, '([^']+)'\)/g)];
+      const opened = [...before.matchAll(/await open\(page, language, '([^']+)'(?:, '[^']+')?\)/g)];
       const customer = DEMO_CUSTOMERS.find((one) => screen.scene!.path === `/customers/${one.id}`);
       const product = DEMO_PRODUCTS.find((one) => screen.scene!.path === `/products/${one.id}`);
       const record = customer ?? product;
@@ -686,18 +713,19 @@ describe('the walks', () => {
         expect(opened.at(-1)?.[1], screen.id).toBe(screen.scene!.path);
       }
       expect(screen.scene!.as, screen.id).toBeUndefined();
-      // only the two conflicts are cued, and the spec opens each with the same cue
+      // only the two conflicts and the refused add are cued, and the spec opens each with the same cue
       expect(screen.scene!.cue, screen.id).toBe(
         {
           'lists-15-customer-conflict': 'saveCustomer:409',
           'lists-17-product-conflict': 'saveProduct:409',
+          'lists-19-code-taken': 'addCustomer:409',
         }[screen.id],
       );
       if (screen.scene!.cue) expect(before, screen.id).toContain(`, '${screen.scene!.cue}');`);
     }
   });
 
-  it('puts an order sent to a driver in one walk of the office’s orders, twelve screens, each a scene and none from the mock, the three failures on the wrong path', () => {
+  it('puts an order sent to a driver in one walk of the office’s orders, fourteen screens, each a scene and none from the mock, the three failures on the wrong path', () => {
     const walk = WALKS[9];
 
     expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
@@ -714,10 +742,12 @@ describe('the walks', () => {
       ['orders-10-no-drivers', 10, 'wrong'],
       ['orders-11-fulfilled', 11, 'main'],
       ['orders-12-proof', 12, 'main'],
+      ['orders-13-moved-price', 13, 'main'],
+      ['orders-14-repriced', 14, 'main'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     // every screen is the office manager's, and the failures are cued or provoked as the spec does
-    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(12).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(14).fill('EMP-0001'));
     expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
       undefined,
       undefined,
@@ -728,6 +758,8 @@ describe('the walks', () => {
       undefined,
       'saveOrder:409',
       'confirmOrder:503',
+      undefined,
+      undefined,
       undefined,
       undefined,
       undefined,

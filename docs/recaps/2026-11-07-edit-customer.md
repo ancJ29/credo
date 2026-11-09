@@ -4,7 +4,7 @@
 
 Open a customer from the list and correct its name, phone, address or note there, not in the old app. Whoever may edit orders sees Save. If someone else saved first, the page says so and keeps what was typed.
 
-This is the first write anywhere in the new app, so the product and order pages copy its shape: read with a version, saved over it, a 409 carrying the record as it now is.
+This is the first edit of a list record, and the first save on one of the new detail pages, so the product page copies its shape: read with a version, saved over it, a 409 carrying the record as it now is. **Corrected 2026-11-07 (the client-readiness read):** this line first said "the first write anywhere in the new app", which was not true the day it was written — the settings have written since 10-28 and the staff records since 10-30, and the orders' own save already used the version-and-409 shape (`bff/src/orders.ts#L280`, `#L290`), which is where this page took it from rather than inventing it.
 
 ## The four screens, approved
 

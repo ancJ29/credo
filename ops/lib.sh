@@ -177,24 +177,42 @@ main_synced() {
   ops_match_main
 }
 
-# ops_match_main: dies unless ops/ in the working copy (tracked and untracked files) is as reviewed.
+# ops_match_main: dies unless the tracked and untracked files git does not ignore, under every path
+#   ci.yml's push trigger deploys on, and the root .gitignore (one local line there would hide a new
+#   file under any of them), are as reviewed. Ignored files (node_modules, dist) are not compared.
+#   Those paths are what the scripts here execute, deploy or seed (ridge_cli runs scripts/ and the
+#   packages it imports), and the list is read from the base's own ci.yml through push_paths: one
+#   home, and a working copy cannot shorten it.
 #   By hand: equal to origin/main's.
 #   In the deploy job (GITHUB_ACTIONS=true): equal to the commit checked out, which must be a commit
 #   of origin/main. A push that lands during the run moves origin/main on, and the job still runs
 #   what it checked out; comparing with the moved ref would turn a sound deploy red.
 ops_match_main() {
-  local base=origin/main whose="origin/main's"
+  local base=origin/main whose="origin/main's" ci paths path rc
+  local deployed=()
   git -C "$REPO_DIR" rev-parse --verify -q origin/main >/dev/null || die "origin/main is unknown here: git fetch origin main"
   if [ "${GITHUB_ACTIONS:-}" = true ]; then
     git -C "$REPO_DIR" merge-base --is-ancestor HEAD origin/main || die "the commit checked out is not a commit of main: only main is released"
     base=HEAD
     whose="this commit's"
   fi
-  if ! git -C "$REPO_DIR" diff --quiet "$base" -- ops ||
-    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- ops)" ]; then
-    die "ops/ here differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
+  # push_paths reads a real file, as seed.sh gives it: the base's ci.yml, removed on every way out.
+  ci=$(mktemp "${TMPDIR:-/tmp}/ci-base.XXXXXX")
+  git -C "$REPO_DIR" show "$base:.github/workflows/ci.yml" >"$ci" || {
+    rm -f "$ci"
+    die "$whose .github/workflows/ci.yml cannot be read, so the paths a push deploys on are not known: nothing was written"
+  }
+  rc=0
+  paths=$(push_paths "$ci") || rc=$?
+  rm -f "$ci"
+  [ "$rc" = 0 ] || exit 1
+  while IFS= read -r path; do deployed+=("$path"); done <<<"$paths"
+  deployed+=(.gitignore)
+  if ! git -C "$REPO_DIR" diff --quiet "$base" -- "${deployed[@]}" ||
+    [ -n "$(git -C "$REPO_DIR" ls-files --others --exclude-standard -- "${deployed[@]}")" ]; then
+    die "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) differs from $whose: run the scripts from a worktree at main, never unreviewed ones"
   fi
-  ok "ops/ is $whose"
+  ok "the code here (tracked and unignored files under every path ci.yml deploys on, and .gitignore) is $whose"
 }
 
 region_enabled() {
@@ -259,6 +277,19 @@ stack_param() {
   jq -r --arg k "$1" '.Stacks[0].Parameters // [] | map(select(.ParameterKey == $k))[0].ParameterValue // empty' <<<"$STACK_JSON"
 }
 
+# rolled_back_refusal: dies on a stack in ROLLBACK_COMPLETE, whatever kind of stack it is. That status
+# exists only after a failed (or cancelled) stack creation, and only a delete is allowed on such a stack: the creation's
+# rollback deleted what it had made, Box included (its DeletionPolicy is RetainExceptOnCreate, which retains
+# on every operation but the one that created it), so no box, disk or record can be in it. Delete the stack,
+# then run again. It never reads Env: network and github stacks carry none, and a missing Env says "not an
+# environment stack", not "holds records".
+# Source of both claims: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/view-stack-events.html,
+# "Stack status codes", the ROLLBACK_COMPLETE row ("exists only after a failed stack creation", "only a delete
+# operation can be performed"; the row also covers an explicitly canceled creation).
+rolled_back_refusal() {
+  die "the stack is in ROLLBACK_COMPLETE: its creation did not complete and was rolled back, and it holds nothing a delete could lose, so delete the stack (console or aws cloudformation delete-stack), then run this again"
+}
+
 # choose_change_type: sets CS_TYPE from STACK_JSON. No stack, or one that only holds a change set
 # (REVIEW_IN_PROGRESS, left by a planned, failed or interrupted creation), is a CREATE with fresh
 # parameters; any other is an UPDATE; a stack that rolled back is deleted by hand first.
@@ -273,7 +304,7 @@ choose_change_type() {
   status=$(jq -r '.Stacks[0].StackStatus // empty' <<<"$STACK_JSON")
   case "$status" in
     REVIEW_IN_PROGRESS) CS_TYPE=CREATE ;;
-    ROLLBACK_COMPLETE) die "the stack is in ROLLBACK_COMPLETE: delete the stack (console or aws cloudformation delete-stack), then run this again" ;;
+    ROLLBACK_COMPLETE) rolled_back_refusal ;;
     '') die "the stack's description names no StackStatus" ;;
     *) CS_TYPE=UPDATE ;;
   esac
