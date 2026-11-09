@@ -1,5 +1,5 @@
 # ops
-Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` reads none of this folder · Ship: a push to `main` runs the release, the app's ship and the check in CI's job `deploy`
+Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` runs `ops/gate.sh` from this folder and reads none of the rest · Ship: a push to `main` runs the release, the app's ship and the check in CI's job `deploy`
 
 What a person or CI runs against ridge and the hosting account. Not product code.
 
@@ -27,6 +27,7 @@ An `ops/` change needs the three gate rows, as [the ops job](README.md#the-ops-j
 
 ## Non-obvious facts
 
+- **`ops/gate.sh` is the one gate command:** every package's `check` script and the root's call it, it takes the gate lock and writes `logs/<stamp>-gate-<pkg>.log`, and `ops/test.sh`'s gate section holds its cases ([the gate](README.md#the-gate)).
 - **`.prettierignore`'s `ops/` entry keeps the formatter off this folder;** only the three rows read it.
 - **A script stops when `ops/` differs from `origin/main`** (`main_synced`): a branch's edit runs only after it merges.
 - **Local ports are one a script,** 3191 to 3196; a new one takes 3197, and the comment above `LOCAL_PORT` in `ops/root-password.sh` lists the others.

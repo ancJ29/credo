@@ -10,6 +10,7 @@ file a non-coder opens and answers yes or no. No browser, no picture.
 - **The screen's own test belongs in `ui`, its walk belongs in `walk`.** The base image is `walk`'s;
   this package holds none and meets it only through the screen's `id`.
 - **The fake data and the `cue` a scene names belong in `ui` and `shared`.**
+- **The screen widths belong in `shared`:** `WIDTHS` in `shared/src/widths.ts`, which this package names `DEVICE_WIDTH` in `visual/src/walks.ts`.
 
 ## The file to copy
 

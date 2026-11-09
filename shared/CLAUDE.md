@@ -13,7 +13,7 @@ and where it lands. The package's tests run at 100 % of statements, branches, fu
   count). Until then it stays with its one reader. Two standing exceptions are named by
   [the app frame](../docs/plans/2026-10-27-app-frame.md#the-stack): the c-storage client, and the body hash. `sha256Hex`
   has the BFF alone as a reader today, a leftover; it is no precedent for a new single-reader file.
-- **SH2. How the BFF talks to storage lives in `c-storage.ts`, beside `DEFAULT_TIMEOUT_MS`,** whoever reads it:
+- **SH2. How the BFF talks to storage lives in `c-storage.ts`, beside `DEFAULT_TIMEOUT_MS` and `ATTEMPTS`,** whoever reads it:
   how long a call waits, how often a moved record is tried again.
 - **SH3. Nothing here is a sentence a person reads.** A refusal's text is a short phrase of what was expected
   (`'a code'`); the words a screen shows are the UI's dictionaries. A client's own difference is not here

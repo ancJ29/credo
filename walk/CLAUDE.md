@@ -9,6 +9,7 @@ and on a stack, the pictures counted raw against each other and the committed ba
 - **A spec, its two projects, its row in the walk table and its base images** belong here.
 - **A screen's scene and question belong in `visual`;** its own test and its steps' replay, in `ui`.
 - **The pixel reader and the count belong in `scripts`;** `walk/support.ts`'s `shot` only calls it.
+- **The screen widths belong in `shared`:** `WIDTHS` in `shared/src/widths.ts`, which `walk/support.ts` re-exports.
 - **`walk/legacy-capture.ts` is not a spec:** it photographs the old app, run by `ops/legacy-capture.sh`.
 
 ## The file to copy
