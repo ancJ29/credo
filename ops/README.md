@@ -322,6 +322,22 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
 
+## The gate
+
+`ops/gate.sh [<pkg>]` is the five steps of one package's check, or of all six: typecheck and test of each
+package (its own scripts, so the coverage and the 100 % thresholds are the package's), then eslint, prettier
+and knip once over the whole tree, because their configs are repo-wide. It runs all five whatever any one
+does, takes `.gate-lock` once the one-minute load is under 8, and writes `logs/<stamp>-gate-<pkg>.log` ending
+`== exit <code>`. Read the `== steps:` line: `skip` is a step that ran nowhere (a package with no `test`
+script, `walk`), `0+1skipped` is one that skipped a package, and neither is a pass. A red names its step and
+the other four still show. It does not cover c-storage: that gate is `make check` in `c-storage/`.
+
+- **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up and leaves the
+  lock as it is.
+- **A forced red, to see the gate catch it:** break one line in one position, run `pnpm --filter @credo/shared
+  check`, put it back. A new export in a file `shared/src/index.ts` re-exports is not a knip red (it is the
+  package's public entry); one in a file only the app uses is.
+
 ## The check
 
 1. `ops/check.sh ridge`; it ends `== green`, or names each red. Once the stack holds layer four it also
