@@ -64,29 +64,37 @@ cleanup_extra() {
 # lock_owner_pid <owner text>: the pid in a lock's owner file ("pid=123 ..." the gate's, "pid 123 started ..." the full run's)
 lock_owner_pid() { printf '%s' "$1" | sed -n 's/^pid[= ]\([0-9][0-9]*\).*/\1/p'; }
 
-# pid_state <pid>: whether that process is alive, said in words (ps lists nothing here, so kill -0 is asked)
+# pid_state <pid>: whether that process is alive. Sets PID_KIND (alive, dead or unknown) and PID_SAY, in words
+# (ps lists nothing here, so kill -0 is asked). Called directly, never in $(...), so the variables survive.
 pid_state() {
   local err
-  [ -n "$1" ] || { echo "its pid could not be read"; return 0; }
-  if err=$(kill -0 "$1" 2>&1); then
-    echo "pid $1 is still alive"
+  if [ -z "$1" ]; then
+    PID_KIND=unknown PID_SAY="its pid could not be read"
+  elif err=$(kill -0 "$1" 2>&1); then
+    PID_KIND=alive PID_SAY="pid $1 is still alive"
   elif printf '%s' "$err" | grep -q 'No such process'; then
-    echo "pid $1 is not alive"
+    PID_KIND=dead PID_SAY="pid $1 is not alive"
   else
-    echo "pid $1 could not be checked (${err:-kill -0 failed})"
+    PID_KIND=unknown PID_SAY="pid $1 could not be checked (${err:-kill -0 failed})"
   fi
 }
 
-# give_up <lock held at the last look, or empty>: the refusal after GATE_WAIT_MAX. It never clears a lock; with one in
-# the way it names the owner, says whether the owner is alive and prints the one command that clears it.
+# give_up <lock held at the last look, or empty>: the refusal after GATE_WAIT_MAX. It never clears a lock. With one in
+# the way it names the owner and says whether the owner is alive. The clearing rm -rf is printed only when the owner
+# is not alive or cannot be checked: a live owner (a full run takes 6 to 35 minutes, longer than the wait) is waited
+# for, since clearing its lock would let a second run start beside it.
 give_up() {
   local held=$1 owner pid
   if [ -z "$held" ]; then
-    die "gave up after ${WAIT_MAX}s: the one-minute load was never under $LOAD_MAX; no lock was taken"
+    die "gave up after ${WAIT_MAX}s: the last look found the one-minute load not under $LOAD_MAX; no lock was taken"
   fi
   owner=$(cat "$held/owner" 2>/dev/null)
   pid=$(lock_owner_pid "$owner")
-  die "gave up after ${WAIT_MAX}s waiting for the lock $held (owner: ${owner:-unknown}; $(pid_state "$pid")). Nothing was run. If that run is over (a run killed hard leaves its lock behind), clear it with: rm -rf '$held' -- this script never clears a lock itself"
+  pid_state "$pid"
+  if [ "$PID_KIND" = alive ]; then
+    die "gave up after ${WAIT_MAX}s waiting for the lock $held (owner: ${owner:-unknown}; $PID_SAY). Nothing was run. That run is still going: wait for it and run the gate again, and clear nothing -- removing a live run's lock would let a second one start beside it"
+  fi
+  die "gave up after ${WAIT_MAX}s waiting for the lock $held (owner: ${owner:-unknown}; $PID_SAY). Nothing was run. If that run is over (a run killed hard leaves its lock behind), clear it with: rm -rf '$held' -- this script never clears a lock itself"
 }
 
 # take_lock: waits for the load under the ceiling, no full run's lock and the gate lock free, in one loop, and takes it.
@@ -136,11 +144,11 @@ else
 fi
 
 results=''
-# has_script <dir> <script>: whether that package's package.json defines it. Exit 0: it does. Exit 10: it does not, a
+# has_script <dir> <script>: whether that package's package.json defines it. Exit 0: it does. Exit 64: it does not, a
 # plain "no". Anything else (an unparseable package.json 2, node missing from PATH 127, node dying) is a failure to
 # ask, never a "no": run_each turns it into a red, not a skip.
 has_script() {
-  node -e 'try { const s = require(process.argv[1]).scripts; process.exit(s && s[process.argv[2]] ? 0 : 10) } catch (e) { console.error(String(e)); process.exit(2) }' "$REPO_DIR/$1/package.json" "$2"
+  node -e 'try { const s = require(process.argv[1]).scripts; process.exit(s && s[process.argv[2]] ? 0 : 64) } catch (e) { console.error(String(e)); process.exit(2) }' "$REPO_DIR/$1/package.json" "$2"
 }
 
 # note <label> <rc>: keeps a step's status and names it
@@ -161,8 +169,9 @@ run_step() {
 
 # run_each <script>: that script of each selected package that has one, each run whatever the one
 # before did (the loop is --no-bail and names every package); a package without it is a named skip,
-# never a silent one and never a red. The summary shows a step that ran nowhere as "skip" and one
-# that skipped some packages as "<code>+<n>skipped", so a skip never reads as a pass.
+# never a silent one and never a red. A package whose scripts cannot be asked (an unparseable package.json, no node) is a
+# red, never a skip (see has_script). The summary shows a step that ran nowhere as "skip" and one that skipped some
+# packages as "<code>+<n>skipped", so a skip never reads as a pass.
 run_each() {
   local script=$1 d rc hs worst=0 ran=0 skipped=0 mark
   step "$script"
@@ -170,7 +179,7 @@ run_each() {
     [ -f "$REPO_DIR/$d/package.json" ] || die "no package $d"
     has_script "$d" "$script"
     hs=$?
-    if [ "$hs" != 0 ] && [ "$hs" != 10 ]; then
+    if [ "$hs" != 0 ] && [ "$hs" != 64 ]; then
       ran=$((ran + 1))
       red "$script @credo/$d: could not read its scripts from package.json (node exit $hs), so it was not run"
       worst=1

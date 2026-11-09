@@ -2965,6 +2965,11 @@ check "L2: a node that fails is a red, exit 1" 1 "$GRC"
 check "  names the package and the node exit" 1 "$(hits "$GLOG" 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 1)')"
 check "  and is not read as a skip" 0 "$(hits "$GLOG" 'has no typecheck script')"
 check "  and the summary shows 1, not skip" 1 "$(grep -c '^== steps: typecheck 1 ' "$GLOG" || true)"
+mkdir -p "$GW/badnode10"
+printf '#!/bin/sh\nexit 10\n' >"$GW/badnode10/node"
+chmod +x "$GW/badnode10/node"
+gate_run PATH="$GW/badnode10:$GW/bin:$BASE_PATH" -- shared
+check "R2: node's own reserved exit 10 is a red, not a plain no" 1 "$(hits "$GLOG" 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 10)')"
 gate_run PATH="$GW/bin:/usr/bin:/bin" -- shared
 check "L2: node absent from PATH is a red naming node exit 127" 1 "$(seenre 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 127)' "$GLOG")"
 check "  and the run is red" 1 "$GRC"
@@ -2975,26 +2980,34 @@ echo "pid=$$ log=other.log started=T" >"$GW/lock/owner"
 gate_run -- shared
 check "M2: the refusal names the owner" 1 "$(hits "$GLOG" "(owner: pid=$$ log=other.log started=T;")"
 check "  says its pid is alive" 1 "$(hits "$GLOG" "pid $$ is still alive")"
-check "  prints the command that clears it" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
+check "R1: a live owner is waited for, so no rm -rf is printed" 0 "$(hits "$GLOG" "rm -rf")"
+check "  and the refusal says to wait and clear nothing" 1 "$(hits "$GLOG" "That run is still going: wait for it")"
 check "  and the lock is as it was" "pid=$$ log=other.log started=T" "$(cat "$GW/lock/owner")"
 echo "pid=999999 log=other.log started=T" >"$GW/lock/owner"
 gate_run -- shared
 check "M2: a dead owner is said to be not alive" 1 "$(hits "$GLOG" "pid 999999 is not alive")"
+check "R1: a dead owner gets the one command that clears it" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
+check "  and is not told to wait" 0 "$(hits "$GLOG" "wait for it")"
 echo "no pid here" >"$GW/lock/owner"
 gate_run -- shared
 check "M2: an owner with no readable pid says so" 1 "$(hits "$GLOG" "its pid could not be read")"
+check "R1: an unknown owner keeps the hedge and the clearing command" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
 rm -f "$GW/lock/owner"
 rmdir "$GW/lock"
 
 # M3: a full run's lock makes the gate wait, as ops/full-run.sh waits on nothing and refuses on the gate lock
 mkdir "$GW/runlock"
-echo "pid $$ started T for walks a,b in /tree" >"$GW/runlock/owner"
+echo "pid 999999 started T for walks a,b in /tree" >"$GW/runlock/owner"
 gate_run -- shared
 check "M3: a full run's lock is waited for, naming its owner" 1 "$(seenre '^waiting: a full run holds .*runlock: pid [0-9]* started T for walks a,b' "$GLOG")"
 check "  and the gate lock was never taken" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
 check "  and no step ran" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
 check "  and the give-up names the run lock's clearing command" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/runlock'")"
 check "  and the run lock is as it was" 1 "$([ -d "$GW/runlock" ] && echo 1 || echo 0)"
+echo "pid $$ started T for walks a,b in /tree" >"$GW/runlock/owner"
+gate_run -- shared
+check "R1: a healthy full run (live pid) is not given the rm -rf" 0 "$(hits "$GLOG" "rm -rf")"
+check "  and is told to wait" 1 "$(hits "$GLOG" "That run is still going: wait for it")"
 gate_run CI=1 -- shared
 check "M3: under CI the full run's lock is not waited for" 0 "$GRC"
 # and when the full run ends while the gate waits, the gate goes on and takes its own lock

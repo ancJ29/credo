@@ -1219,3 +1219,15 @@ defect a formatter would have caught.
 ## 176. `pnpm -r run check` now exists and is the wrong command — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
 
 Six packages each have a `check` script that calls `ops/gate.sh`, so `pnpm -r run check` starts six gates on one lock (they queue) and runs eslint, prettier and knip six times. The right command is `pnpm check` (the root's, over every package). *Cheapest fix:* one line in the gate's header and one in `ops/README.md` saying so.
+
+## 190. A mixed-indent `pnpm-workspace.yaml` gives the gate a shorter package list, which it checks and calls green — the machine; `[OPEN]` (the one-gate-command piece's reread, R3, 2026-11-09, Medium)
+
+The gate's M1 refusal fires on *no* packages, not on *fewer packages than the file lists*. `dirs` is read by `sed -n 's/^  - //p'`, which needs exactly two spaces: a list with one line indented differently yields a shorter `dirs`, and the whole-repo gate then checks only those packages, prints `== green` and exits 0. Only CI's count-of-six assertion catches it, never the local gate. It is the same shape as the empty-list refusal, narrowed. *Cheapest fix when it bites:* count the `- ` lines of the file by a looser pattern (`^ *- `) and refuse when the two counts differ.
+
+## 191. `give_up` with no lock held says the load was never under the ceiling, but `held` only records the last look — the machine; `[OPEN]` (the one-gate-command piece's reread, R4, 2026-11-09, Low)
+
+`take_lock` resets `held` each iteration, so an empty `held` at the give-up means only that the last look was blocked by the load; the wait may have been lock-blocked throughout. The refusal now says "the last look found the one-minute load not under N", which is true but may hide a long lock wait. *Cheapest fix:* keep a flag for whether any look was lock-blocked and name it.
+
+## 192. The "run lock goes mid-wait, the gate then runs green" leg of the gate's tests has no mutation of its own — the machine; `[OPEN]` (the one-gate-command piece's reread, R6, 2026-11-09, Low)
+
+The mutation run turned that case's "having waited first" line red through a mutation of the wait itself, but nothing breaks only the go-on-after-release path (for example a gate that stops waiting yet never takes its own lock). *Cheapest fix:* one named mutation of `take_lock`'s success branch and a run of that case.

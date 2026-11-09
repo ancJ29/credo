@@ -334,7 +334,8 @@ the other four still show. It does not cover c-storage: that gate is `make check
 
 - **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up. A lock left behind
   (a run killed hard) is refused on, never cleared by the script: the refusal names the owner, says whether its pid
-  is still alive and prints the one `rm -rf` that clears it.
+  is still alive, and prints the one `rm -rf` that clears it only when the owner is gone or cannot be checked; a live
+  owner is told to be waited for, since a healthy full run (6 to 35 minutes) outlasts the 30-minute wait.
 - **A full run is going:** `ops/full-run.sh` holds `.full-run-lock` for its whole time, and `walk/run.sh` stops its
   lanes and ends red when `.gate-lock` appears mid-run. So the gate waits (same loop, same 30 minutes, same refusal
   naming `.full-run-lock`) while that lock exists, and a short check never reddens a long run. A bare
