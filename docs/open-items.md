@@ -1263,3 +1263,19 @@ The gate's M1 refusal fires on *no* packages, not on *fewer packages than the fi
 ## 192. The "run lock goes mid-wait, the gate then runs green" leg of the gate's tests has no mutation of its own — the machine; `[OPEN]` (the one-gate-command piece's reread, R6, 2026-11-09, Low)
 
 The mutation run turned that case's "having waited first" line red through a mutation of the wait itself, but nothing breaks only the go-on-after-release path (for example a gate that stops waiting yet never takes its own lock). *Cheapest fix:* one named mutation of `take_lock`'s success branch and a run of that case.
+
+## 195. `describeRun` never prints `report.empty`, so a citation scope pattern that has gone stale shows only as a red in the gate — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+`scripts/src/citations.ts`'s `describeRun` lists the documents found and the counts but not which scope pattern matched nothing, so a `LIVING` entry that no tracked file matches any more is seen only when `citations.test.ts` reds inside the gate, never in `pnpm counts`. *Trigger:* the next change to `LIVING`, or a move of files.
+
+## 196. A citation to a file that is written but not yet staged reds the gate until `git add` — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+The citation test reads `git ls-files`, so a living document that cites a newly written, unstaged file is red with "the file is not there". Recommended: accept it and add one sentence to `docs/conventions/documentation.md`'s citation section ("stage a new file before the gate reads the page that cites it"), since reading the working tree instead would let a cited file pass that is never committed. *Trigger:* the next piece that cites a file it has just written.
+
+## 197. `shared/CLAUDE.md`'s SH6 says `isHexColour` is "the one other spelling", which is true of exports only — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+Two private helpers also break the `<thing>IsValid` suffix: `shared/src/extra.ts`'s `isBoundedJson` and `shared/src/fields.ts`'s `keyIsReadable`. Recommended: say "the one other exported spelling" in SH6 and leave the helpers, since a private name binds no caller. *Trigger:* the next edit to SH6.
+
+## 198. The counted rules' scope patterns are bound to a flat package layout, and piece 100 moves files — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Medium; **piece 100 reads this first**)
+
+`scripts/src/counts.ts`'s `RULES` match `^bff/src/[^/]+\.ts$` (C5, C7) and `^ui/src/[^/]+\.tsx$` (C6, C4). After a move into folders, C5 and C7 print "0 of 0" and C6 reports every screen compliant, silently, because a screen in a subfolder is simply not in scope. Piece 100 must update those patterns in the same change as the move and read `pnpm counts` before and after; the cheaper guard is for `counts` to refuse (exit 1) when a rule's scope matches no file. *Trigger:* piece 100.
