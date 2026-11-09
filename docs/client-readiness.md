@@ -335,7 +335,7 @@ three pieces of work stand between this and a first real client.
 
 **The order page's save route against real storage does exist.** It is
 [`bff/src/orders.ts#L280`](../bff/src/orders.ts#L280), called from
-[`ui/src/OrderPage.tsx#L124`](../ui/src/OrderPage.tsx#L124), and it has a screen of its own for the
+[`ui/src/pages/client/OrderPage.tsx`](../ui/src/pages/client/OrderPage.tsx)'s `save`, and it has a screen of its own for the
 conflict — `orders-8-conflict` in [`visual/src/walks.ts`](../visual/src/walks.ts), which drives the
 fake with the cue `saveOrder:409`. Anyone told that the order page's write is unbuilt was told
 wrong, and the reader who repeated it had been told it twice.
@@ -349,7 +349,7 @@ order again under a new number.
 
 A second correction, to this reader's own first pass: the Import button on the customers and
 products lists is **not** shown to someone who cannot use it. It is drawn only for the root
-([`ui/src/ListPage.tsx#L26`](../ui/src/ListPage.tsx#L26)). That is tidier than reported and it makes
+([`ui/src/pages/client/ListPage.tsx`](../ui/src/pages/client/ListPage.tsx)'s `ListPage`). That is tidier than reported and it makes
 the gap below worse, not better: a clerk sees no way in at all, not even a refused one.
 
 ### Three whole jobs that work end to end
@@ -388,7 +388,7 @@ In the order they would meet it, not in order of how hard each is.
    [`ui/src/ClientApp.tsx#L393`](../ui/src/ClientApp.tsx#L393) says so in its own comment — "Only
    the root imports (case-table row 22): no permission allows it." There is no Add on either list
    page, and the Import button is drawn for the root only
-   ([`ui/src/ListPage.tsx#L26`](../ui/src/ListPage.tsx#L26)), so a clerk sees no path whatsoever.
+   ([`ui/src/pages/client/ListPage.tsx`](../ui/src/pages/client/ListPage.tsx)'s `ListPage`), so a clerk sees no path whatsoever.
    **Day one:** a new customer telephones, and the order cannot be taken until the owner signs in
    and builds a spreadsheet. This was the one gap that blocked the first order.
 2. **A confirmed order cannot be corrected** — the correction above, and the second thing a real
@@ -404,8 +404,8 @@ In the order they would meet it, not in order of how hard each is.
    ([`shared/src/orders.ts#L23`](../shared/src/orders.ts#L23),
    [`bff/src/orders.ts#L218-L226`](../bff/src/orders.ts#L218)), and the page's only way back is an
    "Earlier" button that adds one more week and re-reads every week again
-   ([`ui/src/OrdersPage.tsx#L13-L19`](../ui/src/OrdersPage.tsx#L13),
-   [`#L83`](../ui/src/OrdersPage.tsx#L83)). There is no search by number or by customer, no filter
+   ([`ui/src/pages/client/OrdersPage.tsx`](../ui/src/pages/client/OrdersPage.tsx)'s `readWeeks`,
+   and its button `orders.earlier`). There is no search by number or by customer, no filter
    by state and no date to open at. Finding last month's order means pressing Earlier five times
    and reading a table.
 5. **No report of any kind.** Eight pages, and not one of them is a total, a day's takings or a
@@ -417,9 +417,9 @@ In the order they would meet it, not in order of how hard each is.
    for a staff member — the root types them a new one by hand — and **none at all for the root**:
    only an operator can set it, from our console.
 7. **The app wears Adobe's logo on every page.** A client uploads its logo in Settings and sees it
-   on the sign-in door ([`ui/src/SignIn.tsx#L76`](../ui/src/SignIn.tsx#L76)), and then every page
+   on the sign-in door ([`ui/src/pages/SignIn.tsx`](../ui/src/pages/SignIn.tsx)'s `brand.logo`), and then every page
    inside draws Tabler's `IconBrandAdobe`, hard-coded
-   ([`ui/src/Shell.tsx#L147`](../ui/src/Shell.tsx#L147)). Already
+   ([`ui/src/frame/Shell.tsx`](../ui/src/frame/Shell.tsx)'s `IconBrandAdobe`). Already
    [open items 76 and 103](open-items.md); it is listed here because it is the first thing the
    client sees and the cheapest thing on this page to fix.
 8. **No stock and no goods receipts.** A product carries a flag saying its stock is kept
@@ -435,7 +435,7 @@ of them is new; what is new is saying which ones cost a client money or a record
 - **[Item 36](open-items.md), finding 5 — the money on the screen disagreed with the money to
   collect. Fixed on 2026-11-07** by the edit-an-order piece, and re-read in the code on 2026-11-08:
   a saved draft is drawn at its saved prices and a moved line is marked
-  ([`ui/src/OrderPage.tsx#L89-L92`](../ui/src/OrderPage.tsx#L89)), so the page's total and the
+  ([`ui/src/pages/client/OrderPage.tsx`](../ui/src/pages/client/OrderPage.tsx)'s `moved`), so the page's total and the
   request's agree. Kept here only so nobody fixes it twice.
 - **[Item 41](open-items.md), finding 2 — two closes of one driver's day cannot overwrite each
   other's cash, and a test now holds it.** The close writes with a precondition
@@ -545,17 +545,17 @@ which is now.
 
 - **Read whole, first-hand:** `docs/open-items.md` (all 129 items as they stood at `760d434f`, plus
   130 to 134 as the other half filed them), `docs/products.md`, `ui/src/nav.ts`,
-  `shared/src/permissions.ts`, `shared/src/lists.ts`, `bff/src/env.ts`, `ui/src/OrdersPage.tsx`,
+  `shared/src/permissions.ts`, `shared/src/lists.ts`, `bff/src/env.ts`, `ui/src/pages/client/OrdersPage.tsx`,
   `ops/seed.sh`'s guard section, this week's recaps in `docs/recaps/` by their headings and the two
   edit recaps in full.
 - **Read in part, at the lines cited and their neighbourhood:** `bff/src/orders.ts` (the list,
   create, save, confirm and cancel routes and the deliver route's result handling),
   `bff/src/lists.ts` (the four routes and their permission calls), `bff/src/app.ts` (the sign-in and
   QR routes), `bff/src/clients.ts` (the client's creation), `bff/src/sessions.ts` (the lifetimes),
-  `shared/src/orders.ts` (the schemas), `shared/src/signins.ts`, `ui/src/OrderPage.tsx`,
-  `ui/src/ClientApp.tsx` (its route table), `ui/src/ListPage.tsx`, `ui/src/Shell.tsx`,
-  `ui/src/SignIn.tsx`, `ui/src/PersonPage.tsx` (its side panel and archive actions),
-  `ui/src/Settings.tsx` (the logo chooser), `ui/src/main.tsx`, `scripts/src/fake.test.ts`,
+  `shared/src/orders.ts` (the schemas), `shared/src/signins.ts`, `ui/src/pages/client/OrderPage.tsx`,
+  `ui/src/ClientApp.tsx` (its route table), `ui/src/pages/client/ListPage.tsx`, `ui/src/frame/Shell.tsx`,
+  `ui/src/pages/SignIn.tsx`, `ui/src/pages/client/PersonPage.tsx` (its side panel and archive actions),
+  `ui/src/parts/Settings.tsx` (the logo chooser), `ui/src/main.tsx`, `scripts/src/fake.test.ts`,
   `ops/check.sh` (the client it makes), `visual/src/walks.ts` (its screen list, by id).
 - **Established by search rather than by reading the file:** that nothing in the product sends mail
   or an SMS; that no route adds a customer or a product outside the root's import; that the BFF

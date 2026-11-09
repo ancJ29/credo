@@ -43,7 +43,7 @@ is [Before a new screen](../docs/conventions/code.md#before-a-new-screen).
 - **WK5 · holds · reader:** an `expect` on what the screen shows follows every navigation or
   transition, before its picture (123 of 128; the rest follow a helper). No spec sleeps.
 - **WK6 · next copy · reader:** each new step is replayed in jsdom on the real router, in `ui`,
-  before the commit (`ui/src/OperatorWalk.test.tsx`; four of the twelve specs have a replay of some
+  before the commit (`ui/src/pages/operator/OperatorWalk.test.tsx`; four of the twelve specs have a replay of some
   of their steps).
 - **WK7 · next copy · reader:** a mask covers only what is minted on every run, and says "Held by"
   the unit test that holds it, as `shot`'s comment asks (`operator.spec.ts` does);

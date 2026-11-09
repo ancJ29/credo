@@ -31,8 +31,8 @@ places, nothing failing when a copy is missed.
 | reaching the back end, or storage | one object, handed down, never imported into a screen | `ui/src/api.ts`, `bff/src/server.ts#L11` | next copy · reader |
 | a name, a bound, a width, a status's meaning | one exported declaration, imported | `shared/` | next copy · reader |
 | a new route | its own module: resolve, authorise, parse, then storage | `bff/src/staff.ts`'s `app.put(employeeRoutes.one(':id')` | next copy · reader |
-| a second kind of record | a parameter on the one body | `ui/src/ListPage.tsx#L14` | next copy · reader |
-| a refused save | the message on the field | `ui/src/ProductPage.tsx#L180-L198` | next copy · reader |
+| a second kind of record | a parameter on the one body | `ui/src/pages/client/ListPage.tsx`'s `ListPage` | next copy · reader |
+| a refused save | the message on the field | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | next copy · reader |
 | a client's own difference | config; else that client's own page, on the human's call | `shared/src/fields.ts` | next copy · reader |
 | reading server data | `useLoad` and `<Loaded>`: no cache, no store | `ui/src/page.ts`'s `useLoad` | holds · reader |
 
@@ -88,11 +88,11 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | The part | What decides it | Next, if that was not enough |
 | --- | --- | --- |
 | which app an address gets | `ui/src/App.tsx#L31-L34`; the operator's door is the test at `#L28-L29` | `ui/src/ClientApp.tsx`, `ui/src/OperatorApp.tsx` |
-| what is on screen before any data, and when the service does not answer | `ui/src/Boot.tsx#L19` | the verdict is `ui/src/ClientApp.tsx#L79`, at `#L99` for the failing case |
-| what one page shows while loading or after a failed load | `ui/src/Loaded.tsx#L12` | `ui/src/page.ts`'s `useLoad`, the state it draws |
+| what is on screen before any data, and when the service does not answer | `ui/src/frame/Boot.tsx`'s `Boot` | the verdict is `ui/src/ClientApp.tsx#L79`, at `#L99` for the failing case |
+| what one page shows while loading or after a failed load | `ui/src/frame/Loaded.tsx`'s `Loaded` | `ui/src/page.ts`'s `useLoad`, the state it draws |
 | what every screen is handed | `ui/src/page.ts#L6` (`PageProps`) | built at `ui/src/ClientApp.tsx`; see [the winner](#the-winner-named)'s third row before assuming it |
 | the words a screen shows | `ui/src/i18n/en.ts#L2`, whose shape `vi.ts` must match (`ui/src/i18n/en.ts`'s `en`) | — |
-| a list of customers or of products | `ui/src/listSheet.ts#L29` (`LISTS`), drawn by `ui/src/ListPage.tsx#L14` | `bff/src/lists.ts` serves both |
+| a list of customers or of products | `ui/src/listSheet.ts#L29` (`LISTS`), drawn by `ui/src/pages/client/ListPage.tsx`'s `ListPage` | `bff/src/lists.ts` serves both |
 | the day an order is filed under | `ui/src/day.ts#L29` — the browser's calendar day, not the server's clock | — |
 | whether a call is allowed | `bff/src/app.ts#L188-L192` (`mustCan`); the note at `#L184` is why the UI is never the guard | who the caller is, `#L157` (`signedIn`); the booleans, `shared/src/permissions.ts#L48`; the catalogue, `#L9` |
 | what a failure becomes on the wire | `bff/src/errors.ts#L19` (`replyFor`) | a 400 that names its field, `#L35-L41` |
@@ -108,7 +108,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 
 | A new … | Where it goes | Copy | The rule |
 | --- | --- | --- | --- |
-| screen | `ui/src/<Name>Page.tsx`, with `<Name>Page.test.tsx` beside it | `ui/src/ListPage.tsx#L14` for a list of a second kind | the seven places it touches, [before a new screen](#before-a-new-screen) |
+| screen | `ui/src/pages/client/<Name>Page.tsx`, or `pages/operator/` for the operator's console, or `pages/` itself for one both apps mount, with `<Name>Page.test.tsx` beside it | `ui/src/pages/client/ListPage.tsx`'s `ListPage` for a list of a second kind | the seven places it touches, [before a new screen](#before-a-new-screen) |
 | word a screen shows | both dictionaries, `ui/src/i18n/en.ts` and `vi.ts` | — | [before a new screen](#before-a-new-screen) |
 | BFF route | its own module, `bff/src/<area>.ts`, with `bff/src/<area>.route.test.ts` beside it — 21 such test files stand today | `bff/src/staff.ts`'s `app.put(employeeRoutes.one(':id')` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
 | read or write of a record kind | a module of its own, never the route closure | `bff/src/staff-records.ts`'s `readEmployee` | [the winner](#the-winner-named)'s second row |
@@ -152,9 +152,9 @@ end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten 
 `shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/staff-records.ts`,
 `bff/src/operators.ts`, `bff/src/orders.ts` and `bff/src/sessions.ts`), so whoever found one believed
 they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-five screens (`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/CustomerPage.tsx`'s `CustomerPage`,
-`ui/src/ProductPage.tsx`'s `ProductPage`, `ui/src/PersonPage.tsx`'s `PersonPage`, and
-`ui/src/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
+five screens (`ui/src/pages/client/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage`,
+`ui/src/pages/client/ProductPage.tsx`'s `ProductPage`, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
+`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
 (now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
 one" written four times (in `bff/src/clients.ts`, `bff/src/lists.ts`, `bff/src/orders.ts` and
 `bff/src/staff.ts`, the last three as a local function each) while `bff/src/orders.ts` already held the
@@ -170,12 +170,12 @@ copy](#the-patterns-to-copy). `[next copy · check]` The one place the shape exi
 test; everywhere else nothing fails.
 
 **C3 · Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
-`ui/src/CustomerPage.tsx`'s `CustomerPage` and `ui/src/ProductPage.tsx`'s `ProductPage` are the same page shell
+`ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage` and `ui/src/pages/client/ProductPage.tsx`'s `ProductPage` are the same page shell
 written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
-(`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/AddProductPage.tsx`'s `AddProductPage`); a third kind pays it a
+(`ui/src/pages/client/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/pages/client/AddProductPage.tsx`'s `AddProductPage`); a third kind pays it a
 third time, and changing how a conflict is offered is an edit in two files nothing makes you find.
 *Why:* the lists already prove the cheaper shape — `bff/src/lists.ts` serves both from one 165-line
-body registered twice (`bff/src/lists.ts`'s `registerListRoutes`) and `ui/src/ListPage.tsx#L14` draws both from one table.
+body registered twice (`bff/src/lists.ts`'s `registerListRoutes`) and `ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
 
 ## The winner, named
 
@@ -188,7 +188,7 @@ written again.
 
 | The job | The one way | Copy | How much of the code follows it, and what the 2026-11-08 review found |
 | --- | --- | --- | --- |
-| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/OwnPasswordPage.tsx`'s `change`) |
+| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
 | C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts`'s `readEmployee` | `pnpm counts` (C5: the calls made in a file that registers routes, against those made in a module) |
 | C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | `pnpm counts` (C6) |
 | C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
@@ -213,9 +213,9 @@ red when a new file invents a second one — except the last, which is `[holds �
 | The shape | Where it is |
 | --- | --- |
 | C11 · one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts#L11` (no `fetch` anywhere in `bff/src`) |
-| C12 · a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/Loaded.tsx#L12` |
+| C12 · a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/frame/Loaded.tsx`'s `Loaded` |
 | C13 · entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
-| C14 · one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/ListPage.tsx#L14-L19`, served by `bff/src/lists.ts` |
+| C14 · one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/pages/client/ListPage.tsx`'s `ListPage`, served by `bff/src/lists.ts` |
 | C15 · **a rule held by code rather than by a reviewer**: the function that registers a route also appends its pattern to a list, and a test fails when one is added without an entry | `c-storage/internal/server/server.go#L51-L54`, held by `TestEveryRegisteredRouteIsListed` (`c-storage/internal/server/server_test.go#L106`) |
 
 ## Where a client's difference lands
@@ -259,7 +259,7 @@ serves. **A test sits beside its subject, and beside the app where the subject i
 **A further level inside a directory is added on a count of this code base, never by imitation of
 another layout.** A folder per feature or module under the screens was measured and refused: the
 modules it would need cannot be built, because one list screen and one import screen each serve both
-kinds of record (`ui/src/ListPage.tsx`'s `ListPage` and `ui/src/ListImportPage.tsx`'s
+kinds of record (`ui/src/pages/client/ListPage.tsx`'s `ListPage` and `ui/src/pages/client/ListImportPage.tsx`'s
 `ListImportPage`, both taking `kind`), and 13 of the UI's test files today have no same-named source
 at all, covering a flow or a whole app rather than one screen, so several would have no module
 to sit in. So meeting that shape in another repository is not a precedent here.

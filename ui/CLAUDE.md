@@ -18,11 +18,11 @@ Its only door to the back end is the object `ui/src/api.ts`'s `createApi` makes.
 
 ## The file to copy
 
-- **A screen:** `ui/src/ListPage.tsx`'s `ListPage`, which takes `PageProps`, reads through `useLoad`
-  and draws through `Loaded`; for a form, `ui/src/ProductPage.tsx`'s `ProductForm`.
+- **A screen:** `ui/src/pages/client/ListPage.tsx`'s `ListPage`, which takes `PageProps`, reads through `useLoad`
+  and draws through `Loaded`; for a form, `ui/src/pages/client/ProductPage.tsx`'s `ProductForm`.
 - **A call to the back end:** a method on `createApi`, with its twin in `ui/src/fake.ts`'s
   `createFakeApi`, which must answer the same shape.
-- **A screen's test:** `ui/src/ListPage.test.tsx`, which opens the whole app through
+- **A screen's test:** `ui/src/pages/client/ListPage.test.tsx`, which opens the whole app through
   `ui/tests/open.tsx`'s `openApp` and walks a person's story.
 - **A word:** both dictionaries, `ui/src/i18n/en.ts` first; `vi.ts` takes its shape from it.
 
@@ -54,7 +54,7 @@ by these headings.
   (`ui/vitest.config.ts`'s comment); logic put in one is unchecked.
 - **A typing test fails under load:** use `userEvent.setup({ delay: null })`, and paste where
   keystrokes are not the subject ([open item 27](../docs/open-items.md)).
-- **The icon strip's tip is held by a test that reads `ui/src/frameLook.module.css` as text,**
+- **The icon strip's tip is held by a test that reads `ui/src/frame/frameLook.module.css` as text,**
   since jsdom has no computed styles; a reformat of that file breaks it
   ([open item 95](../docs/open-items.md)).
 
