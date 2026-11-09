@@ -1263,3 +1263,11 @@ The gate's M1 refusal fires on *no* packages, not on *fewer packages than the fi
 ## 192. The "run lock goes mid-wait, the gate then runs green" leg of the gate's tests has no mutation of its own — the machine; `[OPEN]` (the one-gate-command piece's reread, R6, 2026-11-09, Low)
 
 The mutation run turned that case's "having waited first" line red through a mutation of the wait itself, but nothing breaks only the go-on-after-release path (for example a gate that stops waiting yet never takes its own lock). *Cheapest fix:* one named mutation of `take_lock`'s success branch and a run of that case.
+
+## 193. `docs/conventions/collaboration.md`'s loop cell still presents the gate as a list of steps — the machine; `[OPEN]` (the one-gate-command convention's cross-model read, 2026-11-09, Low)
+
+The loop's cell in `collaboration.md` describes the gate as steps a session runs, while `qa.md`'s rule 6 now names one command, `pnpm --filter @credo/<pkg> check` or `pnpm check`. It is descriptive, in a document the convention piece did not touch. *Fix:* the next conventions pass words that cell as the one command.
+
+## 194. `ops/gate.sh`'s own comment says "the loop is --no-bail", and the loop is a hand-rolled `for` — the machine; `[OPEN]` (the one-gate-command convention's cross-model read, 2026-11-09, Low)
+
+The comment above `run_each` says the loop is `--no-bail`; the loop is a plain `for d in $dirs` over `pnpm --filter` calls, which runs every package whatever one did but is not pnpm's flag. A comment saying the wrong mechanism sends a reader to look for a flag that is not there. It is in `main`'s script, not in the convention's diff, so it was filed, not fixed. *Fix:* reword the comment when `ops/gate.sh` is next touched.

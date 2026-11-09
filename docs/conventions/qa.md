@@ -105,19 +105,24 @@ The map of walks. A dash is a part of the day not built yet.
    several worktrees running at once, load is the normal case. *Rejected:* a retry setting,
    which greens the real red too; a longer timeout, which hides the cause.
 
-   **Run the gate that can change a conclusion:** nothing for a read-only task, typecheck and one
-   test while iterating, the touched package's gate at a commit, the whole only before shipping.
-   *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
+   **Run what can change a conclusion:** nothing for a read-only task; while iterating, whatever
+   answers the session's question (a typecheck, one test), which is not the gate and is never
+   reported as one; the gate, one command, before a stop or a commit: the touched package's at a
+   commit, the whole only before shipping. *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
    minutes buy no verdict a smaller gate does not already give.
 
    **The gate is one command: `pnpm check` for all six TypeScript packages, on the merge result,
    and `pnpm --filter @credo/<pkg> check` for one package.** The root's is `package.json`'s
    `scripts.check` (`bash ops/gate.sh`), each package's is its own `scripts.check`
    (`bash ../ops/gate.sh <pkg>`), and both run [`ops/gate.sh`](../../ops/gate.sh), which runs
-   typecheck, eslint, prettier, the tests and knip whatever any one of them does (`run_each`),
-   waits for the load and the gate lock, and writes one log ending `== exit <code>`. **A session
-   runs that command and reports its log; it names no steps and assembles none.** A step the
-   package lacks is named in the log's `== steps:` line as skipped, and a skip is not a pass.
+   typecheck and test through `run_each` and eslint, prettier and knip through `run_step`, each
+   whatever any other did, waits for the load and the gate lock, and writes one log ending
+   `== exit <code>`. **A session reports the gate by running that command and citing its log; it
+   builds no gate from steps.** A step the package lacks is named in the log's `== steps:` line as
+   skipped, and a skip is not a pass, but the standing skip is not a red: `walk` has no `test`
+   script, so every whole gate, green ones included, ends `0+1skipped` for tests. A new skip is
+   the one to question. A `<pkg>` that does not exist aborts before three of the steps and writes
+   no `== steps:` line, so a log without that line is itself the signal.
    *Why:* two sessions on 2026-11-07 each assembled a package gate by hand, one of the five steps
    missing from the second; the two lint errors it let through reached `main` and would have
    failed the deploy's own job whatever else was fixed. **What the command does not do:** it does
@@ -208,7 +213,7 @@ alone.
   rerun at lower load (`docs/open-items.md`, item 56, which names `SignIns.test.tsx` and
   `MyDeliveries.test.tsx` and holds the later sightings; it records the cause as not known for
   `ui`, so load is a suspect there, not a finding). The one command passes no worker flag, so the
-  old `--maxWorkers=4` is not available through it: a `ui` red under load is run alone and then
+  old `--maxWorkers=4` is not available through it: a `ui` red is run alone and then
   the command rerun, per the failing-set test above, and the first red is named in the evidence,
   never tuned away.
 
@@ -240,7 +245,7 @@ to the caller, and a release on the script's last line.
   reports in five days sent a reader to a log that did not exist.
 - **A `== exit` line is never written by hand, and it is never read through a pipe.** Put it in a
   small bash script that runs the check, saves `$?` into a variable, releases the lock, then appends
-  `== exit $rc` itself. A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
+  `== exit $rc` itself (that is for a one-off script; a gate is the one command, which writes it). A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
   leaves `PIPESTATUS` empty (it is `pipestatus`), which is how a hard-coded `== exit 0` once stood
   in for a status nobody had read; and unquoted, the line ends `== exit` with no code.
   **[`ops/lib.sh`](../../ops/lib.sh) prints it correctly — call that rather than hand-roll the
