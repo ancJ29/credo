@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest';
 
 /** The living documents, by path. A document outside this set is invisible to the check. */
 const LIVING: { show: string; test: RegExp }[] = [
+  { show: 'README.md', test: /^README\.md$/ },
   { show: 'CLAUDE.md, at any depth', test: /(^|\/)CLAUDE\.md$/ },
   { show: 'docs/conventions/*.md', test: /^docs\/conventions\/[^/]+\.md$/ },
   { show: 'docs/architecture.md', test: /^docs\/architecture\.md$/ },

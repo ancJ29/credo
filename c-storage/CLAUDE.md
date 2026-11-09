@@ -13,7 +13,7 @@ A route belongs only with a caller named above ([collaboration](../docs/conventi
 
 ## The file to copy
 
-- **A route:** a method like `getRecord` in `c-storage/internal/server/handlers.go`, registered in
+- **A route:** a method like `func (s *Server) getRecord(` in `c-storage/internal/server/handlers.go`, registered in
   `Build`, with a row in `everyRoute` and a request in `bruno/`.
 - **A store method:** `Store.Get` in `c-storage/internal/store/store.go`.
 - **A test:** `TestLoadRefusesEachFatalMisconfiguration` in `c-storage/internal/config/config_test.go`

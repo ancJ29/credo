@@ -28,7 +28,7 @@ An `ops/` change needs the three gate rows, as [the ops job](README.md#the-ops-j
 ## Non-obvious facts
 
 - **`ops/gate.sh` is the one gate command:** every package's `check` script and the root's call it, it takes the gate lock and writes `logs/<stamp>-gate-<pkg>.log`, and `ops/test.sh`'s gate section holds its cases ([the gate](README.md#the-gate)).
-- **`.prettierignore`'s `ops/` entry keeps the formatter off this folder;** only the three rows read it.
+- **`.prettierignore`'s `# ridge's infrastructure` entry (`ops/`) keeps the formatter off this folder;** only the three rows read it.
 - **A script stops when `ops/` differs from `origin/main`** (`main_synced`): a branch's edit runs only after it merges.
 - **Local ports are one a script,** 3191 to 3196; a new one takes 3197, and the comment above `LOCAL_PORT` in `ops/root-password.sh` lists the others.
 - **Open item 160 in [`docs/open-items.md`](../docs/open-items.md) asks a check to hold one `refuse()`, one log opener and one shebang;** until it does, OP6 and OP7 are per kind.

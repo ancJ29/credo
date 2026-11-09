@@ -54,7 +54,7 @@ understood once you know what stops without it.
 | `ui/` | The React 19 app, built by Vite: both the client app and the operator console, split by path in [`ui/src/App.tsx#L28`](../ui/src/App.tsx#L28) | a browser; files on S3 | everything a person sees. It is also the source the walks and the visual report draw screens from, so both go with it |
 | `bff/` | One Fastify app ([`bff/src/app.ts#L85`](../bff/src/app.ts#L85)) behind two entries: a listener ([`bff/src/server.ts#L29`](../bff/src/server.ts#L29)) and a Lambda handler ([`bff/src/lambda.ts`](../bff/src/lambda.ts)) | Lambda on arm64; a local process | every rule. It is the only thing that authenticates, resolves permissions and builds a record key; c-storage enforces none of that |
 | `shared/` | The wire contract and the record layout, one package, extended generically rather than split per service ([`CLAUDE.md`](../CLAUDE.md), [the app frame](plans/2026-10-27-app-frame.md#the-stack)) | imported by all of the above | the two halves drift. The key layout ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)) and the permission catalogue ([`shared/src/permissions.ts#L9`](../shared/src/permissions.ts#L9)) each have exactly one home here |
-| `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store, and its file is the only copy: the nightly backup is designed but deferred to a signed client ([open item 6](open-items.md)) |
+| `c-storage/` | A standalone Go service: six HTTP routes over one SQLite file, no framework, no router library ([`c-storage/go.mod`](../c-storage/go.mod), [`c-storage/internal/server/server.go#L39`](../c-storage/internal/server/server.go#L39)) | a systemd unit on the box | all data. It is the only durable store, and its file is the only copy: the nightly backup is designed but deferred to a signed client ([open item 6](open-items.md)) |
 | `scripts/` | The local lanes: `pnpm stack` (c-storage + BFF + UI on one machine, [`scripts/src/stack.ts`](../scripts/src/stack.ts)), `pnpm fake`, `pnpm demo`, and the ridge CLI the ops scripts drive ([`scripts/src/ridge.ts#L36`](../scripts/src/ridge.ts#L36)) | a developer's machine; the ops scripts | the ability to run or seed anything locally — and the BFF's route tests, which build the real c-storage through [`bff/tests/build.ts`](../bff/tests/build.ts) |
 | `visual/` | Builds the walks page: the app's own components drawn on jsdom through a Vite server's module loader, since CSS modules and TSX do not import in plain Node ([`visual/run.mjs#L1`](../visual/run.mjs#L1)) | `pnpm report`, in a sandbox, no browser | the visual report — the one artefact a non-coder judges a screen from |
 | `walk/` | Twelve Playwright specs plus [`walk/run.sh`](../walk/run.sh), whose walk table at [`#L7`](../walk/run.sh#L7) names all twelve, with each screen's committed base image beside the spec | a real browser, in a terminal only | the end-to-end check. `pnpm check` typechecks and lints this package but never runs it |
@@ -117,7 +117,7 @@ stored text, computed fresh on every read and stored nowhere
 (or `If-None-Match: *` to claim a key that must not exist); c-storage compares inside the write's
 own transaction and answers **412** if the record moved
 ([`store.go#L68`](../c-storage/internal/store/store.go#L68),
-[`internal/server/handlers.go#L132`](../c-storage/internal/server/handlers.go#L132)). A precondition
+[`c-storage/internal/server/handlers.go#L132`](../c-storage/internal/server/handlers.go#L132)). A precondition
 it cannot parse is a 400, never ignored — but a request sending *no* precondition overwrites
 whatever is there, so the guard holds only where the BFF sends the tag.
 
@@ -188,8 +188,8 @@ route but `/health` including the 404 fallback, so an unknown path answers 401 e
 one; a per-service `x-access-key`, stored only as a SHA-256 and compared in constant time; and
 `x-super-admin-key`, whose sole power is creating a service
 ([`c-storage/internal/auth/auth.go#L17`](../c-storage/internal/auth/auth.go#L17),
-[`internal/server/server.go#L59`](../c-storage/internal/server/server.go#L59),
-[`internal/store/store.go#L93`](../c-storage/internal/store/store.go#L93)). **The BFF never holds
+[`c-storage/internal/server/server.go#L59`](../c-storage/internal/server/server.go#L59),
+[`c-storage/internal/store/store.go#L93`](../c-storage/internal/store/store.go#L93)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
 ([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
 [`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
