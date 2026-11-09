@@ -102,10 +102,16 @@ which is every branch running this gate.
       lock yet. *Done when:* `bash <root>/ops/gate.sh shared` prints five `[n/5]` lines and
       `== green`, and the log's last line is `== exit 0`.
       *Evidence:* logs/2026-11-09-095423-gate-shared.log, five `[n/5]` lines, `== green`, `== exit 0`; forced prettier red logs/2026-11-09-095504-gate-shared.log, `== exit 1`, other four steps ran.
-- [ ] **2. The step list from each package's own `scripts`, and the whole-tree call, 10 min.**
+- [x] **2. The step list from each package's own `scripts`, and the whole-tree call, 10 min.**
       *Done when:* `ops/gate.sh walk`'s log holds `skipped: @credo/walk has no test script`; a call
       with no package names six typecheck results and five test results; `grep -c vitest
       ops/gate.sh` is 0.
+      *Deliberate departure:* the per-package steps are a loop that runs each package's script on its
+      own, not `pnpm -r --no-bail`: it keeps `--no-bail`'s property (no package hides the rest) and
+      names every package in the log, which `-r` does not. Do not change it back. A step a package
+      lacks is a named `skipped:` line stating only the fact; the `== steps:` line shows `skip` for a
+      step that ran nowhere and `<code>+<n>skipped` where some packages skipped it.
+      *Evidence:* logs/2026-11-09-100407-gate-all.log: 6 typecheck results, 5 test results, `skipped: @credo/walk has no test script`, `test 0+1skipped`, `== green`, `== exit 0`; logs/2026-11-09-100335-gate-walk.log: `test skip`.
 - [ ] **3. The lock, the load wait, the trap, the CI skip, the nesting guard, 10 min.** Cases 8 to
       12. *Done when:* with `.gate-lock` present the run logs its wait and the owner; after a
       forced red the lock is gone; `CI=1` logs the skip.
