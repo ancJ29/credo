@@ -1199,3 +1199,23 @@ defect a formatter would have caught.
 ## 171. Two gate runs that start in the same second with the same package share one log, and `tee -a` interleaves them — the machine; `[DEFERRED]` (the one-gate-command piece, step 5, 2026-11-09, Low)
 
 `ops/lib.sh#L82` names a log `<date>-<time to the second>-<script>-<env>.log` and opens it with `tee -a`. The gate lock admits one run at a time, but a run that is waiting for the lock or giving up logs from its first line, so a second `ops/gate.sh shared` begun in the same second as a first writes its wait lines into the first run's log, and the first's `== exit` line then closes both. *Trigger:* two lanes starting the same package's gate in one second, which needs a lock held at that moment by a third run, or a retry loop. *Not fixed here:* the stamp is `log_start`'s, shared by every `ops/` script, and a suffix there would change every log name. *Cheapest fix when it bites:* `log_start` appends `$$` to the stamp (not a counter, which needs the folder to be read).
+
+## 172. A lock the gate fails to release is prose only, and the run still exits 0 — the machine; `[OPEN]` (the one-gate-command piece's review, L1, 2026-11-09, Low)
+
+`ops/gate.sh`'s `cleanup_extra` runs from `ops/lib.sh`'s `on_exit` after `verdict` has already printed `== green`; when the `rmdir` fails it only echoes `lock free at the end: NO`, and the echo returns 0, so the log ends `== exit 0` with the lock still on disk and the next gate, walk and full run blocked. *Trigger:* something else written into the lock folder. *Cheapest fix when it bites:* have `cleanup_extra` set a non-zero status that `on_exit` folds into the exit code.
+
+## 173. `ops/gate.sh` validates the package name after it takes the lock, so a typo waits up to 1800 s and then refuses — the machine; `[OPEN]` (the one-gate-command piece's review, L3, 2026-11-09, Low)
+
+`run_each` dies with `no package <name>` only inside its loop, after `take_lock`, where `ops/full-run.sh` refuses before it takes its lock. A mistyped package behind a held lock waits the full wait and then refuses on the lock, never saying the name was wrong. *Cheapest fix when it bites:* check `[ -f "$REPO_DIR/$d/package.json" ]` for each directory before `take_lock`.
+
+## 174. The gate's `== steps:` codes are pnpm's exit codes, not the tools' — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+`typecheck 1` means the `pnpm --filter ... run typecheck` call exited 1, and the same for `test`; for eslint, prettier and knip the code is `pnpm exec`'s, which passes the tool's own through. A reader taking the number for the tool's own code (for example prettier's 2 against 1) can misread a red. *Trigger:* a red read by its number rather than its name.
+
+## 175. Nothing lints `ops/gate.sh` or the other `ops/` shell locally; shellcheck runs only in CI — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+`.prettierignore` excludes `ops/`, and no script or hook runs shellcheck locally (it is installed, but only CI runs it), so the gate's own shell is checked by `ops/test.sh` and CI's shellcheck job alone; a quoting slip passes every local run. *Trigger:* the first CI shellcheck red on a gate change.
+
+## 176. `pnpm -r run check` now exists and is the wrong command — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+Six packages each have a `check` script that calls `ops/gate.sh`, so `pnpm -r run check` starts six gates on one lock (they queue) and runs eslint, prettier and knip six times. The right command is `pnpm check` (the root's, over every package). *Cheapest fix:* one line in the gate's header and one in `ops/README.md` saying so.

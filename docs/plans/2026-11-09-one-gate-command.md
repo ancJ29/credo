@@ -136,6 +136,13 @@ which is every branch running this gate.
       rule 5), each finding tagged; `docs/recaps/2026-11-09-one-gate-command.md` with its
       `docs/products.md` row. *Done when:* every finding tagged, and the recap cites the five
       forced-red logs by the names `ls` gives them.
+      *Review fix (the first half, the recap still open):* the review's three Mediums fixed. M1: an empty or
+      unreadable package list refuses (live: logs/2026-11-09-123422-94-fix-live-proofs.log, `== exit 1`, no step
+      run), and `has_script` now tells "no script" (exit 10) from a failure to ask (a red). M2: the give-up
+      refusal names the owner, says if its pid is alive and prints the `rm -rf`, never clearing. M3: the gate
+      waits while `.full-run-lock` exists. A real red through pnpm's own entry, `pnpm --filter @credo/shared check`:
+      logs/2026-11-09-123433-gate-shared.log, `prettier 1`, `== exit 1`, pnpm rc 1, `hash.ts` restored. `ops/test.sh`
+      0 FAIL: logs/2026-11-09-123135-94-fix-ops-test.log; `pnpm check` green: logs/2026-11-09-123513-gate-all.log.
 
 **Size: about 105 minutes** across the plan, the build, the review and the recap — above the brief's
 50, which did not carry the 13 cases in `ops/test.sh`, the five real forced reds (about 30 minutes
@@ -147,8 +154,10 @@ together) or the review and recap (23).
 package's check" and nothing more, because `pnpm --filter <pkg> check` will exist and will be the
 same five steps for every package. Two things change that you will notice yourself: `pnpm check`
 gets longer and slower on a red run, since it now reports all five steps instead of stopping at the
-first, and every gate run waits for the machine's load and takes `.gate-lock`, so two of them queue
-instead of fighting. The interior choices here — the script's name, which steps are scoped, where
+first, and every gate run waits for the machine's load and takes `.gate-lock`, so two gates queue
+instead of fighting. A gate against a full run (`ops/full-run.sh`) also queues: the gate waits while
+`.full-run-lock` exists, because `walk/run.sh` ends red when `.gate-lock` appears mid-run. A bare
+`walk/run.sh` takes no lock, so a gate started while one is running still reddens it. The interior choices here — the script's name, which steps are scoped, where
 the lock lives — are the machine's and are decided above. A yes starts the build at step 1; a no
 names the part that reads wrong, before any code exists.
 

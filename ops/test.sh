@@ -2816,7 +2816,7 @@ gate_run() {
   GOUT=$GW/out-$GN
   : >"$GCALLS"
   GRC=0
-  env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" \
+  env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
     GATE_UPTIME_FILE="$GW/load-ok" GATE_POLL=1 GATE_WAIT_MAX=2 \
     ${envs[@]+"${envs[@]}"} bash "$OPS_DIR/gate.sh" "$@" >"$GOUT" 2>&1 || GRC=$?
   GLOG=$(find "$GW/logs-$GN" -name '*.log' 2>/dev/null | head -1 || true)
@@ -2927,7 +2927,7 @@ check "  and the release is logged before the exit line" "== exit 1" "$(lastline
 GN=$((GN + 1))
 GCALLS=$GW/calls-$GN
 : >"$GCALLS"
-env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" \
+env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
   GATE_UPTIME_FILE="$GW/load-ok" GATE_SLOW=3 bash "$OPS_DIR/gate.sh" shared >"$GW/out-$GN" 2>&1 &
 GPID=$!
 for _ in $(seq 1 50); do
@@ -2941,6 +2941,81 @@ GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
 check "case 10: a SIGTERM during a step exits 143" 143 "$GRC"
 check "  and the lock is gone" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
 check "  and the log ends == exit 143" "== exit 143" "$(lastline "$GLOG")"
+
+# M1: a package list that cannot be read refuses, it never runs nothing and says green
+printf 'packages:\n' >"$GW/ws-empty.yaml"
+printf 'packages:\n    - shared\n' >"$GW/ws-reformatted.yaml"
+for ws in "$GW/ws-empty.yaml" "$GW/ws-reformatted.yaml" "$GW/ws-missing.yaml"; do
+  gate_run GATE_WORKSPACE="$ws" -- 
+  check "M1: an unreadable or empty package list ($(basename "$ws")) refuses, exit 1" 1 "$GRC"
+  check "  names why" 1 "$(hits "$GLOG" 'no package could be read from')"
+  check "  runs no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+  check "  and never says green" 0 "$(hits "$GLOG" '== green')"
+  check "  and the log ends == exit 1" "== exit 1" "$(lastline "$GLOG")"
+done
+gate_run GATE_WORKSPACE="$GW/ws-missing.yaml" -- shared
+check "M1: a named package does not read the list at all" 0 "$GRC"
+
+# L2: a package.json that cannot be asked is a red, never the skip a missing script is
+mkdir -p "$GW/badnode"
+printf '#!/bin/sh\nexit 1\n' >"$GW/badnode/node"
+chmod +x "$GW/badnode/node"
+gate_run PATH="$GW/badnode:$GW/bin:$BASE_PATH" -- shared
+check "L2: a node that fails is a red, exit 1" 1 "$GRC"
+check "  names the package and the node exit" 1 "$(hits "$GLOG" 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 1)')"
+check "  and is not read as a skip" 0 "$(hits "$GLOG" 'has no typecheck script')"
+check "  and the summary shows 1, not skip" 1 "$(grep -c '^== steps: typecheck 1 ' "$GLOG" || true)"
+gate_run PATH="$GW/bin:/usr/bin:/bin" -- shared
+check "L2: node absent from PATH is a red naming node exit 127" 1 "$(seenre 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 127)' "$GLOG")"
+check "  and the run is red" 1 "$GRC"
+
+# M2: the give-up refusal names the owner, says if its pid is alive, prints the one clearing command, clears nothing
+mkdir "$GW/lock"
+echo "pid=$$ log=other.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: the refusal names the owner" 1 "$(hits "$GLOG" "(owner: pid=$$ log=other.log started=T;")"
+check "  says its pid is alive" 1 "$(hits "$GLOG" "pid $$ is still alive")"
+check "  prints the command that clears it" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
+check "  and the lock is as it was" "pid=$$ log=other.log started=T" "$(cat "$GW/lock/owner")"
+echo "pid=999999 log=other.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: a dead owner is said to be not alive" 1 "$(hits "$GLOG" "pid 999999 is not alive")"
+echo "no pid here" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: an owner with no readable pid says so" 1 "$(hits "$GLOG" "its pid could not be read")"
+rm -f "$GW/lock/owner"
+rmdir "$GW/lock"
+
+# M3: a full run's lock makes the gate wait, as ops/full-run.sh waits on nothing and refuses on the gate lock
+mkdir "$GW/runlock"
+echo "pid $$ started T for walks a,b in /tree" >"$GW/runlock/owner"
+gate_run -- shared
+check "M3: a full run's lock is waited for, naming its owner" 1 "$(seenre '^waiting: a full run holds .*runlock: pid [0-9]* started T for walks a,b' "$GLOG")"
+check "  and the gate lock was never taken" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and no step ran" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+check "  and the give-up names the run lock's clearing command" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/runlock'")"
+check "  and the run lock is as it was" 1 "$([ -d "$GW/runlock" ] && echo 1 || echo 0)"
+gate_run CI=1 -- shared
+check "M3: under CI the full run's lock is not waited for" 0 "$GRC"
+# and when the full run ends while the gate waits, the gate goes on and takes its own lock
+GN=$((GN + 1))
+GCALLS=$GW/calls-$GN
+: >"$GCALLS"
+env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
+  GATE_UPTIME_FILE="$GW/load-ok" GATE_POLL=1 GATE_WAIT_MAX=30 bash "$OPS_DIR/gate.sh" shared >"$GW/out-$GN" 2>&1 &
+GPID=$!
+for _ in $(seq 1 50); do
+  grep -qs 'waiting: a full run' "$GW"/logs-"$GN"/*.log && break
+  sleep 0.2
+done
+rm -f "$GW/runlock/owner"
+rmdir "$GW/runlock"
+GRC=0
+wait "$GPID" || GRC=$?
+GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
+check "M3: once the full run's lock goes the gate runs and is green" 0 "$GRC"
+check "  having waited first" 1 "$(seenre '^waiting: a full run holds' "$GLOG")"
+check "  and having taken and freed its own lock" 1 "$(grep -c 'lock free at the end: yes' "$GLOG" || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

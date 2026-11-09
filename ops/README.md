@@ -314,7 +314,7 @@ Parameters: `--worktree`, `--branch` and `--walks` (comma separated, as `walk/ru
 (`logs/<YYYYMMDD-HHMM>-<stem>.log`, each run's text beside it as `…-run-<n>.out`); `--node` the Node it needs (default
 v26.12.1, from nvm); `--lock` the gate lock it refuses on (default `<credo root>/.gate-lock`); `--run-lock` its own lock (default
 `<credo root>/.full-run-lock`); `--check` runs the refusals and shows the two commands, then stops, taking no lock. It never
-takes the gate lock: `walk/run.sh` refuses while it exists. It takes `.full-run-lock` after the refusals, so two full runs
+takes the gate lock: `walk/run.sh` refuses while it exists, and the gate waits while `.full-run-lock` exists. It takes `.full-run-lock` after the refusals, so two full runs
 cannot overlap, and releases it on green, red and interrupt. A lock left behind (a run killed hard) is refused on, never
 cleared by the script: the refusal names the owner and prints the `rm -rf` that clears it.
 - **== refused: ...:** nothing ran; the line names why (a missing parameter, no worktree, the wrong branch, a dirty tree,
@@ -332,8 +332,15 @@ does, takes `.gate-lock` once the one-minute load is under 8, and writes `logs/<
 script, `walk`), `0+1skipped` is one that skipped a package, and neither is a pass. A red names its step and
 the other four still show. It does not cover c-storage: that gate is `make check` in `c-storage/`.
 
-- **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up and leaves the
-  lock as it is.
+- **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up. A lock left behind
+  (a run killed hard) is refused on, never cleared by the script: the refusal names the owner, says whether its pid
+  is still alive and prints the one `rm -rf` that clears it.
+- **A full run is going:** `ops/full-run.sh` holds `.full-run-lock` for its whole time, and `walk/run.sh` stops its
+  lanes and ends red when `.gate-lock` appears mid-run. So the gate waits (same loop, same 30 minutes, same refusal
+  naming `.full-run-lock`) while that lock exists, and a short check never reddens a long run. A bare
+  `walk/run.sh` takes no lock, so a gate cannot wait for it: start the gate when no walk is running.
+- **No package list, or a package.json that cannot be read:** `pnpm check` refuses when `pnpm-workspace.yaml` yields
+  no package, and a `package.json` it cannot parse (or no `node`) is a red step, never a skip.
 - **A forced red, to see the gate catch it:** break one line in one position, run `pnpm --filter @credo/shared
   check`, put it back. A new export in a file `shared/src/index.ts` re-exports is not a knip red (it is the
   package's public entry); one in a file only the app uses is.

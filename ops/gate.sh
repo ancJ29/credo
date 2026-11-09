@@ -8,8 +8,11 @@
 # Exit: 0 green, 1 any step red. Not covered: c-storage's own gate, `make check` in c-storage/.
 # THE LOCK: one whole run at a time on this machine, <credo root>/.gate-lock (GATE_LOCK names another, for a
 #   test), taken once the one-minute load is under GATE_LOAD_MAX (8) in one wait loop that logs each wait with the
-#   owner; gives up with exit 1 after GATE_WAIT_MAX seconds (1800), never taking a lock it did not make. An
-#   unreadable load refuses. Released from the EXIT hook, logged with its time. Under CI there is none, and the
+#   owner; gives up with exit 1 after GATE_WAIT_MAX seconds (1800), never taking a lock it did not make or
+#   clearing one: the refusal names the owner, says whether its pid is alive and prints the one rm -rf that clears
+#   it. It also waits while a full run (ops/full-run.sh) holds <credo root>/.full-run-lock (GATE_RUN_LOCK names
+#   another), because walk/run.sh stops its lanes and ends red when the gate lock appears mid-run. A bare
+#   walk/run.sh takes no lock of its own, so the gate cannot wait for one. An unreadable load refuses. Released from the EXIT hook, logged with its time. Under CI there is none, and the
 #   log says so. A call made by a gate that holds the lock (GATE_HOLDER is its pid) does not take it again.
 set -uo pipefail
 
@@ -27,13 +30,15 @@ if [ $# -eq 1 ]; then
   dirs=${1#@credo/}
   label=$dirs
 else
-  dirs=$(sed -n 's/^  - //p' "$REPO_DIR/pnpm-workspace.yaml")
+  WORKSPACE=${GATE_WORKSPACE:-$REPO_DIR/pnpm-workspace.yaml}
+  dirs=$(sed -n 's/^  - //p' "$WORKSPACE" 2>/dev/null)
   label=all
 fi
 
 STEPS=5
 root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
 LOCK=${GATE_LOCK:-$root/.gate-lock}
+RUN_LOCK=${GATE_RUN_LOCK:-$root/.full-run-lock}
 LOAD_MAX=${GATE_LOAD_MAX:-8}
 WAIT_MAX=${GATE_WAIT_MAX:-1800}
 POLL=${GATE_POLL:-10}
@@ -56,15 +61,48 @@ cleanup_extra() {
   fi
 }
 
-# take_lock: waits for the load under the ceiling and the lock free, in one loop, and takes it.
+# lock_owner_pid <owner text>: the pid in a lock's owner file ("pid=123 ..." the gate's, "pid 123 started ..." the full run's)
+lock_owner_pid() { printf '%s' "$1" | sed -n 's/^pid[= ]\([0-9][0-9]*\).*/\1/p'; }
+
+# pid_state <pid>: whether that process is alive, said in words (ps lists nothing here, so kill -0 is asked)
+pid_state() {
+  local err
+  [ -n "$1" ] || { echo "its pid could not be read"; return 0; }
+  if err=$(kill -0 "$1" 2>&1); then
+    echo "pid $1 is still alive"
+  elif printf '%s' "$err" | grep -q 'No such process'; then
+    echo "pid $1 is not alive"
+  else
+    echo "pid $1 could not be checked (${err:-kill -0 failed})"
+  fi
+}
+
+# give_up <lock held at the last look, or empty>: the refusal after GATE_WAIT_MAX. It never clears a lock; with one in
+# the way it names the owner, says whether the owner is alive and prints the one command that clears it.
+give_up() {
+  local held=$1 owner pid
+  if [ -z "$held" ]; then
+    die "gave up after ${WAIT_MAX}s: the one-minute load was never under $LOAD_MAX; no lock was taken"
+  fi
+  owner=$(cat "$held/owner" 2>/dev/null)
+  pid=$(lock_owner_pid "$owner")
+  die "gave up after ${WAIT_MAX}s waiting for the lock $held (owner: ${owner:-unknown}; $(pid_state "$pid")). Nothing was run. If that run is over (a run killed hard leaves its lock behind), clear it with: rm -rf '$held' -- this script never clears a lock itself"
+}
+
+# take_lock: waits for the load under the ceiling, no full run's lock and the gate lock free, in one loop, and takes it.
 take_lock() {
-  local start load owner
+  local start load owner held=''
   start=$(date +%s)
   while :; do
     load=$(load_now)
     [[ $load =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "the Mac's load could not be read from uptime (got '${load}'): not taking the lock"
+    held=''
     if ! awk -v l="$load" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }'; then
       echo "waiting: one-minute load $load is not under $LOAD_MAX ($(date '+%H:%M:%S'))"
+    elif [ -e "$RUN_LOCK" ]; then
+      held=$RUN_LOCK
+      owner=$(cat "$RUN_LOCK/owner" 2>/dev/null)
+      echo "waiting: a full run holds $RUN_LOCK: ${owner:-owner unknown} (the gate lock would stop its walks) ($(date '+%H:%M:%S'))"
     elif mkdir "$LOCK" 2>/dev/null; then
       HELD=yes
       printf 'pid=%s log=%s started=%s\n' "$$" "$LOG" "$(date '+%Y-%m-%d %H:%M:%S')" >"$LOCK/owner"
@@ -72,11 +110,12 @@ take_lock() {
       echo "lock $LOCK taken $(date '+%H:%M:%S') at load $load"
       return 0
     else
+      held=$LOCK
       owner=$(cat "$LOCK/owner" 2>/dev/null)
       echo "waiting: lock $LOCK is held by: ${owner:-owner unknown} ($(date '+%H:%M:%S'))"
     fi
     if [ $(($(date +%s) - start)) -ge "$WAIT_MAX" ]; then
-      die "gave up after ${WAIT_MAX}s waiting for the load and the lock; the lock is not ours and is left as it is"
+      give_up "$held"
     fi
     sleep "$POLL"
   done
@@ -84,6 +123,9 @@ take_lock() {
 
 log_start gate "$label"
 cd "$REPO_DIR" || die "cannot enter $REPO_DIR"
+if [ "$label" = all ] && [ -z "$dirs" ]; then
+  die "no package could be read from ${WORKSPACE} (missing, unreadable, or no '  - <dir>' lines): refusing, since a gate over no packages would run no typecheck and no test and still say green"
+fi
 
 if [ -n "${CI:-}" ]; then
   echo "lock: skipped, CI is set (the runner is its own machine); load wait: skipped"
@@ -94,9 +136,11 @@ else
 fi
 
 results=''
-# has_script <dir> <script>: whether that package's package.json defines it
+# has_script <dir> <script>: whether that package's package.json defines it. Exit 0: it does. Exit 10: it does not, a
+# plain "no". Anything else (an unparseable package.json 2, node missing from PATH 127, node dying) is a failure to
+# ask, never a "no": run_each turns it into a red, not a skip.
 has_script() {
-  node -e 'const s = require(process.argv[1]).scripts; process.exit(s && s[process.argv[2]] ? 0 : 1)' "$REPO_DIR/$1/package.json" "$2"
+  node -e 'try { const s = require(process.argv[1]).scripts; process.exit(s && s[process.argv[2]] ? 0 : 10) } catch (e) { console.error(String(e)); process.exit(2) }' "$REPO_DIR/$1/package.json" "$2"
 }
 
 # note <label> <rc>: keeps a step's status and names it
@@ -120,11 +164,17 @@ run_step() {
 # never a silent one and never a red. The summary shows a step that ran nowhere as "skip" and one
 # that skipped some packages as "<code>+<n>skipped", so a skip never reads as a pass.
 run_each() {
-  local script=$1 d rc worst=0 ran=0 skipped=0 mark
+  local script=$1 d rc hs worst=0 ran=0 skipped=0 mark
   step "$script"
   for d in $dirs; do
     [ -f "$REPO_DIR/$d/package.json" ] || die "no package $d"
-    if has_script "$d" "$script"; then
+    has_script "$d" "$script"
+    hs=$?
+    if [ "$hs" != 0 ] && [ "$hs" != 10 ]; then
+      ran=$((ran + 1))
+      red "$script @credo/$d: could not read its scripts from package.json (node exit $hs), so it was not run"
+      worst=1
+    elif [ "$hs" = 0 ]; then
       ran=$((ran + 1))
       pnpm --filter "@credo/$d" run "$script"
       rc=$?
