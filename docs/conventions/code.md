@@ -16,9 +16,8 @@
 > [a client's own difference, a screen's behaviour, and server
 > data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
 > in `git log`.
-> **Last amended** 2026-11-09, from the human's need to reach the file that explains a symptom
-> without preparation: the first file to open for each part, and where each kind of new file goes,
-> stated here rather than disclaimed.
+> **Last amended** 2026-11-09, from the guideline skeleton (piece 98): the sixteen rules given stable ids,
+> and the citations made to name a symbol where piece 97 moved the code.
 
 ## At a glance
 
@@ -57,7 +56,10 @@ places, nothing failing when a copy is missed.
 | `reader` | nothing goes red; a reviewer reading the diff is the only guard |
 
 Sixteen rules stand in the sections below, and the glance table above is a view of them, marked the
-same way. **One of the sixteen is held by a check**: the registration function that appends a
+same way. **Each carries an id, `C1` to `C16`, in the order the sections hold them, minted once and
+never renumbered or reused**, the discipline [`open-items.md`](../open-items.md) keeps for its items:
+a table that reports on the rules is read against the ids, and a rule that is retired leaves its id
+unused. **One of the sixteen is held by a check**: the registration function that appends a
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), and it was written before the review. It is named twice below —
 as the rule [one home](#one-home-for-one-decision) states and as the shape [the patterns to
@@ -135,7 +137,7 @@ asks for a fix.
 
 ## One home for one decision
 
-**A name, a bound, a width, a status's meaning or a path derivation is declared once and
+**C1 · A name, a bound, a width, a status's meaning or a path derivation is declared once and
 imported; no file reads another file's source text to check that two copies agree.**
 `[next copy · reader]` *Why:* a
 missed copy fails nothing — `walk/run.sh#L296` still hands out `CREDO_OPERATOR_PASSWORD`, a name
@@ -160,12 +162,12 @@ declared four times (in `visual/src/walks.ts`, `walk/support.ts`, `ui/src/mock/M
 them as source text, so a reformat broke the check and a fifth copy would not have tripped it (now
 `WIDTHS` in `shared/src/widths.ts`).
 
-**Where the one home can be a list the working code appends to, make it one**, so a missed edit is
+**C2 · Where the one home can be a list the working code appends to, make it one**, so a missed edit is
 a red and not a green — the model is the registration in [the patterns to
 copy](#the-patterns-to-copy). `[next copy · check]` The one place the shape exists is held by a
 test; everywhere else nothing fails.
 
-**Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
+**C3 · Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
 `ui/src/CustomerPage.tsx`'s `CustomerPage` and `ui/src/ProductPage.tsx`'s `ProductPage` are the same page shell
 written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
 (`ui/src/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/AddProductPage.tsx`'s `AddProductPage`); a third kind pays it a
@@ -184,18 +186,18 @@ written again.
 
 | The job | The one way | Copy | What the 2026-11-08 review counted |
 | --- | --- | --- | --- |
-| a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | 6 of 13 forms draw a field error, 3 use a `tried` flag, 10 use a guard clause and one alert (`ui/src/OwnPasswordPage.tsx#L26-L52`) |
-| storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts`'s `readEmployee` | 34 of 98 calls, against 64 inline in `staff.ts`, `orders.ts`, `lists.ts`, `reconciliations.ts` |
-| a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | 24 of 62 screens import it directly, 38 take what they need; re-counted 2026-11-09, still 24 of 62 |
-| an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
-| a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
+| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/ProductPage.tsx#L180-L198` | 6 of 13 forms draw a field error, 3 use a `tried` flag, 10 use a guard clause and one alert (`ui/src/OwnPasswordPage.tsx#L26-L52`) |
+| C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/staff-records.ts`'s `readEmployee` | 34 of 98 calls, against 64 inline in `staff.ts`, `orders.ts`, `lists.ts`, `reconciliations.ts` |
+| C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | 24 of 62 screens import it directly, 38 take what they need; re-counted 2026-11-09, still 24 of 62 |
+| C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
+| C8 · a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 
-**A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
+**C9 · A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
 storage** (`bff/src/staff.ts`'s `app.put(employeeRoutes.one(':id')`). `[holds · reader]` *Why:* all 63 route registrations keep it
 and nothing holds them to it, so a route that parses before it authorises passes every check in the
 repo.
 
-**The next route added to `bff/src/staff.ts` or `bff/src/orders.ts` goes in its own module**, as the
+**C10 · The next route added to `bff/src/staff.ts` or `bff/src/orders.ts` goes in its own module**, as the
 five smaller modules already do. `[next copy · reader]` *Why:* those two are single closures of 629
 and 453 lines (`bff/src/staff.ts`'s `registerStaffRoutes` and `bff/src/orders.ts`'s `registerOrderRoutes`, each to the end of its file), 42 and 40
 branches as the 2026-11-08 review counted them, and nobody can judge either in one read.
@@ -208,11 +210,11 @@ red when a new file invents a second one — except the last, which is `[holds �
 
 | The shape | Where it is |
 | --- | --- |
-| one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts#L11` (no `fetch` anywhere in `bff/src`) |
-| a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/Loaded.tsx#L12` |
-| entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
-| one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/ListPage.tsx#L14-L19`, served by `bff/src/lists.ts` |
-| **a rule held by code rather than by a reviewer**: the function that registers a route also appends its pattern to a list, and a test fails when one is added without an entry | `c-storage/internal/server/server.go#L51-L54`, held by `TestEveryRegisteredRouteIsListed` (`c-storage/internal/server/server_test.go#L106`) |
+| C11 · one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts#L11` (no `fetch` anywhere in `bff/src`) |
+| C12 · a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/Loaded.tsx#L12` |
+| C13 · entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
+| C14 · one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/ListPage.tsx#L14-L19`, served by `bff/src/lists.ts` |
+| C15 · **a rule held by code rather than by a reviewer**: the function that registers a route also appends its pattern to a list, and a test fails when one is added without an entry | `c-storage/internal/server/server.go#L51-L54`, held by `TestEveryRegisteredRouteIsListed` (`c-storage/internal/server/server_test.go#L106`) |
 
 ## Where a client's difference lands
 
@@ -231,7 +233,7 @@ writing code is the glance table's row: `useLoad` and `<Loaded>`, no cache and n
 
 ## Before a new screen
 
-**Work the list of places one screen touches, because at least seven exist and nothing lists
+**C16 · Work the list of places one screen touches, because at least seven exist and nothing lists
 them:** the page, the fake (`ui/src/fake.ts`), its route in the app shell, both dictionaries, its
 test, a walk scene and a base image before the visual report can show it. `[next copy · reader]`
 *Why:* a screen that reaches the walks page without its scene and base is a screen the human cannot

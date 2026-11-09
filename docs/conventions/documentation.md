@@ -3,8 +3,8 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-07, from the measurement of every plan written under the one-page shape:
-> the plan's word cap set to what that shape costs. This file holds the rules as they stand; their
+> **Last amended** 2026-11-09, from the guideline skeleton (piece 98): the rule for how a living document
+> cites code, which lived only on the board and in a design page. This file holds the rules as they stand; their
 > history is in `git log`.
 
 ## At a glance
@@ -26,6 +26,8 @@ without it, would get the next change wrong.
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes; a convention carries one `Last amended`
   line and no changelog ([one fact, one home](#one-fact-one-home)).
+- A living document cites a file and a symbol in it, never a line
+  ([how a living document cites code](#how-a-living-document-cites-code)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
   holds the evidence and keeps the piece's row in `docs/products.md` true
   ([where progress lives](#where-progress-lives-three-files-one-job-each)).
@@ -95,6 +97,31 @@ to rot, because the change that breaks it touches no line there.
   Seven of them went into one principles memo's header, one per rule the piece had touched, and
   the human cut the block on sight: there are always exceptions, and logging each one is not
   worth the reader's attention in a memo of principles.
+
+### How a living document cites code
+
+**A living document cites a file and a symbol in it, never a line number.** *Why:* a line moves with
+every edit above it and fails nothing when it does, so the citation rots in silence; a symbol
+survives every edit and reformat, a rename is a real change worth noticing, and one grep checks it
+where a line number never can. Three forms, in this order of preference:
+
+1. **A file and a symbol** is the default: `bff/src/errors.ts`'s `replyFor`.
+2. **A key or resource name the file itself contains**, for config and shell, where there is no code
+   symbol: `package.json`'s `scripts.check`, `ops/env.yml`'s `BoxGroup`, `walk/run.sh`'s `main`.
+   This is no concession: YAML and JSON have no symbols.
+3. **A quoted fragment of the line**, only where neither exists, and deliberately ugly so that
+   nobody reaches for it first.
+
+**The name must be declared once in its file** (its other occurrences are uses): a name that
+resolves twice lets a check pass on the wrong declaration. In Go a method is cited as
+`func (s *Server) handle(`, not `handle`, and its case counts.
+
+*Who it binds:* the living documents, which must be true now (the conventions, the architecture
+page, the index and every `CLAUDE.md`), and not plans or recaps, which were written once and were
+true then. *When:* it binds new writing, and an existing line citation converts when a piece touches
+it, not in a sweep of its own. *What it cannot hold:* a symbol that still exists and has changed its
+meaning passes every grep (a constant that became an import still resolves); only the reader of the
+change sees that, so a piece that moves a decision rereads the citations to it.
 
 ## Where progress lives: three files, one job each
 
