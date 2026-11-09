@@ -6,7 +6,7 @@ import { comparePictures, decodePng, type Difference } from '@credo/scripts/pixe
 import { expect, type Locator, type Page } from '@playwright/test';
 
 /** The widths the visual report draws a screen at; every walk shoots the same three. */
-export const WIDTHS = { pc: 1280, tablet: 768, phone: 390 } as const;
+export { WIDTHS } from '@credo/shared';
 
 export const required = (name: string, how = 'run this through `pnpm stack -- …`') => {
   const value = process.env[name];

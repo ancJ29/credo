@@ -12,4 +12,5 @@ export * from './reconciliations';
 export * from './records';
 export * from './signins';
 export * from './staff';
+export * from './widths';
 export * from './wire';

@@ -202,16 +202,8 @@ describe('the walks', () => {
   });
 
   it('shoots every walk at the widths the report draws, the width in each image’s name', () => {
-    const widths =
-      /export const WIDTHS = \{ pc: (\d+), tablet: (\d+), phone: (\d+) \} as const/.exec(
-        read('support.ts'),
-      )!;
-
-    expect(widths.slice(1).map(Number)).toEqual([
-      DEVICE_WIDTH.pc,
-      DEVICE_WIDTH.tablet,
-      DEVICE_WIDTH.phone,
-    ]);
+    // the widths are one declaration in `shared`: the walks' support re-exports it, never spells them
+    expect(read('support.ts')).toContain("export { WIDTHS } from '@credo/shared';");
     expect(read('support.ts')).toContain('`${screen}-${language}-${width}.png`');
     for (const name of specFiles()) {
       expect(read(`specs/${name}`), name).toContain("from '../support'");
