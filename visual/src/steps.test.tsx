@@ -72,6 +72,7 @@ function Page({ later = false }: { later?: boolean }) {
       {shown && (
         <>
           <h2>Late list</h2>
+          <h3>Late Bình An</h3>
           <div role="alert">Late notice</div>
           <table>
             <tbody>
@@ -224,7 +225,7 @@ describe('a scene’s steps', () => {
         { see: 'Late notice', text: true },
         { see: 'form.title', with: { name: 'Bình An' } },
       ],
-      { form: { title: 'Late list' } },
+      { form: { title: 'Late {{name}}' } },
       { ...QUICK, findFor: 1000 },
     );
 
@@ -295,7 +296,7 @@ describe('a scene’s steps', () => {
     draw({ later: true });
     const began = Date.now();
 
-    // the late button, heading, alert and cell show together at 60 ms or after and are the page's one
+    // the late button, headings, alert and cell show together at 60 ms or after and are the page's one
     // change: still for 100 ms after it is no sooner than 100 ms past that
     await runSteps(document.body, [], WORDS, { findFor: 50, stillFor: 100, stillAtMost: 3000 });
 

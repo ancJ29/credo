@@ -555,13 +555,23 @@ describe('the walks', () => {
       .flatMap(keys);
 
     expect(used.length).toBeGreaterThan(25);
-    // a 'see' step carrying `text` is a cell's own words: one shaped like a dictionary key
-    // (`nav.clients`) is a key given the flag by mistake, and escapes the check below
+    // a 'see' step carrying `text` is a cell's own words: one that is a key of either dictionary
+    // (`nav.clients`) is a key given the flag by mistake, and escapes the check below. A literal
+    // that merely looks like a key (`list.csv`, `binh.an`, `nav.clients2`) is not one.
+    const isKey = (text: string) =>
+      typeof words('en', text) === 'string' || typeof words('vi', text) === 'string';
+    expect(['nav.clients', 'operator.rootCodeWrong'].map(isKey)).toEqual([true, true]);
+    expect(['list.csv', 'binh.an', 'nav.clients2', 'Nav.clients', 'Bình An'].map(isKey)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
     for (const step of WALKS.flatMap((walk) => walk.screens).flatMap(
       (screen) => screen.scene?.steps ?? [],
     )) {
-      if ('see' in step && step.text)
-        expect(step.see, step.see).not.toMatch(/^[a-z]+(\.[a-zA-Z]+)+$/);
+      if ('see' in step && step.text) expect(isKey(step.see), step.see).toBe(false);
     }
     for (const key of used) {
       expect(typeof words('en', key), key).toBe('string');
