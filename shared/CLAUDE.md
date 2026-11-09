@@ -30,7 +30,7 @@ Copy `lists.ts` for a shape and its bounds: `customerSchema` and the type `Custo
 ## This package's own rules
 
 - **SH5. A schema of ours is `z.strictObject`**. `z.object` or `z.looseObject` only where
-  another party owns the shape: `recordReplySchema` (c-storage's answers), `ceremonyOptionsSchema` (WebAuthn).
+  another party owns the shape: `recordReplySchema`, `healthReplySchema` and `listReplySchema` (c-storage's answers), `ceremonyOptionsSchema` and `credentialSchema` (WebAuthn).
   `bffErrorSchema` is ours and loose, the one slip; the next file does not copy it.
 - **SH6. Names:** `<thing>Schema` with its type beside it, from `z.infer` (`z.output` where the schema has
   a default); a bound is `UPPER_SNAKE`; a check is `<thing>IsValid` (`photoIsValid`, `employeeCodeIsValid`).

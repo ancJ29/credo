@@ -18,7 +18,7 @@ The machine's own commands: bringing the product up on this Mac, and the steps a
 
 [code](../docs/conventions/code.md) governs the entry ("Entry points hold wiring and no logic", in "The patterns to copy") and the dispatch ("a command dispatches and fails", in "The winner, named"). What a command owes beyond them:
 
-- **SC3. A command is `run<Name>` in `<name>.ts` and returns its exit status;** the entry sets `process.exitCode` from it, and `process.exit` is called nowhere outside a test. `walksCommand` is the one other spelling; the next file takes `run`.
+- **SC3. A command is `run<Name>` in `<name>.ts` and returns its exit status;** the entry sets `process.exitCode` from it, and `process.exit` is called nowhere outside a test. `walksCommand` is the one other spelling, and `scripts/src/cli.ts` is outside this rule: its three commands (`runStack`, `runFake`, `runDemo`) are a lifecycle, not a verb table; the next file takes `run`.
 - **SC4. What a command reads from or writes to the process arrives as a parameter:** argv, env, `out`, `err`, stdin. `console.`, `process.argv` and `process.stdin` appear in no file but an entry.
 - **SC5. Exit 0 done, 1 a failure, 2 refused before anything was acted on or a call that cannot be read,** stated once in the dispatch's doc comment (`runRidge`, `walksCommand`). It is the 2 every `ops/` script uses. `runRidge` exits 1 on an unknown verb: the one slip, and the next file exits 2.
 - **SC6. A verb command keeps one `USAGE` constant naming every verb,** printed for a verb it does not know.
