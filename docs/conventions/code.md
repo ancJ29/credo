@@ -39,7 +39,7 @@ places, nothing failing when a copy is missed.
   ([one home](#one-home-for-one-decision)).
 - **Where two patterns compete the winner is named**, and the loser is not copied again
   ([the winner](#the-winner-named)).
-- **One mechanism is held by a check, and every other rule by a reader**
+- **One mechanism is held by a check; five more rules are counted by `pnpm counts`, which shows drift and stops nothing; the rest are held by a reader**
   ([how to read a rule](#how-to-read-a-rule)).
 - **Where a client's difference lands, and no cache for server data, are the human's decisions**,
   with what a yes commits to, in [that memo](../memo/divergence-and-caching.md).
@@ -53,7 +53,7 @@ places, nothing failing when a copy is missed.
 | `holds` | the code already follows this everywhere the rule reaches |
 | `next copy` | it does not. The rule binds the next file written and fixes none of the existing ones: no piece is asked to go back, and the counter-examples named below stay as they are until a piece touches them for its own reason |
 | `check` | following the rule makes a check: a command in [the gate](../../CLAUDE.md#the-gate) goes red on a breach |
-| `reader` | nothing goes red; a reviewer reading the diff is the only guard |
+| `reader` | nothing goes red. A reviewer reading the diff is the guard, and for C1, C4, C5, C6 and C7 `pnpm counts` also shows the drift without stopping it |
 
 Sixteen rules stand in the sections below, and the glance table above is a view of them, marked the
 same way. **Each carries an id, `C1` to `C16`, in the order the sections hold them, minted once and
@@ -64,8 +64,8 @@ typed into this file:** it prints each count with its blind spot beside it, neve
 the table of the living documents' citations. **Two of the sixteen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
 route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
-makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fourteen are
-`reader`**, which is what the structure review's own open item exists to change, one check at a time
+makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fourteen carry the
+mark `reader`; five of them are also counted**, which is what the structure review's own open item exists to change, one check at a time
 ([open item 160](../open-items.md)).
 
 ## Where a new thing goes
