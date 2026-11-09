@@ -4,14 +4,21 @@
 > machine's own house style, and it needs no approval from the human:** how the code here is written
 > is the machine's decision, and this file binds every session that adds or changes code. It names
 > the one way only where the repo already holds two ways of doing one job, and the file to copy where
-> it already holds the shape; it does not inventory what the code does consistently. The decisions
+> it already holds the shape. It also says, for a reader who has to find something fast, **where
+> each kind of file already lives and which one file decides each part's behaviour**
+> ([where a new thing goes](#where-a-new-thing-goes)).
+>
+> **This file answers "where does this code live, and what do I open or copy".**
+> [`architecture.md`](../architecture.md) **answers "how is this system put together"** — the
+> request path, the data, how it reaches a machine, how it is checked — **and is not restated
+> here.** The decisions
 > that are the human's — what the system should be, rather than how it is written — are in
 > [a client's own difference, a screen's behaviour, and server
 > data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
 > in `git log`.
-> **Last amended** 2026-11-09, from the human's reading of this file: the three decisions that are
-> theirs split out to that memo, and every rule here marked for whether the code already holds it
-> and for what holds it.
+> **Last amended** 2026-11-09, from the human's need to reach the file that explains a symptom
+> without preparation: the first file to open for each part, and where each kind of new file goes,
+> stated here rather than disclaimed.
 
 ## At a glance
 
@@ -37,6 +44,8 @@ places, nothing failing when a copy is missed.
   ([how to read a rule](#how-to-read-a-rule)).
 - **Where a client's difference lands, and no cache for server data, are the human's decisions**,
   with what a yes commits to, in [that memo](../memo/divergence-and-caching.md).
+- **The one file to open for a part, and where each new file goes**
+  ([where a new thing goes](#where-a-new-thing-goes)).
 
 ## How to read a rule
 
@@ -55,6 +64,74 @@ as the rule [one home](#one-home-for-one-decision) states and as the shape [the 
 copy](#the-patterns-to-copy) names — and it is one mechanism in one file. **The other fifteen are
 `reader`**, which is what the structure review's own open item exists to change, one check at a time
 ([open item 159](../open-items.md)).
+
+## Where a new thing goes
+
+**Nothing in this section is a new rule.** It states where the code already puts each kind of file
+and which file decides each part, and every row links the rule that binds it. For how the system is
+put together, read [`architecture.md`](../architecture.md); this section answers only where the
+code lives.
+
+**The shape of a package:** each TypeScript package is one flat folder of files with every test
+beside its source — `bff/src`, `shared/src` and `visual/src` have no layer folders at all, and
+`ui/src`'s only folders inside are `i18n`, `mock` and its snapshots, as `scripts/src`'s only one
+is `demo`. Go is divided by internal package instead (`c-storage/internal`). A file is named for
+the thing it serves, never for its layer, and a screen's test sits beside it as
+`<Name>Page.test.tsx`.
+
+### The one file to open, by part
+
+| The part | What decides it | Next, if that was not enough |
+| --- | --- | --- |
+| which app an address gets | `ui/src/App.tsx#L31-L34`; the operator's door is the test at `#L28-L29` | `ui/src/ClientApp.tsx`, `ui/src/OperatorApp.tsx` |
+| what is on screen before any data, and when the service does not answer | `ui/src/Boot.tsx#L19` | the verdict is `ui/src/ClientApp.tsx#L79`, at `#L99` for the failing case |
+| what one page shows while loading or after a failed load | `ui/src/Loaded.tsx#L12` | `ui/src/page.ts#L31` (`useLoad`), the state it draws |
+| what every screen is handed | `ui/src/page.ts#L6` (`PageProps`) | built at `ui/src/ClientApp.tsx`; see [the winner](#the-winner-named)'s third row before assuming it |
+| the words a screen shows | `ui/src/i18n/en.ts#L2`, whose shape `vi.ts` must match (`en.ts#L1`) | — |
+| a list of customers or of products | `ui/src/listSheet.ts#L29` (`LISTS`), drawn by `ui/src/ListPage.tsx#L14` | `bff/src/lists.ts` serves both |
+| the day an order is filed under | `ui/src/day.ts#L29` — the browser's calendar day, not the server's clock | — |
+| whether a call is allowed | `bff/src/app.ts#L188-L192` (`mustCan`); the note at `#L184` is why the UI is never the guard | who the caller is, `#L157` (`signedIn`); the booleans, `shared/src/permissions.ts#L48`; the catalogue, `#L9` |
+| what a failure becomes on the wire | `bff/src/errors.ts#L19` (`replyFor`) | a 400 that names its field, `#L35-L41` |
+| a person's sign-in | `bff/src/app.ts#L251` | the refusal and why it names nothing, `#L261-L264` |
+| which records exist, and under which key | `shared/src/records.ts#L7` (`recordKeys`), the layout's one home | — |
+| how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal at `#L55` | `bff/src/server.ts#L11` builds the one client |
+| what c-storage will answer | `c-storage/internal/server/server.go#L51-L54`, which registers a route and appends its pattern to the list a test reads | `c-storage/internal/` by package |
+| what `pnpm stack`, `pnpm fake` and `pnpm demo` do | `scripts/src/cli.ts`, which drives `withStack`, `withFake` and `startDemo` (imported at `#L5-L8`) | `scripts/src/stack.ts`, `fake.ts` |
+| which commands must be green | [the gate](../../CLAUDE.md#the-gate) | [QA](qa.md)'s rule 6 for which of them a step runs |
+| what the human runs against ridge | [`ops/README.md`](../../ops/README.md) | each script's log in `logs/` in the credo root |
+
+### Where a new file goes
+
+| A new … | Where it goes | Copy | The rule |
+| --- | --- | --- | --- |
+| screen | `ui/src/<Name>Page.tsx`, with `<Name>Page.test.tsx` beside it | `ui/src/ListPage.tsx#L14` for a list of a second kind | the seven places it touches, [before a new screen](#before-a-new-screen) |
+| word a screen shows | both dictionaries, `ui/src/i18n/en.ts` and `vi.ts` | — | [before a new screen](#before-a-new-screen) |
+| BFF route | its own module, `bff/src/<area>.ts`, with `bff/src/<area>.route.test.ts` beside it — 21 such test files stand today | `bff/src/staff.ts#L417` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
+| read or write of a record kind | a module of its own, never the route closure | `bff/src/staff-records.ts#L22` | [the winner](#the-winner-named)'s second row |
+| name, bound, status meaning or wire shape | `shared/src/<area>.ts`, re-exported from `shared/src/index.ts` — 15 lines, one an area, and `demo` deliberately absent from it | `shared/src/records.ts`, `shared/src/permissions.ts` | [one home](#one-home-for-one-decision) |
+| c-storage route | `c-storage/internal/server/`, registered through the function that appends its pattern | `c-storage/internal/server/server.go#L51-L54` | [the patterns to copy](#the-patterns-to-copy) |
+| local command | `scripts/src/<name>.ts` holding the work, with a `<name>-main.ts` of wiring only — `fake-main.ts` is four lines | `scripts/src/fake-main.ts` with `fake.ts` | [the patterns to copy](#the-patterns-to-copy), entry points hold no logic |
+| walk | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh#L7`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
+| screen on the walks page | `visual/src/` | `visual/src/walks.ts` | [before a new screen](#before-a-new-screen) |
+| ops script or template | `ops/`, its steps added to the runbook in `ops/README.md` | its siblings in `ops/` | [the gate](../../CLAUDE.md#the-gate)'s rows 3 to 5 are what an `ops/` change needs |
+
+### Where a reader still has to follow a chain
+
+Named because a structure can be disciplined and still be slow to read under pressure, and because
+the 2026-11-08 review measured the first and not the second. These are not rules and nothing here
+asks for a fix.
+
+- **A 403 takes four hops to explain.** `bff/src/app.ts#L188-L192` asks one boolean; the caller is
+  built by `signedIn` at `#L157`, whose view comes from `viewOf` at `#L121`, which resolves the
+  booleans through `shared/src/permissions.ts#L48` over the layers `#L36` returns. And the data
+  that decided it — the tenant's setup and the person's own layer — is in two records, not in any
+  file a reader can open.
+- **How a screen gets its data cannot be read off the screen.** The one way is handed down in
+  `PageProps` (`ui/src/page.ts#L6`), and [the winner](#the-winner-named)'s third row records how
+  many screens import the client directly instead. Until that is one way, a reader opens the
+  particular screen's imports first.
+- **Two routes do not use the one error path**, so a wrong reply shape is not always explained by
+  `bff/src/errors.ts`; [the winner](#the-winner-named)'s fourth row names both.
 
 ## One home for one decision
 

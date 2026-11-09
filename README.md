@@ -38,3 +38,8 @@ pnpm fake
 
 It prints an address; open it with `?fake` after it, and sign in as `root` with any password.
 Ctrl-C stops it.
+
+## Inside
+
+[`docs/README.md`](docs/README.md) is the index: what is seen when something is wrong and where its
+answer is, then what each document holds and the order to read them.
