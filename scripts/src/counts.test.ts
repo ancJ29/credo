@@ -111,7 +111,11 @@ describe('counts, on a repository the test controls', () => {
   it('prints a blind spot beside every count, and names what each cannot see', () => {
     const blind = run(['rules']).out.filter((line) => line.includes('blind spot: '));
     expect(blind).toHaveLength(5);
-    expect(blind.join('\n')).toMatch(/only the sites named/);
+    expect(blind.join('\n')).toMatch(/by not holding the old copy/);
+    expect(blind.join('\n')).toMatch(/only through a wrapper or only as a type/);
+    expect(blind.join('\n')).toMatch(/can never fire/);
+    expect(blind.join('\n')).toMatch(/scope is the `.ts` files directly in bff\/src/);
+    expect(blind.join('\n')).toMatch(/ui\/src\/mock are not in it/);
     expect(blind.join('\n')).toMatch(/a human judgement/);
     expect(blind.join('\n')).toMatch(/moving a call behind a wrapper/);
     expect(blind.join('\n')).toMatch(/is not importing the client/);

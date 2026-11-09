@@ -166,7 +166,7 @@ function countHomes(io: Io, tracked: string[], rules: Rules): Count {
     what: "named copy sites read their decision's one home",
     notes,
     blind:
-      "only the sites named in this script's RULES are looked at, so a copy anywhere else, or of a sixth decision, is invisible; a site is judged by the idiom of its old copy, so a copy written another way reads as followed.",
+      'a site passes by not holding the old copy, never by showing that it reads the home, so a site that reads it only through a wrapper or only as a type passes without the check seeing why, and a site with nothing to do with the decision would pass too; the site list is written by hand, so the denominator is a judgement and a new copy in a file not listed is invisible; `codeOf` drops comment lines, so a `copy` pattern aimed at a phrase that now lives only in a comment can never fire, which is the case for the listing-under-a-prefix clause, whose phrase survives only in its home and in two test files.',
   };
 }
 
@@ -233,7 +233,7 @@ function countStorage(io: Io, tracked: string[], rules: Rules): Count {
       `inline, by file that registers routes: ${closures.length ? closures.join(', ') : 'none'}`,
     ],
     blind:
-      "a call is `storage.<method>(` and nothing else: a client held under another name, or reached through a helper that wraps it, is not seen, so moving a call behind a wrapper reads as an improvement; a file is 'a route file' when it registers a route at all.",
+      "scope is the `.ts` files directly in bff/src, tests left out; storage calls made elsewhere (bff/tests, scripts/src and its demo folder) are not counted. A call is `storage.<method>(` and nothing else: a client held under another name, or reached through a helper that wraps it, is not seen, so moving a call behind a wrapper reads as an improvement; a file is 'a route file' when it registers a route at all.",
   };
 }
 
@@ -248,7 +248,7 @@ function countScreens(io: Io, tracked: string[], rules: Rules): Count {
     what: 'screens take what they need without importing the API module',
     notes: [`importing it: ${direct.length}`],
     blind:
-      'every non-test .tsx in ui/src is a screen, the app shells and the entry included; importing `./api` is not importing the client, since `ApiError` and the result types come from it too, so this reads high on what the rule forbids.',
+      "scope is the non-test `.tsx` files directly in ui/src, the app shells and the entry included; the `.tsx` files in ui/src/mock are not in it. Importing `./api` is not importing the client: `ApiError`, `hopOf` and the result types come from it too, and many of the importing files take only the `Api` type or only an error class, which by the rule's own words is not the breach it is about (only the entry builds the client with `createApi`), so the honest reading of this count is much closer to compliant than the number looks.",
   };
 }
 
