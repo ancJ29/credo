@@ -1,14 +1,17 @@
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type Language } from '@credo/shared';
+import { type EnvName, type Language } from '@credo/shared';
 import { comparePictures, decodePng, type Difference } from '@credo/scripts/pixels';
 import { expect, type Locator, type Page } from '@playwright/test';
 
 /** The widths the visual report draws a screen at; every walk shoots the same three. */
 export { WIDTHS } from '@credo/shared';
 
-export const required = (name: string, how = 'run this through `pnpm stack -- …`') => {
+export const required = (
+  name: EnvName | 'CREDO_SHOTS_DIR',
+  how = 'run this through `pnpm stack -- …`',
+) => {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set: ${how}`);
   return value;
