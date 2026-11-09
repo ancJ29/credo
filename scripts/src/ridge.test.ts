@@ -73,13 +73,19 @@ function memoryCStorage(options: { registered?: boolean } = {}) {
   return { records, call };
 }
 
-function run(argv: string[], env: Record<string, string | undefined>, call: typeof fetch) {
+function run(
+  argv: string[],
+  env: Record<string, string | undefined>,
+  call: typeof fetch,
+  now?: () => number,
+) {
   const lines = { out: [] as string[], shown: [] as string[], err: [] as string[] };
   const io: RidgeIo = {
     out: (line) => lines.out.push(line),
     show: (line) => lines.shown.push(line),
     err: (line) => lines.err.push(line),
     fetch: call,
+    now,
   };
   return runRidge(argv, env, io).then((status) => ({ status, ...lines }));
 }
@@ -372,6 +378,116 @@ describe('what the ops scripts ask of ridge', () => {
     expect(await run(['untenant', CHECK], KEYS, refuseTenantRemoval)).toMatchObject({
       status: 1,
       err: [`error: the client ${CHECK} is out of the list but 2 records are left`],
+    });
+  });
+
+  describe('clear-checks', () => {
+    // The sweep's clock: 2026-11-07 12:00:00 UTC, so two hours back is 10:00:00.
+    const NOW = Date.UTC(2026, 10, 7, 12, 0, 0);
+    const OLD = 'check-20261107t095959z';
+    const OLD_TOO = 'check-20261106t235900z';
+    const YOUNG = 'check-20261107t100001z';
+    const EDGE = 'check-20261107t100000z';
+    const tenant = (call: typeof fetch, code: string) => run(['tenant', code, 'Co'], KEYS, call);
+    const sweep = (call: typeof fetch) => run(['clear-checks'], KEYS, call, () => NOW);
+
+    it('row 1: deletes a check client older than two hours whole, and a line names it', async () => {
+      const { records, call } = memoryCStorage();
+      await tenant(call, OLD);
+      await tenant(call, OLD_TOO);
+
+      const result = await sweep(call);
+
+      expect(result).toMatchObject({ status: 0, err: [] });
+      expect([...result.out].sort()).toEqual(
+        [
+          `client ${OLD} deleted`,
+          `client ${OLD_TOO} deleted`,
+          'clear-checks: 2 deleted, 0 failed',
+        ].sort(),
+      );
+      expect(result.out.at(-1)).toBe('clear-checks: 2 deleted, 0 failed');
+      expect(records.size).toBe(0);
+    });
+
+    it('row 2: leaves a check client younger than two hours, or exactly two, with all its records', async () => {
+      const { records, call } = memoryCStorage();
+      await tenant(call, YOUNG);
+      await tenant(call, EDGE);
+
+      const result = await sweep(call);
+
+      expect(result).toMatchObject({ status: 0, out: ['clear-checks: 0 deleted, 0 failed'] });
+      expect(records.size).toBe(6);
+    });
+
+    it('row 3: never selects a real client’s code, however old', async () => {
+      const { records, call } = memoryCStorage();
+      for (const code of [
+        'acme',
+        'check-acme',
+        'old-check-20200101t000000z',
+        'check-20200101t000000z-x',
+      ])
+        await tenant(call, code);
+      await tenant(call, OLD);
+
+      const result = await sweep(call);
+
+      expect(result.out).toEqual([`client ${OLD} deleted`, 'clear-checks: 1 deleted, 0 failed']);
+      expect(records.size).toBe(12);
+    });
+
+    it('row 4: leaves a code whose stamp is not a real moment', async () => {
+      const { records, call } = memoryCStorage();
+      for (const code of [
+        'check-20261307t000000z',
+        'check-20260230t000000z',
+        'check-20200101t250000z',
+      ])
+        await tenant(call, code);
+
+      const result = await sweep(call);
+
+      expect(result.out).toEqual(['clear-checks: 0 deleted, 0 failed']);
+      expect(records.size).toBe(9);
+    });
+
+    it('row 5: reports a delete that fails, still runs the rest, and exits 1', async () => {
+      const { records, call } = memoryCStorage();
+      await tenant(call, OLD);
+      await tenant(call, OLD_TOO);
+      const refuseOneIndex: typeof fetch = (input, init) =>
+        init?.method === 'DELETE' && urlOf(input).endsWith(encodeURIComponent(`client.${OLD}`))
+          ? Promise.resolve(new Response('{}', { status: 412 }))
+          : call(input, init);
+
+      const result = await sweep(refuseOneIndex);
+
+      expect(result).toMatchObject({
+        status: 1,
+        err: [`error: nothing was deleted: the client ${OLD} changed while it was being read`],
+        out: [`client ${OLD_TOO} deleted`, 'clear-checks: 1 deleted, 1 failed'],
+      });
+      expect(records.has(`client.${OLD}`)).toBe(true);
+      expect(records.has(`client.${OLD_TOO}`)).toBe(false);
+    });
+
+    it('on a service with no clients, says nothing was due', async () => {
+      const { call } = memoryCStorage();
+
+      expect(await sweep(call)).toMatchObject({
+        status: 0,
+        out: ['clear-checks: 0 deleted, 0 failed'],
+      });
+    });
+
+    it('reads the real clock when none is given', async () => {
+      const { records, call } = memoryCStorage();
+      await tenant(call, OLD);
+
+      expect(await run(['clear-checks'], KEYS, call)).toMatchObject({ status: 0 });
+      expect(records.size).toBe(0);
     });
   });
 

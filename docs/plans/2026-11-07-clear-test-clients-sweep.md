@@ -35,12 +35,15 @@ Gate line for `scripts`: no package here has a `check` script, only the root doe
 steps are `pnpm --filter @credo/scripts run typecheck`, `pnpm exec eslint .`, `pnpm exec prettier --check .`,
 `pnpm --filter @credo/scripts run test`, `pnpm exec knip`.
 
-- [ ] **1. The sweep in `ridge`, on invented records, 12 min.** Beside `CHECK_CODE`: a reader of the stamp out of the code,
+- [x] **1. The sweep in `ridge`, on invented records, 12 min.** Beside `CHECK_CODE`: a reader of the stamp out of the code,
   `CHECK_AGE_HOURS = 2`, and a `clear-checks` command calling `listClients`, keeping only `CHECK_CODE` matches older than the
   age, deleting each by `deleteClient` as `untenant` does (`#L135-L160`, **the nil-uuid `by` at `#L142` included**), printing
   a line per client, exiting 1 if any failed. `USAGE` (`#L35-L36`) and the module docstring (`#L37-L50`) are updated.
   *Done when:* `pnpm --filter @credo/scripts run test` exits 0 with new `ridge.test.ts` cases over `memoryCStorage` and a
   fixed `io.now`, rows 1 to 5 below, coverage 100 % (`scripts/vitest.config.ts#L46`); the five steps pass.
+  *Done 2026-11-09:* rows 1 to 5 red on the old `ridge.ts`, rows 2 to 4 each shown red by a named mutation of the new code
+  and reverted; the five steps exit 0, last line `== exit 0 (typecheck 0 eslint 0 prettier 0 test 0 knip 0)`, 314 tests,
+  `logs/20261109-0908-scripts-gate-clear-test-clients.log`. The deletion is one shared helper, `untenant` calling it too.
 - [ ] **2. `ops/check.sh` runs it, 8 min.** One `ridge_cli clear-checks` after `bff_env_read` and before the create
   (`ops/check.sh#L161-L169`), **inside the tunnel that block already opened**, warning on failure like `#L44` rather than
   reddening the run. **Closes `docs/open-items.md` item 117**; the entry is deleted. *Done when:*

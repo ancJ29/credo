@@ -1,7 +1,8 @@
-import { createClient, deleteClient } from '@credo/bff/clients';
+import { createClient, deleteClient, listClients } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
+  type CStorageClient,
   clientCodeSchema,
   createCStorageClient,
   joinLinkPath,
@@ -30,16 +31,75 @@ export type RidgeIo = {
 };
 
 /** The codes ops/check.sh gives its client: check-20261107t085500z. */
-const CHECK_CODE = /^check-\d{8}t\d{6}z$/;
+const CHECK_CODE = /^check-(\d{4})(\d{2})(\d{2})t(\d{2})(\d{2})(\d{2})z$/;
+
+/** How old a check client must be before `clear-checks` deletes it. The check step is capped at 8
+ * minutes (.github/workflows/ci.yml), so a live check client is at most that old; two hours is
+ * fifteen times it, and a shorter age would take a concurrent deploy's client mid-check. */
+const CHECK_AGE_HOURS = 2;
+
+/** When a check client was made, read from its own code (UTC); null for a code that is not a check
+ * code, or whose stamp is not a real moment, such as a thirteenth month. */
+function checkMadeAt(code: string): number | null {
+  const found = CHECK_CODE.exec(code);
+  if (!found) return null;
+  const parts = found.slice(1).map(Number) as [number, number, number, number, number, number];
+  const at = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]));
+  const [year, month, day, hour, minute, second] = [
+    at.getUTCFullYear(),
+    at.getUTCMonth() + 1,
+    at.getUTCDate(),
+    at.getUTCHours(),
+    at.getUTCMinutes(),
+    at.getUTCSeconds(),
+  ];
+  return [year, month, day, hour, minute, second].every((part, i) => part === parts[i])
+    ? at.getTime()
+    : null;
+}
+
+/** Deletes the check client `code` whole, as the console's delete does but with the nil uuid for
+ * `by` (the terminal has no operator); the line to print, or an Error saying what was left. */
+async function removeCheckClient(
+  storage: CStorageClient,
+  code: string,
+  now: () => number,
+): Promise<string> {
+  const held = await storage.getRecord(recordKeys.client(code));
+  const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
+  // One press: a bound of 200 records is far over the check's three.
+  const done = await deleteClient(storage, {
+    code,
+    index,
+    // the schema wants an operator's uuid; the terminal has none, so the nil one
+    by: '00000000-0000-0000-0000-000000000000',
+    now,
+  });
+  if (done === 'unknown') return `no client ${code} to delete`;
+  if (done === 'busy') {
+    throw new Error(
+      `nothing was deleted: an earlier deletion under the code ${code} is still unfinished`,
+    );
+  }
+  if (done === 'moved') {
+    throw new Error(`nothing was deleted: the client ${code} changed while it was being read`);
+  }
+  if (done.left !== 0) {
+    throw new Error(`the client ${code} is out of the list but ${done.left} records are left`);
+  }
+  return `client ${code} deleted`;
+}
 
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | seed | root-password [--check] <code>…';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed | root-password [--check] <code>…';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
  * the BFF's service registered with the super-admin key, the operator's account, and a client made
  * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
- * (the check's client, with the keys the create used; it prints how many records went). The connection comes from the environment (C_STORAGE_URL and the BFF's
+ * (the check's client, with the keys the create used; it prints how many records went), and
+ * `clear-checks` deletes every check client older than {@link CHECK_AGE_HOURS}, by the age in its
+ * code, one line each, the rest still going after a failure and the exit 1. The connection comes from the environment (C_STORAGE_URL and the BFF's
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
  * printed once: the operator's to `show`, a client's root's to `out`. `seed` brings every mapped copy
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
@@ -132,33 +192,28 @@ export async function runRidge(
           'untenant deletes only the deploy check’s own client, check-<date>t<time>z',
         );
       }
-      const held = await client().getRecord(recordKeys.client(code));
-      const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
-      // One press: a bound of 200 records is far over the check's three.
-      const done = await deleteClient(client(), {
-        code,
-        index,
-        // the schema wants an operator's uuid; the terminal has none, so the nil one
-        by: '00000000-0000-0000-0000-000000000000',
-        now: io.now ?? Date.now,
-      });
-      if (done === 'unknown') {
-        io.out(`no client ${code} to delete`);
-        return 0;
-      }
-      if (done === 'busy') {
-        throw new Error(
-          `nothing was deleted: an earlier deletion under the code ${code} is still unfinished`,
-        );
-      }
-      if (done === 'moved') {
-        throw new Error(`nothing was deleted: the client ${code} changed while it was being read`);
-      }
-      if (done.left !== 0) {
-        throw new Error(`the client ${code} is out of the list but ${done.left} records are left`);
-      }
-      io.out(`client ${code} deleted`);
+      io.out(await removeCheckClient(client(), code, io.now ?? Date.now));
       return 0;
+    }
+
+    if (command === 'clear-checks') {
+      const now = io.now ?? Date.now;
+      const oldest = now() - CHECK_AGE_HOURS * 60 * 60 * 1000;
+      const stale = (await listClients(client())).filter((item) => {
+        const madeAt = checkMadeAt(item.code);
+        return madeAt !== null && madeAt < oldest;
+      });
+      let failed = 0;
+      for (const { code } of stale) {
+        try {
+          io.out(await removeCheckClient(client(), code, now));
+        } catch (error) {
+          failed += 1;
+          io.err(`error: ${(error as Error).message}`);
+        }
+      }
+      io.out(`clear-checks: ${stale.length - failed} deleted, ${failed} failed`);
+      return failed === 0 ? 0 : 1;
     }
 
     if (command === 'seed') {
