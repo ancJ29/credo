@@ -54,4 +54,5 @@ Copy `lists.ts` for a shape and its bounds: `customerSchema` and the type `Custo
 
 - The big picture: [`docs/architecture.md`](../docs/architecture.md#at-a-glance).
 - The cross-package rules: [`docs/conventions/code.md`](../docs/conventions/code.md).
-- The sibling to copy: [`c-storage/CLAUDE.md`](../c-storage/CLAUDE.md), the one guideline written so far.
+- The sibling to copy: [`bff/CLAUDE.md`](../bff/CLAUDE.md), TypeScript like this package and the heaviest reader of
+  what it declares; its section 2 is the other side of SH1.
