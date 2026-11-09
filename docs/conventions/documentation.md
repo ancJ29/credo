@@ -117,9 +117,10 @@ resolves twice lets a check pass on the wrong declaration. In Go a method is cit
 `func (s *Server) handle(`, not `handle`, and its case counts.
 
 *Who it binds:* the living documents, which must be true now (the conventions, the architecture
-page, the index and every `CLAUDE.md`), and not plans or recaps, which were written once and were
-true then. *When:* it binds new writing, and an existing line citation converts when a piece touches
-it, not in a sweep of its own. *What it cannot hold:* a symbol that still exists and has changed its
+page, the index, every `CLAUDE.md`, the root `README.md` and `docs/client-readiness.md`), and not
+plans or recaps, which were written once and were true then. *When:* it binds new writing, and an
+existing line citation converts when a piece touches it, not in a sweep of its own; its line is never
+checked, but a line citation whose file has gone is red today. *What it cannot hold:* a symbol that still exists and has changed its
 meaning passes every grep (a constant that became an import still resolves); only the reader of the
 change sees that, so a piece that moves a decision rereads the citations to it.
 

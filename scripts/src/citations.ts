@@ -5,8 +5,9 @@ import { posix } from 'node:path';
  * (`docs/conventions/documentation.md`'s "How a living document cites code"). For every citation
  * in a living document this greps THE NAMED FILE, never the repository, for a declaration of the
  * named symbol, key or fragment, and is red on a file that is not there, a name that does not
- * resolve, and a name declared twice. A line citation (`path#L12`) is counted per document, not
- * reddened: it converts when a piece touches it, and the count is the conversion's progress.
+ * resolve, and a name declared twice. A line citation (`path#L12`) is counted per document and its
+ * line is never checked: it converts when a piece touches it, and the count is the conversion's
+ * progress. But its FILE is checked like any other: a line citation whose path has gone is red.
  * What it cannot see: a symbol that still exists and has changed its meaning.
  */
 
@@ -237,7 +238,7 @@ export function describeRun(report: Report): string {
     `  path set: ${LIVING.map((one) => one.show).join(' | ')}`,
     `  documents found: ${report.documents.length}`,
     '  checked: a file and its symbol, key or quoted fragment, a symbol "in" a file, a file path alone;',
-    '  counted only: line citations (path#L12), which convert when a piece touches them;',
+    '  counted only: line citations (path#L12), whose line is never checked and which convert when a piece touches them; a line citation whose file has gone is red;',
     '  not covered: Markdown links and heading anchors, and any document outside the set;',
     `  markdown outside the set (folder count): ${outside}`,
     '  document                           named citations   line citations left',
