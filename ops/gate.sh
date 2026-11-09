@@ -6,7 +6,11 @@
 #   configs are repo-wide (knip.json is one workspace map).
 # LOG: <credo root>/logs/<date>-<time>-gate-<pkg>.log, ending == exit <code> from ops/lib.sh.
 # Exit: 0 green, 1 any step red. Not covered: c-storage's own gate, `make check` in c-storage/.
-# Step 1 of docs/plans/2026-11-09-one-gate-command.md: no lock, no load wait yet.
+# THE LOCK: one whole run at a time on this machine, <credo root>/.gate-lock (GATE_LOCK names another, for a
+#   test), taken once the one-minute load is under GATE_LOAD_MAX (8) in one wait loop that logs each wait with the
+#   owner; gives up with exit 1 after GATE_WAIT_MAX seconds (1800), never taking a lock it did not make. An
+#   unreadable load refuses. Released from the EXIT hook, logged with its time. Under CI there is none, and the
+#   log says so. A call made by a gate that holds the lock (GATE_HOLDER is its pid) does not take it again.
 set -uo pipefail
 
 # shellcheck source=lib.sh
@@ -28,8 +32,66 @@ else
 fi
 
 STEPS=5
+root=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")
+LOCK=${GATE_LOCK:-$root/.gate-lock}
+LOAD_MAX=${GATE_LOAD_MAX:-8}
+WAIT_MAX=${GATE_WAIT_MAX:-1800}
+POLL=${GATE_POLL:-10}
+HELD=no
+
+# load_now: the one-minute load, from uptime (macOS "load averages: 1.88 ...", Ubuntu "load average: 1.88, ...")
+load_now() { uptime | sed -n 's/.*load averages*: *\([0-9][0-9.,]*\).*/\1/p' | tr ',' '.'; }
+
+# cleanup_extra: lib.sh's on_exit calls it on every way out. Removes the lock only if this run made it.
+cleanup_extra() {
+  if [ "$HELD" = yes ]; then
+    rm -f "$LOCK/owner"
+    rmdir "$LOCK"
+    HELD=no
+    if [ -d "$LOCK" ]; then
+      echo "lock $LOCK released $(date '+%H:%M:%S') but still present: lock free at the end: NO"
+    else
+      echo "lock $LOCK released $(date '+%H:%M:%S'): lock free at the end: yes"
+    fi
+  fi
+}
+
+# take_lock: waits for the load under the ceiling and the lock free, in one loop, and takes it.
+take_lock() {
+  local start load owner
+  start=$(date +%s)
+  while :; do
+    load=$(load_now)
+    [[ $load =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "the Mac's load could not be read from uptime (got '${load}'): not taking the lock"
+    if ! awk -v l="$load" -v m="$LOAD_MAX" 'BEGIN { exit !(l < m) }'; then
+      echo "waiting: one-minute load $load is not under $LOAD_MAX ($(date '+%H:%M:%S'))"
+    elif mkdir "$LOCK" 2>/dev/null; then
+      HELD=yes
+      printf 'pid=%s log=%s started=%s\n' "$$" "$LOG" "$(date '+%Y-%m-%d %H:%M:%S')" >"$LOCK/owner"
+      export GATE_HOLDER=$$
+      echo "lock $LOCK taken $(date '+%H:%M:%S') at load $load"
+      return 0
+    else
+      owner=$(cat "$LOCK/owner" 2>/dev/null)
+      echo "waiting: lock $LOCK is held by: ${owner:-owner unknown} ($(date '+%H:%M:%S'))"
+    fi
+    if [ $(($(date +%s) - start)) -ge "$WAIT_MAX" ]; then
+      die "gave up after ${WAIT_MAX}s waiting for the load and the lock; the lock is not ours and is left as it is"
+    fi
+    sleep "$POLL"
+  done
+}
+
 log_start gate "$label"
 cd "$REPO_DIR" || die "cannot enter $REPO_DIR"
+
+if [ -n "${CI:-}" ]; then
+  echo "lock: skipped, CI is set (the runner is its own machine); load wait: skipped"
+elif [ -n "${GATE_HOLDER:-}" ] && grep -q "^pid=$GATE_HOLDER " "$LOCK/owner" 2>/dev/null; then
+  echo "lock: not taken, held by the calling gate (pid $GATE_HOLDER)"
+else
+  take_lock
+fi
 
 results=''
 # has_script <dir> <script>: whether that package's package.json defines it

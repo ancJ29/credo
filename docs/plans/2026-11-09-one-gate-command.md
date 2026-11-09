@@ -112,9 +112,10 @@ which is every branch running this gate.
       lacks is a named `skipped:` line stating only the fact; the `== steps:` line shows `skip` for a
       step that ran nowhere and `<code>+<n>skipped` where some packages skipped it.
       *Evidence:* logs/2026-11-09-100407-gate-all.log: 6 typecheck results, 5 test results, `skipped: @credo/walk has no test script`, `test 0+1skipped`, `== green`, `== exit 0`; logs/2026-11-09-100335-gate-walk.log: `test skip`.
-- [ ] **3. The lock, the load wait, the trap, the CI skip, the nesting guard, 10 min.** Cases 8 to
+- [x] **3. The lock, the load wait, the trap, the CI skip, the nesting guard, 10 min.** Cases 8 to
       12. *Done when:* with `.gate-lock` present the run logs its wait and the owner; after a
       forced red the lock is gone; `CI=1` logs the skip.
+      *Evidence:* held lock waits with its owner and gives up leaving it (GATE_LOCK scratch, GATE_WAIT_MAX); forced prettier red logs/2026-11-09-101222-gate-shared.log: taken 10:12:22, released 10:12:50, free at the end, `.gate-lock` absent; `CI=1` logs/2026-11-09-101250-gate-shared.log: skip line, no lock. Nesting: GATE_HOLDER equal to the owner pid skips the take, a stale one waits. Unreadable load refuses.
 - [ ] **4. The seven `check` scripts; the root's chain goes, 8 min.** Six packages call
       `bash ../ops/gate.sh <pkg>`; the root calls it with every package. *Done when:*
       `pnpm --filter @credo/shared check` ends `== exit 0`; `git grep -c '"check":' -- '*/package.json'`
