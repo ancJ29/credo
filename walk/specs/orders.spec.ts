@@ -1,4 +1,4 @@
-import { addDays, type Language } from '@credo/shared';
+import { addDays, type Language, STACK_ENV } from '@credo/shared';
 import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -56,7 +56,7 @@ const exactly = (label: string) =>
 type Seeded = { code: string; rootPassword: string; people: Record<string, string> };
 
 async function seed(): Promise<Seeded> {
-  const reply = await fetch(required('CREDO_SEED_URL'), { method: 'POST' });
+  const reply = await fetch(required(STACK_ENV.CREDO_SEED_URL), { method: 'POST' });
   if (!reply.ok) throw new Error(`the stack's seed door answered ${reply.status}`);
   return (await reply.json()) as Seeded;
 }

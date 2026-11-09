@@ -22,6 +22,9 @@ type Connection = {
 };
 
 const DEFAULT_TIMEOUT_MS = 5000;
+/** How often a write over a record that moved is read again and tried again before the call gives
+ * up: the one bound every back-end retry loop reads, beside how long one call to storage waits. */
+export const ATTEMPTS = 3;
 /** How long the services status waits for c-storage's `/health` (the plan's row 38). */
 const HEALTH_TIMEOUT_MS = 3000;
 

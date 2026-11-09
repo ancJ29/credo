@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { constants, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { STACK_ENV } from '@credo/shared';
 import { type FakeArtifacts, type RunningFake, withFake } from './fake';
 import { startDemo, type DemoCopy } from './demo/apply';
 import { vietnamToday } from './demo/days';
@@ -129,16 +130,16 @@ export const runStack = (
       up: withStack,
       url: (stack) => stack.url,
       env: (stack) => ({
-        CREDO_URL: stack.url,
-        CREDO_CLIENT_CODE: stack.clientCode,
-        CREDO_ROOT_NAME: stack.rootName,
-        CREDO_ROOT_PASSWORD: stack.rootPassword,
-        CREDO_OPERATOR_NAME: stack.operatorName,
-        CREDO_OPERATOR_HANDLE: stack.operatorHandle,
-        CREDO_OPERATOR_PASSKEY: stack.operatorPasskey,
-        CREDO_OPERATOR_LINK: stack.operatorLink,
-        CREDO_PEOPLE: JSON.stringify(stack.people),
-        CREDO_SEED_URL: stack.seedUrl,
+        [STACK_ENV.CREDO_URL]: stack.url,
+        [STACK_ENV.CREDO_CLIENT_CODE]: stack.clientCode,
+        [STACK_ENV.CREDO_ROOT_NAME]: stack.rootName,
+        [STACK_ENV.CREDO_ROOT_PASSWORD]: stack.rootPassword,
+        [STACK_ENV.CREDO_OPERATOR_NAME]: stack.operatorName,
+        [STACK_ENV.CREDO_OPERATOR_HANDLE]: stack.operatorHandle,
+        [STACK_ENV.CREDO_OPERATOR_PASSKEY]: stack.operatorPasskey,
+        [STACK_ENV.CREDO_OPERATOR_LINK]: stack.operatorLink,
+        [STACK_ENV.CREDO_PEOPLE]: JSON.stringify(stack.people),
+        [STACK_ENV.CREDO_SEED_URL]: stack.seedUrl,
       }),
       waiting: (stack) => [
         `the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`,
@@ -163,7 +164,10 @@ export const runFake = (
       build,
       up: withFake,
       url: (fake) => fake.url,
-      env: (fake) => ({ CREDO_URL: fake.url, CREDO_CLIENT_CODE: fake.clientCode }),
+      env: (fake) => ({
+        [STACK_ENV.CREDO_URL]: fake.url,
+        [STACK_ENV.CREDO_CLIENT_CODE]: fake.clientCode,
+      }),
       waiting: (fake) => [`open ${fake.url}/?fake, any password signs ${fake.rootName} in`],
     },
     out,
@@ -202,12 +206,12 @@ export const runDemo = (
         }),
       url: (demo) => demo.url,
       env: (demo) => ({
-        CREDO_URL: demo.url,
-        CREDO_OPERATOR_NAME: demo.operatorName,
-        CREDO_OPERATOR_HANDLE: demo.operatorHandle,
-        CREDO_OPERATOR_PASSKEY: demo.operatorPasskey,
-        CREDO_OPERATOR_LINK: demo.operatorLink,
-        CREDO_COPIES: JSON.stringify(
+        [STACK_ENV.CREDO_URL]: demo.url,
+        [STACK_ENV.CREDO_OPERATOR_NAME]: demo.operatorName,
+        [STACK_ENV.CREDO_OPERATOR_HANDLE]: demo.operatorHandle,
+        [STACK_ENV.CREDO_OPERATOR_PASSKEY]: demo.operatorPasskey,
+        [STACK_ENV.CREDO_OPERATOR_LINK]: demo.operatorLink,
+        [STACK_ENV.CREDO_COPIES]: JSON.stringify(
           demo.copies.map(({ code, partner, client, scenario, company, rootPassword }) => ({
             code,
             partner,

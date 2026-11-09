@@ -1,4 +1,4 @@
-import { LANGUAGES, type Language } from '@credo/shared';
+import { LANGUAGES, type Language, WIDTHS } from '@credo/shared';
 import {
   Container,
   Group,
@@ -13,7 +13,8 @@ import { Frame, type Scheme, type Width } from './Frame';
 import { SCREENS } from './screens';
 
 const SCHEMES: Scheme[] = ['light', 'dark'];
-const WIDTHS: Width[] = [390, 768, 1280];
+/** Narrowest first, as the filter lists them; the widths themselves are `shared`'s. */
+const WIDTH_LIST: Width[] = Object.values(WIDTHS).reverse();
 
 /** One filter: every value, or one. */
 function Filter<T extends string | number>({
@@ -66,7 +67,7 @@ export function MockPage() {
           <Group gap="lg">
             <Filter label="Language" values={LANGUAGES} value={language} onChange={setLanguage} />
             <Filter label="Theme" values={SCHEMES} value={scheme} onChange={setScheme} />
-            <Filter label="Width" values={WIDTHS} value={width} onChange={setWidth} />
+            <Filter label="Width" values={WIDTH_LIST} value={width} onChange={setWidth} />
           </Group>
           {SCREENS.map((screen) => (
             <Stack key={screen.number} gap="md" component="section">
@@ -81,7 +82,7 @@ export function MockPage() {
                   <Group align="flex-start" gap="md">
                     {pick(LANGUAGES, language).flatMap((lang) =>
                       pick(SCHEMES, scheme).flatMap((sch) =>
-                        pick(WIDTHS, width).map((w) => {
+                        pick(WIDTH_LIST, width).map((w) => {
                           const title = `${screen.number} ${state.id} · ${lang} · ${sch} · ${w}`;
                           return (
                             <Frame

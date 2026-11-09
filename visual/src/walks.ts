@@ -1,4 +1,4 @@
-import { addDays, driverDay, type Language } from '@credo/shared';
+import { addDays, driverDay, type Language, WIDTHS } from '@credo/shared';
 import {
   DEMO_CODE,
   DEMO_COLLEAGUE_ID,
@@ -23,7 +23,7 @@ export type Bilingual = Record<Language, string>;
  * The widths a screen is drawn at, so the app's breakpoints answer to each, widest first: every
  * walk screen is drawn at all three, whoever the walk is for.
  */
-export const DEVICE_WIDTH = { pc: 1280, tablet: 768, phone: 390 } as const;
+export const DEVICE_WIDTH = WIDTHS;
 export type Device = keyof typeof DEVICE_WIDTH;
 export const DEVICE_LABEL: Record<Device, string> = { pc: 'PC', tablet: 'tablet', phone: 'phone' };
 export type DeviceWidth = (typeof DEVICE_WIDTH)[Device];

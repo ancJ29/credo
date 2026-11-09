@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { AUTH_HEADER } from '@credo/shared';
 import {
   DEMO_INVITED_NAME,
@@ -148,13 +148,13 @@ async function walkFull(page: Page, language: Language, width: number) {
   const picture = (screen: string, mask: Locator[] = []) =>
     shot(page, screen, language, width, mask);
   const words = DICTIONARIES[language];
-  const link = required('CREDO_OPERATOR_LINK');
+  const link = required(STACK_ENV.CREDO_OPERATOR_LINK);
   const title = (heading: string) => page.getByRole('heading', { level: 2, name: heading });
   const field = (label: string) => page.getByRole('textbox', { name: exactly(label) });
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
   const alert = (text: string) => expect(page.getByRole('alert')).toHaveText(text);
   const authenticator = await virtualAuthenticator(page);
-  const handle = required('CREDO_OPERATOR_HANDLE');
+  const handle = required(STACK_ENV.CREDO_OPERATOR_HANDLE);
 
   // 1. The stack's link opened and not used: whose it is and who made it, as the fake's.
   await openFull(page, language, null, link);

@@ -19,12 +19,20 @@ export type PageProps = {
  * reads who the person is again. */
 export type Refusal = Pick<PageProps, 'onSignedOut'> & Partial<Pick<PageProps, 'onForbidden'>>;
 
+/** What a 403 means on a page's own save: the BFF refuses this person the act, whatever the page was
+ * doing. Only that. A 403 read elsewhere means something else (`changePassword` in `api.ts` reads it
+ * as the current password being wrong, `newOperatorLink` as oneself), so those do not ask here.
+ * Reader-held: a predicate is a value, so nothing but review stops another copy of this check. */
+export function isForbidden(error: unknown) {
+  return error instanceof ApiError && error.status === 403;
+}
+
 /** A refusal is the app's to answer, whatever the page was doing: a 401 signs the person out, and a
  * 403 reads `me` again, since what they may do has changed. The redraw replaces this page if it is
  * no longer theirs; if it still is, the page shows its failure and offers another try. */
 export function refusal(error: unknown, { onSignedOut, onForbidden }: Refusal) {
   if (error instanceof ApiError && error.status === 401) onSignedOut();
-  if (error instanceof ApiError && error.status === 403) onForbidden?.();
+  if (isForbidden(error)) onForbidden?.();
 }
 
 /** A page's data as one state, read again when `deps` change or `reload` is called. */

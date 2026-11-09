@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import {
+  ATTEMPTS,
   CStorageError,
   type CStorageClient,
   deviceIdSchema,
@@ -22,9 +23,6 @@ export const OPERATOR_SESSION = {
   gapMs: 5 * 60 * 1000,
 };
 export type Sliding = typeof OPERATOR_SESSION;
-
-/** How often a write on a moved session is re-read and tried again before giving up. */
-const ATTEMPTS = 3;
 
 /** A handle is `<session id>.<secret>`: the minted id locates the record, and the 32 random bytes
  * of the secret are the proof. */

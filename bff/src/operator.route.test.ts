@@ -573,7 +573,7 @@ describe('The operator is shown every client on the stack, newest first, from th
 
   it('logs each of those 500s by its kind, holding neither the key nor a value', async () => {
     const broken = {
-      'the client list is longer than c-storage returns': { records: [], more: true },
+      'the client index list is longer than c-storage returns': { records: [], more: true },
       'a client index record does not parse': {
         records: [
           { key: 'client.secret-co', data: { id: 'not an id', name: 'Secret Name' }, tag: 'x' },
