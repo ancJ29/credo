@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { CustomerForm } from './CustomerPage';
-import { isForbidden, type PageProps, refusal } from '../../page';
+import { type PageProps, refusal } from '../../page';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
@@ -36,8 +36,7 @@ export function AddCustomerPage(page: PageProps) {
         return;
       }
     } catch (error) {
-      refusal(error, page);
-      setOutcome(isForbidden(error) ? 'forbidden' : 'failed');
+      setOutcome(refusal(error, page) === 'forbidden' ? 'forbidden' : 'failed');
     }
     setSaving(false);
   }

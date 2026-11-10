@@ -29,6 +29,16 @@ describe('a refusal on a page', () => {
   });
 });
 
+describe('a refusal names its kind', () => {
+  it('Returns signedOut on a 401, forbidden on a 403 and failed otherwise', () => {
+    const page = { onSignedOut: vi.fn(), onForbidden: vi.fn() };
+    expect(refusal(new ApiError(401), page)).toBe('signedOut');
+    expect(refusal(new ApiError(403), page)).toBe('forbidden');
+    expect(refusal(new ApiError(503), page)).toBe('failed');
+    expect(refusal(new TypeError('boom'), page)).toBe('failed');
+  });
+});
+
 describe('a refusal on a page with no 403 to answer', () => {
   it('A 403 is the page’s own failure there, and a 401 still signs out', () => {
     const onSignedOut = vi.fn();

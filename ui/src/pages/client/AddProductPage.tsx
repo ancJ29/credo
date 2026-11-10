@@ -3,7 +3,7 @@ import { Alert, Button, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
-import { isForbidden, type PageProps, refusal } from '../../page';
+import { type PageProps, refusal } from '../../page';
 import { ProductForm } from './ProductPage';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
@@ -39,8 +39,7 @@ export function AddProductPage(page: PageProps) {
         return;
       }
     } catch (error) {
-      refusal(error, page);
-      setOutcome(isForbidden(error) ? 'forbidden' : 'failed');
+      setOutcome(refusal(error, page) === 'forbidden' ? 'forbidden' : 'failed');
     }
     setSaving(false);
   }

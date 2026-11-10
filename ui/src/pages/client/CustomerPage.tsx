@@ -7,7 +7,7 @@ import { DetailCard, DetailColumns, FieldPair } from '../../parts/DetailCards';
 import { Loaded } from '../../frame/Loaded';
 import { textIn } from '../../listSheet';
 import { mergeExtra } from '../../parts/ownFields';
-import { isForbidden, type PageProps, refusal, useLoad } from '../../page';
+import { type PageProps, refusal, useLoad } from '../../page';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
 
@@ -44,8 +44,7 @@ export function CustomerPage(page: PageProps) {
         setOutcome('saved');
       }
     } catch (error) {
-      refusal(error, page);
-      setOutcome(isForbidden(error) ? 'forbidden' : 'failed');
+      setOutcome(refusal(error, page) === 'forbidden' ? 'forbidden' : 'failed');
     }
     setSaving(false);
   }
