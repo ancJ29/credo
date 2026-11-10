@@ -116,6 +116,15 @@ export type StartOptions = {
   seed?: typeof seedClient;
   dataDir?: string;
   ports?: Partial<StackFacts['ports']>;
+  /** Stands the stack up again on data a stopped stack left: the keys that open it, kept from the
+   * first start, and what the first start printed. The demo set is not made again, so the people
+   * and the operator's session are not known to the resumed stack. */
+  resume?: {
+    internalAccessKey: string;
+    superAdminKey: string;
+    service: { code: string; accessKey: string };
+    demo: { rootPassword: string; operatorLink: string };
+  };
 };
 
 export type StartedStack = RunningStack & { facts: StackFacts; stop: () => Promise<void> };
@@ -137,9 +146,10 @@ export async function startStack(
     for (const stopOne of stops.splice(0)) await stopOne();
   };
   try {
-    const internalAccessKey = key();
-    const superAdminKey = key();
-    const service = { code: SERVICE_CODE, accessKey: key() };
+    const { resume } = options;
+    const internalAccessKey = resume?.internalAccessKey ?? key();
+    const superAdminKey = resume?.superAdminKey ?? key();
+    const service = resume?.service ?? { code: SERVICE_CODE, accessKey: key() };
     const csPort = options.ports?.cStorage ?? (await freePort());
     const cStorageUrl = `http://127.0.0.1:${csPort}`;
     const cStorage = await startProcess(artifacts.cStorage, [], {
@@ -161,8 +171,7 @@ export async function startStack(
       serviceCode: service.code,
       accessKey: service.accessKey,
     });
-    const { rootPassword, people, invitedToken, operatorHandle, operatorPasskey } =
-      await seedDemo(storage);
+    const seededDemo = resume ? null : await seedDemo(storage);
     let seeded = 0;
     const seeding = createSeeding(
       () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
@@ -205,12 +214,14 @@ export async function startStack(
       url: appOrigin,
       clientCode: DEMO_CODE,
       rootName: ROOT_NAME,
-      rootPassword,
+      rootPassword: seededDemo ? seededDemo.rootPassword : resume!.demo.rootPassword,
       operatorName: OPERATOR_NAME,
-      operatorHandle,
-      operatorPasskey: JSON.stringify(operatorPasskey),
-      operatorLink: `${appOrigin}${joinLinkPath(invitedToken)}`,
-      people,
+      operatorHandle: seededDemo ? seededDemo.operatorHandle : '',
+      operatorPasskey: seededDemo ? JSON.stringify(seededDemo.operatorPasskey) : '',
+      operatorLink: seededDemo
+        ? `${appOrigin}${joinLinkPath(seededDemo.invitedToken)}`
+        : resume!.demo.operatorLink,
+      people: seededDemo ? seededDemo.people : {},
       seedUrl: `http://127.0.0.1:${seedPort}/seed`,
       dataDir,
       storage,

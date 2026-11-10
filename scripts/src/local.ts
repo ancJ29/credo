@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { listClients } from '@credo/bff/clients';
@@ -50,6 +50,9 @@ export type Handle = StackFacts & {
   dataDir: string;
   url: string;
   demo: { clientCode: string; rootName: string; rootPassword: string; operatorLink: string };
+  /** Set by `stop`, and by nothing else: the processes are ended on purpose and the data is kept
+   * to be resumed. A handle without it whose processes are gone is a crashed run. */
+  stopped?: { at: string };
 };
 
 /** Writes the handle for its owner alone, and never over one that exists: a second stack's
@@ -58,6 +61,15 @@ export async function writeHandle(paths: LocalPaths, handle: Handle) {
   await mkdir(paths.dir, { recursive: true, mode: 0o700 });
   await writeFile(paths.handle, JSON.stringify(handle, null, 2), { flag: 'wx', mode: 0o600 });
   await chmod(paths.handle, 0o600);
+}
+
+/** Replaces the handle in one step, for its owner alone: a stopped handle becomes a running one (or
+ * the other way) without a moment when neither exists, since its keys are all that opens the data. */
+async function replaceHandle(paths: LocalPaths, handle: Handle) {
+  const next = `${paths.handle}.next`;
+  await writeFile(next, JSON.stringify(handle, null, 2), { mode: 0o600 });
+  await chmod(next, 0o600);
+  await rename(next, paths.handle);
 }
 
 /** Where a command reaches c-storage, and the address a tenant's link starts with. */
@@ -103,7 +115,7 @@ export type LocalIo = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const USAGE = 'usage: pnpm local up | status | seed <code> [<name>] | down';
+const USAGE = 'usage: pnpm local up | status | seed <code> [<name>] | stop | down';
 
 const exists = (path: string) =>
   access(path).then(
@@ -136,29 +148,52 @@ async function takenPorts(ports: StackFacts['ports']) {
   return taken;
 }
 
+/** Whether a stopped environment left what it takes to start again: the database, and the built
+ * c-storage and UI. */
+const dataIntact = async (paths: LocalPaths) =>
+  (await exists(join(paths.data, 'records.db'))) &&
+  (await exists(join(paths.build, 'c-storage'))) &&
+  (await exists(join(paths.build, 'ui')));
+
 /** `pnpm local up`: builds, starts the keeper and returns once the front answers, leaving the stack
  * standing and a handle behind. */
 async function up(io: LocalIo) {
   const { paths, ports } = io;
   const taken = await takenPorts(ports);
-  const standing = await exists(paths.handle);
-  if (standing || taken.length > 0) {
+  // A handle that `stop` marked is not a running environment: it is data to resume, if it is intact.
+  let stopped = false;
+  if (await exists(paths.handle)) {
+    const read = readableHandle(await readFile(paths.handle, 'utf8'), paths);
+    stopped = typeof read !== 'string' && read.stopped !== undefined;
+    if (!stopped) {
+      io.err(`the environment is already up: its handle is ${paths.handle}`);
+      io.err('nothing was changed; run pnpm local status to see what is up');
+      return 2;
+    }
+  }
+  if (taken.length > 0) {
     for (const [part, port] of taken) io.err(`port ${port} (${part}) is taken`);
-    if (standing) io.err(`the environment is already up: its handle is ${paths.handle}`);
     io.err('nothing was changed; run pnpm local status to see what is up');
     return 2;
   }
+  const resuming = stopped && (await dataIntact(paths));
   io.out(
-    `building c-storage and the UI, then starting the stack: this may take up to ${io.waitMs / 1000} s, until ${io.clock(io.waitMs)}`,
+    resuming
+      ? `resuming the stopped environment: its data is kept and nothing is rebuilt; this may take up to ${io.waitMs / 1000} s, until ${io.clock(io.waitMs)}`
+      : `${stopped ? 'the stopped environment’s data is not intact, so it starts new: ' : ''}building c-storage and the UI, then starting the stack: this may take up to ${io.waitMs / 1000} s, until ${io.clock(io.waitMs)}`,
   );
   const beat = setInterval(() => io.out('still working'), io.heartbeatMs);
   let keeper: Started | null = null;
   let handle: Handle;
   try {
-    // A folder left by a run whose removal failed holds a stale log and data: nothing stands on it.
-    await rm(paths.dir, { recursive: true, force: true });
-    await mkdir(paths.dir, { recursive: true, mode: 0o700 });
-    await io.build(paths.build);
+    if (resuming) {
+      await rm(paths.keeperLog, { force: true });
+    } else {
+      // A folder left by a run whose removal failed holds a stale log and data: nothing stands on it.
+      await rm(paths.dir, { recursive: true, force: true });
+      await mkdir(paths.dir, { recursive: true, mode: 0o700 });
+      await io.build(paths.build);
+    }
     keeper = await io.keeper();
     await waitUntilUp(`http://localhost:${ports.front}/`, keeper, 'the stack', io.waitMs);
     handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
@@ -169,7 +204,8 @@ async function up(io: LocalIo) {
       ? await Promise.race([keeper.stop().then(() => true), sleep(io.settleMs).then(() => false)])
       : true;
     clearInterval(beat);
-    if (ended) await rm(paths.dir, { recursive: true, force: true });
+    // A resumed environment's data is not this run's to remove: it stays, stopped, for the next try.
+    if (ended && !resuming) await rm(paths.dir, { recursive: true, force: true });
     io.err(`the environment did not come up: ${messageOf(error)}`);
     if (!ended) {
       io.err(
@@ -195,15 +231,31 @@ async function keep(io: LocalIo) {
   let status = 0;
   try {
     await mkdir(paths.data, { recursive: true, mode: 0o700 });
+    // A handle `stop` marked holds the keys that open the data: the stack starts again on it.
+    const before = (await exists(paths.handle))
+      ? readableHandle(await readFile(paths.handle, 'utf8'), paths)
+      : null;
+    const resume = typeof before === 'object' && before?.stopped ? before : null;
     stack = await io.start(
       {
         cStorage: join(paths.build, 'c-storage'),
         uiDir: join(paths.build, 'ui'),
         dir: paths.build,
       },
-      { dataDir: paths.data, ports },
+      {
+        dataDir: paths.data,
+        ports,
+        ...(resume && {
+          resume: {
+            internalAccessKey: resume.cStorage.internalAccessKey,
+            superAdminKey: resume.cStorage.superAdminKey,
+            service: resume.service,
+            demo: resume.demo,
+          },
+        }),
+      },
     );
-    await writeHandle(paths, {
+    await (resume ? replaceHandle : writeHandle)(paths, {
       ...stack.facts,
       keeper: process.pid,
       dataDir: stack.dataDir,
@@ -251,6 +303,12 @@ async function status(io: LocalIo) {
     return 0;
   }
   const handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
+  if (handle.stopped) {
+    io.out(
+      `the environment is stopped (since ${handle.stopped.at}) and its data is kept: pnpm local up resumes it, pnpm local down deletes it`,
+    );
+    return 0;
+  }
   const { ports, pids } = handle;
   const checks: [string, number, Promise<boolean>, number][] = [
     [
@@ -361,6 +419,73 @@ function readableHandle(text: string, paths: LocalPaths): Handle | string {
   return found as Handle;
 }
 
+type Ended = {
+  ours: [string, number, (command: string) => boolean][];
+  strangers: Set<number>;
+  reasons: Map<number, string>;
+};
+
+/** Asks each process the handle names to end, one line each, and waits for it to go. A process is
+ * signalled only while its command line still is the stack's; what could not be proved or would not
+ * go is in `reasons`, what a stranger holds now in `strangers`. Never a kill. */
+async function endProcesses(io: LocalIo, handle: Handle | null): Promise<Ended> {
+  const { paths } = io;
+  const ours: [string, number, (command: string) => boolean][] = handle
+    ? [
+        ['keeper', handle.keeper, (command) => command.includes('local-main.ts')],
+        [
+          'c-storage',
+          handle.pids.cStorage,
+          (command) => command.includes(join(paths.build, 'c-storage')),
+        ],
+        ['the BFF', handle.pids.bff, (command) => command.includes('bff/src/main.ts')],
+      ]
+    : [];
+  const strangers = new Set<number>();
+  const reasons = new Map<number, string>();
+  for (const [name, pid, isOurs] of ours) {
+    if (!io.alive(pid)) {
+      io.out(`${name} (pid ${pid}): was not running`);
+      continue;
+    }
+    const command = io.commandOf(pid);
+    if (command !== undefined && !isOurs(command)) {
+      // The stack's process is gone and the number is another program's now: not ours to touch.
+      strangers.add(pid);
+      io.out(`${name} (pid ${pid}): already gone; that number is now ${command}, left alone`);
+      continue;
+    }
+    if (command === undefined) {
+      io.out(
+        `${name} (pid ${pid}): left alone, its command could not be read to prove it is the stack's`,
+      );
+      reasons.set(pid, "is running and could not be proved the stack's");
+      continue;
+    }
+    io.signal(pid);
+    for (let waited = 0; io.alive(pid) && waited < io.settleMs; waited += 25) await sleep(25);
+    if (io.alive(pid)) {
+      io.out(`${name} (pid ${pid}): asked to end, still running after ${io.settleMs / 1000} s`);
+      reasons.set(pid, 'is still running');
+    } else {
+      io.out(`${name} (pid ${pid}): stopped`);
+    }
+  }
+  return { ours, strangers, reasons };
+}
+
+/** The read-back of the processes: each one read again, gone or named. */
+function readBackProcesses(io: LocalIo, { ours, strangers, reasons }: Ended, stillThere: string[]) {
+  for (const [name, pid] of ours) {
+    if (strangers.has(pid)) io.out(`  ${name}: gone (pid ${pid} is another program's now)`);
+    // Alive here means the stop phase gave it a reason: the others are gone or are strangers.
+    else if (io.alive(pid)) {
+      io.out(`  ${name}: FOUND, pid ${pid} is running`);
+      stillThere.push(`${name} (pid ${pid}) ${reasons.get(pid)!}`);
+    } else io.out(`  ${name}: gone`);
+  }
+}
+
 /**
  * `pnpm local down`: takes the environment down and proves it by reading back, never by its own
  * exit. It acts only on what it can prove is its own: the folders it removes are the ones under the
@@ -416,47 +541,7 @@ async function down(io: LocalIo) {
   }
 
   const stillThere: string[] = [];
-  const ours: [string, number, (command: string) => boolean][] = handle
-    ? [
-        ['keeper', handle.keeper, (command) => command.includes('local-main.ts')],
-        [
-          'c-storage',
-          handle.pids.cStorage,
-          (command) => command.includes(join(paths.build, 'c-storage')),
-        ],
-        ['the BFF', handle.pids.bff, (command) => command.includes('bff/src/main.ts')],
-      ]
-    : [];
-  const strangers = new Set<number>();
-  const reasons = new Map<number, string>();
-  for (const [name, pid, isOurs] of ours) {
-    if (!io.alive(pid)) {
-      io.out(`${name} (pid ${pid}): was not running`);
-      continue;
-    }
-    const command = io.commandOf(pid);
-    if (command !== undefined && !isOurs(command)) {
-      // The stack's process is gone and the number is another program's now: not ours to touch.
-      strangers.add(pid);
-      io.out(`${name} (pid ${pid}): already gone; that number is now ${command}, left alone`);
-      continue;
-    }
-    if (command === undefined) {
-      io.out(
-        `${name} (pid ${pid}): left alone, its command could not be read to prove it is the stack's`,
-      );
-      reasons.set(pid, "is running and could not be proved the stack's");
-      continue;
-    }
-    io.signal(pid);
-    for (let waited = 0; io.alive(pid) && waited < io.settleMs; waited += 25) await sleep(25);
-    if (io.alive(pid)) {
-      io.out(`${name} (pid ${pid}): asked to end, still running after ${io.settleMs / 1000} s`);
-      reasons.set(pid, 'is still running');
-    } else {
-      io.out(`${name} (pid ${pid}): stopped`);
-    }
-  }
+  const { ours, strangers, reasons } = await endProcesses(io, handle);
   if (reasons.size === 0) {
     try {
       await rm(paths.dir, { recursive: true, force: true });
@@ -466,14 +551,7 @@ async function down(io: LocalIo) {
   } else io.out('nothing was removed: a process may still use the data');
 
   io.out('read back after the teardown:');
-  for (const [name, pid] of ours) {
-    if (strangers.has(pid)) io.out(`  ${name}: gone (pid ${pid} is another program's now)`);
-    // Alive here means the stop phase gave it a reason: the others are gone or are strangers.
-    else if (io.alive(pid)) {
-      io.out(`  ${name}: FOUND, pid ${pid} is running`);
-      stillThere.push(`${name} (pid ${pid}) ${reasons.get(pid)!}`);
-    } else io.out(`  ${name}: gone`);
-  }
+  readBackProcesses(io, { ours, strangers, reasons }, stillThere);
   const holding = await takenPorts(ports);
   for (const [part, port] of holding) {
     io.out(`  port ${port} (${part}): FOUND, something is listening`);
@@ -503,6 +581,63 @@ async function down(io: LocalIo) {
 }
 
 /**
+ * `pnpm local stop`: ends the processes and keeps everything else, then marks the handle stopped so
+ * that nothing mistakes it for a crashed run and `up` resumes it. It signals under the same
+ * ownership guard as `down` and reads back that each process is gone and the four ports are free,
+ * and that the data and the build are still there. Exit 0 stopped, 1 not, 2 a handle it cannot trust.
+ */
+async function stop(io: LocalIo) {
+  const { paths, ports } = io;
+  if (!(await exists(paths.handle))) {
+    io.out('nothing is up: there is no handle, so there is nothing to stop');
+    return 0;
+  }
+  const read = readableHandle(await readFile(paths.handle, 'utf8'), paths);
+  if (typeof read === 'string') {
+    io.err(`the handle at ${paths.handle} cannot be trusted: ${read}; nothing was changed`);
+    return 2;
+  }
+  if (read.stopped) {
+    io.out(`the environment is stopped already (since ${read.stopped.at}) and its data is kept`);
+    return 0;
+  }
+  const stillThere: string[] = [];
+  const ended = await endProcesses(io, read);
+  if (ended.reasons.size > 0)
+    io.out('the handle is left as it was: a process may still use the data');
+  io.out('read back after the stop:');
+  readBackProcesses(io, ended, stillThere);
+  const holding = await takenPorts(ports);
+  for (const [part, port] of holding) {
+    io.out(`  port ${port} (${part}): FOUND, something is listening`);
+    stillThere.push(`port ${port} (${part}) is held by something`);
+  }
+  if (holding.length === 0) {
+    io.out(`  ports ${Object.values(ports).join(', ')}: nothing is listening`);
+  }
+  for (const [what, path] of [
+    ['data folder and its database', join(paths.data, 'records.db')],
+    ['build folder', join(paths.build, 'c-storage')],
+  ] as const) {
+    if (await exists(path)) {
+      io.out(`  ${what}: kept`);
+    } else {
+      io.out(`  ${what}: MISSING at ${path}`);
+      stillThere.push(`${what} is missing, so there is nothing to resume`);
+    }
+  }
+  if (stillThere.length > 0) {
+    io.err(`stop: NOT stopped: ${[...new Set(stillThere)].join('; ')}`);
+    return 1;
+  }
+  await replaceHandle(paths, { ...read, stopped: { at: io.clock(0) } });
+  io.out(
+    'stop: the environment is stopped and its data is kept; pnpm local up resumes it, pnpm local down deletes it',
+  );
+  return 0;
+}
+
+/**
  * The local environment's commands. `up` leaves the stack standing after it returns; `keep` is the
  * process `up` leaves behind to hold it. Exit 0 done, 1 a failure, 2 refused before anything was
  * acted on or a verb that cannot be read.
@@ -510,6 +645,7 @@ async function down(io: LocalIo) {
 export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
   if (argv[0] === 'up') return await up(io);
   if (argv[0] === 'status') return await status(io);
+  if (argv[0] === 'stop') return await stop(io);
   if (argv[0] === 'down') return await down(io);
   if (argv[0] === 'seed') return await seed(io, argv[1], argv[2]);
   if (argv[0] === 'keep') return await keep(io);

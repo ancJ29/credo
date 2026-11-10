@@ -92,6 +92,8 @@ const handleOf = (over: Partial<Handle> = {}): Handle => ({
   ...over,
 });
 
+const readHandle = async () => JSON.parse(await readFile(paths.handle, 'utf8')) as unknown;
+
 const keeperOfHandle = async () =>
   (JSON.parse(await readFile(paths.handle, 'utf8')) as Handle).keeper;
 
@@ -196,6 +198,32 @@ describe('local keep', () => {
     ask();
     expect(await running).toBe(0);
     expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it('starts again on the keys of a stopped handle and replaces it with a running one', async () => {
+    const said = lines();
+    const stop = vi.fn(() => Promise.resolve());
+    const start = vi.fn(() => Promise.resolve(stubStack(stop)));
+    await writeHandle(
+      paths,
+      handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' }, keeper: 11 }),
+    );
+    const running = runLocal(['keep'], baseIo(said, { start, stopped: Promise.resolve() }));
+
+    expect(await running).toBe(0);
+    expect(start).toHaveBeenCalledWith(expect.anything(), {
+      dataDir: paths.data,
+      ports,
+      resume: {
+        internalAccessKey: 'ik',
+        superAdminKey: 'sk',
+        service: { code: 'demo', accessKey: 'ak' },
+        demo: handleOf().demo,
+      },
+    });
+    const now = (await readHandle()) as Handle;
+    expect(now.stopped).toBeUndefined();
+    expect(now.keeper).toBe(process.pid);
   });
 
   it('says why when the stack will not start, publishes no handle, and exits 1', async () => {
@@ -462,7 +490,8 @@ describe('local down', () => {
   /** The environment as `up` leaves it, and a world of processes that end when signalled. */
   async function standing(handleOver: Partial<Handle> = {}) {
     await mkdir(paths.data, { recursive: true });
-    await mkdir(paths.build, { recursive: true });
+    await mkdir(join(paths.build, 'ui'), { recursive: true });
+    await writeFile(join(paths.build, 'c-storage'), 'binary');
     await writeFile(join(paths.data, 'records.db'), 'rows');
     await writeHandle(paths, handleOf({ ports, dataDir: paths.data, ...handleOver }));
     const running = new Set([40, 41, 42]);
@@ -746,6 +775,124 @@ describe('local down', () => {
     expect(said.err[0]).toContain(`data folder and its database is still at ${paths.data}`);
     expect(said.err[0]).toContain('could not be removed');
   });
+
+  it('stop ends the three processes, keeps the data, the build and the logs, and marks the handle stopped', async () => {
+    const said = lines();
+    const world = await standing();
+    await writeFile(join(paths.data, 'bff.log'), 'a log');
+
+    const status = await runLocal(['stop'], world.io(said));
+
+    expect(status).toBe(0);
+    expect(world.signalled).toEqual([40, 41, 42]);
+    expect(said.out).toEqual([
+      'keeper (pid 40): stopped',
+      'c-storage (pid 41): stopped',
+      'the BFF (pid 42): stopped',
+      'read back after the stop:',
+      '  keeper: gone',
+      '  c-storage: gone',
+      '  the BFF: gone',
+      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
+      '  data folder and its database: kept',
+      '  build folder: kept',
+      'stop: the environment is stopped and its data is kept; pnpm local up resumes it, pnpm local down deletes it',
+    ]);
+    const handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
+    expect(handle.stopped).toEqual({ at: '12:34' });
+    expect(handle.cStorage.superAdminKey).toBe('sk');
+    expect((await stat(paths.handle)).mode & 0o777).toBe(0o600);
+    expect(await gone(join(paths.data, 'records.db'))).toBe(false);
+    expect(await gone(join(paths.data, 'bff.log'))).toBe(false);
+    expect(await gone(paths.build)).toBe(false);
+
+    const read = lines();
+    expect(await runLocal(['status'], baseIo(read))).toBe(0);
+    expect(read.out).toEqual([
+      'the environment is stopped (since 12:34) and its data is kept: pnpm local up resumes it, pnpm local down deletes it',
+    ]);
+  });
+
+  it('stop says so, and changes nothing, when there is no handle or the environment is stopped already', async () => {
+    const none = lines();
+    expect(await runLocal(['stop'], baseIo(none))).toBe(0);
+    expect(none.out).toEqual(['nothing is up: there is no handle, so there is nothing to stop']);
+
+    const world = await standing();
+    await runLocal(['stop'], world.io(lines()));
+    world.signalled.length = 0;
+    const again = lines();
+
+    expect(await runLocal(['stop'], world.io(again))).toBe(0);
+    expect(again.out).toEqual([
+      'the environment is stopped already (since 12:34) and its data is kept',
+    ]);
+    expect(world.signalled).toEqual([]);
+  });
+
+  it('stop refuses a handle it cannot trust, and signals nothing', async () => {
+    const said = lines();
+    const world = await standing();
+    await rm(paths.handle);
+    await writeHandle(paths, handleOf({ ports, dataDir: join(root, 'precious') }));
+
+    expect(await runLocal(['stop'], world.io(said))).toBe(2);
+    expect(said.err[0]).toContain('cannot be trusted');
+    expect(world.signalled).toEqual([]);
+  });
+
+  it('stop leaves the handle unmarked, and ends red, when a process will not go or cannot be proved the stack’s', async () => {
+    const stuck = lines();
+    const world = await standing();
+    expect(
+      await runLocal(
+        ['stop'],
+        world.io(stuck, { signal: (pid) => void world.signalled.push(pid) }),
+      ),
+    ).toBe(1);
+    expect(stuck.out).toContain('the handle is left as it was: a process may still use the data');
+    expect(stuck.err[0]).toContain('stop: NOT stopped: keeper (pid 40) is still running');
+    expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+
+    await rm(paths.dir, { recursive: true, force: true });
+    const unproved = lines();
+    const second = await standing();
+    expect(await runLocal(['stop'], second.io(unproved, { commandOf: () => undefined }))).toBe(1);
+    expect(second.signalled).toEqual([]);
+    expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+  });
+
+  it('stop ends red, unmarked, when a port is held by something else or the data is not there to keep', async () => {
+    const held = lines();
+    const world = await standing();
+    const stranger = createHttpServer();
+    await new Promise<void>((resolve) => stranger.listen(ports.bff, resolve));
+    try {
+      expect(await runLocal(['stop'], world.io(held))).toBe(1);
+    } finally {
+      await new Promise((resolve) => stranger.close(resolve));
+    }
+    expect(held.err[0]).toContain(`port ${ports.bff} (the BFF) is held by something`);
+    expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+
+    await rm(paths.dir, { recursive: true, force: true });
+    const missing = lines();
+    const bare = await standing();
+    await rm(join(paths.data, 'records.db'));
+    expect(await runLocal(['stop'], bare.io(missing))).toBe(1);
+    expect(missing.err[0]).toContain('is missing, so there is nothing to resume');
+    expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+  });
+
+  it('down deletes a stopped environment as it deletes a running one', async () => {
+    const said = lines();
+    const world = await standing();
+    await runLocal(['stop'], world.io(lines()));
+
+    expect(await runLocal(['down'], world.io(said))).toBe(0);
+    expect(said.out.at(-1)).toBe('down: everything is cleared');
+    expect(await gone(paths.dir)).toBe(true);
+  });
 });
 
 describe('local up', () => {
@@ -880,6 +1027,79 @@ describe('local up', () => {
     await expect(stat(paths.dir)).rejects.toThrow('ENOENT');
   });
 
+  it('resumes a stopped environment: its data is kept, nothing is rebuilt, a fresh handle replaces the stopped one', async () => {
+    const port = await freePort();
+    const said = lines();
+    const keeper = await standIn(port, 60);
+    await mkdir(paths.data, { recursive: true });
+    await mkdir(join(paths.build, 'ui'), { recursive: true });
+    await writeFile(join(paths.data, 'records.db'), 'my rows');
+    await writeFile(join(paths.build, 'c-storage'), 'binary');
+    await writeFile(paths.keeperLog, 'listening: the previous run\n');
+    await writeHandle(paths, handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' } }));
+    const build = vi.fn(() => Promise.reject(new Error('must not build')));
+    const kept: { current: Started | null } = { current: null };
+    try {
+      const status = await runLocal(
+        ['up'],
+        baseIo(said, {
+          ports: { ...ports, front: port },
+          build,
+          keeper: async () => (kept.current = await keeper()),
+        }),
+      );
+
+      expect(status).toBe(0);
+      expect(said.out[0]).toBe(
+        'resuming the stopped environment: its data is kept and nothing is rebuilt; this may take up to 5 s, until 12:34',
+      );
+      expect(build).not.toHaveBeenCalled();
+      expect(await readFile(join(paths.data, 'records.db'), 'utf8')).toBe('my rows');
+      expect(await readFile(paths.keeperLog, 'utf8')).not.toContain('previous');
+      expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+    } finally {
+      await kept.current?.stop();
+    }
+  });
+
+  it('builds new, and says why, when the stopped environment’s data is not intact', async () => {
+    const said = lines();
+    await writeHandle(paths, handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' } }));
+    const build = vi.fn(() => Promise.reject(new Error('no go')));
+
+    const status = await runLocal(['up'], baseIo(said, { build }));
+
+    expect(status).toBe(1);
+    expect(build).toHaveBeenCalledWith(paths.build);
+    expect(said.out[0]).toBe(
+      'the stopped environment’s data is not intact, so it starts new: building c-storage and the UI, then starting the stack: this may take up to 5 s, until 12:34',
+    );
+  });
+
+  it('keeps the stopped environment, data and handle, when a resume fails', async () => {
+    const said = lines();
+    await mkdir(paths.data, { recursive: true });
+    await mkdir(join(paths.build, 'ui'), { recursive: true });
+    await writeFile(join(paths.data, 'records.db'), 'my rows');
+    await writeFile(join(paths.build, 'c-storage'), 'binary');
+    await writeHandle(paths, handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' } }));
+
+    const status = await runLocal(
+      ['up'],
+      baseIo(said, {
+        keeper: () =>
+          startProcess(process.execPath, ['-e', 'process.exit(3)'], {
+            env: {},
+            logFile: paths.keeperLog,
+          }),
+      }),
+    );
+
+    expect(status).toBe(1);
+    expect(await readFile(join(paths.data, 'records.db'), 'utf8')).toBe('my rows');
+    expect(((await readHandle()) as Handle).stopped).toEqual({ at: '09:00' });
+  });
+
   it('refuses when the environment has a handle already, before it builds anything', async () => {
     const said = lines();
     const build = vi.fn(() => Promise.reject(new Error('must not build')));
@@ -958,6 +1178,8 @@ describe('a verb it does not know', () => {
     const said = lines();
 
     expect(await runLocal(['sideways'], baseIo(said))).toBe(2);
-    expect(said.err).toEqual(['usage: pnpm local up | status | seed <code> [<name>] | down']);
+    expect(said.err).toEqual([
+      'usage: pnpm local up | status | seed <code> [<name>] | stop | down',
+    ]);
   });
 });

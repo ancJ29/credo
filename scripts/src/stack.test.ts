@@ -681,4 +681,39 @@ describe('a stack that is started and stopped on its own', () => {
       await rm(dataDir, { recursive: true, force: true });
     }
   });
+
+  it('starts again on the data and keys a stopped stack left, and the root’s password still signs in', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-resume-'));
+    const ports = {
+      cStorage: await freePort(),
+      front: await freePort(),
+      bff: await freePort(),
+      seedDoor: await freePort(),
+    };
+    try {
+      const first = await startStack(artifacts, { dataDir, ports });
+      await first.stop();
+      const again = await startStack(artifacts, {
+        dataDir,
+        ports,
+        resume: {
+          internalAccessKey: first.facts.cStorage.internalAccessKey,
+          superAdminKey: first.facts.cStorage.superAdminKey,
+          service: first.facts.service,
+          demo: { rootPassword: first.rootPassword, operatorLink: first.operatorLink },
+        },
+      });
+      try {
+        expect(again.rootPassword).toBe(first.rootPassword);
+        expect(again.operatorLink).toBe(first.operatorLink);
+        const signedIn = await signIn(again.url, again.rootName, first.rootPassword);
+        expect(signedIn.status).toBe(200);
+        expect(await signedIn.json()).toMatchObject({ user: { root: true } });
+      } finally {
+        await again.stop();
+      }
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
 });
