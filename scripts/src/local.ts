@@ -1,0 +1,175 @@
+import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { type Artifacts, type StackFacts, type StartedStack, type StartOptions } from './stack';
+import { type Started, waitUntilUp } from './running/processes';
+
+/** The four ports of the local environment, fixed so one address is bookmarked and every command
+ * finds the others. c-storage's is the one five `ops/` scripts already reserve as "the local
+ * stack's port" and refuse to use; the others sit beside it. */
+export const LOCAL_PORTS: StackFacts['ports'] = {
+  front: 3180,
+  cStorage: 3181,
+  bff: 3182,
+  seedDoor: 3183,
+};
+
+export type LocalPaths = {
+  /** Everything the environment keeps, removed as one folder; git-ignored. */
+  dir: string;
+  handle: string;
+  /** The database and the logs of c-storage and the BFF. */
+  data: string;
+  /** The built c-storage and UI, kept so the standing stack's files outlive the command. */
+  build: string;
+  /** The keeper's own log. */
+  keeperLog: string;
+};
+
+export const localPaths = (credoRoot: string): LocalPaths => {
+  const dir = join(credoRoot, '.local-env');
+  return {
+    dir,
+    handle: join(dir, 'handle.json'),
+    data: join(dir, 'data'),
+    build: join(dir, 'build'),
+    keeperLog: join(dir, 'keeper.log'),
+  };
+};
+
+/** What one run chose, for the next command to find: where each part listens, which processes hold
+ * them, the folder of data, the keys, and what the demo tenant's first sign-in is. It holds
+ * c-storage's keys and the root's first password, so it is written for its owner alone. */
+export type Handle = StackFacts & {
+  /** The process that keeps the stack standing; ending it takes the whole stack down. */
+  keeper: number;
+  dataDir: string;
+  url: string;
+  demo: { clientCode: string; rootName: string; rootPassword: string; operatorLink: string };
+};
+
+/** Writes the handle for its owner alone, and never over one that exists: a second stack's
+ * handle would hide the first, whose processes would then have no way to be found. */
+export async function writeHandle(paths: LocalPaths, handle: Handle) {
+  await mkdir(paths.dir, { recursive: true, mode: 0o700 });
+  await writeFile(paths.handle, JSON.stringify(handle, null, 2), { flag: 'wx', mode: 0o600 });
+  await chmod(paths.handle, 0o600);
+}
+
+export type LocalIo = {
+  out: (line: string) => void;
+  err: (line: string) => void;
+  paths: LocalPaths;
+  ports: StackFacts['ports'];
+  /** `up`: builds c-storage and the UI into the folder given. */
+  build: (dir: string) => Promise<Artifacts>;
+  /** `up`: starts the process that keeps the stack standing, free of this one. */
+  keeper: () => Promise<Started>;
+  /** `up`: the time of day as a person reads it, for "wait until". */
+  clock: (afterMs: number) => string;
+  /** `up`: how long the build and the start-up may take, and how often a line says they go on. */
+  waitMs: number;
+  heartbeatMs: number;
+  /** `keep`: brings the stack up on the folder and ports given. */
+  start: (
+    artifacts: Artifacts,
+    options: StartOptions & { dataDir: string },
+  ) => Promise<StartedStack>;
+  /** `keep`: settles when the keeper is asked to end. */
+  stopped: Promise<void>;
+};
+
+const USAGE = 'usage: pnpm local up';
+
+const exists = (path: string) =>
+  access(path).then(
+    () => true,
+    () => false,
+  );
+
+/** Every failure met here is an Error: a file's, a fetch's, or `waitUntilUp`'s own. */
+const messageOf = (error: unknown) => (error as Error).message;
+
+/** `pnpm local up`: builds, starts the keeper and returns once the front answers, leaving the stack
+ * standing and a handle behind. */
+async function up(io: LocalIo) {
+  const { paths, ports } = io;
+  if (await exists(paths.handle)) {
+    io.err(`the environment is already up: its handle is ${paths.handle}`);
+    return 2;
+  }
+  io.out(
+    `building c-storage and the UI, then starting the stack: this may take up to ${io.waitMs / 1000} s, until ${io.clock(io.waitMs)}`,
+  );
+  const beat = setInterval(() => io.out('still working'), io.heartbeatMs);
+  let keeper: Started | null = null;
+  try {
+    await mkdir(paths.dir, { recursive: true, mode: 0o700 });
+    await io.build(paths.build);
+    keeper = await io.keeper();
+    await waitUntilUp(`http://localhost:${ports.front}/`, keeper, 'the stack', io.waitMs);
+  } catch (error) {
+    clearInterval(beat);
+    await keeper?.stop();
+    await rm(paths.dir, { recursive: true, force: true });
+    io.err(`the environment did not come up: ${messageOf(error)}`);
+    return 1;
+  }
+  clearInterval(beat);
+  const handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
+  io.out(`the environment is up at ${handle.url}`);
+  io.out(`the demo client's link is ${handle.url}/login?client-code=${handle.demo.clientCode}`);
+  io.out(`sign in as ${handle.demo.rootName} with the password ${handle.demo.rootPassword}`);
+  io.out(`the invited operator joins by ${handle.demo.operatorLink}`);
+  return 0;
+}
+
+/** `pnpm local keep`, started by `up` and never by a person: stands the stack up on the fixed
+ * ports, publishes the handle, says it is listening, and takes the stack down when asked to end.
+ * It removes nothing it did not write: the data folder is `down`'s. */
+async function keep(io: LocalIo) {
+  const { paths, ports } = io;
+  let stack: StartedStack | null = null;
+  let status = 0;
+  try {
+    await mkdir(paths.data, { recursive: true, mode: 0o700 });
+    stack = await io.start(
+      {
+        cStorage: join(paths.build, 'c-storage'),
+        uiDir: join(paths.build, 'ui'),
+        dir: paths.build,
+      },
+      { dataDir: paths.data, ports },
+    );
+    await writeHandle(paths, {
+      ...stack.facts,
+      keeper: process.pid,
+      dataDir: stack.dataDir,
+      url: stack.url,
+      demo: {
+        clientCode: stack.clientCode,
+        rootName: stack.rootName,
+        rootPassword: stack.rootPassword,
+        operatorLink: stack.operatorLink,
+      },
+    });
+    io.out(`listening: the stack stands at ${stack.url}`);
+    await io.stopped;
+  } catch (error) {
+    io.err(`the stack did not stay up: ${messageOf(error)}`);
+    status = 1;
+  }
+  await stack?.stop();
+  return status;
+}
+
+/**
+ * The local environment's commands. `up` leaves the stack standing after it returns; `keep` is the
+ * process `up` leaves behind to hold it. Exit 0 done, 1 a failure, 2 refused before anything was
+ * acted on or a verb that cannot be read.
+ */
+export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
+  if (argv[0] === 'up') return await up(io);
+  if (argv[0] === 'keep') return await keep(io);
+  io.err(USAGE);
+  return 2;
+}

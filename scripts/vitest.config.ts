@@ -37,6 +37,10 @@ export default defineConfig({
       // elsewhere: counts-main.ts only binds src/counts.ts's runCounts to the process and to the
       // repository root; src/counts.test.ts runs runCounts and repoIo, on made-up repositories and on this one.
       //
+      // elsewhere: local-main.ts only binds src/local.ts's runLocal to the process, to git's answer for
+      // the credo root and to the signals; src/local.test.ts runs runLocal with the same io, on fakes.
+      // The detached stack it leaves standing is read by a person, in their own terminal.
+      //
       // elsewhere: src/demo/apply-support.ts is what the ten src/demo/apply.*.test.ts files share, the
       // helpers that used to sit at the top of one test file (which this list leaves out already). Its
       // guards ('taken', a sort's other side) are the test's own and only a failing setup reaches them.
@@ -49,6 +53,7 @@ export default defineConfig({
         'src/demo-main.ts',
         'src/demo-files-main.ts',
         'src/counts-main.ts',
+        'src/local-main.ts',
         'src/demo/apply-support.ts',
       ],
       reporter: [['text', { skipFull: true }]],
