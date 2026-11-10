@@ -1376,3 +1376,11 @@ The routes declare the target from the URL before `idOf` checks it (`bff/src/rou
 ## 220. A timeout is logged as "audit entry lost" when the service may have saved it — the machine; `[DEFERRED]` (the activity log plan, review of step 4, L5, 2026-11-10, Low)
 
 On a timeout the audit service may already have committed the entry: `AbortSignal.timeout` (`shared/src/activity.ts#L94`) ends the wait, and the client throws an `ActivityError` with no status (`#L97`). The hook then writes `audit entry lost` for it (`bff/src/app.ts#L147`), the same words it uses for a status the service did send, so anyone replaying "lost" entries from the request log would write some twice. *Fix:* word a timeout (status `null`) "audit entry not confirmed" and keep "lost" for a refusal or an answer the service sent. *Trigger:* the first replay of lost entries, or the ridge move.
+
+## 221. A day close's `before` is the list of cancelled requests, not the record as stored — the machine; `[DEFERRED]` (the activity log plan, reread of the fix pass, N1, 2026-11-10, Low)
+
+`bff/src/routes/reconciliations.ts#L157-L163` enters the close with `before` set to `{ cancelled: [...] }`, where the plan's memo contract (`docs/plans/2026-11-10-audit-bff.md`) says `before` is the record as stored, so that a restore can push it back as it stands. A later restore would write that list over the day's record, and the printout reads a close as `changed:` across every field where it would otherwise say `new`. Nothing is lost today, since no restore exists. *Fix:* keep `before` empty and carry the cancelled requests in `after`, or in a memo field of their own. *Trigger:* the history screen's undo.
+
+## 222. The other-client test's first case accepts any status below 500 — the machine; `[DEFERRED]` (the activity log plan, reread of the fix pass, 2026-11-10, Low)
+
+`bff/tests/customer-audit.route.test.ts#L98` expects `toBeLessThan(500)` where it expected exactly 200, so a 400 refusal also passes. The case still checks that the entry's client is the caller's own and that none is written under `someone-else`, which is its point. *Fix:* expect the status the save answers once the body's extra field is accepted or refused, and name which. *Trigger:* the next change to that test file.
