@@ -78,7 +78,7 @@ nothing is never logged, which is this design's strongest property — see the h
 
 ### The two prerequisites, and why the middleware cannot come first
 
-1. **The actor is not on the request** ([who may do what](architecture.md#who-may-do-what)): of 39 deliberate write
+1. **The actor is not on the request** ([who may do what](architecture-detail.md#who-may-do-what)): of 39 deliberate write
    sites, 11 have the identity in scope and 28 do not, and the customer and product writes carry no
    actor at all. A middleware built before that would record 28 of 39 deliberate acts as having been
    done by nobody. **So the actor is the first piece of work and the middleware is the second.**
@@ -177,7 +177,7 @@ data — is far from being needed at this project's write rate. Its price: every
 and every activity write behind the single SQLite write lock the app's data already queues on.
 **The human chose the separate service, and that decision stands;** the alternative is recorded here
 so that nobody re-derives it from scratch in six weeks. That costing is not in this repository — see
-[what `architecture.md` did not read](architecture.md#what-this-page-did-not-read).
+[what `architecture-detail.md` did not read](architecture-detail.md#what-this-page-did-not-read).
 
 ## What this page did not read
 
