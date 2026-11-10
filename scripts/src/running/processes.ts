@@ -30,7 +30,13 @@ const TEMP_FOLDER = ['TMPDIR', 'TMP', 'TEMP'];
 export async function startProcess(
   command: string,
   args: string[],
-  options: { env: Record<string, string>; logFile: string },
+  options: {
+    env: Record<string, string>;
+    logFile: string;
+    /** The child is its own session leader and this process no longer waits for it or kills it at
+     * its exit: it outlives the command that started it, and only `stop()` or a signal ends it. */
+    keepOnExit?: boolean;
+  },
 ): Promise<Started> {
   const log = await open(options.logFile, 'a');
   const child = spawn(command, args, {
@@ -41,11 +47,13 @@ export async function startProcess(
       ...options.env,
     },
     stdio: ['ignore', log.fd, log.fd],
+    detached: options.keepOnExit === true,
   });
   await log.close();
+  if (options.keepOnExit) child.unref();
   /* v8 ignore next -- untested: the hook runs only on a normal exit of this process, a crash with the child still up; no test outlives its own process */
   const killAtExit = () => child.kill('SIGKILL');
-  process.once('exit', killAtExit);
+  if (!options.keepOnExit) process.once('exit', killAtExit);
   return {
     child,
     logFile: options.logFile,

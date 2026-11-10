@@ -15,7 +15,8 @@
     "demo-files": "node --import tsx src/demo-files-main.ts",
     "counts": "node --import tsx src/counts-main.ts",
     "fake": "node --import tsx src/fake-main.ts",
-    "walks": "node --import tsx src/walks-main.ts"
+    "walks": "node --import tsx src/walks-main.ts",
+    "local": "node --import tsx src/local-main.ts"
   },
   "dependencies": {
     "@credo/bff": "workspace:*",

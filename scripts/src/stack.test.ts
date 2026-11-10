@@ -16,7 +16,15 @@ import { DEMO_INVITED_NAME, DEMO_PASSKEYS } from '@credo/shared/demo';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { commandOf, runStack } from './cli';
 import { BFF_ENV_KEYS } from '@credo/bff/env';
-import { type Artifacts, bffEnvironment, buildArtifacts, listening, withStack } from './stack';
+import { freePort } from './running/processes';
+import {
+  type Artifacts,
+  bffEnvironment,
+  buildArtifacts,
+  listening,
+  startStack,
+  withStack,
+} from './stack';
 
 let dir: string;
 let artifacts: Artifacts;
@@ -610,6 +618,102 @@ describe('pnpm stack -- <command>', () => {
       for (const signal of signals) process.emit(signal);
 
       expect(await running, signals.join()).toBe(0);
+    }
+  });
+});
+
+const alive = (pid: number) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+describe('a stack that is started and stopped on its own', () => {
+  it('stands on the folder and ports it is given, and stop() takes the parts down and removes nothing', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-start-'));
+    const ports = {
+      cStorage: await freePort(),
+      front: await freePort(),
+      bff: await freePort(),
+      seedDoor: await freePort(),
+    };
+    const stack = await startStack(artifacts, { dataDir, ports });
+    try {
+      expect(stack.url).toBe(`http://localhost:${ports.front}`);
+      expect(stack.dataDir).toBe(dataDir);
+      expect(stack.facts.ports).toEqual(ports);
+      expect(stack.facts.cStorage.url).toBe(`http://127.0.0.1:${ports.cStorage}`);
+      expect((await fetch(`${stack.url}/`)).status).toBe(200);
+      expect(stack.seedUrl).toBe(`http://127.0.0.1:${ports.seedDoor}/seed`);
+      expect(alive(stack.facts.pids.cStorage)).toBe(true);
+      expect(alive(stack.facts.pids.bff)).toBe(true);
+    } finally {
+      await stack.stop();
+      await stack.stop();
+    }
+
+    try {
+      await expect(fetch(`${stack.url}/`)).rejects.toThrow();
+      await expect(fetch(`${stack.facts.cStorage.url}/health`)).rejects.toThrow();
+      expect(alive(stack.facts.pids.cStorage)).toBe(false);
+      expect(alive(stack.facts.pids.bff)).toBe(false);
+      expect(await readdir(dataDir)).toContain('records.db');
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('takes down what it had started when a later part will not start, and says which', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-start-'));
+    const taken = createServer();
+    const { port: bff } = await listening(taken);
+    const cStorage = await freePort();
+    try {
+      await expect(startStack(artifacts, { dataDir, ports: { cStorage, bff } })).rejects.toThrow(
+        'the BFF exited',
+      );
+      await expect(fetch(`http://127.0.0.1:${cStorage}/health`)).rejects.toThrow();
+    } finally {
+      await new Promise((resolve) => taken.close(resolve));
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('starts again on the data and keys a stopped stack left, and the root’s password still signs in', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-resume-'));
+    const ports = {
+      cStorage: await freePort(),
+      front: await freePort(),
+      bff: await freePort(),
+      seedDoor: await freePort(),
+    };
+    try {
+      const first = await startStack(artifacts, { dataDir, ports });
+      await first.stop();
+      const again = await startStack(artifacts, {
+        dataDir,
+        ports,
+        resume: {
+          internalAccessKey: first.facts.cStorage.internalAccessKey,
+          superAdminKey: first.facts.cStorage.superAdminKey,
+          service: first.facts.service,
+          demo: { rootPassword: first.rootPassword, operatorLink: first.operatorLink },
+        },
+      });
+      try {
+        expect(again.rootPassword).toBe(first.rootPassword);
+        expect(again.operatorLink).toBe(first.operatorLink);
+        const signedIn = await signIn(again.url, again.rootName, first.rootPassword);
+        expect(signedIn.status).toBe(200);
+        expect(await signedIn.json()).toMatchObject({ user: { root: true } });
+      } finally {
+        await again.stop();
+      }
+    } finally {
+      await rm(dataDir, { recursive: true, force: true });
     }
   });
 });

@@ -158,3 +158,6 @@ test-results/
 # The walks page's builds live in the credo root, outside every worktree; this guards a root that is a worktree
 /walks/
 .serena/
+
+# The local environment's handle, data and build (pnpm local)
+/.local-env/

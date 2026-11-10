@@ -100,25 +100,57 @@ export function bffEnvironment(settings: {
   };
 }
 
+/** What a command that outlives the stack needs to find it again: where each part listens, the
+ * processes that hold them, and the keys that open c-storage. Secrets: written only to a 0600 file. */
+export type StackFacts = {
+  ports: { cStorage: number; front: number; bff: number; seedDoor: number };
+  pids: { cStorage: number; bff: number };
+  cStorage: { url: string; internalAccessKey: string; superAdminKey: string };
+  service: { code: string; accessKey: string };
+};
+
+/** What `startStack` may be told: a data folder and ports of its own in place of a fresh temp
+ * folder and free ports, and `seed` standing in for the generator's client, for a test of the
+ * door's failure. */
+export type StartOptions = {
+  seed?: typeof seedClient;
+  dataDir?: string;
+  ports?: Partial<StackFacts['ports']>;
+  /** Stands the stack up again on data a stopped stack left: the keys that open it, kept from the
+   * first start, and what the first start printed. The demo set is not made again, so the people
+   * and the operator's session are not known to the resumed stack. */
+  resume?: {
+    internalAccessKey: string;
+    superAdminKey: string;
+    service: { code: string; accessKey: string };
+    demo: { rootPassword: string; operatorLink: string };
+  };
+};
+
+export type StartedStack = RunningStack & { facts: StackFacts; stop: () => Promise<void> };
+
 /**
- * The local stack for the length of `use`: c-storage on a fresh database, the BFF's service
+ * The local stack, left standing: c-storage on a fresh database in `dataDir`, the BFF's service
  * registered with the super-admin key (which the BFF never holds), the operator and the demo client
- * made, the BFF started, and the front standing before them. Everything goes down when `use`
- * ends, however it ends, and the database with it.
+ * made, the BFF started, and the front standing before them. It answers the stack and a `stop`
+ * that takes every part down and removes nothing: the data folder is the caller's. A part that
+ * fails to start takes down the parts already up before the failure is passed on.
  */
-export async function withStack<T>(
+export async function startStack(
   artifacts: Artifacts,
-  use: (stack: RunningStack) => Promise<T>,
-  /** `seed` stands in for the generator's client, for a test of the door's failure. */
-  options: { seed?: typeof seedClient } = {},
-): Promise<T> {
-  const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-'));
+  options: StartOptions & { dataDir: string },
+): Promise<StartedStack> {
+  const { dataDir } = options;
   const stops: (() => Promise<unknown>)[] = [];
+  const stop = async () => {
+    for (const stopOne of stops.splice(0)) await stopOne();
+  };
   try {
-    const internalAccessKey = key();
-    const superAdminKey = key();
-    const service = { code: SERVICE_CODE, accessKey: key() };
-    const csPort = await freePort();
+    const { resume } = options;
+    const internalAccessKey = resume?.internalAccessKey ?? key();
+    const superAdminKey = resume?.superAdminKey ?? key();
+    const service = resume?.service ?? { code: SERVICE_CODE, accessKey: key() };
+    const csPort = options.ports?.cStorage ?? (await freePort());
     const cStorageUrl = `http://127.0.0.1:${csPort}`;
     const cStorage = await startProcess(artifacts.cStorage, [], {
       env: {
@@ -139,22 +171,21 @@ export async function withStack<T>(
       serviceCode: service.code,
       accessKey: service.accessKey,
     });
-    const { rootPassword, people, invitedToken, operatorHandle, operatorPasskey } =
-      await seedDemo(storage);
+    const seededDemo = resume ? null : await seedDemo(storage);
     let seeded = 0;
     const seeding = createSeeding(
       () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
       logToStderr,
     );
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
-    const { port: seedPort } = await listening(seeding);
+    const { port: seedPort } = await listening(seeding, options.ports?.seedDoor);
 
     // A passkey is bound to a name and no IP address has one: the operator opens `localhost`, on the
     // front's port, which is picked before the BFF starts since the BFF checks every ceremony
     // against it.
-    const frontPort = await freePort();
+    const frontPort = options.ports?.front ?? (await freePort());
     const appOrigin = `http://localhost:${frontPort}`;
-    const bffPort = await freePort();
+    const bffPort = options.ports?.bff ?? (await freePort());
     const bffUrl = `http://127.0.0.1:${bffPort}`;
     const bff = await startProcess(
       process.execPath,
@@ -179,22 +210,54 @@ export async function withStack<T>(
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
     await listening(front, frontPort);
 
-    return await use({
+    return {
       url: appOrigin,
       clientCode: DEMO_CODE,
       rootName: ROOT_NAME,
-      rootPassword,
+      rootPassword: seededDemo ? seededDemo.rootPassword : resume!.demo.rootPassword,
       operatorName: OPERATOR_NAME,
-      operatorHandle,
-      operatorPasskey: JSON.stringify(operatorPasskey),
-      operatorLink: `${appOrigin}${joinLinkPath(invitedToken)}`,
-      people,
+      operatorHandle: seededDemo ? seededDemo.operatorHandle : '',
+      operatorPasskey: seededDemo ? JSON.stringify(seededDemo.operatorPasskey) : '',
+      operatorLink: seededDemo
+        ? `${appOrigin}${joinLinkPath(seededDemo.invitedToken)}`
+        : resume!.demo.operatorLink,
+      people: seededDemo ? seededDemo.people : {},
       seedUrl: `http://127.0.0.1:${seedPort}/seed`,
       dataDir,
       storage,
-    });
+      facts: {
+        ports: { cStorage: csPort, front: frontPort, bff: bffPort, seedDoor: seedPort },
+        // A child that has started has a pid: spawn answers none only for one that never ran.
+        pids: { cStorage: cStorage.child.pid!, bff: bff.child.pid! },
+        cStorage: { url: cStorageUrl, internalAccessKey, superAdminKey },
+        service,
+      },
+      stop,
+    };
+  } catch (error) {
+    await stop();
+    throw error;
+  }
+}
+
+/**
+ * The local stack for the length of `use`, on a fresh data folder: `startStack`, and everything
+ * goes down when `use` ends, however it ends, and the database with it.
+ */
+export async function withStack<T>(
+  artifacts: Artifacts,
+  use: (stack: RunningStack) => Promise<T>,
+  options: Pick<StartOptions, 'seed'> = {},
+): Promise<T> {
+  const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-'));
+  try {
+    const stack = await startStack(artifacts, { ...options, dataDir });
+    try {
+      return await use(stack);
+    } finally {
+      await stack.stop();
+    }
   } finally {
-    for (const stop of stops) await stop();
     await rm(dataDir, { recursive: true, force: true });
   }
 }
