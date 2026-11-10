@@ -49,6 +49,23 @@ const startAndLeave = (keepOnExit: boolean) =>
     process.exit(0);
   `).then((printed) => Number(printed.trim()));
 
+/** Like `runToExit`, but settles when the runner's output is closed, which is what `| tee` waits
+ * for: a child that inherited the runner's output would hold it open until the child ended. */
+const runToClose = (code: string) =>
+  new Promise<{ ms: number; err: string }>((resolve, reject) => {
+    let err = '';
+    const began = Date.now();
+    const runner = spawn(
+      process.execPath,
+      ['--import', import.meta.resolve('tsx'), '--input-type=module', '-e', code],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    );
+    runner.stdout.resume();
+    runner.stderr.on('data', (chunk: Buffer) => (err += String(chunk)));
+    runner.once('error', reject);
+    runner.once('close', () => resolve({ ms: Date.now() - began, err }));
+  });
+
 describe('a child that outlives the process that started it', () => {
   it('is still alive after its starter has exited, and ends when it is signalled', async () => {
     const pid = await startAndLeave(true);
@@ -83,5 +100,26 @@ describe('a child that outlives the process that started it', () => {
 
     expect(started.child.signalCode).toBe('SIGTERM');
     expect(alive(started.child.pid!)).toBe(false);
+  });
+
+  it('does not hold its starter’s output open, so `| tee` returns while the child lives', async () => {
+    const log = JSON.stringify(join(dir, 'tee.log'));
+    // The child ends on its own after 15 s; the starter is read to have closed long before.
+    const { ms, err } = await runToClose(`
+      import { startProcess } from ${JSON.stringify(fileURLToPath(new URL('./processes.ts', import.meta.url)))};
+      const started = await startProcess(process.execPath, ['-e', 'console.log("noise"); setTimeout(() => {}, 15000)'], {
+        env: {}, logFile: ${log}, keepOnExit: true,
+      });
+      console.error(started.child.pid);
+      process.exit(0);
+    `);
+    const pid = Number(err.trim());
+    try {
+      expect(pid).toBeGreaterThan(0);
+      expect(alive(pid)).toBe(true);
+      expect(ms).toBeLessThan(8000);
+    } finally {
+      process.kill(pid, 'SIGKILL');
+    }
   });
 });
