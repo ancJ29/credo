@@ -1,9 +1,10 @@
 import { can, type Language } from '@credo/shared';
-import { Anchor, Button, Group, Table, Text } from '@mantine/core';
+import { Button, Group, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { headingOf, LISTS, type ListKind } from '../../listSheet';
+import { LISTS, type ListKind } from '../../listSheet';
 import { type PageProps, useLoad } from '../../page';
+import { ListTable } from '../../parts/ListTable';
 import { PageShell } from '../../parts/PageShell';
 
 /**
@@ -42,36 +43,7 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
       {rows.length === 0 ? (
         <Text c="dimmed">{t(`lists.${kind}.empty`)}</Text>
       ) : (
-        <Table.ScrollContainer minWidth={640}>
-          <Table highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                {list.shown.map((key) => (
-                  <Table.Th key={key} ta={key === 'price' ? 'right' : undefined}>
-                    {headingOf(key, language)}
-                  </Table.Th>
-                ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {rows.map((row) => (
-                <Table.Tr key={row.code}>
-                  {list.shown.map((key) => (
-                    <Table.Td key={key} ta={key === 'price' ? 'right' : undefined}>
-                      {key === 'name' ? (
-                        <Anchor component={Link} to={`/${kind}/${row.id}`}>
-                          {row.name}
-                        </Anchor>
-                      ) : (
-                        row[key]
-                      )}
-                    </Table.Td>
-                  ))}
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
+        <ListTable kind={kind} shown={list.shown} rows={rows} language={language} />
       )}
     </PageShell>
   );
