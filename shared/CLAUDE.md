@@ -22,6 +22,13 @@ and where it lands. The package's tests run at 100 % of statements, branches, fu
   randomness. A day arrives as text (`daySchema`), `fetch` as a parameter (`createCStorageClient`).
   Only test files import `node:`.
 
+## The directories of `shared/src`
+
+None: flat is the answer. 19 of its 20 source files are a zod schema, its constants and its pure functions
+at once (`shared/src/orders.ts` holds the order's schema, its states and `priceLines`), so a cut by kind
+yields one directory of 19 and one of 1 (`shared/src/c-storage.ts`, the only file that opens a socket). The
+axis a reader wants is already the file name.
+
 ## The file to copy
 
 A new area is `shared/src/<area>.ts` with `<area>.test.ts` beside it, one line added to `index.ts`.

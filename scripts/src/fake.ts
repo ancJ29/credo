@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_CODE, DEMO_ROOT_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
-import { createFront } from './front';
+import { createFront } from './running/front';
 
 const UI_DIR = fileURLToPath(new URL('../../ui/', import.meta.url));
 

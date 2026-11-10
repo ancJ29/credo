@@ -9,9 +9,9 @@ import { buildCStorage } from '@credo/bff/tests/build';
 import { createCStorageClient, type CStorageClient, joinLinkPath } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
-import { createFront } from './front';
+import { createFront } from './running/front';
 import { ROOT_NAME, seedClient, seedDemo } from './generator';
-import { freePort, startProcess, waitUntilUp } from './processes';
+import { freePort, startProcess, waitUntilUp } from './running/processes';
 import { ensureService } from './register';
 import { createSeeding, logToStderr } from './seeding';
 

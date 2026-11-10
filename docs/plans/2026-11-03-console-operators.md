@@ -66,7 +66,7 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   new UI tests were written with the pages, then seen red once by taking the two routes out (16 failed); the walk
   specs are typechecked, never run (step 6). `team-full` has the same screens opened on a stack, not yet shown to
   match: step 3. The BFF gained one line, the touch's purpose `confirm-add-operator` in its type, since the act is in
-  the wire. A first run of the scripts tests missed 100 % at `scripts/src/processes.ts#L83` (a rerun, with the BFF
+  the wire. A first run of the scripts tests missed 100 % at `scripts/src/running/processes.ts#L83` (a rerun, with the BFF
   type fixed, passed): logged in `docs/open-items.md#L517`.
 - [x] **3. The routes on the real c-storage.** 🤖 Sonnet, about 28 minutes: the routes, `signedInAt`, the act, the
   generator; `team-full` written, not run. Done when: rows 1 to 4's BFF halves red once; bff at 100 %; live, in one

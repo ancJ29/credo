@@ -86,7 +86,7 @@ the database are still unrecoverable, and the fence, though live on ridge (its c
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
-`bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`
+`bff/tests/c-storage.ts` (the route tests) and `scripts/src/running/processes.ts` with `scripts/src/stack.ts`
 (`pnpm stack`) each start the real c-storage on a free port, with the same keys and the same health
 wait. They share only the build (`bff/tests/build.ts`). They differ in what they need: the tests
 retry a port taken between the probe and the bind and stop at the process's exit; the stack logs
@@ -100,7 +100,7 @@ on.
 the port in between makes the child exit, and the stack stops naming the child and the end of its
 log; running it again is the remedy. A stranger already answering on that port is not mistaken for
 the child: `waitUntilUp` also needs the child's own log to say it is listening
-(`scripts/src/processes.ts`). The route tests retry on another port. *Trigger:* a second
+(`scripts/src/running/processes.ts`). The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
 
 ## 12. A lockfile for Bruno CLI in CI — the machine; *parked* until the CLI's dependencies are a problem (the ridge plan, step 12, 2026-10-28)
@@ -135,7 +135,7 @@ a call without it.
 
 ## 23. A scripts test depends on how fast a child starts, and the gate's coverage goes red under load — the machine; *parked* until the scripts package is next touched (the employee list plan, step 14, 2026-10-29)
 
-`scripts/src/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
+`scripts/src/running/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
 gives `waitUntilUp` 200 ms, and the child must log "listening" inside them. In a whole `pnpm check`,
 where every package's tests run at once, the child sometimes starts later: the loop then ends before
 it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package's coverage reads
@@ -257,7 +257,7 @@ left running on a Ctrl-C. The stand-in tests in `scripts/src/walk-run.test.ts` n
 sandbox cannot signal a process an earlier command started or read the process list. The first real
 stray or interrupt shows them; read that run's log for the `stopped` lines. The BFF a stack starts is
 matched by its relative `src/main.ts` only when `lsof` puts its working folder under the root
-(`scripts/src/strays.ts`), so a Mac where `lsof` is denied leaves such a BFF running and the next run
+(`scripts/src/running/strays.ts`), so a Mac where `lsof` is denied leaves such a BFF running and the next run
 refuses on it by name. A Ctrl-C during the first step's listings ends as a refusal (exit 2), not 130;
 nothing was acted on. *Trigger:* a refusal naming a stray the script did not stop, or a log with
 `stopped` lines that look wrong.
@@ -556,12 +556,12 @@ The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/pag
 
 ## 64. The scripts' coverage missed 100 % once, at the wait's retry sleep — the machine; *parked* (B1, plan step 2, 2026-11-03)
 
-`scripts/src/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
+`scripts/src/running/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
 and the function around it showed uncovered in one whole run of the scripts' tests (263 pass, statements 99.92 %,
 branches 99.82 %), under a load near 8; the same tests passed at 100 % when run again with nothing else changed (the
 only change between the two runs was a type in `bff/src/calling/challenge.ts`, which `scripts` does not run). So the retry is
 covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
-stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.
+stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/running/processes.ts`.
 
 ## 69. A BFF rolled back past B1 cannot read the accounts B1 writes — the machine; `[DEFERRED]` (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
 
@@ -602,7 +602,7 @@ The header shows the company's name beside a stand-in logo (Tabler's `IconBrandA
 
 ## 77. A process left in a lane's group holds the wait with no line saying why — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Low)
 
-In a run nobody stops, a process left in a lane's process group holds the wait after the last pass, and no line says why (`walk/run.sh#L459`). Unlikely, since the stack kills its children at exit (`scripts/src/processes.ts#L47-L48`). *Fix:* once every lane's `.rc` is written, a short grace, then name what is left and TERM it.
+In a run nobody stops, a process left in a lane's process group holds the wait after the last pass, and no line says why (`walk/run.sh#L459`). Unlikely, since the stack kills its children at exit (`scripts/src/running/processes.ts#L47-L48`). *Fix:* once every lane's `.rc` is written, a short grace, then name what is left and TERM it.
 
 ## 78. On the stop path bash prints its job lines unprefixed — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Info)
 
@@ -610,7 +610,7 @@ On the KILL path, bash still prints its job lines without the `[lane n]` prefix 
 
 ## 79. A rare port clash between lanes — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info)
 
-`freePort` releases its port before the child binds it (`scripts/src/processes.ts#L7-L18`), so two lanes can meet on one. It shows as a named red, never a green. *Fix:* only if a run meets it.
+`freePort` releases its port before the child binds it (`scripts/src/running/processes.ts#L7-L18`), so two lanes can meet on one. It shows as a named red, never a green. *Fix:* only if a run meets it.
 
 ## 80. The full run's stray filter does not take a staged rename — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info; older than the piece)
 
@@ -805,7 +805,7 @@ Deferred from line 72's review, not a fault of the piece. `browser_lost` is set 
 
 ## 124. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
-Deferred from line 72's review, not a fault of the piece. `scripts/src/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
+Deferred from line 72's review, not a fault of the piece. `scripts/src/running/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
 
 ## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
 

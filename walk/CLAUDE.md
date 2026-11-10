@@ -12,6 +12,11 @@ and on a stack, the pictures counted raw against each other and the committed ba
 - **The screen widths belong in `shared`:** `WIDTHS` in `shared/src/widths.ts`, which `walk/support.ts` re-exports.
 - **`walk/legacy-capture.ts` is not a spec:** it photographs the old app, run by `ops/legacy-capture.sh`.
 
+## The directories
+
+None to decide: the package has no `src/`, its specs are already a directory (`walk/specs/`) and its root
+files are named one by one in `walk/tsconfig.json`.
+
 ## The file to copy
 
 - **A spec:** `walk/specs/operator-delete-client.spec.ts`: `FULL`, `exactly`, `open`, `walk`, then the

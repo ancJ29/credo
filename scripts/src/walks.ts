@@ -1,8 +1,8 @@
 import { appendFile, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type Box, comparePictures, decodePng } from './pixels';
-import { registerClaim } from './claim';
-import { classifyProcesses, parseProcessList } from './strays';
+import { type Box, comparePictures, decodePng } from './running/pixels';
+import { registerClaim } from './running/claim';
+import { classifyProcesses, parseProcessList } from './running/strays';
 
 export type Io = {
   stdin: () => Promise<string>;

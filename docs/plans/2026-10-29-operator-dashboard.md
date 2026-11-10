@@ -436,7 +436,7 @@ worktree; B to D will touch more of the same:
   `pnpm stack -- <command>`: the operator listed `binh-an`, `hoa-sen`, `demo` with their days
   (21 Oct, 2 Oct and 14 Sep), made `live-check` (201, `/login?client-code=live-check`), listed four
   with it first dated today, a root's handle was 401 and no handle 401. `pnpm check` exit 0 but for
-  `scripts`, which missed coverage only at `scripts/src/processes.ts#L83` (the timing test, open item
+  `scripts`, which missed coverage only at `scripts/src/running/processes.ts#L83` (the timing test, open item
   23 of `employee-list`) under load, and passed at 100 % alone; visual alone 100 %. Counts: shared 65
   tests, ui 219, bff 160, scripts 77, visual 220, each at 100 %; eslint, prettier, knip and every
   typecheck clean. c-storage unchanged, so no `make check`. The 88 scene dumps (the 70 of piece 1 and

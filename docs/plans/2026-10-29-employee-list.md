@@ -545,7 +545,7 @@ itself:
   with `?fake` on jsdom and reads the data set's company on the sign-in; in the sandbox,
   `pnpm fake -- curl` reads the page and leaves nothing listening. *Model files:* `ui/src/main.tsx`
   (the seam), the fixture `Api` in `ui/src/App.test.tsx`, `scripts/src/stack.ts` and
-  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/front.ts`. *Evidence:* rows 49, 50 and 51 each seen red once, from their assertions
+  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/running/front.ts`. *Evidence:* rows 49, 50 and 51 each seen red once, from their assertions
   (`ui/src/fake.test.tsx`, `scripts/src/fake.test.ts`); a jsdom test boots the app on `?fake` and
   reads the demo company's name on the sign-in, signs the root in and reads a cued 503; `pnpm fake --
   curl` read the page and a 404 on `/api`, and a process test reads nothing left listening or in the
@@ -724,7 +724,7 @@ itself:
   `CREDO_REFERENCE_DIR` the config points the base images at, each differing screen a soft failure so
   one walk names every one, and a difference is not red, it is what step 11 reads; the `full` project's
   timeout is 120 s, since a walk opens 15 clients. *Model files:* `scripts/src/generator.ts` and
-  `generator.test.ts` as they were, `scripts/src/front.ts` (a small loopback server) for
+  `generator.test.ts` as they were, `scripts/src/running/front.ts` (a small loopback server) for
   `seeding.ts`, `walk/specs/piece-1.spec.ts` (a second save through the real API, a stubbed 503) for
   the full path of `piece-2.spec.ts`, and `one-off/20261029-0305-fake-run-employee-list.sh` for the
   script.

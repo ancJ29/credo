@@ -91,10 +91,10 @@ the touched package's gate, `shellcheck -x walk/run.sh`, the step's rows each se
   sandbox cannot write it, and a test that did would break every project here: the path under test
   comes from the harness's `node` shim (`walk-run.test.ts#L141`), and `#L90` already unsets
   `PLAYWRIGHT_BROWSERS_PATH`.
-- [x] **3. The claim, registered and kept** (point 1). 15 minutes. Built: `scripts/src/claim.ts` (`trunkOf`, `claimName`, `registerClaim`), a `claim` command in `walks.ts`, called from `walk/run.sh`'s 1/6 (so also under `--checks`) before the header, which now prints the claim's line; rows 7 to 13 in `claim.test.ts`, `walks.test.ts` and `walk-run.test.ts` (row 9's end state is not observable by a test: a draft then rename and a write in place leave the same folder, so it is held by the draft sitting outside `.links` and being gone after). Departure: a run with the claim absent writes it from a terminal that can (the sandbox cannot, and says so in one line with the command); with it present the run only reads. `scripts/src/claim.ts` beside
+- [x] **3. The claim, registered and kept** (point 1). 15 minutes. Built: `scripts/src/running/claim.ts` (`trunkOf`, `claimName`, `registerClaim`), a `claim` command in `walks.ts`, called from `walk/run.sh`'s 1/6 (so also under `--checks`) before the header, which now prints the claim's line; rows 7 to 13 in `claim.test.ts`, `walks.test.ts` and `walk-run.test.ts` (row 9's end state is not observable by a test: a draft then rename and a write in place leave the same folder, so it is held by the draft sitting outside `.links` and being gone after). Departure: a run with the claim absent writes it from a terminal that can (the sandbox cannot, and says so in one line with the command); with it present the run only reads. `scripts/src/running/claim.ts` beside
   `strays.ts`, a `claim` command in `walks.ts`, called from `walk/run.sh`'s 1/6 and covered by
   `--checks`. Done: rows 7 to 13, each seen red first, in
-  `cd scripts && npx vitest run src/claim.test.ts src/walk-run.test.ts`; `scripts` at 100 %.
+  `cd scripts && npx vitest run src/running/claim.test.ts src/walk-run.test.ts`; `scripts` at 100 %.
 - [ ] **4. One review.** Another model than the builder's, correctness only, at a fixed sha. 8
   minutes; each finding fixed, rejected or deferred with its reason.
 - [x] **5. The whole check on the merge result.** 12 minutes. `main` taken in, then

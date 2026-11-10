@@ -8,6 +8,22 @@ The machine's own commands: bringing the product up on this Mac, and the steps a
 - **SC1. A step is here when it must run the product's own code.** `scripts/src/ridge.ts` calls the BFF's functions so every product rule holds; a step that is only `aws`, `ssh`, `gh` or `curl` is shell in `ops/`. A comparison or listing that shell does badly comes here to stand under this gate ([why](../walk/run.sh), the comment above `tool`).
 - **SC2. A rule is called, never copied.** A name, bound or wire shape comes from `shared/`; what the product enforces is the BFF's function, imported.
 
+## The directories of `scripts/src`
+
+Each finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17; a
+directory not on this list is not a directory, and a file with no sentence stays at the top.
+
+- **`demo/`**: the demo company's data as a pure function of a scenario and a seed, or the applying of
+  it (`scripts/src/demo/apply.ts`).
+- **`running/`**: the machine around a child process: a port, a spawn, a wait, a leftover, a static
+  server, two folders of pixels, which worktree holds `main` (`scripts/src/running/processes.ts`), with
+  the test of each beside it. None of it knows credo's domain.
+- **The top level**: a command the human runs, or what one command does (`scripts/src/cli.ts`,
+  `scripts/src/stack.ts`, `scripts/src/ridge.ts`), and the `*-main.ts` entries, which
+  `vitest.config.ts`, `knip.json`, `package.json`, `ops/lib.sh`, `walk/run.sh` and the stray detector's
+  own pattern in `scripts/src/running/strays.ts` name by exact path, so they stay. A directory per command
+  was rejected: `cli.ts` serves three commands.
+
 ## The file to copy
 
 - **A command:** `scripts/src/fake.ts` with `scripts/src/fake-main.ts`, the pair [code](../docs/conventions/code.md) names.

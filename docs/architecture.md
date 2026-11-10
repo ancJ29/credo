@@ -48,7 +48,7 @@ box and arrow are **decided and not built**: `audit-backbone/` is in this reposi
 it, and where it would run is not decided — the whole of that is
 [`docs/activity-log.md`](activity-log.md).
 
-**On this machine the picture is the same.** `scripts/src/front.ts` stands where CloudFront and the
+**On this machine the picture is the same.** `scripts/src/running/front.ts` stands where CloudFront and the
 HTTP API stand, so the app the walks picture is the app that deploys.
 
 ## One request, end to end
