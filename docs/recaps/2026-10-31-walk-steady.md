@@ -31,8 +31,8 @@ Drawn from [`support.ts`](../../walk/support.ts), [`run.sh`](../../walk/run.sh) 
 - **One capture** ([`support.ts`](../../walk/support.ts)): pointer parked, page scrolled to the top
   (open item 25, done), full-page shots until two in a row are equal by the raw reader, at most ten.
   `toHaveScreenshot`, its update modes and the snapshot templates are gone.
-- **The raw reader and the strays' choice** in `scripts/` ([`pixels.ts`](../../scripts/src/pixels.ts),
-  [`strays.ts`](../../scripts/src/strays.ts), [`walks.ts`](../../scripts/src/walks.ts)), under the gate
+- **The raw reader and the strays' choice** in `scripts/` ([`pixels.ts`](../../scripts/src/running/pixels.ts),
+  [`strays.ts`](../../scripts/src/running/strays.ts), [`walks.ts`](../../scripts/src/walks.ts)), under the gate
   at 100 %.
 - **`walk/run.sh`**, tested on stand-ins for node, pnpm, ps and uptime ([`walk-run.test.ts`](../../scripts/src/walk-run.test.ts)),
   ShellCheck in CI. Refusals stop before any act; strays of a killed stack are stopped first.

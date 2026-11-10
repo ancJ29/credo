@@ -130,7 +130,7 @@ runs every line while checking less keeps the package at 100 %. So:
       a minute in, 7.74 at the end; log `20261107-scripts-time-step4b.log`) and **120.26 s** (load 5.82, 13.95 peak,
       6.57 end; `20261107-scripts-time-step4c.log`); `Tests 305` over 32 files, coverage 100 %, typecheck, eslint,
       prettier and knip each exit 0. Before: 199.19 s on a quiet Mac, or 199.98 s for the package. **The after
-      number is the split plus what `main` added** (`scripts/src/claim.ts`, `claim.test.ts`, and nine more tests
+      number is the split plus what `main` added** (`scripts/src/running/claim.ts`, `claim.test.ts`, and nine more tests
       in `walk-run.test.ts`: 287 + 18 = 305), and the package's floor is now `walk-run.test.ts`, not the split
       file. **Held:** the next CI run's `scripts test` line, which needs a push.
 - [ ] **5. One cross-model review, then the recap.** *Done when* each finding is `[FIXED]`,

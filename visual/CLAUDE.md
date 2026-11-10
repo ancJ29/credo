@@ -12,6 +12,11 @@ file a non-coder opens and answers yes or no. No browser, no picture.
 - **The fake data and the `cue` a scene names belong in `ui` and `shared`.**
 - **The screen widths belong in `shared`:** `WIDTHS` in `shared/src/widths.ts`, which this package names `DEVICE_WIDTH` in `visual/src/walks.ts`.
 
+## The directories of `visual/src`
+
+None: flat is the answer, and the package's real problem is not its directories but
+`visual/src/walks.ts` at 2,190 lines, which is another piece's work.
+
 ## The file to copy
 
 - **A walk:** the entry with `id: 'operator-delete-client'` in `WALKS`, four screens, each a scene.

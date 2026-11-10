@@ -4,7 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/stack.ts",
-    "./pixels": "./src/pixels.ts"
+    "./pixels": "./src/running/pixels.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
