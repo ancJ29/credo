@@ -60,7 +60,7 @@ Drawn from [`ops/env.yml`](../ops/env.yml) (`ops/env.yml`'s `Distribution`, `Api
 path; what differs between them is the permission asked at step 6, the key built at step 8 and the
 record written at step 9 — never the shape.
 
-1. **The screen.** The form is `ui/src/CustomerPage.tsx`. It was handed one object to reach the back
+1. **The screen.** The form is `ui/src/pages/client/CustomerPage.tsx`. It was handed one object to reach the back
    end with, and holds no rule of its own. The version it read the customer at goes back with the
    change.
 2. **The call.** That object is `ui/src/api.ts`. It sends one `PUT` to the customer's own address,
@@ -482,7 +482,7 @@ Stated plainly so the next reader knows which parts to trust.
   here is `request.user`: zero hits in `bff/src/`, against a control that hits.
 - **For the 2026-11-09 rearrangement** (the one sentence, the diagram, the walk, the codemap and the
   absences) the walk was traced first-hand through the files it names, in order:
-  `ui/src/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
+  `ui/src/pages/client/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
   `resolveTenant` and `mustCan`, `bff/src/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
   key layout, `shared/src/c-storage.ts`'s `putRecord`, and
   `c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5's session check is
