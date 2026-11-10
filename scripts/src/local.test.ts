@@ -5,12 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   type CStorageClient,
+  createActivityClient,
   recordKeys,
   storedClientSchema,
   tenantConfigSchema,
 } from '@credo/shared';
 import { listClients } from '@credo/bff/clients';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type RunningAudit, startAudit } from '@credo/bff/tests/audit';
+import { buildAudit } from '@credo/bff/tests/build';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Handle,
   LOCAL_PORTS,
@@ -77,9 +80,10 @@ function memoryStorage() {
 
 const handleOf = (over: Partial<Handle> = {}): Handle => ({
   ports: { front: 3180, cStorage: 3181, bff: 3182, seedDoor: 3183 },
-  pids: { cStorage: 41, bff: 42 },
+  pids: { cStorage: 41, audit: 43, bff: 42 },
   cStorage: { url: 'http://127.0.0.1:3181', internalAccessKey: 'ik', superAdminKey: 'sk' },
   service: { code: 'demo', accessKey: 'ak' },
+  audit: { url: 'http://127.0.0.1:3184', readUrl: 'http://127.0.0.1:3185', key: 'audit-key' },
   keeper: 40,
   dataDir: '/data',
   url: 'http://localhost:3180',
@@ -113,6 +117,7 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   err: said.complain,
   paths,
   ports,
+  auditPorts: { keyed: 3184, open: 3185 },
   build: () => Promise.reject(new Error('not built here')),
   keeper: () => Promise.reject(new Error('no keeper here')),
   alive: () => true,
@@ -165,9 +170,10 @@ describe('local keep', () => {
       dataDir: paths.data,
       facts: {
         ports: LOCAL_PORTS,
-        pids: { cStorage: 41, bff: 42 },
+        pids: { cStorage: 41, audit: 43, bff: 42 },
         cStorage: { url: 'http://127.0.0.1:3181', internalAccessKey: 'ik', superAdminKey: 'sk' },
         service: { code: 'demo', accessKey: 'ak' },
+        audit: { url: 'http://127.0.0.1:3184', readUrl: 'http://127.0.0.1:3185', key: 'audit-key' },
       },
       stop,
     }) as unknown as StartedStack;
@@ -187,10 +193,11 @@ describe('local keep', () => {
     expect(start).toHaveBeenCalledWith(
       {
         cStorage: join(paths.build, 'c-storage'),
+        audit: join(paths.build, 'audit'),
         uiDir: join(paths.build, 'ui'),
         dir: paths.build,
       },
-      { dataDir: paths.data, ports },
+      { dataDir: paths.data, ports, auditPorts: { keyed: 3184, open: 3185 } },
     );
     expect(JSON.parse(await readFile(paths.handle, 'utf8'))).toEqual(
       handleOf({ keeper: process.pid, dataDir: paths.data }),
@@ -214,10 +221,12 @@ describe('local keep', () => {
     expect(start).toHaveBeenCalledWith(expect.anything(), {
       dataDir: paths.data,
       ports,
+      auditPorts: { keyed: 3184, open: 3185 },
       resume: {
         internalAccessKey: 'ik',
         superAdminKey: 'sk',
         service: { code: 'demo', accessKey: 'ak' },
+        auditKey: 'audit-key',
         demo: handleOf().demo,
       },
     });
@@ -342,6 +351,169 @@ describe('local status', () => {
     expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
       `c-storage: DOWN on port ${ports.cStorage}`,
     ]);
+  });
+});
+
+describe('local activity', () => {
+  let audit: RunningAudit;
+  let binaryDir: string;
+  beforeAll(async () => {
+    binaryDir = await mkdtemp(join(tmpdir(), 'credo-audit-bin-'));
+    await buildAudit(join(binaryDir, 'audit'));
+    audit = await startAudit(join(binaryDir, 'audit'));
+  });
+  afterAll(async () => {
+    await audit.stop();
+    await rm(binaryDir, { recursive: true, force: true });
+  });
+
+  // Fresh for each case: the one audit service keeps every entry written to it.
+  let CLIENT_ID = '';
+  let RECORD_ID = '';
+  beforeEach(() => {
+    CLIENT_ID = crypto.randomUUID();
+    RECORD_ID = crypto.randomUUID();
+  });
+  const customer = (name: string) => ({
+    id: '7b6e3a1c-2f55-4d0e-9a6b-1e8c4f2d9a30',
+    code: 'KH-1',
+    name,
+    extra: {},
+  });
+
+  /** A c-storage that knows the client `acme`, the audit service's target, and one saved entry. */
+  async function standing() {
+    const { storage } = memoryStorage();
+    await storage.putRecord(recordKeys.client('acme'), { id: CLIENT_ID, name: 'Acme' }, null);
+    const target = {
+      audit: { url: audit.keyedUrl, readUrl: audit.openUrl, key: audit.key },
+      storage: { baseUrl: 'http://x', internalAccessKey: 'i', serviceCode: 's', accessKey: 'a' },
+    };
+    return { storage, target };
+  }
+
+  const writeOne = (id = CLIENT_ID, at = '2026-11-10T10:15:00.000Z') =>
+    createActivityClient({ baseUrl: audit.keyedUrl, key: audit.key }).log([
+      {
+        clientId: id,
+        actorId: 'employee.7',
+        action: 'customer.save',
+        targetId: RECORD_ID,
+        memo: { by: 'Lan', before: customer('Mai'), after: customer('Mai Linh') },
+        timestamp: at,
+      },
+    ]);
+
+  it('prints the one entry of a record as one line: the time, the person, what was done, the name before and after, and no key or token', async () => {
+    const { storage, target } = await standing();
+    await writeOne();
+    const said = lines();
+
+    const status = await runLocal(
+      ['activity', 'acme', RECORD_ID],
+      baseIo(said, { env: { CREDO_AUDIT: JSON.stringify(target) }, connect: () => storage }),
+    );
+
+    expect(status).toBe(0);
+    expect(said.out).toEqual(['2026-11-10T10:15:00.000Z  Lan  customer saved  Mai -> Mai Linh']);
+    expect(said.err).toEqual([]);
+    const everything = JSON.stringify(said);
+    expect(everything).not.toContain(audit.key);
+    expect(everything).not.toContain('Bearer');
+  });
+
+  it('prints another client’s entries to no one: a client reads its own, and says so when it has none', async () => {
+    const { storage, target } = await standing();
+    await storage.putRecord(
+      recordKeys.client('other'),
+      { id: crypto.randomUUID(), name: 'Other' },
+      null,
+    );
+    await writeOne();
+    const said = lines();
+
+    const status = await runLocal(
+      ['activity', 'other', RECORD_ID],
+      baseIo(said, { env: { CREDO_AUDIT: JSON.stringify(target) }, connect: () => storage }),
+    );
+
+    expect(status).toBe(0);
+    expect(said.out).toEqual(['no entries']);
+  });
+
+  it('prints newest written first', async () => {
+    const { storage, target } = await standing();
+    await writeOne(CLIENT_ID, '2026-11-10T10:00:00.000Z');
+    await writeOne(CLIENT_ID, '2026-11-10T09:00:00.000Z');
+    const said = lines();
+
+    await runLocal(
+      ['activity', 'acme', RECORD_ID],
+      baseIo(said, { env: { CREDO_AUDIT: JSON.stringify(target) }, connect: () => storage }),
+    );
+
+    expect(said.out.map((line) => line.slice(0, 24))).toEqual([
+      '2026-11-10T09:00:00.000Z',
+      '2026-11-10T10:00:00.000Z',
+    ]);
+  });
+
+  it('finds its target in the handle when the environment names none', async () => {
+    const { storage } = await standing();
+    await writeHandle(
+      paths,
+      handleOf({ audit: { url: audit.keyedUrl, readUrl: audit.openUrl, key: audit.key } }),
+    );
+    const said = lines();
+
+    const status = await runLocal(
+      ['activity', 'acme', RECORD_ID],
+      baseIo(said, { connect: () => storage }),
+    );
+
+    expect(status).toBe(0);
+    expect(said.out).toEqual(['no entries']);
+  });
+
+  it('refuses what it cannot read, each with its reason and nothing printed as an entry', async () => {
+    const { storage, target } = await standing();
+    const down = { ...target, audit: { ...target.audit, url: 'http://127.0.0.1:9' } };
+    const cases: [string[], Partial<LocalIo>, number, string][] = [
+      [['activity'], {}, 2, 'a client code and a record id are both needed'],
+      [['activity', 'acme'], {}, 2, 'a client code and a record id are both needed'],
+      [['activity', 'acme', RECORD_ID], {}, 2, 'there is nowhere to read'],
+      [['activity', 'acme', RECORD_ID], { env: { CREDO_AUDIT: '{' } }, 2, 'JSON'],
+      [
+        ['activity', 'nobody', RECORD_ID],
+        { env: { CREDO_AUDIT: JSON.stringify(target) }, connect: () => storage },
+        2,
+        'nobody is not a client here',
+      ],
+      [
+        ['activity', 'acme', RECORD_ID],
+        { env: { CREDO_AUDIT: JSON.stringify(down) }, connect: () => storage },
+        1,
+        'the entries were not read: the audit service did not answer a token',
+      ],
+      [
+        ['activity', 'acme', RECORD_ID],
+        {
+          env: { CREDO_AUDIT: JSON.stringify(target) },
+          connect: () => ({
+            ...storage,
+            getRecord: () => Promise.reject(new Error('c-storage went')),
+          }),
+        },
+        1,
+        'the entries were not read: c-storage went',
+      ],
+    ];
+    for (const [argv, over, code, message] of cases) {
+      const said = lines();
+      expect(await runLocal(argv, baseIo(said, over)), argv.join(' ')).toBe(code);
+      expect(said.out).toEqual([]);
+      expect(said.err.join('\n')).toContain(message);
+    }
   });
 });
 
@@ -484,6 +656,7 @@ describe('local down', () => {
   const commandsOf = (): Record<number, string> => ({
     40: 'node --import tsx /x/scripts/src/local-main.ts keep /x',
     41: join(paths.build, 'c-storage'),
+    43: join(paths.build, 'audit'),
     42: 'node --import tsx /x/bff/src/main.ts',
   });
 
@@ -492,9 +665,10 @@ describe('local down', () => {
     await mkdir(paths.data, { recursive: true });
     await mkdir(join(paths.build, 'ui'), { recursive: true });
     await writeFile(join(paths.build, 'c-storage'), 'binary');
+    await writeFile(join(paths.build, 'audit'), 'binary');
     await writeFile(join(paths.data, 'records.db'), 'rows');
     await writeHandle(paths, handleOf({ ports, dataDir: paths.data, ...handleOver }));
-    const running = new Set([40, 41, 42]);
+    const running = new Set([40, 41, 43, 42]);
     const signalled: number[] = [];
     return {
       running,
@@ -526,21 +700,23 @@ describe('local down', () => {
     ]);
   });
 
-  it('stops the three processes, removes the folders and the handle, and reads each back', async () => {
+  it('stops the four processes, removes the folders and the handle, and reads each back', async () => {
     const said = lines();
     const world = await standing();
 
     const status = await runLocal(['down'], world.io(said));
 
     expect(status).toBe(0);
-    expect(world.signalled).toEqual([40, 41, 42]);
+    expect(world.signalled).toEqual([40, 41, 43, 42]);
     expect(said.out).toEqual([
       'keeper (pid 40): stopped',
       'c-storage (pid 41): stopped',
+      'the audit service (pid 43): stopped',
       'the BFF (pid 42): stopped',
       'read back after the teardown:',
       '  keeper: gone',
       '  c-storage: gone',
+      '  the audit service: gone',
       '  the BFF: gone',
       `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
       '  data folder and its database: gone',
@@ -597,9 +773,10 @@ describe('local down', () => {
     world.running.clear();
 
     expect(await runLocal(['down'], world.io(said))).toBe(0);
-    expect(said.out.slice(0, 3)).toEqual([
+    expect(said.out.slice(0, 4)).toEqual([
       'keeper (pid 40): was not running',
       'c-storage (pid 41): was not running',
+      'the audit service (pid 43): was not running',
       'the BFF (pid 42): was not running',
     ]);
     expect(world.signalled).toEqual([]);
@@ -726,7 +903,7 @@ describe('local down', () => {
     );
 
     expect(status).toBe(0);
-    expect(world.signalled).toEqual([41, 42]);
+    expect(world.signalled).toEqual([41, 43, 42]);
     expect(stranger.out).toContain(
       'keeper (pid 40): already gone; that number is now /usr/bin/vim notes.md, left alone',
     );
@@ -776,7 +953,7 @@ describe('local down', () => {
     expect(said.err[0]).toContain('could not be removed');
   });
 
-  it('stop ends the three processes, keeps the data, the build and the logs, and marks the handle stopped', async () => {
+  it('stop ends the four processes, keeps the data, the build and the logs, and marks the handle stopped', async () => {
     const said = lines();
     const world = await standing();
     await writeFile(join(paths.data, 'bff.log'), 'a log');
@@ -784,14 +961,16 @@ describe('local down', () => {
     const status = await runLocal(['stop'], world.io(said));
 
     expect(status).toBe(0);
-    expect(world.signalled).toEqual([40, 41, 42]);
+    expect(world.signalled).toEqual([40, 41, 43, 42]);
     expect(said.out).toEqual([
       'keeper (pid 40): stopped',
       'c-storage (pid 41): stopped',
+      'the audit service (pid 43): stopped',
       'the BFF (pid 42): stopped',
       'read back after the stop:',
       '  keeper: gone',
       '  c-storage: gone',
+      '  the audit service: gone',
       '  the BFF: gone',
       `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
       '  data folder and its database: kept',
@@ -919,7 +1098,9 @@ describe('local up', () => {
     const said = lines();
     const keeper = await standIn(port, 80);
     const kept: { current: Started | null } = { current: null };
-    const build = vi.fn(() => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }));
+    const build = vi.fn(() =>
+      Promise.resolve({ cStorage: 'c', audit: 'a', uiDir: 'u', dir: paths.build }),
+    );
     try {
       const status = await runLocal(
         ['up'],
@@ -959,7 +1140,7 @@ describe('local up', () => {
     const status = await runLocal(
       ['up'],
       baseIo(said, {
-        build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+        build: () => Promise.resolve({ cStorage: 'c', audit: 'a', uiDir: 'u', dir: paths.build }),
         keeper: () => Promise.resolve(stuck),
         settleMs: 150,
       }),
@@ -987,7 +1168,7 @@ describe('local up', () => {
         ['up'],
         baseIo(said, {
           ports: { ...ports, front: port },
-          build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+          build: () => Promise.resolve({ cStorage: 'c', audit: 'a', uiDir: 'u', dir: paths.build }),
           keeper: async () => (kept.current = await keeper()),
         }),
       );
@@ -1013,7 +1194,7 @@ describe('local up', () => {
       ['up'],
       baseIo(said, {
         ports: { ...ports, front: port },
-        build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+        build: () => Promise.resolve({ cStorage: 'c', audit: 'a', uiDir: 'u', dir: paths.build }),
         keeper: async () =>
           (kept.current = await startProcess(process.execPath, ['-e', script], {
             env: {},
@@ -1035,6 +1216,7 @@ describe('local up', () => {
     await mkdir(join(paths.build, 'ui'), { recursive: true });
     await writeFile(join(paths.data, 'records.db'), 'my rows');
     await writeFile(join(paths.build, 'c-storage'), 'binary');
+    await writeFile(join(paths.build, 'audit'), 'binary');
     await writeFile(paths.keeperLog, 'listening: the previous run\n');
     await writeHandle(paths, handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' } }));
     const build = vi.fn(() => Promise.reject(new Error('must not build')));
@@ -1082,6 +1264,7 @@ describe('local up', () => {
     await mkdir(join(paths.build, 'ui'), { recursive: true });
     await writeFile(join(paths.data, 'records.db'), 'my rows');
     await writeFile(join(paths.build, 'c-storage'), 'binary');
+    await writeFile(join(paths.build, 'audit'), 'binary');
     await writeHandle(paths, handleOf({ ports, dataDir: paths.data, stopped: { at: '09:00' } }));
 
     const status = await runLocal(
@@ -1138,7 +1321,8 @@ describe('local up', () => {
 
   it('leaves nothing when the keeper dies at once: its log is the reason, and the folder is gone', async () => {
     const said = lines();
-    const build = () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build });
+    const build = () =>
+      Promise.resolve({ cStorage: 'c', audit: 'a', uiDir: 'u', dir: paths.build });
     const status = await runLocal(
       ['up'],
       baseIo(said, {
@@ -1179,7 +1363,7 @@ describe('a verb it does not know', () => {
 
     expect(await runLocal(['sideways'], baseIo(said))).toBe(2);
     expect(said.err).toEqual([
-      'usage: pnpm local up | status | seed <code> [<name>] | stop | down',
+      'usage: pnpm local up | status | seed <code> [<name>] | activity <code> <record id> | stop | down',
     ]);
   });
 });

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { InjectOptions } from 'fastify';
 import {
   CLIENT_HEADER,
+  type ActivityClient,
   type CStorageClient,
   type Employee,
   normaliseSignInName,
@@ -105,6 +106,7 @@ export async function bffOn(
   options: {
     now?: () => number;
     wrap?: (client: CStorageClient) => CStorageClient;
+    activity?: ActivityClient;
     logger?: Parameters<typeof buildApp>[0]['logger'];
     build?: string;
   } = {},
@@ -114,6 +116,7 @@ export async function bffOn(
   const storage = options.wrap ? options.wrap(service.client) : service.client;
   const app = buildApp({
     storage,
+    ...(options.activity === undefined ? {} : { activity: options.activity }),
     now: options.now ?? time.now,
     origin: ORIGIN,
     serviceKey: service.accessKey,

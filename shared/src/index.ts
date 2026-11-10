@@ -1,3 +1,4 @@
+export * from './activity';
 export * from './c-storage';
 export * from './config';
 export * from './env';

@@ -3,9 +3,26 @@ import { createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { listClients } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
-import { type CStorageClient, clientCodeSchema, type createCStorageClient } from '@credo/shared';
+import {
+  ActivityError,
+  type CStorageClient,
+  clientCodeSchema,
+  createActivityClient,
+  type createCStorageClient,
+  entryLine,
+  readEntriesByTarget,
+  recordKeys,
+  storedClientSchema,
+} from '@credo/shared';
 import { ROOT_NAME, SeededAlready, seedClient } from './generator';
-import { type Artifacts, type StackFacts, type StartedStack, type StartOptions } from './stack';
+import {
+  type ActivityTarget,
+  activityTargetOf,
+  type Artifacts,
+  type StackFacts,
+  type StartedStack,
+  type StartOptions,
+} from './stack';
 import { type Started, waitUntilUp } from './running/processes';
 
 /** The four ports of the local environment, fixed so one address is bookmarked and every command
@@ -17,6 +34,9 @@ export const LOCAL_PORTS: StackFacts['ports'] = {
   bff: 3182,
   seedDoor: 3183,
 };
+
+/** The audit service's two ports, the keyed one and the open one, fixed beside the four. */
+export const LOCAL_AUDIT_PORTS = { keyed: 3184, open: 3185 };
 
 export type LocalPaths = {
   /** Everything the environment keeps, removed as one folder; git-ignored. */
@@ -72,14 +92,16 @@ async function replaceHandle(paths: LocalPaths, handle: Handle) {
   await rename(next, paths.handle);
 }
 
+type StorageConnection = Parameters<typeof createCStorageClient>[0];
 /** Where a command reaches c-storage, and the address a tenant's link starts with. */
-type StorageTarget = Parameters<typeof createCStorageClient>[0] & { origin: string };
+type StorageTarget = StorageConnection & { origin: string };
 
 export type LocalIo = {
   out: (line: string) => void;
   err: (line: string) => void;
   paths: LocalPaths;
   ports: StackFacts['ports'];
+  auditPorts: typeof LOCAL_AUDIT_PORTS;
   /** `up`: builds c-storage and the UI into the folder given. */
   build: (dir: string) => Promise<Artifacts>;
   /** `up`: starts the process that keeps the stack standing, free of this one. */
@@ -93,7 +115,7 @@ export type LocalIo = {
    * `APP_ORIGIN` for the link) is where `seed` goes, in place of the handle's. */
   env: Record<string, string | undefined>;
   /** `status` and `seed`: the c-storage client for a target. */
-  connect: (target: StorageTarget) => CStorageClient;
+  connect: (target: StorageConnection) => CStorageClient;
   /** `down`: asks a process to end (SIGTERM), never to be killed. */
   signal: (pid: number) => void;
   /** `down`: the command line of a running process, or nothing when it cannot be read. */
@@ -115,7 +137,8 @@ export type LocalIo = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const USAGE = 'usage: pnpm local up | status | seed <code> [<name>] | stop | down';
+const USAGE =
+  'usage: pnpm local up | status | seed <code> [<name>] | activity <code> <record id> | stop | down';
 
 const exists = (path: string) =>
   access(path).then(
@@ -153,6 +176,7 @@ async function takenPorts(ports: StackFacts['ports']) {
 const dataIntact = async (paths: LocalPaths) =>
   (await exists(join(paths.data, 'records.db'))) &&
   (await exists(join(paths.build, 'c-storage'))) &&
+  (await exists(join(paths.build, 'audit'))) &&
   (await exists(join(paths.build, 'ui')));
 
 /** `pnpm local up`: builds, starts the keeper and returns once the front answers, leaving the stack
@@ -226,7 +250,7 @@ async function up(io: LocalIo) {
  * ports, publishes the handle, says it is listening, and takes the stack down when asked to end.
  * It removes nothing it did not write: the data folder is `down`'s. */
 async function keep(io: LocalIo) {
-  const { paths, ports } = io;
+  const { paths, ports, auditPorts } = io;
   let stack: StartedStack | null = null;
   let status = 0;
   try {
@@ -239,17 +263,20 @@ async function keep(io: LocalIo) {
     stack = await io.start(
       {
         cStorage: join(paths.build, 'c-storage'),
+        audit: join(paths.build, 'audit'),
         uiDir: join(paths.build, 'ui'),
         dir: paths.build,
       },
       {
         dataDir: paths.data,
         ports,
+        auditPorts,
         ...(resume && {
           resume: {
             internalAccessKey: resume.cStorage.internalAccessKey,
             superAdminKey: resume.cStorage.superAdminKey,
             service: resume.service,
+            auditKey: resume.audit.key,
             demo: resume.demo,
           },
         }),
@@ -400,6 +427,63 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
   }
 }
 
+/**
+ * `pnpm local activity <client code> <record id>`: one record's entries, newest first, one line each:
+ * the time, the person, what was done, and a customer's name before and after. The client's code
+ * becomes its minted id through c-storage, a read token is minted for that client alone, and the
+ * entries are read through the audit service's open listener. The target is `CREDO_AUDIT` (which
+ * `pnpm stack` hands a command) when set, and the handle's otherwise. No key or token is printed.
+ * The service has no read of a client's every entry, only by record and by person, so a record id
+ * is asked for.
+ */
+async function activity(io: LocalIo, code: string | undefined, recordId: string | undefined) {
+  if (!clientCodeSchema.safeParse(code).success || !recordId) {
+    io.err(`${USAGE}: a client code and a record id are both needed`);
+    return 2;
+  }
+  let target: ActivityTarget;
+  try {
+    if (io.env['CREDO_AUDIT']) {
+      target = JSON.parse(io.env['CREDO_AUDIT']) as ActivityTarget;
+    } else if (await exists(io.paths.handle)) {
+      target = activityTargetOf(JSON.parse(await readFile(io.paths.handle, 'utf8')) as Handle);
+    } else {
+      io.err('there is nowhere to read: no CREDO_AUDIT in the environment and no handle');
+      return 2;
+    }
+  } catch (error) {
+    io.err(messageOf(error));
+    return 2;
+  }
+  try {
+    const found = await io.connect(target.storage).getRecord(recordKeys.client(code!));
+    if (!found) {
+      io.err(`${code} is not a client here: nothing was read`);
+      return 2;
+    }
+    const connection = { timeoutMs: 5000 };
+    const token = await createActivityClient({
+      ...connection,
+      baseUrl: target.audit.url,
+      key: target.audit.key,
+    }).mintToken(storedClientSchema.parse(found.data).id);
+    const entries = await readEntriesByTarget(
+      { ...connection, readUrl: target.audit.readUrl, token },
+      recordId,
+    );
+    if (entries.length === 0) io.out('no entries');
+    for (const entry of entries) io.out(entryLine(entry));
+    return 0;
+  } catch (error) {
+    io.err(
+      error instanceof ActivityError
+        ? `the entries were not read: ${error.message}`
+        : `the entries were not read: ${messageOf(error)}`,
+    );
+    return 1;
+  }
+}
+
 /** The handle as `down` may trust it: a message when it is not one, since a handle is a file
  * anyone can write, and what it names is about to be signalled and deleted. */
 function readableHandle(text: string, paths: LocalPaths): Handle | string {
@@ -410,8 +494,14 @@ function readableHandle(text: string, paths: LocalPaths): Handle | string {
     return 'it is not JSON';
   }
   const pid = (value: unknown) => Number.isInteger(value) && (value as number) > 1;
-  if (!found || !pid(found.keeper) || !pid(found.pids?.cStorage) || !pid(found.pids?.bff)) {
-    return 'it does not name the three processes';
+  if (
+    !found ||
+    !pid(found.keeper) ||
+    !pid(found.pids?.cStorage) ||
+    !pid(found.pids?.audit) ||
+    !pid(found.pids?.bff)
+  ) {
+    return 'it does not name the four processes';
   }
   if (found.dataDir !== paths.data) {
     return `its data folder is ${String(found.dataDir)}, not ${paths.data}, the only folder this command removes`;
@@ -437,6 +527,11 @@ async function endProcesses(io: LocalIo, handle: Handle | null): Promise<Ended> 
           'c-storage',
           handle.pids.cStorage,
           (command) => command.includes(join(paths.build, 'c-storage')),
+        ],
+        [
+          'the audit service',
+          handle.pids.audit,
+          (command) => command.includes(join(paths.build, 'audit')),
         ],
         ['the BFF', handle.pids.bff, (command) => command.includes('bff/src/main.ts')],
       ]
@@ -511,6 +606,7 @@ async function down(io: LocalIo) {
         .filter(
           ({ command }) =>
             command.includes(join(paths.build, 'c-storage')) ||
+            command.includes(join(paths.build, 'audit')) ||
             command.includes(`local-main.ts keep ${dirname(paths.dir)}`),
         );
     } catch (error) {
@@ -648,6 +744,7 @@ export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
   if (argv[0] === 'stop') return await stop(io);
   if (argv[0] === 'down') return await down(io);
   if (argv[0] === 'seed') return await seed(io, argv[1], argv[2]);
+  if (argv[0] === 'activity') return await activity(io, argv[1], argv[2]);
   if (argv[0] === 'keep') return await keep(io);
   io.err(USAGE);
   return 2;

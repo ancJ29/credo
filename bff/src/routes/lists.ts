@@ -19,6 +19,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { actorOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
 import { recordTools } from '../records/records';
 import type { Deps } from './staff';
@@ -28,6 +29,8 @@ import type { Deps } from './staff';
 type ListKind<Record extends { id: string; code: string }, Save extends { version: string }> = {
   /** The list's name in a fault, never a key. */
   name: 'customer' | 'product';
+  /** The action a save declares in the activity log, or none while the list's save does not. */
+  audits: 'customer.save' | null;
   route: string;
   /** One record's route, `:id` filled in by the caller. */
   one: (id: string) => string;
@@ -50,6 +53,7 @@ const CUSTOMERS: ListKind<
   z.infer<typeof saveCustomerRequestSchema>
 > = {
   name: 'customer',
+  audits: 'customer.save',
   route: ROUTES.customers,
   one: customerRoutes.one,
   importRoute: listImportRoute('customers'),
@@ -67,6 +71,7 @@ const PRODUCTS: ListKind<
   z.infer<typeof saveProductRequestSchema>
 > = {
   name: 'product',
+  audits: null,
   route: ROUTES.products,
   one: productRoutes.one,
   importRoute: listImportRoute('products'),
@@ -227,11 +232,22 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * what was asked is our own write landed and counts as saved; anything else is a genuine
      * conflict, answered 409 with the record as it is now. The version is never skipped. */
     app.put(kind.one(':id'), forClient, async (request) => {
-      mustCan(await signedIn(request), 'orders.canEdit');
+      const who = await signedIn(request);
+      mustCan(who, 'orders.canEdit');
       const id = idOf(request);
       const body = parse(kind.save, request.body);
       const found = await mustRead(request.tenantId, id);
       const updated = kind.apply(found.record, body);
+      /** Declared at each way the save stands, so the hook sends it only for a change that landed. */
+      const stands = () => {
+        if (kind.audits === null) return;
+        request.audit = {
+          actorId: actorOf(who),
+          action: kind.audits,
+          targetId: id,
+          memo: { by: who.name, before: found.record, after: updated },
+        };
+      };
       let outcome: 'saved' | 'moved';
       try {
         outcome = await storage.putRecord(kind.key(request.tenantId, id), updated, body.version);
@@ -244,12 +260,21 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         // The day a mutable field (a `changeCode`, an `archived` flag, an order's status) joins a
         // record saved this way, another writer's record could count as our own save: re-think
         // this then.
-        if (now && isDeepStrictEqual(now.record, updated)) return docOf(now);
+        if (now && isDeepStrictEqual(now.record, updated)) {
+          stands();
+          return docOf(now);
+        }
         throw error;
       }
-      if (outcome === 'saved') return docOf(await mustRead(request.tenantId, id));
+      if (outcome === 'saved') {
+        stands();
+        return docOf(await mustRead(request.tenantId, id));
+      }
       const now = await readOne(request.tenantId, id);
-      if (now && isDeepStrictEqual(now.record, updated)) return docOf(now);
+      if (now && isDeepStrictEqual(now.record, updated)) {
+        stands();
+        return docOf(now);
+      }
       throw new HttpError(409, 'Conflict', { current: now && docOf(now) });
     });
   }

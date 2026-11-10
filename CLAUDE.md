@@ -76,8 +76,9 @@ otherwise runs whole.
   never committed or printed), `CREDO_OPERATOR_LINK` (the
   invited operator's one-time join link, at `http://localhost:<port>`, since a
   passkey is bound to a name and no IP address has one), `CREDO_PEOPLE` (JSON: each data-set
-  person's code to a first password) and `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client
-  of its own); the stack, never the BFF, holds c-storage's super-admin key and registers
+  person's code to a first password), `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client
+  of its own) and `CREDO_AUDIT` (JSON: the audit service's two addresses and key, and c-storage's, for
+  `pnpm local activity <client code> <record id>`; never printed); the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
 - **An order's day is the page's, never the BFF's clock** (`localToday()` in `ui/src/day.ts`): the fake

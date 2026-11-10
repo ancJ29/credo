@@ -48,6 +48,7 @@ describe('the local environment, whole', () => {
       err: (line) => errors.push(line),
       paths,
       ports,
+      auditPorts: { keyed: await freePort(), open: await freePort() },
       build: () => Promise.reject(new Error('built already')),
       keeper: () => Promise.reject(new Error('the keeper runs in this process')),
       clock: () => '00:00',

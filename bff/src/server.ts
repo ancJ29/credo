@@ -1,4 +1,4 @@
-import { createCStorageClient } from '@credo/shared';
+import { createActivityClient, createCStorageClient } from '@credo/shared';
 import { buildApp } from './app';
 import { BUILD } from './build';
 import { type BffEnv, readEnv } from './env';
@@ -14,8 +14,14 @@ export function buildBff(
     serviceCode: config.SERVICE_CODE,
     accessKey: config.SERVICE_ACCESS_KEY,
   });
+  const activity =
+    config.AUDIT_URL === undefined
+      ? null
+      : // The environment is read with the pair together, so a URL has its key.
+        createActivityClient({ baseUrl: config.AUDIT_URL, key: config.AUDIT_KEY as string });
   return buildApp({
     storage,
+    activity,
     now,
     origin: config.APP_ORIGIN,
     serviceKey: config.SERVICE_ACCESS_KEY,

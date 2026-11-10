@@ -1,0 +1,165 @@
+import { z } from 'zod';
+import { customerSchema } from './lists';
+
+/** How long the back end waits for the audit service before it saves the change anyway and logs
+ * the entry as lost: the one bound, read by every call of the client. */
+export const AUDIT_TIMEOUT_MS = 600;
+
+/** Every action an entry may carry, to the words the printout shows. One list, declared once. */
+export const ACTIONS = { 'customer.save': 'customer saved' } as const;
+export type ActionId = keyof typeof ACTIONS;
+
+/** What a customer save's memo holds, the whole record as stored: `by` is the person's name as it
+ * was shown then. The memo's one home, since the audit service owns no memo schema. */
+export const customerSaveMemoSchema = z.strictObject({
+  by: z.string(),
+  before: customerSchema.nullable(),
+  after: customerSchema.nullable(),
+});
+
+/** An entry as the audit service takes it. */
+export type ActivityEntry = {
+  clientId: string;
+  actorId: string;
+  action: ActionId;
+  targetId?: string;
+  memo: Record<string, unknown>;
+  timestamp: string;
+};
+
+/** A call to the audit service that did not answer as promised: `status` is the HTTP status, or
+ * null when none came (refused, reset, timed out) or its shape was not the one promised. The
+ * message never holds a key or a token. */
+export class ActivityError extends Error {
+  constructor(
+    readonly status: number | null,
+    message: string,
+    options?: ErrorOptions,
+  ) {
+    super(message, options);
+    this.name = 'ActivityError';
+  }
+}
+
+type Connection = { fetch?: typeof fetch; timeoutMs?: number };
+
+async function call(
+  connection: Connection,
+  url: string,
+  init: { method: string; headers: Record<string, string>; body?: unknown },
+  what: string,
+) {
+  const { fetch: send = fetch, timeoutMs = AUDIT_TIMEOUT_MS } = connection;
+  try {
+    return await send(url, {
+      method: init.method,
+      headers: {
+        ...(init.body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...init.headers,
+      },
+      body: init.body === undefined ? null : JSON.stringify(init.body),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    throw new ActivityError(null, `the audit service did not answer ${what}`, { cause: error });
+  }
+}
+
+const tokenReplySchema = z.object({ token: z.string().min(1) });
+
+export type ActivityClient = {
+  /** Appends the entries in one call; a 201 means committed, anything else throws. */
+  log(entries: ActivityEntry[]): Promise<void>;
+  /** A read token for one client, for the keyed listener's holder to read with. */
+  mintToken(clientId: string): Promise<string>;
+};
+
+/** The audit service's keyed listener: its write and its token mint. */
+export function createActivityClient(
+  connection: Connection & { baseUrl: string; key: string },
+): ActivityClient {
+  const keyed = { 'x-internal-access-key': connection.key };
+  return {
+    async log(entries) {
+      const what = 'a write';
+      const response = await call(
+        connection,
+        `${connection.baseUrl}/api/activities`,
+        { method: 'POST', headers: keyed, body: { activities: entries } },
+        what,
+      );
+      if (response.status !== 201) {
+        throw new ActivityError(
+          response.status,
+          `the audit service answered ${response.status} to ${what}`,
+        );
+      }
+    },
+    async mintToken(clientId) {
+      const what = 'a token';
+      const response = await call(
+        connection,
+        `${connection.baseUrl}/api/read-tokens`,
+        { method: 'POST', headers: keyed, body: { clientId } },
+        what,
+      );
+      if (response.status !== 200) {
+        throw new ActivityError(
+          response.status,
+          `the audit service answered ${response.status} to ${what}`,
+        );
+      }
+      const parsed = tokenReplySchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success)
+        throw new ActivityError(null, 'the audit service sent a token in no known shape');
+      return parsed.data.token;
+    },
+  };
+}
+
+const readEntrySchema = z.object({
+  id: z.string(),
+  clientId: z.string(),
+  actorId: z.string(),
+  action: z.string(),
+  targetId: z.string().nullable(),
+  memo: z.unknown(),
+  createdAt: z.string(),
+});
+export type ReadEntry = z.infer<typeof readEntrySchema>;
+
+const pageSchema = z.object({ activities: z.array(readEntrySchema) });
+
+/** One record's entries, newest written first, from the open listener under a read token. */
+export async function readEntriesByTarget(
+  connection: Connection & { readUrl: string; token: string },
+  targetId: string,
+): Promise<ReadEntry[]> {
+  const what = 'a read';
+  const response = await call(
+    connection,
+    `${connection.readUrl}/api/activities/by-target/${encodeURIComponent(targetId)}`,
+    { method: 'GET', headers: { authorization: `Bearer ${connection.token}` } },
+    what,
+  );
+  if (response.status !== 200) {
+    throw new ActivityError(
+      response.status,
+      `the audit service answered ${response.status} to ${what}`,
+    );
+  }
+  const parsed = pageSchema.safeParse(await response.json().catch(() => null));
+  if (!parsed.success)
+    throw new ActivityError(null, 'the audit service sent entries in no known shape');
+  return parsed.data.activities;
+}
+
+/** One line of the printout: the time, the person, what was done, and a customer's name before and
+ * after. An entry whose memo is in no known shape shows its action alone. Names no key or token. */
+export function entryLine(entry: ReadEntry): string {
+  const label = (ACTIONS as Record<string, string>)[entry.action] ?? entry.action;
+  const memo = customerSaveMemoSchema.safeParse(entry.memo);
+  if (!memo.success) return `${entry.createdAt}  ${entry.actorId}  ${label}`;
+  const { by, before, after } = memo.data;
+  return `${entry.createdAt}  ${by}  ${label}  ${before?.name ?? '-'} -> ${after?.name ?? '-'}`;
+}

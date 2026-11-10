@@ -13,7 +13,8 @@
     "./tests/build": "./tests/build.ts",
     "./tests/authenticator": "./tests/authenticator.ts",
     "./tests/join": "./tests/join.ts",
-    "./tests/c-storage": "./tests/c-storage.ts"
+    "./tests/c-storage": "./tests/c-storage.ts",
+    "./tests/audit": "./tests/audit.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

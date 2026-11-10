@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type ActivityClient,
+  type ActivityEntry,
   AUTH_HEADER,
   changeOwnPasswordRequestSchema,
   CLIENT_HEADER,
@@ -60,14 +62,22 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** The minted id of the tenant a client's call names, set before the route runs. */
     tenantId: string;
+    /** The entry the route declares once its change is written; the hook sends it before the reply. */
+    audit: Declared | null;
   }
 }
+
+/** What a route declares about the change it made: the hook adds the client, the time and the send. */
+export type Declared = Pick<ActivityEntry, 'actorId' | 'action' | 'memo'> & { targetId: string };
 
 type SetupRead = Awaited<ReturnType<typeof readSetup>>;
 
 export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
   storage: CStorageClient;
+  /** The audit service, or none where it is not configured: the change is saved and the lost entry
+   * logged, never refused. */
+  activity?: ActivityClient | null;
   now: () => number;
   /** The address the operator opens (`APP_ORIGIN`): passkeys are checked against it, never the
    * request's host. */
@@ -82,12 +92,41 @@ export type AppDeps = {
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
 
-export function buildApp({ storage, now, origin, serviceKey, logger, build = 'dev' }: AppDeps) {
+export function buildApp({
+  storage,
+  activity = null,
+  now,
+  origin,
+  serviceKey,
+  logger,
+  build = 'dev',
+}: AppDeps) {
   const app = Fastify({ logger });
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
   const sessionsOf = (tenantId: string) =>
     createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
   app.decorateRequest('tenantId', '');
+  app.decorateRequest('audit', null);
+
+  /** Sends the entry a route declared, before the reply and under the client's own bound. Whatever
+   * goes wrong, the change stands: the entry is logged as lost, naming what it was and never a key. */
+  app.addHook('onSend', async (request, _reply, payload) => {
+    const declared = request.audit;
+    if (!declared) return payload;
+    const lost = { action: declared.action, targetId: declared.targetId };
+    if (!activity) {
+      request.log.warn(lost, 'audit entry lost: the log is not configured');
+      return payload;
+    }
+    try {
+      await activity.log([
+        { ...declared, clientId: request.tenantId, timestamp: new Date(now()).toISOString() },
+      ]);
+    } catch (error) {
+      request.log.warn({ ...lost, err: error }, 'audit entry lost');
+    }
+    return payload;
+  });
 
   app.setErrorHandler((error, request, reply) => {
     const { status, body } = replyFor(error);

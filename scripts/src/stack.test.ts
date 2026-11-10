@@ -362,6 +362,7 @@ describe('what the stack builds', () => {
   it('puts the UI and c-storage in its own folder, so a running stack’s files are never emptied', async () => {
     expect(artifacts.uiDir).toBe(join(dir, 'ui'));
     expect(artifacts.cStorage.startsWith(dir)).toBe(true);
+    expect(artifacts.audit.startsWith(dir)).toBe(true);
     expect(await readFile(join(artifacts.uiDir, 'index.html'), 'utf8')).toContain(
       '<div id="root">',
     );
@@ -386,12 +387,14 @@ describe('what the BFF is given', () => {
       cStorageUrl: 'http://127.0.0.1:4001',
       internalAccessKey: 'internal',
       service: { code: 'demo', accessKey: 'service' },
+      audit: { url: 'http://127.0.0.1:4003', key: 'audit-key' },
       appOrigin: 'http://localhost:4002',
     });
 
     expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
     expect(environment.HOST).toBe('127.0.0.1');
     expect(environment.APP_ORIGIN).toBe('http://localhost:4002');
+    expect(environment.AUDIT_URL).toBe('http://127.0.0.1:4003');
   });
 });
 
@@ -515,6 +518,7 @@ describe('pnpm stack -- <command>', () => {
     expect(status).toBe(0);
     expect(await readFile(file, 'utf8')).toBe(
       [
+        'CREDO_AUDIT',
         'CREDO_CLIENT_CODE',
         'CREDO_OPERATOR_HANDLE',
         'CREDO_OPERATOR_LINK',
@@ -650,6 +654,8 @@ describe('a stack that is started and stopped on its own', () => {
       expect(stack.seedUrl).toBe(`http://127.0.0.1:${ports.seedDoor}/seed`);
       expect(alive(stack.facts.pids.cStorage)).toBe(true);
       expect(alive(stack.facts.pids.bff)).toBe(true);
+      expect(alive(stack.facts.pids.audit)).toBe(true);
+      expect((await fetch(`${stack.facts.audit.url}/health`)).status).toBe(200);
     } finally {
       await stack.stop();
       await stack.stop();
@@ -660,7 +666,10 @@ describe('a stack that is started and stopped on its own', () => {
       await expect(fetch(`${stack.facts.cStorage.url}/health`)).rejects.toThrow();
       expect(alive(stack.facts.pids.cStorage)).toBe(false);
       expect(alive(stack.facts.pids.bff)).toBe(false);
-      expect(await readdir(dataDir)).toContain('records.db');
+      expect(alive(stack.facts.pids.audit)).toBe(false);
+      expect(await readdir(dataDir)).toEqual(
+        expect.arrayContaining(['records.db', 'activities.db']),
+      );
     } finally {
       await rm(dataDir, { recursive: true, force: true });
     }
@@ -700,10 +709,12 @@ describe('a stack that is started and stopped on its own', () => {
           internalAccessKey: first.facts.cStorage.internalAccessKey,
           superAdminKey: first.facts.cStorage.superAdminKey,
           service: first.facts.service,
+          auditKey: first.facts.audit.key,
           demo: { rootPassword: first.rootPassword, operatorLink: first.operatorLink },
         },
       });
       try {
+        expect(again.facts.audit.key).toBe(first.facts.audit.key);
         expect(again.rootPassword).toBe(first.rootPassword);
         expect(again.operatorLink).toBe(first.operatorLink);
         const signedIn = await signIn(again.url, again.rootName, first.rootPassword);

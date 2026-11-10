@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCStorageClient } from '@credo/shared';
-import { runLocal, LOCAL_PORTS, localPaths } from './local';
+import { runLocal, LOCAL_AUDIT_PORTS, LOCAL_PORTS, localPaths } from './local';
 import { parseProcessList } from './running/strays';
 import { startProcess } from './running/processes';
 import { buildArtifacts, startStack } from './stack';
@@ -31,6 +31,7 @@ process.exitCode = await runLocal(process.argv.slice(2), {
   err: console.error,
   paths,
   ports: LOCAL_PORTS,
+  auditPorts: LOCAL_AUDIT_PORTS,
   build: buildArtifacts,
   keeper: () =>
     startProcess(

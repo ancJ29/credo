@@ -21,5 +21,6 @@ export const STACK_ENV = {
   CREDO_PEOPLE: envName('CREDO_PEOPLE'),
   CREDO_SEED_URL: envName('CREDO_SEED_URL'),
   CREDO_COPIES: envName('CREDO_COPIES'),
+  CREDO_AUDIT: envName('CREDO_AUDIT'),
 } as const;
 export type StackEnvName = keyof typeof STACK_ENV;

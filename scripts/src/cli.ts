@@ -140,6 +140,7 @@ export const runStack = (
         [STACK_ENV.CREDO_OPERATOR_LINK]: stack.operatorLink,
         [STACK_ENV.CREDO_PEOPLE]: JSON.stringify(stack.people),
         [STACK_ENV.CREDO_SEED_URL]: stack.seedUrl,
+        [STACK_ENV.CREDO_AUDIT]: JSON.stringify(stack.activityTarget),
       }),
       waiting: (stack) => [
         `the demo client's link is ${stack.url}/login?client-code=${stack.clientCode}`,

@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { STACK_ENV } from './env';
 
 describe('the stack environment names', () => {
-  it('are the eleven the stack and demo hand over, each key its own name', () => {
+  it('are the twelve the stack and demo hand over, each key its own name', () => {
     // pinned as literals on purpose: a test that read the object would follow it to any value
     expect(Object.keys(STACK_ENV).sort()).toEqual(
       [
+        'CREDO_AUDIT',
         'CREDO_CLIENT_CODE',
         'CREDO_COPIES',
         'CREDO_OPERATOR_HANDLE',
