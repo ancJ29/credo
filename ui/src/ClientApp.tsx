@@ -31,6 +31,7 @@ import { shrinkToProof } from './photo';
 import { PersonPage } from './pages/client/PersonPage';
 import { ProductPage } from './pages/client/ProductPage';
 import { type Look, Providers } from './frame/Providers';
+import { LISTS, type ListKind } from './listSheet';
 import { mayOpen, type Page, pagesOf } from './nav';
 import { MorePage } from './pages/MorePage';
 import { Notice } from './pages/client/Notice';
@@ -57,6 +58,9 @@ type Props = {
   /** Makes a delivery's photo small enough to send; the browser's own by default. */
   shrink?: (file: File) => Promise<string>;
 };
+
+/** Every list kind there is: a kind added to `LISTS` gets its list, add and import routes here. */
+const KINDS = Object.keys(LISTS) as ListKind[];
 
 const SIGNED_OUT = 401;
 const NOT_FOUND = 404;
@@ -370,14 +374,14 @@ export function ClientApp({
                 path="/staff-setup"
                 element={guarded(user, 'staff-setup', <StaffSetupPage {...pageFor(user)} />)}
               />
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}`}
                   element={guarded(user, kind, <ListPage kind={kind} {...pageFor(user)} />)}
                 />
               ))}
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}/new`}
@@ -400,7 +404,7 @@ export function ClientApp({
                 path="/products/:id"
                 element={guarded(user, 'products', <ProductPage {...pageFor(user)} />)}
               />
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}/import`}
