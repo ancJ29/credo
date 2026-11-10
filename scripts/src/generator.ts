@@ -83,12 +83,14 @@ export async function seedClient(
   storage: CStorageClient,
   code: string,
   madeAt: number = Date.now(),
+  /** The company's name; the data set's own when none is given. */
+  name: string = DEMO_CONFIG.name,
 ): Promise<SeededClient> {
   const made = await createClient(storage, {
     code,
-    name: DEMO_CONFIG.name,
+    name,
     madeAt,
-    settings: DEMO_CONFIG,
+    settings: { ...DEMO_CONFIG, name },
   });
   if (made === 'taken') throw new Error('the service already holds data: not seeded over');
 

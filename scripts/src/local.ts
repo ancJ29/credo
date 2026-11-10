@@ -1,6 +1,10 @@
 import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
+import { listClients } from '@credo/bff/clients';
+import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
+import { type CStorageClient, clientCodeSchema, type createCStorageClient } from '@credo/shared';
+import { ROOT_NAME, seedClient } from './generator';
 import { type Artifacts, type StackFacts, type StartedStack, type StartOptions } from './stack';
 import { type Started, waitUntilUp } from './running/processes';
 
@@ -56,6 +60,9 @@ export async function writeHandle(paths: LocalPaths, handle: Handle) {
   await chmod(paths.handle, 0o600);
 }
 
+/** Where a command reaches c-storage, and the address a tenant's link starts with. */
+type StorageTarget = Parameters<typeof createCStorageClient>[0] & { origin: string };
+
 export type LocalIo = {
   out: (line: string) => void;
   err: (line: string) => void;
@@ -70,6 +77,11 @@ export type LocalIo = {
   /** `up`: how long the build and the start-up may take, and how often a line says they go on. */
   waitMs: number;
   heartbeatMs: number;
+  /** The variables of this process: a target in them (`C_STORAGE_URL` and the BFF's other three, and
+   * `APP_ORIGIN` for the link) is where `seed` goes, in place of the handle's. */
+  env: Record<string, string | undefined>;
+  /** `status` and `seed`: the c-storage client for a target. */
+  connect: (target: StorageTarget) => CStorageClient;
   /** `status`: whether a process of this machine is running. A pid alone is never an answer. */
   alive: (pid: number) => boolean;
   /** `keep`: brings the stack up on the folder and ports given. */
@@ -81,7 +93,7 @@ export type LocalIo = {
   stopped: Promise<void>;
 };
 
-const USAGE = 'usage: pnpm local up | status';
+const USAGE = 'usage: pnpm local up | status | seed <code> [<name>]';
 
 const exists = (path: string) =>
   access(path).then(
@@ -199,6 +211,14 @@ const answers = (url: string, status: number, headers: Record<string, string> = 
     () => false,
   );
 
+const targetOfHandle = (handle: Handle): StorageTarget => ({
+  baseUrl: handle.cStorage.url,
+  internalAccessKey: handle.cStorage.internalAccessKey,
+  serviceCode: handle.service.code,
+  accessKey: handle.service.accessKey,
+  origin: handle.url,
+});
+
 /** `pnpm local status`: one line a part. A part is up only when it answers on its own port with
  * its own answer and the process the handle names for it is running: a pid alone, or a stranger
  * answering on the port, is not an answer. */
@@ -234,12 +254,66 @@ async function status(io: LocalIo) {
     ],
   ];
   let allUp = true;
+  let storageUp = false;
   for (const [name, port, answered, pid] of checks) {
     const up = (await answered) && io.alive(pid);
     allUp &&= up;
+    if (name === PART_NAMES.cStorage) storageUp = up;
     io.out(`${name}: ${up ? 'up' : 'DOWN'} on port ${port}`);
   }
+  if (storageUp) {
+    const tenants = await listClients(io.connect(targetOfHandle(handle)));
+    io.out(`tenants: ${tenants.length}`);
+  }
   return allUp ? 0 : 1;
+}
+
+/**
+ * `pnpm local seed <code> [<name>]`: one more tenant, filled with the data set. The target is
+ * c-storage as the environment names it (`C_STORAGE_URL`, `INTERNAL_ACCESS_KEY`, `SERVICE_CODE`,
+ * `SERVICE_ACCESS_KEY`, `APP_ORIGIN`, the variables `runRidge` reads) when `C_STORAGE_URL` is set,
+ * and the handle's otherwise, so nothing below the choice knows which stack it fills. A code that
+ * already holds a tenant stops the run through `seedClient`'s own refusal, and nothing is replaced.
+ */
+async function seed(io: LocalIo, code: string | undefined, name: string | undefined) {
+  if (!clientCodeSchema.safeParse(code).success) {
+    io.err(`${USAGE}: ${code ?? 'no code'} is not a client code`);
+    return 2;
+  }
+  let target: StorageTarget;
+  try {
+    if (io.env['C_STORAGE_URL']) {
+      const storage = readStorageEnv(io.env);
+      target = {
+        baseUrl: storage.C_STORAGE_URL,
+        internalAccessKey: storage.INTERNAL_ACCESS_KEY,
+        serviceCode: storage.SERVICE_CODE,
+        accessKey: storage.SERVICE_ACCESS_KEY,
+        origin: readAppOrigin(io.env),
+      };
+    } else if (await exists(io.paths.handle)) {
+      target = targetOfHandle(JSON.parse(await readFile(io.paths.handle, 'utf8')) as Handle);
+    } else {
+      io.err('there is nowhere to seed: no C_STORAGE_URL in the environment and no handle');
+      return 2;
+    }
+  } catch (error) {
+    io.err(messageOf(error));
+    return 2;
+  }
+  try {
+    const company = name ?? code!;
+    const made = await seedClient(io.connect(target), code!, Date.now(), company);
+    io.out(`${made.code} (${company}): ${target.origin}/login?client-code=${made.code}`);
+    io.out(`sign in as ${ROOT_NAME} with the password ${made.rootPassword}`);
+    for (const [person, password] of Object.entries(made.people)) {
+      io.out(`${person}: ${password}`);
+    }
+    return 0;
+  } catch (error) {
+    io.err(`${code} was not seeded: ${messageOf(error)}`);
+    return 1;
+  }
 }
 
 /**
@@ -250,6 +324,7 @@ async function status(io: LocalIo) {
 export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
   if (argv[0] === 'up') return await up(io);
   if (argv[0] === 'status') return await status(io);
+  if (argv[0] === 'seed') return await seed(io, argv[1], argv[2]);
   if (argv[0] === 'keep') return await keep(io);
   io.err(USAGE);
   return 2;

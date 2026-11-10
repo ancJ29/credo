@@ -1,7 +1,14 @@
+import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { createServer as createHttpServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+  type CStorageClient,
+  recordKeys,
+  storedClientSchema,
+  tenantConfigSchema,
+} from '@credo/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Handle,
@@ -13,6 +20,7 @@ import {
   writeHandle,
 } from './local';
 import { freePort, type Started, startProcess } from './running/processes';
+import { seedDemo } from './generator';
 import type { StartedStack } from './stack';
 
 let root: string;
@@ -29,6 +37,42 @@ beforeEach(async () => {
   paths = localPaths(root);
 });
 afterEach(() => rm(root, { recursive: true, force: true }));
+
+/** A c-storage service in memory: records, each with a tag that changes at every write. */
+function memoryStorage() {
+  const records = new Map<string, unknown>();
+  const tags = new Map<string, string>();
+  let writes = 0;
+  const storage: CStorageClient = {
+    getRecord: (key) =>
+      Promise.resolve(
+        records.has(key) ? { data: records.get(key), tag: tags.get(key) as string } : null,
+      ),
+    listRecords: (prefix) =>
+      Promise.resolve({
+        records: [...records]
+          .filter(([key]) => key.startsWith(prefix))
+          .sort(([a], [b]) => (a < b ? -1 : 1))
+          .map(([key, data]) => ({ key, data, tag: tags.get(key) as string })),
+        more: false,
+      }),
+    putRecord: (key, data, ifTag) => {
+      if (ifTag === null ? records.has(key) : tags.get(key) !== ifTag) {
+        return Promise.resolve('moved');
+      }
+      records.set(key, data);
+      tags.set(key, createHash('sha256').update(String(writes++)).digest('hex'));
+      return Promise.resolve('saved');
+    },
+    removeRecord: (key) => {
+      records.delete(key);
+      tags.delete(key);
+      return Promise.resolve('removed');
+    },
+    health: () => Promise.resolve({ buildVersion: 'dev' }),
+  };
+  return { records, storage };
+}
 
 const handleOf = (over: Partial<Handle> = {}): Handle => ({
   ports: { front: 3180, cStorage: 3181, bff: 3182, seedDoor: 3183 },
@@ -69,6 +113,8 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   build: () => Promise.reject(new Error('not built here')),
   keeper: () => Promise.reject(new Error('no keeper here')),
   alive: () => true,
+  env: {},
+  connect: () => memoryStorage().storage,
   clock: () => '12:34',
   waitMs: 5000,
   heartbeatMs: 5,
@@ -222,6 +268,7 @@ describe('local status', () => {
       `the BFF: up on port ${ports.bff}`,
       `the front: up on port ${ports.front}`,
       `the seed door: up on port ${ports.seedDoor}`,
+      'tenants: 0',
     ]);
   });
 
@@ -232,6 +279,7 @@ describe('local status', () => {
     expect(await runLocal(['status'], baseIo(said))).toBe(1);
     expect(said.out.every((line) => line.includes(': DOWN on port'))).toBe(true);
     expect(said.out).toHaveLength(4);
+    expect(said.out.join()).not.toContain('tenants');
   });
 
   it('calls a part down when something else answers on its port than its own answer', async () => {
@@ -261,6 +309,127 @@ describe('local status', () => {
     expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
       `c-storage: DOWN on port ${ports.cStorage}`,
     ]);
+  });
+});
+
+describe('local seed', () => {
+  const envOf = (port: number) => ({
+    C_STORAGE_URL: `http://127.0.0.1:${port}`,
+    INTERNAL_ACCESS_KEY: 'env-internal',
+    SERVICE_CODE: 'env-service',
+    SERVICE_ACCESS_KEY: 'env-access',
+    APP_ORIGIN: 'https://ridge.example.com',
+  });
+
+  it('makes a tenant under the name given on the handle’s stack, prints its link and passwords, and status counts four', async () => {
+    const said = lines();
+    const { records, storage } = memoryStorage();
+    await seedDemo(storage);
+    await writeHandle(paths, handleOf({ ports, url: 'http://localhost:3180' }));
+    const connect = vi.fn(() => storage);
+
+    const status = await runLocal(['seed', 'acme', 'Acme Foods'], baseIo(said, { connect }));
+
+    expect(status).toBe(0);
+    expect(connect).toHaveBeenCalledWith({
+      baseUrl: 'http://127.0.0.1:3181',
+      internalAccessKey: 'ik',
+      serviceCode: 'demo',
+      accessKey: 'ak',
+      origin: 'http://localhost:3180',
+    });
+    expect(said.out[0]).toBe('acme (Acme Foods): http://localhost:3180/login?client-code=acme');
+    expect(said.out[1]).toMatch(/^sign in as root with the password \S+$/);
+    expect(said.out.slice(2).every((line) => /^EMP-\d+: \S+$/.test(line))).toBe(true);
+    expect(said.out.length).toBeGreaterThan(5);
+    const index = storedClientSchema.parse(records.get(recordKeys.client('acme')));
+    expect(tenantConfigSchema.parse(records.get(recordKeys.tenant(index.id).config)).name).toBe(
+      'Acme Foods',
+    );
+    expect(index.name).toBe('Acme Foods');
+
+    // The same storage, read back by status: the three demo tenants and acme.
+    const pulse = lines();
+    await rm(paths.handle);
+    await writeHandle(
+      paths,
+      handleOf({
+        ports,
+        url: `http://localhost:${ports.front}`,
+        cStorage: {
+          url: `http://127.0.0.1:${ports.cStorage}`,
+          internalAccessKey: 'i',
+          superAdminKey: 's',
+        },
+      }),
+    );
+    const close = await (async () => {
+      const server = createHttpServer((_, reply) => reply.writeHead(200).end('{}'));
+      await new Promise<void>((resolve) => server.listen(ports.cStorage, '127.0.0.1', resolve));
+      return () => new Promise((resolve) => server.close(resolve));
+    })();
+    try {
+      await runLocal(['status'], baseIo(pulse, { connect }));
+    } finally {
+      await close();
+    }
+    expect(pulse.out.at(-1)).toBe('tenants: 4');
+  });
+
+  it('takes its target from the environment when one is given, and reads no handle', async () => {
+    const said = lines();
+    const { storage } = memoryStorage();
+    await writeHandle(paths, handleOf({ ports }));
+    const connect = vi.fn(() => storage);
+
+    const status = await runLocal(['seed', 'ridge-one'], baseIo(said, { connect, env: envOf(9) }));
+
+    expect(status).toBe(0);
+    expect(connect).toHaveBeenCalledWith({
+      baseUrl: 'http://127.0.0.1:9',
+      internalAccessKey: 'env-internal',
+      serviceCode: 'env-service',
+      accessKey: 'env-access',
+      origin: 'https://ridge.example.com',
+    });
+    expect(said.out[0]).toBe(
+      'ridge-one (ridge-one): https://ridge.example.com/login?client-code=ridge-one',
+    );
+  });
+
+  it('refuses before writing when the environment names a target badly, or names none and there is no handle', async () => {
+    const connect = vi.fn(() => memoryStorage().storage);
+    const cases: [string[], Partial<LocalIo>, string][] = [
+      [['seed', 'acme'], { env: { C_STORAGE_URL: 'http://127.0.0.1:9' } }, 'invalid environment'],
+      [['seed', 'acme'], {}, 'there is nowhere to seed'],
+      [['seed', 'Not A Code'], {}, 'is not a client code'],
+      [['seed'], {}, 'no code is not a client code'],
+    ];
+    for (const [argv, over, words] of cases) {
+      const said = lines();
+
+      expect(await runLocal(argv, baseIo(said, { connect, ...over })), argv.join(' ')).toBe(2);
+      expect(said.err.join()).toContain(words);
+    }
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it('stops at a code that holds a tenant already and replaces nothing', async () => {
+    const said = lines();
+    const { records, storage } = memoryStorage();
+    await writeHandle(paths, handleOf({ ports }));
+    const io = baseIo(said, { connect: () => storage });
+    await runLocal(['seed', 'acme'], io);
+    const before = JSON.stringify([...records]);
+    const second = lines();
+
+    const status = await runLocal(['seed', 'acme'], baseIo(second, { connect: () => storage }));
+
+    expect(status).toBe(1);
+    expect(second.err).toEqual([
+      'acme was not seeded: the service already holds data: not seeded over',
+    ]);
+    expect(JSON.stringify([...records])).toBe(before);
   });
 });
 
@@ -395,6 +564,6 @@ describe('a verb it does not know', () => {
     const said = lines();
 
     expect(await runLocal(['sideways'], baseIo(said))).toBe(2);
-    expect(said.err).toEqual(['usage: pnpm local up | status']);
+    expect(said.err).toEqual(['usage: pnpm local up | status | seed <code> [<name>]']);
   });
 });
