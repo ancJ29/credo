@@ -3,6 +3,8 @@ Stack: React with Mantine, Vite, Vitest on jsdom · Gate: `pnpm check` from the 
 
 Everything a browser draws: the client app and the operator console, one bundle chosen by address.
 Its only door to the back end is the object `ui/src/api.ts`'s `createApi` makes.
+How it behaves, which a person at a screen can be surprised by:
+[the memo](../docs/memo/ui.md), one section per claim.
 
 ## What belongs here, and what does not
 

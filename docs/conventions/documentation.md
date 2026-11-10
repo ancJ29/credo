@@ -3,9 +3,9 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-09, from the human's read of the architecture page: the list of documents
-> that must open with their human version now names every page a human reads, and a separate human-facing
-> summary is read as a symptom of the pages that lack one. This file holds the rules as they stand; their
+> **Last amended** 2026-11-10, from the human's instruction that every part which behaves gets a
+> behaviour memo: a part's promises have a third home of their own, named against the other two, and
+> a new service arrives with one. This file holds the rules as they stand; their
 > history is in `git log`.
 
 ## At a glance
@@ -27,6 +27,9 @@ without it, would get the next change wrong.
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes; a convention carries one `Last amended`
   line and no changelog ([one fact, one home](#one-fact-one-home)).
+- A part whose behaviour a caller can be surprised by has a memo at `docs/memo/<part>.md`, its
+  sections titled as claims, and a new service arrives with one
+  ([one fact, one home](#one-fact-one-home)).
 - A living document cites a file and a symbol in it, never a line
   ([how a living document cites code](#how-a-living-document-cites-code)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
@@ -113,6 +116,20 @@ to rot, because the change that breaks it touches no line there.
   Seven of them went into one principles memo's header, one per rule the piece had touched, and
   the human cut the block on sight: there are always exceptions, and logging each one is not
   worth the reader's attention in a memo of principles.
+- **A part whose behaviour a caller can be surprised by has a behaviour memo at
+  `docs/memo/<part>.md`, one section per claim and each section titled as its claim, so a reader
+  scanning the headings reads a list of promises; and a new service arrives with one.** It is the
+  third of three homes, and naming them against each other is the point: the part's own `CLAUDE.md`
+  says what belongs in it and how to write code there, [`docs/architecture.md`](../architecture.md)
+  says in one paragraph what it is *for* and links to the memo, and the memo says how it *behaves* —
+  each promise with its price, and what no gate catches. A claim lands in exactly one of the three;
+  where it would fit two it belongs to the memo, and the other links to it. Today
+  [`docs/memo/bff.md`](../memo/bff.md), [`docs/memo/ui.md`](../memo/ui.md) and
+  [`docs/memo/c-storage.md`](../memo/c-storage.md), and the first two are living, so the citation
+  check reads them
+  (`scripts/src/citations.ts`'s `LIVING`). *Rejected:* the behaviour in the part's `CLAUDE.md`. That
+  file is read by a session about to write code; a promise is read by whoever calls the part, which
+  is a different reader at a different moment, and the two crowd each other out.
 
 ### How a living document cites code
 

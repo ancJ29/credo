@@ -102,14 +102,17 @@ the role is what this page says; what belongs inside a part and the file to copy
 bundle chosen by the address it is opened at, so the console is not a second deployment
 (`ui/src/App.tsx`'s `isOperatorPath`). Its only door to the back end is the one object
 `ui/src/api.ts`'s `createApi` makes, and **a screen never guards**: a rule the server must hold
-belongs in `bff/`.
+belongs in `bff/`. What that costs a person at a screen — what a 401 ends, what a slow network
+looks like, what a page they may not open does — is [its memo](memo/ui.md), one section per promise.
 
 **The rules are `bff/`.** One back end for the UI: it resolves the company, then who is calling,
 then what they may do, and only then reads or writes a record. It holds no state of its own, and it
 is **one app with two entries rather than two back ends** (`bff/src/server.ts`'s `buildBff`, with
 only the listener differing) — a local listener and Lambda are two ways of running the same rules,
 and a rule has one home
-([one home for one decision](conventions/code.md#one-home-for-one-decision)).
+([one home for one decision](conventions/code.md#one-home-for-one-decision)). What a caller can be
+surprised by — the order it decides in, what a 401 means against a 403, the bound it retries under,
+and what an unreachable store answers — is [its memo](memo/bff.md), one section per promise.
 
 **What the two halves agree on is `shared/`.** The wire contract, the record layout, the permission
 catalogue, the bounds both sides check. A thing enters it when a second package reads it and not

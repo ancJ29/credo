@@ -50,33 +50,14 @@ timestamps, no indexes beyond the primary keys and no migration chain: the schem
 to a file with no tables, stamped `user_version = 1`, and a file at any other version stops the
 process at start-up ([`open.go#L56`](../c-storage/internal/sqlitedb/open.go#L56)).
 
-**What a tenant is — and where it is not.** A client is a tenant. Its records sit under its minted
-id, and its human-readable code reaches that id through one index record; the layout has one home,
-[`shared/src/records.ts#L7`](../shared/src/records.ts#L7), so no other file builds a key. Every
-client-facing route runs `resolveTenant` first, which reads the code from a header, finds the index
-record and sets `request.tenantId` — it *scopes and never authenticates*
-([`bff/src/app.ts#L98`](../bff/src/app.ts#L98)).
+**What a tenant is — and where it is not.** A client is a tenant, its records sit under its minted
+id, the key layout has one home, and **c-storage has no concept of a tenant at all**, so separation
+is a string prefix the BFF builds and the store does not enforce. Those are promises a caller meets,
+and they live in
+[the BFF's memo](memo/bff.md#the-tenant-prefix-is-this-packages-alone-and-the-store-does-not-enforce-it),
+with what is tested, what is held by review alone, and which routes resolve a code themselves.
 
-The part a newcomer must not get wrong: **c-storage has no concept of a tenant at all.** Its only
-isolation unit is the *service*, and the BFF is a single service holding every tenant
-([`bff/src/app.ts#L69`](../bff/src/app.ts#L69)). Tenant separation is a string-prefix convention
-held entirely by the BFF; c-storage would serve one tenant's key to another tenant's request if the
-BFF built the wrong key. This is a deliberate design, not an oversight: `records.ts` says in its
-own opening lines that it is the layout's one home, "so no other file builds a key"
-([`shared/src/records.ts#L3`](../shared/src/records.ts#L3)). **Isolation itself is tested, at the
-route level** — "serves the call of the client the code names, and no other"
-([`bff/src/tenants.route.test.ts#L96`](../bff/src/tenants.route.test.ts#L96)), and "reaches one
-client only" in both
-[`clients-delete.route.test.ts#L248`](../bff/src/routes/clients-delete.route.test.ts#L248) and
-[`operator-root-password.route.test.ts#L245`](../bff/src/routes/operator-root-password.route.test.ts#L245).
-What is narrower than it looks is the *structural* guard: **no lint rule and no test forces every
-key through `records.ts`**, so the one-home property is held by convention and review rather than
-by the gate. No hand-built key exists outside that file today.
-
-One home holds for the key *layout*, not for resolving a tenant: `resolveTenant` covers the
-client-facing routes, while the operator's routes resolve a code to an id themselves
-([`bff/src/routes/root-password.ts#L44`](../bff/src/routes/root-password.ts#L44), and `bff/src/records/clients.ts`).
-Key design does real work here — a person's photo and a delivery's photo
+What a session reads here instead is where key design does real work — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
@@ -93,76 +74,33 @@ own transaction and answers **412** if the record moved
 it cannot parse is a 400, never ignored — but a request sending *no* precondition overwrites
 whatever is there, so the guard holds only where the BFF sends the tag.
 
-The BFF's client turns 412 into the value `'moved'` rather than an error
-([`shared/src/c-storage.ts#L133`](../shared/src/c-storage.ts#L133)), and **each route decides for
-itself — there is no single shared recovery.** The fullest version, settled on 2026-11-07, is in
-[`bff/src/routes/lists.ts#L176`](../bff/src/routes/lists.ts#L176): read the record for its tag, write over that
-version, and on either a lost answer or a `moved` outcome **re-read once** — a record that already
-holds exactly what was asked is our own write having landed, and counts as saved; anything else is
-a genuine conflict, answered 409 with the record as it is now. The version is never skipped, which
-is the project's standing rule: recover, never bypass, a concurrency token
-([`CLAUDE.md`](../CLAUDE.md)).
-
-That identity compare is load-bearing and conditional, and the comment at
-[`bff/src/routes/lists.ts#L192`](../bff/src/routes/lists.ts#L192) is the one home of what it assumes: it holds
-only while the record has no mutable field other than the ones being written. The day a
-`changeCode`, an `archived` flag or an order's status joins a record saved this way, another
-writer's record could pass as our own save. Read that comment before copying this pattern.
-
-The other routes do not share it. [`bff/src/routes/reconciliations.ts#L37`](../bff/src/routes/reconciliations.ts#L37)
-recovers a lost answer in its own narrower way — it claims the key with `If-None-Match` and, if the
-write throws, re-reads and compares to tell its own landed write from another close already there —
-while the staff setup's save answers 409 at once on a `moved`
-([`bff/src/routes/staff.ts#L171`](../bff/src/routes/staff.ts#L171)) and the staff numbering instead **retries a
-bounded number of times** and fails 503 if the record moved on every attempt
-([`bff/src/routes/staff.ts#L264`](../bff/src/routes/staff.ts#L264)). Four writers, four behaviours — all of them
-keeping the token, which is the rule; none of them a shared helper. Read the route you are changing
-rather than assume `lists.ts`.
+What the BFF then **does** with a 412 is its own, and is a promise: the bound it retries under, the
+re-read that lets a write whose answer was lost count as saved, the condition that compare rests on,
+and the four write paths that each recover differently with no shared helper. All of it is
+[the BFF's memo](memo/bff.md#a-write-over-a-moved-record-is-tried-three-times) — read it, and then
+the route you are changing, rather than assume `lists.ts`.
 
 ## Who may do what
 
-**Two doors, two session kinds, one store.**
+**Two doors, two session kinds, one store** — and what each of them promises is
+[the BFF's memo](memo/bff.md): how long [a session](memo/bff.md#a-session-lasts-a-week-and-an-operators-an-hour-unused)
+lasts on each side, what [a 401 means against a 403](memo/bff.md#a-401-ends-the-session-a-403-ends-only-the-act),
+that [the permission layers](memo/bff.md#the-permission-layers-are-read-on-every-call) are read on
+every call, and that [the operator's door](memo/bff.md#the-operators-door-resolves-no-company-and-reads-no-permission)
+resolves no company and reads no permission at all. The menu's side of the same question — that a
+page the person may not open is never drawn and makes no call, and that the menu is only as fresh as
+the last time the app read who the person is — is
+[the UI's memo](memo/ui.md#a-screen-never-guards-so-a-page-the-person-may-not-open-is-never-drawn).
 
-A client's person signs in with a code and a password; a root-given email and a 15-minute QR code
-are second sign-in names for the same records
-([`shared/src/signins.ts#L64`](../shared/src/signins.ts#L64)). Sessions are a handle the device
-keeps: only the SHA-256 of its secret is stored, beside the device it was issued to and the
-sign-in record's `generation` at issue, so giving a password invalidates every older session
-([`shared/src/records.ts#L185`](../shared/src/records.ts#L185)). They slide over seven days
-([`bff/src/calling/sessions.ts#L13`](../bff/src/calling/sessions.ts#L13)).
+The parts of this that a session reads while changing the code, and that are not a promise, follow.
 
-An **operator** — the people who run credo — signs in at `/operator` by passkey only, joining
-through a one-time link, with `@simplewebauthn` on both sides. Every ceremony is checked against
-`APP_ORIGIN`, the address the operator opens, **never the request's host**
-([`bff/src/env.ts#L13`](../bff/src/env.ts#L13),
-[`bff/src/routes/operator-auth.ts#L57`](../bff/src/routes/operator-auth.ts#L57)); spent challenges are kept so an
-answer cannot be replayed, and an account's `generation` moves when a new-passkey link replaces the
-keys held, refusing the sessions issued before it
-([`shared/src/records.ts#L131`](../shared/src/records.ts#L131)). An operator session is capped at 12
-hours from issue ([`bff/src/calling/sessions.ts#L18`](../bff/src/calling/sessions.ts#L18)). Sensitive acts ask for a
-fresh passkey touch rather than trusting the session
-([`shared/src/wire.ts#L322`](../shared/src/wire.ts#L322)).
-
-**Permissions.** Eight named permissions, catalogued once
-([`shared/src/permissions.ts#L9`](../shared/src/permissions.ts#L9)), resolved in three sparse layers
-— department, then position, then the person's own, each winning where it names a permission; the
-root holds no layer and may do everything
-([`permissions.ts#L36`](../shared/src/permissions.ts#L36),
-[`#L48`](../shared/src/permissions.ts#L48)). The layers are read on **every** call, so a change by
-the root holds at the person's next step, and a set that cannot be read answers 503 rather than a
-partial one ([`bff/src/app.ts#L116`](../bff/src/app.ts#L116)). The menu asks the same question to
-decide what it shows, and says so in its own comment: it is a view of the guard, never the guard
-([`ui/src/nav.ts#L24`](../ui/src/nav.ts#L24), checked server-side at
-[`bff/src/app.ts#L184`](../bff/src/app.ts#L184)).
-
-**And nobody is recorded as the actor.** The identity is resolved and then consumed: `signedIn` in
-`bff/src/app.ts` returns who is calling and `mustCan` in `bff/src/app.ts` asks one boolean of it,
-and neither binds it to the request — there is no `request.user` anywhere in `bff/src/` (zero hits,
-against `request.tenantId`, which hits in `app.ts`, `lists.ts` and `orders.ts`). Measured over the
+**What was measured about the actor, which the memo's claim rests on.** That no record says who
+changed it is [the BFF's memo](memo/bff.md#no-record-says-who-changed-it); the measurement behind it
+is here. There is no `request.user` anywhere in `bff/src/` (zero hits, against `request.tenantId`,
+which hits in `app.ts`, `lists.ts` and `orders.ts`). Measured over the
 BFF's **39 deliberate write sites: 11 have the identity in scope at the write and 28 do not**, and
 the two that write customers and products — the highest-value history there is — carry no actor at
-all. **Nothing in this repository records who changed a record**, and that half of the gap is in no
-open item ([the docs index](README.md)).
+all. That half of the gap is in no open item ([the docs index](README.md)).
 
 **Keys, and who holds which.** c-storage has three: `x-internal-access-key`, which gates every
 route but `/health` including the 404 fallback, so an unknown path answers 401 exactly like a real

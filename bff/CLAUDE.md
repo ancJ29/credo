@@ -3,6 +3,8 @@ Stack: Fastify on Node, one app built for a listener and for Lambda · Gate: `pn
 
 The one back end of the UI: it resolves the company, who is calling and what they may do, then
 reads or writes records in c-storage. It holds no state of its own.
+How it behaves, which a caller can be surprised by: [the memo](../docs/memo/bff.md), one
+section per claim.
 
 ## What belongs here, and what does not
 
@@ -69,7 +71,7 @@ by these headings.
   never skipped (`bff/src/records/staff-records.ts`'s header comment).
 - **A branch reached only by a race is covered by a test that forces the interleaving,** never by
   a second racing request or a coverage hint, which pass locally and fail on a loaded runner
-  ([the memo](../docs/memo/2026-11-07-deploy-gate-red.md#red-a-bff-coverage-at-bffsrcroutesoperator-authts326-11-06)).
+  ([the memo](../docs/memo/2026-11-07-deploy-gate-red.md#red-a-bff-coverage-at-bffsrcroutesoperator-authtsl326-11-06)).
 - **The `*-main.ts` entries and `main.ts` hold wiring only and are outside the coverage count;**
   the logic they call is tested in `server.test.ts`, `lambda.test.ts` and `bundle.test.ts`
   (`bff/vitest.config.ts`). A new entry with logic in it is uncounted and unchecked.

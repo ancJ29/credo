@@ -21,6 +21,11 @@ const LIVING: { show: string; test: RegExp }[] = [
   { show: 'docs/activity-log.md', test: /^docs\/activity-log\.md$/ },
   { show: 'docs/README.md', test: /^docs\/README\.md$/ },
   { show: 'docs/client-readiness.md', test: /^docs\/client-readiness\.md$/ },
+  // A part's behaviour memo is living: it states what that part promises now. One entry a memo, so
+  // a page gone from the tree is named by the report rather than passing as an empty set. The
+  // undated memos beside them hold one decision each and are not in the set.
+  { show: 'docs/memo/bff.md', test: /^docs\/memo\/bff\.md$/ },
+  { show: 'docs/memo/ui.md', test: /^docs\/memo\/ui\.md$/ },
 ];
 
 type Span = { text: string; start: number; end: number };

@@ -90,7 +90,7 @@ reach us" faster than reading anything.
 | [`conventions/collaboration.md`](conventions/collaboration.md) | who decides what, and how a piece is handed over | both |
 | [`conventions/documentation.md`](conventions/documentation.md) | what a document may hold, and where each fact lives | the machine |
 | [`conventions/qa.md`](conventions/qa.md) | what must be checked, and what a gate is | the machine |
-| [`docs/memo/`](memo) | one argument a file: c-storage's design, a client's own data in `extra`, the three decisions that are the human's, and one red diagnosed | both |
+| [`docs/memo/`](memo) | **how a part behaves — the promises a caller can be surprised by, one section a claim**: [`bff.md`](memo/bff.md), [`ui.md`](memo/ui.md), [`c-storage.md`](memo/c-storage.md). Beside them, one argument a file: a client's own data in `extra`, the three decisions that are the human's, and one red diagnosed | both |
 | [`docs/open-items.md`](open-items.md) | everything still to do, numbered and never renumbered — read it before calling anything missing | both |
 | [`docs/plans/`](plans), [`docs/recaps/`](recaps) | a piece's one page before it is built, and its half page with the evidence after | both |
 | [`ops/README.md`](../ops/README.md) | the runbook: the order and the commands for the network, a stack, a release, a drill, and [what a push to `main` runs](../ops/README.md#the-deploy-job) | the human, with the machine reading the logs |
