@@ -69,12 +69,14 @@ const PRODUCT: Spec<ProductDoc, ProductValues> = {
  * is its own act.
  */
 export function RecordPage({ kind, ...page }: PageProps & { kind: ListKind }) {
-  return kind === 'customers' ? (
-    <Record kind={kind} spec={CUSTOMER} page={page} />
-  ) : (
-    <Record kind={kind} spec={PRODUCT} page={page} />
-  );
+  return PAGES[kind](kind, page);
 }
+
+/** One entry for each kind: a kind added to the list table without one is a type error. */
+const PAGES: Record<ListKind, (kind: ListKind, page: PageProps) => ReactNode> = {
+  customers: (kind, page) => <Record kind={kind} spec={CUSTOMER} page={page} />,
+  products: (kind, page) => <Record kind={kind} spec={PRODUCT} page={page} />,
+};
 
 function Record<D extends { version: string }, V>({
   kind,

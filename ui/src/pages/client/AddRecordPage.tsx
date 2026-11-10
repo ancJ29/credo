@@ -77,12 +77,14 @@ const PRODUCT: Spec<ProductValues> = {
  * record added opens on its own page.
  */
 export function AddRecordPage({ kind, ...page }: PageProps & { kind: ListKind }) {
-  return kind === 'customers' ? (
-    <Add kind={kind} spec={CUSTOMER} page={page} />
-  ) : (
-    <Add kind={kind} spec={PRODUCT} page={page} />
-  );
+  return PAGES[kind](kind, page);
 }
+
+/** One entry for each kind: a kind added to the list table without one is a type error. */
+const PAGES: Record<ListKind, (kind: ListKind, page: PageProps) => ReactNode> = {
+  customers: (kind, page) => <Add kind={kind} spec={CUSTOMER} page={page} />,
+  products: (kind, page) => <Add kind={kind} spec={PRODUCT} page={page} />,
+};
 
 function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: PageProps }) {
   const { api } = page;
