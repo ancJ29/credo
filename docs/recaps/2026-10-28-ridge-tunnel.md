@@ -32,11 +32,11 @@ Nothing is left for the human to run. Three things to know:
 | the command | [`ops/tunnel.sh`](../../ops/tunnel.sh#L22): one page, run from a worktree at `main`; port 3192 is fixed, so a second run is refused before it opens or writes anything |
 | the tunnel | [`box_open`](../../ops/lib.sh#L345) with `ExitOnForwardFailure`, the same connection `check.sh` opens, held by [`tunnel_hold`](../../ops/lib.sh#L386) until it ends; one connection, an hour at most |
 | ready | printed only once `/health` through the port names a commit of `origin/main` |
-| what lands on the Mac | one file, `c-storage/bruno/environments/ridge-tunnel.yml`, written by [`bruno_env_write`](../../ops/lib.sh#L473): ridge's keys and a fresh service `tunnel-<UTC time>`, 0600, git-ignored, removed on every exit; no key is printed or logged |
+| what lands on the Mac | one file, `services/c-storage/bruno/environments/ridge-tunnel.yml`, written by [`bruno_env_write`](../../ops/lib.sh#L473): ridge's keys and a fresh service `tunnel-<UTC time>`, 0600, git-ignored, removed on every exit; no key is printed or logged |
 | the moves | the port's refusal, the environment writer and the `/health` read moved into `lib.sh`; `check.sh` calls them, so the deploy's check runs the same code |
 | the runbook | [the tunnel's section](../../ops/README.md#L135): the steps and the branches (a taken port, a killed run's leftovers, a drop) |
 
-To use it: `ops/tunnel.sh ridge`, wait for `ready:`, open the collection `c-storage/bruno` in Bruno,
+To use it: `ops/tunnel.sh ridge`, wait for `ready:`, open the collection `services/c-storage/bruno` in Bruno,
 pick the environment `ridge-tunnel`, run Health, then the collection once; Ctrl-C when done.
 
 ## What was rejected, and at what price

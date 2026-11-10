@@ -18,7 +18,7 @@ export function goBuildEnv(base: Record<string, string | undefined>) {
  * `pnpm stack` both start what this makes. Needs Go. */
 export async function buildCStorage(output: string) {
   await promisify(execFile)('go', ['build', '-o', output, './cmd/server'], {
-    cwd: fileURLToPath(new URL('../../c-storage', import.meta.url)),
+    cwd: fileURLToPath(new URL('../../services/c-storage', import.meta.url)),
     env: goBuildEnv(process.env),
   });
 }

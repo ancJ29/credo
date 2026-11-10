@@ -26,7 +26,7 @@ list and picks its id — every customer read to show one, bounded by the import
 - **The frame's side column becomes optional** — open item 90 (`docs/open-items.md#L619`), whose trigger is this
   milestone: `side` absent gives `main` the full 12 (`ui/src/DetailCards.tsx#L8-L15`). **The item closes with this
   merge**, a customer with no note being its first live case.
-- Read only: no add, no edit, no delete. `bff/`, `shared/` and `c-storage/` are untouched.
+- Read only: no add, no edit, no delete. `bff/`, `shared/` and `services/c-storage/` are untouched.
 
 Decided here:
 
@@ -48,7 +48,7 @@ Decided here:
 | 5 | From 992 two columns, 7 to 5; below one column, details first; fields two a row from 768 | the walk |
 | 6 | A customer with no note is one column at the full width, at every width | unit, `ui/src/DetailCards.test.tsx`, red first; the walk |
 | 7 | Every card is `DetailCard` (`grep -c withBorder ui/src/CustomerPage.tsx` is 0); the titles read in both languages | the grep; unit, `ListPage.test.tsx` |
-| 8 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `c-storage/`; no fourth screen moves | the diff; the run's `raw.txt` |
+| 8 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `services/c-storage/`; no fourth screen moves | the diff; the run's `raw.txt` |
 
 ## What moves
 
@@ -70,7 +70,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   `main`'s build exactly the three screens' versions differ.
   *Evidence:* rows 1 to 4 and 6 each red first, then green; `ui` 756 tests at 100 %, lint, knip, tsc clean;
   `grep -c withBorder ui/src/CustomerPage.tsx` is 0; `git diff --stat main` names nothing under `bff/`, `shared/`,
-  `c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
+  `services/c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
   nothing else differs (log `logs/customer-cards-step2-report-20261105-1707.log`, `== exit 0`).
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,

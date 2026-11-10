@@ -10,7 +10,7 @@
 #   ancestor, the log ends "superseded: <env> runs <sha>", the exit is 0, and nothing changed. The
 #   deploy job's gates finish in any order, so an older push can arrive after a newer one. In the job a
 #   superseded run also writes superseded=true to GITHUB_OUTPUT, and the job's later steps skip.
-# Needs `make box` in c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
+# Needs `make box` in services/c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
 # Expected length: about 4 minutes by hand (the gate and the build), under a minute in the job.
 set -euo pipefail
 
@@ -49,9 +49,9 @@ else
   echo "building $sha in a throwaway worktree: c-storage's gate, then make box"
   git -C "$REPO_DIR" worktree add -q --detach "$WORK/src" "$sha"
   src=$WORK/src
-  make -C "$src/c-storage" check
-  make -C "$src/c-storage" box
-  binary=$src/c-storage/dist/c-storage
+  make -C "$src/services/c-storage" check
+  make -C "$src/services/c-storage" box
+  binary=$src/services/c-storage/dist/c-storage
 fi
 [ -f "$binary" ] || die "no binary at $binary"
 unit=$src/ops/c-storage.service

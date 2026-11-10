@@ -707,7 +707,7 @@ check "a server that answers late, and first with the old build, still passes" 0
 check "  after four tries" 4 "$(wc -l <"$WORK/calls" | tr -d ' ')"
 
 echo "== the proof of a Bruno run (e2e.sh and check.sh both ask it)"
-PROOF=$REPO_DIR/c-storage/scripts/bruno-proof.cjs
+PROOF=$REPO_DIR/services/c-storage/scripts/bruno-proof.cjs
 mkdir -p "$WORK/coll/01-things" "$WORK/coll/environments"
 for f in 01-things/a.yml 01-things/b.yml folder.yml opencollection.yml environments/x.yml; do echo 'info: {}' >"$WORK/coll/$f"; done
 report() { # <passedRequests in the summary> <results as a JSON array>
@@ -738,10 +738,10 @@ refuses "no report at all is refused" "no readable report" proof
 
 # a scratch checkout for what writes into the Bruno collection's folder: the real ignore rule, copied
 KR=$WORK/kr
-mkdir -p "$KR/c-storage/bruno/environments"
+mkdir -p "$KR/services/c-storage/bruno/environments"
 git -C "$KR" init -q
-cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$KR/c-storage/bruno/environments/.gitignore"
-ENVS=$KR/c-storage/bruno/environments
+cp "$REPO_DIR/services/c-storage/bruno/environments/.gitignore" "$KR/services/c-storage/bruno/environments/.gitignore"
+ENVS=$KR/services/c-storage/bruno/environments
 KENV=$ENVS/ridge-tunnel.yml
 kr() { REPO_DIR=$KR "$@"; }
 free_port() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
@@ -1061,7 +1061,7 @@ refuses "a seed that installs nothing before the role is refused" "the install, 
 
 echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
-check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 c-storage walk .github/workflows/seed.yml" \
+check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
   "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
 # push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
 push_variant() {
@@ -1090,14 +1090,14 @@ refuses "a push trigger with no paths stops the read" "found no paths" push_path
 
 echo "== the checks of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }
-STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/c-storage/Makefile")
-[ -n "$STAMP_VAR" ] || { echo "ops/test.sh: c-storage/Makefile names no STAMP_VAR" >&2; exit 2; }
+STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/services/c-storage/Makefile")
+[ -n "$STAMP_VAR" ] || { echo "ops/test.sh: services/c-storage/Makefile names no STAMP_VAR" >&2; exit 2; }
 # The first build compiles c-storage; the others only relink it.
 build() { # <output> [<stamp>]
   if [ -n "${2:-}" ]; then
-    (cd "$REPO_DIR/c-storage" && go build -ldflags "-X $STAMP_VAR=$2" -o "$1" ./cmd/server)
+    (cd "$REPO_DIR/services/c-storage" && go build -ldflags "-X $STAMP_VAR=$2" -o "$1" ./cmd/server)
   else
-    (cd "$REPO_DIR/c-storage" && go build -o "$1" ./cmd/server)
+    (cd "$REPO_DIR/services/c-storage" && go build -o "$1" ./cmd/server)
   fi
 }
 build "$WORK/server-want" "$want"
@@ -1351,13 +1351,13 @@ chmod 644 "$kenv"
 passes "a path git ignores is written" kr bruno_env_write "$kenv" 3192 tunnel-x accesskey0
 check "the file is 0600, though an older one was 0644" "$kenv" "$(find "$kenv" -perm 600)"
 check "  and it holds the variables the collection's local.yml names, in order" \
-  "$(sed -n 's/^  - name: //p' "$REPO_DIR/c-storage/bruno/environments/local.yml")" "$(sed -n 's/^  - name: //p' "$kenv")"
+  "$(sed -n 's/^  - name: //p' "$REPO_DIR/services/c-storage/bruno/environments/local.yml")" "$(sed -n 's/^  - name: //p' "$kenv")"
 check "  with this run's port, keys, service code and access key" \
   "http://127.0.0.1:3192 internalkey0 adminkey0 tunnel-x accesskey0" \
   "$(awk '$1 == "value:" {printf "%s%s", sep, $2; sep = " "} END {print ""}' "$kenv" | sed 's/ sample-record$//')"
 rm -f "$kenv"
 printf 'the committed one\n' >"$ENVS/local.yml"
-refuses "a path git does not ignore (the committed local.yml) is refused" "git does not ignore c-storage/bruno/environments/local.yml" \
+refuses "a path git does not ignore (the committed local.yml) is refused" "git does not ignore services/c-storage/bruno/environments/local.yml" \
   kr bruno_env_write "$ENVS/local.yml" 3192 tunnel-x accesskey0
 check "  and the file it would have replaced is untouched" "the committed one" "$(cat "$ENVS/local.yml")"
 rm -f "$ENVS/local.yml"
@@ -1365,7 +1365,7 @@ rm -f "$ENVS/local.yml"
 # it came from: git reads nothing there, and every path would read as kept.
 if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml" "ignored ignored kept" \
-    "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
+    "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "services/c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
 else
   echo "  == skipped: the repository's .git cannot be read here (a worktree copied from another machine), so its ignore rule is not read; GitHub's run reads it"
 fi
@@ -1397,7 +1397,7 @@ fresh_dirs
 printf 'the committed one\n' >"$ENVS/local.yml"
 rc=0
 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp KR=$KR KENV=$ENVS/local.yml bash "$WORK/refused.sh" >/dev/null 2>&1 || rc=$?
-check "a path git does not ignore: the run fails, naming it" "1 1" "$rc $(grep -c 'git does not ignore c-storage/bruno/environments/local.yml' "$WORK"/logs/*.log || true)"
+check "a path git does not ignore: the run fails, naming it" "1 1" "$rc $(grep -c 'git does not ignore services/c-storage/bruno/environments/local.yml' "$WORK"/logs/*.log || true)"
 check "  and the file survives the run's exit" "the committed one" "$(cat "$ENVS/local.yml")"
 rm -f "$ENVS/local.yml"
 cat >"$WORK/twice.sh" <<'CHILD'
@@ -1455,12 +1455,12 @@ echo "== ops/tunnel.sh and check.sh run whole, on stand-ins for aws and ssh, wit
 # lines of the clone's tunnel.sh differ from the real one: its port, so this run neither meets a
 # tunnel the human holds open nor another worktree's test, and the seconds between its checks.
 E2E=$WORK/e2e
-mkdir -p "$E2E/fakebin" "$E2E/repo/c-storage/bruno/environments"
+mkdir -p "$E2E/fakebin" "$E2E/repo/services/c-storage/bruno/environments"
 tport=$(free_port)
 cport=$(free_port)
 cp -R "$OPS_DIR" "$E2E/repo/ops"
-cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
-echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+cp "$REPO_DIR/services/c-storage/bruno/environments/.gitignore" "$E2E/repo/services/c-storage/bruno/environments/.gitignore"
+echo 'info: {}' >"$E2E/repo/services/c-storage/bruno/opencollection.yml"
 # docs/ is outside every path ci.yml deploys on: an edit there passes main_synced and meets the
 # whole-tree check against HEAD that seed.sh and root-password.sh keep.
 mkdir -p "$E2E/repo/docs"
@@ -1597,7 +1597,7 @@ export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
 # ::add-mask::<key> to the terminal, which is not a leak (the mask case below runs with it set).
 unset GITHUB_ACTIONS
-KEYS=$E2E/repo/c-storage/bruno/environments/ridge-tunnel.yml
+KEYS=$E2E/repo/services/c-storage/bruno/environments/ridge-tunnel.yml
 S=''
 RC=0
 LPID=''
@@ -1749,10 +1749,10 @@ check "  before any aws call or ssh" "gone gone" "$(file_state "$S/aws.calls") $
 
 # a keys file git would not ignore is refused before any aws call
 e2e_fresh not-ignored
-mv "$E2E/repo/c-storage/bruno/environments/.gitignore" "$E2E/not-ignored.off"
+mv "$E2E/repo/services/c-storage/bruno/environments/.gitignore" "$E2E/not-ignored.off"
 e2e_run tunnel.sh ridge
-mv "$E2E/not-ignored.off" "$E2E/repo/c-storage/bruno/environments/.gitignore"
-check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
+mv "$E2E/not-ignored.off" "$E2E/repo/services/c-storage/bruno/environments/.gitignore"
+check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore services/c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
 check "  before any aws call" gone "$(file_state "$S/aws.calls")"
 
 check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
@@ -2878,7 +2878,7 @@ check "a call with two packages is a usage refusal, exit 2" 2 "$GRC"
 
 # case 13: the verdict names the gate it is not
 gate_run -- shared
-check "case 13: the log names make check as c-storage's own gate" 1 "$(grep -c "make check in c-storage" "$GLOG" || true)"
+check "case 13: the log names make check as c-storage's own gate" 1 "$(grep -c "make check in services/c-storage" "$GLOG" || true)"
 
 # case 8: the load is waited for, and the wait is logged
 gate_run GATE_UPTIME_FILE="$GW/load-high" -- shared

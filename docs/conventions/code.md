@@ -63,7 +63,7 @@ a table that reports on the rules is read against the ids, and a rule that is re
 unused. **How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
 typed into this file:** it prints each count with its blind spot beside it, never reds, and ends with
 the table of the living documents' citations. **Two of the seventeen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
-route's pattern to the list a test reads (`c-storage/internal/server/server.go#L51-L54`, held by
+route's pattern to the list a test reads (`services/c-storage/internal/server/server.go#L51-L54`, held by
 `TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
 makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fifteen carry the
 mark `reader`; five of them are also counted**. Making them checks is what the structure review's own open item exists to do, one check at a time
@@ -79,7 +79,7 @@ code lives.
 **The shape of a package:** which directories a package has is that package's own decision, made by
 [the shape of a package](#the-shape-of-a-package) and written in that package's own `CLAUDE.md`, so a
 reader asking where a file goes opens the guideline of the package it goes in — this section does not
-hold a layout for all of them. Go is divided by internal package instead (`c-storage/internal`), one
+hold a layout for all of them. Go is divided by internal package instead (`services/c-storage/internal`), one
 package to a thing in the running system. A file is named for the thing it serves, never for its
 layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 
@@ -99,7 +99,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | a person's sign-in | `bff/src/app.ts#L251` | the refusal and why it names nothing, `#L261-L264` |
 | which records exist, and under which key | `shared/src/records.ts#L7` (`recordKeys`), the layout's one home | — |
 | how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal, `AbortSignal.timeout(timeoutMs)` | `bff/src/server.ts#L11` builds the one client |
-| what c-storage will answer | `c-storage/internal/server/server.go#L51-L54`, which registers a route and appends its pattern to the list a test reads | `c-storage/internal/` by package |
+| what c-storage will answer | `services/c-storage/internal/server/server.go#L51-L54`, which registers a route and appends its pattern to the list a test reads | `services/c-storage/internal/` by package |
 | what `pnpm stack`, `pnpm fake` and `pnpm demo` do | `scripts/src/cli.ts`, which drives `withStack`, `withFake` and `startDemo` (imported from `./fake`, `./demo/apply` and `./stack`) | `scripts/src/stack.ts`, `fake.ts` |
 | which commands must be green | [the gate](../../CLAUDE.md#the-gate) | [QA](qa.md)'s rule 6 for which of them a step runs |
 | what the human runs against ridge | [`ops/README.md`](../../ops/README.md) | each script's log in `logs/` in the credo root |
@@ -113,7 +113,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | BFF route | its own module, `bff/src/routes/<area>.ts`, with `bff/src/routes/<area>.route.test.ts` beside it — 15 such test files stand there, and 6 more at the top, beside the `bff/src/app.ts` that declares their routes inline | `bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
 | read or write of a record kind | a module of its own, never the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | [the winner](#the-winner-named)'s second row |
 | name, bound, status meaning or wire shape | `shared/src/<area>.ts`, re-exported from `shared/src/index.ts` — 17 lines, one an area, and `demo` deliberately absent from it | `shared/src/records.ts`, `shared/src/permissions.ts` | [one home](#one-home-for-one-decision) |
-| c-storage route | `c-storage/internal/server/`, registered through the function that appends its pattern | `c-storage/internal/server/server.go#L51-L54` | [the patterns to copy](#the-patterns-to-copy) |
+| c-storage route | `services/c-storage/internal/server/`, registered through the function that appends its pattern | `services/c-storage/internal/server/server.go#L51-L54` | [the patterns to copy](#the-patterns-to-copy) |
 | local command | `scripts/src/<name>.ts` holding the work, with a `<name>-main.ts` of wiring only — `fake-main.ts` is four lines | `scripts/src/fake-main.ts` with `fake.ts` | [the patterns to copy](#the-patterns-to-copy), entry points hold no logic |
 | walk | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh`'s `WALKS`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
 | screen on the walks page | `visual/src/` | `visual/src/walks.ts` | [before a new screen](#before-a-new-screen) |
@@ -214,9 +214,9 @@ red when a new file invents a second one — except the last, which is `[holds �
 | --- | --- |
 | C11 · one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts#L11` (no `fetch` anywhere in `bff/src`) |
 | C12 · a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/frame/Loaded.tsx`'s `Loaded` |
-| C13 · entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
+| C13 · entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `services/c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
 | C14 · one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/pages/client/ListPage.tsx`'s `ListPage`, served by `bff/src/routes/lists.ts` |
-| C15 · **a rule held by code rather than by a reviewer**: the function that registers a route also appends its pattern to a list, and a test fails when one is added without an entry | `c-storage/internal/server/server.go#L51-L54`, held by `TestEveryRegisteredRouteIsListed` (`c-storage/internal/server/server_test.go#L106`) |
+| C15 · **a rule held by code rather than by a reviewer**: the function that registers a route also appends its pattern to a list, and a test fails when one is added without an entry | `services/c-storage/internal/server/server.go#L51-L54`, held by `TestEveryRegisteredRouteIsListed` (`services/c-storage/internal/server/server_test.go#L106`) |
 
 ## Where a client's difference lands
 

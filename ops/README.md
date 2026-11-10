@@ -129,7 +129,7 @@ old loopback listener does not answer: the log then finds no running commit, and
 
 ## The deploy job
 
-The human's push to `main` that touches `c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
+The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
 `scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, once `check`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
@@ -330,7 +330,7 @@ and knip once over the whole tree, because their configs are repo-wide. It runs 
 does, takes `.gate-lock` once the one-minute load is under 8, and writes `logs/<stamp>-gate-<pkg>.log` ending
 `== exit <code>`. Read the `== steps:` line: `skip` is a step that ran nowhere (a package with no `test`
 script, `walk`), `0+1skipped` is one that skipped a package, and neither is a pass. A red names its step and
-the other four still show. It does not cover c-storage: that gate is `make check` in `c-storage/`.
+the other four still show. It does not cover c-storage: that gate is `make check` in `services/c-storage/`.
 
 - **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up. A lock left behind
   (a run killed hard) is refused on, never cleared by the script: the refusal names the owner, says whether its pid
@@ -354,7 +354,7 @@ the other four still show. It does not cover c-storage: that gate is `make check
    fresh client `check-<time>` through the tunnel and signs it in through the app's address, as a
    partner would, with no cache in front of `/api/*`. The run deletes that client at its end, green or red; a delete that fails is a `WARN` line, not a red.
    - **needs pnpm install done:** the client is made by `scripts/`, run under Node.
-   - **no c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
+   - **no services/c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
      `ops/release.sh ridge`, which makes new keys and restarts c-storage.
@@ -370,9 +370,9 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
 
 1. `ops/tunnel.sh ridge`, from a worktree at `main`. Wait for the `ready:` lines; the run says ready
    only once `/health` names a commit of `main`, and writes
-   `c-storage/bruno/environments/ridge-tunnel.yml` (0600, git-ignored) with ridge's keys and a fresh
+   `services/c-storage/bruno/environments/ridge-tunnel.yml` (0600, git-ignored) with ridge's keys and a fresh
    service's.
-2. In Bruno, open the collection `c-storage/bruno`, pick the environment `ridge-tunnel`: Health, then
+2. In Bruno, open the collection `services/c-storage/bruno`, pick the environment `ridge-tunnel`: Health, then
    the collection once. Or `curl http://127.0.0.1:3192/health`. Use `127.0.0.1`, not `localhost`.
    - A second collection run in the same session answers 409 at its register; run the tunnel again
      for a fresh service.

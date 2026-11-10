@@ -2,34 +2,34 @@
 Stack: Go 1.26, modernc.org/sqlite · Gate: make check · Ship: none yet
 
 Key-value records for the BFF, each under its own service: one Go binary, one SQLite file, one
-listener. Six routes, each with a caller in [the app frame](../docs/plans/2026-10-27-app-frame.md) or
-[the employee list](../docs/plans/2026-10-29-employee-list.md#the-records).
-Why it is built so: [the memo](../docs/memo/c-storage.md), one section per decision or hazard.
+listener. Six routes, each with a caller in [the app frame](../../docs/plans/2026-10-27-app-frame.md) or
+[the employee list](../../docs/plans/2026-10-29-employee-list.md#the-records).
+Why it is built so: [the memo](../../docs/memo/c-storage.md), one section per decision or hazard.
 
 ## What belongs here, and what does not
 
-A route belongs only with a caller named above ([collaboration](../docs/conventions/collaboration.md):
+A route belongs only with a caller named above ([collaboration](../../docs/conventions/collaboration.md):
 "Nothing enters unless something calls it now"). A record's meaning is the BFF's.
 
 ## The file to copy
 
-- **A route:** a method like `func (s *Server) getRecord(` in `c-storage/internal/server/handlers.go`, registered in
+- **A route:** a method like `func (s *Server) getRecord(` in `services/c-storage/internal/server/handlers.go`, registered in
   `Build`, with a row in `everyRoute` and a request in `bruno/`.
-- **A store method:** `Store.Get` in `c-storage/internal/store/store.go`.
-- **A test:** `TestLoadRefusesEachFatalMisconfiguration` in `c-storage/internal/config/config_test.go`
-  (a table), `TestAWriteNamingAMovedRecordIsRefused` in `c-storage/internal/server/server_test.go`.
+- **A store method:** `Store.Get` in `services/c-storage/internal/store/store.go`.
+- **A test:** `TestLoadRefusesEachFatalMisconfiguration` in `services/c-storage/internal/config/config_test.go`
+  (a table), `TestAWriteNamingAMovedRecordIsRefused` in `services/c-storage/internal/server/server_test.go`.
 
 ## This package's own rules
 
-Marks: [How to read a rule](../docs/conventions/code.md#how-to-read-a-rule). "entry points
-hold wiring" and [one home for one decision](../docs/conventions/code.md#one-home-for-one-decision)
+Marks: [How to read a rule](../../docs/conventions/code.md#how-to-read-a-rule). "entry points
+hold wiring" and [one home for one decision](../../docs/conventions/code.md#one-home-for-one-decision)
 bind as written there.
 
 - **GO1 · holds · check:** format and vet are the gate. Go has no linter, on purpose: open item
   164, in hand.
 - **GO2 · holds · reader:** an outcome another package branches on is a sentinel (`ErrMoved` in
-  `c-storage/internal/store/store.go`), matched with `errors.Is`. A start-up step's error is wrapped
-  with `%w` and a phrase naming the step (`Run` in `c-storage/internal/lifecycle/lifecycle.go`); the
+  `services/c-storage/internal/store/store.go`), matched with `errors.Is`. A start-up step's error is wrapped
+  with `%w` and a phrase naming the step (`Run` in `services/c-storage/internal/lifecycle/lifecycle.go`); the
   store returns the driver's bare. Both stand; this binds the next file.
 - **GO3 · holds · reader:** standard `testing` only, a real database in `t.TempDir()`, a test named
   for its behaviour as a sentence, server tests through `Build`. Many inputs to one check are a map
@@ -49,24 +49,24 @@ bind as written there.
 - **The internal key gates every path, unknown ones included; only `GET /health` answers before
   it, and nothing answers 405.** Register a route through `s.handle`, or
   `TestEveryRegisteredRouteIsListed` cannot see it
-  ([why](../docs/memo/c-storage.md#the-internal-key-gates-every-path)).
+  ([why](../../docs/memo/c-storage.md#the-internal-key-gates-every-path)).
 - **No record is public:** each record route needs its service's access key
-  ([why](../docs/memo/c-storage.md#no-record-is-public)).
+  ([why](../../docs/memo/c-storage.md#no-record-is-public)).
 - **Keys are compared whole, in constant time; an access key is stored only as its SHA-256**
-  ([why](../docs/memo/c-storage.md#keys-are-compared-exactly-and-stored-hashed)).
+  ([why](../../docs/memo/c-storage.md#keys-are-compared-exactly-and-stored-hashed)).
 - **A write naming a tag or no record answers 412 where the record moved, and a precondition it
   cannot honour 400, never ignored;** a caller keeps the tag a read returned, never computes one
-  ([why](../docs/memo/c-storage.md#a-write-on-a-moved-record-is-refused)).
+  ([why](../../docs/memo/c-storage.md#a-write-on-a-moved-record-is-refused)).
 - **Every transaction begins IMMEDIATE,** a read wrapped in one included
-  ([why](../docs/memo/c-storage.md#one-writer-at-a-time)).
+  ([why](../../docs/memo/c-storage.md#one-writer-at-a-time)).
 - **`schema.sql` applies only to a new file:** a schema change needs the version raised and a step
   that carries a version-1 file to it
-  ([why](../docs/memo/c-storage.md#the-schema-version-is-checked-at-open)).
+  ([why](../../docs/memo/c-storage.md#the-schema-version-is-checked-at-open)).
 - **The listener binds one address:** `LISTEN_ADDR`, a single IP and never an unspecified one,
   loopback when unset; on ridge the box's private address
-  ([why](../docs/memo/c-storage.md#the-listener-binds-one-address)).
+  ([why](../../docs/memo/c-storage.md#the-listener-binds-one-address)).
 - **The database file is the only copy since its last backup;** a live copy goes through SQLite's
-  own backup, never a plain file copy ([why](../docs/memo/c-storage.md#the-file-is-the-only-copy)).
+  own backup, never a plain file copy ([why](../../docs/memo/c-storage.md#the-file-is-the-only-copy)).
 - **Tests bind loopback ports** (`internal/lifecycle`'s run the process on real sockets, because the
   shutdown order is only visible there). In the agent's sandbox: set `GOCACHE` under `$TMPDIR`, and
   `GOPROXY=off GOFLAGS=-mod=mod` where the module cache holds everything; `/usr/bin/make` may print
@@ -88,5 +88,5 @@ bind as written there.
 
 ## Where the rest is
 
-[The big picture](../docs/architecture.md#at-a-glance), [the cross-package rules](../docs/conventions/code.md),
+[The big picture](../../docs/architecture.md#at-a-glance), [the cross-package rules](../../docs/conventions/code.md),
 sibling to copy: none, the only Go package.

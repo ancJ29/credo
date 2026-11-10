@@ -56,7 +56,7 @@ over any group of them, and a new area is a file beside the others
 - **`extraInputSchema` checks the input as it came; `extraSchema` only adds the default `{}`:** a request
   uses the first, a stored record the second
   ([why](../docs/memo/extra.md#the-rules)).
-- **`c-storage.bruno.test.ts` reads `c-storage/bruno/`:** a request changed there turns the client red here
+- **`c-storage.bruno.test.ts` reads `services/c-storage/bruno/`:** a request changed there turns the client red here
   ([why](../docs/plans/2026-10-27-app-frame.md#the-frame)).
 - **A strict schema refuses a key it does not know,** so a field added to a contract whose halves deploy
   apart needs its default at the wire boundary in the same commit

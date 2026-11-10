@@ -16,7 +16,7 @@ record anyone can reach. Then the tenant's records go, swept by the prefix the k
 keeps, `tenant.<id>.` (`shared/src/records.ts#L21-L23`).
 
 **The price:** the BFF's function times out at 10 seconds (`ops/env.yml#L223`), c-storage lists at
-most 1,000 records (`c-storage/internal/store/store.go#L132`) and deletes one key a call
+most 1,000 records (`services/c-storage/internal/store/store.go#L132`) and deletes one key a call
 (`#L125-L127`), so one request cannot finish a large client. The route does bounded work and says
 how much is left; the page presses on until the client is gone. A sweep that dies between presses
 leaves records no code can reach: clearing those needs c-storage's own key, the human's act — the

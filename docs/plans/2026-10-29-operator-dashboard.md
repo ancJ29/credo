@@ -77,7 +77,7 @@ beside it.
 | The answer, once | the link, `root` and the first password, read-only fields ([`ClientMade.tsx#L16`](../../ui/src/ClientMade.tsx#L16)) | kept, with a copy button each |
 | The BFF | `sign-in`, `sign-out`, `me` and `POST /api/operator/clients`, each behind the operator's session ([`app.ts#L157`](../../bff/src/app.ts#L157), [`app.ts#L254`](../../bff/src/app.ts#L254)); the route list held exact ([`operator.route.test.ts#L407`](../../bff/src/operator.route.test.ts#L407)) | **new**: `GET /api/operator/clients` |
 | A client's record | the index `client.<code>` in c-storage: the minted id and the name as made, no time ([`records.ts#L8`](../../shared/src/records.ts#L8), [`records.ts#L33`](../../shared/src/records.ts#L33)), written last by the create ([`clients.ts#L32`](../../bff/src/records/clients.ts#L32)) | **new**: the time it was made |
-| c-storage | a record by its key, and piece 2's list by prefix ([`server.go#L42`](../../c-storage/internal/server/server.go#L42)) | unchanged: the list reads the index |
+| c-storage | a record by its key, and piece 2's list by prefix ([`server.go#L42`](../../services/c-storage/internal/server/server.go#L42)) | unchanged: the list reads the index |
 | The fake | piece 2's, already answering the operator's sign-in, `me` and the create ([`fake.ts#L290`](../../ui/src/fake.ts#L290)); scenes signed in as a client's person ([`scene.ts#L31`](../../ui/src/scene.ts#L31)) | **new**: the list; a scene signed in as the operator |
 | The walk | four screens from the static mock ([`walks.ts#L216`](../../visual/src/walks.ts#L216)), 24 bases ([`operator.spec.ts#L21`](../../walk/specs/operator.spec.ts#L21)) | **reshaped**: nine fake scenes ([the walks](#the-walks)) |
 

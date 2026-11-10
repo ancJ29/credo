@@ -127,7 +127,7 @@ The map of walks. A dash is a part of the day not built yet.
    *Why:* two sessions on 2026-11-07 each assembled a package gate by hand, one of the five steps
    missing from the second; the two lint errors it let through reached `main` and would have
    failed the deploy's own job whatever else was fixed. **What the command does not do:** it does
-   not cover c-storage, whose gate is `make check` in `c-storage/`; a bare `walk/run.sh` takes no
+   not cover c-storage, whose gate is `make check` in `services/c-storage/`; a bare `walk/run.sh` takes no
    lock, so a gate started during one still reddens it; and `pnpm -r run check` exists and is the
    wrong command (six gates on one lock, with eslint, prettier and knip run six times). Its
    details are in `ops/README.md`'s "The gate". **A plan in `docs/plans/` written before

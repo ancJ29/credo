@@ -5,7 +5,7 @@
 #   100 % thresholds are the package's); eslint, prettier and knip over the whole tree, because their
 #   configs are repo-wide (knip.json is one workspace map).
 # LOG: <credo root>/logs/<date>-<time>-gate-<pkg>.log, ending == exit <code> from ops/lib.sh.
-# Exit: 0 green, 1 any step red. Not covered: c-storage's own gate, `make check` in c-storage/.
+# Exit: 0 green, 1 any step red. Not covered: c-storage's own gate, `make check` in services/c-storage/.
 # THE LOCK: one whole run at a time on this machine, <credo root>/.gate-lock (GATE_LOCK names another, for a
 #   test), taken once the one-minute load is under GATE_LOAD_MAX (8) in one wait loop that logs each wait with the
 #   owner; gives up with exit 1 after GATE_WAIT_MAX seconds (1800), never taking a lock it did not make or
@@ -209,5 +209,5 @@ run_each test
 run_step knip pnpm exec knip
 
 echo "== steps: $results"
-echo "not covered: c-storage's own gate, make check in c-storage/"
+echo "not covered: c-storage's own gate, make check in services/c-storage/"
 verdict

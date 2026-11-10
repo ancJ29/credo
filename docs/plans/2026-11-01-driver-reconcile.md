@@ -64,7 +64,7 @@ a small gap here and there.
 - **The record:** `tenant.<id>.reconciliation.<day>.<driver id>`, built by `recordKeys`
   ([`records.ts`](../../shared/src/records.ts#L37)), written once with `If-None-Match: *`; a day's are one
   prefix read. **c-storage needs no change** (the list by prefix and the conditional write,
-  [`handlers.go`](../../c-storage/internal/server/handlers.go#L89)). **Nothing new ships to ridge:** no
+  [`handlers.go`](../../services/c-storage/internal/server/handlers.go#L89)). **Nothing new ships to ridge:** no
   resource, hop or key; $0 a month. A record is 1 to 2 KB, a copy's year about 2 MB.
 - **The writes**, in an order that leaves every stop valid: each request of the driver's day still waiting
   is cancelled over its tag and its order freed, as the request's cancel writes them

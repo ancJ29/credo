@@ -302,7 +302,7 @@ its steps.
   permission section), `shared/src/records.ts` (the key layout), `scripts/src/ridge.ts` (the
   command dispatch), `ops/env.yml` (the box, the API stage, the distribution, the deploy role),
   `ops/network.yml` (its resource list), `ops/stack.sh` (its header and the change-set steps),
-  `ops/drill.sh` (its header), `c-storage/internal/auth/auth.go`.
+  `ops/drill.sh` (its header), `services/c-storage/internal/auth/auth.go`.
 - **Established by search rather than by reading the file:** that no record key is built outside
   `shared/src/records.ts` in product code; that only `tunnel.sh`, `root-password.sh` and `seed.sh`
   test the environment name; that only `seed.sh` and `root-password.sh` check the tree against
@@ -310,7 +310,7 @@ its steps.
   route carries the tenant guard. Each of those is a negative proved by a search over the whole
   tree, which is weaker than reading every file and stronger than an assumption — a file added
   after this page was written would not be in it.
-- **Not read:** `ops/test.sh` (about 2,500 lines, the guards themselves), the rest of `c-storage/`'s
+- **Not read:** `ops/test.sh` (about 2,500 lines, the guards themselves), the rest of `services/c-storage/`'s
   Go sources, every test file except where a test is cited by line, all of `ui/src/`, and the
   Bruno collection. No test or gate was run for this page and no AWS or Cloudflare state was
   queried, so **what actually exists in the account today is outside what this half can say** — in
@@ -562,7 +562,7 @@ which is now.
   holds no environment switch that weakens a behaviour; that no page in the menu is a report. Each
   is a negative proved by a search over the whole tree — weaker than reading every file, stronger
   than an assumption, and a file added after this page was written would not be in it.
-- **Not read:** `c-storage/`, all of `ops/` except the lines cited, every test file except
+- **Not read:** `services/c-storage/`, all of `ops/` except the lines cited, every test file except
   `scripts/src/fake.test.ts` and the two tests cited by line, the walk specs themselves, and the
   Vietnamese and English word files. **No test, gate, walk or server was run for this half** — every
   claim here is read from the code, so what a person would actually *see* on a screen is asserted

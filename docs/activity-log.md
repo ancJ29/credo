@@ -18,28 +18,28 @@
 > gate's `Makefile`, the package's own rules — are exactly the ones that will rot when this work
 > lands.
 
-**What exists, and it is the only fact on this page.** `audit-backbone/` holds a finished Go
+**What exists, and it is the only fact on this page.** `services/audit-backbone/` holds a finished Go
 service: 22 Go files, nine internal packages and `cmd/server`, its own SQLite file, its own gate,
 five rules `AB1` to `AB5`. **Nothing in this repository calls it** — the BFF does not reach it,
 `ops/` ships nothing of it, and the CI workflow has no job for it
-(`audit-backbone/CLAUDE.md`'s `Nothing in this repository calls this package yet`). Its single write
-path is `Writer.Do` in `audit-backbone/internal/batch/writer.go` and its store is `Store` in
-`audit-backbone/internal/activity/store.go`. What was changed on the way in and what was left
+(`services/audit-backbone/CLAUDE.md`'s `Nothing in this repository calls this package yet`). Its single write
+path is `Writer.Do` in `services/audit-backbone/internal/batch/writer.go` and its store is `Store` in
+`services/audit-backbone/internal/activity/store.go`. What was changed on the way in and what was left
 behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
 
 **Its store, which is the second one in the repository and the only one on no machine.**
 `audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema and its own
-single writer: `Store` in `audit-backbone/internal/activity/store.go`, every write funnelled through
-`Writer.Do` in `audit-backbone/internal/batch/writer.go`, which blocks until the commit
-(`audit-backbone/CLAUDE.md`'s `AB3`). Nothing writes to it and nothing deploys it, so
+single writer: `Store` in `services/audit-backbone/internal/activity/store.go`, every write funnelled through
+`Writer.Do` in `services/audit-backbone/internal/batch/writer.go`, which blocks until the commit
+(`services/audit-backbone/CLAUDE.md`'s `AB3`). Nothing writes to it and nothing deploys it, so
 [`architecture.md`](architecture.md)'s one sentence about storage is still the whole truth of every
 deployment: **one SQLite file, and it is the only copy.**
 
 **Its gate, which is its own and reaches no further.** `make check`, run from inside the package
-(`audit-backbone/CLAUDE.md`'s `Gate: make check`), cross-compiling for the box's `arm64` so a
+(`services/audit-backbone/CLAUDE.md`'s `Gate: make check`), cross-compiling for the box's `arm64` so a
 dependency quietly needing cgo fails here rather than at ship time
-([`audit-backbone/Makefile`](../audit-backbone/Makefile)), and holding 100 % of statements outside
-`cmd/server` (`audit-backbone/CLAUDE.md`'s `AB1`). **`pnpm check` reaches none of it:** the package
+([`services/audit-backbone/Makefile`](../services/audit-backbone/Makefile)), and holding 100 % of statements outside
+`cmd/server` (`services/audit-backbone/CLAUDE.md`'s `AB1`). **`pnpm check` reaches none of it:** the package
 has no `package.json`, and the root's two ignore lists name it so the root formatter and the
 unused-code step do not claim files a Go gate owns ([`.prettierignore`](../.prettierignore),
 [`knip.json`](../knip.json)). Those two lines are all the root knows about it, and nothing makes a
@@ -182,8 +182,8 @@ so that nobody re-derives it from scratch in six weeks. That costing is not in t
 ## What this page did not read
 
 - **The service's 22 Go files were not read.** Everything here about its behaviour comes from its own
-  guideline, `audit-backbone/CLAUDE.md`, read whole, its `Makefile` whole,
-  `audit-backbone/internal/config/config.go`, and the declarations of `Writer.Do` and `Store` and
+  guideline, `services/audit-backbone/CLAUDE.md`, read whole, its `Makefile` whole,
+  `services/audit-backbone/internal/config/config.go`, and the declarations of `Writer.Do` and `Store` and
   nothing else of their files.
 - **The counts are relayed, not re-derived** — the 39 deliberate write sites, the 11 with the actor
   in scope and the 28 without, and the 15 that must never be logged come from an earlier costing of

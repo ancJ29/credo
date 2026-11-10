@@ -1076,7 +1076,7 @@ Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.g
 
 [The code convention](conventions/code.md) states these rules in prose, which holds them only while
 someone reads the diff. Each row below is its own small piece, and the review's model for all of
-them is `c-storage/internal/server/server.go#L51-L54`, where the function that registers a route
+them is `services/c-storage/internal/server/server.go#L51-L54`, where the function that registers a route
 appends its pattern to the list a test reads (`server_test.go#L106`).
 
 | The rule it would hold | The check |
@@ -1093,14 +1093,14 @@ appends its pattern to the list a test reads (`server_test.go#L106`).
 
 ## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
-`c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `c-storage/scripts/e2e.sh` (the
+`services/c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `services/c-storage/scripts/e2e.sh` (the
 end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
 (`.github/workflows/ci.yml#L197`, glob `ops/*.sh walk/*.sh`), outside lint and outside the
 formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Worse, `cover.sh#L29`
 and `#L37` carry suppression comments written for a checker that never reads them, telling the next
 reader the opposite of the truth. The small Node file that proves a request run actually asserted
-something (`c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
-`c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
+something (`services/c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
+`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
 correct the two comments. *Trigger:* none needed; it is one line and a read.
 
 ## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
@@ -1187,7 +1187,7 @@ And every screen's flow is described twice — declaratively in `visual/src/walk
 its spec — with only the screen *names* held in agreement, so a step added to one and not the other
 leaves both green while the two draw different states. Four derivations of the repository root and
 its logs folder also cannot share a shell helper and stay as they are (`walk/run.sh#L70`,
-`c-storage/scripts/e2e.sh#L38`, `visual/src/home.ts#L48`, `scripts/src/demo-files-main.ts#L6`).
+`services/c-storage/scripts/e2e.sh#L38`, `visual/src/home.ts#L48`, `scripts/src/demo-files-main.ts#L6`).
 *Trigger:* the next change to any one of them.
 
 ## 170. None of the 121 Markdown files is formatted or checked, and there is no commit hook — the machine; *parked*, and both may be deliberate (the 2026-11-08 structure review, 2026-11-09, Low)
@@ -1307,7 +1307,7 @@ The one-gate-command convention gives every package one check command, and the r
 
 ## 203. A line citation can name an entirely unrelated sentence, and nothing reports it — the machine; `[OPEN]` (the architecture page's audit-backbone section, 2026-11-09, Medium)
 
-[`architecture.md`](architecture.md) cited `c-storage/CLAUDE.md#L11` for the claim that `pnpm check` never reaches that directory. Line 11 of that file says "A route belongs only with a caller named above"; the sentence cited is at line 45. The citation check verifies that a line citation's *file* exists and, in its own words, never that its line says anything — `scripts/src/citations.ts`'s header: "a line citation (`path#L12`) is counted per document and its line is never checked" — so the page was green with that citation throughout, and the only reason it surfaced is that this piece happened to touch the claim. `docs/architecture.md` carried **106** line citations when this was written (the 2026-11-09 rearrangement took it to a lower count, and five of the ones it touched did name unrelated lines), `docs/client-readiness.md` 110 and `docs/conventions/code.md` 52, and **how many of them name an unrelated line is unknown**. The conversion-on-touch policy is the only thing that finds them, so the rot is discovered at the rate pieces happen to touch it. Recorded with nothing recommended: the alternative is the sweep that policy deliberately refuses, and that is the human's call rather than an item's.
+[`architecture.md`](architecture.md) cited `services/c-storage/CLAUDE.md#L11` for the claim that `pnpm check` never reaches that directory. Line 11 of that file says "A route belongs only with a caller named above"; the sentence cited is at line 45. The citation check verifies that a line citation's *file* exists and, in its own words, never that its line says anything — `scripts/src/citations.ts`'s header: "a line citation (`path#L12`) is counted per document and its line is never checked" — so the page was green with that citation throughout, and the only reason it surfaced is that this piece happened to touch the claim. `docs/architecture.md` carried **106** line citations when this was written (the 2026-11-09 rearrangement took it to a lower count, and five of the ones it touched did name unrelated lines), `docs/client-readiness.md` 110 and `docs/conventions/code.md` 52, and **how many of them name an unrelated line is unknown**. The conversion-on-touch policy is the only thing that finds them, so the rot is discovered at the rate pieces happen to touch it. Recorded with nothing recommended: the alternative is the sweep that policy deliberately refuses, and that is the human's call rather than an item's.
 
 ## 204. The citation check never sees a name citation whose file sits inside a markdown link, so it is green because of its parser — the machine; `[OPEN]` (the ui move's cross-model read, 2026-11-09, Medium)
 

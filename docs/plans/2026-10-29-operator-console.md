@@ -75,7 +75,7 @@ operator to update password for the root user of clients" ([D](#d-a-clients-root
 | How operators come to exist | one record, `operator.user.<name>` ([`records.ts#L9`](../../shared/src/records.ts#L9)). Locally `pnpm stack` writes it and prints its password ([`generator.ts#L40`](../../scripts/src/generator.ts#L40), [`stack.ts#L109`](../../scripts/src/stack.ts#L109)); on ridge `ops/operator.sh` writes it through the tunnel and shows the password on the terminal alone, `--replace` for a lost one ([`operator.sh#L3`](../../ops/operator.sh#L3), [`ridge.ts#L56`](../../scripts/src/ridge.ts#L56)). None is in an environment: the BFF holds c-storage's four names alone ([`env.ts#L4`](../../bff/src/env.ts#L4)), and an operator's key there was rejected ([ridge-app#L166](2026-10-28-ridge-app.md#L166)) |
 | What ridge holds for them | the one operator the human made at ridge-app's step 17 ([ridge-app#L809](2026-10-28-ridge-app.md#L809)); its sessions |
 | The session | a week per device, renewed in its last three days ([`sessions.ts#L13`](../../bff/src/calling/sessions.ts#L13)); every operator route checks it and that the operator's record still exists ([`app.ts#L114`](../../bff/src/app.ts#L114)). Piece 2 re-keys sessions by a minted id, the operator's included |
-| What c-storage exposes | `GET /health`, before its key gate: `{status, buildVersion}`, the build a commit or `dev` ([`server.go#L88`](../../c-storage/internal/server/server.go#L88), [ridge](2026-10-28-ridge.md#which-build-is-running)) |
+| What c-storage exposes | `GET /health`, before its key gate: `{status, buildVersion}`, the build a commit or `dev` ([`server.go#L88`](../../services/c-storage/internal/server/server.go#L88), [ridge](2026-10-28-ridge.md#which-build-is-running)) |
 | What the BFF exposes | nothing: no route reads `/health`, and no answer may carry its body ([ridge-app#L319](2026-10-28-ridge-app.md#L319), [row 23](2026-10-28-ridge-app.md#L474)). Its commit is the function's description, set at each deploy ([`app.sh#L130`](../../ops/app.sh#L130)); the bundle carries none ([`bundle.ts#L10`](../../bff/src/bundle.ts#L10)) |
 | What the UI exposes | its commit in `index.html`'s metadata in S3 ([`app.sh#L150`](../../ops/app.sh#L150)); the bundle carries none |
 | Who reads them | `ops/check.sh`, in each deploy or the human's terminal: the three commits agree ([`check.sh#L140`](../../ops/check.sh#L140)), and the box's memory, disk and OOM kills over ssh. No browser reads any of it |
@@ -1126,7 +1126,7 @@ accept passkeys made for ridge's CloudFront name.
   levels.
 - **A synced passkey lives in the operator's own cloud account**, so whoever holds that account and
   the device's unlock holds the operator. *Accepted:* user verification is required.
-- **A BFF 503 for any cause but c-storage** would show c-storage as silent. *Guard:* row 40's test on
+- **A BFF 503 for any cause but services/c-storage** would show c-storage as silent. *Guard:* row 40's test on
   `me` and `services`. *Trigger:* any route of theirs that answers 503 otherwise.
 - **The page cannot see its own host down**, and no one watches while no page is open: open item 1.
 - **The virtual authenticator is Chromium's.** *Trigger:* WebKit in the walk; Safari's passkeys are

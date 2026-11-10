@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  // c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
+  // services/c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
   // a static look for the human to judge, its data written from the app's own files: no product code;
   // ui/signin-mock/ is the same for the sign-in screens.
   {
@@ -12,7 +12,7 @@ export default defineConfig(
       '**/dist/',
       '**/node_modules/',
       '**/coverage/',
-      'c-storage/',
+      'services/c-storage/',
       'ui/frame-mock/',
       'ui/signin-mock/',
     ],

@@ -74,7 +74,7 @@ the human's, an estimate.
   c-storage answers at most 1,000 records ([the demo seed's ceiling](2026-10-29-demo-seed.md#increments)):
   S2's busiest day is about 40, a week is 7 reads. An order and a request are named by their day and
   id in every address. **c-storage needs no change:** the list by prefix and the conditional write
-  exist ([`handlers.go`](../../c-storage/internal/server/handlers.go#L89)).
+  exist ([`handlers.go`](../../services/c-storage/internal/server/handlers.go#L89)).
 - **The numbering** is the staff numbering's model, not its record: `DH-` and five digits for an
   order, `GH-` for a request, each raised over its tag before its record is written; a number lost to
   a failed write is never given again. *Rejected:* a company's own prefix, which nothing asks for yet.

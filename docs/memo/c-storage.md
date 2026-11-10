@@ -28,10 +28,10 @@ flowchart TD
   turn -- "no: 412" --> refused
 ```
 
-Drawn from [`server.go`](../../c-storage/internal/server/server.go),
-[`auth.go`](../../c-storage/internal/auth/auth.go),
-[`store.go`](../../c-storage/internal/store/store.go) and
-[`open.go`](../../c-storage/internal/sqlitedb/open.go).
+Drawn from [`server.go`](../../services/c-storage/internal/server/server.go),
+[`auth.go`](../../services/c-storage/internal/auth/auth.go),
+[`store.go`](../../services/c-storage/internal/store/store.go) and
+[`open.go`](../../services/c-storage/internal/sqlitedb/open.go).
 
 | It promises | Protects against | Why |
 | --- | --- | --- |
@@ -179,7 +179,7 @@ read a record as absent, exactly one lands (`TestOfWritesNamingNoRecordOneLands`
 
 ## The schema version is checked at open
 
-[`schema.sql`](../../c-storage/internal/store/schema.sql) is the database's whole shape. Opening
+[`schema.sql`](../../services/c-storage/internal/store/schema.sql) is the database's whole shape. Opening
 applies it, in one transaction, only to a file with no table, and stamps `user_version` 1. A file
 at 1 opens; any other version, or a file at 0 that already holds a table, stops the process at
 start-up (`TestOpenRefusesWhatItCannotUse`), so a file this binary did not make fails before

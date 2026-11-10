@@ -2,7 +2,7 @@
 Stack: Go 1.25 · Gate: make check · Ship: none yet
 
 The activity log: one Go binary, one SQLite file, a keyed writer and a
-token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../CLAUDE.md).
+token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../../CLAUDE.md).
 
 ## What belongs here, and what does not
 
@@ -16,33 +16,33 @@ callers' and are not decided here; a route or a field belongs only with a caller
 
 ## The file to copy
 
-- **A package:** `audit-backbone/internal/auth/auth.go` and its `auth_test.go`: a package comment
+- **A package:** `services/audit-backbone/internal/auth/auth.go` and its `auth_test.go`: a package comment
   stating its one job, a constructor that takes the clock (`New`), and tests beside it that drive the
   clock rather than wait.
 - **A route:** register it through `func (l *listener) HandleFunc(` in
-  `audit-backbone/internal/server/server.go`, with a row in `everyRoute` or `everyOpenRoute` in
-  `audit-backbone/internal/server/server_test.go` and a request in `bruno/`.
+  `services/audit-backbone/internal/server/server.go`, with a row in `everyRoute` or `everyOpenRoute` in
+  `services/audit-backbone/internal/server/server_test.go` and a request in `bruno/`.
 
 ## This package's own rules
 
-Marks: [How to read a rule](../docs/conventions/code.md#how-to-read-a-rule). Five rules, each
+Marks: [How to read a rule](../../docs/conventions/code.md#how-to-read-a-rule). Five rules, each
 sourced from the code as it stands; the first copy of this package carried no ids, so these are
 minted here, once, and never renumbered.
 
 - **AB1 · holds · check:** format, vet, race tests at 100 % of statements outside `cmd/server`, and the
-  box's cross-compile are the gate (`audit-backbone/Makefile`, `audit-backbone/scripts/cover.sh`).
+  box's cross-compile are the gate (`services/audit-backbone/Makefile`, `services/audit-backbone/scripts/cover.sh`).
 - **AB2 · holds · check:** a route is registered through `func (l *listener) HandleFunc(`
-  (`audit-backbone/internal/server/server.go`), held by `TestEveryRegisteredRouteIsListed`.
+  (`services/audit-backbone/internal/server/server.go`), held by `TestEveryRegisteredRouteIsListed`.
 - **AB3 · holds · reader:** every write goes through `func (w *Writer) Do(`
-  (`audit-backbone/internal/batch/writer.go`); `Store.Sweep` and the insert in
-  `audit-backbone/internal/activity/store.go` are its only callers.
+  (`services/audit-backbone/internal/batch/writer.go`); `Store.Sweep` and the insert in
+  `services/audit-backbone/internal/activity/store.go` are its only callers.
 - **AB4 · holds · reader:** the database driver is imported only by `sqlitedb`
-  (`Open` in `audit-backbone/internal/sqlitedb/open.go`), the environment is read only by `config`
-  (`Load` in `audit-backbone/internal/config/config.go`), and `cmd/server` adds only logging,
+  (`Open` in `services/audit-backbone/internal/sqlitedb/open.go`), the environment is read only by `config`
+  (`Load` in `services/audit-backbone/internal/config/config.go`), and `cmd/server` adds only logging,
   signals and exit codes.
 - **AB5 · holds · reader:** an error the caller can act on gets a message and everything else a
   generic one, because a SQLite error text names files on disk (`Internal` in
-  `audit-backbone/internal/httpx/httpx.go`).
+  `services/audit-backbone/internal/httpx/httpx.go`).
 
 ## Non-obvious facts
 
@@ -75,8 +75,8 @@ minted here, once, and never renumbered.
 - **This service answers no 405, and that is load-bearing.** The catch-all
   fallback suppresses net/http's own 405 (`TestThisServiceNeverAnswers405`).
 - **`activity.Reader` and `Writer` are separate interfaces over one store.**
-  Do not collapse them into `Store` (`audit-backbone/internal/activity/store.go`) in `Domains`
-  (`audit-backbone/internal/server/server.go`): that split is what the compiler checks about the
+  Do not collapse them into `Store` (`services/audit-backbone/internal/activity/store.go`) in `Domains`
+  (`services/audit-backbone/internal/server/server.go`): that split is what the compiler checks about the
   boundary.
 - **`batch.Writer.Do` blocks until the commit.** Never make it asynchronous:
   the 201 names committed ids
@@ -110,9 +110,9 @@ minted here, once, and never renumbered.
 **Nothing in this repository calls this package yet, and how it integrates is undecided.** The BFF
 does not reach it, `ops/` ships nothing of it, and the CI workflow has no job for it (c-storage's
 `make check` job is the model). `pnpm check` does not run it: the root `.prettierignore` and
-`knip.json` leave it out, as they do `c-storage/`.
+`knip.json` leave it out, as they do `services/c-storage/`.
 
-[The big picture](../docs/architecture.md#at-a-glance), [the cross-package rules](../docs/conventions/code.md),
-and [documentation](../docs/conventions/documentation.md), read before editing docs, comments or
+[The big picture](../../docs/architecture.md#at-a-glance), [the cross-package rules](../../docs/conventions/code.md),
+and [documentation](../../docs/conventions/documentation.md), read before editing docs, comments or
 this file. The package's own index is [`docs/README.md`](docs/README.md). Sibling to copy: `c-storage`,
 the other Go package.

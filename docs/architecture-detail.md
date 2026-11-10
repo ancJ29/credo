@@ -23,15 +23,15 @@ needs before touching any of it, is on
 | `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
-| `c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
-| `audit-backbone/` | a second Go service, in this repository and called by nothing | nothing today ([the activity log](activity-log.md)) |
+| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
+| `services/audit-backbone/` | a second Go service, in this repository and called by nothing | nothing today ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
 | `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
 | `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
 
 Six of the nine are in the pnpm workspace ([`pnpm-workspace.yaml`](../pnpm-workspace.yaml));
-`c-storage/`, `audit-backbone/` and `ops/` are deliberately outside it. Two shapes are easy to miss:
+`services/c-storage/`, `services/audit-backbone/` and `ops/` are deliberately outside it. Two shapes are easy to miss:
 the BFF is **one app with two entries**, not two back ends (`bff/src/server.ts`'s `buildBff` is
 shared and only the listener differs), and the UI is **one bundle with two apps in it** — the
 operator console is not a separate deployment, only the path it is opened at (`ui/src/App.tsx`'s
@@ -42,13 +42,13 @@ operator console is not a separate deployment, only the path it is opened at (`u
 **Where it lives.** One SQLite file per deployment, at the path the box's systemd unit names
 (`ops/c-storage.service`'s `DB_PATH`), served by a unit that restarts the process whenever it stops
 (`ops/c-storage.service`'s `Restart=always`), opened in WAL with
-`_txlock=immediate` ([`c-storage/internal/sqlitedb/open.go#L33`](../c-storage/internal/sqlitedb/open.go#L33)).
+`_txlock=immediate` ([`services/c-storage/internal/sqlitedb/open.go#L33`](../services/c-storage/internal/sqlitedb/open.go#L33)).
 The whole schema is two `STRICT` tables — `services(code, hashed_access_key)` and
 `records(service_code, key, data)` — in
-[`c-storage/internal/store/schema.sql#L4`](../c-storage/internal/store/schema.sql#L4). There are no
+[`services/c-storage/internal/store/schema.sql#L4`](../services/c-storage/internal/store/schema.sql#L4). There are no
 timestamps, no indexes beyond the primary keys and no migration chain: the schema is applied only
 to a file with no tables, stamped `user_version = 1`, and a file at any other version stops the
-process at start-up ([`open.go#L56`](../c-storage/internal/sqlitedb/open.go#L56)).
+process at start-up ([`open.go#L56`](../services/c-storage/internal/sqlitedb/open.go#L56)).
 
 **What a tenant is — and where it is not.** A client is a tenant, its records sit under its minted
 id, the key layout has one home, and **c-storage has no concept of a tenant at all**, so separation
@@ -62,15 +62,15 @@ deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
 ([`records.ts#L41`](../shared/src/records.ts#L41),
-[`c-storage/internal/store/store.go#L132`](../c-storage/internal/store/store.go#L132)).
+[`services/c-storage/internal/store/store.go#L132`](../services/c-storage/internal/store/store.go#L132)).
 
 **How a record is written safely.** The version token is a `tag`: the hex SHA-256 of the record's
 stored text, computed fresh on every read and stored nowhere
-([`store.go#L54`](../c-storage/internal/store/store.go#L54)). A writer sends it back as `If-Match`
+([`store.go#L54`](../services/c-storage/internal/store/store.go#L54)). A writer sends it back as `If-Match`
 (or `If-None-Match: *` to claim a key that must not exist); c-storage compares inside the write's
 own transaction and answers **412** if the record moved
-([`store.go#L68`](../c-storage/internal/store/store.go#L68),
-[`c-storage/internal/server/handlers.go#L132`](../c-storage/internal/server/handlers.go#L132)). A precondition
+([`store.go#L68`](../services/c-storage/internal/store/store.go#L68),
+[`services/c-storage/internal/server/handlers.go#L132`](../services/c-storage/internal/server/handlers.go#L132)). A precondition
 it cannot parse is a 400, never ignored — but a request sending *no* precondition overwrites
 whatever is there, so the guard holds only where the BFF sends the tag.
 
@@ -106,9 +106,9 @@ all. That half of the gap is in no open item ([the docs index](README.md)).
 route but `/health` including the 404 fallback, so an unknown path answers 401 exactly like a real
 one; a per-service `x-access-key`, stored only as a SHA-256 and compared in constant time; and
 `x-super-admin-key`, whose sole power is creating a service
-([`c-storage/internal/auth/auth.go#L17`](../c-storage/internal/auth/auth.go#L17),
-[`c-storage/internal/server/server.go#L59`](../c-storage/internal/server/server.go#L59),
-[`c-storage/internal/store/store.go#L93`](../c-storage/internal/store/store.go#L93)). **The BFF never holds
+([`services/c-storage/internal/auth/auth.go#L17`](../services/c-storage/internal/auth/auth.go#L17),
+[`services/c-storage/internal/server/server.go#L59`](../services/c-storage/internal/server/server.go#L59),
+[`services/c-storage/internal/store/store.go#L93`](../services/c-storage/internal/store/store.go#L93)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
 ([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
 [`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
@@ -166,9 +166,9 @@ behind them are [QA](conventions/qa.md) and the whole list of gate commands is
    every package's tests at 100 % statement coverage, and knip for unused code
    ([`package.json`](../package.json)). A gate reported without naming its five steps has not been
    reported ([QA rule 6](conventions/qa.md)). **Each Go service has a gate of its own: `make check`,
-   run from inside the package** — c-storage's (`c-storage/CLAUDE.md`'s `Gate: make check`),
+   run from inside the package** — c-storage's (`services/c-storage/CLAUDE.md`'s `Gate: make check`),
    cross-compiling for the box's `arm64` so a dependency quietly needing cgo fails here rather than
-   at ship time ([`c-storage/Makefile`](../c-storage/Makefile)); audit-backbone's is the same shape,
+   at ship time ([`services/c-storage/Makefile`](../services/c-storage/Makefile)); audit-backbone's is the same shape,
    and the detail of it is [the activity log](activity-log.md)'s.
    **`pnpm check` reaches neither**: neither package has a
    `package.json`, and the root's two ignore lists name both, so the root formatter and the
@@ -275,7 +275,7 @@ this page is named at [the end](#what-this-page-did-not-read).
 **The diagram on [`architecture.md`](architecture.md) is drawn from**
 [`ops/env.yml`](../ops/env.yml) (`ops/env.yml`'s `Distribution`, `Api`, `Bff` and `Box`),
 `bff/src/lambda.ts`, `shared/src/c-storage.ts`'s `createCStorageClient` and
-`c-storage/internal/server/server.go`'s `func Build(`. The dashed part is drawn from no code.
+`services/c-storage/internal/server/server.go`'s `func Build(`. The dashed part is drawn from no code.
 
 ## What this page did not read
 
@@ -291,13 +291,13 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   `docs/open-items.md`'s item 6, and the parts of `ops/env.yml` and `ops/network.yml` cited above.
   The rest of `docs/open-items.md` — over 1,300 lines — was searched, not read.
 - **Read on this page's behalf by two other agents, not line by line by its author:** all of
-  `c-storage/` and all of `ops/` and `.github/workflows/`. Every claim this page makes about those
+  `services/c-storage/` and all of `ops/` and `.github/workflows/`. Every claim this page makes about those
   files was then checked directly against the file — the resource types in both templates, the
   CloudFront behaviours, the Lambda's stub and runtime, the absence of a gateway endpoint and an
   instance role, the change-set calls and their guard, the "never by CI" line, the two CI comments,
-  the seed's refusal, the systemd unit's `DB_PATH`, and `c-storage/CLAUDE.md`'s gate line. **What
+  the seed's refusal, the systemd unit's `DB_PATH`, and `services/c-storage/CLAUDE.md`'s gate line. **What
   was not checked a second time is everything this page does not cite:** in particular all of
-  `c-storage/`'s Go sources beyond the lines quoted here, [`ops/test.sh`](../ops/test.sh) (about
+  `services/c-storage/`'s Go sources beyond the lines quoted here, [`ops/test.sh`](../ops/test.sh) (about
   2,500 lines), `ops/lib.sh` whole, and the bodies of `check.sh`, `drill.sh`, `release.sh` and
   `pages-preview.sh`. The c-storage section in particular rests on one agent's reading of the Go
   code plus the cited lines, not on a full reading of it by this page's author.
@@ -320,7 +320,7 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   `ui/src/pages/client/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
   `resolveTenant` and `mustCan`, `bff/src/routes/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
   key layout, `shared/src/c-storage.ts`'s `putRecord`, and
-  `c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5 of
+  `services/c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5 of
   [the request walk](architecture.md#one-request-end-to-end) is the one step not re-read for the
   walk:** it is restated from this page's own
   [who may do what](#who-may-do-what), where it was written first-hand. **Every absence in

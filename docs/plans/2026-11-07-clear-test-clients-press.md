@@ -28,7 +28,7 @@ reading "continue (2 left)". **The 10-second function timeout (`ops/env.yml#L223
 server-side.**
 
 **The create question.** `edge_reads` (`ops/lib.sh#L828-L862`) spends the client on the app's page at its own link
-(`#L832`), `/api/config` returning **that client's own name out of c-storage** twice with no cache in front (`#L835-L840`),
+(`#L832`), `/api/config` returning **that client's own name out of services/c-storage** twice with no cache in front (`#L835-L840`),
 and the full `sign-in → me → sign-out → 401` cycle through the edge **using the password the create returned**
 (`#L841-L851`). The client-free assertions (an unknown code's 404, a missing code's 400, the operator door's 401, the
 relying-party check, `/api/health`'s 404) already run beside them (`#L853-L862`). So dropping the create keeps the liveness

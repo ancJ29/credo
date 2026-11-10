@@ -12,11 +12,11 @@ says otherwise.
 | # | Command | What it covers | In CI |
 | --- | --- | --- | --- |
 | 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s step `name: pnpm check` |
-| 2 | `make check`, in `c-storage/` | gofmt, `go vet`, the race tests at 100 % through `c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`c-storage/Makefile`) | `ci.yml#L69` |
-| 3 | `shellcheck -x ops/*.sh walk/*.sh c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
+| 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml#L69` |
+| 3 | `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `services/c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
 | 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml#L198-L203`, cfn-lint 1.46.0 |
 | 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
-| 6 | `bash scripts/e2e.sh`, in `c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
+| 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
 
 Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
 operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the

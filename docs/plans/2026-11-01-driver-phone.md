@@ -60,13 +60,13 @@ and an hour and a quarter of the human's, an estimate.
 | **an order** | the state `fulfilled` |
 | **a delivery's photo** | one record a delivered request, `tenant.<id>.delivery-photo.<day>.<request id>`: `{ photo }`, a JPEG, PNG or WebP data URL of at most 200 KB |
 
-- **Where the photo is kept: c-storage** (Decide 45), a record of its own beside the request, as piece 2
+- **Where the photo is kept: services/c-storage** (Decide 45), a record of its own beside the request, as piece 2
   keeps a person's photo and piece 1 the logo. Its key does not start with the day's prefix, so a day's
   list never carries a photo (S2's 40 a day would be 10 MB). The stack carries a record this size
   already: the logo may be 200 KB ([`config.ts`](../../shared/src/config.ts#L61)). On the way: the
   BFF's body limit, Fastify's default of 1 MiB ([`app.ts`](../../bff/src/app.ts#L75)); API Gateway's
   10 MB ([`env.yml`](../../ops/env.yml#L243)); Lambda's 6 MB; c-storage's 10 MB
-  ([`httpx.go`](../../c-storage/internal/httpx/httpx.go#L15)). **Nothing new ships to ridge:** no
+  ([`httpx.go`](../../services/c-storage/internal/httpx/httpx.go#L15)). **Nothing new ships to ridge:** no
   resource, hop or key; $0 a month. *Rejected:* S3 behind presigned uploads, a bucket and a
   credential in each stack, for a demo (Decide 45; it comes with a client, as piece 2's trigger
   [said](2026-10-29-employee-list.md#L267)). *Trigger:* a signed client, whose 30 photos a day (about
@@ -339,7 +339,7 @@ The demo's steps 5 and 6 need none of these; each waits for its trigger.
    for today (Decide 42). *Trigger:* a real client's day.
 4. **No signal:** one send and a "try again" by hand; nothing queued, nothing sent by itself.
    *Trigger:* a real client's drivers.
-5. **The photo in c-storage** until a client signs, then S3 (Decide 45). *Trigger:* a signed client.
+5. **The photo in services/c-storage** until a client signs, then S3 (Decide 45). *Trigger:* a signed client.
 6. **A delivered request beside a cancelled order** (slice 2's review, finding 3): the order's cancel
    drops a request write that moved. The fix is in slice 2's route: read the request again, and refuse
    a delivered one (409). *Trigger:* the orchestrator places it, or such a pair is seen.

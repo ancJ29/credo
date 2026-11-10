@@ -85,7 +85,7 @@ ends; this one holds.
 3. **Ready only on `main`.** `/health` through the port must name a commit of `origin/main`, or the
    run stops having written nothing.
 4. **The keys.** `read_keys` (masked), a fresh service code `tunnel-<UTC time>` and a fresh access
-   key, written to `c-storage/bruno/environments/<env>-tunnel.yml`, 0600, refused unless git
+   key, written to `services/c-storage/bruno/environments/<env>-tunnel.yml`, 0600, refused unless git
    ignores it. It is its own file, not `check.sh`'s `ridge.yml`, which each check rewrites and
    deletes. The run removes it on every exit, but only once it has written it, so a refused second
    run never deletes the first's. A file a killed run left is replaced, and the log says so. Nothing
@@ -109,8 +109,8 @@ ok   ops/ is origin/main's
 ok   /health names <sha>, a commit of main
 [4/4] the Bruno environment (0m10s)
 ready: http://127.0.0.1:3192 is ridge's c-storage, until Ctrl-C or 15:02 (the endpoint's hour)
-  Bruno: open the collection c-storage/bruno, pick the environment ridge-tunnel
-  curl:  curl http://127.0.0.1:3192/health; the keys are in c-storage/bruno/environments/ridge-tunnel.yml
+  Bruno: open the collection services/c-storage/bruno, pick the environment ridge-tunnel
+  curl:  curl http://127.0.0.1:3192/health; the keys are in services/c-storage/bruno/environments/ridge-tunnel.yml
   this run's service: tunnel-20261028T070211Z, registered by the collection's first request
 ```
 
@@ -235,7 +235,7 @@ Also from the orchestrator, the machine's call: `ops/tunnel.sh` refuses any envi
   runs. `ops/tunnel.sh ridge` from a worktree at `main`; in Bruno, environment `ridge-tunnel`:
   Health, then the collection once; then Ctrl-C. Done when: its log, read whole, shows the four
   steps, `/health` naming a commit of `main`, the ready lines, `ok   no key in this log` and
-  `== exit 130`, and `c-storage/bruno/environments/` holds no `ridge-tunnel.yml`. *Evidence:* the
+  `== exit 130`, and `services/c-storage/bruno/environments/` holds no `ridge-tunnel.yml`. *Evidence:* the
   log `2026-10-28-162038-tunnel-ridge.log`, 13 lines, read whole: the four steps `[1/4]` to
   `[4/4]`, `ok   ops/ is origin/main's`, `ok   /health names a9a2d4e6a4603e0457fc9479b6a18bb620681516,
   a commit of main`, `ready: http://127.0.0.1:3192 is ridge's c-storage, until Ctrl-C or 17:20 (the

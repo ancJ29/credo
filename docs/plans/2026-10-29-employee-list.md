@@ -630,7 +630,7 @@ itself:
   no warning; the route in `everyRoute` and one Bruno request with its test; the shared client's
   method and its Bruno parity green; the memo's line on the list and its bound. *Not run here:*
   `e2e.sh`, which is GitHub's run at the push. *Model files:* `getRecord` in
-  `c-storage/internal/server/handlers.go`, `Get` in `c-storage/internal/store/store.go`.
+  `services/c-storage/internal/server/handlers.go`, `Get` in `services/c-storage/internal/store/store.go`.
   *Evidence:* row 39 seen red once per rule, from its assertion, by changing the rule's line and
   putting it back: the prefix ignored (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`), its upper
   bound dropped (the same), the prefix read as a pattern (`TestAListHoldsTheRecordsUnderThePrefixInKeyOrder`),
@@ -641,7 +641,7 @@ itself:
   request (`TestTheCollectionHoldsARequestPerRouteAndATestPerRequest`), and the two edges of the text's
   order (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`). The shared client's list is red with the
   prefix unencoded, a status other than 200 accepted, `more` defaulted and a wrong query name
-  (`shared/src/c-storage.test.ts`, `c-storage.bruno.test.ts`). `make check` in `c-storage/` green at
+  (`shared/src/c-storage.test.ts`, `c-storage.bruno.test.ts`). `make check` in `services/c-storage/` green at
   100 % of statements, the box's cross-compile included. Six Bruno requests (18 to 23) cover the list,
   its empty answer, the missing prefix and the wrong key; `e2e.sh` is GitHub's run at the push. The
   memo's section "A list reads one prefix" holds the route and its bound. *Read, from the plan's
@@ -732,7 +732,7 @@ itself:
 - [x] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or deferred
   with its reason, tagged in the recap; `pnpm check` and `make check` green. *Fix pass, 2026-10-29,
-  re-reviewed by both reviewers, whose findings follow it (`make check` not run: `c-storage/` is
+  re-reviewed by both reviewers, whose findings follow it (`make check` not run: `services/c-storage/` is
   untouched):* two reviewers read `git diff 85d5a2b HEAD`,
   S1 to S10 on the server and C1 to C12 on the client. Each is `[FIXED]` unless said, and each new or
   changed test was seen red once from its assertion, under a mutation or before the code. No screen
@@ -982,7 +982,7 @@ itself:
   *Logged:* open item 23. The step's own run on the stack was not made, since the generator's test and
   the route tests meet the real c-storage.
 - [x] **15. B's review.** Who: 🤖, another model. Done when: as step 10. *Fix pass, 2026-10-29 14:55 +07
-  (`make check` not run: `c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
+  (`make check` not run: `services/c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
   group B, S1 to S4 and R1 to R7 on the server, C1 to C9 and mutations M1 to M36 on the client, each
   with a proof test red on `caa52d7`. The human's two answers: R5, a number freed by a code change is
   never given again ("no, 8 count past"), and S1/C8, no BigInt and no special 409, only the add's

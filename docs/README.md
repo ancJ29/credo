@@ -15,7 +15,7 @@
 record is one key holding its current value ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)),
 so a save overwrites. No record carries who wrote it or what it held before — searched for
 `changedBy`, `updatedBy`, a revision and a history across `shared/src`, `bff/src` and
-`c-storage/internal`, and there is none — and there is no copy of any client's records to restore
+`services/c-storage/internal`, and there is none — and there is no copy of any client's records to restore
 from: [open item 6](open-items.md) says so in its own words, "There is no copy of any client's
 records."
 
@@ -83,7 +83,7 @@ reach us" faster than reading anything.
 | [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's six commands, and the facts the code does not show | the machine |
 | [`docs/architecture.md`](architecture.md) | **how the system is put together** — one sentence, the diagram, one request walked end to end, the nine parts and what each one is for, and what is never there. Opened by anyone who has just arrived and wants the whole system | both |
 | [`docs/architecture-detail.md`](architecture-detail.md) | the detail behind that page: the codemap of where each thing lives, the data, who may do what, how it reaches a machine, how it is checked, and where these two pages' facts came from. Opened by whoever is about to change the code | the machine |
-| [`docs/activity-log.md`](activity-log.md) | the activity log, **decided and not built**: what `audit-backbone/` already is, the intended path, the two prerequisites, what is guaranteed and what cannot be | the machine |
+| [`docs/activity-log.md`](activity-log.md) | the activity log, **decided and not built**: what `services/audit-backbone/` already is, the intended path, the two prerequisites, what is guaranteed and what cannot be | the machine |
 | [`docs/products.md`](products.md) | what each part does for whom, and how far each has got | the human |
 | [`docs/client-readiness.md`](client-readiness.md) | can we take a real client: what would happen to their data and access, and what the office cannot do yet | the human |
 | [`conventions/code.md`](conventions/code.md) | **where new code goes, what to copy, and the one file to open first for a part of the system** | the machine, then the human |
@@ -94,7 +94,7 @@ reach us" faster than reading anything.
 | [`docs/open-items.md`](open-items.md) | everything still to do, numbered and never renumbered — read it before calling anything missing | both |
 | [`docs/plans/`](plans), [`docs/recaps/`](recaps) | a piece's one page before it is built, and its half page with the evidence after | both |
 | [`ops/README.md`](../ops/README.md) | the runbook: the order and the commands for the network, a stack, a release, a drill, and [what a push to `main` runs](../ops/README.md#the-deploy-job) | the human, with the machine reading the logs |
-| [`c-storage/README.md`](../c-storage/README.md) | the Go service alone, and its whole check in one command | both |
+| [`services/c-storage/README.md`](../services/c-storage/README.md) | the Go service alone, and its whole check in one command | both |
 
 ## The order to read them
 
@@ -112,7 +112,7 @@ reach us" faster than reading anything.
 Every file and line in the tables above was opened at the commit that added this page. **Six
 claims are negatives, established by searching rather than by reading, so a file added later
 would not be in them**: that no record carries who wrote it or what it held before (searched
-across `shared/src`, `bff/src` and `c-storage/internal`); that no open item records that gap;
+across `shared/src`, `bff/src` and `services/c-storage/internal`); that no open item records that gap;
 that nothing records which part of a sign-in was wrong; that the BFF's log holds no line below
 500; that CloudFront keeps no access log; and that neither template configures tracing, an alarm,
 a metric filter or a dashboard. The catalogue's one-line descriptions come from each page's own

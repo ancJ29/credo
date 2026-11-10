@@ -26,7 +26,7 @@ No server work: `GET /api/products` answers every product whole — unit, price 
   noted record by non-empty text, the page's own rule, in place of `'note' in extra` and of an array index
   (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `words.test.tsx#L224-L225`). Both close
   with this merge.
-- Read only: no add, no edit, no delete. `bff/`, `shared/` and `c-storage/` are untouched.
+- Read only: no add, no edit, no delete. `bff/`, `shared/` and `services/c-storage/` are untouched.
 
 Decided here, not asked:
 
@@ -48,7 +48,7 @@ Decided here, not asked:
 | 6 | A `side` of `null` or `false` draws no column (item 99) | unit; red first |
 | 7 | From 992 two columns, 7 to 5; below one, details first; fields two a row from 768 | the walk |
 | 8 | Every card is `DetailCard` (`grep -c withBorder ui/src/ProductPage.tsx` is 0); the titles read in both languages | the grep; unit |
-| 9 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `c-storage/`; the report moves lists screens 6, 12 and 13 alone | the diff; `raw.txt` |
+| 9 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `services/c-storage/`; the report moves lists screens 6, 12 and 13 alone | the diff; `raw.txt` |
 
 ## What moves
 
@@ -83,7 +83,7 @@ run and never broken.
   ternary and row 5 and 6 are proved through it, `DetailCards.tsx` untouched. Whole run per package green, ui 774
   tests at 100 %; tsc, eslint, prettier and knip clean. `pnpm report` 118 screens, 236 captures against `main`'s
   116, 232: screen 6 moved, 12 and 13 new, nothing else. Rows 8 and 9: 0 `withBorder`, no diff under `bff/`,
-  `shared/`, `c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
+  `shared/`, `services/c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
 - [x] **3. The look** (👤 1); the machine goes on.
 - [x] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
   lock, `== exit 0`.

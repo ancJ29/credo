@@ -57,8 +57,8 @@ work on a runner: under `CI` it skips the lock and the load wait and says so in 
 workflow file changes — `ci.yml#L197` already shellchecks `ops/*.sh` and `#L206` already runs
 `ops/test.sh`.
 
-**c-storage stays outside, named.** Its gate is `make check` in `c-storage/` and its Makefile says
-so in its first line (`c-storage/Makefile#L1-L2`, `#L19-L21`); eslint, prettier, knip and CI each
+**c-storage stays outside, named.** Its gate is `make check` in `services/c-storage/` and its Makefile says
+so in its first line (`services/c-storage/Makefile#L1-L2`, `#L19-L21`); eslint, prettier, knip and CI each
 hold it separately (`eslint.config.js#L15`, `.prettierignore#L4-L5`, `knip.json#L4`,
 `ci.yml` job at `#L67-L69`). Folding Go into `pnpm check` would make every UI gate need the Go
 toolchain. `ops/gate.sh` prints one line in its verdict naming `make check` as the gate it is not,

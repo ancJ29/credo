@@ -44,7 +44,7 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **decided and not built**: `audit-backbone/` is in this repository, nothing calls
+box and arrow are **decided and not built**: `services/audit-backbone/` is in this repository, nothing calls
 it, and where it would run is not decided — the whole of that is
 [`docs/activity-log.md`](activity-log.md).
 
@@ -120,14 +120,14 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 `node:` import, no clock, no randomness — so one declaration serves a browser, a Lambda and a script
 alike.
 
-**The store is `c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
+**The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
 record whose meaning is the BFF's and not its own. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
 and nothing the store enforces.
 
-**The second service is `audit-backbone/`.** The activity log: a keyed writer and a token-gated
+**The second service is `services/audit-backbone/`.** The activity log: a keyed writer and a token-gated
 reader over its own SQLite file, in this repository with a gate of its own, called by nothing
 ([the activity log](activity-log.md)).
 
@@ -145,7 +145,7 @@ photographs the same screens in a real browser and counts every moved pixel raw 
 bases. Two parts, because one needs a browser and the other does not.
 
 Six of the nine are one pnpm workspace ([`pnpm-workspace.yaml`](../pnpm-workspace.yaml));
-`c-storage/`, `audit-backbone/` and `ops/` stand outside it, each gated on its own terms. **No part
+`services/c-storage/`, `services/audit-backbone/` and `ops/` stand outside it, each gated on its own terms. **No part
 has a directory named for a layer**, because a directory earns its name only where "everything in
 here is a ___" finishes in a word the product itself uses
 ([the shape of a package](conventions/code.md#the-shape-of-a-package)).

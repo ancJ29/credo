@@ -5,7 +5,7 @@
 # client through the app's address as a partner would (docs/plans/2026-10-28-ridge-app.md#layer-four).
 # Green is every read below passing; the log ends on == green, or names each red.
 # Runs after each release in the deploy job, and by hand.
-# Needs c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
+# Needs services/c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
 # node, which reads its report, and /health's buildVersion (the plan's step 6). With layer four also
 # pnpm install done, for the client it makes through the operator's own create function.
 # Run from a worktree whose ops/ is origin/main's.
@@ -23,7 +23,7 @@ ENVNAME=$1
 STEPS=7
 # Never the local stack's port (3181): a c-storage on this machine must not answer for the box.
 LOCAL_PORT=${CHECK_LOCAL_PORT:-3191}
-BRUNO_DIR=$REPO_DIR/c-storage/bruno
+BRUNO_DIR=$REPO_DIR/services/c-storage/bruno
 WANT_BRUNO=4.2.0
 
 log_start check "$ENVNAME"
@@ -49,11 +49,11 @@ cleanup_extra() {
 step "the tools and the collection"
 main_synced
 command -v node >/dev/null || die "needs node on PATH, to read Bruno's report"
-[ -d "$BRUNO_DIR" ] || die "no c-storage/bruno: the collection arrives with main (the plan's step 5)"
+[ -d "$BRUNO_DIR" ] || die "no services/c-storage/bruno: the collection arrives with main (the plan's step 5)"
 have=$(bru_clean --version 2>/dev/null) || have=none
 [ "$have" = "$WANT_BRUNO" ] || die "needs Bruno CLI $WANT_BRUNO, found $have: npm install -g --ignore-scripts @usebruno/cli@$WANT_BRUNO"
 # The keys go into this file, so git must ignore it.
-require_ignored "c-storage/bruno/environments/$ENVNAME.yml"
+require_ignored "services/c-storage/bruno/environments/$ENVNAME.yml"
 refuse_taken_port "$LOCAL_PORT" "free it, or set CHECK_LOCAL_PORT"
 
 step "the AWS reads"
@@ -124,7 +124,7 @@ expect "bru run exits" 0 "$ran"
 # bru exits 0 for a file it cannot parse and for a run that reaches no request: the shared proof
 # (the same e2e.sh asks) wants every request file passed, with a test, and none skipped.
 proof=0
-requests=$(node "$REPO_DIR/c-storage/scripts/bruno-proof.cjs" "$WORK/report.json" "$BRUNO_DIR" check) || proof=$?
+requests=$(node "$REPO_DIR/services/c-storage/scripts/bruno-proof.cjs" "$WORK/report.json" "$BRUNO_DIR" check) || proof=$?
 expect "every request ran, passed and asserted ($requests)" 0 "$proof"
 rm -f "$BRUNO_DIR/environments/$ENVNAME.yml"
 

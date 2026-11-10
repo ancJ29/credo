@@ -63,7 +63,7 @@ Products, where one price is refused. The files are made for each scenario by st
   `tenant.<id>.customer.<customer id>` and `tenant.<id>.product.<product id>`, one record each,
   written once with `If-None-Match: *`, read by prefix through c-storage's list. **c-storage needs no
   change:** the list by prefix and the conditional write exist
-  ([`handlers.go`](../../c-storage/internal/server/handlers.go#L89)).
+  ([`handlers.go`](../../services/c-storage/internal/server/handlers.go#L89)).
 - **A code unique in its list** is checked by the BFF against the list it reads once a call, and the
   codes written earlier in the call, as piece 2's import does (its D3). *Rejected:* a claim record per
   code, as the email's: a second write a row and a failed claim to take over, for a list with one

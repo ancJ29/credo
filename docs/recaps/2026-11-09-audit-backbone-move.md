@@ -2,12 +2,12 @@
 
 ## What happened
 
-A Go service from an older repository of ours now lives in `audit-backbone/`, checked the way `c-storage` is. **This page is the only place that says what was changed on the way and what was left behind**, so a later reader can tell which sentences in the package are original and which were rewritten here. **Nothing in this repository calls it**; how it integrates is the human's next decision and is not made.
+A Go service from an older repository of ours now lives in `services/audit-backbone/`, checked the way `c-storage` is. **This page is the only place that says what was changed on the way and what was left behind**, so a later reader can tell which sentences in the package are original and which were rewritten here. **Nothing in this repository calls it**; how it integrates is the human's next decision and is not made.
 
 | What | Count or fact |
 | --- | --- |
 | The service | 22 Go files, 3,336 lines, nine internal packages and `cmd/server`, a `Makefile`, Bruno requests, four scripts, `docs/` |
-| Module path | rewritten to follow `c-storage/go.mod`'s form, every import with it |
+| Module path | rewritten to follow `services/c-storage/go.mod`'s form, every import with it |
 | Checked by | `make check` from inside the package (format, vet, race tests at 100 % outside `cmd/server`, the box's cross-compile). No `check` script, because there is no `package.json` |
 
 ## Changed on the way
