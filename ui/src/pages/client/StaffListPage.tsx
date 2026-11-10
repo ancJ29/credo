@@ -20,13 +20,12 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router';
-import { Loaded } from '../../frame/Loaded';
+import { PageShell } from '../../parts/PageShell';
 import classes from './staffList.module.css';
 import { type PageProps, useLoad } from '../../page';
 import { phoneOf, unitName } from '../../staffNames';
@@ -152,10 +151,12 @@ export function StaffListPage(page: PageProps) {
   );
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
-        <Title order={2}>{t('staff.title')}</Title>
-        {user.root ? (
+    <PageShell
+      title={t('staff.title')}
+      status={loaded.status}
+      onRetry={loaded.reload}
+      actions={
+        user.root ? (
           // The root alone imports staff, as the import page's route checks (case-table row 4).
           <Group>
             <Button component={Link} to="/staff/import" variant="default">
@@ -165,160 +166,159 @@ export function StaffListPage(page: PageProps) {
           </Group>
         ) : (
           add
+        )
+      }
+    >
+      <div className={classes.filters}>
+        <TextInput
+          {...named(t('staff.search'))}
+          className={classes.search}
+          leftSection={<IconSearch size={16} />}
+          placeholder={t('staff.searchPlaceholder')}
+          value={typed}
+          onChange={(event) => {
+            setTyped(event.currentTarget.value);
+            if (!composing.current) narrow({ q: event.currentTarget.value });
+          }}
+          onCompositionStart={() => {
+            composing.current = true;
+          }}
+          onCompositionEnd={(event) => {
+            composing.current = false;
+            narrow({ q: event.currentTarget.value });
+          }}
+        />
+        <NativeSelect
+          {...named(t('staff.status'))}
+          value={criteria.status}
+          onChange={(event) => narrow({ status: event.currentTarget.value as Status })}
+          data={[
+            { value: 'active', label: t('staff.statusActive') },
+            { value: 'inactive', label: t('staff.statusInactive') },
+            { value: 'all', label: t('staff.statusAll') },
+          ]}
+        />
+        {unitFilter(
+          t('staff.filterDepartment'),
+          t('staff.filterAllDepartments'),
+          'department',
+          setup.departments,
         )}
-      </Group>
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        <div className={classes.filters}>
-          <TextInput
-            {...named(t('staff.search'))}
-            className={classes.search}
-            leftSection={<IconSearch size={16} />}
-            placeholder={t('staff.searchPlaceholder')}
-            value={typed}
-            onChange={(event) => {
-              setTyped(event.currentTarget.value);
-              if (!composing.current) narrow({ q: event.currentTarget.value });
-            }}
-            onCompositionStart={() => {
-              composing.current = true;
-            }}
-            onCompositionEnd={(event) => {
-              composing.current = false;
-              narrow({ q: event.currentTarget.value });
-            }}
-          />
+        {unitFilter(
+          t('staff.filterPosition'),
+          t('staff.filterAllPositions'),
+          'position',
+          setup.positions,
+        )}
+        {choices.map((field) => (
           <NativeSelect
-            {...named(t('staff.status'))}
-            value={criteria.status}
-            onChange={(event) => narrow({ status: event.currentTarget.value as Status })}
+            key={field.key}
+            {...named(field.label[language])}
+            value={criteria.choices[field.key] ?? ''}
+            onChange={(event) =>
+              narrow({ choices: { ...criteria.choices, [field.key]: event.currentTarget.value } })
+            }
             data={[
-              { value: 'active', label: t('staff.statusActive') },
-              { value: 'inactive', label: t('staff.statusInactive') },
-              { value: 'all', label: t('staff.statusAll') },
+              {
+                value: '',
+                label: t('staff.filterAllOf', {
+                  field: lowerFirst(field.label[language], language),
+                }),
+              },
+              ...field.options.map((option) => ({
+                value: option.value,
+                label: option.label[language],
+              })),
             ]}
           />
-          {unitFilter(
-            t('staff.filterDepartment'),
-            t('staff.filterAllDepartments'),
-            'department',
-            setup.departments,
-          )}
-          {unitFilter(
-            t('staff.filterPosition'),
-            t('staff.filterAllPositions'),
-            'position',
-            setup.positions,
-          )}
-          {choices.map((field) => (
-            <NativeSelect
-              key={field.key}
-              {...named(field.label[language])}
-              value={criteria.choices[field.key] ?? ''}
-              onChange={(event) =>
-                narrow({ choices: { ...criteria.choices, [field.key]: event.currentTarget.value } })
-              }
-              data={[
-                {
-                  value: '',
-                  label: t('staff.filterAllOf', {
-                    field: lowerFirst(field.label[language], language),
-                  }),
-                },
-                ...field.options.map((option) => ({
-                  value: option.value,
-                  label: option.label[language],
-                })),
-              ]}
-            />
-          ))}
-        </div>
-        {people.length === 0 ? (
-          <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
-        ) : (
-          <>
-            <Stack gap="xs" hiddenFrom="sm" data-testid="staff-cards">
-              {people.map((person) => (
-                <Card key={person.id} withBorder padding="sm" data-testid="staff-card">
-                  <Group justify="space-between" wrap="nowrap" align="flex-start">
-                    <Group gap="xs" wrap="nowrap">
-                      {fields.photo && (
-                        <Avatar name={person.name} color="initials" size={28} aria-hidden />
-                      )}
-                      <Anchor component={Link} to={`/staff/${person.id}`} state={{ list: search }}>
-                        {person.name}
-                      </Anchor>
-                    </Group>
-                    {chip(person)}
+        ))}
+      </div>
+      {people.length === 0 ? (
+        <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
+      ) : (
+        <>
+          <Stack gap="xs" hiddenFrom="sm" data-testid="staff-cards">
+            {people.map((person) => (
+              <Card key={person.id} withBorder padding="sm" data-testid="staff-card">
+                <Group justify="space-between" wrap="nowrap" align="flex-start">
+                  <Group gap="xs" wrap="nowrap">
+                    {fields.photo && (
+                      <Avatar name={person.name} color="initials" size={28} aria-hidden />
+                    )}
+                    <Anchor component={Link} to={`/staff/${person.id}`} state={{ list: search }}>
+                      {person.name}
+                    </Anchor>
                   </Group>
-                  {(
-                    [
-                      ['code', person.code],
-                      ['department', unitName(person.department, setup.departments)],
-                      ['position', unitName(person.position, setup.positions)],
-                      ['phone', phoneOf(person)],
-                    ] as const
-                  )
-                    .filter(([, line]) => line)
-                    .map(([field, line]) => (
-                      <Text key={field} size="sm" c="dimmed">
-                        {line}
-                      </Text>
+                  {chip(person)}
+                </Group>
+                {(
+                  [
+                    ['code', person.code],
+                    ['department', unitName(person.department, setup.departments)],
+                    ['position', unitName(person.position, setup.positions)],
+                    ['phone', phoneOf(person)],
+                  ] as const
+                )
+                  .filter(([, line]) => line)
+                  .map(([field, line]) => (
+                    <Text key={field} size="sm" c="dimmed">
+                      {line}
+                    </Text>
+                  ))}
+              </Card>
+            ))}
+          </Stack>
+          <Box visibleFrom="sm">
+            <Table.ScrollContainer minWidth={640}>
+              <Table highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>{t('staff.colName')}</Table.Th>
+                    <Table.Th>{t('staff.colCode')}</Table.Th>
+                    <Table.Th>{t('staff.colDepartment')}</Table.Th>
+                    <Table.Th>{t('staff.colPosition')}</Table.Th>
+                    <Table.Th>{t('staff.colPhone')}</Table.Th>
+                    {columns.map((field) => (
+                      <Table.Th key={field.key}>{field.label[language]}</Table.Th>
                     ))}
-                </Card>
-              ))}
-            </Stack>
-            <Box visibleFrom="sm">
-              <Table.ScrollContainer minWidth={640}>
-                <Table highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>{t('staff.colName')}</Table.Th>
-                      <Table.Th>{t('staff.colCode')}</Table.Th>
-                      <Table.Th>{t('staff.colDepartment')}</Table.Th>
-                      <Table.Th>{t('staff.colPosition')}</Table.Th>
-                      <Table.Th>{t('staff.colPhone')}</Table.Th>
+                    <Table.Th>{t('staff.colStatus')}</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {people.map((person) => (
+                    <Table.Tr key={person.id}>
+                      <Table.Td>
+                        <Group gap="xs" wrap="nowrap">
+                          {fields.photo && (
+                            <Avatar name={person.name} color="initials" size={28} aria-hidden />
+                          )}
+                          <Anchor
+                            component={Link}
+                            to={`/staff/${person.id}`}
+                            state={{ list: search }}
+                          >
+                            {person.name}
+                          </Anchor>
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>{person.code}</Table.Td>
+                      <Table.Td>{unitName(person.department, setup.departments)}</Table.Td>
+                      <Table.Td>{unitName(person.position, setup.positions)}</Table.Td>
+                      <Table.Td>{phoneOf(person)}</Table.Td>
                       {columns.map((field) => (
-                        <Table.Th key={field.key}>{field.label[language]}</Table.Th>
-                      ))}
-                      <Table.Th>{t('staff.colStatus')}</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {people.map((person) => (
-                      <Table.Tr key={person.id}>
-                        <Table.Td>
-                          <Group gap="xs" wrap="nowrap">
-                            {fields.photo && (
-                              <Avatar name={person.name} color="initials" size={28} aria-hidden />
-                            )}
-                            <Anchor
-                              component={Link}
-                              to={`/staff/${person.id}`}
-                              state={{ list: search }}
-                            >
-                              {person.name}
-                            </Anchor>
-                          </Group>
+                        <Table.Td key={field.key}>
+                          {fieldValueShown(field, person.extra[field.key], language)}
                         </Table.Td>
-                        <Table.Td>{person.code}</Table.Td>
-                        <Table.Td>{unitName(person.department, setup.departments)}</Table.Td>
-                        <Table.Td>{unitName(person.position, setup.positions)}</Table.Td>
-                        <Table.Td>{phoneOf(person)}</Table.Td>
-                        {columns.map((field) => (
-                          <Table.Td key={field.key}>
-                            {fieldValueShown(field, person.extra[field.key], language)}
-                          </Table.Td>
-                        ))}
-                        <Table.Td>{chip(person)}</Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
-            </Box>
-          </>
-        )}
-      </Loaded>
-    </Stack>
+                      ))}
+                      <Table.Td>{chip(person)}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Box>
+        </>
+      )}
+    </PageShell>
   );
 }

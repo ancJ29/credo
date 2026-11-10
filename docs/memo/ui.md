@@ -115,7 +115,7 @@ nothing supplies that callback at all**, so a 403 there falls through to the pag
   for a 403, and the rest show "…was not saved. What you typed is still here: try again."
 - *The surprise:* **two call sites read a 403 as something else entirely** — changing one's own
   password reads it as "the current password is wrong", and an operator's new-passkey link as "that
-  is yourself". `ui/src/page.ts`'s `isForbidden` is the one home of the permission reading, and its
+  is yourself". `ui/src/page.ts`'s `refusal` is the one home of the permission reading (it names a 403 `forbidden`), and its
   own comment admits what holds it: *a predicate is a value, so nothing but review stops another
   copy of this check.* `pnpm counts` counts the copies.
 - *Hazard no test catches:* the re-read swallows every failure but a 401. A 503, a transport failure

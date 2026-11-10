@@ -698,8 +698,11 @@ describe('the customers and the products', () => {
   });
 
   it('The product’s cards are still the shared DetailCard, none a bordered paper of its own', () => {
-    const source = readFileSync(join(import.meta.dirname, 'ProductPage.tsx'), 'utf8');
-    expect(source.match(/withBorder/g)).toBeNull();
+    // The markup spans the product's form and the record page both kinds share.
+    for (const file of ['../../parts/ProductForm.tsx', 'RecordPage.tsx']) {
+      const source = readFileSync(join(import.meta.dirname, file), 'utf8');
+      expect(source.match(/withBorder/g)).toBeNull();
+    }
   });
 
   it('The product’s page says so, and offers another try, when the product cannot be read', async () => {

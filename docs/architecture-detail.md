@@ -317,7 +317,7 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   here is `request.user`: zero hits in `bff/src/`, against a control that hits.
 - **For the 2026-11-09 rearrangement** (the one sentence, the diagram, the walk, the codemap and the
   absences) the walk was traced first-hand through the files it names, in order:
-  `ui/src/pages/client/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
+  `ui/src/pages/client/RecordPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
   `resolveTenant` and `mustCan`, `bff/src/routes/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
   key layout, `shared/src/c-storage.ts`'s `putRecord`, and
   `services/c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5 of

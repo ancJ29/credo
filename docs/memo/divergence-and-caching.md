@@ -66,11 +66,13 @@ flowchart LR
   carrying refusal handling (`useLoad`, `refusal`, `ui/src/page.ts#L31`, `#L25`), one
   loading/failed/retry component (`ui/src/Loaded.tsx`) and a kind-driven list.
 - **Three extractions come before the first client page exists** — a piece, not a line: the page
-  shell (title, action row, `Loaded` wrapper), written by hand twice today
-  (`ui/src/ListPage.tsx#L22-L39`, `ui/src/StaffListPage.tsx#L156-L170`), as one component a client
-  page takes; a list kind as the entry point, so a client's list is a new `LISTS` entry and not a
-  copy of `ListPage`; and the row and detail pieces a client page would re-lay out, named and
-  exported. *Why:* until they exist a client page can only be a copy, so the commercial gate holds
+  shell (title, action row, `Loaded` wrapper), once written by hand twice, now
+  `ui/src/parts/PageShell.tsx`'s `PageShell`, one component a client page takes; a list kind as the
+  entry point, so a client's list is a new `LISTS` entry and not a copy of `ListPage`
+  (`ui/src/listSheet.ts`'s `LISTS`); and the row and detail pieces a client page would re-lay out,
+  named as pieces of their own and exported the day their first caller exists, since the dead-export
+  check refuses an export nothing imports (`ui/src/parts/ListTable.tsx`'s `ListTable` is named and
+  exported; its row is named, private until a client page re-lays it out). *Why:* until they exist a client page can only be a copy, so the commercial gate holds
   on that ground alone.
 
 **A yes** commits to the policy and to that ordering, and to nothing being built today: the machine

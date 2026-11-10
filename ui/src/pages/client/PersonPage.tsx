@@ -37,7 +37,7 @@ import {
   ownTextsOf,
   refusedFields,
 } from '../../parts/ownFields';
-import { isForbidden, type PageProps, refusal, useLoad } from '../../page';
+import { type PageProps, refusal, useLoad } from '../../page';
 import { PermissionEditor } from '../../parts/PermissionEditor';
 import { PhotoPanel } from '../../parts/PhotoPanel';
 import { EmailPanel, QrPanel } from '../../parts/SignInPanels';
@@ -633,15 +633,14 @@ export function PersonPage(page: PageProps) {
   async function act<T extends { kind: string }>(
     run: () => Promise<T | { kind: 'conflict' }>,
     onDone: (result: T) => void,
-    onFailed: (error: unknown) => void,
+    onFailed: (kind: ReturnType<typeof refusal>) => void,
   ) {
     try {
       const result = await run();
       if (result.kind === 'conflict') setOutcome('conflict');
       else onDone(result as T);
     } catch (error) {
-      refusal(error, page);
-      onFailed(error);
+      onFailed(refusal(error, page));
     }
   }
 
@@ -655,7 +654,7 @@ export function PersonPage(page: PageProps) {
         setFormKey((n) => n + 1);
         setOutcome('saved');
       },
-      (error) => setOutcome(isForbidden(error) ? 'forbidden' : 'failed'),
+      (kind) => setOutcome(kind === 'forbidden' ? 'forbidden' : 'failed'),
     );
     setSaving(false);
   }
