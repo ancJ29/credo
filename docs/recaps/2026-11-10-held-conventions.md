@@ -16,7 +16,7 @@ Two small edits ride along: the same commit strips a piece number from the code 
 
 - **Rejected, and written into the rules:** rounds of review until the reviewer is silent; a 1,000- or 2,000-word plan figure that no plan met.
 - **Not in this piece:** the open log joining the citation check's living set; it waits on an audit of the citations that no longer resolve.
-- **The first final gate never finished.** It died with its session partway through the visual package and wrote no `== exit` line (`2026-11-10-155556-gate-all.log`), which proves nothing. One whole gate over the branch tip, which also holds this recap and two new open items (212, 213), is the check: <!-- FILL: rerun log name and its exit line -->
+- **The first final gate never finished.** It died with its session partway through the visual package and wrote no `== exit` line (`2026-11-10-155556-gate-all.log`), which proves nothing. One whole gate over the branch tip, which also holds this recap and two new open items (212, 213), is the check, and it ran as `2026-11-10-161212-gate-all.log`: all five steps green, 2,209 tests passed (605, 404, 161, 828 and 211 by package), ending `== exit 0`. The recap's one line naming that log was added after the run and is the only change since it.
 - **Nothing to deploy and nothing for the human to look at;** the rules are documents.
 
 ## Evidence
