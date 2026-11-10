@@ -100,6 +100,17 @@ export async function seedTenant(storage: CStorageClient, code: string) {
   return id;
 }
 
+/** The default request log of a test: silent, but a route that carries an action and answers well
+ * without declaring its entry throws out of the hook, so the route's own test goes red. */
+const forgottenEntryFails = {
+  level: 'error',
+  stream: {
+    write: (line: string) => {
+      if (line.includes('audit route answered with no entry declared')) throw new Error(line);
+    },
+  },
+};
+
 /** The BFF over a service of its own on the running c-storage, where tests keep apart. */
 export async function bffOn(
   cs: RunningCStorage,
@@ -120,7 +131,7 @@ export async function bffOn(
     now: options.now ?? time.now,
     origin: ORIGIN,
     serviceKey: service.accessKey,
-    logger: options.logger ?? false,
+    logger: options.logger ?? forgottenEntryFails,
     ...(options.build === undefined ? {} : { build: options.build }),
   });
   return { ...service, app, time };

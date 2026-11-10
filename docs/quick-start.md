@@ -3,7 +3,7 @@
 The whole app on this Mac — the storage, the server and the screens — with one demo company already
 in it. It stays up after the command returns, so you can close the terminal and keep using it.
 
-Five things you can do. Copy a block, paste it, read the line under it. Every block finds the
+Six things you can do. Copy a block, paste it, read the line under it. Every block finds the
 project's folder by itself, so you can paste it from any folder inside a checkout of this project.
 It needs Node 26, pnpm 12 and Go.
 
@@ -55,7 +55,7 @@ those people later.
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm local status
 ```
 
-One line for each of the four parts, each saying `up` or `DOWN` and on which port, and, when the
+One line for each of the six parts (the audit service, which records who changed what, has two), each saying `up` or `DOWN` and on which port, and, when the
 storage is answering, a count of the companies in it. If nothing has been brought up it says so in
 one line. If you stopped it, it says it is stopped, since what time, that the data is kept, and
 which command resumes it and which deletes it.
@@ -66,7 +66,7 @@ which command resumes it and which deletes it.
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm local stop
 ```
 
-It ends each part, one line each, then reads back that each is gone, that the four ports are free and
+It ends each part, one line each, then reads back that each is gone, that the six ports are free and
 that the data and the build are kept. Its last line says the copy is stopped and its data kept.
 Running step 1 again resumes it: it rebuilds nothing, keeps every company and every record, and says
 so in its first line; if what it kept is no longer complete, it says that and builds a new copy
@@ -77,7 +77,20 @@ and expires a day after it was made, so it may already be spent. The demo compan
 have their own passwords, and no command prints those; only a company you seed yourself (step 2)
 prints its people's, once.
 
-## 5. Take it all away, data included
+## 5. Read what was recorded about one record
+
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm local activity acme 0b9f6c1e-7d52-4a3e-9c41-2f8d5e6a7b10
+```
+
+Every change a person makes is recorded: who made it, when, and what the record was before and after.
+This prints the record of one thing, newest first, one line each: the time, the person, what was done,
+and for a customer its name before and after. It takes two things, the company's code (`acme` above) and
+the record's id (the long made-up one above, which you replace with your own), because the record of
+changes can be asked only about one record at a time. The id is the last part of the address in your
+browser while that record's page is open. Entries are kept for 180 days. It prints no key.
+
+## 6. Take it all away, data included
 
 ```sh
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm local down
@@ -93,8 +106,8 @@ then run this block again.
 ## Two things worth knowing
 
 A run of the pictures refuses to start while this copy is up — it stops with a line saying another
-run of the app's is going and to wait for it — so stop it (step 4) or take it down (step 5) first.
+run of the app's is going and to wait for it — so stop it (step 4) or take it down (step 6) first.
 
-The four ports it uses are 3180 for the app you open, 3181 for the storage, 3182 for the server and
-3183 for a door that makes a throwaway company on request, in case something else of yours wants one
-of them.
+The six ports it uses are 3180 for the app you open, 3181 for the storage, 3182 for the server,
+3183 for a door that makes a throwaway company on request, and 3184 and 3185 for the record of
+changes, in case something else of yours wants one of them.

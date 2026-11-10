@@ -282,12 +282,14 @@ if this package built the wrong key.
 
 The identity is resolved and then consumed: `signedIn` returns who is calling and `mustCan` asks
 one boolean of it, and neither binds it to the request. There is no `request.user` anywhere in
-`bff/src`. So **nothing this package writes carries an actor** — not the customer and product
-records, which are the highest-value history there is.
+`bff/src`. So **no record this package writes carries an actor** — not the customer and product
+records, which are the highest-value history there is. The actor goes instead to the activity log's
+entry, which each declaring route names itself (`bff/src/audit.ts`'s `declare`).
 
-- *This is a gap and not a property.* It is the first thing the activity log has to fix
-  ([the activity log](../activity-log.md)), and half of it is in no open item: that no record knows
-  what it held before was never written down anywhere until the architecture pages said it.
+- *The record carries no history; the activity log does.* Every route that changes a client's data
+  declares an entry the back end sends to the audit service before it replies, with the actor and the
+  record before and after ([the activity log](../activity-log.md)); a failed entry is logged and never
+  refuses the change. On ridge those entries are not yet written.
 - *Price of the choice:* a record restored from a backup cannot be told from one a person saved, and
   a wrong value in a record has no history to read it out of.
 

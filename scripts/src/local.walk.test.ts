@@ -91,7 +91,7 @@ describe('the local environment, whole', () => {
       };
       const up = await say('status');
       expect(up.status).toBe(0);
-      expect(up.lines.filter((line) => line.includes(': up on port'))).toHaveLength(4);
+      expect(up.lines.filter((line) => line.includes(': up on port'))).toHaveLength(6);
       expect(up.lines.at(-1)).toBe('tenants: 3');
 
       const seeded = await say('seed', 'acme', 'Acme Foods');

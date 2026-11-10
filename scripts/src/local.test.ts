@@ -30,7 +30,9 @@ import type { StartedStack } from './stack';
 let root: string;
 let paths: LocalPaths;
 let ports: LocalIo['ports'];
+let auditPorts: LocalIo['auditPorts'];
 beforeEach(async () => {
+  auditPorts = { keyed: await freePort(), open: await freePort() };
   ports = {
     front: await freePort(),
     cStorage: await freePort(),
@@ -117,7 +119,7 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   err: said.complain,
   paths,
   ports,
-  auditPorts: { keyed: 3184, open: 3185 },
+  auditPorts,
   build: () => Promise.reject(new Error('not built here')),
   keeper: () => Promise.reject(new Error('no keeper here')),
   alive: () => true,
@@ -197,7 +199,7 @@ describe('local keep', () => {
         uiDir: join(paths.build, 'ui'),
         dir: paths.build,
       },
-      { dataDir: paths.data, ports, auditPorts: { keyed: 3184, open: 3185 } },
+      { dataDir: paths.data, ports, auditPorts },
     );
     expect(JSON.parse(await readFile(paths.handle, 'utf8'))).toEqual(
       handleOf({ keeper: process.pid, dataDir: paths.data }),
@@ -221,7 +223,7 @@ describe('local keep', () => {
     expect(start).toHaveBeenCalledWith(expect.anything(), {
       dataDir: paths.data,
       ports,
-      auditPorts: { keyed: 3184, open: 3185 },
+      auditPorts,
       resume: {
         internalAccessKey: 'ik',
         superAdminKey: 'sk',
@@ -264,11 +266,18 @@ describe('local keep', () => {
 
 describe('local status', () => {
   /** One server on each part's port, answering as that part does. */
-  const serve = async (answerFor: (part: keyof typeof ports) => number) => {
+  const serve = async (answerFor: (part: string) => number) => {
     const servers: Server[] = [];
-    for (const part of ['front', 'cStorage', 'bff', 'seedDoor'] as const) {
+    const listening = [
+      ...(['front', 'cStorage', 'bff', 'seedDoor'] as const).map(
+        (part) => [part, ports[part]] as const,
+      ),
+      ['auditKeyed', auditPorts.keyed] as const,
+      ['auditOpen', auditPorts.open] as const,
+    ];
+    for (const [part, port] of listening) {
       const server = createHttpServer((_, reply) => reply.writeHead(answerFor(part)).end('{}'));
-      await new Promise<void>((resolve) => server.listen(ports[part], '127.0.0.1', resolve));
+      await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve));
       servers.push(server);
     }
     return () => Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
@@ -285,6 +294,11 @@ describe('local status', () => {
           internalAccessKey: 'i',
           superAdminKey: 's',
         },
+        audit: {
+          url: `http://127.0.0.1:${auditPorts.keyed}`,
+          readUrl: `http://127.0.0.1:${auditPorts.open}`,
+          key: 'audit-key',
+        },
       }),
     );
 
@@ -295,7 +309,7 @@ describe('local status', () => {
     expect(said.out).toEqual(['nothing is up: there is no handle']);
   });
 
-  it('prints four up lines when every part answers its own way and its process runs', async () => {
+  it('prints six up lines when every part answers its own way and its process runs', async () => {
     const said = lines();
     await written();
     const close = await serve(own);
@@ -310,6 +324,8 @@ describe('local status', () => {
       `the BFF: up on port ${ports.bff}`,
       `the front: up on port ${ports.front}`,
       `the seed door: up on port ${ports.seedDoor}`,
+      `the audit service: up on port ${auditPorts.keyed}`,
+      `the audit service's read side: up on port ${auditPorts.open}`,
       'tenants: 0',
     ]);
   });
@@ -320,7 +336,7 @@ describe('local status', () => {
 
     expect(await runLocal(['status'], baseIo(said))).toBe(1);
     expect(said.out.every((line) => line.includes(': DOWN on port'))).toBe(true);
-    expect(said.out).toHaveLength(4);
+    expect(said.out).toHaveLength(6);
     expect(said.out.join()).not.toContain('tenants');
   });
 
@@ -350,6 +366,27 @@ describe('local status', () => {
 
     expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
       `c-storage: DOWN on port ${ports.cStorage}`,
+    ]);
+  });
+
+  it('calls the audit service down when only its read side does not answer, and when its process is gone', async () => {
+    const said = lines();
+    await written();
+    const close = await serve((part) => (part === 'auditOpen' ? 500 : own(part)));
+    try {
+      expect(await runLocal(['status'], baseIo(said))).toBe(1);
+      const gone = lines();
+      expect(await runLocal(['status'], baseIo(gone, { alive: (pid) => pid !== 43 }))).toBe(1);
+      expect(gone.out.filter((line) => line.includes('DOWN'))).toEqual([
+        `the audit service: DOWN on port ${auditPorts.keyed}`,
+        `the audit service's read side: DOWN on port ${auditPorts.open}`,
+      ]);
+    } finally {
+      await close();
+    }
+
+    expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
+      `the audit service's read side: DOWN on port ${auditPorts.open}`,
     ]);
   });
 });
@@ -566,6 +603,11 @@ describe('local seed', () => {
           internalAccessKey: 'i',
           superAdminKey: 's',
         },
+        audit: {
+          url: `http://127.0.0.1:${auditPorts.keyed}`,
+          readUrl: `http://127.0.0.1:${auditPorts.open}`,
+          key: 'audit-key',
+        },
       }),
     );
     const close = await (async () => {
@@ -718,7 +760,7 @@ describe('local down', () => {
       '  c-storage: gone',
       '  the audit service: gone',
       '  the BFF: gone',
-      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
+      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}, ${auditPorts.keyed}, ${auditPorts.open}: nothing is listening`,
       '  data folder and its database: gone',
       '  build folder: gone',
       '  handle: gone',
@@ -936,6 +978,22 @@ describe('local down', () => {
     ]);
   });
 
+  it('ends red and names the audit service’s port when something holds it after the teardown', async () => {
+    const said = lines();
+    const world = await standing();
+    const stranger = createHttpServer();
+    await new Promise<void>((resolve) => stranger.listen(auditPorts.open, resolve));
+    try {
+      expect(await runLocal(['down'], world.io(said))).toBe(1);
+    } finally {
+      await new Promise((resolve) => stranger.close(resolve));
+    }
+
+    expect(said.err).toEqual([
+      `down: NOT cleared: port ${auditPorts.open} (the audit service's read side) is held by something`,
+    ]);
+  });
+
   it('ends red and names the folder when it is still there after the removal', async () => {
     const said = lines();
     const world = await standing();
@@ -972,7 +1030,7 @@ describe('local down', () => {
       '  c-storage: gone',
       '  the audit service: gone',
       '  the BFF: gone',
-      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
+      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}, ${auditPorts.keyed}, ${auditPorts.open}: nothing is listening`,
       '  data folder and its database: kept',
       '  build folder: kept',
       'stop: the environment is stopped and its data is kept; pnpm local up resumes it, pnpm local down deletes it',
@@ -1053,6 +1111,18 @@ describe('local down', () => {
     }
     expect(held.err[0]).toContain(`port ${ports.bff} (the BFF) is held by something`);
     expect(((await readHandle()) as Handle).stopped).toBeUndefined();
+
+    const audit = lines();
+    const keyed = createHttpServer();
+    await new Promise<void>((resolve) => keyed.listen(auditPorts.keyed, resolve));
+    try {
+      expect(await runLocal(['stop'], world.io(audit))).toBe(1);
+    } finally {
+      await new Promise((resolve) => keyed.close(resolve));
+    }
+    expect(audit.err[0]).toContain(
+      `port ${auditPorts.keyed} (the audit service) is held by something`,
+    );
 
     await rm(paths.dir, { recursive: true, force: true });
     const missing = lines();

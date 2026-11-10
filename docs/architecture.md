@@ -27,14 +27,14 @@ flowchart LR
       db[("the records<br/>[one SQLite file] the only copy there is")]
     end
   end
-  ab["audit-backbone<br/>[Go service, in the repo] the second service, nowhere to run yet"]
+  ab["audit-backbone<br/>[Go service, in the repo] the activity log · runs in the local copy, not yet on ridge"]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
   cdn -- "forwards every /api/* call, never cached" --> api
   api -- "invokes, handing over the request as an event" --> bff
   bff -- "reads and writes records, under two keys" --> cs
   cs -- "stores each record under its key" --> db
-  bff -. "would post one activity entry · NOT BUILT" .-> ab
+  bff -. "posts one activity entry for every change · local copy only" .-> ab
   classDef intended stroke-dasharray: 6 4
   class ab intended
 ```
@@ -44,9 +44,9 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **decided and not built**: `services/audit-backbone/` is in this repository, nothing calls
-it, and where it would run is not decided — the whole of that is
-[`docs/activity-log.md`](activity-log.md).
+box and arrow are **built and not yet on ridge**: the back end writes an entry to
+`services/audit-backbone/` for every change a person makes, in the local copy, and where it will run
+on ridge is not decided — the whole of that is [`docs/activity-log.md`](activity-log.md).
 
 **On this machine the picture is the same.** `scripts/src/running/front.ts` stands where CloudFront and the
 HTTP API stand, so the app the walks picture is the app that deploys.
@@ -129,8 +129,8 @@ unit is the service, not the client** — which is why tenant separation is a pr
 and nothing the store enforces.
 
 **The second service is `services/audit-backbone/`.** The activity log: a keyed writer and a token-gated
-reader over its own SQLite file, in this repository with a gate of its own, called by nothing
-([the activity log](activity-log.md)).
+reader over its own SQLite file, in this repository with a gate of its own, called by the back end
+on every change a person makes, in the local copy and not yet on ridge ([the activity log](activity-log.md)).
 
 **Running it on this Mac is `scripts/`, and reaching a machine is `ops/`.** A step belongs to
 `scripts/` when it must run the product's own code, so every product rule holds on the way through;
@@ -164,7 +164,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
 | **No second file builds a record key.** The layout has one home | nothing — and this is the one absence worth the most, because tenant separation is a string prefix and nothing else |
 | **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level |
-| **No record carries who changed it, or what it held before** | nothing, and **this one is a gap and not a property** — it is the first thing [the activity log](activity-log.md) has to fix |
+| **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are not yet written ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |
 | **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
 | **No dependency that quietly needs cgo** | **the gate.** Both Go gates cross-compile for the box's `arm64`, so it fails here rather than at ship time |

@@ -87,8 +87,8 @@ minted here, once, and never renumbered.
 - **Nothing in this repository backs up `activities.db`:** no backup, restore or drill exists for
   it, so what the file holds is the only copy.
 - **The `#` rule in `validateID` stays, and its reason is historical.** It came in with the service,
-  from a store that has no counterpart in this repository, and what will call this service here is
-  not decided yet. Keep the rule until it is.
+  from a store that has no counterpart in this repository. The back end now calls this service with
+  minted ids, which pass it, and the rule stays until a caller needs an id it refuses.
 - **The ULID is minted from insert time, and retention runs from
   `createdAt`.** Both are deliberate, and both are pinned by
   `TestBackdatedEntryKeepsInsertOrderButExpiresEarlier`.
@@ -107,10 +107,13 @@ minted here, once, and never renumbered.
 
 ## Where the rest is
 
-**Nothing in this repository calls this package yet, and how it integrates is undecided.** The BFF
-does not reach it, `ops/` ships nothing of it, and the CI workflow has no job for it (c-storage's
-`make check` job is the model). `pnpm check` does not run it: the root `.prettierignore` and
-`knip.json` leave it out, as they do `services/c-storage/`.
+**The back end calls this package, in the local copy only.** One hook in `bff/src/app.ts` sends an
+entry for every change a person makes to the keyed write, under a 600 ms bound, and a failure is
+logged and never refuses the change; `pnpm local` starts the service beside c-storage and prints an
+entry's record with `pnpm local activity`. `ops/` ships nothing of it, and the CI workflow has no job
+for it (c-storage's `make check` job is the model), so ridge runs the back end without it.
+`pnpm check` does not run this package: the root `.prettierignore` and `knip.json` leave it out, as
+they do `services/c-storage/`. The decisions are [the activity log](../../docs/activity-log.md).
 
 [The big picture](../../docs/architecture.md#at-a-glance), [the cross-package rules](../../docs/conventions/code.md),
 and [documentation](../../docs/conventions/documentation.md), read before editing docs, comments or

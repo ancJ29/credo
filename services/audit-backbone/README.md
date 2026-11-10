@@ -5,8 +5,8 @@ A client's own system writes the entries; the client's web page reads them
 back, by person or by record, with a token the system gives it for an hour.
 
 Where it sits: the client's system → audit-backbone → one SQLite file, and the
-client's browser reads it through a second door of its own. No credo piece
-calls it yet. [credo's chart](../../README.md) shows both calls and what each
+client's browser reads it through a second door of its own. credo's back end
+writes to it for every change, in the local copy. [credo's chart](../../README.md) shows both calls and what each
 carries.
 
 ## Try it in 10 minutes

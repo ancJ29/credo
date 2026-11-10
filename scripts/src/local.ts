@@ -150,6 +150,8 @@ const exists = (path: string) =>
 const messageOf = (error: unknown) => (error as Error).message;
 
 const PARTS = ['front', 'cStorage', 'bff', 'seedDoor'] as const;
+const AUDIT_NAME = 'the audit service';
+const AUDIT_READ_NAME = "the audit service's read side";
 const PART_NAMES = {
   front: 'the front',
   cStorage: 'c-storage',
@@ -157,19 +159,36 @@ const PART_NAMES = {
   seedDoor: 'the seed door',
 };
 
-/** The ports among `ports` that something already listens on, by part, found by binding each. */
-async function takenPorts(ports: StackFacts['ports']) {
+/** Every port the environment holds, by part: the four, then the audit service's keyed and open. */
+const partsOf = ({
+  ports,
+  auditPorts,
+}: Pick<LocalIo, 'ports' | 'auditPorts'>): [string, number][] => [
+  ...PARTS.map((part): [string, number] => [PART_NAMES[part], ports[part]]),
+  [AUDIT_NAME, auditPorts.keyed],
+  [AUDIT_READ_NAME, auditPorts.open],
+];
+
+/** The ports among the environment's six that something already listens on, by part, found by
+ * binding each. */
+async function takenPorts(io: Pick<LocalIo, 'ports' | 'auditPorts'>) {
   const taken: [string, number][] = [];
-  for (const part of PARTS) {
+  for (const [name, port] of partsOf(io)) {
     const free = await new Promise<boolean>((resolve) => {
       const probe = createServer();
       probe.once('error', () => resolve(false));
-      probe.listen(ports[part], () => probe.close(() => resolve(true)));
+      probe.listen(port, () => probe.close(() => resolve(true)));
     });
-    if (!free) taken.push([PART_NAMES[part], ports[part]]);
+    if (!free) taken.push([name, port]);
   }
   return taken;
 }
+
+/** The ports as a line lists them. */
+const portList = (io: Pick<LocalIo, 'ports' | 'auditPorts'>) =>
+  partsOf(io)
+    .map(([, port]) => port)
+    .join(', ');
 
 /** Whether a stopped environment left what it takes to start again: the database, and the built
  * c-storage and UI. */
@@ -183,7 +202,7 @@ const dataIntact = async (paths: LocalPaths) =>
  * standing and a handle behind. */
 async function up(io: LocalIo) {
   const { paths, ports } = io;
-  const taken = await takenPorts(ports);
+  const taken = await takenPorts(io);
   // A handle that `stop` marked is not a running environment: it is data to resume, if it is intact.
   let stopped = false;
   if (await exists(paths.handle)) {
@@ -358,6 +377,18 @@ async function status(io: LocalIo) {
       ports.seedDoor,
       answers(`http://127.0.0.1:${ports.seedDoor}/`, 404),
       handle.keeper,
+    ],
+    [
+      AUDIT_NAME,
+      Number(new URL(handle.audit.url).port),
+      answers(`${handle.audit.url}/health`, 200),
+      pids.audit,
+    ],
+    [
+      AUDIT_READ_NAME,
+      Number(new URL(handle.audit.readUrl).port),
+      answers(`${handle.audit.readUrl}/health`, 200),
+      pids.audit,
     ],
   ];
   let allUp = true;
@@ -590,7 +621,7 @@ function readBackProcesses(io: LocalIo, { ours, strangers, reasons }: Ended, sti
  * nothing left, 1 something is still there and named, 2 refused for a handle it cannot trust.
  */
 async function down(io: LocalIo) {
-  const { paths, ports } = io;
+  const { paths } = io;
   const kept = await exists(paths.dir);
   if (!(await exists(paths.handle))) {
     if (!kept) {
@@ -611,7 +642,7 @@ async function down(io: LocalIo) {
         );
     } catch (error) {
       io.err(
-        `there is no handle, and the processes could not be listed (${messageOf(error)}): the folder ${paths.dir} is kept; free ports ${Object.values(ports).join(', ')}, then run pnpm local down`,
+        `there is no handle, and the processes could not be listed (${messageOf(error)}): the folder ${paths.dir} is kept; free ports ${portList(io)}, then run pnpm local down`,
       );
       return 1;
     }
@@ -648,13 +679,13 @@ async function down(io: LocalIo) {
 
   io.out('read back after the teardown:');
   readBackProcesses(io, { ours, strangers, reasons }, stillThere);
-  const holding = await takenPorts(ports);
+  const holding = await takenPorts(io);
   for (const [part, port] of holding) {
     io.out(`  port ${port} (${part}): FOUND, something is listening`);
     stillThere.push(`port ${port} (${part}) is held by something`);
   }
   if (holding.length === 0) {
-    io.out(`  ports ${Object.values(ports).join(', ')}: nothing is listening`);
+    io.out(`  ports ${portList(io)}: nothing is listening`);
   }
   for (const [what, path] of [
     ['data folder and its database', paths.data],
@@ -679,11 +710,11 @@ async function down(io: LocalIo) {
 /**
  * `pnpm local stop`: ends the processes and keeps everything else, then marks the handle stopped so
  * that nothing mistakes it for a crashed run and `up` resumes it. It signals under the same
- * ownership guard as `down` and reads back that each process is gone and the four ports are free,
+ * ownership guard as `down` and reads back that each process is gone and the six ports are free,
  * and that the data and the build are still there. Exit 0 stopped, 1 not, 2 a handle it cannot trust.
  */
 async function stop(io: LocalIo) {
-  const { paths, ports } = io;
+  const { paths } = io;
   if (!(await exists(paths.handle))) {
     io.out('nothing is up: there is no handle, so there is nothing to stop');
     return 0;
@@ -703,13 +734,13 @@ async function stop(io: LocalIo) {
     io.out('the handle is left as it was: a process may still use the data');
   io.out('read back after the stop:');
   readBackProcesses(io, ended, stillThere);
-  const holding = await takenPorts(ports);
+  const holding = await takenPorts(io);
   for (const [part, port] of holding) {
     io.out(`  port ${port} (${part}): FOUND, something is listening`);
     stillThere.push(`port ${port} (${part}) is held by something`);
   }
   if (holding.length === 0) {
-    io.out(`  ports ${Object.values(ports).join(', ')}: nothing is listening`);
+    io.out(`  ports ${portList(io)}: nothing is listening`);
   }
   for (const [what, path] of [
     ['data folder and its database', join(paths.data, 'records.db')],

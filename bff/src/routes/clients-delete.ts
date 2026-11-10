@@ -50,6 +50,7 @@ export function registerDeleteClientRoutes(
       // From here the client is known, so a refusal of the body or the touch is on its record. A
       // press after the index is gone resumes the deletion and has no client to name.
       const entry = index ? declare(request, operatorOf(operator), index.id, index.id) : null;
+      if (!entry) request.audit = []; // declared on purpose: no client to name
       if (index) {
         const body = parse(deleteClientRequestSchema, request.body);
         await confirmed(operator, 'delete-client', body.confirm);

@@ -30,7 +30,7 @@ places, nothing failing when a copy is missed.
 | --- | --- | --- | --- |
 | reaching the back end, or storage | one object, handed down, never imported into a screen | `ui/src/api.ts`, `bff/src/server.ts#L11` | next copy · reader |
 | a name, a bound, a width, a status's meaning | one exported declaration, imported | `shared/` | next copy · reader |
-| a new route | its own module: resolve, authorise, parse, then storage | `bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')` | next copy · reader |
+| a new route | its own module: resolve, authorise, parse, then storage | `bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)` | next copy · reader |
 | a second kind of record | a parameter on the one body | `ui/src/pages/client/ListPage.tsx`'s `ListPage` | next copy · reader |
 | a refused save | the message on the field | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | next copy · reader |
 | a client's own difference | config; else that client's own page, on the human's call | `shared/src/fields.ts` | next copy · reader |
@@ -110,7 +110,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | --- | --- | --- | --- |
 | screen | `ui/src/pages/client/<Name>Page.tsx`, or `pages/operator/` for the operator's console, or `pages/` itself for one both apps mount, with `<Name>Page.test.tsx` beside it | `ui/src/pages/client/ListPage.tsx`'s `ListPage` for a list of a second kind | the seven places it touches, [before a new screen](#before-a-new-screen) |
 | word a screen shows | both dictionaries, `ui/src/i18n/en.ts` and `vi.ts` | — | [before a new screen](#before-a-new-screen) |
-| BFF route | its own module, `bff/src/routes/<area>.ts`, with `bff/src/routes/<area>.route.test.ts` beside it — 15 such test files stand there, and 6 more at the top, beside the `bff/src/app.ts` that declares their routes inline | `bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
+| BFF route | its own module, `bff/src/routes/<area>.ts`, with `bff/src/routes/<area>.route.test.ts` beside it — 15 such test files stand there, and 6 more at the top, beside the `bff/src/app.ts` that declares their routes inline | `bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
 | read or write of a record kind | a module of its own, never the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | [the winner](#the-winner-named)'s second row |
 | name, bound, status meaning or wire shape | `shared/src/<area>.ts`, re-exported from `shared/src/index.ts` — 17 lines, one an area, and `demo` deliberately absent from it | `shared/src/records.ts`, `shared/src/permissions.ts` | [one home](#one-home-for-one-decision) |
 | c-storage route | `services/c-storage/internal/server/`, registered through the function that appends its pattern | `services/c-storage/internal/server/server.go#L51-L54` | [the patterns to copy](#the-patterns-to-copy) |
@@ -207,7 +207,7 @@ written again.
 | C8 · a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 
 **C9 · A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
-storage** (`bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')`). `[holds · reader]` *Why:* every route registration keeps it
+storage** (`bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)`). `[holds · reader]` *Why:* every route registration keeps it
 (`pnpm counts` counts them under C7) and nothing holds them to it, so a route that parses before it authorises passes every check in the
 repo.
 

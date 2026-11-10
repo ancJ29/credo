@@ -82,7 +82,7 @@ export type AppDeps = {
   /** The BFF's own service key, which the operator's challenges are signed under. */
   serviceKey: string;
   /** On or off, or on into a stream a test reads. */
-  logger: boolean | { stream: { write: (line: string) => void } };
+  logger: boolean | { level?: string; stream: { write: (line: string) => void } };
   /** The commit this BFF was built from, `dev` unstamped. */
   build?: string;
   /** Told of every route as Fastify registers it: the route-list test reads the list from here. */
@@ -111,9 +111,20 @@ export function buildApp({
 
   /** Sends the entry a route declared, before the reply and under the client's own bound. Whatever
    * goes wrong, the change stands: the entry is logged as lost, naming what it was and never a key. */
-  app.addHook('onSend', async (request, _reply, payload) => {
+  app.addHook('onSend', async (request, reply, payload) => {
     const declared = request.audit;
-    if (!declared?.length) return payload;
+    if (!declared?.length) {
+      // A route that carries an action and answers well without declaring its entry has forgotten
+      // `declare()`: the change stands, and the miss is logged where a test can fail on it. A route
+      // that has nothing to name on purpose declares an empty list.
+      if (!declared && request.routeOptions.config.audit && reply.statusCode < 400) {
+        request.log.error(
+          { action: request.routeOptions.config.audit, url: request.routeOptions.url },
+          'audit route answered with no entry declared',
+        );
+      }
+      return payload;
+    }
     const lost = {
       action: declared[0]?.action,
       targetId: declared[0]?.targetId,
