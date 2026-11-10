@@ -1,6 +1,4 @@
 import {
-  type ActivityClient,
-  type ActivityEntry,
   type CStorageClient,
   CStorageError,
   deleteClientReplySchema,
@@ -8,6 +6,7 @@ import {
   storedClientDeletionSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { joinedOperator, touchFor } from '../../tests/operator';
 import { bffOn, CODE, scoped, seedTenant, signIn, withAuth } from '../../tests/tenant';
@@ -235,11 +234,7 @@ describe(
     });
 
     it('a sweep the store failed midway enters the press that finishes it, under the deletion record’s client id, marked saved', async () => {
-      const entries: ActivityEntry[] = [];
-      const activity: ActivityClient = {
-        log: async (sent) => void entries.push(...sent),
-        mintToken: async () => 'unused',
-      };
+      const { entries, client: activity } = recordingActivity();
       let fail = true;
       const t = await setup({ activity }, (client) => ({
         ...client,
@@ -268,11 +263,7 @@ describe(
     });
 
     it('a press that finds neither an index nor a deletion record is a 404 and enters nothing', async () => {
-      const entries: ActivityEntry[] = [];
-      const activity: ActivityClient = {
-        log: async (sent) => void entries.push(...sent),
-        mintToken: async () => 'unused',
-      };
+      const { entries, client: activity } = recordingActivity();
       const t = await setup({ activity });
 
       expect((await t.resume('nobody-here')).statusCode).toBe(404);

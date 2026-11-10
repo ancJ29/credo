@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createActivityClient } from '@credo/shared';
+import { type ActivityClient, type ActivityEntry, createActivityClient } from '@credo/shared';
 import { freePort } from './c-storage';
 
 export type RunningAudit = {
@@ -74,3 +74,17 @@ export const clientOf = (audit: RunningAudit, timeoutMs?: number) =>
     key: audit.key,
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
   });
+
+/** An activity client that keeps what it is sent, for a test that reads the entries a route made
+ * without the real service. */
+export function recordingActivity() {
+  const entries: ActivityEntry[] = [];
+  const client: ActivityClient = {
+    log: (sent) => {
+      entries.push(...sent);
+      return Promise.resolve();
+    },
+    mintToken: () => Promise.resolve('unused'),
+  };
+  return { entries, client };
+}

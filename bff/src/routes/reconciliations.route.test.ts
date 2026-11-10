@@ -1,5 +1,4 @@
 import {
-  type ActivityEntry,
   closeRequestFor,
   deliveryListReplySchema,
   deliveryRoutes,
@@ -14,6 +13,7 @@ import {
 } from '@credo/shared';
 import { CStorageError, type CStorageClient } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { DAY, ordersTenant } from '../../tests/orders';
 
@@ -171,9 +171,10 @@ describe('Rows 4, 11 and 12: the close', () => {
   });
 
   it('Close the day enters the requests it cancelled, each with its state before and after, beside the closed day', async () => {
-    const entries: ActivityEntry[] = [];
+    const recorded = recordingActivity();
+    const { entries } = recorded;
     const d = await dayEnd({
-      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+      activity: recorded.client,
     });
     await d.deliver();
     const first = await d.sentTo();
@@ -185,14 +186,19 @@ describe('Rows 4, 11 and 12: the close', () => {
     expect(reply.statusCode).toBe(200);
     expect(entries).toHaveLength(1);
     const memo = entries[0]?.memo as {
-      before: { cancelled: unknown[] };
-      after: { cancelled: unknown[] };
+      before: { cancelled: { id: string; state: string }[] };
+      after: { cancelled: { id: string; state: string }[] };
     };
-    const ids = [first, second].map((one) => one.request.request.id);
-    const asked = (state: string) => expect.arrayContaining(ids.map((id) => ({ id, state })));
-    expect(memo.before.cancelled).toEqual(asked('waiting'));
-    expect(memo.after.cancelled).toEqual(asked('cancelled'));
-    expect(memo.after.cancelled).toHaveLength(2);
+    const [a, b] = [first, second].map((one) => one.request.request.id) as [string, string];
+    expect(memo.before.cancelled).toHaveLength(2);
+    expect(Object.fromEntries(memo.before.cancelled.map((one) => [one.id, one.state]))).toEqual({
+      [a]: 'waiting',
+      [b]: 'waiting',
+    });
+    expect(Object.fromEntries(memo.after.cancelled.map((one) => [one.id, one.state]))).toEqual({
+      [a]: 'cancelled',
+      [b]: 'cancelled',
+    });
   });
 
   it('The root closes without a person: its sign-in name stands in, with no id and no code', async () => {

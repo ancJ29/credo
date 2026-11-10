@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import {
-  type ActivityEntry,
   CStorageError,
   type CStorageClient,
   IMPORT_CALL_ROWS,
@@ -12,6 +11,7 @@ import {
   ROUTES,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { staffTenant } from '../../tests/staff';
 
@@ -537,9 +537,10 @@ describe.each(LISTS)(
     });
 
     it('enters the rows stored before a fault ends the call, one entry each, though the call is a 500', async () => {
-      const entries: ActivityEntry[] = [];
+      const recorded = recordingActivity();
+      const { entries } = recorded;
       const t = await staffTenant(cs, {
-        activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+        activity: recorded.client,
         wrap: (client): CStorageClient => ({
           ...client,
           async putRecord(key, data, ifTag) {
@@ -555,16 +556,15 @@ describe.each(LISTS)(
 
       expect(reply.statusCode).toBe(500);
       expect(entries).toHaveLength(1);
-      expect(entries[0]).toMatchObject({
-        action: expect.stringMatching(/\.import$/),
-        memo: { outcome: 'saved' },
-      });
+      expect(entries[0]?.action).toMatch(/\.import$/);
+      expect(entries[0]).toMatchObject({ memo: { outcome: 'saved' } });
     });
 
     it('keeps the call’s own refused entry when the fault comes before any row is stored', async () => {
-      const entries: ActivityEntry[] = [];
+      const recorded = recordingActivity();
+      const { entries } = recorded;
       const t = await staffTenant(cs, {
-        activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+        activity: recorded.client,
         wrap: (client): CStorageClient => ({
           ...client,
           async putRecord(key, data, ifTag) {

@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import {
-  type ActivityEntry,
   CStorageError,
   type CStorageClient,
   importEmployeesReplySchema,
@@ -9,6 +8,7 @@ import {
   storedUserSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
+import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { personCalls, staffTenant } from '../../tests/staff';
 import { seedEmployee, signIn } from '../../tests/tenant';
@@ -388,9 +388,10 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
   });
 
   it('enters the people stored before a fault ends the call, one entry each, though the call is a 500', async () => {
-    const entries: ActivityEntry[] = [];
+    const recorded = recordingActivity();
+    const { entries } = recorded;
     const t = await staffTenant(cs, {
-      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+      activity: recorded.client,
     });
     await t.client.putRecord(t.keys.staffNumbering, { given: 'not a record' });
 
@@ -404,9 +405,10 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
   });
 
   it('keeps the call’s own refused entry when the fault comes before any person is stored', async () => {
-    const entries: ActivityEntry[] = [];
+    const recorded = recordingActivity();
+    const { entries } = recorded;
     const t = await staffTenant(cs, {
-      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+      activity: recorded.client,
     });
     await t.client.putRecord(t.keys.staffNumbering, { given: 'not a record' });
 
