@@ -14,8 +14,6 @@ import { DICTIONARIES } from './i18n';
 import { plain, type Table, textOf } from './importSheet';
 import type { Api } from './api';
 
-/** The two lists the root imports from Excel, and the columns of their files. */
-export type ListKind = 'customers' | 'products';
 export type ColumnKey =
   'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'stocked' | 'note';
 export type Cells = Partial<Record<ColumnKey, string>>;
@@ -59,6 +57,9 @@ export const LISTS = {
     send: (api: Api, rows: ListRequest[]) => api.importProducts(rows as AddProductRequest[]),
   },
 } as const;
+
+/** The lists the root imports from Excel: whatever `LISTS` holds, so a kind missing there is a type error. */
+export type ListKind = keyof typeof LISTS;
 
 export const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
 

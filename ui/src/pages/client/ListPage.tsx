@@ -1,10 +1,11 @@
 import { can, type Language } from '@credo/shared';
-import { Anchor, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Button, Group, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { Loaded } from '../../frame/Loaded';
-import { headingOf, LISTS, type ListKind } from '../../listSheet';
+import { LISTS, type ListKind } from '../../listSheet';
 import { type PageProps, useLoad } from '../../page';
+import { ListTable } from '../../parts/ListTable';
+import { PageShell } from '../../parts/PageShell';
 
 /**
  * The company's customers or products as the BFF lists them, in code order, with the root's way to
@@ -20,9 +21,11 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
   const rows = loaded.data ?? [];
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
-        <Title order={2}>{t(`nav.${kind}`)}</Title>
+    <PageShell
+      title={t(`nav.${kind}`)}
+      status={loaded.status}
+      onRetry={loaded.reload}
+      actions={
         <Group gap="xs">
           {page.user.root && (
             <Button component={Link} to={`/${kind}/import`} variant="default">
@@ -35,43 +38,13 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
             </Button>
           )}
         </Group>
-      </Group>
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {rows.length === 0 ? (
-          <Text c="dimmed">{t(`lists.${kind}.empty`)}</Text>
-        ) : (
-          <Table.ScrollContainer minWidth={640}>
-            <Table highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  {list.shown.map((key) => (
-                    <Table.Th key={key} ta={key === 'price' ? 'right' : undefined}>
-                      {headingOf(key, language)}
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.map((row) => (
-                  <Table.Tr key={row.code}>
-                    {list.shown.map((key) => (
-                      <Table.Td key={key} ta={key === 'price' ? 'right' : undefined}>
-                        {key === 'name' ? (
-                          <Anchor component={Link} to={`/${kind}/${row.id}`}>
-                            {row.name}
-                          </Anchor>
-                        ) : (
-                          row[key]
-                        )}
-                      </Table.Td>
-                    ))}
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        )}
-      </Loaded>
-    </Stack>
+      }
+    >
+      {rows.length === 0 ? (
+        <Text c="dimmed">{t(`lists.${kind}.empty`)}</Text>
+      ) : (
+        <ListTable kind={kind} shown={list.shown} rows={rows} language={language} />
+      )}
+    </PageShell>
   );
 }

@@ -32,7 +32,7 @@ places, nothing failing when a copy is missed.
 | a name, a bound, a width, a status's meaning | one exported declaration, imported | `shared/` | next copy · reader |
 | a new route | its own module: resolve, authorise, parse, then storage | `bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')` | next copy · reader |
 | a second kind of record | a parameter on the one body | `ui/src/pages/client/ListPage.tsx`'s `ListPage` | next copy · reader |
-| a refused save | the message on the field | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | next copy · reader |
+| a refused save | the message on the field | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | next copy · reader |
 | a client's own difference | config; else that client's own page, on the human's call | `shared/src/fields.ts` | next copy · reader |
 | reading server data | `useLoad` and `<Loaded>`: no cache, no store | `ui/src/page.ts`'s `useLoad` | holds · reader |
 
@@ -152,10 +152,10 @@ end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten 
 `shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/records/staff-records.ts`,
 `bff/src/records/operators.ts`, `bff/src/routes/orders.ts` and `bff/src/calling/sessions.ts`), so whoever found one believed
 they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-five screens (`ui/src/pages/client/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage`,
-`ui/src/pages/client/ProductPage.tsx`'s `ProductPage`, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
-`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
-(now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
+five screens (the customer's add page, the customer's page, the product's page, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
+`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it; the first three are
+now `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`)
+(now `refusal` in `ui/src/page.ts`, which returns the kind of refusal); "list under a prefix, refuse a truncated answer, parse each
 one" written four times (in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and
 `bff/src/routes/staff.ts`, the last three as a local function each) while `bff/src/routes/orders.ts` already held the
 general version (now `every` in `bff/src/records/records.ts`'s `recordTools`); and the three screen widths
@@ -170,12 +170,24 @@ copy](#the-patterns-to-copy). `[next copy · check]` The one place the shape exi
 test; everywhere else nothing fails.
 
 **C3 · Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
-`ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage` and `ui/src/pages/client/ProductPage.tsx`'s `ProductPage` are the same page shell
-written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
-(`ui/src/pages/client/AddCustomerPage.tsx`'s `AddCustomerPage`, `ui/src/pages/client/AddProductPage.tsx`'s `AddProductPage`); a third kind pays it a
-third time, and changing how a conflict is offered is an edit in two files nothing makes you find.
-*Why:* the lists already prove the cheaper shape — `bff/src/routes/lists.ts` serves both from one 165-line
-body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and `ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
+The customer's and the product's pages were the same page shell written twice, and their add
+screens the same again; a third kind would have paid it a third time, and changing how a conflict is
+offered was an edit in two files nothing made you find. They are now one page for each job, with
+the kind as data: `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and
+`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, each holding one entry per kind in a
+record keyed by the list kind, so a kind added to `ui/src/listSheet.ts`'s `LISTS` without an entry
+there is a type error and not a screen that silently draws the wrong one. The list pages share
+`ui/src/parts/PageShell.tsx`'s `PageShell` and `ui/src/parts/ListTable.tsx`'s `ListTable`. **The
+kinds have one home:** what the kinds are is declared exactly once, in the list table, and the type
+is derived from it. What the record page and the add page hold per kind are different facts about
+that one key, never a fact written twice, and the test is that a kind added only to the list table
+is a compile error in each of them (and in the dictionary's words for it). The records are not in
+the list table because the forms import it and a form held there would be an import cycle. A form
+that differs for real stays its own (`ui/src/parts/CustomerForm.tsx`'s `CustomerForm`,
+`ui/src/parts/ProductForm.tsx`'s `ProductForm`).
+*Why:* the lists already prove the cheaper shape — `bff/src/routes/lists.ts` serves both from one
+body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and
+`ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
 
 ## The winner, named
 
@@ -188,7 +200,7 @@ written again.
 
 | The job | The one way | Copy | How much of the code follows it, and what the 2026-11-08 review found |
 | --- | --- | --- | --- |
-| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
+| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
 | C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | `pnpm counts` (C5: the calls made in a file that registers routes, against those made in a module) |
 | C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | `pnpm counts` (C6) |
 | C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/routes/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
@@ -260,12 +272,12 @@ serves. **A test sits beside its subject, and beside the app where the subject i
 another layout.** A folder per feature or module under the screens was measured and refused: the
 modules it would need cannot be built, because one list screen and one import screen each serve both
 kinds of record (`ui/src/pages/client/ListPage.tsx`'s `ListPage` and `ui/src/pages/client/ListImportPage.tsx`'s
-`ListImportPage`, both taking `kind`), and 13 of the UI's test files today have no same-named source
+`ListImportPage`, both taking `kind`), and some of the UI's test files have no same-named source
 at all, covering a flow or a whole app rather than one screen, so several would have no module
 to sit in. So meeting that shape in another repository is not a precedent here.
 **A package being reorganised writes its directory set into its own `CLAUDE.md` in the same change as
 the move, never before** — a guideline naming a folder that does not exist yet is wrong for as long
-as the move takes — as `ui/CLAUDE.md` does, written in the change that moved `ui`; `bff` names no set yet.
+as the move takes — as `ui/CLAUDE.md` and `bff/CLAUDE.md` do, each written in the change that moved its package.
 
 *Why:* nothing in the gate reads a directory, so a layer folder, a copied folder set and a package
 whose `CLAUDE.md` names none of its folders all pass green; the mark is `reader` because the reader
