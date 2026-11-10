@@ -52,7 +52,7 @@ or in `frame/` when importers stand on both sides (`ui/src/frame/frame.module.cs
 ## The file to copy
 
 - **A screen:** `ui/src/pages/client/ListPage.tsx`'s `ListPage`, which takes `PageProps`, reads through `useLoad`
-  and draws through `Loaded`; for a form, `ui/src/pages/client/ProductPage.tsx`'s `ProductForm`.
+  and draws through `Loaded`; for a form, `ui/src/parts/ProductForm.tsx`'s `ProductForm`.
 - **A call to the back end:** a method on `createApi`, with its twin in `ui/src/fake.ts`'s
   `createFakeApi`, which must answer the same shape.
 - **A screen's test:** `ui/src/pages/client/ListPage.test.tsx`, which opens the whole app through

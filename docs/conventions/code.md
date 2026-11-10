@@ -32,7 +32,7 @@ places, nothing failing when a copy is missed.
 | a name, a bound, a width, a status's meaning | one exported declaration, imported | `shared/` | next copy · reader |
 | a new route | its own module: resolve, authorise, parse, then storage | `bff/src/routes/staff.ts`'s `app.put(employeeRoutes.one(':id')` | next copy · reader |
 | a second kind of record | a parameter on the one body | `ui/src/pages/client/ListPage.tsx`'s `ListPage` | next copy · reader |
-| a refused save | the message on the field | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | next copy · reader |
+| a refused save | the message on the field | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | next copy · reader |
 | a client's own difference | config; else that client's own page, on the human's call | `shared/src/fields.ts` | next copy · reader |
 | reading server data | `useLoad` and `<Loaded>`: no cache, no store | `ui/src/page.ts`'s `useLoad` | holds · reader |
 
@@ -188,7 +188,7 @@ written again.
 
 | The job | The one way | Copy | How much of the code follows it, and what the 2026-11-08 review found |
 | --- | --- | --- | --- |
-| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/pages/client/ProductPage.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
+| C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
 | C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | `pnpm counts` (C5: the calls made in a file that registers routes, against those made in a module) |
 | C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | `pnpm counts` (C6) |
 | C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/routes/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |

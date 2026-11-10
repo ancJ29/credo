@@ -85,7 +85,7 @@ export const RULES: Rules = {
       name: 'what a 403 means',
       home: { file: 'ui/src/page.ts', name: 'isForbidden' },
       sites: ui(
-        'pages/client/AddCustomerPage pages/client/CustomerPage pages/client/ProductPage pages/client/PersonPage pages/client/SettingsPage',
+        'pages/client/AddCustomerPage pages/client/RecordPage pages/client/PersonPage pages/client/SettingsPage',
       ),
       copy: /status === 403/,
     },
@@ -111,7 +111,7 @@ export const RULES: Rules = {
   ],
   forms: {
     files: ui(
-      'pages/operator/AddOperatorPage pages/client/AddPersonPage pages/client/CustomerPage pages/operator/DeleteClientPage parts/NewClient parts/OrderParts pages/client/PersonPage pages/client/OwnPasswordPage pages/client/ProductPage pages/operator/RootPasswordPage parts/Settings pages/SignIn parts/SignInPanels',
+      'pages/operator/AddOperatorPage pages/client/AddPersonPage parts/CustomerForm pages/operator/DeleteClientPage parts/NewClient parts/OrderParts pages/client/PersonPage pages/client/OwnPasswordPage parts/ProductForm pages/operator/RootPasswordPage parts/Settings pages/SignIn parts/SignInPanels',
     ),
     fieldError: /\berror=\{/,
     marker: /<form\b|component="form"/,

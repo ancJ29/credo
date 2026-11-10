@@ -3,7 +3,7 @@ import { Alert, Button, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
-import { CustomerForm } from './CustomerPage';
+import { CustomerForm } from '../../parts/CustomerForm';
 import { type PageProps, refusal } from '../../page';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;

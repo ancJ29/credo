@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
 import { type PageProps, refusal } from '../../page';
-import { ProductForm } from './ProductPage';
+import { ProductForm } from '../../parts/ProductForm';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
