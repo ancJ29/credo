@@ -28,7 +28,7 @@ other half of readiness' fourth, which its own item leaves to the owner. And out
 the client whose records were read.** The client's code arrives in a header, and an HTTP API's
 access-log format can only name `$context` variables, so the header cannot go in the line. What the
 line does carry is the path, and the detail routes put the record's minted id in the path
-(`/api/employees/<id>`, `bff/src/employees.route.test.ts#L1285`), so "which record, when, from
+(`/api/employees/<id>`, `bff/src/routes/employees.route.test.ts#L1285`), so "which record, when, from
 where" is answered for those routes and the client is not. Joining the stage's line to the BFF's own
 request line — which already exists, see below — is its own piece, filed as a new open item in
 step 3. The split falls there because the stage's log is readable the moment the change set runs,

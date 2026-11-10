@@ -8,10 +8,10 @@ import {
   storedUserSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { staffTenant } from '../tests/staff';
-import { seedEmployee, signIn, withAuth } from '../tests/tenant';
-import { verifyPassword } from './password';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { staffTenant } from '../../tests/staff';
+import { seedEmployee, signIn, withAuth } from '../../tests/tenant';
+import { verifyPassword } from '../calling/password';
 import { ADD_MAX_MS } from './staff';
 
 let cs: RunningCStorage;

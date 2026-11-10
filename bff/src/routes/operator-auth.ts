@@ -33,10 +33,10 @@ import {
   type StoredAccount,
   type StoredPasskey,
 } from '@credo/shared';
-import { type Purpose, createChallenges, CHALLENGE_MS } from './challenge';
-import { HttpError, parse } from './errors';
-import { readAccount, readLiveLink, readRoster } from './operators';
-import { createSessions, OPERATOR_SESSION } from './sessions';
+import { type Purpose, createChallenges, CHALLENGE_MS } from '../calling/challenge';
+import { HttpError, parse } from '../errors';
+import { readAccount, readLiveLink, readRoster } from '../records/operators';
+import { createSessions, OPERATOR_SESSION } from '../calling/sessions';
 
 const RP_NAME = 'Credo';
 /** The COSE algorithms a passkey may use (EdDSA, ES256, RS256), named so the library's default is

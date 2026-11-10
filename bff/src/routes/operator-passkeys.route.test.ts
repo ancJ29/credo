@@ -12,8 +12,8 @@ import {
   storedSessionSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { SoftwareAuthenticator } from '../tests/authenticator';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
+import { SoftwareAuthenticator } from '../../tests/authenticator';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import {
   inviteOperator,
   joinedOperator,
@@ -24,9 +24,9 @@ import {
   signInWith,
   removeWith,
   touchFor,
-} from '../tests/operator';
-import { bffOn, DAY_MS, DEVICE, ORIGIN, withAuth } from '../tests/tenant';
-import { createOperator, makeLink, readAccount, readRoster } from './operators';
+} from '../../tests/operator';
+import { bffOn, DAY_MS, DEVICE, ORIGIN, withAuth } from '../../tests/tenant';
+import { createOperator, makeLink, readAccount, readRoster } from '../records/operators';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

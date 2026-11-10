@@ -14,8 +14,8 @@ import {
 } from '@credo/shared';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { SoftwareAuthenticator } from '../tests/authenticator';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
+import { SoftwareAuthenticator } from '../../tests/authenticator';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import {
   inviteOperator,
   joinedOperator,
@@ -24,9 +24,9 @@ import {
   session,
   signInWith,
   touchFor,
-} from '../tests/operator';
-import { bffOn, ORIGIN, withAuth } from '../tests/tenant';
-import { createOperator } from './operators';
+} from '../../tests/operator';
+import { bffOn, ORIGIN, withAuth } from '../../tests/tenant';
+import { createOperator } from '../records/operators';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

@@ -6,7 +6,7 @@ import {
   operatorSessionReplySchema,
   optionsReplySchema,
 } from '@credo/shared';
-import { createOperator } from '../src/operators';
+import { createOperator } from '../src/records/operators';
 import { SoftwareAuthenticator } from './authenticator';
 import { DEVICE, ORIGIN, type bffOn, withAuth } from './tenant';
 

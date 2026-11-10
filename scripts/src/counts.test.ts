@@ -114,7 +114,7 @@ describe('counts, on a repository the test controls', () => {
     expect(blind.join('\n')).toMatch(/by not holding the old copy/);
     expect(blind.join('\n')).toMatch(/only through a wrapper or only as a type/);
     expect(blind.join('\n')).toMatch(/can never fire/);
-    expect(blind.join('\n')).toMatch(/scope is the `.ts` files directly in bff\/src/);
+    expect(blind.join('\n')).toMatch(/scope is the `.ts` files in bff\/src at any depth/);
     expect(blind.join('\n')).toMatch(/ui\/src\/mock are not in it/);
     expect(blind.join('\n')).toMatch(/a human judgement/);
     expect(blind.join('\n')).toMatch(/moving a call behind a wrapper/);

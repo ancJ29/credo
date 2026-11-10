@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { personCalls, staffTenant } from '../tests/staff';
 import { DEVICE, OTHER_DEVICE, seedEmployee, signIn, withAuth } from '../tests/tenant';
-import { ADD_MAX_MS } from './staff';
+import { ADD_MAX_MS } from './routes/staff';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

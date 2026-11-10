@@ -100,7 +100,7 @@ preview; no new screen. Stock on hand and what the flag drives stay after 11-04.
 | --- | --- |
 | the two list pages | [`StaffListPage.tsx`](../../ui/src/StaffListPage.tsx#L60), its root-only import button |
 | one import page for both lists | [`ImportPage.tsx`](../../ui/src/ImportPage.tsx#L70) and [`importSheet.ts`](../../ui/src/importSheet.ts#L184); `importFile.ts` and `saveAs.ts` as they are |
-| the four routes | `everyone` and the import route in [`staff.ts`](../../bff/src/staff.ts#L173) (its L387), tested as `employee-import.route.test.ts` is |
+| the four routes | `everyone` and the import route in [`staff.ts`](../../bff/src/routes/staff.ts#L173) (its L387), tested as `employee-import.route.test.ts` is |
 | the fake's four calls | `importEmployees` in [`fake.ts`](../../ui/src/fake.ts#L307) |
 | the seed's block | `fill` in [`apply.ts`](../../scripts/src/demo/apply.ts#L169); the profiles in [`scenarios.ts`](../../scripts/src/demo/scenarios.ts#L97) |
 | the walk | `walk/specs/piece-2.spec.ts` and `visual/src/walks.ts` |
@@ -207,7 +207,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   ¼ day: the four routes, and the stack's generator writing the data set's lists. c-storage does not
   change, so `make check` is not run. Done when: the BFF half of rows 2, 4 to 6, 8 and 10 each seen red
   once; `pnpm check` exit 0 at 100 %, no warning.
-  *Evidence:* commits `7fefb42` (the routes in `bff/src/lists.ts`, tested in `bff/src/lists.route.test.ts`)
+  *Evidence:* commits `7fefb42` (the routes in `bff/src/routes/lists.ts`, tested in `bff/src/routes/lists.route.test.ts`)
   and the generator's (`scripts/src/generator.ts`, the data set's lists through the two import
   routes; c-storage unchanged). Whole check `logs/20261031-1136-customers-products-whole-check-step5c.log`,
   133 lines, last line `== exit 0`, no warning, started 11:36:38 and ended 11:44:12; every package at

@@ -19,8 +19,8 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { HttpError, parse, replyFor } from './errors';
-import { recordTools } from './records';
+import { HttpError, parse, replyFor } from '../errors';
+import { recordTools } from '../records/records';
 import type { Deps } from './staff';
 
 /** What one list is to the routes: where its records sit, how a row is read, how a record is

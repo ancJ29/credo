@@ -45,9 +45,9 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { HttpError, parse, replyFor } from './errors';
-import { recordTools } from './records';
-import { hashPassword, madePassword } from './password';
+import { HttpError, parse, replyFor } from '../errors';
+import { recordTools } from '../records/records';
+import { hashPassword, madePassword } from '../calling/password';
 import {
   namesBack,
   NO_SETUP_VERSION,
@@ -58,7 +58,7 @@ import {
   endSessions,
   readSignIn,
   setSignInPassword,
-} from './staff-records';
+} from '../records/staff-records';
 
 /** The longest an add can run: the BFF's or Lambda's timeout. A sign-in claim its person does not
  * name back is a failed add's, to be taken over, only once it is older than this; before that

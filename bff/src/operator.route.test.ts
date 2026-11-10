@@ -16,8 +16,8 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { bffOn, DAY_MS, DEVICE, scoped, seedTenant, signIn, withAuth } from '../tests/tenant';
 import { joinedOperator, session, signInWith } from '../tests/operator';
-import { createClient } from './clients';
-import { verifyPassword } from './password';
+import { createClient } from './records/clients';
+import { verifyPassword } from './calling/password';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

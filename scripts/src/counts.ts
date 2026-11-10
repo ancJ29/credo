@@ -57,6 +57,8 @@ const isTest = (path: string) => /\.test\.tsx?$/.test(path);
 const UI_SCREENS = /^ui\/src\/(?!mock\/).+\.tsx$/;
 /** An import of the API module from wherever a file now stands: `./api`, `../api`, `../../api`. */
 const UI_API = /from '(\.\.?\/)+api'/;
+/** Every `.ts` under bff/src at any depth: the routes, records and calling folders and the files at the top. */
+const BFF_SOURCES = /^bff\/src\/.+\.ts$/;
 const ui = (names: string) => names.split(' ').map((name) => `ui/src/${name}.tsx`);
 
 export const RULES: Rules = {
@@ -64,7 +66,12 @@ export const RULES: Rules = {
     {
       name: 'the retry bound',
       home: { file: 'shared/src/c-storage.ts', name: 'ATTEMPTS' },
-      sites: ['staff-records', 'operators', 'orders', 'sessions'].map((one) => `bff/src/${one}.ts`),
+      sites: [
+        'records/staff-records',
+        'records/operators',
+        'routes/orders',
+        'calling/sessions',
+      ].map((one) => `bff/src/${one}.ts`),
       copy: /\b(const|let)\s+ATTEMPTS\s*=/,
     },
     {
@@ -84,8 +91,10 @@ export const RULES: Rules = {
     },
     {
       name: 'listing under a prefix',
-      home: { file: 'bff/src/records.ts', name: 'recordTools' },
-      sites: ['clients', 'lists', 'orders', 'staff'].map((one) => `bff/src/${one}.ts`),
+      home: { file: 'bff/src/records/records.ts', name: 'recordTools' },
+      sites: ['records/clients', 'routes/lists', 'routes/orders', 'routes/staff'].map(
+        (one) => `bff/src/${one}.ts`,
+      ),
       copy: /longer than c-storage returns/,
     },
     {
@@ -110,12 +119,12 @@ export const RULES: Rules = {
   },
   storage: {
     client: { file: 'shared/src/c-storage.ts', type: 'CStorageClient' },
-    where: /^bff\/src\/[^/]+\.ts$/,
+    where: BFF_SOURCES,
     registration: /^\s*\w+\.(get|put|post|delete|patch)\(/m,
   },
   screens: { where: UI_SCREENS, direct: UI_API },
   errors: {
-    where: /^bff\/src\/[^/]+\.ts$/,
+    where: BFF_SOURCES,
     registration: /^\s*\w+\.(get|put|post|delete|patch)\(/,
     writes: [/\.(status|code)\(\s*[45]\d\d\s*\)/, /statusCode\s*=\s*[45]\d\d/],
   },
@@ -239,7 +248,7 @@ function countStorage(io: Io, tracked: string[], rules: Rules): Count {
       `inline, by file that registers routes: ${closures.length ? closures.join(', ') : 'none'}`,
     ],
     blind:
-      "scope is the `.ts` files directly in bff/src, tests left out; storage calls made elsewhere (bff/tests, scripts/src and its demo folder) are not counted. A call is `storage.<method>(` and nothing else: a client held under another name, or reached through a helper that wraps it, is not seen, so moving a call behind a wrapper reads as an improvement; a file is 'a route file' when it registers a route at all.",
+      "scope is the `.ts` files in bff/src at any depth, tests left out; storage calls made elsewhere (bff/tests, scripts/src and its demo folder) are not counted. A call is `storage.<method>(` and nothing else: a client held under another name, or reached through a helper that wraps it, is not seen, so moving a call behind a wrapper reads as an improvement; a file is 'a route file' when it registers a route at all.",
   };
 }
 

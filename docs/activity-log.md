@@ -83,10 +83,10 @@ nothing is never logged, which is this design's strongest property — see the h
    actor at all. A middleware built before that would record 28 of 39 deliberate acts as having been
    done by nobody. **So the actor is the first piece of work and the middleware is the second.**
 2. **Fifteen write sites must never be logged**, and this design excludes them by construction
-   rather than by a list. The hottest is `spendTouch` in `bff/src/operator-auth.ts`, which rewrites
+   rather than by a list. The hottest is `spendTouch` in `bff/src/routes/operator-auth.ts`, which rewrites
    an operator's whole account — a passkey counter, a `lastUsedAt` stamp and the pruning of the
    spent-challenge list at once — on **every** passkey sign-in and every confirm touch. Next is the
-   session renewal inside `resolve` in `bff/src/sessions.ts`, a side effect of *reading* a session on
+   session renewal inside `resolve` in `bff/src/calling/sessions.ts`, a side effect of *reading* a session on
    the authenticated path of every request. Then the two numbering counters, the sign-in and link
    bookkeeping, the client-deletion sweep, and the two photo writes whose base64 bytes must never
    enter an entry. **A handler that declares no intent is never logged, so none of the fifteen needs

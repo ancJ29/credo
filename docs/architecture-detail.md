@@ -39,15 +39,15 @@ own opening lines that it is the layout's one home, "so no other file builds a k
 route level** — "serves the call of the client the code names, and no other"
 ([`bff/src/tenants.route.test.ts#L96`](../bff/src/tenants.route.test.ts#L96)), and "reaches one
 client only" in both
-[`clients-delete.route.test.ts#L248`](../bff/src/clients-delete.route.test.ts#L248) and
-[`operator-root-password.route.test.ts#L245`](../bff/src/operator-root-password.route.test.ts#L245).
+[`clients-delete.route.test.ts#L248`](../bff/src/routes/clients-delete.route.test.ts#L248) and
+[`operator-root-password.route.test.ts#L245`](../bff/src/routes/operator-root-password.route.test.ts#L245).
 What is narrower than it looks is the *structural* guard: **no lint rule and no test forces every
 key through `records.ts`**, so the one-home property is held by convention and review rather than
 by the gate. No hand-built key exists outside that file today.
 
 One home holds for the key *layout*, not for resolving a tenant: `resolveTenant` covers the
 client-facing routes, while the operator's routes resolve a code to an id themselves
-([`bff/src/root-password.ts#L44`](../bff/src/root-password.ts#L44), and `bff/src/clients.ts`).
+([`bff/src/routes/root-password.ts#L44`](../bff/src/routes/root-password.ts#L44), and `bff/src/records/clients.ts`).
 Key design does real work here — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
@@ -68,7 +68,7 @@ whatever is there, so the guard holds only where the BFF sends the tag.
 The BFF's client turns 412 into the value `'moved'` rather than an error
 ([`shared/src/c-storage.ts#L133`](../shared/src/c-storage.ts#L133)), and **each route decides for
 itself — there is no single shared recovery.** The fullest version, settled on 2026-11-07, is in
-[`bff/src/lists.ts#L176`](../bff/src/lists.ts#L176): read the record for its tag, write over that
+[`bff/src/routes/lists.ts#L176`](../bff/src/routes/lists.ts#L176): read the record for its tag, write over that
 version, and on either a lost answer or a `moved` outcome **re-read once** — a record that already
 holds exactly what was asked is our own write having landed, and counts as saved; anything else is
 a genuine conflict, answered 409 with the record as it is now. The version is never skipped, which
@@ -76,18 +76,18 @@ is the project's standing rule: recover, never bypass, a concurrency token
 ([`CLAUDE.md`](../CLAUDE.md)).
 
 That identity compare is load-bearing and conditional, and the comment at
-[`bff/src/lists.ts#L192`](../bff/src/lists.ts#L192) is the one home of what it assumes: it holds
+[`bff/src/routes/lists.ts#L192`](../bff/src/routes/lists.ts#L192) is the one home of what it assumes: it holds
 only while the record has no mutable field other than the ones being written. The day a
 `changeCode`, an `archived` flag or an order's status joins a record saved this way, another
 writer's record could pass as our own save. Read that comment before copying this pattern.
 
-The other routes do not share it. [`bff/src/reconciliations.ts#L37`](../bff/src/reconciliations.ts#L37)
+The other routes do not share it. [`bff/src/routes/reconciliations.ts#L37`](../bff/src/routes/reconciliations.ts#L37)
 recovers a lost answer in its own narrower way — it claims the key with `If-None-Match` and, if the
 write throws, re-reads and compares to tell its own landed write from another close already there —
 while the staff setup's save answers 409 at once on a `moved`
-([`bff/src/staff.ts#L171`](../bff/src/staff.ts#L171)) and the staff numbering instead **retries a
+([`bff/src/routes/staff.ts#L171`](../bff/src/routes/staff.ts#L171)) and the staff numbering instead **retries a
 bounded number of times** and fails 503 if the record moved on every attempt
-([`bff/src/staff.ts#L264`](../bff/src/staff.ts#L264)). Four writers, four behaviours — all of them
+([`bff/src/routes/staff.ts#L264`](../bff/src/routes/staff.ts#L264)). Four writers, four behaviours — all of them
 keeping the token, which is the rule; none of them a shared helper. Read the route you are changing
 rather than assume `lists.ts`.
 
@@ -101,17 +101,17 @@ are second sign-in names for the same records
 keeps: only the SHA-256 of its secret is stored, beside the device it was issued to and the
 sign-in record's `generation` at issue, so giving a password invalidates every older session
 ([`shared/src/records.ts#L185`](../shared/src/records.ts#L185)). They slide over seven days
-([`bff/src/sessions.ts#L13`](../bff/src/sessions.ts#L13)).
+([`bff/src/calling/sessions.ts#L13`](../bff/src/calling/sessions.ts#L13)).
 
 An **operator** — the people who run credo — signs in at `/operator` by passkey only, joining
 through a one-time link, with `@simplewebauthn` on both sides. Every ceremony is checked against
 `APP_ORIGIN`, the address the operator opens, **never the request's host**
 ([`bff/src/env.ts#L13`](../bff/src/env.ts#L13),
-[`bff/src/operator-auth.ts#L57`](../bff/src/operator-auth.ts#L57)); spent challenges are kept so an
+[`bff/src/routes/operator-auth.ts#L57`](../bff/src/routes/operator-auth.ts#L57)); spent challenges are kept so an
 answer cannot be replayed, and an account's `generation` moves when a new-passkey link replaces the
 keys held, refusing the sessions issued before it
 ([`shared/src/records.ts#L131`](../shared/src/records.ts#L131)). An operator session is capped at 12
-hours from issue ([`bff/src/sessions.ts#L18`](../bff/src/sessions.ts#L18)). Sensitive acts ask for a
+hours from issue ([`bff/src/calling/sessions.ts#L18`](../bff/src/calling/sessions.ts#L18)). Sensitive acts ask for a
 fresh passkey touch rather than trusting the session
 ([`shared/src/wire.ts#L322`](../shared/src/wire.ts#L322)).
 
@@ -317,7 +317,7 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
 
 - **Read closely and first-hand:** `pnpm-workspace.yaml`, the root and per-package `package.json`
   files, `CLAUDE.md`, `bff/src/app.ts` (the first ~220 lines), `bff/src/env.ts`, `server.ts`,
-  `lambda.ts`, `main.ts`, `bff/src/lists.ts`, `shared/src/records.ts`, `permissions.ts`,
+  `lambda.ts`, `main.ts`, `bff/src/routes/lists.ts`, `shared/src/records.ts`, `permissions.ts`,
   `c-storage.ts`, `index.ts`, `wire.ts` (the routes and headers), `signins.ts` (the first ~70
   lines), `ui/src/main.tsx`, `App.tsx`, `visual/run.mjs`, `walk/run.sh`'s header and walk table,
   `scripts/src/stack.ts` (the first ~90 lines), `front.ts`'s header, `docs/products.md`,
@@ -352,7 +352,7 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
 - **For the 2026-11-09 rearrangement** (the one sentence, the diagram, the walk, the codemap and the
   absences) the walk was traced first-hand through the files it names, in order:
   `ui/src/pages/client/CustomerPage.tsx`'s save, `ui/src/api.ts`'s `send` and `saveCustomer`, `bff/src/app.ts`'s
-  `resolveTenant` and `mustCan`, `bff/src/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
+  `resolveTenant` and `mustCan`, `bff/src/routes/lists.ts`'s customer `PUT` whole, `shared/src/records.ts`'s
   key layout, `shared/src/c-storage.ts`'s `putRecord`, and
   `c-storage/internal/store/store.go`'s `func (s *Store) Put(` and `Tag`. **Step 5 of
   [the request walk](architecture.md#one-request-end-to-end) is the one step not re-read for the

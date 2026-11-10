@@ -9,7 +9,7 @@ import {
   type StoredUser,
 } from '@credo/shared';
 import { buildApp } from '../src/app';
-import { hashPassword } from '../src/password';
+import { hashPassword } from '../src/calling/password';
 import { freshTenant, type RunningCStorage } from './c-storage';
 
 export const DEVICE = 'device-aaaa-0001';

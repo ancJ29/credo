@@ -8,7 +8,7 @@ This is the second of the three detail pages to become editable, after the custo
 
 The cheapest safe path is that page, copied, because it merged into `main` today: the wire
 (`shared/src/lists.ts#L38-L48`), the two routes with their one re-read and their 409
-(`bff/src/lists.ts#L155-L203`), the forced-race test (`bff/src/lists.route.test.ts#L606-L695`), the page's three
+(`bff/src/routes/lists.ts#L155-L203`), the forced-race test (`bff/src/routes/lists.route.test.ts#L606-L695`), the page's three
 notices (`ui/src/CustomerPage.tsx#L71-L99`), the fake's two calls (`ui/src/fake.ts#L807-L830`) and the walk's two
 appended screens (`walk/specs/lists.spec.ts#L250-L266`). **Price:** no new infrastructure, $0 a month; 80 machine
 minutes and one picture run of about 17. The page also stops reading every product to show one.
@@ -19,7 +19,7 @@ minutes and one picture run of about 17. The page also stops reading every produ
   `saveProductRequestSchema` (`{ version, name, unit, price, stocked, extra }`), and `productRoutes.one` beside
   `customerRoutes` (`shared/src/wire.ts#L45-L48`).
 - **Two routes, products only**: `GET` and `PUT /api/products/:id`, by **generalising the customer's `readCustomer`,
-  `mustRead` and `PUT` over the `ListKind` table already in that file (`bff/src/lists.ts#L26-L59`)**, which gains a
+  `mustRead` and `PUT` over the `ListKind` table already in that file (`bff/src/routes/lists.ts#L26-L59`)**, which gains a
   save schema and an `apply` that builds the updated record from the body. *Rejected:* a second copy of the route and
   of the comment at its compare (`#L192-L195`) — that comment is the one home of what the recovery assumes, and a copy
   of it is the line that rots. *Price:* it moves the customer's proved path, so its ten cases are the regression gate,
@@ -54,7 +54,7 @@ required, trimmed, at most 20, refused by both the same way.
 
 | # | The case | Held by |
 | --- | --- | --- |
-| 1 | A name, unit, price, stock and note saved over the version read are stored, and the answer carries the product and its new version | BFF route, `bff/src/lists.route.test.ts`; red first |
+| 1 | A name, unit, price, stock and note saved over the version read are stored, and the answer carries the product and its new version | BFF route, `bff/src/routes/lists.route.test.ts`; red first |
 | 2 | A save over a version that moved writes nothing and answers 409 with the product as it is now | BFF route; red first |
 | 3 | A save whose write landed and whose answer was lost counts as saved, not as a conflict | BFF route; red first |
 | 4 | Whoever may see orders but not edit them cannot save: 403, and nothing written | BFF route; red first |

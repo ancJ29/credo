@@ -8,7 +8,7 @@ by hand (open item 117, `docs/open-items.md#L744-L746`, whose trigger this piece
 its own create, deletes every check client older than two hours. Nobody sees a screen; the operator's list simply stops
 growing. **No human look.**
 
-The cheapest safe path is what exists. **`listClients(storage)` already exists** (`bff/src/clients.ts#L93-L110`) and
+The cheapest safe path is what exists. **`listClients(storage)` already exists** (`bff/src/records/clients.ts#L93-L110`) and
 `scripts/src/ridge.ts` already imports from that module, so this adds **a command, not a capability**. The deletion is
 `untenant`'s, copied (`scripts/src/ridge.ts#L126-L160`). **Price:** no infrastructure, $0 a month; about 25 machine minutes.
 

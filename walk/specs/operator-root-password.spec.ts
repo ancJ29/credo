@@ -16,7 +16,7 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
  * act asks for is a real one that the BFF checks. After screens 1 and 3, no picture: the spec reads
  * by the API that a root session from before is refused, that the old password signs in no more
  * and that the new one does. The stack's made password is masked on screen 3 (held by
- * bff/src/password.test.ts: "a made password is 12 characters that pass the typed rule"); the
+ * bff/src/calling/password.test.ts: "a made password is 12 characters that pass the typed rule"); the
  * failure of screen 4 is stubbed at the browser.
  */
 

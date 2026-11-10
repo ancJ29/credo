@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, inject, it, vi } from 'vitest';
 import { z } from 'zod';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { inviteOperator, joinWith, joinedOperator, post, signInWith } from '../tests/operator';
-import { bffOn } from '../tests/tenant';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { inviteOperator, joinWith, joinedOperator, post, signInWith } from '../../tests/operator';
+import { bffOn } from '../../tests/tenant';
 
 const offered = z.object({
   options: z.object({ pubKeyCredParams: z.array(z.object({ type: z.string(), alg: z.number() })) }),

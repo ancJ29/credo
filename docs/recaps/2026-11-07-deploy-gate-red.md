@@ -6,7 +6,7 @@
 
 ## What was found: four reds, none a fault in the product
 
-- **A bff coverage threshold failed while every test passed.** The only test reaching one branch of the join route (`bff/src/operator-auth.ts#L326`) fired two joins at once and hoped the interleaving fell one way; on the slower runner it fell the other.
+- **A bff coverage threshold failed while every test passed.** The only test reaching one branch of the join route (`bff/src/routes/operator-auth.ts#L326`) fired two joins at once and hoped the interleaving fell one way; on the slower runner it fell the other.
 - **The `ui` package's `SIGKILL` was that red's shadow.** `pnpm -r run test` stopped the sibling when bff failed; `ui` never finished and held no fault of its own.
 - **A `scripts` stopwatch read 2611 ms against a 9000 ms assertion.** The stand-in lane locked the gate before it trapped TERM, so the lanes died to the first TERM.
 - **A fourth was found only by running the whole check on the merge result:** two lint errors already sitting in `main` (`scripts/src/ridge.test.ts`, `no-base-to-string`). It came in with this morning's own merge, whose hand-assembled gate left out eslint, one of the check's five steps. The cause is the convention that lets a gate be assembled by hand, not the file.

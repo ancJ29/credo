@@ -7,9 +7,9 @@ a chip, **Active** or **Inactive**; a **Status** choice (Active, the default as 
 "Show people who left" box; under 768 (`sm`, where the frame turns to a phone, `ui/src/Shell.tsx#L115-L116`) one card
 a person: name, code, department, position, phone, chip.
 
-"Inactive" is today's archive: `archived: true`, written once by the archive route (`bff/src/staff.ts#L467-L479`),
+"Inactive" is today's archive: `archived: true`, written once by the archive route (`bff/src/routes/staff.ts#L467-L479`),
 refused at sign-in (`bff/src/app.ts#L136`); no way back until milestone 2.
-The list holds what the filter needs: the BFF sends everyone, people who left too (`bff/src/staff.ts#L174-L190`), each
+The list holds what the filter needs: the BFF sends everyone, people who left too (`bff/src/routes/staff.ts#L174-L190`), each
 with `archived` (`shared/src/staff.ts#L54`), and the page narrows in the browser (`ui/src/staffFilter.ts#L79-L80`).
 Screens only: no route, no field, no wire.
 

@@ -39,9 +39,9 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { HttpError, parse } from './errors';
-import { recordTools } from './records';
-import { readSetup } from './staff-records';
+import { HttpError, parse } from '../errors';
+import { recordTools } from '../records/records';
+import { readSetup } from '../records/staff-records';
 import type { Deps } from './staff';
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });

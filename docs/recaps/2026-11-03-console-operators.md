@@ -9,7 +9,7 @@ $0 a month. Left to the human: the look at the first walk, and the push.
 ## What shipped
 
 - The page `/operator/operators` and its create page, in vi and en, on the fake first; two routes in
-  `bff/src/operator-team.ts` on the real c-storage.
+  `bff/src/routes/operator-team.ts` on the real c-storage.
 - The account gains `signedInAt`, written by sign-in and join alone, so "last sign-in" is read from one place.
 - The walk `operator-team`: 24 new bases, committed as `8337d81`; the operator and passkeys walks moved none.
 

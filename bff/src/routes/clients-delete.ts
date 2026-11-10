@@ -10,8 +10,8 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { deleteClient } from './clients';
-import { HttpError, parse } from './errors';
+import { deleteClient } from '../records/clients';
+import { HttpError, parse } from '../errors';
 
 type Deps = {
   storage: CStorageClient;

@@ -16,7 +16,7 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
  * authenticator holds the passkey the stack hands over, so the touch the act asks for is a real one
  * that the BFF checks. The failure of screen 3 is stubbed at the browser. The spec reads nothing by
  * the API: that a deleted client's own sign-in is refused is held by
- * bff/src/clients-delete.route.test.ts, case 5.
+ * bff/src/routes/clients-delete.route.test.ts, case 5.
  */
 
 const FULL = () => test.info().project.name === 'delete-client-full';

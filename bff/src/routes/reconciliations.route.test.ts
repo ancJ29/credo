@@ -13,8 +13,8 @@ import {
 } from '@credo/shared';
 import { CStorageError, type CStorageClient } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { DAY, ordersTenant } from '../tests/orders';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { DAY, ordersTenant } from '../../tests/orders';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

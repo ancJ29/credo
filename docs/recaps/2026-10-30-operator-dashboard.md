@@ -24,7 +24,7 @@ itself and the first look on ridge ([What remains](#what-remains)).
 | Part | What it is |
 | --- | --- |
 | the frame | the operator's sections go through the `pages` piece 2 gave the shell; the four skeleton sections share one "coming soon" page |
-| the list | `GET /api/operator/clients` (`listClients` in `bff/src/clients.ts`): one c-storage list under the client prefix, newest first, a 500 on `more` or on a record that does not parse |
+| the list | `GET /api/operator/clients` (`listClients` in `bff/src/records/clients.ts`): one c-storage list under the client prefix, newest first, a 500 on `more` or on a record that does not parse |
 | the made-on date | the BFF writes `madeAt` from its own clock when it creates a client; a time in the body is a 400; the list shows "—" for clients made before this piece |
 | the link | one function builds the sign-in link, used by the create and by the copy button |
 | c-storage | a list of one service's records under a prefix, added by piece 2's group A and used here unchanged |

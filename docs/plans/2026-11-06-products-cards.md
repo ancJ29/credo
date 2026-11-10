@@ -8,13 +8,13 @@ either:** products are a list and an Excel import (`ui/src/ClientApp.tsx#L371-L3
 as the customer's was built, on the same frame (`ui/src/DetailCards.tsx`) and the same 7/5, with its own columns.
 
 No server work: `GET /api/products` answers every product whole — unit, price and `stocked` typed, the note in
-`extra` (`shared/src/lists.ts#L24-L33`, `bff/src/lists.ts#L95-L100`) — so the page reads that list and picks its id.
+`extra` (`shared/src/lists.ts#L24-L33`, `bff/src/routes/lists.ts#L95-L100`) — so the page reads that list and picks its id.
 **Price:** $0 a month; every product read to show one, bounded by the import's 500 rows (`shared/src/import.ts#L7`).
 *Trigger:* editing by hand, which wants a record read for its version.
 
 ## The slice
 
-- **The page**, `/products/:id`, for whoever may see orders, as the list is (`bff/src/lists.ts#L96`). Above the
+- **The page**, `/products/:id`, for whoever may see orders, as the list is (`bff/src/routes/lists.ts#L96`). Above the
   columns: the name, the code and "Back to the products" (`ui/src/i18n/en.ts#L677`, the key is there), as
   `ui/src/CustomerPage.tsx#L27-L38` sets it. `main`: **Basic information** (code and name in a `FieldPair`),
   **Unit and price** (the price as the language writes a number, `ui/src/listSheet.ts#L56`), **Stock** (Yes or No,
@@ -60,7 +60,7 @@ never inserted, or the eleven ids renumber and lose their yeses. 12 is a product
 both: `VT-001` has a note, `DV-001` none (`shared/src/demo.ts#L449-L467`).
 
 **The named guard:** a walk screen never opens a record by a data-set id. On the stack the import mints each id
-(`bff/src/lists.ts#L123`), so screens 12 and 13 click the list's name link, as `openCustomer` does
+(`bff/src/routes/lists.ts#L123`), so screens 12 and 13 click the list's name link, as `openCustomer` does
 (`walk/specs/lists.spec.ts#L170-L175`). That mistake reddened all 12 full-stack cases in milestone 1, unseen by
 every unit test.
 

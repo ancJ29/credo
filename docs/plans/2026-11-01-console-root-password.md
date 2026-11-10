@@ -51,23 +51,23 @@ none of it. **A partner on ridge** sees nothing new on their client's screens, u
 
 ## What it holds
 
-- **The route:** `POST /api/operator/clients/:code/root-password`, in a new `bff/src/root-password.ts`; the code
+- **The route:** `POST /api/operator/clients/:code/root-password`, in a new `bff/src/routes/root-password.ts`; the code
   checked and its index read first, as `resolveTenant` does ([`app.ts`](../../bff/src/app.ts#L97)).
 - **The write:** the record under the root's name, `tenant.<id>.user.root`
   ([`records.ts`](../../shared/src/records.ts#L149)), read with its tag: its other fields kept, a new hash,
   `passwordAt` now, a new random `generation`; a 412 re-reads, three times at most. Piece 2's claim never takes that
-  name ([`staff.ts`](../../bff/src/staff.ts#L213)).
-- **One function for that write:** it sits inline in piece 2's person route ([`staff.ts`](../../bff/src/staff.ts#L482));
-  D lifts it into `bff/src/staff-records.ts` beside `readSignIn`, and both routes call it, the person check staying
+  name ([`staff.ts`](../../bff/src/routes/staff.ts#L213)).
+- **One function for that write:** it sits inline in piece 2's person route ([`staff.ts`](../../bff/src/routes/staff.ts#L482));
+  D lifts it into `bff/src/records/staff-records.ts` beside `readSignIn`, and both routes call it, the person check staying
   in piece 2's. *Rejected:* a copy in D's route, a second home for the write that ends sessions.
 - **The sessions end** by the generation every client call compares ([`app.ts`](../../bff/src/app.ts#L159)); no session
   record is written or removed.
-- **The made password:** `madePassword()` ([`password.ts`](../../bff/src/password.ts#L72)), as piece 2's "make one for
+- **The made password:** `madePassword()` ([`password.ts`](../../bff/src/calling/password.ts#L72)), as piece 2's "make one for
   me": it passes the typed rule and leaves out look-alikes, since it is read off a screen. *Rejected:* `newPassword()`,
-  the first password's ([`clients.ts`](../../bff/src/clients.ts#L63)), 16 base64url characters that break the rule.
+  the first password's ([`clients.ts`](../../bff/src/records/clients.ts#L63)), 16 base64url characters that break the rule.
 - **The answer** holds the made password alone: a new reply schema in `shared/src/wire.ts`, `{ made: string | null }`.
   *Rejected:* piece 2's `setPasswordReplySchema`, which echoes a typed one ([`staff.ts`](../../shared/src/staff.ts#L114)).
-- **The touch** (if row 5 is yes): A's `confirmed` ([`operator-auth.ts`](../../bff/src/operator-auth.ts#L263)), its act
+- **The touch** (if row 5 is yes): A's `confirmed` ([`operator-auth.ts`](../../bff/src/routes/operator-auth.ts#L263)), its act
   `root-password` added to `confirmActSchema`; one ceremony a click, so item 30's Safari rule does not bite. Chrome only.
 - **The page,** `/operator/clients/:code/root-password`, its company and code read from the list call (no new read).
   *Rejected:* a dialog on the list, which a scene cannot open by path. One submit; the field's hint says empty makes one.
@@ -160,7 +160,7 @@ the stack part at the operator, as at A's first full run; the stack forgets its 
 - [x] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4, about 4 hours: the route, the write lifted from
   piece 2's route, the touch's act, the route list; the stack's passkey for the walk (row 21); the spec's
   `root-password-full` project, written, not run. c-storage unchanged, so no `make check`. *Model files:*
-  `bff/src/staff.ts#L482`, `operator-services.route.test.ts`, `walk/specs/operator.spec.ts` (a stack a test, its masks).
+  `bff/src/routes/staff.ts#L482`, `operator-services.route.test.ts`, `walk/specs/operator.spec.ts` (a stack a test, its masks).
   Done when: the BFF half of rows 1 to 8 each seen red once; bff, shared and scripts at 100 %, no warning; live, in one
   `pnpm stack -- <command>`: a root session taken, a typed password set (a touch by the software authenticator, if
   row 5), that session a 401, the old password a 401, the new a 200; then a made one, the typed a 401, the made a 200;
@@ -177,9 +177,9 @@ the stack part at the operator, as at A's first full run; the stack forgets its 
   *Evidence:* Opus at `e6320b9` on steps 3 and 5: no High, no Medium; three Lows, all `[DEFERRED]` (the board's rule
   until a client signs: High and Medium fixed, the rest open items). No fix, so no gate after.
   - `[DEFERRED]` (open item 61) After a timeout the write may have landed, yet the failure message says nothing changed
-    (`ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/root-password.ts#L50`).
+    (`ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/routes/root-password.ts#L50`).
   - `[DEFERRED]` (open item 62) The touch is tied to the act and the operator, not to the client: a touch made for
-    client A, posted to B's route inside its 5 minutes, sets B's root (`bff/src/operator-auth.ts#L375`, `#L264`).
+    client A, posted to B's route inside its 5 minutes, sets B's root (`bff/src/routes/operator-auth.ts#L375`, `#L264`).
   - `[DEFERRED]` (open item 63) No page test covers the BFF refusing the touch with a 403, the page's half of rows 5
     and 7 (`ui/src/RootPasswordPage.tsx#L61`, `ui/src/RootPasswordPage.test.tsx#L124`).
 - [x] **7. `main` taken in.** Who: 🤖, about ¼ hour, after lane A's merges (their walks' rows and bases in
@@ -225,7 +225,7 @@ steps 3 to 8 each run tests or the walks, so they wait for the slot. **The human
   signs in by the API and rethrows without Playwright's call log, as A's walk does with the handle.
 - **The records it touches:** writes the root's sign-in alone, its hash, `passwordAt` and generation; the root's
   session records stay, refused and read by nothing, since no sweep runs yet
-  ([`sessions.ts`](../../bff/src/sessions.ts#L66)); the operator's session renews; with the touch, the operator's
+  ([`sessions.ts`](../../bff/src/calling/sessions.ts#L66)); the operator's session renews; with the touch, the operator's
   account (the challenge spent, a passkey's last use).
 - **A root's own change racing the operator's:** the operator's wins, by its re-read. *Accepted.*
 - **Any operator may sign any client's root out,** until levels. *Guards:* the code typed, the touch if row 5.

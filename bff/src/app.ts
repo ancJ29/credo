@@ -33,11 +33,11 @@ import {
   type UserView,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest } from 'fastify';
-import { createClient, listClients, ROOT_NAME } from './clients';
+import { createClient, listClients, ROOT_NAME } from './records/clients';
 import { HttpError, parse, replyFor } from './errors';
-import { constantTimeEqual } from './constant-time';
-import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
-import { createSessions } from './sessions';
+import { constantTimeEqual } from './calling/constant-time';
+import { hashPassword, verifyAgainstNobody, verifyPassword } from './calling/password';
+import { createSessions } from './calling/sessions';
 import {
   namesPerson,
   readEmailClaim,
@@ -46,15 +46,15 @@ import {
   readSetup,
   type ReadEmployee,
   readSignIn,
-} from './staff-records';
-import { registerOperatorAuth } from './operator-auth';
-import { registerListRoutes } from './lists';
-import { registerOrderRoutes } from './orders';
-import { registerReconciliationRoutes } from './reconciliations';
-import { registerOperatorTeamRoutes } from './operator-team';
-import { registerDeleteClientRoutes } from './clients-delete';
-import { registerRootPasswordRoutes } from './root-password';
-import { registerStaffRoutes } from './staff';
+} from './records/staff-records';
+import { registerOperatorAuth } from './routes/operator-auth';
+import { registerListRoutes } from './routes/lists';
+import { registerOrderRoutes } from './routes/orders';
+import { registerReconciliationRoutes } from './routes/reconciliations';
+import { registerOperatorTeamRoutes } from './routes/operator-team';
+import { registerDeleteClientRoutes } from './routes/clients-delete';
+import { registerRootPasswordRoutes } from './routes/root-password';
+import { registerStaffRoutes } from './routes/staff';
 
 declare module 'fastify' {
   interface FastifyRequest {

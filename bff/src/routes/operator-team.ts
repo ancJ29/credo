@@ -15,8 +15,14 @@ import {
   ROUTES,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { HttpError, parse } from './errors';
-import { createOperator, deleteOperator, makeLink, readAccount, readRoster } from './operators';
+import { HttpError, parse } from '../errors';
+import {
+  createOperator,
+  deleteOperator,
+  makeLink,
+  readAccount,
+  readRoster,
+} from '../records/operators';
 
 type Deps = {
   storage: CStorageClient;

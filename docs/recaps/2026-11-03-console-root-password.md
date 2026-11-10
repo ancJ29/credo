@@ -13,9 +13,9 @@ month. Left to the human: op-5's look, the push (step 10) and ridge (step 11).
 
 ## What shipped
 
-- The route `POST /api/operator/clients/:code/root-password` (`bff/src/root-password.ts`) writes the root's sign-in
+- The route `POST /api/operator/clients/:code/root-password` (`bff/src/routes/root-password.ts`) writes the root's sign-in
   record alone, with a new hash and generation, so every session of that root ends at its next call. The write was
-  lifted out of piece 2's person route into `bff/src/staff-records.ts`, and both routes call it.
+  lifted out of piece 2's person route into `bff/src/records/staff-records.ts`, and both routes call it.
 - The page and its four screens (form, rule refused, made, failed), in vi and en, on the fake first; the touch of the
   operator's own passkey in the same act (call 5 and Decide 50).
 - The walk `operator-root-password`: 24 new bases, and op-5's sentence moved (6 bases), committed as `5f73869`.
@@ -42,8 +42,8 @@ month. Left to the human: op-5's look, the push (step 10) and ridge (step 11).
 - **op-5's moved sentence:** not yet looked at; it gates the push alone. The en versions of the four screens were not
   asked again.
 - **Three Lows, deferred as open items 61 to 63:** a timeout may hide a landed write while the message says nothing
-  changed (`bff/src/root-password.ts#L50`); the touch is tied to the act, not to the client
-  (`bff/src/operator-auth.ts#L375`); no page test for the BFF refusing the touch with a 403
+  changed (`bff/src/routes/root-password.ts#L50`); the touch is tied to the act, not to the client
+  (`bff/src/routes/operator-auth.ts#L375`); no page test for the BFF refusing the touch with a 403
   (`ui/src/RootPasswordPage.tsx#L61`).
 - **Step 10, the push,** when the human calls for it; **step 11, ridge:** reset the root of the client whose first
   password went through a chat, and answer "would you reset a client's root this way?".

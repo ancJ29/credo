@@ -68,7 +68,7 @@ a small gap here and there.
   resource, hop or key; $0 a month. A record is 1 to 2 KB, a copy's year about 2 MB.
 - **The writes**, in an order that leaves every stop valid: each request of the driver's day still waiting
   is cancelled over its tag and its order freed, as the request's cancel writes them
-  ([`orders.ts`](../../bff/src/orders.ts#L487), item 35's second bullet included); then the closed day.
+  ([`orders.ts`](../../bff/src/routes/orders.ts#L487), item 35's second bullet included); then the closed day.
   A stop between leaves the day open with those requests cancelled, and the next close goes on.
 - **Closed** means the record is there. After it nothing of that driver's day moves: its requests are
   each delivered or cancelled, both final already (slices 2 and 3); no request is sent to that driver
@@ -126,7 +126,7 @@ is asked at that client's setup, never before.
 | a driver's day, its close and its check | [`DeliveryPage.tsx`](../../ui/src/DeliveryPage.tsx) (a record, its cancel's check) |
 | the cash field | the quantity's `NumberInput` in [`OrderPage.tsx`](../../ui/src/OrderPage.tsx) |
 | each driver's line | the groups of [`DeliveriesPage.tsx`](../../ui/src/DeliveriesPage.tsx#L45) |
-| the routes | `bff/src/orders.ts`: `every`, `writeNew`, the request's cancel, and `issue` for the refusal |
+| the routes | `bff/src/routes/orders.ts`: `every`, `writeNew`, the request's cancel, and `issue` for the refusal |
 | the fake's calls and cues | slice 3's delivery calls in `ui/src/fake.ts` |
 | the stack's generator | `replayWeek` in [`generator.ts`](../../scripts/src/generator.ts#L239) |
 | the seed's block | slice 3's deliveries block in `scripts/src/demo/` (its step 10) |
@@ -229,12 +229,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `office-reconcile` answers, `orders-5-requests` again (2), and 44 more on `admin-setup`, `admin-staff`,
   `office-staff` and `phone-sign-in`. `pnpm answers` wrote 62 to `visual/answers.json`, 0 refused (`== exit 0`).
 - [x] **5. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 4 (the contract as the preview left it),
-  about ½ day: the two routes and the close's writes in a new `bff/src/reconciliations.ts`, the refusal
+  about ½ day: the two routes and the close's writes in a new `bff/src/routes/reconciliations.ts`, the refusal
   in `issue`, the stack's generator closing the data set's past days. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1 and 4 to 7 each seen red once; each touched
   package at 100 %, no warning.
-  *Evidence:* `bff/src/reconciliations.ts` (the two routes and the close's writes), the refusal in `issue`
-  (`bff/src/orders.ts`), `recordTools` shared by both route files, the generator's `closeWeek`
+  *Evidence:* `bff/src/routes/reconciliations.ts` (the two routes and the close's writes), the refusal in `issue`
+  (`bff/src/routes/orders.ts`), `recordTools` shared by both route files, the generator's `closeWeek`
   (`scripts/src/generator.ts`). `bff` 471 tests and `scripts` 217, each at 100 % (`== exit 0`); typecheck,
   prettier and eslint of the touched files exit 0. Red once each at its own assertion, logs
   `20261101-1411-driver-reconcile-red-row{1,4,5,6,7}-bff*.log` (row 5 twice: the close and the refusal in
@@ -248,7 +248,7 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   *Evidence:* Opus 5.5, 2026-11-01 14:27, in `review-a`@`beeaedb`: `logs/20261101-1427-driver-reconcile-review.md`.
   No High, no Medium; findings 1 to 11 (6 Low, 5 Info) each `[DEFERRED]` to open item 41 under the 11-04
   demo's exception, finding 3 also noted in item 35. Row 5's two clauses are held by the reviewer's runs in
-  `logs/20261101-1424-driver-reconcile-review-runs.log`: its BFF half red at run 1 (`bff/src/reconciliations.route.test.ts#L220`,
+  `logs/20261101-1424-driver-reconcile-review-runs.log`: its BFF half red at run 1 (`bff/src/routes/reconciliations.route.test.ts#L220`,
   "expected 200 to be 409") and its UI half red at run 3 (`ui/src/Reconcile.test.tsx#L379`). The whole
   `pnpm check` after `main` is in: `main`@`1ddb8b8` merged clean (7799ff7, no conflict), then one whole
   `pnpm check` `== exit 0` (`logs/20261101-1430-driver-reconcile-check.log`, 14:30 to 14:33, started at

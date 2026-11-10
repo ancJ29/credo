@@ -8,13 +8,13 @@ after one passkey touch, naming the count and the codes first. It replaces delet
 human sees the Clients page and the delete-client walk. It follows piece 77.1, the deploy's own sweep of stale check
 clients; this one is for clients made by hand.
 
-The cheapest safe path is the delete-client route and page, copied (`bff/src/clients-delete.ts`,
+The cheapest safe path is the delete-client route and page, copied (`bff/src/routes/clients-delete.ts`,
 `ui/src/DeleteClientPage.tsx`), with one new act. **Price:** no infrastructure, $0 a month; about 65 machine minutes and
 one picture run.
 
 **The design finding this plan rests on: a batch cannot be done through the existing route.** `confirmed()` opens the
-challenge as `confirm-${act}` for the operator (`bff/src/operator-auth.ts#L266-L274`), which binds purpose, subject and
-five minutes (`bff/src/challenge.ts#L34-L49`), and `spendTouch` refuses a second use of the same challenge
+challenge as `confirm-${act}` for the operator (`bff/src/routes/operator-auth.ts#L266-L274`), which binds purpose, subject and
+five minutes (`bff/src/calling/challenge.ts#L34-L49`), and `spendTouch` refuses a second use of the same challenge
 (`#L222`, hash at `#L246-L250`), **so client 2's delete would 403.** Today's multi-press delete passes only because
 `clients-delete.ts#L48-L51` skips `confirmed` once the index is gone. **The narrowest safe batch:** a new act and purpose, so
 a `delete-client` touch cannot be replayed here or the reverse, and the route recomputes the flagged set and refuses 409
@@ -22,7 +22,7 @@ unless it equals the codes the operator confirmed in the body. That comparison, 
 batch shown, so a client flagged inside the window cannot ride along.
 
 **Partial sweep.** Each press clears one client's bounded step (`deleteClient`, `DELETE_BOUND = 200`,
-`bff/src/clients.ts#L112-L114`) and answers `{ remaining, left }`; the page loops as `DeleteClientPage#L49-L52` does.
+`bff/src/records/clients.ts#L112-L114`) and answers `{ remaining, left }`; the page loops as `DeleteClientPage#L49-L52` does.
 Three of five cleared reads as three gone, two still listed and still flagged, the sweep record naming them, and the press
 reading "continue (2 left)". **The 10-second function timeout (`ops/env.yml#L223`) is why no press may loop over clients
 server-side.**
@@ -55,10 +55,10 @@ script at all; its proof is `walk/run.sh delete-client`.
   `ui/src/ClientsPage.tsx#L44-L48` with words in `ui/src/i18n/en.ts` and `vi.ts`. *Done when:* the five steps for shared,
   bff, ui and scripts; `pnpm fake` shows the badge.
 - [ ] **2. The clear route and its one touch, 18 min.** The new act and purpose, one line each at
-  `shared/src/wire.ts#L330-L338` and `bff/src/challenge.ts#L5-L15`; `recordKeys.clientSweep` (`client-sweep`, which **does
+  `shared/src/wire.ts#L330-L338` and `bff/src/calling/challenge.ts#L5-L15`; `recordKeys.clientSweep` (`client-sweep`, which **does
   not** start with `clientPrefix = 'client.'`, the trick `client-deletion.` already uses, pinned at
   `shared/src/records.test.ts#L33-L34`) and its schema; a route beside `registerDeleteClientRoutes`
-  (`bff/src/clients-delete.ts#L36`) **keeping the same check order: session, body, the flagged-set comparison, the touch,
+  (`bff/src/routes/clients-delete.ts#L36`) **keeping the same check order: session, body, the flagged-set comparison, the touch,
   then the write**; the fake's `clearTestClients`. *Done when:* the five steps for shared, bff, ui, **each new case seen red
   once (QA rule 2)**.
 - [ ] **3. The press and its loop in the console, on the fake, 12 min.** **Inside `Loaded`, and only when a flagged client is

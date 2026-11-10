@@ -1,8 +1,8 @@
 import { MAX_PHOTO_BYTES, photoReplySchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { personCalls, staffTenant } from '../tests/staff';
-import { seedEmployee } from '../tests/tenant';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { personCalls, staffTenant } from '../../tests/staff';
+import { seedEmployee } from '../../tests/tenant';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

@@ -38,8 +38,8 @@ through `records.ts`** — the one-home property is held by convention and revie
 What *is* held by tests is the behaviour at the route level: "serves the call of the client the code
 names, and no other" ([`bff/src/tenants.route.test.ts#L96`](../bff/src/tenants.route.test.ts#L96)),
 and "reaches one client only" in both
-[`clients-delete.route.test.ts#L248`](../bff/src/clients-delete.route.test.ts#L248) and
-[`operator-root-password.route.test.ts#L245`](../bff/src/operator-root-password.route.test.ts#L245).
+[`clients-delete.route.test.ts#L248`](../bff/src/routes/clients-delete.route.test.ts#L248) and
+[`operator-root-password.route.test.ts#L245`](../bff/src/routes/operator-root-password.route.test.ts#L245).
 
 So: correct today, proved at the routes, and structurally one careless key away. That is a
 reasonable position for the product and a reason to keep the review habit, not a reason to wait.
@@ -133,7 +133,7 @@ own stack is the console's, never this." A third refuses for a different reason 
 - **Could not be done.** A tunnel opened to look at the data with Bruno or curl, and demo data
   seeded, both refused by name. And **a client's root password cannot be set from a terminal at
   all**: the only path is the console's own route, which needs a live operator session and a fresh
-  passkey touch ([`bff/src/root-password.ts#L41-L48`](../bff/src/root-password.ts#L41)). If that
+  passkey touch ([`bff/src/routes/root-password.ts#L41-L48`](../bff/src/routes/root-password.ts#L41)). If that
   client's BFF is broken, there is no way to set one.
 
 And `tunnel.sh`'s refusal is defeated by a script the deploy job itself runs. `ops/check.sh` opens
@@ -195,12 +195,12 @@ session can reach the box and the file, and nothing but the box's own journal sa
 
 The irreversible acts are well guarded at the door. Deleting a client needs a live operator session,
 the client's code typed, and a fresh touch of the operator's own passkey, with every check made
-before any write ([`bff/src/clients-delete.ts#L43-L52`](../bff/src/clients-delete.ts#L43)).
+before any write ([`bff/src/routes/clients-delete.ts#L43-L52`](../bff/src/routes/clients-delete.ts#L43)).
 
 The touch, though, is bound to the operator and the act and **not to the client**: `confirmed` opens
 the token with the operator's id as its only subject
-([`bff/src/operator-auth.ts#L266-L275`](../bff/src/operator-auth.ts#L266),
-[`challenge.ts#L42-L48`](../bff/src/challenge.ts#L42)). So an unspent token minted on one client's
+([`bff/src/routes/operator-auth.ts#L266-L275`](../bff/src/routes/operator-auth.ts#L266),
+[`challenge.ts#L42-L48`](../bff/src/calling/challenge.ts#L42)). So an unspent token minted on one client's
 row would open on another client's route inside its five minutes.
 [Open item 62](open-items.md) records exactly this shape for the root-password route; the delete is
 the heavier act and is now named there too.
@@ -208,13 +208,13 @@ the heavier act and is now named there too.
 One thing behind that door is worth knowing even though it is intended. The first write removes the
 index, and from that moment the client is out of the list and every session of it is refused; the
 sweep then removes at most 200 records a press
-([`bff/src/clients.ts#L112-L174`](../bff/src/clients.ts#L112)), and a press after the index is gone
+([`bff/src/records/clients.ts#L112-L174`](../bff/src/records/clients.ts#L112)), and a press after the index is gone
 resumes on the session alone, no touch needed
-([`clients-delete.ts#L32-L33`](../bff/src/clients-delete.ts#L32)). **If nobody presses again, the
+([`clients-delete.ts#L32-L33`](../bff/src/routes/clients-delete.ts#L32)). **If nobody presses again, the
 records stay in the file for good, reachable by nothing.** `listClients` reads the index prefix
-alone ([`clients.ts#L93-L94`](../bff/src/clients.ts#L93)), and nothing anywhere reads the deletion
+alone ([`clients.ts#L93-L94`](../bff/src/records/clients.ts#L93)), and nothing anywhere reads the deletion
 record to list an unfinished deletion — its only two readers are inside `clients.ts` itself
-([`#L67`](../bff/src/clients.ts#L67), [`#L145`](../bff/src/clients.ts#L145)). So "deleted whole" is
+([`#L67`](../bff/src/records/clients.ts#L67), [`#L145`](../bff/src/records/clients.ts#L145)). So "deleted whole" is
 true of the door and not necessarily of the data. Open item 133.
 
 ### No rotation path for any of the four keys
@@ -295,8 +295,8 @@ its steps.
 - **Read whole, first-hand:** `docs/open-items.md` (all 129 items), `docs/architecture.md`,
   `docs/products.md`, `ops/lib.sh`, `ops/check.sh`, `ops/release.sh`, `ops/app.sh`, `ops/seed.sh`,
   `ops/tunnel.sh`, `ops/root-password.sh`, `ops/operator.sh`, `ops/unsafe-changes.jq`,
-  `.github/workflows/ci.yml`, `bff/src/operator-auth.ts`, `bff/src/challenge.ts`,
-  `bff/src/clients.ts`, `bff/src/clients-delete.ts`, `bff/src/root-password.ts`,
+  `.github/workflows/ci.yml`, `bff/src/routes/operator-auth.ts`, `bff/src/calling/challenge.ts`,
+  `bff/src/records/clients.ts`, `bff/src/routes/clients-delete.ts`, `bff/src/routes/root-password.ts`,
   `scripts/src/ridge-main.ts`.
 - **Read in part, at the lines cited and their neighbourhood:** `bff/src/app.ts` (the tenant and
   permission section), `shared/src/records.ts` (the key layout), `scripts/src/ridge.ts` (the
@@ -334,7 +334,7 @@ three pieces of work stand between this and a first real client.
 ### A correction, first, because the wrong version has been said twice
 
 **The order page's save route against real storage does exist.** It is
-[`bff/src/orders.ts#L280`](../bff/src/orders.ts#L280), called from
+[`bff/src/routes/orders.ts#L280`](../bff/src/routes/orders.ts#L280), called from
 [`ui/src/pages/client/OrderPage.tsx`](../ui/src/pages/client/OrderPage.tsx)'s `save`, and it has a screen of its own for the
 conflict — `orders-8-conflict` in [`visual/src/walks.ts`](../visual/src/walks.ts), which drives the
 fake with the cue `saveOrder:409`. Anyone told that the order page's write is unbuilt was told
@@ -342,9 +342,9 @@ wrong, and the reader who repeated it had been told it twice.
 
 **The real gap is one line further down, and it is narrower and sharper.** The save refuses
 anything that is not a draft: `found.order.state !== 'draft'` answers 409 with the order as it now
-is ([`bff/src/orders.ts#L290`](../bff/src/orders.ts#L290)). So a draft is fully editable — customer,
+is ([`bff/src/routes/orders.ts#L290`](../bff/src/routes/orders.ts#L290)). So a draft is fully editable — customer,
 lines, quantities — and a **confirmed** order is not editable at all. The only remedy is Cancel,
-which also cancels the delivery request ([`#L356`](../bff/src/orders.ts#L356)), and then making the
+which also cancels the delivery request ([`#L356`](../bff/src/routes/orders.ts#L356)), and then making the
 order again under a new number.
 
 A second correction, to this reader's own first pass: the Import button on the customers and
@@ -358,15 +358,15 @@ Not features — jobs a client's person could finish on a Monday.
 
 1. **An order can be taken, priced, confirmed to a named driver and a day, delivered with a photo,
    and the delivery proved to the office.** Created at
-   [`bff/src/orders.ts#L253`](../bff/src/orders.ts#L253), a draft corrected at
-   [`#L280`](../bff/src/orders.ts#L280), confirmed or sent again at
-   [`#L353-L354`](../bff/src/orders.ts#L353), delivered by the driver with a photo at
-   [`#L467`](../bff/src/orders.ts#L467), and that photo read back by the office at
-   [`#L421`](../bff/src/orders.ts#L421). The screens exist for the wrong turns as well as the right
+   [`bff/src/routes/orders.ts#L253`](../bff/src/routes/orders.ts#L253), a draft corrected at
+   [`#L280`](../bff/src/routes/orders.ts#L280), confirmed or sent again at
+   [`#L353-L354`](../bff/src/routes/orders.ts#L353), delivered by the driver with a photo at
+   [`#L467`](../bff/src/routes/orders.ts#L467), and that photo read back by the office at
+   [`#L421`](../bff/src/routes/orders.ts#L421). The screens exist for the wrong turns as well as the right
    ones — `orders-1` to `orders-12` and `driver-1` to `driver-6` in
    [`visual/src/walks.ts`](../visual/src/walks.ts) — which is what makes it a job and not a demo.
 2. **A driver's day can be settled against the cash handed in and closed for good.**
-   [`bff/src/reconciliations.ts`](../bff/src/reconciliations.ts), screens `reconcile-1` to
+   [`bff/src/routes/reconciliations.ts`](../bff/src/routes/reconciliations.ts), screens `reconcile-1` to
    `reconcile-8`.
 3. **A company can be set up and staffed.** Departments, positions, people added one at a time or
    from Excel, photos, per-person rights, a person switched off when they leave and back on when
@@ -375,7 +375,7 @@ Not features — jobs a client's person could finish on a Monday.
    `admin-setup`, `setup-1` and `staff-1` to `staff-23`.
 
 All of it is in Vietnamese and English on phone, tablet and PC, and a signed-in session lasts seven
-days sliding ([`bff/src/sessions.ts#L13`](../bff/src/sessions.ts#L13)), so a driver signs in about
+days sliding ([`bff/src/calling/sessions.ts#L13`](../bff/src/calling/sessions.ts#L13)), so a driver signs in about
 once a week rather than every morning.
 
 ### What a real business would hit in its first week
@@ -384,7 +384,7 @@ In the order they would meet it, not in order of how hard each is.
 
 1. **Fixed 2026-11-08 (open item 135, [recap](recaps/2026-11-08-add-records.md)): a clerk with `orders.canEdit` now adds either from the list's Add button; the import is still the root's alone. As the page found it:** a clerk could not add a customer or a product. The only way a record enters either list
    is the Excel import, and the import is the root's alone:
-   [`bff/src/lists.ts#L141`](../bff/src/lists.ts#L141) calls `mustBeRoot`, and
+   [`bff/src/routes/lists.ts#L141`](../bff/src/routes/lists.ts#L141) calls `mustBeRoot`, and
    [`ui/src/ClientApp.tsx#L393`](../ui/src/ClientApp.tsx#L393) says so in its own comment — "Only
    the root imports (case-table row 22): no permission allows it." There is no Add on either list
    page, and the Import button is drawn for the root only
@@ -402,7 +402,7 @@ In the order they would meet it, not in order of how hard each is.
    becomes a gap the day a client sells at agreed prices rather than list prices. Open item 136.
 4. **Nothing older than seven days can be found.** The orders route answers at most seven days
    ([`shared/src/orders.ts#L23`](../shared/src/orders.ts#L23),
-   [`bff/src/orders.ts#L218-L226`](../bff/src/orders.ts#L218)), and the page's only way back is an
+   [`bff/src/routes/orders.ts#L218-L226`](../bff/src/routes/orders.ts#L218)), and the page's only way back is an
    "Earlier" button that adds one more week and re-reads every week again
    ([`ui/src/pages/client/OrdersPage.tsx`](../ui/src/pages/client/OrdersPage.tsx)'s `readWeeks` and
    `OrdersPage`, whose "Earlier" button adds the week). There is no search by number or by customer, no filter
@@ -439,7 +439,7 @@ of them is new; what is new is saying which ones cost a client money or a record
   request's agree. Kept here only so nobody fixes it twice.
 - **[Item 41](open-items.md), finding 2 — two closes of one driver's day cannot overwrite each
   other's cash, and a test now holds it.** The close writes with a precondition
-  ([`bff/src/reconciliations.ts#L41`](../bff/src/reconciliations.ts#L41) passes `null`, which
+  ([`bff/src/routes/reconciliations.ts#L41`](../bff/src/routes/reconciliations.ts#L41) passes `null`, which
   c-storage sends as `if-none-match: *`); it was always there, but nothing held it: removing it left
   all fourteen tests green. A rival-close case (2026-11-08) now goes red without it.
 - **[Item 41](open-items.md), finding 7 — a cash close recorded against the root instead of the
@@ -451,16 +451,16 @@ of them is new; what is new is saying which ones cost a client money or a record
   The person is standing at the cash desk when they read it.
 - **[Items 36 and 39](open-items.md), findings 3 and 2 — a cancel racing a delivery leaves a
   cancelled order beside a delivered request with a photo**
-  ([`bff/src/orders.ts#L341-L347`](../bff/src/orders.ts#L341),
-  [`#L362-L365`](../bff/src/orders.ts#L362)). Goods left the yard and the books say cancelled. It
+  ([`bff/src/routes/orders.ts#L341-L347`](../bff/src/routes/orders.ts#L341),
+  [`#L362-L365`](../bff/src/routes/orders.ts#L362)). Goods left the yard and the books say cancelled. It
   needs two people acting in the same seconds, which a busy office supplies.
 - **[Item 39](open-items.md), finding 4 — the driver's phone says "Not sent" for a delivery that
-  did land** ([`bff/src/orders.ts#L473-L483`](../bff/src/orders.ts#L473)), so the driver
+  did land** ([`bff/src/routes/orders.ts#L473-L483`](../bff/src/routes/orders.ts#L473)), so the driver
   photographs it a second time while the office already reads it delivered.
 - **[Item 61](open-items.md) — the root's new password door can lie.** If c-storage saves but its
   answer misses the five-second timeout, the page says the password is as it was, while the root has
   been signed out and now holds the new one
-  ([`bff/src/root-password.ts#L50`](../bff/src/root-password.ts#L50)). The item's own trigger is
+  ([`bff/src/routes/root-password.ts#L50`](../bff/src/routes/root-password.ts#L50)). The item's own trigger is
   "the first client's root" — which is the day a client signs.
 - **[Item 62](open-items.md) — an operator's passkey touch is not bound to the client**, so a touch
   minted on one client's row opens another client's route inside its five minutes. The other half of
@@ -494,7 +494,7 @@ care.**
   receive demo data". It also makes no client and no password, which its header says in its own
   words.
 - **No seeded root password exists anywhere.** A new client's root gets a freshly minted random
-  password, shown once ([`bff/src/clients.ts#L70-L83`](../bff/src/clients.ts#L70)). The demo copies'
+  password, shown once ([`bff/src/records/clients.ts#L70-L83`](../bff/src/records/clients.ts#L70)). The demo copies'
   passwords are typed by hand into `ops/root-password.sh` and never printed.
 - **The BFF carries no test switch and no demo mode.** Its whole environment is c-storage's four
   variables and the app's origin, every one required
@@ -523,7 +523,7 @@ shape of the piece, not its steps.
    is fixed. Only item 41 finding 5's page-side reload remains, deliberately.
 3. **Correcting a confirmed order** — a decision about what "correct" means when a driver already
    holds the request, then about a day. Today it is Cancel and re-make under a new number
-   ([`bff/src/orders.ts#L290`](../bff/src/orders.ts#L290), [`#L356`](../bff/src/orders.ts#L356)).
+   ([`bff/src/routes/orders.ts#L290`](../bff/src/routes/orders.ts#L290), [`#L356`](../bff/src/routes/orders.ts#L356)).
 4. **The client's own logo in the header** ([items 76 and 103](open-items.md)). An hour, and it is
    the first thing the client sees every time they sign in.
 5. **Finding an order: a search by number or customer, and a day to open at.** Half a day to a day
@@ -548,10 +548,10 @@ which is now.
   `shared/src/permissions.ts`, `shared/src/lists.ts`, `bff/src/env.ts`, `ui/src/pages/client/OrdersPage.tsx`,
   `ops/seed.sh`'s guard section, this week's recaps in `docs/recaps/` by their headings and the two
   edit recaps in full.
-- **Read in part, at the lines cited and their neighbourhood:** `bff/src/orders.ts` (the list,
+- **Read in part, at the lines cited and their neighbourhood:** `bff/src/routes/orders.ts` (the list,
   create, save, confirm and cancel routes and the deliver route's result handling),
-  `bff/src/lists.ts` (the four routes and their permission calls), `bff/src/app.ts` (the sign-in and
-  QR routes), `bff/src/clients.ts` (the client's creation), `bff/src/sessions.ts` (the lifetimes),
+  `bff/src/routes/lists.ts` (the four routes and their permission calls), `bff/src/app.ts` (the sign-in and
+  QR routes), `bff/src/records/clients.ts` (the client's creation), `bff/src/calling/sessions.ts` (the lifetimes),
   `shared/src/orders.ts` (the schemas), `shared/src/signins.ts`, `ui/src/pages/client/OrderPage.tsx`,
   `ui/src/ClientApp.tsx` (its route table), `ui/src/pages/client/ListPage.tsx`, `ui/src/frame/Shell.tsx`,
   `ui/src/pages/SignIn.tsx`, `ui/src/pages/client/PersonPage.tsx` (its side panel and archive actions),

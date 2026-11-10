@@ -10,10 +10,10 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { ROOT_NAME } from './clients';
-import { HttpError, parse } from './errors';
-import { hashPassword, madePassword } from './password';
-import { setSignInPassword } from './staff-records';
+import { ROOT_NAME } from '../records/clients';
+import { HttpError, parse } from '../errors';
+import { hashPassword, madePassword } from '../calling/password';
+import { setSignInPassword } from '../records/staff-records';
 
 type Deps = {
   storage: CStorageClient;

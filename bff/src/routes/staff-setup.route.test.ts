@@ -1,7 +1,7 @@
 import { staffSetupDocSchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { staffTenant } from '../tests/staff';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { staffTenant } from '../../tests/staff';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

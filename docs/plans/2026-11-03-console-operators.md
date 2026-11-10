@@ -7,29 +7,29 @@ added them and when ("—" once that one is deleted), passkeys held, last sign-i
 colleague by a name with one touch of their own passkey, and copy the join link, shown once, to send; the colleague
 joins on A's join page. Only operators see it.
 
-The cheapest path is what `main` holds: `createOperator` (`bff/src/operators.ts#L108`), A's join
-(`bff/src/operator-auth.ts#L296`), the touch `confirmed` (`#L263`), D's route as the model
-(`bff/src/root-password.ts#L34`). **Price:** $0 a month; about 96 machine minutes and 20 of the human's (D took 103).
+The cheapest path is what `main` holds: `createOperator` (`bff/src/records/operators.ts#L108`), A's join
+(`bff/src/routes/operator-auth.ts#L296`), the touch `confirmed` (`#L263`), D's route as the model
+(`bff/src/routes/root-password.ts#L34`). **Price:** $0 a month; about 96 machine minutes and 20 of the human's (D took 103).
 **Next:** B2, a new link for a lost passkey and the delete, planned once B1 is in `main`.
 
 ## The slice
 
 The page `/operator/operators` in place of "coming soon" (`ui/src/operatorNav.ts#L22-L24`) and its create page, on two
-routes in a new `bff/src/operator-team.ts`:
+routes in a new `bff/src/routes/operator-team.ts`:
 
 - `GET /api/operator/operators`: the roster's lines (`shared/src/records.ts#L91-L98`) with each account's passkey count
   and last sign-in; the adder as a name, or null with `addedByTerminal`, as the join answers it
-  (`bff/src/operator-auth.ts#L302-L308`).
+  (`bff/src/routes/operator-auth.ts#L302-L308`).
 - `POST /api/operator/operators`: `{ name, confirm }`, the touch for a new act `add-operator`
   (`shared/src/wire.ts#L307`), then `createOperator`; `{ id, link }` once, or a 409.
 - **Last sign-in (F5):** every touch, the create's included, moves a passkey's `lastUsedAt`
-  (`bff/src/operator-auth.ts#L244`), so the list never reads it. The account (`shared/src/records.ts#L119`) gains
-  `signedInAt`, defaulting to null ("—"), written by the sign-in (`bff/src/operator-auth.ts#L279`) and the join
+  (`bff/src/routes/operator-auth.ts#L244`), so the list never reads it. The account (`shared/src/records.ts#L119`) gains
+  `signedInAt`, defaulting to null ("—"), written by the sign-in (`bff/src/routes/operator-auth.ts#L279`) and the join
   (`#L324`) alone. *Rejected:* the roster's line, which every sign-in would then write (console plan `#L339`).
 - **The data set:** a second active operator, added by one since deleted, with passkeys of their own;
   `DEMO_PASSKEYS` (`shared/src/demo.ts#L48`) untouched: its first id (`#L52`) moves the operator walk's bases. The invited
   operator, made with the stack's own clock (`scripts/src/generator.ts#L386-L390`), is made at a fixed time, then relinked by
-  `makeLink` (`bff/src/operators.ts#L64`), since its first link ends a day after that time (`#L115`).
+  `makeLink` (`bff/src/records/operators.ts#L64`), since its first link ends a day after that time (`#L115`).
 - **Chrome only:** Safari stays parked (`docs/open-items.md#L197`).
 
 ## The case table
@@ -47,7 +47,7 @@ Rows 1 to 4 are business rows, each red first from its assertion; every package 
 | 7 | A 401 opens A's prompt, the name kept; only `NotAllowedError` reads "not given" | unit, ui |
 | 8 | The fake's calls parse under the shared schemas, a cue's 401, 403, 409 or 503 once; the scenes equal the spec's and the walks page's, each with its Vietnamese question; vi and en at 1280, 768, 390 | unit, ui, visual; the walk |
 
-The roster's race is held already (`bff/src/operator-passkeys.route.test.ts#L1062`).
+The roster's race is held already (`bff/src/routes/operator-passkeys.route.test.ts#L1062`).
 
 ## Steps
 
@@ -73,7 +73,7 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   `pnpm stack -- <command>`: three operators listed; a create touched by `CREDO_OPERATOR_PASSKEY` 201, its link's join
   options naming the new one, listed invited, the creator's last sign-in unmoved; the name in capitals 409; no touch
   403; no handle 401.
-  *Done* (2026-11-03): `bff/src/operator-team.ts` (the list and the add); `signedInAt` on the account, written by the
+  *Done* (2026-11-03): `bff/src/routes/operator-team.ts` (the list and the add); `signedInAt` on the account, written by the
   sign-in and the join alone; `createOperator` compares names by `sameOperatorName`; the generator seeds three
   operators (the invited one made at its fixed time, its link made again by `makeLink`). Twelve route tests seen red
   first (the routes out, 12 failed), then green, plus the missing-account line; shared, bff and scripts at 100 %,
@@ -92,10 +92,10 @@ D's ceremony, since B decides who may sign in: the fake first, one review, the f
   no Medium, five Lows, its scratch worktree removed; by the rule "High and Medium fixed, the rest open items" none is fixed in B1.
   - **L1, Low:** after a timeout the roster write may have landed, yet the page says "The operator was not added" and the
     link is lost; a retry meets 409 and the invited operator is unreachable until B2's new link
-    (`bff/src/operators.ts#L138`, `ui/src/i18n/en.ts#L144`, `ui/src/i18n/vi.ts#L143`). `[DEFERRED]` to open item 65 (B2):
+    (`bff/src/records/operators.ts#L138`, `ui/src/i18n/en.ts#L144`, `ui/src/i18n/vi.ts#L143`). `[DEFERRED]` to open item 65 (B2):
     B2's new link reaches that operator.
   - **L2, Low:** the race's re-check after the tagged write's retry is held by no test; `sameOperatorName` going back to
-    `===` leaves every test green (`bff/src/operators.ts#L137`, `bff/src/operator-passkeys.route.test.ts#L1062`).
+    `===` leaves every test green (`bff/src/records/operators.ts#L137`, `bff/src/routes/operator-passkeys.route.test.ts#L1062`).
     `[DEFERRED]` to open item 66 (B2): B2's plan adds a race on two spellings of one name.
   - **L3, Low:** names are compared without Unicode normalization, so a Vietnamese name with precomposed or combining
     accents compares as different (`shared/src/wire.ts#L370`). `[DEFERRED]` to open item 67 (B2): B2's plan adds

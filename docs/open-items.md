@@ -269,10 +269,10 @@ with the behaviour broken. Under the demo's ceremony (Decide 46) only the High a
 are fixed; these stay.
 - **Row 14:** the 500 on a short or unparsable list is asserted by status and by the key being absent
   from the body, but the log line is never read. Capture the logger as
-  `bff/src/employees.route.test.ts#L1132` does and assert it names the kind and never the key.
+  `bff/src/routes/employees.route.test.ts#L1132` does and assert it names the kind and never the key.
 - **Row 13:** the record is written with `If-None-Match: *`, but no test would fail if the precondition
   went. Record the `ifTag` the wrapped client receives in the "adds each row" test of
-  `bff/src/lists.route.test.ts` and assert it is `null`.
+  `bff/src/routes/lists.route.test.ts` and assert it is `null`.
 - **Row 19:** the fake lists in code order, but no test imports a code that sorts first. Import one at
   `ui/src/fake.test.tsx#L594` and assert the list starts with it.
 
@@ -282,11 +282,11 @@ are fixed; these stay.
 
 Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
 - **`[FIXED]` in edit-an-order, step 4 (`20ba3846`):** **a first save that carries a `version`** is
-  refused 400 and no order is made (case 6, `bff/src/orders.route.test.ts`).
-- **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
+  refused 400 and no order is made (case 6, `bff/src/routes/orders.route.test.ts`).
+- **A cancelled request's order is freed by one write that may not land** (`bff/src/routes/orders.ts`, the
   request's cancel; the same again in the close of a driver's day, item 41 finding 3): a moved order is left as it is and the page reads the request as none, so the
   order offers to send again either way; no test moves the order between the two writes. Also a
-  false conflict (`bff/src/orders.ts#L388-L406`): a send pressed on a page read between the two
+  false conflict (`bff/src/routes/orders.ts#L388-L406`): a send pressed on a page read between the two
   writes meets a 409 though nothing the page showed has moved, in a window of milliseconds; a
   re-read that compares the shown order would recover it.
 - **The orders list reads each day of the span and each day its requests name**, one list read a day:
@@ -300,26 +300,26 @@ Found while building the BFF half; none breaks a demo step or the gate, so none 
 
 Found by the line 30 review; only its High and Medium findings are fixed under the demo's ceremony
 (Decide 46). None breaks a demo step or the gate.
-- **Finding 3, `bff/src/orders.ts#L341-L347`:** the order's cancel drops the request write's `moved`
+- **Finding 3, `bff/src/routes/orders.ts#L341-L347`:** the order's cancel drops the request write's `moved`
   result, so from slice 3 a request delivered between the read and the write leaves a cancelled order
   beside a delivered request. *Fix (slice 3):* on `moved`, re-read the request; if still waiting, retry
   a bounded number of times; if delivered, answer 409 with the order.
 - **`[FIXED]` in edit-an-order (step 2: the page sends the order's stored `extra`, case 10).** **Finding 4, `ui/src/pages/client/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
-  included, and the BFF stores it as given (`bff/src/orders.ts#L274`); nothing writes an order's
+  included, and the BFF stores it as given (`bff/src/routes/orders.ts#L274`); nothing writes an order's
   `extra` yet, so nothing is lost today. *Fix:* send `existing?.doc.order.extra ?? {}`, as
   `ui/src/pages/client/PersonPage.tsx#L328` merges into the stored one.
-- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** *Fixed by that earlier piece on 2026-11-07, not by money-defects; the money-defects piece (2026-11-08; it was thought still open from `docs/client-readiness.md`) built nothing for it and only re-read the code and corrected the stale prose (recap `docs/recaps/2026-11-08-money-defects.md`). The form draws a saved draft at its saved prices and marks a moved line (`ui/src/pages/client/OrderPage.tsx#L89-L92`), a moved price alone makes the save worth making (`#L106`), and the moved price is shown (`#L219-L222`).* As filed: **Finding 5, `ui/src/pages/client/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
+- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** *Fixed by that earlier piece on 2026-11-07, not by money-defects; the money-defects piece (2026-11-08; it was thought still open from `docs/client-readiness.md`) built nothing for it and only re-read the code and corrected the stale prose (recap `docs/recaps/2026-11-08-money-defects.md`). The form draws a saved draft at its saved prices and marks a moved line (`ui/src/pages/client/OrderPage.tsx#L89-L92`), a moved price alone makes the save worth making (`#L106`), and the moved price is shown (`#L219-L222`).* As filed: **Finding 5, `ui/src/pages/client/OrderPage.tsx#L85-L89` and `bff/src/routes/orders.ts#L303-L317`:** the form prices a
   saved draft from today's lists, but Confirm copies the saved lines, so after a price change the
   page's total and the request's total to collect differ. *Fix:* draw a saved draft at its saved
   prices and mark a line whose product's price has since moved, so that a save reprices it.
-- **Finding 6, `bff/src/orders-records.route.test.ts#L338-L347`:** row 18's second half ends at the
+- **Finding 6, `bff/src/routes/orders-records.route.test.ts#L338-L347`:** row 18's second half ends at the
   503, so a numbering that hands out the lost number again would stay green. *Fix:* one more `made()`
   after the 503, expecting `DH-00002`.
-- **Finding 7, `bff/src/orders.ts#L367-L369` and `ui/src/fake.ts#L629-L632`:** requests sort by number
+- **Finding 7, `bff/src/routes/orders.ts#L367-L369` and `ui/src/fake.ts#L629-L632`:** requests sort by number
   as text, so the order breaks past 99,999 requests. *Fix:* one shared comparator for both, as
   `newestOrdersFirst` (`shared/src/orders.ts#L183-L186`) compares the length first, the next time
   either is touched.
-- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
+- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/routes/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
   `version: z.string().min(1)`, outside `shared/` and looser than `tagSchema`, so a malformed version
   reads as a moved one (409), not a 400. *Fix:* a re-save schema in `shared/src/orders.ts`, beside
   item 35's first bullet.
@@ -352,7 +352,7 @@ The review of line 24 fixed its High and Medium findings and the Low that made t
   and in the page test.
 - **Finding 6, `bff/src/operator.route.test.ts#L92`:** no test tries a client root's handle on `/api/operator/services`. Fix: add the
   route to that loop.
-- **Finding 7, `bff/src/operator-auth.ts#L274`:** sv-5 is provoked by an options 503 the BFF never answers for c-storage (cue
+- **Finding 7, `bff/src/routes/operator-auth.ts#L274`:** sv-5 is provoked by an options 503 the BFF never answers for c-storage (cue
   `operatorPasskeyOptions:503`, `visual/src/walks.ts#L554`, `walk/specs/operator-services.spec.ts#L82` and `#L182`). Fix: cue
   `operatorPasskeySignIn:503` in the fake and the scene; the full spec stubs the sign-in POST and lets the virtual authenticator answer the
   touch; or record why the shortcut stays.
@@ -379,16 +379,16 @@ The review of line 24 fixed its High and Medium findings and the Low that made t
 ## 39. The driver's phone: line 32's review findings 2 to 6 and 8 to 14, deferred under the 11-04 demo's exception — the machine; *parked* until the deliveries are next touched, and worked after the demo (driver-phone, step 7, 2026-11-01)
 
 Found by the line 32 review; only its Medium finding is fixed under the demo's ceremony (Decide 46). None breaks a demo step or the gate.
-- **Finding 2, `bff/src/orders.ts#L362-L365`:** the order's cancel still drops its request write's `moved` result (slice 2's finding 3, the plan's parked 6), so a cancel racing a delivery leaves a cancelled order beside a delivered request with a photo. *Fix:* read the write's result; on `moved` re-read the request: delivered, answer 409 with `orderDoc`; still waiting, retry a bounded number of times. Test: a flaky client that delivers the request just before the cancel's request write.
-- **Finding 3, `bff/src/orders.ts#L396`:** no test holds the "not allowed to deliver" check on a request's read (`someone` and the other driver are refused at `#L398` anyway), so a driver whose right was taken away still reads their own photo. *Fix:* two assertions in `bff/src/deliveries.route.test.ts#L368-L397`: that driver reads their delivered request's photo, 403; `someone` on a request id that is not there, 403.
-- **Finding 4, `bff/src/orders.ts#L473-L483` and `ui/src/pages/client/MyDeliveryPage.tsx#L73-L76`:** when only the order's write fails, deliver answers 503 and the phone says "Not sent" for a request it delivered. *Fix:* treat the fulfil write as best effort, catch it, answer 200, and change `bff/src/deliveries.route.test.ts#L242` to expect 200.
-- **Finding 5, `bff/src/app.ts#L76` and `bff/src/orders.ts#L453-L455`:** a body up to 1 MiB (Fastify's default) is read and parsed before the sign-in and the 200 KB check. *Fix:* a route `bodyLimit` of about 300 KB on deliver and about 80 KB on the person's photo route.
+- **Finding 2, `bff/src/routes/orders.ts#L362-L365`:** the order's cancel still drops its request write's `moved` result (slice 2's finding 3, the plan's parked 6), so a cancel racing a delivery leaves a cancelled order beside a delivered request with a photo. *Fix:* read the write's result; on `moved` re-read the request: delivered, answer 409 with `orderDoc`; still waiting, retry a bounded number of times. Test: a flaky client that delivers the request just before the cancel's request write.
+- **Finding 3, `bff/src/routes/orders.ts#L396`:** no test holds the "not allowed to deliver" check on a request's read (`someone` and the other driver are refused at `#L398` anyway), so a driver whose right was taken away still reads their own photo. *Fix:* two assertions in `bff/src/routes/deliveries.route.test.ts#L368-L397`: that driver reads their delivered request's photo, 403; `someone` on a request id that is not there, 403.
+- **Finding 4, `bff/src/routes/orders.ts#L473-L483` and `ui/src/pages/client/MyDeliveryPage.tsx#L73-L76`:** when only the order's write fails, deliver answers 503 and the phone says "Not sent" for a request it delivered. *Fix:* treat the fulfil write as best effort, catch it, answer 200, and change `bff/src/routes/deliveries.route.test.ts#L242` to expect 200.
+- **Finding 5, `bff/src/app.ts#L76` and `bff/src/routes/orders.ts#L453-L455`:** a body up to 1 MiB (Fastify's default) is read and parsed before the sign-in and the 200 KB check. *Fix:* a route `bodyLimit` of about 300 KB on deliver and about 80 KB on the person's photo route.
 - **Finding 6, `ui/src/photo.ts#L45`:** `imageOrientation: 'from-image'` is a TypeError in a browser that predates the value, so every picture fails to shrink. *Fix:* on a TypeError, retry `createImageBitmap(file)` without the option. The human's phone at step 13 settles whether it is needed.
 - **Finding 8, `ui/src/photo.ts#L8`:** the rule 8 hint says the walk's browser and the human's phone hold the bound, the quality loop and the orientation; the walk's 240x180 PNG meets none. *Fix:* "the walk's browser runs it on a small PNG; the bound, the quality loop and the orientation meet a real photo only on the human's phone (step 13)".
 - **Finding 9 (skew and rollback), `shared/src/orders.ts`:** an office tab opened before the deploy fails to parse `fulfilled`, `delivered` and `deliveredAt` until reloaded, and a BFF rolled back past this slice answers 500 for any day with a delivered request. *Fix:* a line in the recap's hazards (same class as slice 2's finding 9).
-- **Finding 10, `bff/src/orders.ts#L52-L55` and `ui/src/fake.ts#L699`:** the module comment says an order naming a request that is "not waiting" reads as having none, which a delivered one no longer does; the fake stamps the real clock into `deliveredAt` (QA rule 7). *Fix:* "not there, or cancelled"; a fixed time, such as the data set's today at 10:00.
+- **Finding 10, `bff/src/routes/orders.ts#L52-L55` and `ui/src/fake.ts#L699`:** the module comment says an order naming a request that is "not waiting" reads as having none, which a delivered one no longer does; the fake stamps the real clock into `deliveredAt` (QA rule 7). *Fix:* "not there, or cancelled"; a fixed time, such as the data set's today at 10:00.
 - **Finding 11, `scripts/src/generator.ts#L253`:** the generator signs a driver in once per delivered request, about a dozen scrypt checks and session records per seed. *Fix:* sign each driver in once per seed, keyed by code.
-- **Finding 14, `bff/src/orders.ts#L444-L451`:** two delivers of one request at once by its driver let the losing call's photo overwrite the winner's (same driver, same goods). *Fix:* none now.
+- **Finding 14, `bff/src/routes/orders.ts#L444-L451`:** two delivers of one request at once by its driver let the losing call's photo overwrite the winner's (same driver, same goods). *Fix:* none now.
 - **Finding 14, `walk/specs/piece-2.spec.ts#L125` and `walk/specs/orders.spec.ts#L126`:** `withoutDriversAllowed` is written twice with two signatures. *Fix:* fold it into `walk/support.ts` when either spec is next touched.
 
 *Trigger:* after the 11-04 demo, the deliveries next touched, a cancel and a delivery seen racing, or the human's phone at step 13 showing a picture refused.
@@ -402,13 +402,13 @@ Found by the line 32 review; only its Medium finding is fixed under the demo's c
 ## 41. Slice 4, đối soát: line 35's review findings 1 to 11, deferred under the 11-04 demo's exception — the machine; *partly closed* by money-defects (`f6a12579` to `333a7f2d`, 2026-11-08): findings 2 and 7 are `[FIXED]`, finding 5 half so, the rest stay parked until the day's end is next touched (driver-reconcile, step 6, 2026-11-01)
 
 Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; its file is `logs/20261101-1427-driver-reconcile-review.md`, its runs `logs/20261101-1424-driver-reconcile-review-runs.log`). It found no High and no Medium, so under the demo's ceremony (Decide 46) nothing is fixed now; each finding is `[DEFERRED]` here. None breaks a demo step or the gate.
-- **Finding 1, `docs/plans/2026-11-01-driver-reconcile.md`, step 5's evidence:** row 5's two clauses were seen red only through other rows' assertions (the BFF's through the 409 body, the UI's through the Closed table). *Fix:* none in code; the reviewer's runs 1 and 3 hold them (BFF `bff/src/reconciliations.route.test.ts#L220`, UI `ui/src/pages/client/Reconcile.test.tsx#L379`) and step 6's tick names that log.
-- **`[FIXED]` in money-defects (`bc5ddb24`, 2026-11-08, Low as filed, on money; it was a missing test, not a missing safeguard).** *The precondition was always in the code: `bff/src/reconciliations.ts#L41` passes `null` and `shared/src/c-storage.ts#L105-L107` turns it into `if-none-match: *`, so two closes could never overwrite each other's cash. What was missing was anything holding it, and `bc5ddb24` adds that: a `'rival'` mode that lands a rival close under the key and lets our write through, so the precondition itself refuses it (409, the first close's cash kept); with the `null` dropped the case is red. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 2, `bff/src/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
-- **Finding 3, `bff/src/reconciliations.ts#L115-L126`, tests `#L153-L154` and `#L420-L432`:** the order's free and its guard are held by no test, item 35's second bullet a second time. *Fix:* assert the stored order's `request` in the close test; at `#L420` make the order name another request id and expect it kept.
-- **Finding 4, `bff/src/reconciliations.route.test.ts#L406` and `#L371-L372`:** a test name and a comment say more than their tests hold (a throwing order write, not a `moved` one; a fresh body, not the old). *Fix:* rename `#L406` and add the `moved` case (200, the order left); at `#L372` send the old body first (409), then the fresh one (200).
-- **Half `[FIXED]` in money-defects (`f6a12579`, 2026-11-08); the page's reload stays open on purpose.** *The closer is now read before the first write, so a gone person stops the close with nothing cancelled. The `catch` calling `loaded.reload()` was out of this piece's scope and stays open; the 409 wording still blames a delivery.* As filed: **Finding 5, `ui/src/pages/client/DriverDayPage.tsx#L69-L72`, `bff/src/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
+- **Finding 1, `docs/plans/2026-11-01-driver-reconcile.md`, step 5's evidence:** row 5's two clauses were seen red only through other rows' assertions (the BFF's through the 409 body, the UI's through the Closed table). *Fix:* none in code; the reviewer's runs 1 and 3 hold them (BFF `bff/src/routes/reconciliations.route.test.ts#L220`, UI `ui/src/pages/client/Reconcile.test.tsx#L379`) and step 6's tick names that log.
+- **`[FIXED]` in money-defects (`bc5ddb24`, 2026-11-08, Low as filed, on money; it was a missing test, not a missing safeguard).** *The precondition was always in the code: `bff/src/routes/reconciliations.ts#L41` passes `null` and `shared/src/c-storage.ts#L105-L107` turns it into `if-none-match: *`, so two closes could never overwrite each other's cash. What was missing was anything holding it, and `bc5ddb24` adds that: a `'rival'` mode that lands a rival close under the key and lets our write through, so the precondition itself refuses it (409, the first close's cash kept); with the `null` dropped the case is red. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 2, `bff/src/routes/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
+- **Finding 3, `bff/src/routes/reconciliations.ts#L115-L126`, tests `#L153-L154` and `#L420-L432`:** the order's free and its guard are held by no test, item 35's second bullet a second time. *Fix:* assert the stored order's `request` in the close test; at `#L420` make the order name another request id and expect it kept.
+- **Finding 4, `bff/src/routes/reconciliations.route.test.ts#L406` and `#L371-L372`:** a test name and a comment say more than their tests hold (a throwing order write, not a `moved` one; a fresh body, not the old). *Fix:* rename `#L406` and add the `moved` case (200, the order left); at `#L372` send the old body first (409), then the fresh one (200).
+- **Half `[FIXED]` in money-defects (`f6a12579`, 2026-11-08); the page's reload stays open on purpose.** *The closer is now read before the first write, so a gone person stops the close with nothing cancelled. The `catch` calling `loaded.reload()` was out of this piece's scope and stays open; the 409 wording still blames a delivery.* As filed: **Finding 5, `ui/src/pages/client/DriverDayPage.tsx#L69-L72`, `bff/src/routes/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
 - **Finding 6, `ui/src/i18n/en.ts#L172`, `ui/src/i18n/vi.ts#L173`, `shared/src/permissions.ts#L6-L7`:** the editors' words for `orders.canEdit` do not say it closes a driver's day. *Fix:* a code comment now; the words with the next change to piece 2's editors or the cashier right (re-asks their screens).
-- **`[FIXED]` in money-defects (`f6a12579`, 2026-11-08, Low as filed, on money; a race only).** *Reached only when the closer's staff record went between the sign-in's read and the close's, a window that spanned the whole cancel loop; then the close was stored with the root's shape and the cashier's own name. The read now sits above the cancel loop and a gone record is a 401 with nothing cancelled and nothing written; the root alone has no id, so the mis-attribution branch is unreachable for anyone else. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 7, `bff/src/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
+- **`[FIXED]` in money-defects (`f6a12579`, 2026-11-08, Low as filed, on money; a race only).** *Reached only when the closer's staff record went between the sign-in's read and the close's, a window that spanned the whole cancel loop; then the close was stored with the root's shape and the cashier's own name. The read now sits above the cancel loop and a gone record is a 401 with nothing cancelled and nothing written; the root alone has no id, so the mis-attribution branch is unreachable for anyone else. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 7, `bff/src/routes/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
 - **Finding 8, `ui/src/fake.ts#L449-L456` and `#L364-L370`:** the fake looks for the driver (404) before parsing the body (400), frees the order whatever it names, and refuses no extra key. *Fix:* when the fake is next touched, parse `closeDayRequestSchema` first.
 - **Finding 9, `shared/src/reconciliations.ts#L65`:** `driverDay` sorts request numbers as text, item 36's finding 7 in another place. *Fix:* the shared comparator that item 36 names.
 - **Finding 10, `ui/src/i18n/en.ts#L685` (and `vi.ts#L685`), `ui/src/fake.test.tsx#L1908-L1939`:** the moved words name two of the 409's causes; the fake's test asserts less than its name. *Fix:* the words on a no at step 8 or 12 (re-asks screen 7); assert that Nam's two waiting requests still wait.
@@ -502,7 +502,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 **History, so the next reader meets no third confident claim.** This item first said the reds were load. This morning it was rewritten to say they were headroom, one shared cause for the `bff` case and for "some `ui` tests". That shared cause was asserted and then withdrawn the same day: only the `bff` half was ever measured.
 
-**Measured, for the `bff` case only.** `bff/src/clients-delete.route.test.ts` case 13 was run alone, three times on an idle machine, and took **4155 ms, 4132 ms and 4175 ms against a 5000 ms limit**, about **82 per cent of its own timeout every run** (`logs/20261108-1205-money-defects-clients-delete-alone.log`). A case that close to its limit reddens at any load, which is why "the load that does it" was never a stable number. *Fix:* make that case cheaper or give it a limit that leaves room, and hold what it waits on by the test's own signal, not a time.
+**Measured, for the `bff` case only.** `bff/src/routes/clients-delete.route.test.ts` case 13 was run alone, three times on an idle machine, and took **4155 ms, 4132 ms and 4175 ms against a 5000 ms limit**, about **82 per cent of its own timeout every run** (`logs/20261108-1205-money-defects-clients-delete-alone.log`). A case that close to its limit reddens at any load, which is why "the load that does it" was never a stable number. *Fix:* make that case cheaper or give it a limit that leaves room, and hold what it waits on by the test's own signal, not a time.
 
 **Not known, for the `ui` cases.** No `ui` case was ever timed alone, so nothing says they sit near a limit. The best evidence of how one fails is the sighting from GitHub below: an element that never appeared, which is not a clock running out. The two may well be unrelated faults filed under one number; the first step for the `ui` side is to time that case alone and to read why "Send it again" was not on the page, before any fix.
 
@@ -536,15 +536,15 @@ undefined. Fix: take the language from the build's data, or fall back to `vi`.
 
 ## 61. After a timeout the failure message says nothing changed, yet the write may have landed — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
 
-c-storage saves the root's record but its answer misses the BFF's 5-second timeout: the BFF answers 503 and the page says the password is as it was, while the root is signed out and holds the new one. A retry repairs it. Lines: `ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/root-password.ts#L50`. *Fix:* word it "may not have been set: set it again" in both languages and re-take screen 4; or `setSignInPassword` re-reads once after a write with no answer.
+c-storage saves the root's record but its answer misses the BFF's 5-second timeout: the BFF answers 503 and the page says the password is as it was, while the root is signed out and holds the new one. A retry repairs it. Lines: `ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/routes/root-password.ts#L50`. *Fix:* word it "may not have been set: set it again" in both languages and re-take screen 4; or `setSignInPassword` re-reads once after a write with no answer.
 
 *Trigger:* the first client's root, or the next change to the route.
 
 ## 62. The root-password touch is not tied to the client, and nor is the delete's — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low; widened 2026-11-07)
 
-Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
+Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/routes/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/routes/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
 
-**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/operator-auth.ts#L266-L275`, `bff/src/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
+**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/routes/operator-auth.ts#L266-L275`, `bff/src/calling/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/routes/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
 
 *Trigger:* before a second operator or a client signs.
 
@@ -559,7 +559,7 @@ The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/pag
 `scripts/src/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
 and the function around it showed uncovered in one whole run of the scripts' tests (263 pass, statements 99.92 %,
 branches 99.82 %), under a load near 8; the same tests passed at 100 % when run again with nothing else changed (the
-only change between the two runs was a type in `bff/src/challenge.ts`, which `scripts` does not run). So the retry is
+only change between the two runs was a type in `bff/src/calling/challenge.ts`, which `scripts` does not run). So the retry is
 covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
 stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.
 
@@ -571,13 +571,13 @@ stand-in's own clock. *Trigger:* the next red of this kind, or the next change t
 
 ## 70. An add or a link the target began before its delete can land after the sweep — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, amended after the reread of `4131696`, 2026-11-03, Low)
 
-`createOperator`'s retry (`bff/src/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. The gap is wider since the fix at `4131696`: the target stays signed in until the roster write, so a link they make after the sweep has passed that colleague's account and before the roster write survives the 204 (`bff/src/operators.ts#L181-L190`). The comment at `#L165-L166` ("no link of theirs or of their making is left") claims more than this. *Fix:* none now; check the maker on the roster at the last write, and say so in the comment.
+`createOperator`'s retry (`bff/src/records/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. The gap is wider since the fix at `4131696`: the target stays signed in until the roster write, so a link they make after the sweep has passed that colleague's account and before the roster write survives the 204 (`bff/src/records/operators.ts#L181-L190`). The comment at `#L165-L166` ("no link of theirs or of their making is left") claims more than this. *Fix:* none now; check the maker on the roster at the last write, and say so in the comment.
 
 *Trigger:* two operators acting in the same instants.
 
 ## 71. The link's kind comes from a roster read that can be stale — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
 
-A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) and `makeLink` gets a `join` link while active; using it replaces their passkeys (`bff/src/operator-auth.ts#L328-L332`) without raising the generation, so their sessions are not ended. *Fix:* none now; make the link's kind from the account, not the roster.
+A colleague who joins between the read (`bff/src/routes/operator-team.ts#L100-L107`) and `makeLink` gets a `join` link while active; using it replaces their passkeys (`bff/src/routes/operator-auth.ts#L328-L332`) without raising the generation, so their sessions are not ended. *Fix:* none now; make the link's kind from the account, not the roster.
 
 *Trigger:* a join in the instant a link is made for the same colleague.
 
@@ -589,7 +589,7 @@ A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) an
 
 ## 73. A delete refused at its roster write has already removed the links of an operator who stays listed — the machine; `[DEFERRED]` (B2, plan step 5, reread of `4131696`, Opus, 2026-11-03, Low)
 
-A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
+A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/records/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
 
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
 
@@ -813,7 +813,7 @@ Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now 
 
 ## 126. The 409's `current: null` arm has no case — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
-In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
+In `bff/src/routes/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
 
 ## 127. The product page's `extra` test dropped two of its three variants — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
@@ -867,7 +867,7 @@ check (item 131), run the crash drill — which kills c-storage and reboots the 
 the operator with a one-time join link, `--replace` being the way back from lost passkeys
 (`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
 that client's root password from a terminal**: the only path is the console's route, which needs a live operator
-session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
+session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
 *Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
 the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
 *Trigger:* a client's own stack.
@@ -875,8 +875,8 @@ the terminal path to a root password is the one gap that is a missing capability
 ## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
 
 `deleteClient` removes the index first — from that write the client is out of the list and every session of it is
-refused — then sweeps at most 200 records a press (`bff/src/clients.ts#L112-L174`), and a press after the index is
-gone resumes on the session alone (`bff/src/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
+refused — then sweeps at most 200 records a press (`bff/src/records/clients.ts#L112-L174`), and a press after the index is
+gone resumes on the session alone (`bff/src/routes/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
 in the file for good, reachable by nothing: `listClients` reads the index prefix alone (`clients.ts#L93-L94`), and
 the deletion record's only two readers are inside `clients.ts` itself (`#L67`, `#L145`) — no route, no page and no
 script lists one. The code is held, so the client cannot be made again (`#L67`), which is right; what is missing is
@@ -904,15 +904,15 @@ stack.
 *Fixed in add records (`4552e6ea` to `cee6a814`, recap `docs/recaps/2026-11-08-add-records.md`):* an Add path now exists beside the import on both lists, for whoever holds `orders.canEdit`: `POST /api/customers` and `POST /api/products` through the import's own row rule and write, an Add button on each list, and a page that copies the detail form with the code box open. **The import is still root-only**, deliberately, and a review re-proved it with a test using a person holding every permission; the closure does not open it. The right chosen is `orders.canEdit`, because the catalogue holds no `orders.canCreate` and that right already makes records on these pages. As filed:
 
 The only way a record enters the customers or the products list is the Excel import, and the import is the
-root's: `bff/src/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
+root's: `bff/src/routes/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
 comment — "Only the root imports (case-table row 22): no permission allows it." Neither list page draws an
 Add, and the Import button is drawn for the root alone (`ui/src/pages/client/ListPage.tsx#L26`), so a person with
 `orders.canEdit` sees no path at all, not even a refused one. That person can already *correct* a customer
-and a product on its page (`bff/src/lists.ts#L212`, the same right), so the gap is the add and the add only.
+and a product on its page (`bff/src/routes/lists.ts#L212`, the same right), so the gap is the add and the add only.
 **What it costs a real client:** a new customer telephones, and the order cannot be taken until the owner
 signs in and builds a spreadsheet. Of everything the client-readiness read found, this is the one that
 blocks the first order. *Fix:* one add form a list, over the add path the import already uses
-(`bff/src/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
+(`bff/src/routes/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
 the cheapest answer and the weaker decision. *Severity:* High for a first client; none for ridge, where the
 demo seed writes both lists. *Trigger:* the first client takes an order.
 
@@ -921,7 +921,7 @@ demo seed writes both lists. *Trigger:* the first client takes an order.
 A line is a product id and a quantity, and the price is always the product list's: the schema says so in its
 own words, "the customer and the lines by id and quantity, never a price or a total"
 (`shared/src/orders.ts#L130-L146`), and the BFF prices every save and every confirm from the lists
-(`bff/src/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
+(`bff/src/routes/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
 fee and no VAT line, and because `total` is `z.number().int().min(1)` (`shared/src/orders.ts#L108`) an order
 worth nothing — a free replacement after a damaged delivery — cannot be recorded at all. This is a
 deliberate shape, not a defect: it is what makes the server the only pricer and keeps a tampered total out.
@@ -933,12 +933,12 @@ delivery.
 ## 137. Nothing older than seven days can be found: no search by number or customer, and "Earlier" re-reads every week again — the machine; *parked* until a client's second week (the client-readiness read, 2026-11-07)
 
 The orders route answers at most seven days and refuses a wider span (`shared/src/orders.ts#L23`,
-`bff/src/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
+`bff/src/routes/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
 count and re-reads *every* week from today (`ui/src/pages/client/OrdersPage.tsx#L13-L19`, `#L83`): at twelve weeks that
 is twelve calls of seven day-lists each. There is no search by order number, no search by customer, no
 filter by state and no day to open at. Finding last month's order means pressing Earlier five times and
 reading an unfiltered table. The delivery requests page has the same shape, a day at a time
-(`bff/src/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
+(`bff/src/routes/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
 this item is the other half of it, what a person can and cannot find. *Fix:* a search by number and by
 customer, and a day to open the list at, which together need an index rather than a wider day span.
 *Trigger:* a client's second week, or the first time someone is asked for last month's order.
@@ -963,7 +963,7 @@ fifteen minutes (`shared/src/signins.ts#L29`) — it is handed over, never sent.
 - **A staff member who forgets their password** has no self-service path; the root types them a new one
   (the root's own screen, `staff-6-password`).
 - **The root has none at all.** Only an operator can set a client's root password, from the console, with a
-  live session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`) — and that door can report
+  live session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`) — and that door can report
   "as it was" over a password that was in fact set (item 61).
 - **Nothing reaches a customer**: no order confirmation, no delivery notice.
 The walks page's partner sign-in by emailed code is Cloudflare's, not the product's, so it is no precedent.
@@ -973,7 +973,7 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 ## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[FIXED]` (edit-an-order, step 5's whole check, 2026-11-07, High)
 
-`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
+`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/routes/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
 
 ## 141. The page's "Now X" figure is the list as read when the editor mounted — the machine; `[DEFERRED]` (edit-an-order, review of line 64, milestone 3, 2026-11-07, Low)
 
@@ -1005,11 +1005,11 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 ## 148. An add's uniqueness is read-then-write, so two adds of one code can both land, and a lost answer can duplicate — the machine; `[OPEN]` (add-records, plan and review, 2026-11-07, Low)
 
-A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.
+A record's key is its uuid, not its code (`bff/src/routes/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/routes/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.
 
 ## 149. The 409 case's post-condition is narrower than its sentence — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
 
-`bff/src/reconciliations.route.test.ts#L478` asserts only `handedIn === 1` of the surviving record. The rival the `'rival'` mode writes is our own record with `handedIn` forced, so its `difference` is still the one computed for 5 and the stored record is internally inconsistent. The 409 and the surviving cash both hold, so nothing is wrong today, but an assertion over the whole stored record would also catch a future change that merged fields. It is a pre-existing pattern inherited from the `'theirs'` mode (`#L45-L48`). *Fix:* assert the whole stored record, with a rival that is consistent. *Trigger:* the next edit of the close route or of that mode.
+`bff/src/routes/reconciliations.route.test.ts#L478` asserts only `handedIn === 1` of the surviving record. The rival the `'rival'` mode writes is our own record with `handedIn` forced, so its `difference` is still the one computed for 5 and the stored record is internally inconsistent. The 409 and the surviving cash both hold, so nothing is wrong today, but an assertion over the whole stored record would also catch a future change that merged fields. It is a pre-existing pattern inherited from the `'theirs'` mode (`#L45-L48`). *Fix:* assert the whole stored record, with a rival that is consistent. *Trigger:* the next edit of the close route or of that mode.
 
 ## 150. The day page's pre-close sum is held by pixels, not by an assertion — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
 
@@ -1035,7 +1035,7 @@ A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so 
 
 ## 152. No line names the client whose records were read: the stage's access log cannot carry the client's code — the machine; `[OPEN]` (the access log, 2026-11-08, Low: ridge holds no real client records today, and the path already names a record id on detail routes, so the gap costs nothing until a client signs)
 
-**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
+**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/routes/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
 
 **What is not known.** Whether the two lines can be joined by a shared request id, and whether the BFF should write one line of its own with the client's code and the record read. Neither was looked at; this item records the gap so it is not left silent.
 
@@ -1071,7 +1071,7 @@ Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-rea
 
 ## 159. A failed sweep or a failed check-client delete is announced only by a `WARN` nothing reads, and a half-swept client cannot be resumed — the machine; `[DEFERRED]` (clear-test-clients-sweep, review of line 77.1, 2026-11-09, Low)
 
-Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.github/workflows/*.yml` reads `WARN`: the two echo lines (`ops/check.sh#L169` for the sweep, `#L44` for the check's own delete) are the whole announcement. Second shape, pre-existing in `untenant`: `deleteClient` removes the client's index before its records (`bff/src/clients.ts#L148-L152`), so a delete that stops midway leaves the client out of `listClients` and no later sweep can resume it. Unreachable today (a check client holds 3 records against `DELETE_BOUND = 200`). Third: nothing reserves the `check-<stamp>` code shape (`shared/src/records.ts#L77` admits it), so a client typed with such a code and an old stamp would be swept. *Trigger:* a `check-…` client surviving two deploys; then make the workflow surface `WARN`, and for the other two a reservation or a resumable delete as a piece of their own.
+Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.github/workflows/*.yml` reads `WARN`: the two echo lines (`ops/check.sh#L169` for the sweep, `#L44` for the check's own delete) are the whole announcement. Second shape, pre-existing in `untenant`: `deleteClient` removes the client's index before its records (`bff/src/records/clients.ts#L148-L152`), so a delete that stops midway leaves the client out of `listClients` and no later sweep can resume it. Unreachable today (a check client holds 3 records against `DELETE_BOUND = 200`). Third: nothing reserves the `check-<stamp>` code shape (`shared/src/records.ts#L77` admits it), so a client typed with such a code and an old stamp would be swept. *Trigger:* a `check-…` client surviving two deploys; then make the workflow surface `WARN`, and for the other two a reservation or a resumable delete as a piece of their own.
 ## 160. The convention's rules that a check should hold instead of prose — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
 [The code convention](conventions/code.md) states these rules in prose, which holds them only while
@@ -1084,8 +1084,8 @@ appends its pattern to the list a test reads (`server_test.go#L106`).
 | no screen imports the API client; nothing in `bff/src` calls `fetch` | an eslint import-boundary rule (`no-restricted-imports` on `./api` outside `ui/src/api.ts` and the two app shells) in `eslint.config.js`, which today is 35 lines with one configured rule |
 | every `CREDO_*` name comes from one declaration | export the eleven names at `scripts/src/cli.ts#L132-L141` from `shared/` and import them in the twelve `walk/specs/*.spec.ts` and `walk/run.sh`, so a dropped name is a compile error rather than an `undefined` |
 | the three screen widths are declared once | one exported set in `shared/`, replacing `visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`, `ui/src/mock/Frame.tsx#L8` — and retiring the regex in `visual/src/walks.test.ts` that reads one of them as source text |
-| the retry bound is one number | one export imported by `bff/src/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
-| the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/staff.ts` and `bff/src/orders.ts` (single closures of 629 and 453 lines) |
+| the retry bound is one number | one export imported by `bff/src/records/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
+| the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/routes/staff.ts` and `bff/src/routes/orders.ts` (single closures of 629 and 453 lines) |
 | the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 161 is the two it misses today) |
 | one `refuse()` and one log opener, one shebang | two greps in `ops/test.sh`: `ops/lib.sh#L75`'s opener used by all seventeen scripts, and `#!/usr/bin/env bash` on each — four scripts the human runs by hand pin `#!/bin/bash` (bash 3.2) and define `refuse()` separately, one of them already using newer-bash arrays |
 | no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
@@ -1237,11 +1237,11 @@ Six packages each have a `check` script that calls `ops/gate.sh`, so `pnpm -r ru
 
 ## 180. `scripts/src/demo/apply-support.ts`'s `staffOf` lists under a prefix and parses each record with no truncation guard at all — the machine; *parked* (the one-home review, 2026-11-09, Medium)
 
-**A live failure mode:** `staffOf` (`#L60`) reads `listed.records` and never asks `listed.more`, so a staff list longer than one answer is read short and every caller goes on with part of the staff, silently. Its sibling `demo/apply.ts`'s `isFresh` does guard. The package cannot import the back end's one home (`bff/src/records.ts`), so the guard must be written here or lifted to `shared`. *Trigger:* any demo copy with a long staff list; the fix is small and need not wait.
+**A live failure mode:** `staffOf` (`#L60`) reads `listed.records` and never asks `listed.more`, so a staff list longer than one answer is read short and every caller goes on with part of the staff, silently. Its sibling `demo/apply.ts`'s `isFresh` does guard. The package cannot import the back end's one home (`bff/src/records/records.ts`), so the guard must be written here or lifted to `shared`. *Trigger:* any demo copy with a long staff list; the fix is small and need not wait.
 
-## 181. `bff/src/lists.ts`'s `readOne` parses one record inline with its own message — the machine; *parked* (the one-home review, 2026-11-09, Low)
+## 181. `bff/src/routes/lists.ts`'s `readOne` parses one record inline with its own message — the machine; *parked* (the one-home review, 2026-11-09, Low)
 
-`#L184`, while the one home's helper (`bff/src/records.ts`) is already imported in that file. *Trigger:* the next change to `lists.ts`.
+`#L184`, while the one home's helper (`bff/src/records/records.ts`) is already imported in that file. *Trigger:* the next change to `lists.ts`.
 
 ## 182. What a 401 means is declared twice, and the new 403 home spells `401` inline — the machine; *parked* (the one-home review, 2026-11-09, Low)
 

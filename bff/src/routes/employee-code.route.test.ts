@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { CStorageError, type CStorageClient, nextCode, storedUserSchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { personCalls, staffTenant } from '../tests/staff';
-import { seedEmployee, signIn } from '../tests/tenant';
-import { hashPassword } from './password';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { personCalls, staffTenant } from '../../tests/staff';
+import { seedEmployee, signIn } from '../../tests/tenant';
+import { hashPassword } from '../calling/password';
 import { ADD_MAX_MS } from './staff';
 
 let cs: RunningCStorage;

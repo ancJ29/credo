@@ -6,10 +6,10 @@ import {
   storedClientDeletionSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { joinedOperator, touchFor } from '../tests/operator';
-import { bffOn, CODE, scoped, seedTenant, signIn, withAuth } from '../tests/tenant';
-import { DELETE_BOUND } from './clients';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { joinedOperator, touchFor } from '../../tests/operator';
+import { bffOn, CODE, scoped, seedTenant, signIn, withAuth } from '../../tests/tenant';
+import { DELETE_BOUND } from '../records/clients';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

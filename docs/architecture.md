@@ -75,7 +75,7 @@ record written at step 9 — never the shape.
 8. **The key.** The customer's key is built in one place, `shared/src/records.ts`: `tenant.`, the
    client's minted id, `customer.`, then the customer's id. **Nothing else in the repository builds a
    key** — which is why the store can be told apart from the rules at all.
-9. **The write.** `bff/src/lists.ts` reads the record, lays the new values over it, and writes it with
+9. **The write.** `bff/src/routes/lists.ts` reads the record, lays the new values over it, and writes it with
    the version it read as a precondition. `shared/src/c-storage.ts` turns that into one `PUT` over the
    private network, carrying the internal key and the BFF's own service key, under a five-second
    bound.

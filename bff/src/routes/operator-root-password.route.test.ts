@@ -8,11 +8,20 @@ import {
   storedUserSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
-import { SoftwareAuthenticator } from '../tests/authenticator';
-import { type RunningCStorage, startCStorage } from '../tests/c-storage';
-import { joinedOperator, post, touchFor } from '../tests/operator';
-import { bffOn, CODE, ORIGIN, ROOT, scoped, seedTenant, signIn, withAuth } from '../tests/tenant';
-import { verifyPassword } from './password';
+import { SoftwareAuthenticator } from '../../tests/authenticator';
+import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
+import { joinedOperator, post, touchFor } from '../../tests/operator';
+import {
+  bffOn,
+  CODE,
+  ORIGIN,
+  ROOT,
+  scoped,
+  seedTenant,
+  signIn,
+  withAuth,
+} from '../../tests/tenant';
+import { verifyPassword } from '../calling/password';
 
 let cs: RunningCStorage;
 beforeAll(async () => {

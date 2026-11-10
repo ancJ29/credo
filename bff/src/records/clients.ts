@@ -14,7 +14,7 @@ import {
   type StoredUser,
   type TenantConfig,
 } from '@credo/shared';
-import { hashPassword, newPassword } from './password';
+import { hashPassword, newPassword } from '../calling/password';
 import { recordTools } from './records';
 
 export const ROOT_NAME = 'root';

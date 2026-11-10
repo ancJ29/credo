@@ -260,8 +260,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-2-add');
 
   // 3. Added: the sign-in name and a first password, shown once; the password is masked, since the
-  // full run's is minted (QA rule 7). Held by bff/src/employees.route.test.ts: "answers 201 with the
-  // first password, and lists the person once, …", and bff/src/password.test.ts: "holds a capital, a
+  // full run's is minted (QA rule 7). Held by bff/src/routes/employees.route.test.ts: "answers 201 with the
+  // first password, and lists the person once, …", and bff/src/calling/password.test.ts: "holds a capital, a
   // small letter, a digit and one of @$!%*?& in 12 characters, and differs each time".
   await press(words.addPerson.submit);
   await expect(title(words.addPerson.madeTitle)).toBeVisible();
@@ -286,8 +286,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-5-permissions');
 
   // 6. A password made, shown once; masked, since it is minted (QA rule 7). Held by
-  // bff/src/employees.route.test.ts: "signs the person out on every device: a session issued before
-  // the new password is a 401", and bff/src/password.test.ts as for screen 3.
+  // bff/src/routes/employees.route.test.ts: "signs the person out on every device: a session issued before
+  // the new password is a 401", and bff/src/calling/password.test.ts as for screen 3.
   await open(page, language, { path: '/staff' });
   await personNamed(page, 'Bùi Ngọc Anh');
   await press(words.person.passwordMake);

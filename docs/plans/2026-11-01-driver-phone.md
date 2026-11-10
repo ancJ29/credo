@@ -135,7 +135,7 @@ and an hour and a quarter of the human's, an estimate.
 | --- | --- |
 | My deliveries; the driver's request page | slice 2's `DeliveriesPage.tsx` and `DeliveryPage.tsx` |
 | the camera, the preview, the shrink | [`PhotoPanel.tsx`](../../ui/src/PhotoPanel.tsx), `shrinkToPhoto` in [`photo.ts`](../../ui/src/photo.ts#L12) |
-| the routes | slice 2's `bff/src/orders.ts` (`issue` and its write order); the photo route in [`staff.ts`](../../bff/src/staff.ts#L600) |
+| the routes | slice 2's `bff/src/routes/orders.ts` (`issue` and its write order); the photo route in [`staff.ts`](../../bff/src/routes/staff.ts#L600) |
 | the menu's page | [`nav.ts`](../../ui/src/nav.ts) |
 | the fake's calls and cues | slice 2's delivery calls in `ui/src/fake.ts` |
 | the stack's generator | slice 2's week in `scripts/src/generator.ts` |
@@ -255,12 +255,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   here and its fix lands before step 6. **Then stop.**
   *Evidence:* 20 of 20 answers yes on 2026-11-01 about 10:2x, for build `driver-phone`@`d60486b27`; `pnpm answers` wrote 20 to `visual/answers.json`, 0 refused (the 4 asked again replaced, 16 new); no case added.
 - [x] **6. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 5 (the contract as the preview left
-  it), about ½ day: the three routes and the deliver in `bff/src/orders.ts`, the order's shown request
+  it), about ½ day: the three routes and the deliver in `bff/src/routes/orders.ts`, the order's shown request
   and its cancel's refusal of a fulfilled order, the stack's generator delivering the data set's. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1, 2 and 4 to 8 each seen red once;
   `pnpm check` exit 0 at 100 %, no warning.
   *Evidence (no whole check, as ordered):* the BFF half of each row seen red once from its own
-  assertion, one break at a time, each put back, each in its own log (`bff/src/deliveries.route.test.ts`):
+  assertion, one break at a time, each put back, each in its own log (`bff/src/routes/deliveries.route.test.ts`):
   row 1 (`mustCan` dropped from `mustBeDriver`): `logs/20261101-1055-driver-phone-red-row1.log`, `#L105`
   200, not 403; row 6 (`asShown` returns the order unchanged for a delivered request):
   `logs/20261101-1055-driver-phone-red-row6.log`, `#L246` 'confirmed', not 'fulfilled' (`#L250` is the next
