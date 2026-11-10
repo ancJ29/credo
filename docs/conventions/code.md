@@ -152,9 +152,9 @@ end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten 
 `shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/records/staff-records.ts`,
 `bff/src/records/operators.ts`, `bff/src/routes/orders.ts` and `bff/src/calling/sessions.ts`), so whoever found one believed
 they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-five screens (`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`,
-`ui/src/pages/client/RecordPage.tsx`'s `RecordPage`, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
-`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
+five screens (the customer's add page, the customer's page, the product's page, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
+`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it; the first three are
+now `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`)
 (now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
 one" written four times (in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and
 `bff/src/routes/staff.ts`, the last three as a local function each) while `bff/src/routes/orders.ts` already held the
@@ -170,12 +170,20 @@ copy](#the-patterns-to-copy). `[next copy · check]` The one place the shape exi
 test; everywhere else nothing fails.
 
 **C3 · Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
-`ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` are the same page shell
-written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
-(`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`); a third kind pays it a
-third time, and changing how a conflict is offered is an edit in two files nothing makes you find.
-*Why:* the lists already prove the cheaper shape — `bff/src/routes/lists.ts` serves both from one 165-line
-body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and `ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
+The customer's and the product's pages were the same page shell written twice, and their add
+screens the same again; a third kind would have paid it a third time, and changing how a conflict is
+offered was an edit in two files nothing made you find. They are now one page for each job, with
+the kind as data: `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and
+`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, each holding one entry per kind in a
+record keyed by the list kind, so a kind added to `ui/src/listSheet.ts`'s `LISTS` without an entry
+there is a type error and not a screen that silently draws the wrong one. The list pages share
+`ui/src/parts/PageShell.tsx`'s `PageShell` and `ui/src/parts/ListTable.tsx`'s `ListTable`. The
+kinds' differences sit in two homes, the list table and those entries, because the forms import the
+list table and a form held in it would be an import cycle; a form that differs for real stays its
+own (`ui/src/parts/CustomerForm.tsx`'s `CustomerForm`, `ui/src/parts/ProductForm.tsx`'s `ProductForm`).
+*Why:* the lists already prove the cheaper shape — `bff/src/routes/lists.ts` serves both from one
+body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and
+`ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
 
 ## The winner, named
 
@@ -260,12 +268,12 @@ serves. **A test sits beside its subject, and beside the app where the subject i
 another layout.** A folder per feature or module under the screens was measured and refused: the
 modules it would need cannot be built, because one list screen and one import screen each serve both
 kinds of record (`ui/src/pages/client/ListPage.tsx`'s `ListPage` and `ui/src/pages/client/ListImportPage.tsx`'s
-`ListImportPage`, both taking `kind`), and 13 of the UI's test files today have no same-named source
+`ListImportPage`, both taking `kind`), and some of the UI's test files have no same-named source
 at all, covering a flow or a whole app rather than one screen, so several would have no module
 to sit in. So meeting that shape in another repository is not a precedent here.
 **A package being reorganised writes its directory set into its own `CLAUDE.md` in the same change as
 the move, never before** — a guideline naming a folder that does not exist yet is wrong for as long
-as the move takes — as `ui/CLAUDE.md` does, written in the change that moved `ui`; `bff` names no set yet.
+as the move takes — as `ui/CLAUDE.md` and `bff/CLAUDE.md` do, each written in the change that moved its package.
 
 *Why:* nothing in the gate reads a directory, so a layer folder, a copied folder set and a package
 whose `CLAUDE.md` names none of its folders all pass green; the mark is `reader` because the reader

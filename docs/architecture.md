@@ -57,7 +57,8 @@ HTTP API stand, so the app the walks picture is the app that deploys.
 path; what differs between them is the permission asked at step 6, the key built at step 8 and the
 record written at step 9 — never the shape.
 
-1. **The screen.** The form is `ui/src/parts/CustomerForm.tsx`. It was handed one object to reach the back
+1. **The screen.** The page is `ui/src/pages/client/RecordPage.tsx`, drawing the form in
+   `ui/src/parts/CustomerForm.tsx`. The page was handed one object to reach the back
    end with, and holds no rule of its own. The version it read the customer at goes back with the
    change.
 2. **The call.** That object is `ui/src/api.ts`. It sends one `PUT` to the customer's own address,

@@ -35,7 +35,7 @@ a directory of your own making is not on this list and is not a directory (vites
 - **`frame/`**: the frame a screen is drawn inside: the shell, the providers, the boot, the load
   state (`ui/src/frame/Shell.tsx`'s `Shell`, `ui/src/frame/Loaded.tsx`'s `Loaded`).
 - **`parts/`**: a piece a screen is built from, that no route mounts
-  (`ui/src/parts/DetailCards.tsx`'s `DetailCard`).
+  (`ui/src/parts/DetailCards.tsx`'s `DetailCard`, `ui/src/parts/PageShell.tsx`'s `PageShell`).
 - **`i18n/`**: the dictionary (`ui/src/i18n/en.ts`'s `en`).
 - **`mock/`**: the standalone harness that draws a screen on fake data
   (`ui/src/mock/MockPage.tsx`'s `MockPage`).
@@ -53,6 +53,11 @@ or in `frame/` when importers stand on both sides (`ui/src/frame/frame.module.cs
 
 - **A screen:** `ui/src/pages/client/ListPage.tsx`'s `ListPage`, which takes `PageProps`, reads through `useLoad`
   and draws through `Loaded`; for a form, `ui/src/parts/ProductForm.tsx`'s `ProductForm`.
+- **A second kind of record:** an entry in `ui/src/listSheet.ts`'s `LISTS`, and one entry in each
+  record keyed by the kind in `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and
+  `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`; never a copy of a page. A list page
+  takes `ui/src/parts/PageShell.tsx`'s `PageShell` for its heading, action row and `Loaded`, and
+  `ui/src/parts/ListTable.tsx`'s `ListTable` for its rows.
 - **A call to the back end:** a method on `createApi`, with its twin in `ui/src/fake.ts`'s
   `createFakeApi`, which must answer the same shape.
 - **A screen's test:** `ui/src/pages/client/ListPage.test.tsx`, which opens the whole app through
