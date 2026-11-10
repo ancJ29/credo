@@ -152,8 +152,8 @@ end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten 
 `shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/records/staff-records.ts`,
 `bff/src/records/operators.ts`, `bff/src/routes/orders.ts` and `bff/src/calling/sessions.ts`), so whoever found one believed
 they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-five screens (`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, `ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage`,
-`ui/src/pages/client/ProductPage.tsx`'s `ProductPage`, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
+five screens (`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`,
+`ui/src/pages/client/RecordPage.tsx`'s `RecordPage`, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
 `ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it)
 (now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
 one" written four times (in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and
@@ -170,7 +170,7 @@ copy](#the-patterns-to-copy). `[next copy · check]` The one place the shape exi
 test; everywhere else nothing fails.
 
 **C3 · Parameterise a second kind rather than copy its screens.** `[next copy · reader]`
-`ui/src/pages/client/CustomerPage.tsx`'s `CustomerPage` and `ui/src/pages/client/ProductPage.tsx`'s `ProductPage` are the same page shell
+`ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` are the same page shell
 written twice, 89 lines and 97, and their add screens the same again, 58 lines and 56
 (`ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`); a third kind pays it a
 third time, and changing how a conflict is offered is an edit in two files nothing makes you find.

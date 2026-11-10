@@ -19,7 +19,6 @@ import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './pages/client/DeliveriesPage';
 import { DriverDayPage } from './pages/client/DriverDayPage';
-import { CustomerPage } from './pages/client/CustomerPage';
 import { DeliveryPage } from './pages/client/DeliveryPage';
 import { MyDeliveriesPage } from './pages/client/MyDeliveriesPage';
 import { MyDeliveryPage } from './pages/client/MyDeliveryPage';
@@ -29,7 +28,7 @@ import { ListPage } from './pages/client/ListPage';
 import { type PageProps } from './page';
 import { shrinkToProof } from './photo';
 import { PersonPage } from './pages/client/PersonPage';
-import { ProductPage } from './pages/client/ProductPage';
+import { RecordPage } from './pages/client/RecordPage';
 import { type Look, Providers } from './frame/Providers';
 import { LISTS, type ListKind } from './listSheet';
 import { mayOpen, type Page, pagesOf } from './nav';
@@ -396,14 +395,13 @@ export function ClientApp({
                   }
                 />
               ))}
-              <Route
-                path="/customers/:id"
-                element={guarded(user, 'customers', <CustomerPage {...pageFor(user)} />)}
-              />
-              <Route
-                path="/products/:id"
-                element={guarded(user, 'products', <ProductPage {...pageFor(user)} />)}
-              />
+              {KINDS.map((kind) => (
+                <Route
+                  key={kind}
+                  path={`/${kind}/:id`}
+                  element={guarded(user, kind, <RecordPage kind={kind} {...pageFor(user)} />)}
+                />
+              ))}
               {KINDS.map((kind) => (
                 <Route
                   key={kind}
