@@ -1,3 +1,4 @@
+import { exempt } from '../audit';
 import {
   addedNewestFirst,
   type AddOperatorReply,
@@ -82,22 +83,27 @@ export function registerOperatorTeamRoutes(
     return { operators: operators.sort(addedNewestFirst) };
   });
 
-  app.post(ROUTES.operatorOperators, async (request, reply): Promise<AddOperatorReply> => {
-    const operator = await operatorSignedIn(request);
-    const body = parse(addOperatorRequestSchema, request.body);
-    await confirmed(operator, 'add-operator', body.confirm);
-    const made = await createOperator(storage, {
-      name: body.name,
-      addedBy: operator.id,
-      now: now(),
-    });
-    if (made === 'taken') throw new HttpError(409, 'That name is taken');
-    void reply.status(201);
-    return { id: made.id, link: joinLinkPath(made.token) };
-  });
+  app.post(
+    ROUTES.operatorOperators,
+    exempt('the operator team is the operators’ own, not a client’s data'),
+    async (request, reply): Promise<AddOperatorReply> => {
+      const operator = await operatorSignedIn(request);
+      const body = parse(addOperatorRequestSchema, request.body);
+      await confirmed(operator, 'add-operator', body.confirm);
+      const made = await createOperator(storage, {
+        name: body.name,
+        addedBy: operator.id,
+        now: now(),
+      });
+      if (made === 'taken') throw new HttpError(409, 'That name is taken');
+      void reply.status(201);
+      return { id: made.id, link: joinLinkPath(made.token) };
+    },
+  );
 
   app.post<{ Params: { id: string } }>(
     operatorRoutes.link(':id'),
+    exempt('the operator team is the operators’ own, not a client’s data'),
     async (request, reply): Promise<OperatorLinkReply> => {
       const operator = await operatorSignedIn(request);
       const body = parse(operatorLinkRequestSchema, request.body);
@@ -120,17 +126,21 @@ export function registerOperatorTeamRoutes(
     },
   );
 
-  app.delete<{ Params: { id: string } }>(operatorRoutes.one(':id'), async (request, reply) => {
-    const operator = await operatorSignedIn(request);
-    const body = parse(deleteOperatorRequestSchema, request.body);
-    if (request.params.id === operator.id) throw new HttpError(403, 'Forbidden');
-    await confirmed(operator, 'delete-operator', body.confirm);
-    const outcome = await deleteOperator(storage, {
-      actorId: operator.id,
-      targetId: request.params.id,
-    });
-    if (outcome === 'actor') throw new HttpError(401, 'Unauthorized');
-    if (outcome === 'target') throw new HttpError(404, 'Not found');
-    return await reply.status(204).send();
-  });
+  app.delete<{ Params: { id: string } }>(
+    operatorRoutes.one(':id'),
+    exempt('the operator team is the operators’ own, not a client’s data'),
+    async (request, reply) => {
+      const operator = await operatorSignedIn(request);
+      const body = parse(deleteOperatorRequestSchema, request.body);
+      if (request.params.id === operator.id) throw new HttpError(403, 'Forbidden');
+      await confirmed(operator, 'delete-operator', body.confirm);
+      const outcome = await deleteOperator(storage, {
+        actorId: operator.id,
+        targetId: request.params.id,
+      });
+      if (outcome === 'actor') throw new HttpError(401, 'Unauthorized');
+      if (outcome === 'target') throw new HttpError(404, 'Not found');
+      return await reply.status(204).send();
+    },
+  );
 }

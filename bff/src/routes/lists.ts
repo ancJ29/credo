@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import {
+  type ActionId,
   addCustomerRequestSchema,
   addProductRequestSchema,
   byCode,
@@ -19,7 +20,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { actorOf } from '../audit';
+import { declare, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
 import { recordTools } from '../records/records';
 import type { Deps } from './staff';
@@ -29,8 +30,8 @@ import type { Deps } from './staff';
 type ListKind<Record extends { id: string; code: string }, Save extends { version: string }> = {
   /** The list's name in a fault, never a key. */
   name: 'customer' | 'product';
-  /** The action a save declares in the activity log, or none while the list's save does not. */
-  audits: 'customer.save' | null;
+  /** The actions the list's changes declare in the activity log. */
+  audits: { save: ActionId; create: ActionId; import: ActionId };
   route: string;
   /** One record's route, `:id` filled in by the caller. */
   one: (id: string) => string;
@@ -53,7 +54,7 @@ const CUSTOMERS: ListKind<
   z.infer<typeof saveCustomerRequestSchema>
 > = {
   name: 'customer',
-  audits: 'customer.save',
+  audits: { save: 'customer.save', create: 'customer.create', import: 'customer.import' },
   route: ROUTES.customers,
   one: customerRoutes.one,
   importRoute: listImportRoute('customers'),
@@ -71,7 +72,7 @@ const PRODUCTS: ListKind<
   z.infer<typeof saveProductRequestSchema>
 > = {
   name: 'product',
-  audits: null,
+  audits: { save: 'product.save', create: 'product.create', import: 'product.import' },
   route: ROUTES.products,
   one: productRoutes.one,
   importRoute: listImportRoute('products'),
@@ -165,17 +166,24 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * the list or earlier in the call); a row the store could not answer for (503) is `busy`, to be
      * sent again, and the call goes on. Any other failure ends the call as it would any route: the
      * rows before it stay. */
-    app.post(kind.importRoute, forClient, async (request) => {
-      mustBeRoot(await signedIn(request));
-      const call = parse(importCallSchema, request.body);
-      // The list is read once a call, and each code written joins it.
-      const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
-      const results: Result<Record>[] = [];
-      for (const raw of call.rows) {
-        results.push(await addOne(request.tenantId, raw, codes));
-      }
-      return { results };
-    });
+    app.post(
+      kind.importRoute,
+      { ...forClient, config: { audit: kind.audits.import } },
+      async (request) => {
+        const who = await signedIn(request);
+        const entry = declare(request, personOf(who));
+        mustBeRoot(who);
+        const call = parse(importCallSchema, request.body);
+        // The list is read once a call, and each code written joins it.
+        const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
+        const results: Result<Record>[] = [];
+        for (const raw of call.rows) {
+          results.push(await addOne(request.tenantId, raw, codes));
+        }
+        entry.created(results.flatMap((one) => (one.kind === 'added' ? [one.record] : [])));
+        return { results };
+      },
+    );
 
     /** A route's `:id` that is no id names no record. */
     function idOf(request: FastifyRequest) {
@@ -209,17 +217,25 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * permission is checked before the body is read. A code the list holds is a 409 with nothing
      * written, a body the row rule refuses a 400, a store that could not answer a 503; the record
      * written is answered as the kind's doc, with the version it now holds. */
-    app.post(kind.route, forClient, async (request) => {
-      mustCan(await signedIn(request), 'orders.canEdit');
-      const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
-      const result = await addOne(request.tenantId, request.body, codes);
-      if (result.kind === 'added') {
-        return docOf(await mustRead(request.tenantId, result.record.id));
-      }
-      if (result.reason === 'taken') throw new HttpError(409, 'Conflict');
-      if (result.reason === 'busy') throw new HttpError(503, 'Service unavailable');
-      throw new HttpError(400, 'Bad request');
-    });
+    app.post(
+      kind.route,
+      { ...forClient, config: { audit: kind.audits.create } },
+      async (request) => {
+        const who = await signedIn(request);
+        const entry = declare(request, personOf(who));
+        mustCan(who, 'orders.canEdit');
+        const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
+        const result = await addOne(request.tenantId, request.body, codes);
+        if (result.kind === 'added') {
+          entry.target(result.record.id);
+          entry.saved(null, result.record);
+          return docOf(await mustRead(request.tenantId, result.record.id));
+        }
+        if (result.reason === 'taken') throw new HttpError(409, 'Conflict');
+        if (result.reason === 'busy') throw new HttpError(503, 'Service unavailable');
+        throw new HttpError(400, 'Bad request');
+      },
+    );
 
     app.get(kind.one(':id'), forClient, async (request) => {
       mustCan(await signedIn(request), 'orders.canView');
@@ -231,52 +247,49 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * not answer, or a version that moved, is read again once: a record that already holds exactly
      * what was asked is our own write landed and counts as saved; anything else is a genuine
      * conflict, answered 409 with the record as it is now. The version is never skipped. */
-    app.put(kind.one(':id'), forClient, async (request) => {
-      const who = await signedIn(request);
-      mustCan(who, 'orders.canEdit');
-      const id = idOf(request);
-      const body = parse(kind.save, request.body);
-      const found = await mustRead(request.tenantId, id);
-      const updated = kind.apply(found.record, body);
-      /** Declared at each way the save stands, so the hook sends it only for a change that landed. */
-      const stands = () => {
-        if (kind.audits === null) return;
-        request.audit = {
-          actorId: actorOf(who),
-          action: kind.audits,
-          targetId: id,
-          memo: { by: who.name, before: found.record, after: updated },
-        };
-      };
-      let outcome: 'saved' | 'moved';
-      try {
-        outcome = await storage.putRecord(kind.key(request.tenantId, id), updated, body.version);
-      } catch (error) {
-        // The write may have landed with its answer lost: the record is as asked, or the failure stands.
-        const now = await readOne(request.tenantId, id).catch(() => null);
-        // This compare and the `moved` one below hold only while a record's code and id never
-        // change: `updated` spreads `found.record`, read now, perhaps after another writer, and
-        // overwrites every other field with the body's, so only `id` and `code` come from the read.
-        // The day a mutable field (a `changeCode`, an `archived` flag, an order's status) joins a
-        // record saved this way, another writer's record could count as our own save: re-think
-        // this then.
+    app.put(
+      kind.one(':id'),
+      { ...forClient, config: { audit: kind.audits.save } },
+      async (request) => {
+        const who = await signedIn(request);
+        const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+        mustCan(who, 'orders.canEdit');
+        const id = idOf(request);
+        const body = parse(kind.save, request.body);
+        const found = await mustRead(request.tenantId, id);
+        const updated = kind.apply(found.record, body);
+        /** Marked at each way the save stands, so the entry reads as a change that landed. */
+        const stands = () => entry.saved(found.record, updated);
+        let outcome: 'saved' | 'moved';
+        try {
+          outcome = await storage.putRecord(kind.key(request.tenantId, id), updated, body.version);
+        } catch (error) {
+          // The write may have landed with its answer lost: the record is as asked, or the failure stands.
+          const now = await readOne(request.tenantId, id).catch(() => null);
+          // This compare and the `moved` one below hold only while a record's code and id never
+          // change: `updated` spreads `found.record`, read now, perhaps after another writer, and
+          // overwrites every other field with the body's, so only `id` and `code` come from the read.
+          // The day a mutable field (a `changeCode`, an `archived` flag, an order's status) joins a
+          // record saved this way, another writer's record could count as our own save: re-think
+          // this then.
+          if (now && isDeepStrictEqual(now.record, updated)) {
+            stands();
+            return docOf(now);
+          }
+          throw error;
+        }
+        if (outcome === 'saved') {
+          stands();
+          return docOf(await mustRead(request.tenantId, id));
+        }
+        const now = await readOne(request.tenantId, id);
         if (now && isDeepStrictEqual(now.record, updated)) {
           stands();
           return docOf(now);
         }
-        throw error;
-      }
-      if (outcome === 'saved') {
-        stands();
-        return docOf(await mustRead(request.tenantId, id));
-      }
-      const now = await readOne(request.tenantId, id);
-      if (now && isDeepStrictEqual(now.record, updated)) {
-        stands();
-        return docOf(now);
-      }
-      throw new HttpError(409, 'Conflict', { current: now && docOf(now) });
-    });
+        throw new HttpError(409, 'Conflict', { current: now && docOf(now) });
+      },
+    );
   }
 
   registerList(CUSTOMERS);

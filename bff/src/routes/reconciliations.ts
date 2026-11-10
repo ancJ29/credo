@@ -16,6 +16,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
 import { recordTools } from '../records/records';
 import { readEmployee } from '../records/staff-records';
@@ -60,91 +61,101 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
     return reconciliationListReplySchema.parse({ reconciliations });
   });
 
-  app.post(reconciliationRoutes.close(':day', ':driverId'), forClient, async (request) => {
-    const who = await signedIn(request);
-    mustCan(who, 'orders.canEdit');
-    const body = parse(closeDayRequestSchema, request.body);
-    const { day, driverId } = request.params as { day: string; driverId: string };
-    if (!daySchema.safeParse(day).success || !z.uuid().safeParse(driverId).success) {
-      throw notFound();
-    }
-    const keys = recordKeys.tenant(request.tenantId);
-    const listed = await every(
-      keys.deliveryDayPrefix(day),
-      deliveryRequestSchema,
-      'delivery request',
-    );
-    const driver = listed.find((one) => one.record.driver.id === driverId)?.record.driver;
-    if (!driver) throw notFound();
-    const figures = driverDay(
-      listed.map((one) => one.record),
-      driverId,
-    );
-    const key = keys.reconciliation(day, driverId);
-    const held = await storage.getRecord(key);
-    const asItIs = (record: unknown) => ({
-      delivered: figures.delivered.map((one) => one.id),
-      waiting: figures.waiting.map((one) => one.id),
-      reconciliation: record,
-    });
-    // A day closed already, or another set of requests than the page showed, closes nothing.
-    if (held) throw conflict(asItIs(parsed(reconciliationSchema, 'a closed day', held)));
-    if (
-      !sameIds(
-        body.delivered,
-        figures.delivered.map((one) => one.id),
-      ) ||
-      !sameIds(
-        body.waiting,
-        figures.waiting.map((one) => one.id),
-      )
-    ) {
-      throw conflict(asItIs(null));
-    }
-    if (figures.tooLarge) {
-      throw new HttpError(400, 'Bad request', {
-        details: 'a day that adds up to the most or less',
+  app.post(
+    reconciliationRoutes.close(':day', ':driverId'),
+    { ...forClient, config: { audit: 'reconciliation.close' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(
+        request,
+        personOf(who),
+        (request.params as { driverId: string }).driverId,
+      );
+      mustCan(who, 'orders.canEdit');
+      const body = parse(closeDayRequestSchema, request.body);
+      const { day, driverId } = request.params as { day: string; driverId: string };
+      if (!daySchema.safeParse(day).success || !z.uuid().safeParse(driverId).success) {
+        throw notFound();
+      }
+      const keys = recordKeys.tenant(request.tenantId);
+      const listed = await every(
+        keys.deliveryDayPrefix(day),
+        deliveryRequestSchema,
+        'delivery request',
+      );
+      const driver = listed.find((one) => one.record.driver.id === driverId)?.record.driver;
+      if (!driver) throw notFound();
+      const figures = driverDay(
+        listed.map((one) => one.record),
+        driverId,
+      );
+      const key = keys.reconciliation(day, driverId);
+      const held = await storage.getRecord(key);
+      const asItIs = (record: unknown) => ({
+        delivered: figures.delivered.map((one) => one.id),
+        waiting: figures.waiting.map((one) => one.id),
+        reconciliation: record,
       });
-    }
-    // The closer is read before the first write: a person whose record has gone since the sign-in
-    // closes nothing (the root alone has no record), so the day is never signed with the root's
-    // shape and another's name.
-    const person = who.employeeId
-      ? await readEmployee(storage, request.tenantId, who.employeeId)
-      : null;
-    if (who.employeeId && !person) throw new HttpError(401, 'Unauthorized');
-    for (const waiting of figures.waiting) {
-      const tag = listed.find((one) => one.record.id === waiting.id)!.tag;
-      const cancelled = { ...waiting, state: 'cancelled' };
-      if ((await storage.putRecord(keys.delivery(day, waiting.id), cancelled, tag)) === 'moved') {
+      // A day closed already, or another set of requests than the page showed, closes nothing.
+      if (held) throw conflict(asItIs(parsed(reconciliationSchema, 'a closed day', held)));
+      if (
+        !sameIds(
+          body.delivered,
+          figures.delivered.map((one) => one.id),
+        ) ||
+        !sameIds(
+          body.waiting,
+          figures.waiting.map((one) => one.id),
+        )
+      ) {
         throw conflict(asItIs(null));
       }
-      // The order is then freed to send again; one that moved meanwhile is left as it is.
-      const named = waiting.order;
-      // A request's order is never deleted.
-      const stored = (await storage.getRecord(keys.order(named.day, named.id)))!;
-      const ordered = parsed(orderSchema, 'an order', stored);
-      if (ordered.request?.id === waiting.id) {
-        await storage.putRecord(
-          keys.order(named.day, named.id),
-          { ...ordered, request: null },
-          stored.tag,
-        );
+      if (figures.tooLarge) {
+        throw new HttpError(400, 'Bad request', {
+          details: 'a day that adds up to the most or less',
+        });
       }
-    }
-    const closed: Reconciliation = {
-      day,
-      driver,
-      requests: figures.delivered.map(({ id, number, total }) => ({ id, number, total })),
-      toCollect: figures.toCollect,
-      handedIn: body.handedIn,
-      difference: gapOf(figures.toCollect, body.handedIn),
-      closedBy: person
-        ? { id: person.employee.id, code: person.employee.code, name: person.employee.name }
-        : { id: null, code: null, name: who.name },
-      closedAt: now(),
-    };
-    if ((await writeClosed(key, closed)) === 'moved') throw conflict(asItIs(null));
-    return reconciliationSchema.parse(closed);
-  });
+      // The closer is read before the first write: a person whose record has gone since the sign-in
+      // closes nothing (the root alone has no record), so the day is never signed with the root's
+      // shape and another's name.
+      const person = who.employeeId
+        ? await readEmployee(storage, request.tenantId, who.employeeId)
+        : null;
+      if (who.employeeId && !person) throw new HttpError(401, 'Unauthorized');
+      for (const waiting of figures.waiting) {
+        const tag = listed.find((one) => one.record.id === waiting.id)!.tag;
+        const cancelled = { ...waiting, state: 'cancelled' };
+        if ((await storage.putRecord(keys.delivery(day, waiting.id), cancelled, tag)) === 'moved') {
+          throw conflict(asItIs(null));
+        }
+        // The order is then freed to send again; one that moved meanwhile is left as it is.
+        const named = waiting.order;
+        // A request's order is never deleted.
+        const stored = (await storage.getRecord(keys.order(named.day, named.id)))!;
+        const ordered = parsed(orderSchema, 'an order', stored);
+        if (ordered.request?.id === waiting.id) {
+          await storage.putRecord(
+            keys.order(named.day, named.id),
+            { ...ordered, request: null },
+            stored.tag,
+          );
+        }
+      }
+      const closed: Reconciliation = {
+        day,
+        driver,
+        requests: figures.delivered.map(({ id, number, total }) => ({ id, number, total })),
+        toCollect: figures.toCollect,
+        handedIn: body.handedIn,
+        difference: gapOf(figures.toCollect, body.handedIn),
+        closedBy: person
+          ? { id: person.employee.id, code: person.employee.code, name: person.employee.name }
+          : { id: null, code: null, name: who.name },
+        closedAt: now(),
+      };
+      if ((await writeClosed(key, closed)) === 'moved') throw conflict(asItIs(null));
+      entry.saved(null, closed);
+      return reconciliationSchema.parse(closed);
+    },
+  );
 }

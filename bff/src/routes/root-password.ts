@@ -10,6 +10,7 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { declare, operatorOf } from '../audit';
 import { ROOT_NAME } from '../records/clients';
 import { HttpError, parse } from '../errors';
 import { hashPassword, madePassword } from '../calling/password';
@@ -19,7 +20,7 @@ type Deps = {
   storage: CStorageClient;
   now: () => number;
   /** The operator's live session, or a 401. */
-  operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string }>;
+  operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
   /** The fresh touch for an act, or a 403. */
   confirmed: (operator: { id: string }, act: ConfirmAct, confirm: Confirmation) => Promise<void>;
 };
@@ -37,6 +38,7 @@ export function registerRootPasswordRoutes(
 ) {
   app.post<{ Params: { code: string } }>(
     rootPasswordRoute(':code'),
+    { config: { audit: 'client.rootPassword' } },
     async (request): Promise<RootPasswordReply> => {
       const operator = await operatorSignedIn(request);
       const code = clientCodeSchema.safeParse(request.params.code);
@@ -44,6 +46,7 @@ export function registerRootPasswordRoutes(
       const index = await storage.getRecord(recordKeys.client(code.data));
       if (!index) throw new HttpError(404, 'Unknown client');
       const tenantId = storedClientSchema.parse(index.data).id;
+      const entry = declare(request, operatorOf(operator), tenantId, tenantId);
       const body = parse(setRootPasswordRequestSchema, request.body);
       await confirmed(operator, 'root-password', body.confirm);
       const password = body.password ?? madePassword();
@@ -57,6 +60,7 @@ export function registerRootPasswordRoutes(
       );
       // A client without its root's record is a fault of the store, not a caller's to settle.
       if (set === 'not owned') throw new Error('a client’s root sign-in record is missing');
+      entry.saved(null, null);
       return { made: body.password === null ? password : null };
     },
   );

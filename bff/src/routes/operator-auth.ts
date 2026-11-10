@@ -1,3 +1,4 @@
+import { exempt } from '../audit';
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -275,74 +276,90 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     );
   }
 
-  app.post(ROUTES.operatorPasskeyOptions, async () => {
-    const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
-    return { options, token: challenges.mint(options.challenge, 'sign-in') };
-  });
+  app.post(
+    ROUTES.operatorPasskeyOptions,
+    exempt('the operator’s sign-in ceremony changes no client’s data'),
+    async () => {
+      const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
+      return { options, token: challenges.mint(options.challenge, 'sign-in') };
+    },
+  );
 
-  app.post(ROUTES.operatorPasskeySignIn, async (request): Promise<OperatorSessionReplyBody> => {
-    deviceOf(request);
-    const body = parse(passkeySignInRequestSchema, request.body);
-    const challenge = challenges.open(body.token, 'sign-in');
-    const answer = body.response as unknown as AuthenticationResponseJSON;
-    // The handle is read under a schema: anything but a string, or none, is the one 401.
-    const handle = userHandleSchema.safeParse(answer.response.userHandle);
-    if (!handle.success) throw unauthorized();
-    const id = handle.data ? Buffer.from(handle.data, 'base64url').toString() : '';
-    const line = (await readRoster(storage)).roster.operators.find(
-      (operator) => operator.id === id && operator.state === 'active',
-    );
-    if (!challenge || !line) throw unauthorized();
-    const account = await spendTouch(line.id, answer, challenge, unauthorized, true);
-    return await session(request, { id: line.id, name: line.name }, account.generation);
-  });
+  app.post(
+    ROUTES.operatorPasskeySignIn,
+    exempt('the operator’s sign-in ceremony changes no client’s data'),
+    async (request): Promise<OperatorSessionReplyBody> => {
+      deviceOf(request);
+      const body = parse(passkeySignInRequestSchema, request.body);
+      const challenge = challenges.open(body.token, 'sign-in');
+      const answer = body.response as unknown as AuthenticationResponseJSON;
+      // The handle is read under a schema: anything but a string, or none, is the one 401.
+      const handle = userHandleSchema.safeParse(answer.response.userHandle);
+      if (!handle.success) throw unauthorized();
+      const id = handle.data ? Buffer.from(handle.data, 'base64url').toString() : '';
+      const line = (await readRoster(storage)).roster.operators.find(
+        (operator) => operator.id === id && operator.state === 'active',
+      );
+      if (!challenge || !line) throw unauthorized();
+      const account = await spendTouch(line.id, answer, challenge, unauthorized, true);
+      return await session(request, { id: line.id, name: line.name }, account.generation);
+    },
+  );
 
-  app.post(ROUTES.operatorJoinOptions, async (request) => {
-    const { link } = parse(joinOptionsRequestSchema, request.body);
-    const live = await readLiveLink(storage, link, now());
-    const { roster } = await readRoster(storage);
-    const operator = live && roster.operators.find((line) => line.id === live.link.operatorId);
-    if (!live || !operator) throw gone();
-    const madeBy = roster.operators.find((line) => line.id === live.link.madeBy)?.name ?? null;
-    return {
-      ...(await registrationOptions(operator, [], 'join', live.hash)),
-      name: operator.name,
-      madeBy,
-      // A link the terminal made names no maker at all; one whose maker is gone names one that is not there.
-      madeByTerminal: live.link.madeBy === null,
-    };
-  });
-
-  app.post(ROUTES.operatorJoin, async (request): Promise<OperatorSessionReplyBody> => {
-    deviceOf(request);
-    const body = parse(joinRequestSchema, request.body);
-    const live = await readLiveLink(storage, body.link, now());
-    if (!live) throw gone();
-    const challenge = challenges.open(body.token, 'join', live.hash);
-    if (!challenge) throw new HttpError(400, 'Bad request');
-    const passkey = await verifiedRegistration(body.response, challenge);
-    // The link goes first, with its tag: of two openings at once, one removes it and the other
-    // finds it moved.
-    const removed = await storage.removeRecord(recordKeys.operatorLink(live.hash), live.tag);
-    if (removed === 'moved') throw gone();
-    const generation = await updateAccount(live.link.operatorId, gone(), (account) => {
-      const next = live.link.kind === 'replace' ? account.generation + 1 : account.generation;
+  app.post(
+    ROUTES.operatorJoinOptions,
+    exempt('the operator’s sign-in ceremony changes no client’s data'),
+    async (request) => {
+      const { link } = parse(joinOptionsRequestSchema, request.body);
+      const live = await readLiveLink(storage, link, now());
+      const { roster } = await readRoster(storage);
+      const operator = live && roster.operators.find((line) => line.id === live.link.operatorId);
+      if (!live || !operator) throw gone();
+      const madeBy = roster.operators.find((line) => line.id === live.link.madeBy)?.name ?? null;
       return {
-        account: {
-          ...account,
-          passkeys: [passkey],
-          linkHash: null,
-          spent: [],
-          generation: next,
-          signedInAt: now(),
-        },
-        result: next,
+        ...(await registrationOptions(operator, [], 'join', live.hash)),
+        name: operator.name,
+        madeBy,
+        // A link the terminal made names no maker at all; one whose maker is gone names one that is not there.
+        madeByTerminal: live.link.madeBy === null,
       };
-    });
-    const line = await joined(live.link.operatorId);
-    if (!line) throw gone();
-    return await session(request, line, generation);
-  });
+    },
+  );
+
+  app.post(
+    ROUTES.operatorJoin,
+    exempt('the operator’s sign-in ceremony changes no client’s data'),
+    async (request): Promise<OperatorSessionReplyBody> => {
+      deviceOf(request);
+      const body = parse(joinRequestSchema, request.body);
+      const live = await readLiveLink(storage, body.link, now());
+      if (!live) throw gone();
+      const challenge = challenges.open(body.token, 'join', live.hash);
+      if (!challenge) throw new HttpError(400, 'Bad request');
+      const passkey = await verifiedRegistration(body.response, challenge);
+      // The link goes first, with its tag: of two openings at once, one removes it and the other
+      // finds it moved.
+      const removed = await storage.removeRecord(recordKeys.operatorLink(live.hash), live.tag);
+      if (removed === 'moved') throw gone();
+      const generation = await updateAccount(live.link.operatorId, gone(), (account) => {
+        const next = live.link.kind === 'replace' ? account.generation + 1 : account.generation;
+        return {
+          account: {
+            ...account,
+            passkeys: [passkey],
+            linkHash: null,
+            spent: [],
+            generation: next,
+            signedInAt: now(),
+          },
+          result: next,
+        };
+      });
+      const line = await joined(live.link.operatorId);
+      if (!line) throw gone();
+      return await session(request, line, generation);
+    },
+  );
 
   /** The roster's line for an invited operator made active, written with its tag; null if they
    * are no longer there. */
@@ -361,11 +378,15 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     throw moved('the roster');
   }
 
-  app.post(ROUTES.operatorSignOut, async (request, reply) => {
-    const handle = request.headers[AUTH_HEADER];
-    if (typeof handle === 'string') await sessions.end(handle);
-    return reply.status(204).send();
-  });
+  app.post(
+    ROUTES.operatorSignOut,
+    exempt('the operator’s sign-in ceremony changes no client’s data'),
+    async (request, reply) => {
+      const handle = request.headers[AUTH_HEADER];
+      if (typeof handle === 'string') await sessions.end(handle);
+      return reply.status(204).send();
+    },
+  );
 
   app.get(ROUTES.operatorMe, async (request): Promise<OperatorMeReplyBody> => ({
     operator: await whoIs(request),
@@ -375,46 +396,62 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     listOf((await operatorSignedIn(request)).account),
   );
 
-  app.post(passkeyRoutes.confirmOptions, async (request) => {
-    const operator = await operatorSignedIn(request);
-    const { act } = parse(confirmOptionsRequestSchema, request.body);
-    const options = await generateAuthenticationOptions({
-      rpID,
-      userVerification: 'required',
-      allowCredentials: operator.account.passkeys.map(({ id, transports }) => ({ id, transports })),
-    });
-    return { options, token: challenges.mint(options.challenge, `confirm-${act}`, operator.id) };
-  });
+  app.post(
+    passkeyRoutes.confirmOptions,
+    exempt('the operator’s own account is not a client’s data'),
+    async (request) => {
+      const operator = await operatorSignedIn(request);
+      const { act } = parse(confirmOptionsRequestSchema, request.body);
+      const options = await generateAuthenticationOptions({
+        rpID,
+        userVerification: 'required',
+        allowCredentials: operator.account.passkeys.map(({ id, transports }) => ({
+          id,
+          transports,
+        })),
+      });
+      return { options, token: challenges.mint(options.challenge, `confirm-${act}`, operator.id) };
+    },
+  );
 
-  app.post(passkeyRoutes.options, async (request) => {
-    const operator = await operatorSignedIn(request);
-    return await registrationOptions(operator, operator.account.passkeys, 'add', operator.id);
-  });
+  app.post(
+    passkeyRoutes.options,
+    exempt('the operator’s own account is not a client’s data'),
+    async (request) => {
+      const operator = await operatorSignedIn(request);
+      return await registrationOptions(operator, operator.account.passkeys, 'add', operator.id);
+    },
+  );
 
-  app.post(ROUTES.operatorPasskeys, async (request, reply) => {
-    const operator = await operatorSignedIn(request);
-    const body = parse(passkeyAddRequestSchema, request.body);
-    await confirmed(operator, 'add', body.confirm);
-    const challenge = challenges.open(body.token, 'add', operator.id);
-    if (!challenge) throw new HttpError(400, 'Bad request');
-    const passkey = await verifiedRegistration(body.response, challenge);
-    const outcome = await updateAccount<'duplicate' | PasskeyListReply>(
-      operator.id,
-      unauthorized(),
-      (account) => {
-        if (account.passkeys.some((held) => held.id === passkey.id)) {
-          return { account: null, result: 'duplicate' };
-        }
-        const next = { ...account, passkeys: [...account.passkeys, passkey] };
-        return { account: next, result: listOf(next) };
-      },
-    );
-    if (outcome === 'duplicate') throw new HttpError(400, 'Bad request');
-    return reply.status(201).send(outcome);
-  });
+  app.post(
+    ROUTES.operatorPasskeys,
+    exempt('the operator’s own account is not a client’s data'),
+    async (request, reply) => {
+      const operator = await operatorSignedIn(request);
+      const body = parse(passkeyAddRequestSchema, request.body);
+      await confirmed(operator, 'add', body.confirm);
+      const challenge = challenges.open(body.token, 'add', operator.id);
+      if (!challenge) throw new HttpError(400, 'Bad request');
+      const passkey = await verifiedRegistration(body.response, challenge);
+      const outcome = await updateAccount<'duplicate' | PasskeyListReply>(
+        operator.id,
+        unauthorized(),
+        (account) => {
+          if (account.passkeys.some((held) => held.id === passkey.id)) {
+            return { account: null, result: 'duplicate' };
+          }
+          const next = { ...account, passkeys: [...account.passkeys, passkey] };
+          return { account: next, result: listOf(next) };
+        },
+      );
+      if (outcome === 'duplicate') throw new HttpError(400, 'Bad request');
+      return reply.status(201).send(outcome);
+    },
+  );
 
   app.delete<{ Params: { id: string } }>(
     `${ROUTES.operatorPasskeys}/:id`,
+    exempt('the operator’s own account is not a client’s data'),
     async (request, reply) => {
       const operator = await operatorSignedIn(request);
       const body = parse(passkeyRemoveRequestSchema, request.body);

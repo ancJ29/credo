@@ -108,7 +108,7 @@ describe('One customer’s save writes one entry to the real audit service', () 
     expect(await entriesOf(t.id)).toHaveLength(1);
   });
 
-  it('writes no entry for a call with no session, a refusal or a read', async () => {
+  it('writes no entry for a call with no session or a read, and a refusal writes its outcome alone', async () => {
     const { t, customer, entriesOf } = await setup(clientOf(audit));
     const route = customerRoutes.one(customer.id);
 
@@ -129,7 +129,10 @@ describe('One customer’s save writes one entry to the real audit service', () 
 
     expect(unsigned.statusCode).toBe(401);
     expect(stale.statusCode).toBe(409);
-    expect(await entriesOf(t.id)).toEqual([]);
+    const entries = await entriesOf(t.id);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.memo).toMatchObject({ by: 'root', outcome: 'refused' });
+    expect(entries[0]?.memo).not.toHaveProperty('after');
   });
 });
 

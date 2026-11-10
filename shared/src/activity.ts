@@ -6,15 +6,48 @@ import { customerSchema } from './lists';
 export const AUDIT_TIMEOUT_MS = 600;
 
 /** Every action an entry may carry, to the words the printout shows. One list, declared once. */
-export const ACTIONS = { 'customer.save': 'customer saved' } as const;
+export const ACTIONS = {
+  'customer.save': 'customer saved',
+  'customer.create': 'customer added',
+  'customer.import': 'customer imported',
+  'product.save': 'product saved',
+  'product.create': 'product added',
+  'product.import': 'product imported',
+  'order.create': 'order made',
+  'order.save': 'order saved',
+  'order.confirm': 'order confirmed',
+  'order.send': 'order sent',
+  'order.cancel': 'order cancelled',
+  'delivery.deliver': 'delivery done',
+  'delivery.cancel': 'delivery cancelled',
+  'reconciliation.close': 'day closed for a driver',
+  'employee.create': 'person added',
+  'employee.import': 'person imported',
+  'employee.save': 'person saved',
+  'employee.archive': 'person switched off',
+  'employee.restore': 'person switched on',
+  'employee.password': 'password changed',
+  'employee.code': 'code changed',
+  'employee.photo': 'photo changed',
+  'employee.email': 'email changed',
+  'employee.qr': 'QR sign-in issued',
+  'staff.setup': 'staff setup saved',
+  'config.save': 'settings saved',
+  'client.create': 'client made',
+  'client.delete': 'client deleted',
+  'client.rootPassword': 'root password set',
+} as const;
 export type ActionId = keyof typeof ACTIONS;
 
-/** What a customer save's memo holds, the whole record as stored: `by` is the person's name as it
- * was shown then. The memo's one home, since the audit service owns no memo schema. */
+/** What a memo holds, the whole record as stored: `by` is the person's name as it was shown then,
+ * `outcome` whether the change stood, and a change that did not has no `after`. A password, a photo
+ * or a code's act holds neither record. The memo's one home, since the audit service owns no memo
+ * schema. */
 export const customerSaveMemoSchema = z.strictObject({
   by: z.string(),
   before: customerSchema.nullable(),
-  after: customerSchema.nullable(),
+  after: customerSchema.nullable().optional(),
+  outcome: z.enum(['saved', 'refused']).optional(),
 });
 
 /** An entry as the audit service takes it. */

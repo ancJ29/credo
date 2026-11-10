@@ -45,6 +45,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { declare, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
 import { recordTools } from '../records/records';
 import { hashPassword, madePassword } from '../calling/password';
@@ -143,36 +144,45 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return who.setup ?? (await setupDoc(request.tenantId));
   });
 
-  app.put(ROUTES.staffSetup, forClient, async (request) => {
-    mustBeRoot(await signedIn(request));
-    const body = parse(saveStaffSetupRequestSchema, request.body);
-    const current = await setupDoc(request.tenantId);
-    if (current.version !== body.version) throw conflict(current);
-    /** An id sent must be one this list already holds: the BFF mints, a caller never chooses. */
-    const mint = (units: typeof body.setup.departments, held: StaffSetup['departments']) => {
-      const known = new Set(held.map((unit) => unit.id));
-      const given = units.flatMap((unit) => (unit.id ? [unit.id] : []));
-      if (new Set(given).size !== given.length || given.some((id) => !known.has(id))) {
-        throw new HttpError(400, 'Bad request', { details: 'setup: an id is repeated or unknown' });
-      }
-      return units.map((unit) => ({ ...unit, id: unit.id ?? randomUUID() }));
-    };
-    const setup: StaffSetup = {
-      departments: mint(body.setup.departments, current.setup.departments),
-      positions: mint(body.setup.positions, current.setup.positions),
-      // A part the request leaves out stays as it was, so a caller that predates it erases nothing.
-      ...keptSetupParts(body.setup, current.setup),
-      extra: body.setup.extra,
-    };
-    const key = recordKeys.tenant(request.tenantId).staffSetup;
-    const saved = await storage.putRecord(
-      key,
-      setup,
-      body.version === NO_SETUP_VERSION ? null : body.version,
-    );
-    if (saved === 'moved') throw conflict(await setupDoc(request.tenantId));
-    return await setupDoc(request.tenantId);
-  });
+  app.put(
+    ROUTES.staffSetup,
+    { ...forClient, config: { audit: 'staff.setup' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), 'setup');
+      mustBeRoot(who);
+      const body = parse(saveStaffSetupRequestSchema, request.body);
+      const current = await setupDoc(request.tenantId);
+      if (current.version !== body.version) throw conflict(current);
+      /** An id sent must be one this list already holds: the BFF mints, a caller never chooses. */
+      const mint = (units: typeof body.setup.departments, held: StaffSetup['departments']) => {
+        const known = new Set(held.map((unit) => unit.id));
+        const given = units.flatMap((unit) => (unit.id ? [unit.id] : []));
+        if (new Set(given).size !== given.length || given.some((id) => !known.has(id))) {
+          throw new HttpError(400, 'Bad request', {
+            details: 'setup: an id is repeated or unknown',
+          });
+        }
+        return units.map((unit) => ({ ...unit, id: unit.id ?? randomUUID() }));
+      };
+      const setup: StaffSetup = {
+        departments: mint(body.setup.departments, current.setup.departments),
+        positions: mint(body.setup.positions, current.setup.positions),
+        // A part the request leaves out stays as it was, so a caller that predates it erases nothing.
+        ...keptSetupParts(body.setup, current.setup),
+        extra: body.setup.extra,
+      };
+      const key = recordKeys.tenant(request.tenantId).staffSetup;
+      const saved = await storage.putRecord(
+        key,
+        setup,
+        body.version === NO_SETUP_VERSION ? null : body.version,
+      );
+      if (saved === 'moved') throw conflict(await setupDoc(request.tenantId));
+      entry.saved(current.setup, setup);
+      return await setupDoc(request.tenantId);
+    },
+  );
 
   /** Every person, those who left too. Never a short list that looks whole: more than c-storage
    * returns, or a record that does not parse, is a 500 that names the kind and not the key. */
@@ -374,91 +384,110 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return { person, password };
   }
 
-  app.post(ROUTES.employees, forClient, async (request, reply) => {
-    const who = await signedIn(request);
-    mustCan(who, 'staff.canCreate');
-    const body = parse(addEmployeeRequestSchema, request.body);
-    const read = who.setup ?? (await setupDoc(request.tenantId));
-    const { person, password } = await addPerson(request.tenantId, read, who, body, who.root);
-    const employee = await docOf(request.tenantId, await mustFind(request.tenantId, person.id));
-    return reply.status(201).send({ employee, password });
-  });
+  app.post(
+    ROUTES.employees,
+    { ...forClient, config: { audit: 'employee.create' } },
+    async (request, reply) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who));
+      mustCan(who, 'staff.canCreate');
+      const body = parse(addEmployeeRequestSchema, request.body);
+      const read = who.setup ?? (await setupDoc(request.tenantId));
+      const { person, password } = await addPerson(request.tenantId, read, who, body, who.root);
+      entry.target(person.id);
+      entry.saved(null, person);
+      const employee = await docOf(request.tenantId, await mustFind(request.tenantId, person.id));
+      return reply.status(201).send({ employee, password });
+    },
+  );
 
   /** The root's import: each row is one add by hand, without a sign-in, one after another so the
    * numbering counts past the row before. A call answers one result per row: a row the add refuses
    * is its result (409 taken, 400 invalid), and a row the system could not answer for (503: a claim
    * that may be a running add's, the store down) is `busy`, to be sent again, and the call goes on.
    * Any other failure is a fault and ends the call as it would any route: the rows before it stay. */
-  app.post(IMPORT_ROUTE, forClient, async (request) => {
-    const who = await signedIn(request);
-    mustBeRoot(who);
-    const call = parse(importCallSchema, request.body);
-    const read = await setupDoc(request.tenantId);
-    const results: ImportResult[] = [];
-    const listed: Listed = { codes: null };
-    for (const raw of call.rows) {
-      const row = addEmployeeRequestSchema.safeParse(raw);
-      if (!row.success) {
-        results.push({ kind: 'refused', reason: 'invalid' });
-        continue;
+  app.post(
+    IMPORT_ROUTE,
+    { ...forClient, config: { audit: 'employee.import' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who));
+      mustBeRoot(who);
+      const call = parse(importCallSchema, request.body);
+      const read = await setupDoc(request.tenantId);
+      const results: ImportResult[] = [];
+      const listed: Listed = { codes: null };
+      for (const raw of call.rows) {
+        const row = addEmployeeRequestSchema.safeParse(raw);
+        if (!row.success) {
+          results.push({ kind: 'refused', reason: 'invalid' });
+          continue;
+        }
+        try {
+          const { person } = await addPerson(request.tenantId, read, who, row.data, false, listed);
+          results.push({ kind: 'added', employee: person });
+        } catch (error) {
+          const { status } = replyFor(error);
+          const reason = IMPORT_REASONS[status];
+          if (!reason) throw error;
+          results.push({ kind: 'refused', reason });
+        }
       }
-      try {
-        const { person } = await addPerson(request.tenantId, read, who, row.data, false, listed);
-        results.push({ kind: 'added', employee: person });
-      } catch (error) {
-        const { status } = replyFor(error);
-        const reason = IMPORT_REASONS[status];
-        if (!reason) throw error;
-        results.push({ kind: 'refused', reason });
-      }
-    }
-    return { results };
-  });
+      entry.created(results.flatMap((one) => (one.kind === 'added' ? [one.employee] : [])));
+      return { results };
+    },
+  );
 
-  app.put(employeeRoutes.one(':id'), forClient, async (request) => {
-    const who = await signedIn(request);
-    mustCan(who, 'staff.canEdit');
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(saveEmployeeRequestSchema, request.body);
-    const current = found.employee;
-    // Whoever is not the root changes a person's name and `extra` alone: any other change is a 403
-    // and writes nothing.
-    const sameLayer = (a: Employee['permissions'], b: Employee['permissions']) =>
-      PERMISSIONS.every((id) => a[id] === b[id]);
-    if (
-      !who.root &&
-      ((body.departmentId !== undefined &&
-        body.departmentId !== (current.department?.id ?? null)) ||
-        (body.positionId !== undefined && body.positionId !== (current.position?.id ?? null)) ||
-        (body.permissions !== undefined && !sameLayer(body.permissions, current.permissions)))
-    ) {
-      throw new HttpError(403, 'Forbidden');
-    }
-    const { setup } = who.root ? await setupDoc(request.tenantId) : { setup: null };
-    /** A link left as it is keeps the name it was saved with, whether or not its unit remains. */
-    const link = (
-      kept: Employee['department'],
-      units: StaffSetup['departments'] | undefined,
-      sent: string | null | undefined,
-      kind: string,
-    ) =>
-      sent === undefined || sent === (kept?.id ?? null) || !units
-        ? kept
-        : linkTo(units, sent, kind);
-    const updated: Employee = {
-      ...current,
-      name: body.name,
-      extra: body.extra,
-      department: link(current.department, setup?.departments, body.departmentId, 'department'),
-      position: link(current.position, setup?.positions, body.positionId, 'position'),
-      permissions: who.root && body.permissions ? body.permissions : current.permissions,
-    };
-    const key = recordKeys.tenant(request.tenantId).employee(current.id);
-    if ((await storage.putRecord(key, updated, body.version)) === 'moved') {
-      throw conflict(await newest(request.tenantId, current.id));
-    }
-    return await newest(request.tenantId, current.id);
-  });
+  app.put(
+    employeeRoutes.one(':id'),
+    { ...forClient, config: { audit: 'employee.save' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'staff.canEdit');
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(saveEmployeeRequestSchema, request.body);
+      const current = found.employee;
+      // Whoever is not the root changes a person's name and `extra` alone: any other change is a 403
+      // and writes nothing.
+      const sameLayer = (a: Employee['permissions'], b: Employee['permissions']) =>
+        PERMISSIONS.every((id) => a[id] === b[id]);
+      if (
+        !who.root &&
+        ((body.departmentId !== undefined &&
+          body.departmentId !== (current.department?.id ?? null)) ||
+          (body.positionId !== undefined && body.positionId !== (current.position?.id ?? null)) ||
+          (body.permissions !== undefined && !sameLayer(body.permissions, current.permissions)))
+      ) {
+        throw new HttpError(403, 'Forbidden');
+      }
+      const { setup } = who.root ? await setupDoc(request.tenantId) : { setup: null };
+      /** A link left as it is keeps the name it was saved with, whether or not its unit remains. */
+      const link = (
+        kept: Employee['department'],
+        units: StaffSetup['departments'] | undefined,
+        sent: string | null | undefined,
+        kind: string,
+      ) =>
+        sent === undefined || sent === (kept?.id ?? null) || !units
+          ? kept
+          : linkTo(units, sent, kind);
+      const updated: Employee = {
+        ...current,
+        name: body.name,
+        extra: body.extra,
+        department: link(current.department, setup?.departments, body.departmentId, 'department'),
+        position: link(current.position, setup?.positions, body.positionId, 'position'),
+        permissions: who.root && body.permissions ? body.permissions : current.permissions,
+      };
+      const key = recordKeys.tenant(request.tenantId).employee(current.id);
+      if ((await storage.putRecord(key, updated, body.version)) === 'moved') {
+        throw conflict(await newest(request.tenantId, current.id));
+      }
+      entry.saved(current, updated);
+      return await newest(request.tenantId, current.id);
+    },
+  );
 
   /** The person as stored now, for an answer; none if they are gone. */
   async function newest(tenantId: string, id: string) {
@@ -466,155 +495,185 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return found ? await docOf(tenantId, found) : null;
   }
 
-  app.post(employeeRoutes.archive(':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'staff.canDelete');
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(archiveEmployeeRequestSchema, request.body);
-    const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
-    if (
-      (await storage.putRecord(key, { ...found.employee, archived: true }, body.version)) ===
-      'moved'
-    ) {
-      throw conflict(await newest(request.tenantId, found.employee.id));
-    }
-    // A fresh generation on their sign-in record, so a session from before cannot wake when they
-    // are switched back on; the password stays. None to write for someone with no sign-in record.
-    await endSessions(
-      storage,
-      request.tenantId,
-      normaliseSignInName(found.employee.code),
-      (user) => user.employeeId === found.employee.id,
-    );
-    return await newest(request.tenantId, found.employee.id);
-  });
+  app.post(
+    employeeRoutes.archive(':id'),
+    { ...forClient, config: { audit: 'employee.archive' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'staff.canDelete');
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(archiveEmployeeRequestSchema, request.body);
+      const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
+      if (
+        (await storage.putRecord(key, { ...found.employee, archived: true }, body.version)) ===
+        'moved'
+      ) {
+        throw conflict(await newest(request.tenantId, found.employee.id));
+      }
+      entry.saved(found.employee, { ...found.employee, archived: true });
+      // A fresh generation on their sign-in record, so a session from before cannot wake when they
+      // are switched back on; the password stays. None to write for someone with no sign-in record.
+      await endSessions(
+        storage,
+        request.tenantId,
+        normaliseSignInName(found.employee.code),
+        (user) => user.employeeId === found.employee.id,
+      );
+      return await newest(request.tenantId, found.employee.id);
+    },
+  );
 
   /** Back on: the flag written off over the version read, and the sessions ended once more; the
    * password and code are as the switch off left them. */
-  app.post(employeeRoutes.restore(':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'staff.canDelete');
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(archiveEmployeeRequestSchema, request.body);
-    const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
-    if (
-      (await storage.putRecord(key, { ...found.employee, archived: false }, body.version)) ===
-      'moved'
-    ) {
-      throw conflict(await newest(request.tenantId, found.employee.id));
-    }
-    // The switch off may have written the flag and failed to end the sessions: ended again here, so
-    // no handle from before wakes whatever it managed. A person who left holds no live session.
-    await endSessions(
-      storage,
-      request.tenantId,
-      normaliseSignInName(found.employee.code),
-      (user) => user.employeeId === found.employee.id,
-    );
-    return await newest(request.tenantId, found.employee.id);
-  });
+  app.post(
+    employeeRoutes.restore(':id'),
+    { ...forClient, config: { audit: 'employee.restore' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'staff.canDelete');
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(archiveEmployeeRequestSchema, request.body);
+      const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
+      if (
+        (await storage.putRecord(key, { ...found.employee, archived: false }, body.version)) ===
+        'moved'
+      ) {
+        throw conflict(await newest(request.tenantId, found.employee.id));
+      }
+      entry.saved(found.employee, { ...found.employee, archived: false });
+      // The switch off may have written the flag and failed to end the sessions: ended again here, so
+      // no handle from before wakes whatever it managed. A person who left holds no live session.
+      await endSessions(
+        storage,
+        request.tenantId,
+        normaliseSignInName(found.employee.code),
+        (user) => user.employeeId === found.employee.id,
+      );
+      return await newest(request.tenantId, found.employee.id);
+    },
+  );
 
-  app.put(employeeRoutes.password(':id'), forClient, async (request) => {
-    mustBeRoot(await signedIn(request));
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(setPasswordRequestSchema, request.body);
-    const password = body.password ?? madePassword();
-    const passwordHash = await hashPassword(password);
-    const name = normaliseSignInName(found.employee.code);
-    const set = await setSignInPassword(
-      storage,
-      request.tenantId,
-      name,
-      (user) => user.employeeId === found.employee.id,
-      passwordHash,
-      now,
-    );
-    // Another's record, or none: the person check answers 409.
-    if (set === 'not owned') throw new HttpError(409, 'Conflict');
-    return { password };
-  });
+  app.put(
+    employeeRoutes.password(':id'),
+    { ...forClient, config: { audit: 'employee.password' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustBeRoot(who);
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(setPasswordRequestSchema, request.body);
+      const password = body.password ?? madePassword();
+      const passwordHash = await hashPassword(password);
+      const name = normaliseSignInName(found.employee.code);
+      const set = await setSignInPassword(
+        storage,
+        request.tenantId,
+        name,
+        (user) => user.employeeId === found.employee.id,
+        passwordHash,
+        now,
+      );
+      // Another's record, or none: the person check answers 409.
+      if (set === 'not owned') throw new HttpError(409, 'Conflict');
+      // The act alone: neither the password nor its hash goes in the memo.
+      entry.saved(null, null);
+      return { password };
+    },
+  );
 
   /** A new code: a sign-in record under the new name, holding the password the person has, is
    * claimed first; the person is written with it last, the moment it takes effect; the old record
    * is removed after, so the old code is free again. A person written between the read and the write
    * gives the new name back. A password given before the old record is removed is carried onto
    * the new one. */
-  app.put(employeeRoutes.code(':id'), forClient, async (request) => {
-    mustBeRoot(await signedIn(request));
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(changeCodeRequestSchema, request.body);
-    // A person who left keeps their code taken, so it is never freed by a change.
-    if (body.version !== found.tag || found.employee.archived) {
-      throw conflict(await docOf(request.tenantId, found));
-    }
-    const code = normaliseEmployeeCode(body.code);
-    if (code === found.employee.code) return await docOf(request.tenantId, found);
-    const keys = recordKeys.tenant(request.tenantId);
-    const oldName = normaliseSignInName(found.employee.code);
-    const old = await readSignIn(storage, request.tenantId, oldName);
-    if (!old || old.user.employeeId !== found.employee.id) throw new HttpError(409, 'Conflict');
-    // The code about to be freed counts as given, so a numbered add never gives its number again,
-    // whether it was typed or numbered: raised first, since a number burned is harmless.
-    const { prefix } = staffConfig((await setupDoc(request.tenantId)).setup).numbering;
-    const freed = new RegExp(`^${prefix}(\\d+)$`).exec(found.employee.code);
-    if (freed) await raiseGiven(request.tenantId, prefix, Number(freed[1]));
-    const name = normaliseSignInName(code);
-    await claimSignIn(request.tenantId, name, {
-      passwordHash: old.user.passwordHash,
-      root: false,
-      employeeId: found.employee.id,
-      passwordAt: now(),
-      generation: randomUUID(),
-    });
-    const saved = await storage.putRecord(
-      keys.employee(found.employee.id),
-      { ...found.employee, code },
-      found.tag,
-    );
-    if (saved === 'moved') {
-      const mine = await readSignIn(storage, request.tenantId, name);
-      if (mine?.user.employeeId === found.employee.id) {
-        await storage.removeRecord(keys.user(name), mine.tag);
+  app.put(
+    employeeRoutes.code(':id'),
+    { ...forClient, config: { audit: 'employee.code' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustBeRoot(who);
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(changeCodeRequestSchema, request.body);
+      // A person who left keeps their code taken, so it is never freed by a change.
+      if (body.version !== found.tag || found.employee.archived) {
+        throw conflict(await docOf(request.tenantId, found));
       }
-      throw conflict(await newest(request.tenantId, found.employee.id));
-    }
-    // The old record is removed over the tag it was read at. If it moved, a password may have been
-    // given in between: carry its hash onto the new record under a fresh generation, then try the
-    // removal again over the tag just read, a few times at most.
-    let seen = old;
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if ((await storage.removeRecord(keys.user(oldName), seen.tag)) === 'removed') {
-        return await newest(request.tenantId, found.employee.id);
+      const code = normaliseEmployeeCode(body.code);
+      if (code === found.employee.code) return await docOf(request.tenantId, found);
+      const keys = recordKeys.tenant(request.tenantId);
+      const oldName = normaliseSignInName(found.employee.code);
+      const old = await readSignIn(storage, request.tenantId, oldName);
+      if (!old || old.user.employeeId !== found.employee.id) throw new HttpError(409, 'Conflict');
+      // The code about to be freed counts as given, so a numbered add never gives its number again,
+      // whether it was typed or numbered: raised first, since a number burned is harmless.
+      const { prefix } = staffConfig((await setupDoc(request.tenantId)).setup).numbering;
+      const freed = new RegExp(`^${prefix}(\\d+)$`).exec(found.employee.code);
+      if (freed) await raiseGiven(request.tenantId, prefix, Number(freed[1]));
+      const name = normaliseSignInName(code);
+      await claimSignIn(request.tenantId, name, {
+        passwordHash: old.user.passwordHash,
+        root: false,
+        employeeId: found.employee.id,
+        passwordAt: now(),
+        generation: randomUUID(),
+      });
+      const saved = await storage.putRecord(
+        keys.employee(found.employee.id),
+        { ...found.employee, code },
+        found.tag,
+      );
+      if (saved === 'moved') {
+        const mine = await readSignIn(storage, request.tenantId, name);
+        if (mine?.user.employeeId === found.employee.id) {
+          await storage.removeRecord(keys.user(name), mine.tag);
+        }
+        throw conflict(await newest(request.tenantId, found.employee.id));
       }
-      const again = await readSignIn(storage, request.tenantId, oldName);
-      // Gone, or taken over by another person: nothing of this person's is left to free.
-      if (!again || again.user.employeeId !== found.employee.id) {
-        return await newest(request.tenantId, found.employee.id);
-      }
-      // A person who no longer holds the new code has changed again, perhaps back to this old one,
-      // whose record is then the claim of that change and not this change's to remove.
-      const current = await mustFind(request.tenantId, found.employee.id);
-      if (current.employee.code !== code) return await newest(request.tenantId, found.employee.id);
-      const mine = await readSignIn(storage, request.tenantId, name);
-      if (mine?.user.employeeId === found.employee.id) {
-        // A claim copies the hash, and a password given writes a fresh salted one: a record that
-        // holds this change's hash is a change back's claim, which is not this change's to remove.
-        if (again.user.passwordHash === mine.user.passwordHash) {
+      entry.saved(found.employee, { ...found.employee, code });
+      // The old record is removed over the tag it was read at. If it moved, a password may have been
+      // given in between: carry its hash onto the new record under a fresh generation, then try the
+      // removal again over the tag just read, a few times at most.
+      let seen = old;
+      for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+        if ((await storage.removeRecord(keys.user(oldName), seen.tag)) === 'removed') {
           return await newest(request.tenantId, found.employee.id);
         }
-        await storage.putRecord(
-          keys.user(name),
-          {
-            ...mine.user,
-            passwordHash: again.user.passwordHash,
-            passwordAt: now(),
-            generation: randomUUID(),
-          },
-          mine.tag,
-        );
+        const again = await readSignIn(storage, request.tenantId, oldName);
+        // Gone, or taken over by another person: nothing of this person's is left to free.
+        if (!again || again.user.employeeId !== found.employee.id) {
+          return await newest(request.tenantId, found.employee.id);
+        }
+        // A person who no longer holds the new code has changed again, perhaps back to this old one,
+        // whose record is then the claim of that change and not this change's to remove.
+        const current = await mustFind(request.tenantId, found.employee.id);
+        if (current.employee.code !== code)
+          return await newest(request.tenantId, found.employee.id);
+        const mine = await readSignIn(storage, request.tenantId, name);
+        if (mine?.user.employeeId === found.employee.id) {
+          // A claim copies the hash, and a password given writes a fresh salted one: a record that
+          // holds this change's hash is a change back's claim, which is not this change's to remove.
+          if (again.user.passwordHash === mine.user.passwordHash) {
+            return await newest(request.tenantId, found.employee.id);
+          }
+          await storage.putRecord(
+            keys.user(name),
+            {
+              ...mine.user,
+              passwordHash: again.user.passwordHash,
+              passwordAt: now(),
+              generation: randomUUID(),
+            },
+            mine.tag,
+          );
+        }
+        seen = again;
       }
-      seen = again;
-    }
-    throw new CStorageError(412, 'the old sign-in moved on every attempt to be removed');
-  });
+      throw new CStorageError(412, 'the old sign-in moved on every attempt to be removed');
+    },
+  );
 
   /** A person's photo as stored, with the version it is at; none yet is `null` and `''`. A record
    * that does not parse is a fault, a 500 naming its kind and never its key. */
@@ -632,16 +691,24 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return await photoOf(request.tenantId, found.employee.id);
   });
 
-  app.put(employeeRoutes.photo(':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'staff.canEdit');
-    const found = await mustFind(request.tenantId, idOf(request));
-    const body = parse(savePhotoRequestSchema, request.body);
-    const key = recordKeys.tenant(request.tenantId).employeePhoto(found.employee.id);
-    const stored: StoredPhoto = { photo: body.photo };
-    const saved = await storage.putRecord(key, stored, body.version === '' ? null : body.version);
-    if (saved === 'moved') throw conflict(await photoOf(request.tenantId, found.employee.id));
-    return await photoOf(request.tenantId, found.employee.id);
-  });
+  app.put(
+    employeeRoutes.photo(':id'),
+    { ...forClient, config: { audit: 'employee.photo' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'staff.canEdit');
+      const found = await mustFind(request.tenantId, idOf(request));
+      const body = parse(savePhotoRequestSchema, request.body);
+      const key = recordKeys.tenant(request.tenantId).employeePhoto(found.employee.id);
+      const stored: StoredPhoto = { photo: body.photo };
+      const saved = await storage.putRecord(key, stored, body.version === '' ? null : body.version);
+      if (saved === 'moved') throw conflict(await photoOf(request.tenantId, found.employee.id));
+      // The act alone: the photo's bytes are never in the memo.
+      entry.saved(null, null);
+      return await photoOf(request.tenantId, found.employee.id);
+    },
+  );
 
   /** Claims an email for a person, before their record holds it. A record already under the email
    * whose person holds it is a taken email (409, with no `current`). One whose person does not hold
@@ -681,55 +748,70 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
    * person is written with it over the tag they were read at, and the old record is removed after, so
    * the old email is free again. A version that moved gives the claim back and answers 409 with the
    * person. No mail is sent whatever the answer. */
-  app.put(signInRoutes.email(':id'), forClient, async (request) => {
-    mustBeRoot(await signedIn(request));
-    const found = await mustFind(request.tenantId, idOf(request));
-    if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.email) {
-      throw new HttpError(403, 'Forbidden');
-    }
-    const body = parse(setEmailRequestSchema, request.body);
-    if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
-    const before = found.employee.email ?? null;
-    if (body.email === before) return await docOf(request.tenantId, found);
-    // The old email's record, read before the new one is claimed: it is removed over this tag
-    // alone, so a claim of the same email made since (a change back) is never removed.
-    const old = before === null ? null : await readEmailClaim(storage, request.tenantId, before);
-    const { email: _kept, ...without } = found.employee;
-    const updated: Employee = body.email === null ? without : { ...without, email: body.email };
-    if (body.email !== null) await claimEmail(request.tenantId, body.email, found.employee.id);
-    const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
-    if ((await storage.putRecord(key, updated, found.tag)) === 'moved') {
-      if (body.email !== null) {
-        const mine = await readEmailClaim(storage, request.tenantId, body.email);
-        await dropEmail(request.tenantId, body.email, mine, found.employee.id);
+  app.put(
+    signInRoutes.email(':id'),
+    { ...forClient, config: { audit: 'employee.email' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustBeRoot(who);
+      const found = await mustFind(request.tenantId, idOf(request));
+      if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.email) {
+        throw new HttpError(403, 'Forbidden');
       }
-      throw conflict(await newest(request.tenantId, found.employee.id));
-    }
-    if (before !== null) await dropEmail(request.tenantId, before, old, found.employee.id);
-    return await newest(request.tenantId, found.employee.id);
-  });
+      const body = parse(setEmailRequestSchema, request.body);
+      if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
+      const before = found.employee.email ?? null;
+      if (body.email === before) return await docOf(request.tenantId, found);
+      // The old email's record, read before the new one is claimed: it is removed over this tag
+      // alone, so a claim of the same email made since (a change back) is never removed.
+      const old = before === null ? null : await readEmailClaim(storage, request.tenantId, before);
+      const { email: _kept, ...without } = found.employee;
+      const updated: Employee = body.email === null ? without : { ...without, email: body.email };
+      if (body.email !== null) await claimEmail(request.tenantId, body.email, found.employee.id);
+      const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
+      if ((await storage.putRecord(key, updated, found.tag)) === 'moved') {
+        if (body.email !== null) {
+          const mine = await readEmailClaim(storage, request.tenantId, body.email);
+          await dropEmail(request.tenantId, body.email, mine, found.employee.id);
+        }
+        throw conflict(await newest(request.tenantId, found.employee.id));
+      }
+      entry.saved(found.employee, updated);
+      if (before !== null) await dropEmail(request.tenantId, before, old, found.employee.id);
+      return await newest(request.tenantId, found.employee.id);
+    },
+  );
 
   /** A QR code for one sign-in, the root's alone and only while the company has the QR sign-in on:
    * 32 random bytes of which only the hash is kept, in the person's one record, replacing the last
    * over the tag it was read at. The secret is in the answer's link and nowhere else. */
-  app.post(signInRoutes.issueQr(':id'), forClient, async (request) => {
-    mustBeRoot(await signedIn(request));
-    const found = await mustFind(request.tenantId, idOf(request));
-    if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.qr) {
-      throw new HttpError(403, 'Forbidden');
-    }
-    const id = found.employee.id;
-    const key = recordKeys.tenant(request.tenantId).signInQr(id);
-    const secret = randomBytes(32).toString('base64url');
-    const expiresAt = now() + QR_MINUTES * 60_000;
-    const record = { hash: await sha256Hex(secret), expiresAt };
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const last = await readQr(storage, request.tenantId, id);
-      if ((await storage.putRecord(key, record, last ? last.tag : null)) === 'saved') {
-        const code = clientCodeSchema.parse(request.headers[CLIENT_HEADER]);
-        return { link: qrLink(code, id, secret), expiresAt };
+  app.post(
+    signInRoutes.issueQr(':id'),
+    { ...forClient, config: { audit: 'employee.qr' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustBeRoot(who);
+      const found = await mustFind(request.tenantId, idOf(request));
+      if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.qr) {
+        throw new HttpError(403, 'Forbidden');
       }
-    }
-    throw new CStorageError(412, 'the QR record moved on every attempt to be replaced');
-  });
+      const id = found.employee.id;
+      const key = recordKeys.tenant(request.tenantId).signInQr(id);
+      const secret = randomBytes(32).toString('base64url');
+      const expiresAt = now() + QR_MINUTES * 60_000;
+      const record = { hash: await sha256Hex(secret), expiresAt };
+      for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+        const last = await readQr(storage, request.tenantId, id);
+        if ((await storage.putRecord(key, record, last ? last.tag : null)) === 'saved') {
+          // The act alone: neither the secret nor its hash is in the memo.
+          entry.saved(null, null);
+          const code = clientCodeSchema.parse(request.headers[CLIENT_HEADER]);
+          return { link: qrLink(code, id, secret), expiresAt };
+        }
+      }
+      throw new CStorageError(412, 'the QR record moved on every attempt to be replaced');
+    },
+  );
 }

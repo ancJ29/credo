@@ -39,6 +39,7 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
 import { recordTools } from '../records/records';
 import { readSetup } from '../records/staff-records';
@@ -215,26 +216,34 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     return { orders: shownOrders.sort(newestOrdersFirst) };
   });
 
-  app.post(ROUTES.orders, forClient, async (request, reply) => {
-    mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(firstSaveOrderRequestSchema, request.body);
-    const { customer, lines, total } = await priced(request.tenantId, body);
-    const given = await nextNumber(request.tenantId, 'orders');
-    const order: Order = {
-      id: randomUUID(),
-      number: numberText(ORDER_PREFIX, given),
-      day: body.day,
-      state: 'draft',
-      customer,
-      lines,
-      total,
-      request: null,
-      madeAt: now(),
-      extra: body.extra,
-    };
-    await writeNew(recordKeys.tenant(request.tenantId).order(order.day, order.id), order);
-    return reply.status(201).send(await orderDoc(request.tenantId, order.day, order.id));
-  });
+  app.post(
+    ROUTES.orders,
+    { ...forClient, config: { audit: 'order.create' } },
+    async (request, reply) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who));
+      mustCan(who, 'orders.canEdit');
+      const body = parse(firstSaveOrderRequestSchema, request.body);
+      const { customer, lines, total } = await priced(request.tenantId, body);
+      const given = await nextNumber(request.tenantId, 'orders');
+      const order: Order = {
+        id: randomUUID(),
+        number: numberText(ORDER_PREFIX, given),
+        day: body.day,
+        state: 'draft',
+        customer,
+        lines,
+        total,
+        request: null,
+        madeAt: now(),
+        extra: body.extra,
+      };
+      await writeNew(recordKeys.tenant(request.tenantId).order(order.day, order.id), order);
+      entry.target(order.id);
+      entry.saved(null, order);
+      return reply.status(201).send(await orderDoc(request.tenantId, order.day, order.id));
+    },
+  );
 
   app.get(orderRoutes.one(':day', ':id'), forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canView');
@@ -242,40 +251,50 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     return { order: await shown(request.tenantId, order), version: tag };
   });
 
-  app.put(orderRoutes.one(':day', ':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(resaveOrderRequestSchema, request.body);
-    const found = await mustFindOrder(request);
-    const { day, id } = found.order;
-    if (body.day !== day)
-      throw new HttpError(400, 'Bad request', { details: 'day: the order’s own' });
-    if (found.tag !== body.version || found.order.state !== 'draft') {
-      throw conflict(await orderDoc(request.tenantId, day, id));
-    }
-    const { customer, lines, total } = await priced(request.tenantId, body);
-    const changed: Order = { ...found.order, customer, lines, total, extra: body.extra };
-    const key = recordKeys.tenant(request.tenantId).order(day, id);
-    let outcome: 'saved' | 'moved';
-    try {
-      outcome = await storage.putRecord(key, changed, found.tag);
-    } catch (error) {
-      // The write may have landed with its answer lost: the record stored is exactly the one built
-      // here, state and request included, or the failure stands. A rival's confirm differs in both.
-      // a re-read that fails too leaves the write's failure standing, as the lists' recovery does
-      const stored = await readOrder(request.tenantId, day, id).catch(() => null);
-      if (stored !== null && isDeepStrictEqual(stored.order, changed)) {
-        return await orderDoc(request.tenantId, day, id);
+  app.put(
+    orderRoutes.one(':day', ':id'),
+    { ...forClient, config: { audit: 'order.save' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'orders.canEdit');
+      const body = parse(resaveOrderRequestSchema, request.body);
+      const found = await mustFindOrder(request);
+      const { day, id } = found.order;
+      if (body.day !== day)
+        throw new HttpError(400, 'Bad request', { details: 'day: the order’s own' });
+      if (found.tag !== body.version || found.order.state !== 'draft') {
+        throw conflict(await orderDoc(request.tenantId, day, id));
       }
-      throw error;
-    }
-    if (outcome === 'moved') throw conflict(await orderDoc(request.tenantId, day, id));
-    return await orderDoc(request.tenantId, day, id);
-  });
+      const { customer, lines, total } = await priced(request.tenantId, body);
+      const changed: Order = { ...found.order, customer, lines, total, extra: body.extra };
+      const key = recordKeys.tenant(request.tenantId).order(day, id);
+      let outcome: 'saved' | 'moved';
+      try {
+        outcome = await storage.putRecord(key, changed, found.tag);
+      } catch (error) {
+        // The write may have landed with its answer lost: the record stored is exactly the one built
+        // here, state and request included, or the failure stands. A rival's confirm differs in both.
+        // a re-read that fails too leaves the write's failure standing, as the lists' recovery does
+        const stored = await readOrder(request.tenantId, day, id).catch(() => null);
+        if (stored !== null && isDeepStrictEqual(stored.order, changed)) {
+          entry.saved(found.order, changed);
+          return await orderDoc(request.tenantId, day, id);
+        }
+        throw error;
+      }
+      if (outcome === 'moved') throw conflict(await orderDoc(request.tenantId, day, id));
+      entry.saved(found.order, changed);
+      return await orderDoc(request.tenantId, day, id);
+    },
+  );
 
   /** The request a confirm or a send makes, after the order that names it. The driver must be
    * there, not left and allowed to deliver, and the day not before the order's (400). */
   async function issue(request: FastifyRequest, confirming: boolean) {
-    mustCan(await signedIn(request), 'orders.canEdit');
+    const who = await signedIn(request);
+    const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+    mustCan(who, 'orders.canEdit');
     const body = parse(sendOrderRequestSchema, request.body);
     const found = await mustFindOrder(request);
     const { order } = found;
@@ -320,44 +339,60 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
       throw conflict(await orderDoc(request.tenantId, order.day, order.id));
     }
     await writeNew(keys.delivery(made.day, made.id), made);
+    entry.saved(order, confirmed);
     return await orderDoc(request.tenantId, order.day, order.id);
   }
 
-  app.post(orderRoutes.confirm(':day', ':id'), forClient, (request) => issue(request, true));
-  app.post(orderRoutes.send(':day', ':id'), forClient, (request) => issue(request, false));
+  app.post(
+    orderRoutes.confirm(':day', ':id'),
+    { ...forClient, config: { audit: 'order.confirm' } },
+    (request) => issue(request, true),
+  );
+  app.post(
+    orderRoutes.send(':day', ':id'),
+    { ...forClient, config: { audit: 'order.send' } },
+    (request) => issue(request, false),
+  );
 
-  app.post(orderRoutes.cancel(':day', ':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(cancelRequestSchema, request.body);
-    const found = await mustFindOrder(request);
-    const { order } = found;
-    const live = order.request
-      ? await readRequest(request.tenantId, order.request.day, order.request.id)
-      : null;
-    // A fulfilled order, or a confirmed one whose request is delivered, is not cancelled.
-    if (
-      found.tag !== body.version ||
-      order.state === 'cancelled' ||
-      order.state === 'fulfilled' ||
-      live?.request.state === 'delivered'
-    ) {
-      throw conflict(await orderDoc(request.tenantId, order.day, order.id));
-    }
-    const keys = recordKeys.tenant(request.tenantId);
-    // The request is cancelled first, then the order: a stop between leaves a confirmed order whose
-    // request is cancelled, which reads as having none.
-    if (live?.request.state === 'waiting') {
-      const key = keys.delivery(live.request.day, live.request.id);
-      await storage.putRecord(key, { ...live.request, state: 'cancelled' }, live.tag);
-    }
-    const cancelled: Order = { ...order, state: 'cancelled', request: null };
-    if (
-      (await storage.putRecord(keys.order(order.day, order.id), cancelled, found.tag)) === 'moved'
-    ) {
-      throw conflict(await orderDoc(request.tenantId, order.day, order.id));
-    }
-    return await orderDoc(request.tenantId, order.day, order.id);
-  });
+  app.post(
+    orderRoutes.cancel(':day', ':id'),
+    { ...forClient, config: { audit: 'order.cancel' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'orders.canEdit');
+      const body = parse(cancelRequestSchema, request.body);
+      const found = await mustFindOrder(request);
+      const { order } = found;
+      const live = order.request
+        ? await readRequest(request.tenantId, order.request.day, order.request.id)
+        : null;
+      // A fulfilled order, or a confirmed one whose request is delivered, is not cancelled.
+      if (
+        found.tag !== body.version ||
+        order.state === 'cancelled' ||
+        order.state === 'fulfilled' ||
+        live?.request.state === 'delivered'
+      ) {
+        throw conflict(await orderDoc(request.tenantId, order.day, order.id));
+      }
+      const keys = recordKeys.tenant(request.tenantId);
+      // The request is cancelled first, then the order: a stop between leaves a confirmed order whose
+      // request is cancelled, which reads as having none.
+      if (live?.request.state === 'waiting') {
+        const key = keys.delivery(live.request.day, live.request.id);
+        await storage.putRecord(key, { ...live.request, state: 'cancelled' }, live.tag);
+      }
+      const cancelled: Order = { ...order, state: 'cancelled', request: null };
+      if (
+        (await storage.putRecord(keys.order(order.day, order.id), cancelled, found.tag)) === 'moved'
+      ) {
+        throw conflict(await orderDoc(request.tenantId, order.day, order.id));
+      }
+      entry.saved(order, cancelled);
+      return await orderDoc(request.tenantId, order.day, order.id);
+    },
+  );
 
   app.get(ROUTES.deliveries, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canView');
@@ -408,11 +443,11 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     const who = await signedIn(request);
     mustCan(who, 'deliveries.canDeliver');
     if (who.root || !who.employeeId) throw forbidden();
-    return who.employeeId;
+    return { driverId: who.employeeId, who };
   }
 
   app.get(ROUTES.myDeliveries, forClient, async (request) => {
-    const driverId = await mustBeDriver(request);
+    const { driverId } = await mustBeDriver(request);
     const query = parse(z.strictObject({ day: daySchema }), request.query);
     const dayList = await every(
       recordKeys.tenant(request.tenantId).deliveryDayPrefix(query.day),
@@ -437,70 +472,87 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     throw new HttpError(503, 'Service unavailable');
   }
 
-  app.post(deliveryRoutes.deliver(':day', ':id'), forClient, async (request) => {
-    const driverId = await mustBeDriver(request);
-    const body = parse(deliverRequestSchema, request.body);
-    const found = await mustFindRequest(request);
-    const { day, id, order: named } = found.request;
-    if (found.request.driver.id !== driverId) throw forbidden();
-    if (found.tag !== body.version || found.request.state !== 'waiting') {
-      throw conflict(await requestDoc(request.tenantId, day, id));
-    }
-    const keys = recordKeys.tenant(request.tenantId);
-    // The photo, then the request delivered over its tag, then the order fulfilled over its tag: a
-    // stop after the photo leaves a waiting request, a stop after the request a confirmed order
-    // whose request is delivered, which reads fulfilled.
-    await writePhoto(request.tenantId, day, id, body.photo);
-    const delivered: DeliveryRequest = { ...found.request, state: 'delivered', deliveredAt: now() };
-    if ((await storage.putRecord(keys.delivery(day, id), delivered, found.tag)) === 'moved') {
-      throw conflict(await requestDoc(request.tenantId, day, id));
-    }
-    // The order is fulfilled while it is confirmed and still names this request, read again when it
-    // moved; after a few tries it is left, and still reads fulfilled.
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const ordered = await readOrder(request.tenantId, named.day, named.id);
-      if (ordered?.order.state !== 'confirmed' || ordered.order.request?.id !== id) break;
-      const key = keys.order(named.day, named.id);
-      if (
-        (await storage.putRecord(key, { ...ordered.order, state: 'fulfilled' }, ordered.tag)) ===
-        'saved'
-      ) {
-        break;
+  app.post(
+    deliveryRoutes.deliver(':day', ':id'),
+    { ...forClient, config: { audit: 'delivery.deliver' } },
+    async (request) => {
+      const { driverId, who } = await mustBeDriver(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const body = parse(deliverRequestSchema, request.body);
+      const found = await mustFindRequest(request);
+      const { day, id, order: named } = found.request;
+      if (found.request.driver.id !== driverId) throw forbidden();
+      if (found.tag !== body.version || found.request.state !== 'waiting') {
+        throw conflict(await requestDoc(request.tenantId, day, id));
       }
-    }
-    return await requestDoc(request.tenantId, day, id);
-  });
+      const keys = recordKeys.tenant(request.tenantId);
+      // The photo, then the request delivered over its tag, then the order fulfilled over its tag: a
+      // stop after the photo leaves a waiting request, a stop after the request a confirmed order
+      // whose request is delivered, which reads fulfilled.
+      await writePhoto(request.tenantId, day, id, body.photo);
+      const delivered: DeliveryRequest = {
+        ...found.request,
+        state: 'delivered',
+        deliveredAt: now(),
+      };
+      if ((await storage.putRecord(keys.delivery(day, id), delivered, found.tag)) === 'moved') {
+        throw conflict(await requestDoc(request.tenantId, day, id));
+      }
+      entry.saved(found.request, delivered);
+      // The order is fulfilled while it is confirmed and still names this request, read again when it
+      // moved; after a few tries it is left, and still reads fulfilled.
+      for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+        const ordered = await readOrder(request.tenantId, named.day, named.id);
+        if (ordered?.order.state !== 'confirmed' || ordered.order.request?.id !== id) break;
+        const key = keys.order(named.day, named.id);
+        if (
+          (await storage.putRecord(key, { ...ordered.order, state: 'fulfilled' }, ordered.tag)) ===
+          'saved'
+        ) {
+          break;
+        }
+      }
+      return await requestDoc(request.tenantId, day, id);
+    },
+  );
 
-  app.post(deliveryRoutes.cancel(':day', ':id'), forClient, async (request) => {
-    mustCan(await signedIn(request), 'orders.canEdit');
-    const body = parse(cancelRequestSchema, request.body);
-    const found = await mustFindRequest(request);
-    const { day, id, order: named } = found.request;
-    if (found.tag !== body.version || found.request.state !== 'waiting') {
-      throw conflict(await requestDoc(request.tenantId, day, id));
-    }
-    const keys = recordKeys.tenant(request.tenantId);
-    if (
-      (await storage.putRecord(
-        keys.delivery(day, id),
-        { ...found.request, state: 'cancelled' },
-        found.tag,
-      )) === 'moved'
-    ) {
-      throw conflict(await requestDoc(request.tenantId, day, id));
-    }
-    // The order is then freed to send again. An order that moved meanwhile is left as it is: a
-    // request that is cancelled reads as none whatever the order names.
-    const ordered = await readOrder(request.tenantId, named.day, named.id);
-    if (ordered?.order.request?.id === id) {
-      await storage.putRecord(
-        keys.order(named.day, named.id),
-        { ...ordered.order, request: null },
-        ordered.tag,
-      );
-    }
-    return await requestDoc(request.tenantId, day, id);
-  });
+  app.post(
+    deliveryRoutes.cancel(':day', ':id'),
+    { ...forClient, config: { audit: 'delivery.cancel' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      mustCan(who, 'orders.canEdit');
+      const body = parse(cancelRequestSchema, request.body);
+      const found = await mustFindRequest(request);
+      const { day, id, order: named } = found.request;
+      if (found.tag !== body.version || found.request.state !== 'waiting') {
+        throw conflict(await requestDoc(request.tenantId, day, id));
+      }
+      const keys = recordKeys.tenant(request.tenantId);
+      if (
+        (await storage.putRecord(
+          keys.delivery(day, id),
+          { ...found.request, state: 'cancelled' },
+          found.tag,
+        )) === 'moved'
+      ) {
+        throw conflict(await requestDoc(request.tenantId, day, id));
+      }
+      entry.saved(found.request, { ...found.request, state: 'cancelled' });
+      // The order is then freed to send again. An order that moved meanwhile is left as it is: a
+      // request that is cancelled reads as none whatever the order names.
+      const ordered = await readOrder(request.tenantId, named.day, named.id);
+      if (ordered?.order.request?.id === id) {
+        await storage.putRecord(
+          keys.order(named.day, named.id),
+          { ...ordered.order, request: null },
+          ordered.tag,
+        );
+      }
+      return await requestDoc(request.tenantId, day, id);
+    },
+  );
 
   app.get(ROUTES.drivers, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canEdit');

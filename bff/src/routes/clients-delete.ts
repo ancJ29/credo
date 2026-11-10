@@ -10,6 +10,7 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { declare, operatorOf } from '../audit';
 import { deleteClient } from '../records/clients';
 import { HttpError, parse } from '../errors';
 
@@ -17,7 +18,7 @@ type Deps = {
   storage: CStorageClient;
   now: () => number;
   /** The operator's live session, or a 401. */
-  operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string }>;
+  operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
   /** The fresh touch for an act, or a 403. */
   confirmed: (operator: { id: string }, act: ConfirmAct, confirm: Confirmation) => Promise<void>;
 };
@@ -39,12 +40,16 @@ export function registerDeleteClientRoutes(
 ) {
   app.delete<{ Params: { code: string } }>(
     clientDeleteRoute(':code'),
+    { config: { audit: 'client.delete' } },
     async (request): Promise<DeleteClientReply> => {
       const operator = await operatorSignedIn(request);
       const code = clientCodeSchema.safeParse(request.params.code);
       if (!code.success) throw new HttpError(400, 'Bad request');
       const held = await storage.getRecord(recordKeys.client(code.data));
       const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
+      // From here the client is known, so a refusal of the body or the touch is on its record. A
+      // press after the index is gone resumes the deletion and has no client to name.
+      const entry = index ? declare(request, operatorOf(operator), index.id, index.id) : null;
       if (index) {
         const body = parse(deleteClientRequestSchema, request.body);
         await confirmed(operator, 'delete-client', body.confirm);
@@ -52,6 +57,7 @@ export function registerDeleteClientRoutes(
       const done = await deleteClient(storage, { code: code.data, index, by: operator.id, now });
       if (done === 'unknown') throw new HttpError(404, 'Unknown client');
       if (done === 'busy' || done === 'moved') throw new HttpError(409, 'The client changed');
+      entry?.saved({ code: code.data }, null);
       return done;
     },
   );
