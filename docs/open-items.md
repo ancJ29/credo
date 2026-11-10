@@ -1329,3 +1329,15 @@ The one-gate-command convention gives every package one check command, and the r
 
 `scripts/src/stack.ts` starts only c-storage and the BFF as processes; `createFront` and `createSeeding` are `http` servers in the process that called `withStack`. The plan's step 1 (`keepOnExit` on `startProcess`) would have left c-storage and the BFF standing and the front dead as `up` returned, so its done-when (`curl` on 3180 from a second shell) could not hold. Step 1 was built with a keeper process instead (`scripts/src/local.ts`, `local keep`): it holds all four parts and is the only process started with `keepOnExit`. Steps 2 and 5 read the handle's `keeper` pid, and the seed door's status is the keeper's. Nothing here is run detached by the build: the real reading is the human's.
 
+## 208. The teardown's read-back checks three paths, not the whole environment folder — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` (`scripts/src/local.ts`, the read-back at the end of `down`) reads the data folder, the build folder and the handle, not `.local-env` as a whole, so a file left in the folder beside them (the keeper's log, for one) is not named when the removal half-failed. The removal itself is of the whole folder, so only the naming is short.
+
+## 209. A zombie child can stall the teardown of an already-dead stack — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` asks a process whether it is alive with `kill(pid, 0)`, which also succeeds for a zombie that has ended but not been reaped; the stop loop (`scripts/src/local.ts`, the wait after the signal) then waits out the whole settle time and ends red naming a process that is already dead. It resolves once the parent reaps it.
+
+## 210. The ownership matchers are substrings, so another checkout's process could match on an exact pid collision — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` signals a pid only when its command line contains `local-main.ts`, the build folder's `c-storage` path, or `bff/src/main.ts` (`scripts/src/local.ts`, the ownership matchers in `down`). The first and the last are not specific to this checkout, so another checkout's keeper or BFF that took a handle's pid after its process died would be signalled. It needs an exact pid collision with a live process of the same shape.
+

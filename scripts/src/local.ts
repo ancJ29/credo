@@ -1,6 +1,6 @@
 import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { listClients } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { type CStorageClient, clientCodeSchema, type createCStorageClient } from '@credo/shared';
@@ -86,7 +86,9 @@ export type LocalIo = {
   signal: (pid: number) => void;
   /** `down`: the command line of a running process, or nothing when it cannot be read. */
   commandOf: (pid: number) => string | undefined;
-  /** `down`: how long a process may take to go after it is asked. */
+  /** `down`: every process running, by pid and command line (the whole line, not cut to a window). */
+  listProcesses: () => { pid: number; command: string }[];
+  /** `down`, and `up`'s failure: how long a process may take to go after it is asked. */
   settleMs: number;
   /** `status`: whether a process of this machine is running. A pid alone is never an answer. */
   alive: (pid: number) => boolean;
@@ -98,6 +100,8 @@ export type LocalIo = {
   /** `keep`: settles when the keeper is asked to end. */
   stopped: Promise<void>;
 };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const USAGE = 'usage: pnpm local up | status | seed <code> [<name>] | down';
 
@@ -149,20 +153,32 @@ async function up(io: LocalIo) {
   );
   const beat = setInterval(() => io.out('still working'), io.heartbeatMs);
   let keeper: Started | null = null;
+  let handle: Handle;
   try {
+    // A folder left by a run whose removal failed holds a stale log and data: nothing stands on it.
+    await rm(paths.dir, { recursive: true, force: true });
     await mkdir(paths.dir, { recursive: true, mode: 0o700 });
     await io.build(paths.build);
     keeper = await io.keeper();
     await waitUntilUp(`http://localhost:${ports.front}/`, keeper, 'the stack', io.waitMs);
+    handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
   } catch (error) {
+    // The wait for the keeper to end is bounded and keeps printing: a keeper that will not go
+    // is named and left, with its folder, rather than waited on in silence.
+    const ended = keeper
+      ? await Promise.race([keeper.stop().then(() => true), sleep(io.settleMs).then(() => false)])
+      : true;
     clearInterval(beat);
-    await keeper?.stop();
-    await rm(paths.dir, { recursive: true, force: true });
+    if (ended) await rm(paths.dir, { recursive: true, force: true });
     io.err(`the environment did not come up: ${messageOf(error)}`);
+    if (!ended) {
+      io.err(
+        `the keeper (pid ${keeper!.child.pid}) did not end in ${io.settleMs / 1000} s and is left running with ${paths.dir}: end it with kill ${keeper!.child.pid}, then run pnpm local down`,
+      );
+    }
     return 1;
   }
   clearInterval(beat);
-  const handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
   io.out(`the environment is up at ${handle.url}`);
   io.out(`the demo client's link is ${handle.url}/login?client-code=${handle.demo.clientCode}`);
   io.out(`sign in as ${handle.demo.rootName} with the password ${handle.demo.rootPassword}`);
@@ -326,8 +342,6 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
   }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 /** The handle as `down` may trust it: a message when it is not one, since a handle is a file
  * anyone can write, and what it names is about to be signalled and deleted. */
 function readableHandle(text: string, paths: LocalPaths): Handle | string {
@@ -363,7 +377,33 @@ async function down(io: LocalIo) {
       io.out('there is no handle and no environment folder: nothing is up, nothing was changed');
       return 0;
     }
-    io.out('there is no handle: no process can be named, only the environment folder is removed');
+    // Without a handle the processes are found by what only the environment's own can carry in
+    // their command lines: the binary built under its folder, and the keeper started for its root.
+    let running: { pid: number; command: string }[];
+    try {
+      running = io
+        .listProcesses()
+        .filter(
+          ({ command }) =>
+            command.includes(join(paths.build, 'c-storage')) ||
+            command.includes(`local-main.ts keep ${dirname(paths.dir)}`),
+        );
+    } catch (error) {
+      io.err(
+        `there is no handle, and the processes could not be listed (${messageOf(error)}): the folder ${paths.dir} is kept; free ports ${Object.values(ports).join(', ')}, then run pnpm local down`,
+      );
+      return 1;
+    }
+    if (running.length > 0) {
+      for (const { pid, command } of running) io.out(`pid ${pid} is running: ${command}`);
+      io.err(
+        `down: NOT cleared: there is no handle, but these processes of the environment are still writing into ${paths.dir}, which is kept; end them with kill ${running.map(({ pid }) => pid).join(' ')} and run pnpm local down again (the BFF, if it is up, shows as a held port 3182 afterwards)`,
+      );
+      return 1;
+    }
+    io.out(
+      'there is no handle and no process of the environment: only the environment folder is removed',
+    );
   }
   let handle: Handle | null = null;
   if (await exists(paths.handle)) {

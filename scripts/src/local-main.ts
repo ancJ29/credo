@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createCStorageClient } from '@credo/shared';
 import { runLocal, LOCAL_PORTS, localPaths } from './local';
+import { parseProcessList } from './running/strays';
 import { startProcess } from './running/processes';
 import { buildArtifacts, startStack } from './stack';
 
@@ -19,7 +20,9 @@ const credoRoot =
 const paths = localPaths(credoRoot);
 const WAIT_MS = 300_000;
 
+// Only the keeper holds the signals: any other verb keeps the default, so a person's Ctrl-C ends it.
 const stopped = new Promise<void>((resolve) => {
+  if (verb !== 'keep') return;
   for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.once(signal, resolve);
 });
 
@@ -56,6 +59,10 @@ process.exitCode = await runLocal(process.argv.slice(2), {
       return undefined;
     }
   },
+  listProcesses: () =>
+    parseProcessList(
+      execFileSync('ps', ['-axww', '-o', 'pid=,ppid=,command='], { encoding: 'utf8' }),
+    ).map(({ pid, command }) => ({ pid, command })),
   settleMs: 10_000,
   start: startStack,
   stopped,

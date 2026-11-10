@@ -116,6 +116,7 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   alive: () => true,
   signal: () => undefined,
   commandOf: () => undefined,
+  listProcesses: () => [],
   settleMs: 100,
   env: {},
   connect: () => memoryStorage().storage,
@@ -585,10 +586,53 @@ describe('local down', () => {
 
     expect(await runLocal(['down'], world.io(said))).toBe(0);
     expect(said.out[0]).toBe(
-      'there is no handle: no process can be named, only the environment folder is removed',
+      'there is no handle and no process of the environment: only the environment folder is removed',
     );
     expect(said.out.at(-1)).toBe('down: everything is cleared');
     expect(await gone(paths.dir)).toBe(true);
+  });
+
+  it('keeps the folder and names the processes when there is no handle but the environment’s processes run', async () => {
+    const said = lines();
+    const world = await standing();
+    await rm(paths.handle);
+    const listing = [
+      { pid: 7001, command: `${join(paths.build, 'c-storage')}` },
+      { pid: 7002, command: `node --import tsx /x/scripts/src/local-main.ts keep ${root}` },
+      { pid: 7003, command: `node --import tsx /x/scripts/src/local-main.ts keep /someone/elses` },
+      { pid: 7004, command: '/usr/bin/vim notes.md' },
+    ];
+
+    const status = await runLocal(['down'], world.io(said, { listProcesses: () => listing }));
+
+    expect(status).toBe(1);
+    expect(said.out).toEqual([
+      `pid 7001 is running: ${listing[0].command}`,
+      `pid 7002 is running: ${listing[1].command}`,
+    ]);
+    expect(said.err).toHaveLength(1);
+    expect(said.err[0]).toContain('end them with kill 7001 7002 and run pnpm local down again');
+    expect(await gone(paths.data)).toBe(false);
+    expect(world.signalled).toEqual([]);
+  });
+
+  it('keeps the folder and says so when there is no handle and the processes cannot be listed', async () => {
+    const said = lines();
+    const world = await standing();
+    await rm(paths.handle);
+
+    const status = await runLocal(
+      ['down'],
+      world.io(said, {
+        listProcesses: () => {
+          throw new Error('ps is not here');
+        },
+      }),
+    );
+
+    expect(status).toBe(1);
+    expect(said.err[0]).toContain('the processes could not be listed (ps is not here)');
+    expect(await gone(paths.data)).toBe(false);
   });
 
   it('refuses a handle that names a folder it did not make, signals nothing and deletes nothing', async () => {
@@ -755,6 +799,85 @@ describe('local up', () => {
     } finally {
       await kept.current?.stop();
     }
+  });
+
+  it('names a keeper that will not end, within the bound, and leaves its folder', async () => {
+    const said = lines();
+    const dead = await startProcess(process.execPath, ['-e', 'process.exit(3)'], {
+      env: {},
+      logFile: join(root, 'keeper-stub.log'),
+    });
+    const stuck = { ...dead, stop: () => new Promise<void>(() => undefined) };
+
+    const status = await runLocal(
+      ['up'],
+      baseIo(said, {
+        build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+        keeper: () => Promise.resolve(stuck),
+        settleMs: 150,
+      }),
+    );
+
+    expect(status).toBe(1);
+    expect(said.err[0]).toContain('the environment did not come up');
+    expect(said.err[1]).toContain(
+      `the keeper (pid ${dead.child.pid}) did not end in 0.15 s and is left running`,
+    );
+    expect(said.err[1]).toContain(`kill ${dead.child.pid}, then run pnpm local down`);
+    expect((await stat(paths.dir)).isDirectory()).toBe(true);
+  });
+
+  it('starts over a folder a failed removal left, and never reads a stale log as its own', async () => {
+    const port = await freePort();
+    const said = lines();
+    const keeper = await standIn(port, 60);
+    await writeFile(paths.keeperLog, 'listening: the stale run\n');
+    await mkdir(paths.data, { recursive: true });
+    await writeFile(join(paths.data, 'records.db'), 'stale');
+    const kept: { current: Started | null } = { current: null };
+    try {
+      const status = await runLocal(
+        ['up'],
+        baseIo(said, {
+          ports: { ...ports, front: port },
+          build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+          keeper: async () => (kept.current = await keeper()),
+        }),
+      );
+
+      expect(status).toBe(0);
+      expect(await readFile(paths.keeperLog, 'utf8')).not.toContain('stale');
+      expect(await stat(join(paths.data, 'records.db')).catch(() => null)).toBeNull();
+    } finally {
+      await kept.current?.stop();
+    }
+  });
+
+  it('fails plainly, and cleans up, when the handle it waited for cannot be read', async () => {
+    const port = await freePort();
+    const said = lines();
+    const script = `
+      require('fs').writeFileSync(${JSON.stringify(paths.handle)}, 'not json');
+      require('http').createServer((_, r) => r.end('ok')).listen(${port}, '127.0.0.1', () => console.log('listening'));
+      setTimeout(() => {}, 20000);`;
+    const kept: { current: Started | null } = { current: null };
+
+    const status = await runLocal(
+      ['up'],
+      baseIo(said, {
+        ports: { ...ports, front: port },
+        build: () => Promise.resolve({ cStorage: 'c', uiDir: 'u', dir: paths.build }),
+        keeper: async () =>
+          (kept.current = await startProcess(process.execPath, ['-e', script], {
+            env: {},
+            logFile: paths.keeperLog,
+          })),
+      }),
+    );
+
+    expect(status).toBe(1);
+    expect(said.err[0]).toContain('the environment did not come up');
+    await expect(stat(paths.dir)).rejects.toThrow('ENOENT');
   });
 
   it('refuses when the environment has a handle already, before it builds anything', async () => {

@@ -73,6 +73,7 @@ describe('the local environment, whole', () => {
         pid === process.pid
           ? 'node --import tsx scripts/src/local-main.ts keep'
           : `${join(paths.build, 'c-storage')} bff/src/main.ts`,
+      listProcesses: () => [],
       settleMs: 10_000,
       start: startStack,
       stopped,
