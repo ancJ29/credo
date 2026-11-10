@@ -9,6 +9,34 @@ file behind each claim**, so any sentence can be followed to the code. The root
 [`CLAUDE.md`](../CLAUDE.md) asks a session for [`architecture.md`](architecture.md) and the one
 section of this page that its piece touches; this page whole only when a piece crosses a layer.
 
+## The codemap
+
+Nine parts, and this is where to look for the thing that does X. **One line each on purpose: each
+part's own internals — what belongs in it, the file to copy, its own rules — are in that part's own
+`CLAUDE.md`, and are not restated here.** The last column is the point of the list: a part is only
+understood once you know what stops without it. What each part is *for*, which is what a reader
+needs before touching any of it, is on
+[`architecture.md`](architecture.md#what-each-part-is-for).
+
+| Part | The thing it does | Gone, this breaks |
+| --- | --- | --- |
+| `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
+| `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
+| `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
+| `c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
+| `audit-backbone/` | a second Go service, in this repository and called by nothing | nothing today ([the activity log](activity-log.md)) |
+| `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
+| `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
+| `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
+| `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
+
+Six of the nine are in the pnpm workspace ([`pnpm-workspace.yaml`](../pnpm-workspace.yaml));
+`c-storage/`, `audit-backbone/` and `ops/` are deliberately outside it. Two shapes are easy to miss:
+the BFF is **one app with two entries**, not two back ends (`bff/src/server.ts`'s `buildBff` is
+shared and only the listener differs), and the UI is **one bundle with two apps in it** — the
+operator console is not a separate deployment, only the path it is opened at (`ui/src/App.tsx`'s
+`isOperatorPath`).
+
 ## The data
 
 **Where it lives.** One SQLite file per deployment, at the path the box's systemd unit names
@@ -362,7 +390,11 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   control that hits**,
   so a file added later would not be in it: `fetch` in `bff/src`, `node:` in `shared`, `request.user`
   in `bff/src`, a layer-named directory in any tracked path, and a NAT or internet gateway in
-  `ops/network.yml`. The nine parts' one-line descriptions were read off each part's own `CLAUDE.md`,
+  `ops/network.yml`. **The evidence those rows used to carry, taken off that page on 2026-11-10 to
+  keep it at one altitude, is this:** no non-test file in `bff/src` holds the word `fetch`; one test
+  file in `shared/` names `node:` and no other file does; the layer-named directory search ran over
+  every tracked path; and the coverage thresholds are declared per package (`ui/vitest.config.ts`'s
+  `thresholds`, and the same line in the other four). The nine parts' one-line descriptions were read off each part's own `CLAUDE.md`,
   and nothing of their internals was re-derived here.
 - **A caution from this page's own review**, worth knowing when you rely on it: of 52 citations
   checked, 50 held — and every claim that was wrong was a *count or a summary with no line

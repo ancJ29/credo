@@ -34,10 +34,11 @@ otherwise runs whole.
   feature plan, and before running any check on this machine or writing its log.**
   **And for the big picture, read [`docs/architecture.md`](docs/architecture.md)'s `## At a glance`
   and `## One request, end to end` — two short sections which are the whole system — then
-  `## The codemap` and `## What is never there` for your piece's part and what it must not break.
-  That part's own `CLAUDE.md` holds its internals;
-  the sections of [`docs/architecture-detail.md`](docs/architecture-detail.md) only as your
-  piece needs them, and that page whole only when the piece crosses a layer.**
+  `## What each part is for` and `## What is never there` for your piece's part and what it must not
+  break. That part's own `CLAUDE.md` holds its internals; where a thing lives is
+  [`docs/architecture-detail.md`](docs/architecture-detail.md)'s `## The codemap`, and that page's
+  other sections only as your piece needs them, and that page whole only when the piece crosses a
+  layer.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
