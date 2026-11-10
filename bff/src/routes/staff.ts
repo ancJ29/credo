@@ -417,23 +417,38 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const read = await setupDoc(request.tenantId);
       const results: ImportResult[] = [];
       const listed: Listed = { codes: null };
-      for (const raw of call.rows) {
-        const row = addEmployeeRequestSchema.safeParse(raw);
-        if (!row.success) {
-          results.push({ kind: 'refused', reason: 'invalid' });
-          continue;
+      const added = () => results.flatMap((one) => (one.kind === 'added' ? [one.employee] : []));
+      try {
+        for (const raw of call.rows) {
+          const row = addEmployeeRequestSchema.safeParse(raw);
+          if (!row.success) {
+            results.push({ kind: 'refused', reason: 'invalid' });
+            continue;
+          }
+          try {
+            const { person } = await addPerson(
+              request.tenantId,
+              read,
+              who,
+              row.data,
+              false,
+              listed,
+            );
+            results.push({ kind: 'added', employee: person });
+          } catch (error) {
+            const { status } = replyFor(error);
+            const reason = IMPORT_REASONS[status];
+            if (!reason) throw error;
+            results.push({ kind: 'refused', reason });
+          }
         }
-        try {
-          const { person } = await addPerson(request.tenantId, read, who, row.data, false, listed);
-          results.push({ kind: 'added', employee: person });
-        } catch (error) {
-          const { status } = replyFor(error);
-          const reason = IMPORT_REASONS[status];
-          if (!reason) throw error;
-          results.push({ kind: 'refused', reason });
-        }
+      } catch (error) {
+        // A fault ends the call and the people before it stay: each is entered, the call's own
+        // refusal standing only when none was stored.
+        if (added().length > 0) entry.created(added());
+        throw error;
       }
-      entry.created(results.flatMap((one) => (one.kind === 'added' ? [one.employee] : [])));
+      entry.created(added());
       return { results };
     },
   );
@@ -602,7 +617,10 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         throw conflict(await docOf(request.tenantId, found));
       }
       const code = normaliseEmployeeCode(body.code);
-      if (code === found.employee.code) return await docOf(request.tenantId, found);
+      if (code === found.employee.code) {
+        request.audit = []; // nothing changed, so nothing is entered
+        return await docOf(request.tenantId, found);
+      }
       const keys = recordKeys.tenant(request.tenantId);
       const oldName = normaliseSignInName(found.employee.code);
       const old = await readSignIn(storage, request.tenantId, oldName);
@@ -762,7 +780,10 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const body = parse(setEmailRequestSchema, request.body);
       if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
       const before = found.employee.email ?? null;
-      if (body.email === before) return await docOf(request.tenantId, found);
+      if (body.email === before) {
+        request.audit = []; // nothing changed, so nothing is entered
+        return await docOf(request.tenantId, found);
+      }
       // The old email's record, read before the new one is claimed: it is removed over this tag
       // alone, so a claim of the same email made since (a change back) is never removed.
       const old = before === null ? null : await readEmailClaim(storage, request.tenantId, before);

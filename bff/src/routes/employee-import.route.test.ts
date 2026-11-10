@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type ActivityEntry,
   CStorageError,
   type CStorageClient,
   importEmployeesReplySchema,
@@ -384,5 +385,35 @@ describe('A row that fails other than by a refusal is its own result, busy, and 
 
     expect(reply.statusCode).toBe(500);
     expect(await codes(t.rootCall)).toEqual(['NV-1']);
+  });
+
+  it('enters the people stored before a fault ends the call, one entry each, though the call is a 500', async () => {
+    const entries: ActivityEntry[] = [];
+    const t = await staffTenant(cs, {
+      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+    });
+    await t.client.putRecord(t.keys.staffNumbering, { given: 'not a record' });
+
+    const reply = await t.rootCall.send('POST', IMPORT_ROUTE, {
+      rows: [row({ code: 'NV-1' }), row(), row({ code: 'NV-3' })],
+    });
+
+    expect(reply.statusCode).toBe(500);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ action: 'employee.import', memo: { outcome: 'saved' } });
+  });
+
+  it('keeps the call’s own refused entry when the fault comes before any person is stored', async () => {
+    const entries: ActivityEntry[] = [];
+    const t = await staffTenant(cs, {
+      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+    });
+    await t.client.putRecord(t.keys.staffNumbering, { given: 'not a record' });
+
+    const reply = await t.rootCall.send('POST', IMPORT_ROUTE, { rows: [row()] });
+
+    expect(reply.statusCode).toBe(500);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ memo: { outcome: 'refused' } });
   });
 });

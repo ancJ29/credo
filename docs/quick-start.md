@@ -83,12 +83,26 @@ prints its people's, once.
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm local activity acme 0b9f6c1e-7d52-4a3e-9c41-2f8d5e6a7b10
 ```
 
-Every change a person makes is recorded: who made it, when, and what the record was before and after.
-This prints the record of one thing, newest first, one line each: the time, the person, what was done,
-and for a customer its name before and after. It takes two things, the company's code (`acme` above) and
-the record's id (the long made-up one above, which you replace with your own), because the record of
-changes can be asked only about one record at a time. The id is the last part of the address in your
-browser while that record's page is open. Entries are kept for 180 days. It prints no key.
+Every change a person makes is recorded: who made it, when, and what changed. This prints the record
+of one thing, newest first, one line each: the time, the name of the person who did it, what was
+done, and then what changed. A record that was made shows `new`; a record that was changed shows
+`changed:` and the names of the fields that differ, never their values; a record with a name also
+shows the name before and after. A change that was refused shows `refused`. A password, a photo
+or a sign-in code shows only that it was changed. It takes two things, the company's code (`acme`
+above) and the id of the thing, because the record of changes can be asked only about one thing at a
+time. Where to find the id:
+
+- A customer, a product, a person on the staff list, an order or a delivery: the last part of the
+  address in your browser while its page is open. A person's password, code, photo, email and sign-in
+  code are all under that person's id.
+- A driver's closed day: the driver's id, the last part of the address of the page of that driver's
+  day.
+- The company's settings: the word `config`. The staff setup: the word `setup`.
+- What an operator does to a company (making it, deleting it, setting its root password) is filed
+  under the company's own id, which no page here shows, so this command cannot read those yet.
+- A person's own password change has no id to ask about, so this command cannot read it yet.
+
+Entries are kept for 180 days. It prints no key.
 
 ## 6. Take it all away, data included
 

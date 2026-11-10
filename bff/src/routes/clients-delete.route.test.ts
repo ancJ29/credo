@@ -1,4 +1,6 @@
 import {
+  type ActivityClient,
+  type ActivityEntry,
   type CStorageClient,
   CStorageError,
   deleteClientReplySchema,
@@ -230,6 +232,52 @@ describe(
       expect(left(finished)).toBe(0);
       expect(await t.tenantRecords()).toEqual([]);
       expect(await t.deletion()).toBeNull();
+    });
+
+    it('a sweep the store failed midway enters the press that finishes it, under the deletion record’s client id, marked saved', async () => {
+      const entries: ActivityEntry[] = [];
+      const activity: ActivityClient = {
+        log: async (sent) => void entries.push(...sent),
+        mintToken: async () => 'unused',
+      };
+      let fail = true;
+      const t = await setup({ activity }, (client) => ({
+        ...client,
+        removeRecord: async (key, tag) => {
+          if (fail && key.includes('.employee.e00010')) {
+            fail = false;
+            throw new CStorageError(500, 'down');
+          }
+          return await client.removeRecord(key, tag);
+        },
+      }));
+      await t.fill(40);
+      expect((await t.press()).statusCode).toBe(503);
+      entries.length = 0;
+
+      const finished = await t.resume();
+
+      expect(finished.statusCode).toBe(200);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        clientId: t.id,
+        targetId: t.id,
+        action: 'client.delete',
+        memo: { outcome: 'saved' },
+      });
+    });
+
+    it('a press that finds neither an index nor a deletion record is a 404 and enters nothing', async () => {
+      const entries: ActivityEntry[] = [];
+      const activity: ActivityClient = {
+        log: async (sent) => void entries.push(...sent),
+        mintToken: async () => 'unused',
+      };
+      const t = await setup({ activity });
+
+      expect((await t.resume('nobody-here')).statusCode).toBe(404);
+
+      expect(entries).toEqual([]);
     });
 
     it('case 10: the code is free afterwards: a new client of the same code is made', async () => {

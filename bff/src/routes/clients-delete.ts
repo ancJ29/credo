@@ -7,6 +7,7 @@ import {
   type DeleteClientReply,
   deleteClientRequestSchema,
   recordKeys,
+  storedClientDeletionSchema,
   storedClientSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -48,8 +49,12 @@ export function registerDeleteClientRoutes(
       const held = await storage.getRecord(recordKeys.client(code.data));
       const index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
       // From here the client is known, so a refusal of the body or the touch is on its record. A
-      // press after the index is gone resumes the deletion and has no client to name.
-      const entry = index ? declare(request, operatorOf(operator), index.id, index.id) : null;
+      // press after the index is gone resumes the deletion: its client is the deletion record's, and
+      // with no record either the press is a 404 that enters nothing.
+      const resuming = index ? null : await storage.getRecord(recordKeys.clientDeletion(code.data));
+      const id =
+        index?.id ?? (resuming ? storedClientDeletionSchema.parse(resuming.data).id : null);
+      const entry = id ? declare(request, operatorOf(operator), id, id) : null;
       if (!entry) request.audit = []; // declared on purpose: no client to name
       if (index) {
         const body = parse(deleteClientRequestSchema, request.body);

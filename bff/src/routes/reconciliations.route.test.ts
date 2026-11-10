@@ -1,4 +1,5 @@
 import {
+  type ActivityEntry,
   closeRequestFor,
   deliveryListReplySchema,
   deliveryRoutes,
@@ -167,6 +168,31 @@ describe('Rows 4, 11 and 12: the close', () => {
     expect(freed.order).toMatchObject({ state: 'confirmed', request: null });
     // another driver's day is untouched
     expect((await d.requests()).filter((one) => one.state === 'delivered')).toHaveLength(3);
+  });
+
+  it('Close the day enters the requests it cancelled, each with its state before and after, beside the closed day', async () => {
+    const entries: ActivityEntry[] = [];
+    const d = await dayEnd({
+      activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+    });
+    await d.deliver();
+    const first = await d.sentTo();
+    const second = await d.sentTo();
+    entries.length = 0;
+
+    const reply = await d.close(d.tung, await d.asked(d.tung, 0));
+
+    expect(reply.statusCode).toBe(200);
+    expect(entries).toHaveLength(1);
+    const memo = entries[0]?.memo as {
+      before: { cancelled: unknown[] };
+      after: { cancelled: unknown[] };
+    };
+    const ids = [first, second].map((one) => one.request.request.id);
+    const asked = (state: string) => expect.arrayContaining(ids.map((id) => ({ id, state })));
+    expect(memo.before.cancelled).toEqual(asked('waiting'));
+    expect(memo.after.cancelled).toEqual(asked('cancelled'));
+    expect(memo.after.cancelled).toHaveLength(2);
   });
 
   it('The root closes without a person: its sign-in name stands in, with no id and no code', async () => {

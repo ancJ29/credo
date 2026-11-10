@@ -137,15 +137,70 @@ describe('a printed line', () => {
     createdAt: '2026-11-10T10:00:00.000Z',
   };
 
-  it('is the time, the person, what was done, and the name before and after', () => {
-    expect(entryLine(base)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  Mai -> Mai Linh');
+  it('is the time, the person, what was done, the name before and after, and the fields that differ', () => {
+    expect(entryLine(base)).toBe(
+      '2026-11-10T10:00:00.000Z  Lan  customer saved  Mai -> Mai Linh  changed: name',
+    );
   });
 
-  it('shows a create’s missing side as a dash', () => {
+  it('shows a create’s missing side as a dash, and calls the record new', () => {
     const created = { ...base, memo: { by: 'Lan', before: null, after: customer('Mai') } };
-    expect(entryLine(created)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  - -> Mai');
+    expect(entryLine(created)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  - -> Mai  new');
     const removed = { ...base, memo: { by: 'Lan', before: customer('Mai'), after: null } };
     expect(entryLine(removed)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  Mai -> -');
+  });
+
+  it('shows who for every kind, and the names of the fields that changed for a record with no name', () => {
+    const order = {
+      ...base,
+      actorId: 'employee.9',
+      action: 'order.save' as const,
+      memo: {
+        by: 'Hoa',
+        before: { total: 10, lines: [1], state: 'draft' },
+        after: { total: 20, lines: [1], state: 'draft', extra: {} },
+        outcome: 'saved',
+      },
+    };
+    expect(entryLine(order)).toBe(
+      '2026-11-10T10:00:00.000Z  Hoa  order saved  changed: extra, total',
+    );
+  });
+
+  it('shows a refusal as refused, and a change with no record on either side as the act alone', () => {
+    const refused = { ...base, memo: { by: 'Lan', before: null, outcome: 'refused' } };
+    expect(entryLine(refused)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  refused');
+    const password = {
+      ...base,
+      action: 'employee.password' as const,
+      memo: { by: 'Lan', before: null, after: null, outcome: 'saved' },
+    };
+    expect(entryLine(password)).toBe('2026-11-10T10:00:00.000Z  Lan  password changed');
+  });
+
+  it('shows a save that changed nothing, and a record that is no object, without a field list', () => {
+    const same = { ...base, memo: { by: 'Lan', before: { a: 1 }, after: { a: 1 } } };
+    expect(entryLine(same)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved');
+    const list = { ...base, memo: { by: 'Lan', before: [1], after: [2] } };
+    expect(entryLine(list)).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved');
+    const nameless = { ...base, memo: { by: 'Lan', before: { name: 7 }, after: { name: 8 } } };
+    expect(entryLine(nameless)).toBe(
+      '2026-11-10T10:00:00.000Z  Lan  customer saved  changed: name',
+    );
+  });
+
+  it('prints a field’s name and never its value', () => {
+    const secret = {
+      ...base,
+      memo: {
+        by: 'Lan',
+        before: { token: 'old-secret-value' },
+        after: { token: 'new-secret-value' },
+      },
+    };
+    const line = entryLine(secret);
+    expect(line).toBe('2026-11-10T10:00:00.000Z  Lan  customer saved  changed: token');
+    expect(line).not.toContain('secret-value');
   });
 
   it('falls back to the actor and the action as written when the memo or the action is unknown', () => {

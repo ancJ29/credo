@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type ActivityEntry,
   CStorageError,
   type CStorageClient,
   IMPORT_CALL_ROWS,
@@ -533,6 +534,53 @@ describe.each(LISTS)(
 
       expect(reply.statusCode).toBe(500);
       expect(await codesOf(t, list)).toEqual(['A-1']);
+    });
+
+    it('enters the rows stored before a fault ends the call, one entry each, though the call is a 500', async () => {
+      const entries: ActivityEntry[] = [];
+      const t = await staffTenant(cs, {
+        activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            if ((data as { code?: string }).code === 'A-2') throw new Error('a bug, no outage');
+            return await client.putRecord(key, data, ifTag);
+          },
+        }),
+      });
+
+      const reply = await t.rootCall.send('POST', list.importRoute, {
+        rows: [list.row({ code: 'A-1' }), list.row({ code: 'A-2' }), list.row({ code: 'A-3' })],
+      });
+
+      expect(reply.statusCode).toBe(500);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({
+        action: expect.stringMatching(/\.import$/),
+        memo: { outcome: 'saved' },
+      });
+    });
+
+    it('keeps the call’s own refused entry when the fault comes before any row is stored', async () => {
+      const entries: ActivityEntry[] = [];
+      const t = await staffTenant(cs, {
+        activity: { log: async (sent) => void entries.push(...sent), mintToken: async () => 'x' },
+        wrap: (client): CStorageClient => ({
+          ...client,
+          async putRecord(key, data, ifTag) {
+            if ((data as { code?: string }).code === 'A-1') throw new Error('a bug, no outage');
+            return await client.putRecord(key, data, ifTag);
+          },
+        }),
+      });
+
+      const reply = await t.rootCall.send('POST', list.importRoute, {
+        rows: [list.row({ code: 'A-1' })],
+      });
+
+      expect(reply.statusCode).toBe(500);
+      expect(entries).toHaveLength(1);
+      expect(entries[0]).toMatchObject({ memo: { outcome: 'refused' } });
     });
   },
 );

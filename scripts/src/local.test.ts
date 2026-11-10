@@ -441,7 +441,7 @@ describe('local activity', () => {
       },
     ]);
 
-  it('prints the one entry of a record as one line: the time, the person, what was done, the name before and after, and no key or token', async () => {
+  it('prints the one entry of a record as one line: the time, the person, what was done, the name before and after, the fields that changed, and no key or token', async () => {
     const { storage, target } = await standing();
     await writeOne();
     const said = lines();
@@ -452,7 +452,9 @@ describe('local activity', () => {
     );
 
     expect(status).toBe(0);
-    expect(said.out).toEqual(['2026-11-10T10:15:00.000Z  Lan  customer saved  Mai -> Mai Linh']);
+    expect(said.out).toEqual([
+      '2026-11-10T10:15:00.000Z  Lan  customer saved  Mai -> Mai Linh  changed: name',
+    ]);
     expect(said.err).toEqual([]);
     const everything = JSON.stringify(said);
     expect(everything).not.toContain(audit.key);

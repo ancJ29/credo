@@ -187,12 +187,48 @@ export async function readEntriesByTarget(
   return parsed.data.activities;
 }
 
-/** One line of the printout: the time, the person, what was done, and a customer's name before and
- * after. An entry whose memo is in no known shape shows its action alone. Names no key or token. */
+/** What every memo carries: who made the change, as shown then, and the record before and after. */
+const printedMemoSchema = z.looseObject({
+  by: z.string(),
+  before: z.unknown().optional(),
+  after: z.unknown().optional(),
+  outcome: z.enum(['saved', 'refused']).optional(),
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The name a record holds, when it holds one as text. */
+const nameOf = (value: unknown) =>
+  isRecord(value) && typeof value.name === 'string' ? value.name : null;
+
+/** What changed, in a form every kind of record can carry: `new` for a record made, else the names
+ * of the fields whose value differs, never a value. */
+function changedFields(before: unknown, after: unknown): string | null {
+  if (!isRecord(after)) return null;
+  if (!isRecord(before)) return 'new';
+  const names = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]))
+    .sort();
+  return names.length === 0 ? null : `changed: ${names.join(', ')}`;
+}
+
+/** One line of the printout: the time, the person as shown then, what was done, then what changed:
+ * `refused` for a change that did not stand, else the name before and after when the record has one,
+ * and `new` or the names of the fields that differ. An entry whose memo is in no known shape shows
+ * the actor and the action alone. Never a value but a name, so no password, photo, key or token. */
 export function entryLine(entry: ReadEntry): string {
   const label = (ACTIONS as Record<string, string>)[entry.action] ?? entry.action;
-  const memo = customerSaveMemoSchema.safeParse(entry.memo);
+  const memo = printedMemoSchema.safeParse(entry.memo);
   if (!memo.success) return `${entry.createdAt}  ${entry.actorId}  ${label}`;
-  const { by, before, after } = memo.data;
-  return `${entry.createdAt}  ${by}  ${label}  ${before?.name ?? '-'} -> ${after?.name ?? '-'}`;
+  const { by, before, after, outcome } = memo.data;
+  const names = [nameOf(before), nameOf(after)];
+  const what =
+    outcome === 'refused'
+      ? ['refused']
+      : [
+          names.some((name) => name !== null) ? `${names[0] ?? '-'} -> ${names[1] ?? '-'}` : null,
+          changedFields(before, after),
+        ];
+  return [entry.createdAt, by, label, ...what.filter((part) => part !== null)].join('  ');
 }

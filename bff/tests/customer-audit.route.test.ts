@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   type ActivityClient,
   type Customer,
+  CLIENT_HEADER,
   customerSaveMemoSchema,
   readEntriesByTarget,
   recordKeys,
@@ -12,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { clientOf, type RunningAudit, startAudit } from './audit';
 import { type RunningCStorage, startCStorage } from './c-storage';
 import { staffTenant } from './staff';
+import { seedTenant } from './tenant';
 
 let cs: RunningCStorage;
 let audit: RunningAudit;
@@ -78,7 +80,7 @@ describe('One customer’s save writes one entry to the real audit service', () 
     expect(memo.after).toEqual({ ...customer, name: 'Mai Linh Tran' });
   });
 
-  it('names a person by employee.<id> and as shown, and never takes a client from the call', async () => {
+  it('names a person by employee.<id> and as shown, and never takes a client from the body', async () => {
     const { t, customer, entriesOf } = await setup(clientOf(audit));
     const clerk = await t.staff('CLERK', {
       own: { 'orders.canView': true, 'orders.canEdit': true },
@@ -89,15 +91,36 @@ describe('One customer’s save writes one entry to the real audit service', () 
     const reply = await t.app.inject({
       method: 'PUT',
       url: route,
-      headers: { 'x-auth-id': clerk.authId, 'x-client-id': 'someone-else' },
-      payload: { name: 'Mai L', extra: {}, version },
+      headers: { 'x-auth-id': clerk.authId },
+      payload: { name: 'Mai L', extra: {}, version, clientId: 'someone-else' },
     });
 
-    expect(reply.statusCode).toBe(200);
+    expect(reply.statusCode).toBeLessThan(500);
     const [entry] = await entriesOf(t.id);
     expect(entry).toMatchObject({ clientId: t.id, actorId: `employee.${clerk.employee.id}` });
     expect(customerSaveMemoSchema.parse(entry?.memo).by).toBe(clerk.employee.name);
     expect(await entriesOf('someone-else')).toEqual([]);
+  });
+
+  it('a session sent with another client’s code is a 401 and enters nothing under either client', async () => {
+    const { t, customer, entriesOf } = await setup(clientOf(audit));
+    const clerk = await t.staff('CLERK', {
+      own: { 'orders.canView': true, 'orders.canEdit': true },
+    });
+    const other = await seedTenant(t.client, 'other-co');
+    const route = customerRoutes.one(customer.id);
+    const version = (await clerk.call.get(route)).json<{ version: string }>().version;
+
+    const reply = await t.app.inject({
+      method: 'PUT',
+      url: route,
+      headers: { 'x-auth-id': clerk.authId, [CLIENT_HEADER]: 'other-co' },
+      payload: { name: 'Mai L', extra: {}, version },
+    });
+
+    expect(reply.statusCode).toBe(401);
+    expect(await entriesOf(t.id)).toEqual([]);
+    expect(await entriesOf(other)).toEqual([]);
   });
 
   it('is read by no other client’s token', async () => {

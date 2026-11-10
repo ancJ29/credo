@@ -177,10 +177,18 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         // The list is read once a call, and each code written joins it.
         const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
         const results: Result<Record>[] = [];
-        for (const raw of call.rows) {
-          results.push(await addOne(request.tenantId, raw, codes));
+        const added = () => results.flatMap((one) => (one.kind === 'added' ? [one.record] : []));
+        try {
+          for (const raw of call.rows) {
+            results.push(await addOne(request.tenantId, raw, codes));
+          }
+        } catch (error) {
+          // A fault ends the call and the rows before it stay: each is entered, the call's own
+          // refusal standing only when none was stored.
+          if (added().length > 0) entry.created(added());
+          throw error;
         }
-        entry.created(results.flatMap((one) => (one.kind === 'added' ? [one.record] : [])));
+        entry.created(added());
         return { results };
       },
     );

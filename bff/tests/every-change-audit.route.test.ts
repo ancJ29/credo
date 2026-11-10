@@ -6,6 +6,7 @@ import {
   productRoutes,
   readEntriesByTarget,
   ROUTES,
+  signInRoutes,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { clientOf, type RunningAudit, startAudit } from './audit';
@@ -176,6 +177,30 @@ describe('Every change writes its entry to the real audit service', () => {
       before: { name: 'Mai Linh' },
       after: { name: 'Mai Linh Tran' },
     });
+  });
+
+  it('a code or an email saved as it already stands is answered and writes no entry, refused or saved', async () => {
+    const { t, entriesOf } = await setup();
+    await t.setup({ fields: { email: true } });
+    const {
+      employee: { employee },
+    } = await personCalls.added(t.rootCall);
+    const { version } = await personCalls.doc(t.rootCall, employee.id);
+
+    const code = await t.rootCall.send('PUT', employeeRoutes.code(employee.id), {
+      version,
+      code: employee.code,
+    });
+    const email = await t.rootCall.send('PUT', signInRoutes.email(employee.id), {
+      version,
+      email: null,
+    });
+
+    expect(code.statusCode).toBe(200);
+    expect(email.statusCode).toBe(200);
+    const kinds = (await entriesOf(employee.id)).map((one) => one.action);
+    expect(kinds).not.toContain('employee.code');
+    expect(kinds).not.toContain('employee.email');
   });
 
   it('a call with no session writes nothing', async () => {

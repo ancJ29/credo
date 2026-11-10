@@ -154,7 +154,13 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
         closedAt: now(),
       };
       if ((await writeClosed(key, closed)) === 'moved') throw conflict(asItIs(null));
-      entry.saved(null, closed);
+      // The cancelled waiting requests ride in the memo, each with its state before and after: the
+      // close cancels them and frees their orders, and no other entry names them.
+      const cancelled = (state: string) => figures.waiting.map(({ id }) => ({ id, state }));
+      entry.saved(
+        { cancelled: cancelled('waiting') },
+        { ...closed, cancelled: cancelled('cancelled') },
+      );
       return reconciliationSchema.parse(closed);
     },
   );
