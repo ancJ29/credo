@@ -83,7 +83,7 @@ export const RULES: Rules = {
     },
     {
       name: 'what a 403 means',
-      home: { file: 'ui/src/page.ts', name: 'isForbidden' },
+      home: { file: 'ui/src/page.ts', name: 'refusal' },
       sites: ui(
         'pages/client/AddRecordPage pages/client/RecordPage pages/client/PersonPage pages/client/SettingsPage',
       ),

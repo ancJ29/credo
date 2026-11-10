@@ -16,7 +16,12 @@ type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
 type Spec<D, V> = {
   load: (api: Api, id: string) => Promise<D | null>;
   /** The save over the version read: a conflict, or the document as stored. */
-  save: (api: Api, id: string, read: D, values: V) => Promise<{ kind: 'conflict' } | { doc: D }>;
+  save: (
+    api: Api,
+    id: string,
+    read: D,
+    values: V,
+  ) => Promise<{ kind: 'conflict' } | { kind: 'saved'; doc: D }>;
   head: (doc: D) => { name: string; code: string };
   /** The words for a 400, when it is one of this kind's outcomes (a product the server refuses). */
   refusedOn400: boolean;
@@ -103,12 +108,12 @@ function Record<D extends { version: string }, V>({
     setOutcome(null);
     try {
       const result = await spec.save(api, id, read, values);
-      if ('doc' in result) {
+      if (result.kind === 'conflict') {
+        setOutcome('conflict');
+      } else {
         setCurrent(result.doc);
         setFormKey((n) => n + 1);
         setOutcome('saved');
-      } else {
-        setOutcome('conflict');
       }
     } catch (error) {
       const forbidden = refusal(error, page) === 'forbidden';

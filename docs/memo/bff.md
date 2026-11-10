@@ -116,7 +116,7 @@ may not do this one thing. The two mean different things to the app: a 401 signs
   Changing one's own password answers 403 when the *current* password is wrong, and the operator's
   new-passkey link answers 403 for oneself. A caller that treats every 403 as "you may not" will
   tell the person the wrong thing, which is why the UI keeps one predicate for the permission
-  reading and those two call sites do not use it (`ui/src/page.ts`'s `isForbidden`).
+  reading and those two call sites do not use it (`ui/src/page.ts`'s `refusal`, which returns `forbidden` for a 403).
 - *Rejected:* one status for every refusal. The app must tell "sign in again" from "ask the person
   who runs the staff list", and only the status carries that.
 - *Price of the choice:* a sign-in answers one 401 for an unknown name, a wrong password and a

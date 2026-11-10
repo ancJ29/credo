@@ -155,7 +155,7 @@ they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 4
 five screens (the customer's add page, the customer's page, the product's page, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
 `ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it; the first three are
 now `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`)
-(now `isForbidden` in `ui/src/page.ts`); "list under a prefix, refuse a truncated answer, parse each
+(now `refusal` in `ui/src/page.ts`, which returns the kind of refusal); "list under a prefix, refuse a truncated answer, parse each
 one" written four times (in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and
 `bff/src/routes/staff.ts`, the last three as a local function each) while `bff/src/routes/orders.ts` already held the
 general version (now `every` in `bff/src/records/records.ts`'s `recordTools`); and the three screen widths
@@ -177,10 +177,14 @@ the kind as data: `ui/src/pages/client/RecordPage.tsx`'s `RecordPage` and
 `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage`, each holding one entry per kind in a
 record keyed by the list kind, so a kind added to `ui/src/listSheet.ts`'s `LISTS` without an entry
 there is a type error and not a screen that silently draws the wrong one. The list pages share
-`ui/src/parts/PageShell.tsx`'s `PageShell` and `ui/src/parts/ListTable.tsx`'s `ListTable`. The
-kinds' differences sit in two homes, the list table and those entries, because the forms import the
-list table and a form held in it would be an import cycle; a form that differs for real stays its
-own (`ui/src/parts/CustomerForm.tsx`'s `CustomerForm`, `ui/src/parts/ProductForm.tsx`'s `ProductForm`).
+`ui/src/parts/PageShell.tsx`'s `PageShell` and `ui/src/parts/ListTable.tsx`'s `ListTable`. **The
+kinds have one home:** what the kinds are is declared exactly once, in the list table, and the type
+is derived from it. What the record page and the add page hold per kind are different facts about
+that one key, never a fact written twice, and the test is that a kind added only to the list table
+is a compile error in each of them (and in the dictionary's words for it). The records are not in
+the list table because the forms import it and a form held there would be an import cycle. A form
+that differs for real stays its own (`ui/src/parts/CustomerForm.tsx`'s `CustomerForm`,
+`ui/src/parts/ProductForm.tsx`'s `ProductForm`).
 *Why:* the lists already prove the cheaper shape — `bff/src/routes/lists.ts` serves both from one
 body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and
 `ui/src/pages/client/ListPage.tsx`'s `ListPage` draws both from one table.
