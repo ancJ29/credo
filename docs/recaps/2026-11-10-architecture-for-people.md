@@ -28,4 +28,4 @@ The convention's one sentence (above) and whether links should join the citation
 
 - Commits `20ee2ecf`, `ae8d2abf`, `8be98d7c`, `7676bd29`, `2bef5390`, on `architecture-for-people`.
 - Sizes read from the files at `7676bd29` and `2bef5390` with `wc`; the detail page stands at 409 lines, 4,574 words after round three.
-- Two facts rest on the brief alone: the verdict's hour, and piece 100's move (the repository shows it only as the `directory-structure` branch merged at `ef40aa7a`).
+- Two facts rest on the brief alone: the verdict's hour, and piece 100's move (the repository shows it as the `directory-structure` branch reaching `main` at `a7fc1899`, with `8be98d7c` re-pointing the two citations that followed `CustomerPage.tsx`; `ef40aa7a` is only `main` merged into that branch).
