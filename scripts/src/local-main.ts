@@ -48,6 +48,15 @@ process.exitCode = await runLocal(process.argv.slice(2), {
       return false;
     }
   },
+  signal: (pid) => process.kill(pid, 'SIGTERM'),
+  commandOf: (pid) => {
+    try {
+      return execFileSync('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' }).trim();
+    } catch {
+      return undefined;
+    }
+  },
+  settleMs: 10_000,
   start: startStack,
   stopped,
 });

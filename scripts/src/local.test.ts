@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -114,6 +114,9 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   build: () => Promise.reject(new Error('not built here')),
   keeper: () => Promise.reject(new Error('no keeper here')),
   alive: () => true,
+  signal: () => undefined,
+  commandOf: () => undefined,
+  settleMs: 100,
   env: {},
   connect: () => memoryStorage().storage,
   clock: () => '12:34',
@@ -448,6 +451,259 @@ describe('local seed', () => {
   });
 });
 
+describe('local down', () => {
+  const commandsOf = (): Record<number, string> => ({
+    40: 'node --import tsx /x/scripts/src/local-main.ts keep /x',
+    41: join(paths.build, 'c-storage'),
+    42: 'node --import tsx /x/bff/src/main.ts',
+  });
+
+  /** The environment as `up` leaves it, and a world of processes that end when signalled. */
+  async function standing(handleOver: Partial<Handle> = {}) {
+    await mkdir(paths.data, { recursive: true });
+    await mkdir(paths.build, { recursive: true });
+    await writeFile(join(paths.data, 'records.db'), 'rows');
+    await writeHandle(paths, handleOf({ ports, dataDir: paths.data, ...handleOver }));
+    const running = new Set([40, 41, 42]);
+    const signalled: number[] = [];
+    return {
+      running,
+      signalled,
+      io: (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}) =>
+        baseIo(said, {
+          alive: (pid) => running.has(pid),
+          signal: (pid) => {
+            signalled.push(pid);
+            running.delete(pid);
+          },
+          commandOf: (pid) => commandsOf()[pid],
+          ...over,
+        }),
+    };
+  }
+  const gone = (path: string) =>
+    stat(path).then(
+      () => false,
+      () => true,
+    );
+
+  it('says there is nothing to take down when there is no handle and no folder', async () => {
+    const said = lines();
+
+    expect(await runLocal(['down'], baseIo(said))).toBe(0);
+    expect(said.out).toEqual([
+      'there is no handle and no environment folder: nothing is up, nothing was changed',
+    ]);
+  });
+
+  it('stops the three processes, removes the folders and the handle, and reads each back', async () => {
+    const said = lines();
+    const world = await standing();
+
+    const status = await runLocal(['down'], world.io(said));
+
+    expect(status).toBe(0);
+    expect(world.signalled).toEqual([40, 41, 42]);
+    expect(said.out).toEqual([
+      'keeper (pid 40): stopped',
+      'c-storage (pid 41): stopped',
+      'the BFF (pid 42): stopped',
+      'read back after the teardown:',
+      '  keeper: gone',
+      '  c-storage: gone',
+      '  the BFF: gone',
+      `  ports ${ports.front}, ${ports.cStorage}, ${ports.bff}, ${ports.seedDoor}: nothing is listening`,
+      '  data folder and its database: gone',
+      '  build folder: gone',
+      '  handle: gone',
+      'down: everything is cleared',
+    ]);
+    expect(said.err).toEqual([]);
+    expect(await gone(paths.dir)).toBe(true);
+  });
+
+  it('really ends a running process and reads it gone', async () => {
+    const said = lines();
+    const world = await standing();
+    const child = await startProcess(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      env: {},
+      logFile: join(root, 'child.log'),
+    });
+    const pid = child.child.pid!;
+    await writeFile(
+      paths.handle,
+      JSON.stringify(handleOf({ ports, dataDir: paths.data, keeper: pid })),
+    );
+    const alive = (p: number) => {
+      try {
+        process.kill(p, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    try {
+      const status = await runLocal(
+        ['down'],
+        world.io(said, {
+          alive: (p) => (p === pid ? alive(p) : world.running.has(p)),
+          signal: (p) => (p === pid ? process.kill(p, 'SIGTERM') : world.running.delete(p)),
+          commandOf: (p) => (p === pid ? 'node local-main.ts' : commandsOf()[p]),
+          settleMs: 3000,
+        }),
+      );
+
+      expect(status).toBe(0);
+      expect(said.out).toContain(`keeper (pid ${pid}): stopped`);
+      expect(alive(pid)).toBe(false);
+    } finally {
+      await child.stop();
+    }
+  });
+
+  it('takes a handle whose processes are already dead as a case: nothing to stop, the rest removed', async () => {
+    const said = lines();
+    const world = await standing();
+    world.running.clear();
+
+    expect(await runLocal(['down'], world.io(said))).toBe(0);
+    expect(said.out.slice(0, 3)).toEqual([
+      'keeper (pid 40): was not running',
+      'c-storage (pid 41): was not running',
+      'the BFF (pid 42): was not running',
+    ]);
+    expect(world.signalled).toEqual([]);
+    expect(await gone(paths.dir)).toBe(true);
+  });
+
+  it('removes the folder when only the folder is left, and when the data folder is already gone', async () => {
+    const said = lines();
+    const world = await standing();
+    await rm(paths.data, { recursive: true });
+    world.running.clear();
+    await rm(paths.handle);
+
+    expect(await runLocal(['down'], world.io(said))).toBe(0);
+    expect(said.out[0]).toBe(
+      'there is no handle: no process can be named, only the environment folder is removed',
+    );
+    expect(said.out.at(-1)).toBe('down: everything is cleared');
+    expect(await gone(paths.dir)).toBe(true);
+  });
+
+  it('refuses a handle that names a folder it did not make, signals nothing and deletes nothing', async () => {
+    const said = lines();
+    const elsewhere = join(root, 'precious');
+    await mkdir(elsewhere);
+    const world = await standing();
+    await rm(paths.handle);
+    await writeHandle(paths, handleOf({ ports, dataDir: elsewhere }));
+
+    expect(await runLocal(['down'], world.io(said))).toBe(2);
+    expect(said.err).toEqual([
+      `the handle at ${paths.handle} cannot be trusted: its data folder is ${elsewhere}, not ${paths.data}, the only folder this command removes; nothing was changed`,
+    ]);
+    expect(world.signalled).toEqual([]);
+    expect(await gone(elsewhere)).toBe(false);
+    expect(await gone(paths.data)).toBe(false);
+  });
+
+  it('refuses a handle that is not one', async () => {
+    for (const text of ['not json', 'null', JSON.stringify({ dataDir: paths.data, keeper: 40 })]) {
+      const said = lines();
+      await rm(paths.dir, { recursive: true, force: true });
+      const world = await standing();
+      await writeFile(paths.handle, text);
+
+      expect(await runLocal(['down'], world.io(said)), text).toBe(2);
+      expect(said.err[0]).toContain('cannot be trusted');
+      expect(world.signalled).toEqual([]);
+      expect(await gone(paths.data)).toBe(false);
+    }
+  });
+
+  it('names a process that will not go, leaves the data and the handle, and ends red', async () => {
+    const said = lines();
+    const world = await standing();
+
+    const status = await runLocal(
+      ['down'],
+      world.io(said, { signal: (pid) => void world.signalled.push(pid) }),
+    );
+
+    expect(status).toBe(1);
+    expect(said.out).toContain('keeper (pid 40): asked to end, still running after 0.1 s');
+    expect(said.out).toContain('nothing was removed: a process may still use the data');
+    expect(said.out).toContain('  keeper: FOUND, pid 40 is running');
+    expect(said.err[0]).toContain('down: NOT cleared: keeper (pid 40) is still running');
+    expect(await gone(paths.handle)).toBe(false);
+    expect(await gone(paths.data)).toBe(false);
+  });
+
+  it('leaves alone a number another program holds now, and a process it cannot prove is the stack’s', async () => {
+    const said = lines();
+    const world = await standing();
+    const stranger = lines();
+
+    const status = await runLocal(
+      ['down'],
+      world.io(stranger, {
+        commandOf: (pid) => (pid === 40 ? '/usr/bin/vim notes.md' : commandsOf()[pid]),
+      }),
+    );
+
+    expect(status).toBe(0);
+    expect(world.signalled).toEqual([41, 42]);
+    expect(stranger.out).toContain(
+      'keeper (pid 40): already gone; that number is now /usr/bin/vim notes.md, left alone',
+    );
+    expect(stranger.out).toContain("  keeper: gone (pid 40 is another program's now)");
+
+    await rm(paths.dir, { recursive: true, force: true });
+    const second = await standing();
+    const unreadable = await runLocal(['down'], second.io(said, { commandOf: () => undefined }));
+    expect(unreadable).toBe(1);
+    expect(second.signalled).toEqual([]);
+    expect(said.err[0]).toContain("could not be proved the stack's");
+  });
+
+  it('ends red and names the port when something else holds one after the teardown', async () => {
+    const said = lines();
+    const world = await standing();
+    const stranger = createHttpServer();
+    await new Promise<void>((resolve) => stranger.listen(ports.cStorage, resolve));
+    try {
+      expect(await runLocal(['down'], world.io(said))).toBe(1);
+    } finally {
+      await new Promise((resolve) => stranger.close(resolve));
+    }
+
+    expect(said.out).toContain(
+      `  port ${ports.cStorage} (c-storage): FOUND, something is listening`,
+    );
+    expect(said.err).toEqual([
+      `down: NOT cleared: port ${ports.cStorage} (c-storage) is held by something`,
+    ]);
+  });
+
+  it('ends red and names the folder when it is still there after the removal', async () => {
+    const said = lines();
+    const world = await standing();
+    await mkdir(join(paths.data, 'locked'));
+    await writeFile(join(paths.data, 'locked', 'file'), 'x');
+    await chmod(join(paths.data, 'locked'), 0o500);
+    try {
+      expect(await runLocal(['down'], world.io(said))).toBe(1);
+    } finally {
+      await chmod(join(paths.data, 'locked'), 0o700);
+    }
+
+    expect(said.out).toContain(`  data folder and its database: FOUND at ${paths.data}`);
+    expect(said.err[0]).toContain(`data folder and its database is still at ${paths.data}`);
+    expect(said.err[0]).toContain('could not be removed');
+  });
+});
+
 describe('local up', () => {
   /** A keeper stand-in: a child that publishes the handle, then serves the front's port. */
   const standIn = async (port: number, delayMs: number) => {
@@ -579,6 +835,6 @@ describe('a verb it does not know', () => {
     const said = lines();
 
     expect(await runLocal(['sideways'], baseIo(said))).toBe(2);
-    expect(said.err).toEqual(['usage: pnpm local up | status | seed <code> [<name>]']);
+    expect(said.err).toEqual(['usage: pnpm local up | status | seed <code> [<name>] | down']);
   });
 });

@@ -82,6 +82,12 @@ export type LocalIo = {
   env: Record<string, string | undefined>;
   /** `status` and `seed`: the c-storage client for a target. */
   connect: (target: StorageTarget) => CStorageClient;
+  /** `down`: asks a process to end (SIGTERM), never to be killed. */
+  signal: (pid: number) => void;
+  /** `down`: the command line of a running process, or nothing when it cannot be read. */
+  commandOf: (pid: number) => string | undefined;
+  /** `down`: how long a process may take to go after it is asked. */
+  settleMs: number;
   /** `status`: whether a process of this machine is running. A pid alone is never an answer. */
   alive: (pid: number) => boolean;
   /** `keep`: brings the stack up on the folder and ports given. */
@@ -93,7 +99,7 @@ export type LocalIo = {
   stopped: Promise<void>;
 };
 
-const USAGE = 'usage: pnpm local up | status | seed <code> [<name>]';
+const USAGE = 'usage: pnpm local up | status | seed <code> [<name>] | down';
 
 const exists = (path: string) =>
   access(path).then(
@@ -320,6 +326,142 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
   }
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** The handle as `down` may trust it: a message when it is not one, since a handle is a file
+ * anyone can write, and what it names is about to be signalled and deleted. */
+function readableHandle(text: string, paths: LocalPaths): Handle | string {
+  let found: Partial<Handle> | null;
+  try {
+    found = JSON.parse(text) as Partial<Handle> | null;
+  } catch {
+    return 'it is not JSON';
+  }
+  const pid = (value: unknown) => Number.isInteger(value) && (value as number) > 1;
+  if (!found || !pid(found.keeper) || !pid(found.pids?.cStorage) || !pid(found.pids?.bff)) {
+    return 'it does not name the three processes';
+  }
+  if (found.dataDir !== paths.data) {
+    return `its data folder is ${String(found.dataDir)}, not ${paths.data}, the only folder this command removes`;
+  }
+  return found as Handle;
+}
+
+/**
+ * `pnpm local down`: takes the environment down and proves it by reading back, never by its own
+ * exit. It acts only on what it can prove is its own: the folders it removes are the ones under the
+ * environment's folder, whatever the handle says, and a process is signalled only when its command
+ * line is still the one the stack started. Each process is asked to end and then read to be gone;
+ * one that will not go is named and everything is left as it was. Exit 0 every reading found
+ * nothing left, 1 something is still there and named, 2 refused for a handle it cannot trust.
+ */
+async function down(io: LocalIo) {
+  const { paths, ports } = io;
+  const kept = await exists(paths.dir);
+  if (!(await exists(paths.handle))) {
+    if (!kept) {
+      io.out('there is no handle and no environment folder: nothing is up, nothing was changed');
+      return 0;
+    }
+    io.out('there is no handle: no process can be named, only the environment folder is removed');
+  }
+  let handle: Handle | null = null;
+  if (await exists(paths.handle)) {
+    const read = readableHandle(await readFile(paths.handle, 'utf8'), paths);
+    if (typeof read === 'string') {
+      io.err(`the handle at ${paths.handle} cannot be trusted: ${read}; nothing was changed`);
+      return 2;
+    }
+    handle = read;
+  }
+
+  const stillThere: string[] = [];
+  const ours: [string, number, (command: string) => boolean][] = handle
+    ? [
+        ['keeper', handle.keeper, (command) => command.includes('local-main.ts')],
+        [
+          'c-storage',
+          handle.pids.cStorage,
+          (command) => command.includes(join(paths.build, 'c-storage')),
+        ],
+        ['the BFF', handle.pids.bff, (command) => command.includes('bff/src/main.ts')],
+      ]
+    : [];
+  const strangers = new Set<number>();
+  const reasons = new Map<number, string>();
+  for (const [name, pid, isOurs] of ours) {
+    if (!io.alive(pid)) {
+      io.out(`${name} (pid ${pid}): was not running`);
+      continue;
+    }
+    const command = io.commandOf(pid);
+    if (command !== undefined && !isOurs(command)) {
+      // The stack's process is gone and the number is another program's now: not ours to touch.
+      strangers.add(pid);
+      io.out(`${name} (pid ${pid}): already gone; that number is now ${command}, left alone`);
+      continue;
+    }
+    if (command === undefined) {
+      io.out(
+        `${name} (pid ${pid}): left alone, its command could not be read to prove it is the stack's`,
+      );
+      reasons.set(pid, "is running and could not be proved the stack's");
+      continue;
+    }
+    io.signal(pid);
+    for (let waited = 0; io.alive(pid) && waited < io.settleMs; waited += 25) await sleep(25);
+    if (io.alive(pid)) {
+      io.out(`${name} (pid ${pid}): asked to end, still running after ${io.settleMs / 1000} s`);
+      reasons.set(pid, 'is still running');
+    } else {
+      io.out(`${name} (pid ${pid}): stopped`);
+    }
+  }
+  if (reasons.size === 0) {
+    try {
+      await rm(paths.dir, { recursive: true, force: true });
+    } catch (error) {
+      stillThere.push(`the environment folder could not be removed: ${messageOf(error)}`);
+    }
+  } else io.out('nothing was removed: a process may still use the data');
+
+  io.out('read back after the teardown:');
+  for (const [name, pid] of ours) {
+    if (strangers.has(pid)) io.out(`  ${name}: gone (pid ${pid} is another program's now)`);
+    // Alive here means the stop phase gave it a reason: the others are gone or are strangers.
+    else if (io.alive(pid)) {
+      io.out(`  ${name}: FOUND, pid ${pid} is running`);
+      stillThere.push(`${name} (pid ${pid}) ${reasons.get(pid)!}`);
+    } else io.out(`  ${name}: gone`);
+  }
+  const holding = await takenPorts(ports);
+  for (const [part, port] of holding) {
+    io.out(`  port ${port} (${part}): FOUND, something is listening`);
+    stillThere.push(`port ${port} (${part}) is held by something`);
+  }
+  if (holding.length === 0) {
+    io.out(`  ports ${Object.values(ports).join(', ')}: nothing is listening`);
+  }
+  for (const [what, path] of [
+    ['data folder and its database', paths.data],
+    ['build folder', paths.build],
+    ['handle', paths.handle],
+  ] as const) {
+    if (await exists(path)) {
+      io.out(`  ${what}: FOUND at ${path}`);
+      stillThere.push(`${what} is still at ${path}`);
+    } else {
+      io.out(`  ${what}: gone`);
+    }
+  }
+  if (stillThere.length === 0) {
+    io.out('down: everything is cleared');
+    return 0;
+  }
+  io.err(`down: NOT cleared: ${[...new Set(stillThere)].join('; ')}`);
+  return 1;
+}
+
 /**
  * The local environment's commands. `up` leaves the stack standing after it returns; `keep` is the
  * process `up` leaves behind to hold it. Exit 0 done, 1 a failure, 2 refused before anything was
@@ -328,6 +470,7 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
 export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
   if (argv[0] === 'up') return await up(io);
   if (argv[0] === 'status') return await status(io);
+  if (argv[0] === 'down') return await down(io);
   if (argv[0] === 'seed') return await seed(io, argv[1], argv[2]);
   if (argv[0] === 'keep') return await keep(io);
   io.err(USAGE);
