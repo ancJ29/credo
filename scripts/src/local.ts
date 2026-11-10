@@ -1,4 +1,5 @@
 import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { type Artifacts, type StackFacts, type StartedStack, type StartOptions } from './stack';
 import { type Started, waitUntilUp } from './running/processes';
@@ -69,6 +70,8 @@ export type LocalIo = {
   /** `up`: how long the build and the start-up may take, and how often a line says they go on. */
   waitMs: number;
   heartbeatMs: number;
+  /** `status`: whether a process of this machine is running. A pid alone is never an answer. */
+  alive: (pid: number) => boolean;
   /** `keep`: brings the stack up on the folder and ports given. */
   start: (
     artifacts: Artifacts,
@@ -78,7 +81,7 @@ export type LocalIo = {
   stopped: Promise<void>;
 };
 
-const USAGE = 'usage: pnpm local up';
+const USAGE = 'usage: pnpm local up | status';
 
 const exists = (path: string) =>
   access(path).then(
@@ -89,12 +92,38 @@ const exists = (path: string) =>
 /** Every failure met here is an Error: a file's, a fetch's, or `waitUntilUp`'s own. */
 const messageOf = (error: unknown) => (error as Error).message;
 
+const PARTS = ['front', 'cStorage', 'bff', 'seedDoor'] as const;
+const PART_NAMES = {
+  front: 'the front',
+  cStorage: 'c-storage',
+  bff: 'the BFF',
+  seedDoor: 'the seed door',
+};
+
+/** The ports among `ports` that something already listens on, by part, found by binding each. */
+async function takenPorts(ports: StackFacts['ports']) {
+  const taken: [string, number][] = [];
+  for (const part of PARTS) {
+    const free = await new Promise<boolean>((resolve) => {
+      const probe = createServer();
+      probe.once('error', () => resolve(false));
+      probe.listen(ports[part], () => probe.close(() => resolve(true)));
+    });
+    if (!free) taken.push([PART_NAMES[part], ports[part]]);
+  }
+  return taken;
+}
+
 /** `pnpm local up`: builds, starts the keeper and returns once the front answers, leaving the stack
  * standing and a handle behind. */
 async function up(io: LocalIo) {
   const { paths, ports } = io;
-  if (await exists(paths.handle)) {
-    io.err(`the environment is already up: its handle is ${paths.handle}`);
+  const taken = await takenPorts(ports);
+  const standing = await exists(paths.handle);
+  if (standing || taken.length > 0) {
+    for (const [part, port] of taken) io.err(`port ${port} (${part}) is taken`);
+    if (standing) io.err(`the environment is already up: its handle is ${paths.handle}`);
+    io.err('nothing was changed; run pnpm local status to see what is up');
     return 2;
   }
   io.out(
@@ -162,6 +191,57 @@ async function keep(io: LocalIo) {
   return status;
 }
 
+/** Whether `url` answers with `status`, the part's own answer to a request (a door that takes only a
+ * POST answers a GET with 404, which is still its own voice). */
+const answers = (url: string, status: number, headers: Record<string, string> = {}) =>
+  fetch(url, { headers }).then(
+    (reply) => reply.status === status,
+    () => false,
+  );
+
+/** `pnpm local status`: one line a part. A part is up only when it answers on its own port with
+ * its own answer and the process the handle names for it is running: a pid alone, or a stranger
+ * answering on the port, is not an answer. */
+async function status(io: LocalIo) {
+  const { paths } = io;
+  if (!(await exists(paths.handle))) {
+    io.out('nothing is up: there is no handle');
+    return 0;
+  }
+  const handle = JSON.parse(await readFile(paths.handle, 'utf8')) as Handle;
+  const { ports, pids } = handle;
+  const checks: [string, number, Promise<boolean>, number][] = [
+    [
+      PART_NAMES.cStorage,
+      ports.cStorage,
+      answers(`${handle.cStorage.url}/health`, 200),
+      pids.cStorage,
+    ],
+    [
+      PART_NAMES.bff,
+      ports.bff,
+      answers(`http://127.0.0.1:${ports.bff}/api/config`, 200, {
+        'x-client-code': handle.demo.clientCode,
+      }),
+      pids.bff,
+    ],
+    [PART_NAMES.front, ports.front, answers(`${handle.url}/`, 200), handle.keeper],
+    [
+      PART_NAMES.seedDoor,
+      ports.seedDoor,
+      answers(`http://127.0.0.1:${ports.seedDoor}/`, 404),
+      handle.keeper,
+    ],
+  ];
+  let allUp = true;
+  for (const [name, port, answered, pid] of checks) {
+    const up = (await answered) && io.alive(pid);
+    allUp &&= up;
+    io.out(`${name}: ${up ? 'up' : 'DOWN'} on port ${port}`);
+  }
+  return allUp ? 0 : 1;
+}
+
 /**
  * The local environment's commands. `up` leaves the stack standing after it returns; `keep` is the
  * process `up` leaves behind to hold it. Exit 0 done, 1 a failure, 2 refused before anything was
@@ -169,6 +249,7 @@ async function keep(io: LocalIo) {
  */
 export async function runLocal(argv: string[], io: LocalIo): Promise<number> {
   if (argv[0] === 'up') return await up(io);
+  if (argv[0] === 'status') return await status(io);
   if (argv[0] === 'keep') return await keep(io);
   io.err(USAGE);
   return 2;

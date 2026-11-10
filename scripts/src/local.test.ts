@@ -1,4 +1,5 @@
 import { mkdir, mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { createServer as createHttpServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,7 +17,14 @@ import type { StartedStack } from './stack';
 
 let root: string;
 let paths: LocalPaths;
+let ports: LocalIo['ports'];
 beforeEach(async () => {
+  ports = {
+    front: await freePort(),
+    cStorage: await freePort(),
+    bff: await freePort(),
+    seedDoor: await freePort(),
+  };
   root = await mkdtemp(join(tmpdir(), 'credo-local-test-'));
   paths = localPaths(root);
 });
@@ -57,9 +65,10 @@ const baseIo = (said: ReturnType<typeof lines>, over: Partial<LocalIo> = {}): Lo
   out: said.say,
   err: said.complain,
   paths,
-  ports: LOCAL_PORTS,
+  ports,
   build: () => Promise.reject(new Error('not built here')),
   keeper: () => Promise.reject(new Error('no keeper here')),
+  alive: () => true,
   clock: () => '12:34',
   waitMs: 5000,
   heartbeatMs: 5,
@@ -128,7 +137,7 @@ describe('local keep', () => {
         uiDir: join(paths.build, 'ui'),
         dir: paths.build,
       },
-      { dataDir: paths.data, ports: LOCAL_PORTS },
+      { dataDir: paths.data, ports },
     );
     expect(JSON.parse(await readFile(paths.handle, 'utf8'))).toEqual(
       handleOf({ keeper: process.pid, dataDir: paths.data }),
@@ -165,6 +174,96 @@ describe('local keep', () => {
   });
 });
 
+describe('local status', () => {
+  /** One server on each part's port, answering as that part does. */
+  const serve = async (answerFor: (part: keyof typeof ports) => number) => {
+    const servers: Server[] = [];
+    for (const part of ['front', 'cStorage', 'bff', 'seedDoor'] as const) {
+      const server = createHttpServer((_, reply) => reply.writeHead(answerFor(part)).end('{}'));
+      await new Promise<void>((resolve) => server.listen(ports[part], '127.0.0.1', resolve));
+      servers.push(server);
+    }
+    return () => Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
+  };
+  const own = (part: string) => (part === 'seedDoor' ? 404 : 200);
+  const written = () =>
+    writeHandle(
+      paths,
+      handleOf({
+        ports,
+        url: `http://localhost:${ports.front}`,
+        cStorage: {
+          url: `http://127.0.0.1:${ports.cStorage}`,
+          internalAccessKey: 'i',
+          superAdminKey: 's',
+        },
+      }),
+    );
+
+  it('says nothing is up when there is no handle', async () => {
+    const said = lines();
+
+    expect(await runLocal(['status'], baseIo(said))).toBe(0);
+    expect(said.out).toEqual(['nothing is up: there is no handle']);
+  });
+
+  it('prints four up lines when every part answers its own way and its process runs', async () => {
+    const said = lines();
+    await written();
+    const close = await serve(own);
+    try {
+      expect(await runLocal(['status'], baseIo(said))).toBe(0);
+    } finally {
+      await close();
+    }
+
+    expect(said.out).toEqual([
+      `c-storage: up on port ${ports.cStorage}`,
+      `the BFF: up on port ${ports.bff}`,
+      `the front: up on port ${ports.front}`,
+      `the seed door: up on port ${ports.seedDoor}`,
+    ]);
+  });
+
+  it('calls a part down when nothing answers on its port, whatever its pid does', async () => {
+    const said = lines();
+    await written();
+
+    expect(await runLocal(['status'], baseIo(said))).toBe(1);
+    expect(said.out.every((line) => line.includes(': DOWN on port'))).toBe(true);
+    expect(said.out).toHaveLength(4);
+  });
+
+  it('calls a part down when something else answers on its port than its own answer', async () => {
+    const said = lines();
+    await written();
+    const close = await serve(() => 500);
+    try {
+      expect(await runLocal(['status'], baseIo(said))).toBe(1);
+    } finally {
+      await close();
+    }
+
+    expect(said.out.every((line) => line.includes('DOWN'))).toBe(true);
+  });
+
+  it('calls a part down when it answers but the process the handle names is gone', async () => {
+    const said = lines();
+    await written();
+    const close = await serve(own);
+    try {
+      const gone = (pid: number) => pid !== 41;
+      expect(await runLocal(['status'], baseIo(said, { alive: gone }))).toBe(1);
+    } finally {
+      await close();
+    }
+
+    expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
+      `c-storage: DOWN on port ${ports.cStorage}`,
+    ]);
+  });
+});
+
 describe('local up', () => {
   /** A keeper stand-in: a child that publishes the handle, then serves the front's port. */
   const standIn = async (port: number, delayMs: number) => {
@@ -194,7 +293,7 @@ describe('local up', () => {
       const status = await runLocal(
         ['up'],
         baseIo(said, {
-          ports: { ...LOCAL_PORTS, front: port },
+          ports: { ...ports, front: port },
           build,
           keeper: async () => (kept.current = await keeper()),
         }),
@@ -227,8 +326,31 @@ describe('local up', () => {
 
     expect(status).toBe(2);
     expect(build).not.toHaveBeenCalled();
-    expect(said.err).toEqual([`the environment is already up: its handle is ${paths.handle}`]);
+    expect(said.err).toEqual([
+      `the environment is already up: its handle is ${paths.handle}`,
+      'nothing was changed; run pnpm local status to see what is up',
+    ]);
     expect(await keeperOfHandle()).toBe(40);
+  });
+
+  it('refuses a taken port by naming it and its part, writes nothing and builds nothing', async () => {
+    const said = lines();
+    const build = vi.fn(() => Promise.reject(new Error('must not build')));
+    const stranger = createHttpServer();
+    await new Promise<void>((resolve) => stranger.listen(ports.cStorage, resolve));
+    try {
+      const status = await runLocal(['up'], baseIo(said, { build }));
+
+      expect(status).toBe(2);
+      expect(build).not.toHaveBeenCalled();
+      expect(said.err).toEqual([
+        `port ${ports.cStorage} (c-storage) is taken`,
+        'nothing was changed; run pnpm local status to see what is up',
+      ]);
+      await expect(stat(paths.dir)).rejects.toThrow('ENOENT');
+    } finally {
+      await new Promise((resolve) => stranger.close(resolve));
+    }
   });
 
   it('leaves nothing when the keeper dies at once: its log is the reason, and the folder is gone', async () => {
@@ -273,6 +395,6 @@ describe('a verb it does not know', () => {
     const said = lines();
 
     expect(await runLocal(['sideways'], baseIo(said))).toBe(2);
-    expect(said.err).toEqual(['usage: pnpm local up']);
+    expect(said.err).toEqual(['usage: pnpm local up | status']);
   });
 });

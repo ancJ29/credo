@@ -37,6 +37,14 @@ process.exitCode = await runLocal([verb], {
   clock: (afterMs) => new Date(Date.now() + afterMs).toTimeString().slice(0, 5),
   waitMs: WAIT_MS,
   heartbeatMs: 30_000,
+  alive: (pid) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  },
   start: startStack,
   stopped,
 });
