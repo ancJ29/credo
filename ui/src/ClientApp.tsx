@@ -10,9 +10,8 @@ import {
 } from '@credo/shared';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
-import { AddCustomerPage } from './pages/client/AddCustomerPage';
+import { AddRecordPage } from './pages/client/AddRecordPage';
 import { AddPersonPage } from './pages/client/AddPersonPage';
-import { AddProductPage } from './pages/client/AddProductPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './frame/Boot';
 import { BEFORE_CONFIG } from './brand';
@@ -386,11 +385,7 @@ export function ClientApp({
                     // Whoever may edit orders adds, as they correct these records (case-table row 11),
                     // and only through a page their menu lists: the list's own question comes first.
                     mayOpen(user, kind) && can(user, 'orders.canEdit') ? (
-                      kind === 'customers' ? (
-                        <AddCustomerPage {...pageFor(user)} />
-                      ) : (
-                        <AddProductPage {...pageFor(user)} />
-                      )
+                      <AddRecordPage kind={kind} {...pageFor(user)} />
                     ) : (
                       <Notice kind="forbidden" />
                     )

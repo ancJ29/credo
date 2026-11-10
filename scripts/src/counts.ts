@@ -85,7 +85,7 @@ export const RULES: Rules = {
       name: 'what a 403 means',
       home: { file: 'ui/src/page.ts', name: 'isForbidden' },
       sites: ui(
-        'pages/client/AddCustomerPage pages/client/RecordPage pages/client/PersonPage pages/client/SettingsPage',
+        'pages/client/AddRecordPage pages/client/RecordPage pages/client/PersonPage pages/client/SettingsPage',
       ),
       copy: /status === 403/,
     },
