@@ -1,10 +1,9 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-09, from piece 99: a package's gate is the one command `ops/gate.sh`
-> runs, no longer five steps a session names; and from 2026-11-07's day: a look is not a gate, how
-> a check is run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
-> they stand; their history is in `git log`.
+> **Last amended** 2026-11-10, from how the reviews have run here: one review and one fix pass, a cap
+> that until now bound only the sessions which loaded one skill. This file holds the rules as they
+> stand; their history is in `git log`.
 > Binds every feature's plan, every test, every check run here and every merge into `main`.
 
 ## At a glance
@@ -24,7 +23,7 @@ flowchart LR
   merge --> on["work goes on<br/>🤖"]
   green --> walks["walks<br/>👤 yes or no"]
   walks -- yes --> act["the act<br/>👤 deploy · partner"]
-  review -. a finding .-> red
+  review -. a finding, once .-> red
   walks -. a no .-> table
 ```
 
@@ -35,10 +34,10 @@ The eight rules, [below](#the-rules):
    only a test calls is dead.
 3. Each case is tested as near its code as it can be.
 4. Each test is named after its case; no second list.
-5. Another model reviews the code before it merges; each finding fixed, rejected or
-   deferred, with its reason.
+5. Another model reviews the code before it merges; one review, one fix pass; each finding
+   fixed, rejected or deferred, with its reason.
 6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
-   package's gate is the one command, `pnpm --filter @credo/<pkg> check`.
+   package's gate is one command.
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
    until its look changes; pixels counted raw.
 8. Every line is tested, or says why not.
@@ -97,7 +96,17 @@ The map of walks. A dash is a part of the day not built yet.
    The author's model is the one in the commits' `Co-Authored-By` line. *Rejected:* the
    author's model reviewing its own code. It shares the blind spots that wrote it. Each finding is
    listed in the recap and tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`, with its reason; a
-   deferred one names where it went. A finding made without context that a memo or the plan
+   deferred one names where it went.
+   **One review, one fix pass, and that pass's own gate is the re-check.** The reviewer may be
+   asked to reread the fixed lines; nothing else reads the piece again. What a second round would
+   raise is deferred by the tagging above, never handed to a third reviewer — with one exception,
+   deferred in no round: a finding whose text, acted on, would cost something that cannot be
+   undone. A fix that meets the same red twice stops there
+   ([pacing](collaboration.md#pacing-one-piece-at-a-time)'s budget), and the stop is reported as a
+   diagnosis the human hears. *Rejected:* rounds until the reviewer has nothing left to say. A
+   second reviewing model costs a whole read of the piece to confirm what the fix pass's own gate
+   has already read back, and rounds with no cap have no end a session can name.
+   A finding made without context that a memo or the plan
    already holds is rejected, naming that home. *Why:* treating every finding as a bug erodes
    trust in the memos, and treating none as one misses real defects.
 6. **A flaky red is a defect: never retried until green.** A rerun may reproduce it, but its

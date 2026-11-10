@@ -2,7 +2,8 @@
 
 > **Decided** 2026-10-27. Binds every person and every agent working here. This file holds the rules
 > and the reason each exists; their history is in `git log`.
-> **Last amended** 2026-11-08, by piece 89's cut of the rules that were being said twice.
+> **Last amended** 2026-11-10, from the human's instruction that a text written for them carries no
+> internal identifier: not a milestone's code, a piece's number, a step's number.
 
 ## At a glance
 
@@ -133,12 +134,18 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    and its sentence, what changed on it, where the page marks it, and whether the human's own
    answers already hold it — never as an id or an agent's phrase. Anything the human must look up
    is named with a few words of what it is and a `path#Lnn` link, never a bare label. Nothing
-   written for the human is written in the machine's terms: a step number, a model's name, minutes
-   against sized tell the reader how the machine spent itself, not what
-   changed for anyone, and belong in the machine's own record. Reviewing a recap is reading it
+   written for the human is written in the machine's terms, and no identifier out of the machine's
+   own tracking reaches them: not a milestone's code, a piece's number, a step's number, a model's
+   name or minutes against sized. They say how the machine spent itself, or where it files the
+   work, not what changed for anyone, and their home is the machine's own record, the piece's file
+   and the runs log. A number a document the human reads publishes as its own is not one of these
+   and is read by its number: the log's items, the code rules' ids, a plan's steps.
+   Reviewing a recap is reading it
    for sense and for what would make someone act wrongly; the reviewer re-runs only what it
    claims without evidence. *Why:* a compact line sends the human hunting for what it means,
-   which is the attention it was written to save.
+   which is the attention it was written to save, and an internal code says nothing at all to its
+   reader: the human asked for this in these words on 2026-11-10 — don't use code like A1, B1, B2,
+   just plain text.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
    yes. *Rejected:* a new rule after the first correction. The rules then grow faster than a
    session can read them.

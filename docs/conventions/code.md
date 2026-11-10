@@ -16,7 +16,7 @@
 > [a client's own difference, a screen's behaviour, and server
 > data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
 > in `git log`.
-> **Last amended** 2026-11-09, from the directory structure the human approved (piece 100): the claim
+> **Last amended** 2026-11-09, from the directory structure the human approved: the claim
 > that every TypeScript package is one undivided directory of files retired, and C17 minted for how a
 > package decides its own directories.
 

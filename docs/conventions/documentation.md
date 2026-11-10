@@ -5,8 +5,9 @@
 > `CLAUDE.md` or code comment, or committing any path.
 > **Last amended** 2026-11-10, from the human's instruction that every part which behaves gets a
 > behaviour memo: a part's promises have a third home of their own, named against the other two, and
-> a new service arrives with one. This file holds the rules as they stand; their
-> history is in `git log`.
+> a new service arrives with one; and from a measurement of every plan written since the last word
+> figure was set, which raised that figure to what the shape costs. This file holds the rules as
+> they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -173,7 +174,7 @@ content, never ahead of it.
 
 ### The plan: one short page
 
-**A plan is about 2,000 words at most, its case table included**, in this order:
+**A plan is about 2,500 words, its case table included**, in this order:
 
 1. **The purpose**, as its `## At a glance`: what the piece is for, who sees it, and the cheapest
    safe path there, what exists picked over a design from zero, the price in one line.
@@ -192,17 +193,23 @@ content, never ahead of it.
    story from it, and digging for the rest costs the speed the short page buys. The human gave
    that correction twice on 2026-11-02, of a plan's points and of the orchestrator's day list.
 
-**The 2,000 is what this shape costs, not a target.** Over the eighteen plans written since the
-shape was set, `wc -w` ran from 986 to 1,970 words, median 1,610. The parts above cost about
-800 of that before the first step: about 150 words for the `## At a glance`, 260 for the slice,
-240 for the case table and 150 for the points. A slice of six to nine steps, each with its
-done-when and the file-and-line citations a reviewer reads it against, costs about 600 more.
-About a fifth of the case table's words are the table's own pipes and dashes, which `wc -w`
-counts as words, so the number is not a prose budget. *Rejected:* 1,000 words, what this
-convention asked for until 2026-11-07. Seventeen of the eighteen were over it; the cost was not
-the overage but about fifteen passes spent shortening prose nobody had asked to be shorter,
-while the parts this convention itself demands could not fit in the number — its own arithmetic
-had left the slice out and put the steps at a figure no plan has met.
+**The 2,500 is what this shape costs, not a target.** Over the twelve plans added under
+`docs/plans` since 2026-11-07, `wc -w` ran from 1,048 to 3,612 words at a median of about 2,490.
+The two plans at that median show where the words go: one spends 169 on its `## At a glance`, 336
+on the slice, 383 on the case table, 840 on its steps and 346 on the human's points; the other 151,
+147 and, with no case table of its own, 1,052 on its steps and 42 on its points — eight steps in
+the first and six in the second, each with its done-when and the file-and-line citations a
+reviewer reads it against. Each also carries sections of its own — what moves and what must not,
+the shapes and their one home, the order and what is independent — 205 words of them in the first
+and 1,020 in the second, and that is where the rest of the median sits. About a fifth of the case
+table's words are the table's own pipes and dashes, which `wc -w` counts as words, so the number is
+not a prose budget. *Rejected:* 2,000 words, what this convention asked for until 2026-11-10. Ten
+of the twelve plans written under it were over it, so the figure described no plan this project
+writes, and a cap nobody meets is a complaint rather than a rule. *Rejected:* 1,000 words, what it
+asked for until 2026-11-07, when seventeen of the eighteen plans then measured were over it; the
+cost was not the overage but about fifteen passes spent shortening prose nobody
+had asked to be shorter, while the parts this convention itself demands could not fit in the number — its own arithmetic had left the slice out and put the
+steps at a figure no plan has met.
 
 Nothing the builder finds in the repo or in git goes in: no status block, no list of the files it
 was drawn from, no evidence. Where a piece stands is its ticks, and across pieces the
@@ -212,12 +219,12 @@ in one, the shape these conventions asked for until 2026-11-02, against the one 
 27,036 words, every reader paid for the four other files to reach the steps, and the best of the
 six reviewed on 2026-11-02 was the shortest. A rewritten "Where it stands" was one more copy of what
 the ticks and the board already said. *Hazard no gate catches:* the page grows back, one step's
-evidence at a time. *Guard:* `wc -w` on the plan before its commit; well over 2,000 words, the
+evidence at a time. *Guard:* `wc -w` on the plan before its commit; well past 3,000 words, the
 part that grew is named and cut back, and the two limits that bind are the `## At a glance` at
 about 150 words and each of the human's points at about 60. *Rejected:* cutting the slice in
 two on the word count, what this guard asked for until 2026-11-07. No slice was ever cut on
 that ground in the shape's first week, and the count does not diagnose one: the longest of the
-eighteen plans is a single walkable slice of eight steps, and the plans this guard was written
+twelve is a single walkable slice of nine steps, and the plans this guard was written
 against ran from 2,400 to 27,000 words at the same step counts, so what cut them down was
 dropping the status, provenance and evidence blocks, not cutting slices. A slice is cut by its
 own test above: not walkable end to end when the plan ends.
