@@ -9,6 +9,7 @@ import {
   storedClientSchema,
   tenantConfigSchema,
 } from '@credo/shared';
+import { listClients } from '@credo/bff/clients';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Handle,
@@ -414,22 +415,36 @@ describe('local seed', () => {
     expect(connect).not.toHaveBeenCalled();
   });
 
-  it('stops at a code that holds a tenant already and replaces nothing', async () => {
+  it('refuses a code that holds a tenant already: exit 2, its code named, nothing written', async () => {
     const said = lines();
     const { records, storage } = memoryStorage();
     await writeHandle(paths, handleOf({ ports }));
-    const io = baseIo(said, { connect: () => storage });
-    await runLocal(['seed', 'acme'], io);
+    await runLocal(['seed', 'acme'], baseIo(said, { connect: () => storage }));
     const before = JSON.stringify([...records]);
+    const count = () => listClients(storage).then((clients) => clients.length);
     const second = lines();
 
     const status = await runLocal(['seed', 'acme'], baseIo(second, { connect: () => storage }));
 
-    expect(status).toBe(1);
+    expect(status).toBe(2);
+    expect(second.out).toEqual([]);
     expect(second.err).toEqual([
-      'acme was not seeded: the service already holds data: not seeded over',
+      'acme is a tenant here already: nothing was seeded and nothing was changed',
     ]);
     expect(JSON.stringify([...records])).toBe(before);
+    expect(await count()).toBe(1);
+  });
+
+  it('ends 1, not 2, on a failure that is not a held code', async () => {
+    const said = lines();
+    const { storage } = memoryStorage();
+    await writeHandle(paths, handleOf({ ports }));
+    const broken = { ...storage, getRecord: () => Promise.reject(new Error('c-storage went')) };
+
+    const status = await runLocal(['seed', 'acme'], baseIo(said, { connect: () => broken }));
+
+    expect(status).toBe(1);
+    expect(said.err).toEqual(['acme was not seeded: c-storage went']);
   });
 });
 

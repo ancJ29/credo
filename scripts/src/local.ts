@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { listClients } from '@credo/bff/clients';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { type CStorageClient, clientCodeSchema, type createCStorageClient } from '@credo/shared';
-import { ROOT_NAME, seedClient } from './generator';
+import { ROOT_NAME, SeededAlready, seedClient } from './generator';
 import { type Artifacts, type StackFacts, type StartedStack, type StartOptions } from './stack';
 import { type Started, waitUntilUp } from './running/processes';
 
@@ -273,7 +273,7 @@ async function status(io: LocalIo) {
  * c-storage as the environment names it (`C_STORAGE_URL`, `INTERNAL_ACCESS_KEY`, `SERVICE_CODE`,
  * `SERVICE_ACCESS_KEY`, `APP_ORIGIN`, the variables `runRidge` reads) when `C_STORAGE_URL` is set,
  * and the handle's otherwise, so nothing below the choice knows which stack it fills. A code that
- * already holds a tenant stops the run through `seedClient`'s own refusal, and nothing is replaced.
+ * already holds a tenant is refused, exit 2, and nothing is replaced.
  */
 async function seed(io: LocalIo, code: string | undefined, name: string | undefined) {
   if (!clientCodeSchema.safeParse(code).success) {
@@ -311,6 +311,10 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
     }
     return 0;
   } catch (error) {
+    if (error instanceof SeededAlready) {
+      io.err(`${code} is a tenant here already: nothing was seeded and nothing was changed`);
+      return 2;
+    }
     io.err(`${code} was not seeded: ${messageOf(error)}`);
     return 1;
   }

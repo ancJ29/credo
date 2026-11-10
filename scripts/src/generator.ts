@@ -72,6 +72,13 @@ const NO_SIGN_IN = 'EMP-0007';
 /** Who adds that person: allowed to add and with no unit to give. */
 const ADDER = 'EMP-0001';
 
+/** The code names a client already: nothing was written, and nothing is replaced. */
+export class SeededAlready extends Error {
+  constructor() {
+    super('the service already holds data: not seeded over');
+  }
+}
+
 /**
  * A client made from the data set: the demo company by the operator's own create function, then
  * its staff setup, its people and the one who left through the BFF's own routes, signed in as the
@@ -92,7 +99,7 @@ export async function seedClient(
     madeAt,
     settings: { ...DEMO_CONFIG, name },
   });
-  if (made === 'taken') throw new Error('the service already holds data: not seeded over');
+  if (made === 'taken') throw new SeededAlready();
 
   // The clock is the BFF's `madeAt` alone; the week's replay sets it at each record's own time.
   let clock: number | null = null;
