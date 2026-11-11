@@ -1,26 +1,26 @@
 import {
   type CStorageClient,
+  closeRequestFor,
+  customerRoutes,
   deliveryDocSchema,
+  deliveryListReplySchema,
+  deliveryPhotoReplySchema,
   deliveryRoutes,
+  driverDay,
   employeeDocSchema,
   employeeRoutes,
   listImportRoute,
   orderDocSchema,
   orderRoutes,
+  productRoutes,
   reconciliationRoutes,
+  recordKeys,
   ROUTES,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
-import {
-  bffOn,
-  ROOT,
-  scoped,
-  seedEmployee,
-  seedTenant,
-  signIn,
-  withAuth,
-} from '../../tests/tenant';
+import { DAY } from '../../tests/orders';
+import { bffOn, scoped, seedEmployee, seedTenant, signIn, withAuth } from '../../tests/tenant';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -30,11 +30,12 @@ afterAll(async () => {
   await cs.stop();
 });
 
-const DAY = '2026-10-28';
+const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 
 /** Two companies in one service, as a shared box holds them, each with its root signed in; company
- * alpha with a customer, a product, a person, a draft order sent to a driver (so a request waits)
- * and the driver's day closed. Every write c-storage takes is logged, to prove nothing was written. */
+ * alpha with a customer, a product, a person, two drivers, a request delivered with its photo and
+ * its driver's day closed, and a second driver's request still waiting. Every write c-storage takes
+ * is logged, to prove nothing was written. */
 async function twoCompanies() {
   const writes: string[] = [];
   const t = await bffOn(cs, {
@@ -51,7 +52,7 @@ async function twoCompanies() {
     }),
   });
   const alphaId = await seedTenant(t.client, 'alpha');
-  await seedTenant(t.client, 'beta');
+  const betaId = await seedTenant(t.client, 'beta');
   const alphaApp = scoped(t.app, 'alpha');
   const betaApp = scoped(t.app, 'beta');
   const as = (app: typeof alphaApp, authId: string) => ({
@@ -60,7 +61,7 @@ async function twoCompanies() {
       app.inject({ method, url, headers: withAuth(authId), payload: payload as object }),
   });
   const alpha = as(alphaApp, (await signIn(alphaApp)).body.authId);
-  const beta = as(betaApp, (await signIn(betaApp, ROOT)).body.authId);
+  const beta = as(betaApp, (await signIn(betaApp)).body.authId);
 
   const imported = async (route: 'customers' | 'products', row: object) => {
     const reply = await alpha.send('POST', listImportRoute(route), { rows: [row] });
@@ -76,10 +77,15 @@ async function twoCompanies() {
     stocked: true,
     extra: {},
   });
-  const driver = await seedEmployee(t.client, alphaId, {
-    code: 'DRV-1',
-    permissions: { 'deliveries.canDeliver': true },
-  });
+  const driver = async (code: string) =>
+    (
+      await seedEmployee(t.client, alphaId, {
+        code,
+        permissions: { 'deliveries.canDeliver': true },
+      })
+    ).employee;
+  const first = await driver('DRV-1');
+  const second = await driver('DRV-2');
   const person = await alpha.send('POST', ROUTES.employees, {
     name: 'Mai Linh',
     code: 'EMP-1',
@@ -89,31 +95,50 @@ async function twoCompanies() {
   const personDoc = person.json<{ employee: { employee: { id: string }; version: string } }>()
     .employee;
 
-  const made = await alpha.send('POST', ROUTES.orders, {
-    day: DAY,
-    customerId,
-    lines: [{ productId, quantity: 10 }],
-    extra: {},
-  });
-  expect(made.statusCode).toBe(201);
-  const draft = orderDocSchema.parse(made.json());
-  const sent = await alpha.send('POST', orderRoutes.confirm(DAY, draft.order.id), {
-    version: draft.version,
-    driverId: driver.employee.id,
-    day: DAY,
-  });
-  expect(sent.statusCode).toBe(200);
-  const order = orderDocSchema.parse(sent.json());
-  const requestId = order.order.request!.id;
-  const request = deliveryDocSchema.parse(
-    (await alpha.get(deliveryRoutes.one(DAY, requestId))).json(),
+  /** A draft of alpha's, sent to a driver: the request that waits. */
+  const sentTo = async (to: { id: string }) => {
+    const made = await alpha.send('POST', ROUTES.orders, {
+      day: DAY,
+      customerId,
+      lines: [{ productId, quantity: 10 }],
+      extra: {},
+    });
+    expect(made.statusCode).toBe(201);
+    const draft = orderDocSchema.parse(made.json());
+    const sent = await alpha.send('POST', orderRoutes.confirm(DAY, draft.order.id), {
+      version: draft.version,
+      driverId: to.id,
+      day: DAY,
+    });
+    expect(sent.statusCode).toBe(200);
+    const order = orderDocSchema.parse(sent.json());
+    const request = deliveryDocSchema.parse(
+      (await alpha.get(deliveryRoutes.one(DAY, order.order.request!.id))).json(),
+    );
+    return { order, request };
+  };
+  const delivered = await sentTo(first);
+  const driverCall = as(
+    alphaApp,
+    (await signIn(alphaApp, { name: 'DRV-1', password: 'Staff-pass-1!' })).body.authId,
   );
-  const closed = await alpha.send('POST', reconciliationRoutes.close(DAY, driver.employee.id), {
-    delivered: [],
-    waiting: [requestId],
-    handedIn: 0,
-  });
+  const done = await driverCall.send(
+    'POST',
+    deliveryRoutes.deliver(DAY, delivered.request.request.id),
+    {
+      version: delivered.request.version,
+      photo: PHOTO,
+    },
+  );
+  expect(done.statusCode).toBe(200);
+  const day = deliveryListReplySchema.parse((await alpha.get(deliveryRoutes.list(DAY))).json());
+  const closed = await alpha.send(
+    'POST',
+    reconciliationRoutes.close(DAY, first.id),
+    closeRequestFor(driverDay(day.deliveries, first.id), 0),
+  );
   expect(closed.statusCode).toBe(200);
+  const waiting = await sentTo(second);
 
   writes.length = 0;
   return {
@@ -121,13 +146,15 @@ async function twoCompanies() {
     alpha,
     beta,
     alphaId,
+    betaId,
     customerId,
     productId,
-    driverId: driver.employee.id,
+    secondDriverId: second.id,
     personId: personDoc.employee.id,
     personVersion: personDoc.version,
-    order,
-    request,
+    order: delivered.order,
+    delivered: delivered.request,
+    waiting,
     writes,
   };
 }
@@ -176,55 +203,64 @@ describe('Orders: a second company cannot reach the first one’s', () => {
 });
 
 describe('Deliveries: a second company cannot reach the first one’s', () => {
-  it('answers 404 to company beta reading company alpha’s request by its id and its photo, and its day list shows none', async () => {
+  it('answers 404 to company beta reading company alpha’s request by its id, and its day list and drivers list show none', async () => {
     const w = await twoCompanies();
+    const id = w.delivered.request.id;
 
-    const read = await w.beta.get(deliveryRoutes.one(DAY, w.request.request.id));
-    const photo = await w.beta.get(deliveryRoutes.photo(DAY, w.request.request.id));
+    const read = await w.beta.get(deliveryRoutes.one(DAY, id));
     const list = await w.beta.get(deliveryRoutes.list(DAY));
+    const drivers = await w.beta.get(ROUTES.drivers);
 
-    expect([read.statusCode, photo.statusCode]).toEqual([404, 404]);
-    expect(list.statusCode).toBe(200);
+    expect(read.statusCode).toBe(404);
     expect(list.json<{ deliveries: unknown[] }>().deliveries).toEqual([]);
-    expect((await w.alpha.get(deliveryRoutes.one(DAY, w.request.request.id))).statusCode).toBe(200);
+    expect(drivers.statusCode).toBe(200);
+    expect(drivers.json<{ drivers: unknown[] }>().drivers).toEqual([]);
+    expect((await w.alpha.get(deliveryRoutes.one(DAY, id))).statusCode).toBe(200);
+    expect((await w.alpha.get(ROUTES.drivers)).json<{ drivers: unknown[] }>().drivers).toHaveLength(
+      2,
+    );
+  });
+
+  it('answers 404 to company beta reading company alpha’s delivered request’s photo, 200 to alpha', async () => {
+    const w = await twoCompanies();
+    const id = w.delivered.request.id;
+
+    const own = await w.alpha.get(deliveryRoutes.photo(DAY, id));
+    const other = await w.beta.get(deliveryRoutes.photo(DAY, id));
+
+    expect(own.statusCode).toBe(200);
+    expect(deliveryPhotoReplySchema.parse(own.json())).toEqual({ photo: PHOTO });
+    expect(other.statusCode).toBe(404);
+  });
+
+  it('answers 404 to company beta reading the photo of a delivered request of its own that has none, though alpha’s request has the same id and a photo', async () => {
+    const w = await twoCompanies();
+    const id = w.delivered.request.id;
+    // The request is found under beta's key, so only the photo's own key can send beta to alpha's.
+    const held = await w.client.getRecord(recordKeys.tenant(w.alphaId).delivery(DAY, id));
+    await w.client.putRecord(recordKeys.tenant(w.betaId).delivery(DAY, id), held!.data, null);
+
+    const own = await w.beta.get(deliveryRoutes.one(DAY, id));
+    const photo = await w.beta.get(deliveryRoutes.photo(DAY, id));
+
+    expect(own.statusCode).toBe(200);
+    expect(photo.statusCode).toBe(404);
   });
 
   it('answers 404 to company beta cancelling company alpha’s request, and writes nothing', async () => {
     const w = await twoCompanies();
-    const open = await w.alpha.send('POST', ROUTES.orders, {
-      day: DAY,
-      customerId: w.customerId,
-      lines: [{ productId: w.productId, quantity: 1 }],
-      extra: {},
-    });
-    const draft = orderDocSchema.parse(open.json());
-    // The first driver's day is closed, so a second driver takes this one.
-    const second = await seedEmployee(w.client, w.alphaId, {
-      code: 'DRV-2',
-      permissions: { 'deliveries.canDeliver': true },
-    });
-    const sent = orderDocSchema.parse(
-      (
-        await w.alpha.send('POST', orderRoutes.confirm(DAY, draft.order.id), {
-          version: draft.version,
-          driverId: second.employee.id,
-          day: DAY,
-        })
-      ).json(),
-    );
-    const id = sent.order.request!.id;
-    const before = deliveryDocSchema.parse((await w.alpha.get(deliveryRoutes.one(DAY, id))).json());
+    const id = w.waiting.request.request.id;
     w.writes.length = 0;
 
     const cancel = await w.beta.send('POST', deliveryRoutes.cancel(DAY, id), {
-      version: before.version,
+      version: w.waiting.request.version,
     });
 
     expect(cancel.statusCode).toBe(404);
     expect(w.writes).toEqual([]);
     expect(
       deliveryDocSchema.parse((await w.alpha.get(deliveryRoutes.one(DAY, id))).json()),
-    ).toEqual(before);
+    ).toEqual(w.waiting.request);
   });
 });
 
@@ -243,7 +279,7 @@ describe('Staff: a second company cannot reach the first one’s', () => {
     ).toBe(w.personId);
   });
 
-  it('answers 404 to company beta saving over or archiving company alpha’s person, and writes nothing', async () => {
+  it('answers 404 to company beta saving over, archiving or setting the password of company alpha’s person, and writes nothing', async () => {
     const w = await twoCompanies();
 
     const save = await w.beta.send('PUT', employeeRoutes.one(w.personId), {
@@ -254,8 +290,12 @@ describe('Staff: a second company cannot reach the first one’s', () => {
     const archive = await w.beta.send('POST', employeeRoutes.archive(w.personId), {
       version: w.personVersion,
     });
+    const password = await w.beta.send('PUT', employeeRoutes.password(w.personId), {
+      password: null,
+    });
 
-    expect([save.statusCode, archive.statusCode]).toEqual([404, 404]);
+    expect([save.statusCode, archive.statusCode, password.statusCode]).toEqual([404, 404, 404]);
+    expect(password.body).not.toContain('"password"');
     expect(w.writes).toEqual([]);
     const after = employeeDocSchema.parse(
       (await w.alpha.get(employeeRoutes.one(w.personId))).json(),
@@ -277,16 +317,50 @@ describe('Closed days: a second company cannot reach the first one’s', () => {
     expect(other.json<{ reconciliations: unknown[] }>().reconciliations).toEqual([]);
   });
 
-  it('answers 404 to company beta closing company alpha’s driver’s day, and writes nothing', async () => {
+  it('answers 404 to company beta closing the open day of company alpha’s driver, and writes nothing', async () => {
     const w = await twoCompanies();
 
-    const close = await w.beta.send('POST', reconciliationRoutes.close(DAY, w.driverId), {
+    const close = await w.beta.send('POST', reconciliationRoutes.close(DAY, w.secondDriverId), {
       delivered: [],
-      waiting: [w.request.request.id],
+      waiting: [w.waiting.request.request.id],
       handedIn: 0,
     });
 
     expect(close.statusCode).toBe(404);
     expect(w.writes).toEqual([]);
+    expect(
+      (await w.alpha.get(reconciliationRoutes.list(DAY))).json<{ reconciliations: unknown[] }>()
+        .reconciliations,
+    ).toHaveLength(1);
   });
+});
+
+describe('The customer and product lists: a second company cannot reach the first one’s', () => {
+  it.each([
+    { name: 'customer', list: ROUTES.customers, one: customerRoutes.one, key: 'customers' },
+    { name: 'product', list: ROUTES.products, one: productRoutes.one, key: 'products' },
+  ] as const)(
+    'answers 404 to company beta reading or saving over company alpha’s $name by its id, shows none in its list, and writes nothing',
+    async ({ list, one, key }) => {
+      const w = await twoCompanies();
+      const id = key === 'customers' ? w.customerId : w.productId;
+      const doc = (await w.alpha.get(one(id))).json<{ version: string }>();
+      w.writes.length = 0;
+
+      const read = await w.beta.get(one(id));
+      const save = await w.beta.send('PUT', one(id), {
+        version: doc.version,
+        name: 'Taken over',
+        extra: {},
+        ...(key === 'products' ? { unit: 'bao', price: 1, stocked: true } : {}),
+      });
+      const listed = await w.beta.get(list);
+
+      expect([read.statusCode, save.statusCode]).toEqual([404, 404]);
+      expect(listed.statusCode).toBe(200);
+      expect(listed.json<Record<string, unknown[]>>()[key]).toEqual([]);
+      expect(w.writes).toEqual([]);
+      expect((await w.alpha.get(one(id))).json<{ version: string }>().version).toBe(doc.version);
+    },
+  );
 });
