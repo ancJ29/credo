@@ -1394,3 +1394,19 @@ On a timeout the audit service may already have committed the entry: `AbortSigna
 ## 222. The other-client test's first case accepts any status below 500 — the machine; `[DEFERRED]` (the activity log plan, reread of the fix pass, 2026-11-10, Low)
 
 `bff/tests/customer-audit.route.test.ts#L98` expects `toBeLessThan(500)` where it expected exactly 200, so a 400 refusal also passes. The case still checks that the entry's client is the caller's own and that none is written under `someone-else`, which is its point. *Fix:* expect the status the save answers once the body's extra field is accepted or refused, and name which. *Trigger:* the next change to that test file.
+
+## 223. GitHub's run never checks a push that changes only documents — the machine; `[OPEN]` (the lighter check's research, 2026-11-11, Medium)
+
+`.github/workflows/ci.yml`'s `on.push.paths` lists the packages, `ops/`, the root manifests and the two workflow files, and no `docs/` and no `*.md`, so a push of documents alone starts no run, and `walks.yml` runs only on `main`. The citation test is the whole check of a documents-only change ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), and nothing on GitHub's side reads it. A page citing a file that a later code push moves is caught by that code push's run; a documents-only push whose citations are already broken is caught by no run until a code push follows. Open: whether the citation test earns a path-free job, or the local check stays the only reader.
+
+## 224. The gate's log names neither the worktree nor the commit it checked — the machine; `[OPEN]` (the lighter check's research, 2026-11-11, Medium)
+
+`log_start` in `ops/lib.sh` prints the script, the package and the time (`== <script> <package> started <time>`) and writes the log under a name made of the date, the time, the script and the package. A fast-forward of `main` needs the commit a run checked ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), so today the command that starts the run reads `git rev-parse HEAD` first and the log cannot confirm it; and placing 2026-11-10's 70 runs in their worktrees took vitest's own `RUN` line in each. Open: a `== tree` line with the folder and `git rev-parse HEAD`, written by `log_start` itself.
+
+## 225. No convention says that every number a convention writes is measured, with its pattern quoted — the machine; `[DEFERRED]` (the lighter check's conventions drain, 2026-11-11, Low)
+
+Piece 99's rounds on one convention fixed five numbers and sentences nobody had measured, and the conventions skill now holds the rule (every number the change writes is in the report with the pattern that measured it), but `docs/conventions/documentation.md` does not, so a session that has not loaded the skill is not bound. Deferred: the rule would be one bullet in documentation.md's rules for a convention; written when the next conventions change touches that section.
+
+## 226. No convention says which branch renumbers when two branches mint the same item number — the machine; `[DEFERRED]` (the lighter check's conventions drain, 2026-11-11, Low)
+
+documentation.md says an item is numbered and never renumbered, which holds for `main`'s published numbers and says nothing of two branches that each take the next free number. The practice, from 2026-11-09, is that the side not yet in `main` renumbers; two branches appending to the end of the open-items log also conflict even with distinct numbers, and the merge keeps both hunks. Deferred: one sentence in documentation.md's open-items rule; written with the next change to that rule.

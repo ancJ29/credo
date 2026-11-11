@@ -18,6 +18,11 @@ says otherwise.
 | 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
 | 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
 
+A piece's own check at a commit is its package's `pnpm --filter @credo/<pkg> check` plus row 1's
+citation test run alone, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, about
+one second; for a change to `.md` files only that test is the whole check
+([QA](docs/conventions/qa.md#the-whole-check-on-pre-merge)).
+
 Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
 operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the
 Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts#L39` reads `BUNDLE_NODE`, which
@@ -42,7 +47,9 @@ otherwise runs whole.
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
-  is the trunk and only receives merges; each piece works on its own branch in its own worktree.
+  is the trunk and only receives fast-forwards, from `pre-merge`, to a commit its whole check has
+  passed; `pre-merge` receives each finished piece's merge, and each piece works on its own branch,
+  started from `pre-merge`'s tip, in its own worktree ([QA](docs/conventions/qa.md#the-whole-check-on-pre-merge)).
   The worktrees share one stash stack, so never run a bare `git stash`. The `orchestrator` branch
   holds the orchestrator's board. It never takes `main` in, and reaches `main` only as one squash
   merge, when the human says.

@@ -2,8 +2,8 @@
 
 > **Decided** 2026-10-27. Binds every person and every agent working here. This file holds the rules
 > and the reason each exists; their history is in `git log`.
-> **Last amended** 2026-11-10, from the human's instruction that a text written for them carries no
-> internal identifier: not a milestone's code, a piece's number, a step's number.
+> **Last amended** 2026-11-11, from the human's proposal that a finished piece land on `pre-merge`,
+> checked whole there at most every two hours, so a lane takes `pre-merge` in, not `main`.
 
 ## At a glance
 
@@ -106,8 +106,9 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
 
    **A gate is the touched package's**, and [QA](qa.md#the-rules)'s rule 6 says what that gate
    is, step by step. The check a step runs is the one that can change its
-   conclusion: the package the step wrote in, and the whole workspace's check only where the step
-   crossed packages or before a merge. A brief that names a wider gate than the step's own done
+   conclusion: the package the step wrote in, plus the citation test, and the whole workspace's
+   check only where the step crossed packages; the whole check otherwise runs on `pre-merge`
+   ([QA](qa.md#the-whole-check-on-pre-merge)). A brief that names a wider gate than the step's own done
    check is answered with the touched package's and the reason, not obeyed. *Why:* a step gated
    on the whole project stalls on reds in files it was not allowed to touch, none of them its own.
 
@@ -224,7 +225,7 @@ flowchart LR
   bounded only by that session's context and by the Mac's one test run at a time. Three rules
   make two lanes safe together, each of them a cost already paid: **neither lane moves or
   renumbers the other's walk screens** — a screen moved under a look wastes the human's yes, so
-  each brief says "append, never insert"; **each lane takes `main` in before its gate**, not
+  each brief says "append, never insert"; **each lane takes `pre-merge` in before its gate**, not
   after, since both will meet the other's lines in the files they share; **the gate and the
   picture run queue**, one whole run at a time on this Mac, its lock read before every run
   ([running a check on this machine](qa.md#running-a-check-on-this-machine), which holds the lock,

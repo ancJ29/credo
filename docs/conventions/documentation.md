@@ -3,11 +3,10 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-10, from the human's instruction that every part which behaves gets a
-> behaviour memo: a part's promises have a third home of their own, named against the other two, and
-> a new service arrives with one; and from a measurement of every plan written since the last word
-> figure was set, which raised that figure to what the shape costs. This file holds the rules as
-> they stand; their history is in `git log`.
+> **Last amended** 2026-11-11, from the human's proposal that a finished piece land on `pre-merge`,
+> so a plan's hardened build ends at that landing, not at a merge into `main`; the amendment of
+> 2026-11-10 stands: every part which behaves has a behaviour memo, and a plan's word figure is what
+> the shape costs. This file holds the rules as they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -183,7 +182,7 @@ content, never ahead of it.
    count. The first is the cheap end-to-end build: where the piece has a screen, its fake
    (`pnpm fake`) first, then the slice through the stack at its thinnest. The hardened build
    follows, each case seen red once ([QA](qa.md)'s rule 2) and coverage at 100 % (rule 8),
-   before the merge into `main`.
+   before it lands on `pre-merge`.
 4. **The human's points**, up to five, the ones [QA](qa.md#at-a-glance) names, each at the step
    that needs it. **Each point reads on its own, in plain words:** a few sentences, about 60 words,
    that say what the human will see, why it matters, and what a yes and a no each start. A sha, a
