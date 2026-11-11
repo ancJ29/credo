@@ -1422,3 +1422,11 @@ documentation.md says an item is numbered and never renumbered, which holds for 
 ## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
 
 `PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
+
+## 266. Deleting a company leaves its delivery photos on R2 — the machine, then the human for the run; `[DEFERRED]` (the delivery photos' plan, 2026-11-11, Medium)
+
+Once photos leave the records (`docs/plans/2026-11-11-delivery-photos.md`), the operator's delete of a company (`bff/src/routes/clients-delete.ts`) sweeps its records and cannot reach its pictures: the back end has no route out of its network (`ops/network.yml`, "nothing here can leave the VPC"). Every object's name starts with the company's minted id, so one prefix holds them all. Deferred: a terminal command the human runs after a delete, removing that prefix with the bucket's key, or a lifecycle rule; a company's pictures are personal data, so which one is the human's. *Trigger:* the first real company deleted, or the photos' landing on `main`, whichever comes first.
+
+## 267. No keeping window for delivery photos — the human, for a real client; `[PARKED]` (the delivery photos' plan, 2026-11-11, Low)
+
+A delivery photo lives as long as its record, as it does today; the legacy app laid its folders out for a sweep by day and never ran one. How long a client keeps its delivery evidence is that client's rule. R2's lifecycle rule, by name prefix and age, is the means once a window is stated (step 2 of the plan reads R2's own page on it). *Trigger:* the first real client, or a bucket past its free storage.

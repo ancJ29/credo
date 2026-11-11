@@ -1,0 +1,212 @@
+# Delivery photos kept on R2
+
+## At a glance
+
+A driver's delivery photo leaves the records and goes to Cloudflare R2, so a box of companies does not
+fill with pictures (about 170 GB a year for twenty, by the architecture page). The driver sees nothing
+new; the office sees one new line when a photo never arrived.
+
+```mermaid
+flowchart LR
+  phone["the driver's phone"] -- "1. may I send the photo of this delivery?" --> bff["the back end<br/>checks the driver, signs"]
+  bff -- "an address for one picture, 5 minutes" --> phone
+  phone -- "2. the picture itself" --> r2[("R2<br/>private, one bucket an environment")]
+  phone -- "3. delivered" --> bff
+  office["the office"] -- "4. show me the photo" --> bff
+  bff -- "an address to read it, 5 minutes" --> office
+  office -- "reads the picture" --> r2
+```
+
+**The cheapest safe path:** the legacy app's signed upload, rewritten so the back end signs after its
+own checks, with no worker, no new vendor and no dependency. **Price:** no fixed charge; R2's own price
+is read in step 2.
+
+## The slice
+
+One driver delivers one request with a photo that travels phone to R2, and the office opens that
+delivery and sees it, walked on the fake, then on the local stack against a stand-in for R2, then on
+ridge against a real bucket. Out of the slice, each named: a waiting room for photos sent later, a
+stamp burned into the picture, deleting one photo, a deleted company's photos (open item 266), and how long photos are kept (open item 267).
+
+## The three differences, settled
+
+The machine's decisions until real clients, each vetoable on sight.
+
+1. **Who signs: the back end, inside its own process.** It is the only part that knows who is asking
+   (`bff/src/routes/orders.ts#L413-L422`), and signing an address is arithmetic on a key and the
+   clock, not a call, so the back end's network with no way out (`ops/network.yml#L32`) does not stop
+   it. That last claim is the architecture page's and unverified: step 2 holds it with a test that
+   runs with every outbound call refused. The legacy's separate worker
+   (`workspace/workers/dolga/src/lib/media.ts#L64-L74`) is left: it would be a second deployed part
+   that has to check the caller again.
+2. **Checked, never open.** An upload address is signed only for the signed-in driver of that waiting
+   request, in that company, for that request's one object; a read address only after today's read
+   check; the bucket stays private, with no public address. The legacy's routes are "Public by design"
+   (`workspace/workers/dolga/src/routes/media.ts#L13-L22`) and store a public, permanent address
+   (`workspace/workers/dolga/src/lib/media.ts#L143`); both are left.
+3. **Three calls, the photo first.** Ask for the address (the back end writes the photo's record), send
+   the picture, then mark delivered, which is refused when no address was asked for. The back end
+   cannot reach R2 to see the picture arrived, so the order and a fixed object name are what bound a
+   half-done delivery: a stop between leaves a waiting request and at most one object under that
+   request's own name, which the next try overwrites. No waiting room, no orphan list. Where the
+   picture never arrived, the office's view says so.
+
+**Taken from the legacy, rewritten:** the five-minute signed PUT straight to R2
+(`workspace/workers/dolga/src/lib/media.ts#L29`, `#L133-L141`); the object name with the day in it,
+built by the back end from ids it holds rather than a folder sent by the browser
+(`workspace/uis/c-mngt/src/utils/uploadPath.ts#L95-L109`); a bounded upload with a fresh address per
+try (`workspace/uis/c-mngt/src/utils/photoUpload.ts#L78-L94`), cut to one 20-second try, Send again
+being the retry. **Kept from the new app:** the phone's shrink (`ui/src/photo.ts#L44-L56`, 1280 px,
+200 KB, `shared/src/photo.ts#L12`), the photo before the delivery (`bff/src/routes/orders.ts#L489-L492`)
+and one message for a failed send (`ui/src/pages/client/MyDeliveryPage.tsx#L134-L138`): Send again
+resends the photo the phone still holds, so the legacy's second sentence for "sent but not attached"
+buys nothing here.
+
+**One correction to the comparison page:** its "leave" list says the back end, holding the key, "can
+check the object exists before it marks the delivery done". It cannot: holding a key gives no route
+out of the network. The check the back end can make is that an address was asked for.
+
+## What the plan rests on and where each is checked
+
+| Premise | Checked by |
+| --- | --- |
+| R2 accepts an address signed by AWS's query signing, region `auto`, at its S3 endpoint by path | step 2's `fetch` read of R2's own pages; step 6's probe on the real bucket |
+| R2 refuses a body whose length differs from the signed one | the same read and probe; if not, a larger picture is bounded only by one object a request and five minutes, and the plan says so in the recap |
+| A browser PUT needs a cross-origin rule on the bucket; an `<img>` read needs none | the read; the stand-in answers the same preflight, so the stack walk exercises it |
+| No content-security rule blocks a picture from another origin | grep of `ops/`, `ui/`, `bff/`, `scripts/` for `content-security` and `img-src` found none this run |
+| The legacy's R2 piece is the model, and the new app keeps no photo on R2 | both true on disk: the legacy signs in `workspace/workers/dolga/src/lib/media.ts`; the new app keeps the picture as text in a record (`shared/src/records.ts#L47-L50`, `shared/src/photo.ts#L33`), and `git grep` for R2 or presign in code finds none |
+| No stored photo needs moving | ridge holds invented companies only, re-seeded at its re-up; production holds none |
+
+## The case table
+
+| # | The case: one behaviour, one sentence | Held by |
+| --- | --- | --- |
+| 1 | A driver's photo goes from the phone to the photo store, the request is marked delivered after it, and the office sees that photo | the driver's and the orders walks; BFF route |
+| 2 | A photo another company asks for, to send or to read, is a 404: no address signed, nothing written | BFF route, `cross-tenant.route.test.ts` |
+| 3 | A photo that cannot be sent (no address, the picture refused, or no answer in 20 seconds) stays on the phone, the driver reads that it could not be sent, the request stays waiting, and Send again asks for a new address | UI, `MyDeliveries.test.tsx`; walk screen `driver-5-send-failed` |
+| 4 | A delivery done without one: marking delivered with no address asked for that request is refused with a 400 naming the photo, and the request stays waiting | BFF route |
+| 5 | A delivered request whose picture never arrived shows the office "the photo did not arrive", never a broken picture | UI, `DeliveriesPages.test.tsx`; walk screen `orders-15` |
+| 6 | Anyone but the request's own driver (the root, the office, another driver) asking for an upload address is a 403, nothing written | BFF route |
+| 7 | A request already delivered or cancelled gets no upload address: a 409 carrying it as it is now | BFF route |
+| 8 | A read address goes only to those who may read the request today, only once it is delivered, and lives five minutes | BFF route |
+| 9 | The object's name is built by the back end from the company's minted id, the day and the request's id; nothing the phone sends names a folder or a key | unit, `records.test.ts`; BFF route |
+| 10 | An ask for a picture that is not a JPEG, or is over 200 KB, is a 400; the address signs the type and the exact length | BFF route |
+| 11 | A second ask for one request signs the same name, so a retry overwrites and never leaves a second object | BFF route |
+| 12 | The signer gives AWS's published example signature exactly, with every outbound call refused | unit, `bff/src/photo-store.test.ts` |
+| 13 | With no photo store set, asking an address is a 503 and nothing is written; every other route runs | BFF route |
+| 14 | The stand-in refuses an expired address, a wrong signature and a longer body than signed | unit, `scripts/src/running/photo-store.test.ts` |
+| 15 | A deploy writes the photo store's three settings into the function from the box's file, and with no file prints that photos are off and sends none | `bash ops/test.sh` |
+
+## The steps
+
+Sizes are the minutes of the same shape's last rows in the runs log; a first shape is about five
+minutes a part.
+
+- [ ] **Step 1. The fake, end to end on the phone and the office's screen** (about 25 minutes: a fake
+  UI build ran 8, 21 and 29, plus the whole check, since it crosses `shared` and `ui`). `shared` gains
+  the address's reply and the new photo reply (an address, not the picture) beside the old ones, which
+  step 3 removes. `ui/src/api.ts#L692-L707` gains the ask, the PUT (through the one API object, so the
+  fake stubs it, code.md's C11) and the deliver without the picture; `MyDeliveryPage.tsx#L63-L78`
+  runs the three legs, 20 seconds on the PUT; `ProofPhoto` (`ui/src/parts/OrderParts.tsx#L275-L289`)
+  draws the picture from the address and the "did not arrive" line on the picture's own error, in
+  `en.ts` and `vi.ts`; `ui/src/fake.ts` answers all three and holds one delivered request whose
+  address leads nowhere (code.md's C16 list). *Done when:* `pnpm check` ends `== exit 0`, and cases 3
+  and 5 were each seen red once.
+- [ ] **Step 2. The platform's own words, then the signer** (about 15 minutes: a first shape, three
+  parts). A `fetch` read, verbatim with its page, of R2's pages on signed addresses, the cross-origin
+  rule, object lifecycles and the price, and of AWS's page holding the published example of a signed
+  address. Then `bff/src/photo-store.ts`, a file with no directory sentence so at the top (bff's
+  CLAUDE.md): one function signing a PUT or a GET for one object name, a type and a length, five
+  minutes, the time handed in. No AWS client and no new package: one short function, held by AWS's own
+  example. *Done when:* `pnpm --filter @credo/bff check` ends `== exit 0`; case 12 seen red with one
+  byte of the example's secret changed; the read's quotes are in the recap. A premise the read
+  contradicts stops the step and is reported, never planned around.
+- [ ] **Step 3. The routes through the stack, at its thinnest** (about 25 minutes: route steps ran 5,
+  5, 8, 10 and 20; three route parts at about eight). The ask is a new route in its own module,
+  `bff/src/routes/delivery-photo.ts`, as code.md's C10 asks of the next route added to `orders.ts`;
+  it reuses the finding and reading of a request from `registerOrderRoutes`, passed in rather than
+  copied, and declares its activity-log action (`bff/src/audit.ts#L84-L88` is the other way, not
+  this one: the ask writes a company's record). The photo's record now holds the object's name only,
+  under the key it has (`shared/src/records.ts#L47-L50`); the object's name is built beside it, the
+  layout's one home. `deliver` (`bff/src/routes/orders.ts#L475-L517`) takes the version alone and
+  refuses with no record; the read (`#L429-L439`) answers a read address. The settings join
+  `bff/src/env.ts` optional, as the activity log's pair is (`#L24-L25`). The old picture schemas go,
+  and with them the three copies of the test photo (open item 228). *Done when:* `pnpm --filter
+  @credo/bff check` ends `== exit 0`; cases 2, 4, 6 to 11 and 13 each seen red once.
+- [ ] **Step 4. The stand-in for R2, the stack and the seed** (about 25 minutes: four parts, the
+  stand-in a first shape, the rest the same call changed in place, plus the whole check).
+  `scripts/src/running/photo-store.ts` keeps pictures in memory behind the same signed addresses,
+  checking each with the back end's own signer and answering the browser's cross-origin preflight as
+  the bucket will, beside `front.ts`, which stands for CloudFront; `scripts/src/stack.ts#L106-L127` (`bffEnvironment`)
+  hands the back end its address and a key made per stack; the demo seed
+  (`scripts/src/demo/apply.ts#L509-L516`), the generator (`scripts/src/generator.ts#L341`) and the walk
+  that delivers by request (`walk/specs/reconcile.spec.ts#L118-L126`) ask, send, then deliver.
+  *Done when:* `pnpm check` ends `== exit 0`; case 14 seen red; `pnpm stack -- <a command that
+  delivers one request and reads its photo back by its address>` exits 0.
+- [ ] **Step 5. The walk: one screen appended, every other screen unmoved** (about 15 minutes: walk
+  steps ran 15 and 26). `orders-15`, after `orders-14-repriced`: the office opens a delivery whose
+  picture never arrived. On the fake its address leads nowhere; on the stack the walk asks and delivers
+  by request without sending, as `reconcile.spec.ts` delivers. The human's one walk run (stage 3,
+  their act, step 7's list). *Done when:* the run's log shows 0 moved pixels on every screen of the
+  driver's, the orders and the reconcile walks but `orders-15`, which is new, in all three lanes.
+- [ ] **Step 6. The key's way to the function** (about 15 minutes: ops steps ran 8, 8 and 15).
+  `ops/app.sh` sets the function's whole environment at every deploy (`#L131-L132`), so a setting left
+  out of that line is wiped by the next one: it reads `photo-store.env` from the box as it reads the
+  other keys, masks it, and adds the three settings, or prints "photo-store.env: absent, photos off"
+  and adds none. Two one-offs in the credo root's `one-off/`, outside git, for the human's terminal:
+  one writes the file on ridge's box from four values typed without echo, the secret on a pipe from
+  `printf`, never a here-document or an argument; one probes the bucket with the product's own signer
+  (a signed PUT, a PUT of the wrong length, a signed GET, the preflight from ridge's address). *Done
+  when:* `shellcheck -x ops/*.sh` and `bash ops/test.sh` exit 0, case 15 seen red.
+- [ ] **Step 7. The human's acts, in order** (theirs; the machine's minutes are step 6's).
+  1. Make ridge's bucket: Cloudflare's dashboard, R2, Create bucket, a name of their choosing, the
+     location automatic. They will see it listed, empty.
+  2. Its cross-origin rule: the bucket, Settings, CORS policy, Add, allowing ridge's app address,
+     methods PUT and GET, header `content-type`. They will see the rule listed.
+  3. Its key: R2, Manage API tokens, Create, Object Read & Write, this bucket only. The page shows the
+     key's id, its secret and the S3 address once; it stays open for the next act.
+  4. The first one-off, which puts the key on ridge's box. It prints "photo-store.env: written, mode
+     600", nothing of the key.
+  5. The probe one-off. It prints one line a check, each "as expected" or what R2 answered.
+  6. The push that ships it to ridge; the deploy job copies the key into the function.
+  The clicks above are the machine's memory of the dashboard; step 2's read corrects them before they
+  are handed, each with what the human will see. Production's bucket and key are the same six acts at
+  the production milestone, not now. *Done when:* the machine reads the probe's log whole and every
+  check reads as expected; a check that does not stops here, before the push.
+- [ ] **Step 8. Ridge, the review, the recap** (about 25 minutes: a review with its fix pass about 20,
+  a recap about 3). The architecture pages say what is now true: the photo store in
+  `docs/architecture.md`'s picture, the photos' line in `docs/architecture-detail.md#L178-L182`.
+  Another model reviews; one fix pass; the recap with the products row; the landing on `pre-merge`.
+  *Done when:* the citation test exits 0 and the review's findings are each tagged.
+
+**The four stages:** stage 1 is steps 1 and 3 to 4, the fake and then the stack at its thinnest (each
+step's cases are seen red as it is built, since the gate holds 100 % at every commit); stage 2 each
+step's gate; stage 3 step 5's
+walk; stage 4 ridge, stood up because the piece ships a new resource and a new key, after acts 1
+to 6. About 170 machine minutes in all.
+
+## Where this meets the other lanes
+
+- **The storage client for one company** owns how the back end reaches a company's records. This
+  piece consumes only a read and a write of the photo's record under the company's own keys; if that
+  client lands first, step 3 calls through it. Both lanes will touch `bff/src/routes/orders.ts`,
+  `shared/src/records.ts` and `bff/src/routes/cross-tenant.route.test.ts`.
+- **The front door and its keys** owns the key replacement script: the R2 key is one more key it
+  replaces (a new token, the box's file rewritten, a deploy, the old token deleted). Both lanes add a
+  setting to `ops/app.sh#L131-L132`. A content-security rule added at the front door must allow
+  R2's address for pictures and for the PUT.
+- **Ridge's re-up**: the key lives in a file on the box, so a new box needs act 4 again. If the
+  re-up replaces the box more than rarely, the key moves to a parameter the deploy reads instead.
+- **The architecture pages** are edited by several lanes; step 8 takes `pre-merge` in first.
+
+## The human's points
+
+1. **The office's new line, on the walks page (step 5).** The orders walk's new last screen: the
+   office opens a delivery whose picture never reached storage and reads "the photo did not arrive"
+   where the picture would be, so they ask the driver. Every other screen of the driver's and the
+   orders walks is unchanged. Does that line tell the office enough? A yes keeps it; a no reopens
+   step 1 with your words.
+2. **A real photo on ridge (stage 4).** After the push, deliver one request on ridge from your phone
+   with a picture you take, then open that delivery as the office. Did your picture show on the
+   office's page? A yes means the photos travel the real way; a no reopens step 6 with the probe's
+   log read first.
