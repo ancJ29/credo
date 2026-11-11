@@ -12,7 +12,7 @@ Documents only: eight files, no code, template or workflow. The two memos for th
 
 - **The pooled shape is written as intended on the human's request, not decided by a test.** The piece file records that the request was read as a yes to it; a no turns the part into a proposal.
 - **The old pages were not re-read against the new shape.** The client-readiness note says so itself.
-- **Five line citations were removed, none replaced,** all in `docs/architecture-detail.md`: the links to `ops/seed.sh` and `ops/env.yml`, and three bare ones (`#L181`, `#L5`, `#L68`). The commit message says four; the diff shows five.
+- **Five line citations were removed from `docs/architecture-detail.md`; two were replaced and three dropped.** Replaced by file and symbol or a quoted fragment: the link to `ops/env.yml#L380` now cites `ops/env.yml`'s `CloudFrontDefaultCertificate`, and the link to `ops/seed.sh#L36` now cites `ops/seed.sh`'s quoted `seeds ridge alone`. Dropped: the bare `#L181`, `#L5` and `#L68`, whose quoted phrases stay but point at no line. The commit message says four; the diff shows five.
 
 ## Open looks
 
