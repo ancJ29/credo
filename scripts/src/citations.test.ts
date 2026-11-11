@@ -2,7 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkCitations, declared, describeRun, type Report } from './citations';
+import {
+  checkCitations,
+  declared,
+  describeLogs,
+  describeRun,
+  logCitations,
+  type Report,
+} from './citations';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -18,6 +25,52 @@ describe('the living documents cite a file and a symbol that resolve', () => {
     expect(report.findings.map((one) => `${one.doc}:${one.line} ${one.cite}: ${one.why}`)).toEqual(
       [],
     );
+  });
+});
+
+/**
+ * The log citations already written, one `document<TAB>text` row each, in `log-citations.pinned.txt`
+ * beside this file; the records accept exactly this list. A line number is not in a row, so moving a
+ * citation down a page is no change. A new row is red naming it; a removal asks for its row out.
+ */
+const PINNED = new URL('./log-citations.pinned.txt', import.meta.url);
+
+/** The multiset difference: what `now` holds more of than `then`, row by row. */
+const surplus = (now: string[], then: string[]) => {
+  const left = new Map<string, number>();
+  for (const row of then) left.set(row, (left.get(row) ?? 0) + 1);
+  return now.filter((row) => {
+    const n = left.get(row) ?? 0;
+    if (n > 0) left.set(row, n - 1);
+    return n === 0;
+  });
+};
+
+describe('a record names no log: the log citations written are counted and pinned', () => {
+  it('the list equals the pin, so a new citation is red by name and a removal lowers the pin', () => {
+    const tracked = execFileSync(
+      'git',
+      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+      },
+    )
+      .split('\0')
+      .filter(Boolean);
+    const report = logCitations(tracked, (path) => readFileSync(`${ROOT}${path}`, 'utf8'));
+    console.log(describeLogs(report));
+    const now = report.items.map((one) => `${one.doc}\t${one.text}`).sort();
+    const pinned = readFileSync(PINNED, 'utf8').split('\n').filter(Boolean).sort();
+    expect(
+      { added: surplus(now, pinned), missing: surplus(pinned, now) },
+      'A committed record says how a run ended in words and names no log (docs/conventions/documentation.md): a log is a working file on one machine and opens nothing on GitHub. Take each added citation out; for each missing one, delete its row from scripts/src/log-citations.pinned.txt.',
+    ).toEqual({ added: [], missing: [] });
+  });
+
+  it('tells a row added from a row missing, and counts a repeated row by its number', () => {
+    expect(surplus(['a\tx', 'a\tx', 'b\ty'], ['a\tx', 'b\ty'])).toEqual(['a\tx']);
+    expect(surplus(['a\tx'], ['a\tx', 'b\ty'])).toEqual([]);
   });
 });
 
@@ -236,5 +289,107 @@ describe('the check, on made-up repositories', () => {
     expect(printed).toContain('documents found: 1');
     expect(printed).toContain('docs/conventions/*.md');
     expect(printed).toContain('docs/plans 1');
+  });
+});
+
+describe('logCitations', () => {
+  const count = (files: Record<string, string>) => {
+    const made = repo(files);
+    return logCitations(made.tracked, made.read);
+  };
+
+  it('counts a logs/ path with its document and line, whatever stands before it', () => {
+    const report = count({
+      'docs/a.md':
+        'ran `logs/2026-11-01-x.log`\nand $ROOT_DIR/logs/y.log, and /home/u/credo/logs/z.log.\n',
+    });
+    expect(report.items).toEqual([
+      { doc: 'docs/a.md', line: 1, text: 'logs/2026-11-01-x.log' },
+      { doc: 'docs/a.md', line: 2, text: 'logs/y.log' },
+      { doc: 'docs/a.md', line: 2, text: 'logs/z.log' },
+    ]);
+    expect(report.byDoc.get('docs/a.md')).toBe(3);
+  });
+
+  it('leaves a pattern, the folder alone and a longer word alone', () => {
+    const report = count({
+      'a.md': 'logs/<name>.log logs/*.log logs/{a,b} logs/ logs/archive/ catalogs/x.log logs',
+    });
+    expect(report.total).toBe(0);
+  });
+
+  it('counts a file in a subfolder of logs/ and reads only Markdown', () => {
+    const report = count({
+      'a.md': 'see logs/archive/old.log',
+      'run.sh': 'echo logs/run.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual(['logs/archive/old.log']);
+  });
+
+  it('counts a log file name with no folder before it, whatever its stamp', () => {
+    const report = count({
+      'a.md':
+        'the gate (2026-11-11-175845-gate-scripts.log) and 20261108-1809-ridge-read.log#L12 and 20261111-183000-x-gate.log and 2026-11-10-ui-shape-picture-run.log and check3.log and a-stamp-at-the-end-20261105-1744.log ran',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      '2026-11-11-175845-gate-scripts.log',
+      '20261108-1809-ridge-read.log',
+      '20261111-183000-x-gate.log',
+      '2026-11-10-ui-shape-picture-run.log',
+      'check3.log',
+      'a-stamp-at-the-end-20261105-1744.log',
+    ]);
+  });
+
+  it('counts a path in Markdown dress: bold, underscores, angle brackets, a trailing star', () => {
+    const report = count({
+      'a.md': '**logs/a.log** and _logs/b.log_ and <logs/c.log> and logs/d.log* and | logs/e.log |',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      'logs/a.log',
+      'logs/b.log',
+      'logs/c.log',
+      'logs/d.log',
+      'logs/e.log',
+    ]);
+  });
+
+  it('counts a name elided with an ellipsis, and leaves a star pattern alone', () => {
+    const report = count({
+      'a.md': 'logs/2026-walk-…-team.log#L1-L3 and logs/gate-* and logs/*.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual(['logs/2026-walk-…-team.log#L1-L3']);
+  });
+
+  it('counts one citation once: a name inside a logs/ path, or after any other folder, is not counted again', () => {
+    const report = count({
+      'a.md':
+        'logs/20261108-1809-ridge-read.log and $ROOT/logs/2026-11-11-175845-gate-x.log and tmp/20261108-1809-a.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      'logs/20261108-1809-ridge-read.log',
+      'logs/2026-11-11-175845-gate-x.log',
+    ]);
+  });
+
+  it('leaves a lookalike alone: a name that is not a log, a pattern, a bare extension', () => {
+    const report = count({
+      'a.md':
+        '20261108-1809-notes.md 2026-11-11-175845-<script>.log <YYYYMMDD-HHMM>-<stem>.log *.log a `.log` file $NAME.log',
+    });
+    expect(report.total).toBe(0);
+  });
+
+  it('reads the same with no logs/ folder: it opens no log', () => {
+    const files = { 'a.md': 'logs/gone.log' };
+    expect(count(files).total).toBe(1);
+  });
+
+  it('prints the forms it sees, those it cannot, and a row a document', () => {
+    const text = describeLogs(count({ 'a.md': 'logs/x.log\nlogs/y.log', 'b.md': 'logs/z.log' }));
+    expect(text).toContain('not counted: a pattern');
+    expect(text).toContain('cannot see');
+    expect(text).toMatch(/a\.md\s+2\n/);
+    expect(text).toContain('total: 3 citations in 2 documents');
   });
 });
