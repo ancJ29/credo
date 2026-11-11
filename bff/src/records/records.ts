@@ -50,8 +50,9 @@ export function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: un
   return result.data;
 }
 
-/** The reads and writes every record route shares, over one storage client. Reader-held: a route
- * module is handed the whole client, so nothing but review stops a list written inline again.
+/** The reads and writes every record route shares, over one record store. Reader-held: a route
+ * module is handed a company's client and no whole one, but nothing but review stops a list written
+ * inline again.
  * `every` is the one place a list under a prefix is read: never short, each record parsed. */
 export function recordTools(storage: RecordStore) {
   /** Every record under a prefix, never short. */

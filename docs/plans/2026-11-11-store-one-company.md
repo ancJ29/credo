@@ -174,14 +174,19 @@ ridge with the human's next push like any merged work.
   *Size:* 17 minutes, the last step that moved several files of one package onto a shared piece
   with nothing on screen changed (the shared record page's step 5, 17 minutes), here with this
   package's two largest files.
-- [ ] **3. Hardened, and the pages true.** Coverage at 100 % with no new hint; the pages that say the
+- [x] **3. Hardened, and the pages true.** Coverage at 100 % with no new hint; the pages that say the
   route is handed the whole client rewritten: `docs/memo/bff.md`'s "The tenant prefix is this
   package's alone, and the store does not enforce it" (what stops a breach now, and what still does
   not: a route in `buildApp` reaching the whole client), `docs/architecture.md`'s row "No second file
   builds a record key" in "What is never there", the storage line in `bff/CLAUDE.md`,
   `bff/src/records/records.ts`'s header, and the reason item 227 gives for deferring. *Done when:*
   the gate's log ends `== exit 0` at 100 %; the citation test exits 0; `git grep -nE '/Users/|~/'`
-  finds nothing new. *Size:* 10 minutes, the last step that rewrote a memo and two guidelines to a
+  finds nothing new. *Done, 2026-11-11:* coverage stayed at 100 % with no new hint (the guard's own
+  test and the routes' tests cover every branch); the memo's tenant-prefix section, the architecture
+  page's row, the storage line in `bff/CLAUDE.md`, the header of `bff/src/records/records.ts` and the
+  reason item 227 gives for deferring now say what the code does, each naming a file and a symbol and
+  no line. The back end's check ended green, the citation test exited 0, and the search for local
+  paths finds only this step's own quoted command. *Size:* 10 minutes, the last step that rewrote a memo and two guidelines to a
   new shape (the shared record page's step 10, 10 minutes).
 - [ ] **4. Reviewed.** A model other than the author's reads the code, its tests and this table,
   asking of each test whether breaking its case would turn it red; one fix pass, its own gate the

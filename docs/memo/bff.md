@@ -271,16 +271,30 @@ id through one index record; the layout has one home, `shared/src/records.ts`'s 
 other file builds a key. **c-storage has no concept of a tenant at all** — its one isolation unit is
 the *service*, and this BFF is a single service holding every company. Tenant separation is a
 string prefix built here, and c-storage would serve one company's key to another company's request
-if this package built the wrong key.
+if this package built the wrong key. **This package now checks that prefix itself, once, before a key
+leaves it.**
 
-- *This is the design, not a slip,* and it is the absence worth the most in the whole repository
-  ([what is never there](../architecture.md#what-is-never-there)).
-- *What stops a breach:* isolation is tested at the route level — a call is served for the company
-  its code names and no other (`bff/src/tenants.route.test.ts`, and "reaches one client only" in
+- *This is the design, not a slip* ([what is never there](../architecture.md#what-is-never-there)).
+- *What stops a breach:* `bff/src/records/records.ts`'s `tenantStorage` makes one company's client
+  over the storage client. Each of its four record calls first checks that its key, or its list's
+  prefix, starts with the company's own prefix (`recordKeys.tenant(id).all`, the trailing dot
+  included, so an id that begins another's cannot pass); a key that does not is a fault of this
+  package, thrown before anything is sent and answered 500 with no key in the message.
+  `resolveTenant` in `bff/src/app.ts` makes that client once a call, from the company the code's
+  index names, and puts it on the request as `request.storage`. The route modules (`lists`, `orders`,
+  `reconciliations`, `staff`) are handed no whole client, the sessions and the helpers take a
+  `RecordStore`, and the client's `tenantId` field is its brand: handing the whole client where a
+  company's is typed is a type error. The guard has its own test (`bff/src/records/records.test.ts`),
+  and isolation is still tested at the route level (`bff/src/tenants.route.test.ts`,
+  `bff/src/routes/cross-tenant.route.test.ts`, and "reaches one client only" in
   `bff/src/routes/clients-delete.route.test.ts` and
-  `bff/src/routes/operator-root-password.route.test.ts`). What is narrower than it looks is the
-  *structural* guard: **no lint rule and no test forces every key through `recordKeys`.** No
-  hand-built key exists outside that file today.
+  `bff/src/routes/operator-root-password.route.test.ts`).
+- *What still does not stop one:* `buildApp` in `bff/src/app.ts` still holds the whole client, for the
+  code's index, each deletion's mark, the operator's records and `/health`, so a handler written
+  there could reach it and nothing but review would say so. A key built with another company's id
+  from a wrong id (not the request's) is not caught: the guard checks the company the client was
+  made for, not that the route meant it. The terminal scripts reach a company's records with the
+  whole store (open item 246).
 - *Price of the choice:* one SQLite file holds every company's records, so one company's write rate
   is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)). In the pooled
   shape, intended and not built, that narrows to the companies on the same box.
