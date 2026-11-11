@@ -98,10 +98,24 @@ and names no log, or the pin moves with every tick. The stop's report carries th
   before them, as the table above). A scratch line citing one log, appended to this plan, turned it red
   (expected 306 to be 305) and was reverted. The package gate ran on the tree as committed and exited 0.
 
-- [ ] **The third form, and hardened.** The two log-name shapes counted where no `logs/` stands
+- [x] **The third form, and hardened.** The two log-name shapes counted where no `logs/` stands
   before them, never twice for one citation; each case below seen red once; coverage at 100 %. *Done
   when:* `pnpm --filter @credo/scripts check` exits 0, the pin reread on the tree it runs on. *Size:*
   about 12 (the last two rows that saw every case red, 9 and 14).
+  *Ticked 2026-11-11:* `logCitations` now counts the two shapes where no `logs/` stands before them
+  (a name after any `/` is part of a path and is not counted twice). The total reads 411 in 95
+  documents, which is 305 paths plus 106 bare names; an independent `git grep -oP` of the two shapes
+  gave 106 and the pin was moved to 411. Each case was seen red by one mutation of the code, the
+  checkout restored after each: case 1 (plain path dropped) six unit cases and the pin; case 2 (root
+  before it refused) the root case, case 4 and the pin; case 3 (one shape dropped) the shapes case and
+  the pin; case 4 (a name after `/` counted again) the once-only case and the pin; case 5 (the
+  pattern test removed) the pattern case; case 6 (the folder test removed) the same case; case 7
+  (non-Markdown read) the Markdown-only case; case 8 and case 9 by the repository test, one citation
+  added and one removed from a plan; case 11 (document rows emptied) the account case; case 10 holds by
+  construction, since the function takes only a reader and opens nothing. The scripts gate, whole,
+  exited 0 on the tree as committed, with the first run's knip red (an exported type used nowhere)
+  having belonged to step 1.
+
 - [ ] **The rule.** In `docs/conventions/documentation.md`, under "Nothing machine-local or personal
   in a committed file" (`#L236`), one paragraph: a log is a working file on one machine; a committed
   record (a plan's tick, a recap's evidence, an open item, a living document) says what ran, when, at

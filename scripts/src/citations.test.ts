@@ -29,7 +29,7 @@ describe('the living documents cite a file and a symbol that resolve', () => {
 });
 
 /** The log citations already written. One more is red; one fewer asks for this to come down. */
-const LOG_CITATIONS_PINNED = 305;
+const LOG_CITATIONS_PINNED = 411;
 
 describe('a record names no log: the log citations written are counted and pinned', () => {
   it('the count equals the pin, so a new citation is red and a removal lowers the pin', () => {
@@ -295,6 +295,36 @@ describe('logCitations', () => {
       'run.sh': 'echo logs/run.log',
     });
     expect(report.items.map((one) => one.text)).toEqual(['logs/archive/old.log']);
+  });
+
+  it('counts a log name in either of qa.md shapes with no logs/ before it', () => {
+    const report = count({
+      'a.md':
+        'the gate (2026-11-11-175845-gate-scripts.log) and 20261108-1809-ridge-read.log#L12 ran',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      '2026-11-11-175845-gate-scripts.log',
+      '20261108-1809-ridge-read.log',
+    ]);
+  });
+
+  it('counts one citation once: a shaped name inside a logs/ path, or any path, is not counted again', () => {
+    const report = count({
+      'a.md':
+        'logs/20261108-1809-ridge-read.log and $ROOT/logs/2026-11-11-175845-gate-x.log and tmp/20261108-1809-a.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      'logs/20261108-1809-ridge-read.log',
+      'logs/2026-11-11-175845-gate-x.log',
+    ]);
+  });
+
+  it('leaves a lookalike alone: a date-shaped name that is not a log, a pattern', () => {
+    const report = count({
+      'a.md':
+        '20261108-1809-notes.md 2026-11-11-175845-<script>.log <YYYYMMDD-HHMM>-<stem>.log 20261108-18-x.log',
+    });
+    expect(report.total).toBe(0);
   });
 
   it('reads the same with no logs/ folder: it opens no log', () => {

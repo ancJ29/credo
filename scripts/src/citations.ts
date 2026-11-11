@@ -263,6 +263,12 @@ export type LogReport = { total: number; byDoc: Map<string, number>; items: LogC
 // word; the rest of the token up to a space, a quote, a bracket or a comma.
 const LOG_PATH = /(?<![\w-])logs\/([^\s`'"()[\],;]*)/g;
 const LOG_PATTERN = /[<>*{}]/;
+// A log's file name in qa.md's two shapes with no `logs/` before it: `<YYYY-MM-DD>-<HHMMSS>-<script>-<env>.log`
+// (`ops/lib.sh`) and `<YYYYMMDD-HHMM>-<stem>.log` (by hand). A name after a `/` is part of a path, counted above.
+const LOG_SHAPES = [
+  /(?<![\w/.-])\d{4}-\d{2}-\d{2}-\d{6}-[\w.-]*\.log\b/g,
+  /(?<![\w/.-])\d{8}-\d{4}-[\w.-]*\.log\b/g,
+];
 
 /**
  * Every citation of a log in a tracked Markdown file: a `logs/<name>` path that names a file,
@@ -270,7 +276,8 @@ const LOG_PATTERN = /[<>*{}]/;
  * record that cites one sends a reader to nothing on GitHub and on any other machine. This opens
  * no log, so it reads the same with no `logs/` folder anywhere. Not a citation: a pattern (a name
  * holding `<`, `>`, `*`, `{` or `}`) and the folder named alone.
- * What it cannot see: a log named without `logs/` before it, or told in words.
+ * A log's file name in qa.md's two shapes with no `logs/` before it is counted too, once.
+ * What it cannot see: a log named in neither shape without `logs/`, or told in words.
  */
 export function logCitations(tracked: string[], read: (path: string) => string): LogReport {
   const items: LogCitation[] = [];
@@ -283,6 +290,9 @@ export function logCitations(tracked: string[], read: (path: string) => string):
           if (name === '' || name.endsWith('/') || LOG_PATTERN.test(name)) continue;
           items.push({ doc, line: index + 1, text: `logs/${name}` });
         }
+        for (const shape of LOG_SHAPES)
+          for (const match of raw.matchAll(shape))
+            items.push({ doc, line: index + 1, text: match[0] });
       });
   }
   const byDoc = new Map<string, number>();
@@ -298,8 +308,9 @@ export function describeLogs(report: LogReport): string {
   return [
     'log citations: every tracked Markdown file',
     '  counted: a logs/<name> path that names a file, whatever stands before logs/;',
+    "  counted too: a log file name in qa.md's two shapes with no logs/ before it, once;",
     '  not counted: a pattern (a name holding < > * { }) and the folder named alone;',
-    "  cannot see: a log named without logs/ before it (step 2 adds qa.md's two shapes), or told in words;",
+    '  cannot see: a log named in neither shape without logs/ before it, or told in words;',
     '  opens no log: the same count with no logs/ folder, as on GitHub',
     '  document                                                               citations',
     ...rows,
