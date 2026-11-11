@@ -127,6 +127,17 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
 | 12 | 👤 The release, by your push to `main` or `ops/release.sh ridge`, then `ops/check.sh ridge` | the release's log names the disk mounted and the memory with Litestream running; the check's log reads `== green` with the copy fresh | 5 to read |
 | 13 | 👤 The drill: `ops/drill.sh ridge`, your second point | its log reads row 17 both ways and `== green`; `ops/check.sh ridge` after it green again | 5 to read |
 
+- [x] **Step 1, ticked 2026-11-11.** Litestream 0.5.18 (macOS arm64) copied c-storage's scratch file to a
+  folder with `replicate -exec`; a code registered answered 201 and 409 again; a restore to a new path
+  carried the code, so a second c-storage on it answered 409, and a restore to a moment before the
+  registration answered 201. Read in Litestream's own pages and seen in the run: `retention: enabled: false`
+  deletes nothing remote and logs a warning that idle databases get no new snapshots; `-exec` ends
+  Litestream with a non-zero exit when the child exits (a child's exit 3 gave "exit status 3", Litestream
+  exit 1), which keeps the unit's restart working; `restore -timestamp <RFC 3339>` restores to a moment;
+  and an idle file got no new full copy in 35 seconds past a 20-second snapshot interval, so the hazard
+  below is real and row 15's six-day limit is its only guard. The configuration is `ops/litestream.yml`.
+  A rehearsal on this machine, not a gate row; no gate ran, as no guarded file changed.
+
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.
 
