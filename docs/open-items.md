@@ -1422,3 +1422,7 @@ documentation.md says an item is numbered and never renumbered, which holds for 
 ## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
 
 `PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
+
+## 251. The activity log's key, once it runs on ridge, has no way to be replaced — the machine, the activity log's lane; *parked* until that key reaches a deployed environment (the front door and keys plan, 2026-11-11)
+
+The front door and keys plan (`docs/plans/2026-11-11-front-door-keys.md`) makes `ops/keys.sh` replace the four keys a deployed environment holds once it is built: the store's internal and super-admin keys, the back end's service key and the front door's key. The back end's fifth, `AUDIT_KEY` (`bff/src/env.ts`'s `auditShape`), is set only by the local stack, since `ops/app.sh` sets no `AUDIT` variable; the activity log's own lane carries it to ridge. *Fix:* when that lane writes the key to the box and the function, it adds the key to `ops/keys.sh` as one more kind, in its own order (the service first, then the function), and to the function's variable list in `ops/lib.sh`. *Trigger:* the activity log running on any deployed environment.
