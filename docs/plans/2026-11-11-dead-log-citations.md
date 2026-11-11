@@ -80,7 +80,7 @@ count took in the orchestrator's board, which is outside `main`'s tree. The boar
 This piece's own ticks follow the rule from the first step: each says what ran and how it ended,
 and names no log, or the pin moves with every tick. The stop's report carries the log's path.
 
-- [ ] **The count, end to end.** `logCitations` in `scripts/src/citations.ts`: over every tracked
+- [x] **The count, end to end.** `logCitations` in `scripts/src/citations.ts`: over every tracked
   `.md` file, each `logs/` path that names a file, whatever stands before `logs/`, with its document
   and line; a name holding `<`, `>`, `*`, `{` or `}` is a pattern, and the folder alone is no
   citation. The repository test in `citations.test.ts` prints the run's account (the forms it sees,
@@ -91,6 +91,13 @@ and names no log, or the pin moves with every tick. The stop's report carries th
   forms on the same tree; and one `logs/<name>.log` written into a plan by a scratch edit turns it
   red, the edit reverted after. *Size:* about 10 minutes, from the last build rows of one function
   and its tests (6, 10 and 12).
+  *Ticked 2026-11-11:* `logCitations` and `describeLogs` in `scripts/src/citations.ts`, the repository
+  test and five unit cases in `scripts/src/citations.test.ts`. The repository test, run alone, passed and
+  printed 305 citations; an independent `git grep -oP` of the same form, trailing dots and colons cut,
+  patterns and the folder alone dropped, gave 305 on the same tree (295 plain paths and 10 with a root
+  before them, as the table above). A scratch line citing one log, appended to this plan, turned it red
+  (expected 306 to be 305) and was reverted. The package gate ran on the tree as committed and exited 0.
+
 - [ ] **The third form, and hardened.** The two log-name shapes counted where no `logs/` stands
   before them, never twice for one citation; each case below seen red once; coverage at 100 %. *Done
   when:* `pnpm --filter @credo/scripts check` exits 0, the pin reread on the tree it runs on. *Size:*

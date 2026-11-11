@@ -40,6 +40,7 @@ const LINE_ONLY = /^#L\d+(?:-L?\d+)?$/;
 const NAME = /^[A-Za-z_$][\w$]*$/;
 const DOTTED = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+$/;
 // logs/ is the credo root's folder of run receipts, outside the repository: no tracked file is there.
+// It is skipped here on purpose; `logCitations` below counts what cites one instead.
 const PLACEHOLDER = /[<>*{}$~]|^\/|^https?:|^logs\//;
 
 /** Every citation of one document: a file and its symbol, a symbol "in" a file, a line, a file alone. */
@@ -251,5 +252,57 @@ export function describeRun(report: Report): string {
     '  document                           named citations   line citations left',
     ...rows,
     `  total: ${total(report.names)} named, ${total(report.lineCitations)} line citations left, ${report.findings.length} red`,
+  ].join('\n');
+}
+
+/** One citation of a log: the document, the line, and the text as written. */
+type LogCitation = { doc: string; line: number; text: string };
+export type LogReport = { total: number; byDoc: Map<string, number>; items: LogCitation[] };
+
+// `logs/` with any root before it (`$ROOT_DIR/logs/`, a full path) but not the tail of a longer
+// word; the rest of the token up to a space, a quote, a bracket or a comma.
+const LOG_PATH = /(?<![\w-])logs\/([^\s`'"()[\],;]*)/g;
+const LOG_PATTERN = /[<>*{}]/;
+
+/**
+ * Every citation of a log in a tracked Markdown file: a `logs/<name>` path that names a file,
+ * whatever stands before `logs/`. A log is a working file in the credo root, outside git, so a
+ * record that cites one sends a reader to nothing on GitHub and on any other machine. This opens
+ * no log, so it reads the same with no `logs/` folder anywhere. Not a citation: a pattern (a name
+ * holding `<`, `>`, `*`, `{` or `}`) and the folder named alone.
+ * What it cannot see: a log named without `logs/` before it, or told in words.
+ */
+export function logCitations(tracked: string[], read: (path: string) => string): LogReport {
+  const items: LogCitation[] = [];
+  for (const doc of tracked.filter((path) => path.endsWith('.md')).sort()) {
+    read(doc)
+      .split('\n')
+      .forEach((raw, index) => {
+        for (const match of raw.matchAll(LOG_PATH)) {
+          const name = match[1].replace(/[.:]+$/, '');
+          if (name === '' || name.endsWith('/') || LOG_PATTERN.test(name)) continue;
+          items.push({ doc, line: index + 1, text: `logs/${name}` });
+        }
+      });
+  }
+  const byDoc = new Map<string, number>();
+  for (const one of items) byDoc.set(one.doc, (byDoc.get(one.doc) ?? 0) + 1);
+  return { total: items.length, byDoc, items };
+}
+
+/** The log count's own account: the form it sees, the ones it cannot, a row for each document. */
+export function describeLogs(report: LogReport): string {
+  const rows = [...report.byDoc].map(
+    ([doc, count]) => `  ${doc.padEnd(70)} ${String(count).padStart(4)}`,
+  );
+  return [
+    'log citations: every tracked Markdown file',
+    '  counted: a logs/<name> path that names a file, whatever stands before logs/;',
+    '  not counted: a pattern (a name holding < > * { }) and the folder named alone;',
+    "  cannot see: a log named without logs/ before it (step 2 adds qa.md's two shapes), or told in words;",
+    '  opens no log: the same count with no logs/ folder, as on GitHub',
+    '  document                                                               citations',
+    ...rows,
+    `  total: ${report.total} citations in ${report.byDoc.size} documents`,
   ].join('\n');
 }

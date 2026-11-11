@@ -2,7 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkCitations, declared, describeRun, type Report } from './citations';
+import {
+  checkCitations,
+  declared,
+  describeLogs,
+  describeRun,
+  logCitations,
+  type Report,
+} from './citations';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -18,6 +25,23 @@ describe('the living documents cite a file and a symbol that resolve', () => {
     expect(report.findings.map((one) => `${one.doc}:${one.line} ${one.cite}: ${one.why}`)).toEqual(
       [],
     );
+  });
+});
+
+/** The log citations already written. One more is red; one fewer asks for this to come down. */
+const LOG_CITATIONS_PINNED = 305;
+
+describe('a record names no log: the log citations written are counted and pinned', () => {
+  it('the count equals the pin, so a new citation is red and a removal lowers the pin', () => {
+    const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\0')
+      .filter(Boolean);
+    const report = logCitations(tracked, (path) => readFileSync(`${ROOT}${path}`, 'utf8'));
+    console.log(describeLogs(report));
+    expect(
+      report.total,
+      'A committed record says what ran and how it ended in words and names no log (docs/conventions/documentation.md): a log is a working file on one machine and opens nothing on GitHub. Take the new log path out; if citations were removed, lower LOG_CITATIONS_PINNED.',
+    ).toBe(LOG_CITATIONS_PINNED);
   });
 });
 
@@ -236,5 +260,53 @@ describe('the check, on made-up repositories', () => {
     expect(printed).toContain('documents found: 1');
     expect(printed).toContain('docs/conventions/*.md');
     expect(printed).toContain('docs/plans 1');
+  });
+});
+
+describe('logCitations', () => {
+  const count = (files: Record<string, string>) => {
+    const made = repo(files);
+    return logCitations(made.tracked, made.read);
+  };
+
+  it('counts a logs/ path with its document and line, whatever stands before it', () => {
+    const report = count({
+      'docs/a.md':
+        'ran `logs/2026-11-01-x.log`\nand $ROOT_DIR/logs/y.log, and /home/u/credo/logs/z.log.\n',
+    });
+    expect(report.items).toEqual([
+      { doc: 'docs/a.md', line: 1, text: 'logs/2026-11-01-x.log' },
+      { doc: 'docs/a.md', line: 2, text: 'logs/y.log' },
+      { doc: 'docs/a.md', line: 2, text: 'logs/z.log' },
+    ]);
+    expect(report.byDoc.get('docs/a.md')).toBe(3);
+  });
+
+  it('leaves a pattern, the folder alone and a longer word alone', () => {
+    const report = count({
+      'a.md': 'logs/<name>.log logs/*.log logs/{a,b} logs/ logs/archive/ catalogs/x.log logs',
+    });
+    expect(report.total).toBe(0);
+  });
+
+  it('counts a file in a subfolder of logs/ and reads only Markdown', () => {
+    const report = count({
+      'a.md': 'see logs/archive/old.log',
+      'run.sh': 'echo logs/run.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual(['logs/archive/old.log']);
+  });
+
+  it('reads the same with no logs/ folder: it opens no log', () => {
+    const files = { 'a.md': 'logs/gone.log' };
+    expect(count(files).total).toBe(1);
+  });
+
+  it('prints the forms it sees, those it cannot, and a row a document', () => {
+    const text = describeLogs(count({ 'a.md': 'logs/x.log\nlogs/y.log', 'b.md': 'logs/z.log' }));
+    expect(text).toContain('not counted: a pattern');
+    expect(text).toContain('cannot see');
+    expect(text).toMatch(/a\.md\s+2\n/);
+    expect(text).toContain('total: 3 citations in 2 documents');
   });
 });
