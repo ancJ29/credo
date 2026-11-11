@@ -137,7 +137,7 @@ Each step's gate is `pnpm --filter @credo/bff check` plus the citation test,
 ridge run: the piece adds no resource, hop or key, so stage 2 stands in for stage 4, and it reaches
 ridge with the human's next push like any merged work.
 
-- [ ] **1. One list, end to end.** `tenantStorage` and `RecordStore` in `bff/src/records/records.ts`,
+- [x] **1. One list, end to end.** `tenantStorage` and `RecordStore` in `bff/src/records/records.ts`,
   its own test `bff/src/records/records.test.ts` over a fake client that records what is sent,
   `resolveTenant` putting it on the request, and the customer and product lists
   (`bff/src/routes/lists.ts`) reading and writing through it. *Done when:* the gate's log ends
@@ -145,6 +145,14 @@ ridge with the human's next push like any merged work.
   `lists.route.test.ts` and the cross-company lists case passed unchanged; and each case is seen red
   on its own assertion, then put back: cases 1 to 3 with the prefix check made to pass everything,
   case 4 with it made to refuse everything, case 5 with the key put in the message.
+  *Done, 2026-11-11:* `tenantStorage` and `RecordStore` in `bff/src/records/records.ts`, five cases in
+  `bff/src/records/records.test.ts`, `resolveTenant` setting `request.storage`, and the two lists
+  reading and writing through it. The back end's check ended green at 100 % after one typecheck red
+  (the request's decoration typed `null`), fixed; the citation test exited 0. Seen red on its own
+  assertion, then put back: the prefix check passing everything reddened cases 1 to 3 (and 5, which
+  needs a refusal to read); the check refusing everything reddened case 4 (and the own-prefix half of
+  case 2); the key put in the message reddened case 5 alone. `git diff --stat pre-merge -- '*.test.ts'`
+  names the new file alone.
   *Size:* 10 minutes, the last back-end step that added one mechanism with its own test and wired
   routes onto it (the activity log's step 3, 10 minutes).
 - [ ] **2. Every call for a company.** The other three route modules, the inline client routes and

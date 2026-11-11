@@ -35,6 +35,7 @@ import {
 } from '@credo/shared';
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import { createClient, listClients, ROOT_NAME } from './records/clients';
+import { type TenantStorage, tenantStorage } from './records/records';
 import { HttpError, parse, replyFor } from './errors';
 import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
@@ -62,6 +63,9 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** The minted id of the tenant a client's call names, set before the route runs. */
     tenantId: string;
+    /** The storage client of that tenant alone, set beside `tenantId`: it refuses any key that is
+     * not the tenant's own. */
+    storage: TenantStorage;
     /** The entries the route declares for its change; the hook sends them before the reply. */
     audit: Declared[] | null;
   }
@@ -107,6 +111,8 @@ export function buildApp({
   const sessionsOf = (tenantId: string) =>
     createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
   app.decorateRequest('tenantId', '');
+  // Null until `resolveTenant` sets it; every route that reads it runs after that hook.
+  app.decorateRequest('storage', null as unknown as TenantStorage);
   app.decorateRequest('audit', null);
 
   /** Sends the entry a route declared, before the reply and under the client's own bound. Whatever
@@ -163,6 +169,7 @@ export function buildApp({
     const found = await storage.getRecord(recordKeys.client(code.data));
     if (!found) throw new HttpError(404, 'Unknown client');
     request.tenantId = storedClientSchema.parse(found.data).id;
+    request.storage = tenantStorage(storage, request.tenantId);
   }
   const forClient = { onRequest: resolveTenant };
 
