@@ -1,0 +1,253 @@
+# Companies pooled on boxes, plan, 2026-11-11
+
+## At a glance
+
+```mermaid
+flowchart LR
+  devops["DevOps<br/>one command adds a box"] --> stack["the environment's one stack<br/>the first box, and every box added"]
+  operator["the operator<br/>picks the box, seeing its free disk"] --> index[("the list of companies, on the first box<br/>each company's record names its box")]
+  call["a company's call"] --> lookup["the company is found<br/>and so is its box"]
+  index --> lookup
+  lookup --> client["that company's client, over its box"]
+  client --> box1[("the first box")]
+  client --> box2[("a box added")]
+  operator -. "moves a company" .-> index
+```
+
+**What it is for:** several companies share a box, DevOps decides how many boxes there are and adds
+one with a command, and an operator decides which box each company lives on, seeing each box's free
+disk, and can move a company later. No number of companies a box is written anywhere: it is the
+operator's choice. A company's people see no change.
+
+**The cheapest safe path** keeps one box working as it does: the first box keeps the list of
+companies; a company's record names its box, no name meaning the first; the back end is handed the
+other boxes in one more setting; a box added is one more name in a list the stack command takes.
+About 3 h 15 of machine time in three landings (90, 72 and 35 minutes), each after another lane;
+three looks of yours, your push, a walk run and four acts on ridge.
+
+## The slice
+
+DevOps adds a second box to ridge by one command. The operator adds a company and puts it on that
+box, picking it from a list that shows each box's free disk and how many companies it holds. The
+company's people sign in and work, every record landing on the second box and only the company's
+line in the list on the first. The operator then moves the company to the first box, its people
+sign in again and find their records, and the second box holds none of them.
+
+## What the code says, and what the plan decides
+
+**Today.** One box an environment. The back end is handed one store, four variables in
+`bff/src/env.ts`'s `storageShape`, and `bff/src/server.ts`'s `buildBff` makes the one client.
+`bff/src/app.ts`'s `resolveTenant` reads the company's line, `client.<code>` to
+`shared/src/records.ts`'s `storedClientSchema` (`id`, `name`, `madeAt`, strict, naming no box). The
+operator's form sends a code and a name (`shared/src/wire.ts`'s `createClientRequestSchema`). In
+`ops/env.yml` one `Box`; every rule into it names its group, not the box: `BoxGroup`, `BoxFromBff`,
+and `BffGroup`'s one egress rule to `BoxGroup`. Only the deploy role names the box itself
+(`PushKeyToOwnBox` on `${Box}`, `TunnelToOwnBox` on `${Box.PrivateIp}`). Every ops script reaches
+"the box" through `ops/lib.sh`'s `box_open`, which reads the stack's `BoxId` and `BoxAddress`.
+
+**Nothing routes a company to one of several boxes already.** In the repository, `bff`, `shared`,
+`scripts` and `ui` hold no list of boxes. The legacy back end takes one storage address from its
+settings (`workspace/bffs/credo-sme/src/configs/env.ts`, `connectors.storage`), its `target` an
+upstream for the whole deployment, and its storage knows callers by service code, never a company
+(`workspace/services/c-storage/CLAUDE.md`).
+
+**Decided, the machine's:**
+
+1. **The first box is the home box and keeps the list of companies** and the operator's records:
+   `ops/env.yml`'s `Box`, unchanged. *Rejected:* a box of the operator's own, as the final
+   architecture page draws: a fixed charge of about $4 a month an environment that buys nothing yet,
+   since it would still be the one place every call reads first. *Flips it:* the home box's disk or
+   writes are the ones that bind.
+2. **A company's line names its box.** `storedClientSchema` gains `box`, optional: a line without one
+   is on the home box, so every company made before reads as today and nothing rewrites it. A new
+   company's line always names its box. A box's name is a few lowercase letters and digits; `home` is
+   the first box's.
+3. **The back end is handed the other boxes in one setting,** `STORAGE_BOXES`, JSON, each box by
+   name with its address, internal key and service key; the four variables stay the home box's.
+   Absent, there is one box, as every route test, `pnpm stack` and the tunnel's callers of
+   `readStorageEnv` have today. *Rejected:* one list replacing the four, which changes every caller.
+4. **The lookup reads the line on every call, with no memory.** `resolveTenant` reads it from the
+   home box, then makes the company's client over the box it names. *Why no memory:* the read costs
+   under 2 cents a company a month (the routing page's price), and without one a move's mark is seen
+   by the very next call, so the move waits only for calls already running. *Flips it:* a measured
+   lookup that is the slow part of a call.
+5. **A line naming a box the back end was not handed answers 503,** as a store that does not answer
+   does, so the screens offer a retry; the log names the box and never a key.
+6. **The box's own check that it holds the company is held by an absence**, at no read: sessions,
+   people and the root exist only on the company's own box, so on a wrong line a signed-in call is
+   refused, a sign-in finds nobody, and the root password route throws on the missing root
+   (`bff/src/routes/root-password.ts`, "a client's root sign-in record is missing"). Only the delete
+   would harm, sweeping nothing and removing the line; so `deleteClient` first reads the company's
+   settings on the named box and stops, nothing removed, when there are none.
+7. **The operator's form takes the box.** `createClientRequestSchema` gains `box`, optional (absent
+   is home, so a page built before still works); a box not held is a 400 naming the field.
+   `createClient` writes settings and root on the chosen box, the line last on the home box.
+8. **The operator sees each box** through one new route: its name, how many companies it holds
+   (from `listClients`' lines) and its free disk, from the continuous copy's c-storage reading (`GET
+   /api/status`, behind the internal key), which `shared/src/c-storage.ts`'s `CStorageClient` gains a
+   call for. A box that does not answer is shown so, the others still. The services page keeps to the
+   home box (item 272).
+9. **Item 246's scripts** (`scripts/src/demo/apply.ts`, `apply-support.ts`, `ledger.ts`,
+   `scripts/src/root-password.ts`) reach a company through `tenantStorage` over the home box, and
+   refuse by name, writing nothing, a demo copy whose line names another box: the six demo copies
+   live on ridge's home box, and one moved off it is no longer seeded (item 271).
+10. **A box added by command, in the environment's one stack.** `Box` stays as ridge's re-up and the
+    continuous copy leave it. More boxes come from one loop over a `MoreBoxes` list (CloudFormation's
+    `Fn::ForEach`), its body the home box's block (the instance, and the continuous copy's disk,
+    attachment, role and bucket path) with outputs by name, held equal to `Box` but for its names by
+    `ops/test.sh`. A box added joins `BoxGroup`, so the rules into it already hold; the deploy role's
+    two box statements name the environment's boxes by `Env` tag and subnet, not `${Box}`.
+    `ops/stack.sh env <env> --more-boxes b2,b3` passes the list, and without the flag the stack keeps
+    its own; a box taken out is a removal the fence refuses unless named. `box_open` learns a box by
+    name; `ops/app.sh` registers the back end on each box and writes `STORAGE_BOXES`; `ops/release.sh`
+    and `ops/check.sh` go over every box; `ops/tunnel.sh` and `ops/drill.sh` take `--box`. **The
+    step starts by reading AWS's own pages**, since nothing here has used the loop: where it may
+    stand, an empty list, outputs, the capability a change set then needs, Instance Connect's two
+    actions under a tag and a subnet, and cfn-lint 1.46's reading. *Fallback if it refuses:* a block
+    per box, copied from `Box` in minutes, so a box is a commit and a push before the command.
+    *Rejected:* a small stack a box, against the human's own "deploy all in a single cloudformation"
+    (2026-11-11); every box in the loop, `Box` included, which renames ridge's box and replaces it.
+11. **The move routes; the copy is the store's.** The operator marks the company moving (its line
+    gains `moving` and the box it goes to), and from the next call every call of it answers 503, its
+    screens offering a retry. The move waits out the back end's 10-second limit (`ops/env.yml`'s
+    `Bff`, `Timeout`), so no call that read the line before the mark still writes; the copy tool
+    copies and compares; the switch, refused unless the comparison was equal, points the line at the
+    new box and clears the mark; the old copy is swept as a deleted company's is. The operator's page
+    gains "Move to another box", with the same list.
+
+## What it consumes, and where other lanes meet it
+
+- **The one-company storage client** (`docs/plans/2026-11-11-store-one-company.md` on its own
+  branch, "What the pooled shape consumes"): `tenantStorage(store, tenantId)`, called in four places,
+  whose first argument becomes the company's box; landed on `pre-merge` before step 1.
+- **The continuous copy**: its c-storage reading (its step 4) before step 3's second part; the whole
+  piece landed before step 6, whose loop copies the box's block it leaves and whose scripts it also
+  changes.
+- **The copy tool** (the store's second milestone, planned on its own branch): one company's records
+  copied from one store to another in bounded, resumable calls, and a comparison by count and by each
+  record's tag that says equal or not. Step 7 consumes those two and nothing else, whatever their
+  final names, and does not plan the copy.
+- **Ridge back by its command** (its re-up plan) before the human's acts on ridge.
+- **Files in common.** `bff/src/app.ts` and `bff/src/records/clients.ts` with the one-company client,
+  which lands first. `ops/env.yml`, `ops/lib.sh`, `ops/release.sh`, `ops/check.sh`, `ops/drill.sh`
+  and `ops/test.sh` with the continuous copy and ridge's re-up, and the scripts with the door's third
+  milestone (every terminal script safe on production); step 6 takes `pre-merge` in before its gate
+  and builds on their lines, never beside them.
+
+## The steps
+
+Each gate is the touched package's `pnpm --filter @credo/<pkg> check`, `pnpm check` where a step
+crosses packages, `bash ops/test.sh` and `shellcheck -x ops/*.sh` for `ops/`, plus the citation test
+`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, each by its own exit code; each
+case red once on its own assertion, then put back. Stage 1 is step 1, two boxes on invented data;
+stage 2 each gate; stage 3 point 1; stage 4, ridge, is stood up, since the piece adds a resource, a
+hop and keys. Under a day of machine time, it lands three times on three waits, each landing a
+milestone if the orchestrator wants one.
+
+**First landing: the box in the record and the operator's choice** (after the one-company client).
+
+- [ ] **1. One company on a second box, end to end.** Decisions 2 to 5 and 7, with a route test whose
+  second service on the file's c-storage stands for a second box. *Done when:* `pnpm check` ends `==
+  exit 0`; cases 1 to 5 and 7 red once; `git diff --stat pre-merge -- '*.test.ts'` names new files
+  alone. *Size:* 10, the last step adding one mechanism with its test and routes on it (the activity
+  log's third, 10).
+- [ ] **2. Every act on its box, and the scripts.** Two parts. The delete and the root password
+  (decision 6): *done when* the bff gate ends `== exit 0`, cases 6 and 10 red once; *size* 10, the
+  same shape. Item 246's four scripts (decision 9): *done when* the scripts gate ends `== exit 0`,
+  case 11 red once, and `grep -rnE 'recordKeys\.tenant\(' scripts/src --include='*.ts'
+  --exclude='*.test.ts'` shows calls on a company's client alone; *size* 15, the last step that
+  taught the seed where to write (the local copy's fourth, 15).
+- [ ] **3. The operator's choice.** Two parts. The form's list on the fake first (`pnpm fake`,
+  `ui/src/fake.ts` answering two boxes): *done when* the ui gate ends `== exit 0`, case 9 red once;
+  *size* 8 (the shared record page's add screen, 8). Then the boxes route and the status call
+  (decision 8), once the continuous copy's reading is on `pre-merge`: *done when* `pnpm check` ends
+  `== exit 0`, case 8 red once; *size* 10, step 1's shape.
+- [ ] **4. Two boxes on this machine, and the screen to look at.** `pnpm stack` registers a second
+  service as box `b2` and hands it in `STORAGE_BOXES`; the operator walk gains, appended and never
+  inserted, the form with its list of boxes. *Done when:* `pnpm --filter @credo/scripts check` and
+  `pnpm --filter @credo/walk check` end `== exit 0`, `scripts/src/stack.test.ts` gaining the case
+  that a company added on `b2` through the stack's own front is read back from `b2`'s service, red
+  once. *Size:* 10, the last step that taught the local stack a part (the local copy's second, 10).
+  Then 👤 point 1: `bash walk/run.sh operator`, in your terminal.
+- [ ] **5. Hardened, the pages true.** Coverage at 100 % with no new hint; `docs/architecture.md`'s
+  and `docs/architecture-detail.md`'s pooled sections rewritten to what is built (no figure of
+  companies a box, no box of the operator's own, no memory of the lookup), `docs/memo/bff.md` on the
+  lookup and the 503. *Done when:* `pnpm check` ends `== exit 0` at 100 %, the citation test exits 0,
+  `git grep -nE '/Users/|~/'` finds nothing new. *Size:* 10 (the store's step 3, 10).
+- [ ] **5r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a recap.
+  *Done when:* every finding tagged in the recap, the fix pass's gate `== exit 0`, the recap
+  committed. *Size:* 14 and 3 (the cross-company tests' review, fix and reread, 6, 6 and 2; recap 3).
+
+**Second landing: a box added by command** (after the continuous copy is on `pre-merge`).
+
+- [ ] **6. The loop, the role, the scripts.** Four parts, in order, each *done when* `bash ops/test.sh`
+  exits 0 with its cases red once: AWS's and cfn-lint's reading, quoted in the tick (done when each
+  of the six questions has a sentence of AWS's own, or the fallback is taken and said; *size* 5, a
+  first run); the loop and its guard, cases 12 and 13 (*size* 10, the box's retention step, 10); the
+  deploy role, case 14 (*size* 8, the access log's guard, 8); the scripts learning a box, case 15,
+  `shellcheck -x ops/*.sh` at 0 too (*size* 14, the ten scripts' guard, 14). The runbook gains
+  "Adding a box".
+- [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
+  this ledger; the ops fixes ran 4 and 23).
+- [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then
+  `ops/stack.sh env ridge --more-boxes b2 --plan`, point 2, then without `--plan`. *Done when:* the
+  machine reads the log: the box and its disk added, the home box unchanged, `== exit 0`.
+- [ ] 👤 **`ops/release.sh ridge`, `ops/app.sh ridge`, then `ops/check.sh ridge`.** *Done when:* each
+  log ends `== exit 0`, the check reading both boxes.
+
+**Third landing: the move** (after the store's copy tool is on `pre-merge`).
+
+- [ ] **7. The move.** Decision 11: the mark, the wait, the switch, the sweep, and the operator's
+  page. Two parts, *size* 10 and 8, the shapes of steps 1 and 3. *Done when:* `pnpm check` ends `==
+  exit 0`; cases 16 and 17 red once.
+- [ ] **7r. Reviewed, fixed, recapped**, done and sized as 5r: 14 and 3.
+- [ ] 👤 **On ridge:** a company added on `b2` at `/operator`, signed into, then moved to the home
+  box: point 3. Then `b2` taken out of the list and its retained box removed by the runbook's "A
+  retained box", since a second box on ridge is a fixed charge with no need after the rehearsal.
+
+## The case table
+
+| # | The case | Held by |
+| --- | --- | --- |
+| 1 | A company whose line names no box is served from the home box | BFF route, every existing route test unchanged |
+| 2 | A company made on box two has its settings and root there, and only its line on the home box | BFF route, two services |
+| 3 | Every call of a company on box two reaches box two, and the home box for its line alone | BFF route |
+| 4 | A line naming a box the back end was not handed answers 503, the log naming the box and no key | BFF route |
+| 5 | With no `STORAGE_BOXES` the back end has the home box alone; a malformed one is refused at start, naming the variable | unit, `bff/src/env.ts`'s test |
+| 6 | A delete whose box holds no settings for the company stops and removes nothing, the line included | BFF route |
+| 7 | The form's box absent adds on the home box; a box not held is a 400 naming the field | BFF route |
+| 8 | The boxes route names each box, its companies and free disk; a box not answering is shown so, the others still | BFF route |
+| 9 | The form lists each box with its free disk and companies, the home box chosen unless another is | ui, `NewClient.test.tsx`; the fake walk |
+| 10 | On a line naming the wrong box a signed-in call is refused and nothing is written there | BFF route |
+| 11 | The seed and the root password script serve a home-box copy and refuse one on another box by name, writing nothing | scripts unit |
+| 12 | A box in the list is the home box's block but for its names: instance, disk, attachment, role, path, outputs | `ops/test.sh` |
+| 13 | Without `--more-boxes` the stack keeps its list | `ops/test.sh` |
+| 14 | The deploy role reaches this environment's boxes and no other, by tag and subnet | `ops/test.sh` |
+| 15 | `ops/app.sh` writes every box's address and keys, and a box that does not answer stops it before any setting is written | `ops/test.sh` |
+| 16 | A company marked moving answers 503 to every call from the next one | BFF route |
+| 17 | The switch is refused unless the comparison was equal; after it every call reaches the new box, and the old box holds none of the company's records | BFF route |
+| 18 | No existing test was changed to pass | `git diff --stat pre-merge -- '*.test.ts'` |
+
+## The human's points
+
+**Point 1, after step 4: the operator's choice of a company's box.** The operator walk gains one
+screen: the add-company form with its list of boxes, each with its free disk and how many companies
+it holds, the first box chosen unless another is picked. Is this how you and the other operators
+want to choose a new company's box? A yes builds the rest on it; a no says what the list should show
+or do, and step 3 reopens.
+
+**Point 2, at ridge's change: the second box.** `ops/stack.sh env ridge --more-boxes b2 --plan` shows
+what the stack would change. It should add the box, its disk and its outputs, and leave the first box
+and everything else as they are. A yes: run it again without `--plan`. A no, anything else changed or
+replaced: nothing is run (a replacement the fence has already refused), and step 6 reopens.
+
+**Point 3, after the move on ridge: a company moved.** You add a company on the second box, sign in
+as its root and add a customer, then move it to the first box and sign in again. Do you find the
+customer, with the company closed only while it moved? A yes: the move ships to production with the
+rest; a no reopens step 7.
+
+## What stays out
+
+The copy itself (the store's), each box's disk, copy and free-disk reading (the continuous copy's),
+the services page learning each box (item 272), a demo copy seeded on another box (item 271), the
+activity log per box, and each company's own address.
