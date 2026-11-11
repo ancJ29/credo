@@ -29,7 +29,7 @@ flowchart LR
     bff["the BFF<br/>[Lambda, arm64] bff/ with shared/ · every rule in the system"]
     subgraph box["the services · the environment's box, every tenant in it<br/>[EC2 t4g.nano]"]
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
-      db[("the records<br/>[one SQLite file] the only copy there is")]
+      db[("the records<br/>[one SQLite file] the only copy there is · the backup is designed and waits for real records, and ridge holds only invented companies")]
     end
     more["more boxes, each holding a group of tenants, and one for the operator<br/>[EC2] the pooled shape · intended, not built"]
   end
@@ -85,7 +85,9 @@ record written at step 9 — never the shape.
    record read, checked against the device it was issued to and against the sign-in's generation,
    then slid forward.
 6. **What they may do.** One boolean — may this person edit orders? The three permission layers are
-   read on **every** call, department then position then the person's own. A no is a 403 here, before
+   read on **every** call, department then position then the person's own, from two records, the
+   person's and the staff setup: five reads in all for a staff call, with the company, the session
+   and the sign-in. A no is a 403 here, before
    the body is read. **This is the only place the question is asked.** The menu asks the same
    question, but only to decide what to draw.
 7. **The body.** Only now is the request's JSON parsed, against the schema `shared/` declares and
@@ -134,7 +136,9 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 alike.
 
 **The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
-record whose meaning is the BFF's and not its own. Its promises are a store's: a save over a record
+record whose meaning is the BFF's and not its own. A list is one prefix read of at most 1,000
+records, and past that bound it is an error and never a short list, which is why orders and
+deliveries are filed by day. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
@@ -142,7 +146,7 @@ and nothing the store enforces, and why a box holds one tenant or twenty with no
 
 **The second service is `services/audit-backbone/`.** The activity log: a keyed writer and a token-gated
 reader over its own SQLite file, in this repository with a gate of its own, called by the back end
-on every change a person makes, in the local copy and not yet on ridge ([the activity log](activity-log.md)).
+on every change a person makes, in the local copy and not yet on ridge ([the activity log](activity-log.md)). The back end finds it by two settings, `AUDIT_URL` and `AUDIT_KEY`, both or neither.
 
 **Running it on this Mac is `scripts/`, and reaching a machine is `ops/`.** A step belongs to
 `scripts/` when it must run the product's own code, so every product rule holds on the way through;
@@ -216,7 +220,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
 | **No second file builds a record key.** The layout has one home | nothing — and this is the one absence worth the most, because tenant separation is a string prefix and nothing else |
-| **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level |
+| **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level, for the customer and product lists (`bff/src/routes/lists.route.test.ts`), the sign-in and settings routes (`bff/src/tenants.route.test.ts`) and the two operator routes that reach one client only (`bff/src/routes/clients-delete.route.test.ts`, `bff/src/routes/operator-root-password.route.test.ts`); orders, deliveries, staff and a closed day have no second-tenant case |
 | **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are not yet written ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |
 | **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
