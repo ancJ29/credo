@@ -165,7 +165,7 @@ change sees that, so a piece that moves a decision rereads the citations to it.
 | File | Job | Rule |
 | --- | --- | --- |
 | `docs/plans/<date>-<slug>.md` | what to build | [One short page](#the-plan-one-short-page). Each step is a checkbox, ticked only once its check reads back; the ticks are the plan's one status |
-| `docs/open-items.md` | the log | Numbered, never renumbered. One entry per thing still to do, naming who does it, or marked *parked* until a review. An entry is deleted when done |
+| `docs/open-items.md` | the list of what is open | Numbered, never renumbered. One entry per thing still to do, naming who does it, or marked *parked* until a review. An entry is deleted when done |
 | `docs/recaps/<date>-<slug>.md` | the history and the evidence | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's, in half a page the human reads; below it, the evidence, what each step's check read, in words and naming no log ([a log is such a path](#nothing-machine-local-or-personal-in-a-committed-file)). Append-only, and never a status source. The piece's recap adds or changes its row in [`docs/products.md`](../products.md), the products on hand, in the same commit |
 
 These names are fixed, so one `grep` finds every one of them. A directory is added once it has
@@ -248,13 +248,17 @@ of several humans. Instead:
 
 **A log is such a path.** A log is a working file in the credo root's `logs/`: outside git, on one
 machine, moved by every tidy, and on GitHub or any other machine it opens nothing. So a committed
-record (a plan's tick, a recap's evidence, an open item, a living document) says what ran, when, at
-which commit, its exit and the line that decided it, and names no log. A record written before this
-rule says where a log was, and may open nothing; it is history and is not rewritten. A stop's
-report, read the same day on the machine that ran it, still cites its log by path from `ls`
+record that mentions a run (a plan's tick, a recap's evidence, an open item, a living document) says
+how the run ended in words and names no log; where each kind of evidence goes stays with the rules
+for that record. A plan or a recap written before this rule says where a log was, and may open
+nothing; it is history and is not rewritten. An open item or a living document that names a log
+converts when a piece touches it, as a line citation does ([the citation rule](#how-a-living-document-cites-code)).
+A stop's report, read the same day on the machine that ran it, still cites its log by path from `ls`
 ([the log is the receipt](qa.md#the-log-is-the-receipt)); the report is not committed. The gate for
-this is `logCitations` in `scripts/src/citations.ts`: the citation test counts every log path in a
-tracked Markdown file and pins the total, so a new one is red and a removal lowers the pin.
+this is `logCitations` in `scripts/src/citations.ts`: the citation test lists every `logs/` path, with
+any root before it, and every file name ending `.log` with no folder before it, in a tracked Markdown
+file, and compares the list to `scripts/src/log-citations.pinned.txt`, so a new one is red by name and
+a removal asks for its row out. It does not see a log named after another folder, or told in words.
 
 No gate checks the other paths yet. Before each commit, run `git grep -nE '/Users/|~/'` and read
 the diff for a name.

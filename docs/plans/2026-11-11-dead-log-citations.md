@@ -144,9 +144,32 @@ and names no log, or the pin moves with every tick. The stop's report carries th
   citation test, run alone, passed with the pin still 411. The orchestrator's build and recap skills,
   which told agents to name a log, are edited outside this tree for the orchestrator to carry.
 
-- [ ] **Reviewed.** Another model reads the check, its tests, this table and the rule; one fix pass;
+- [x] **Reviewed.** Another model reads the check, its tests, this table and the rule; one fix pass;
   the whole check again. *Done when:* the recap lists every finding tagged, and `pnpm check` exits 0.
   *Size:* about 20 (a review with its whole check).
+  *Fix pass, 2026-11-11, one round, the reviewer's findings each confirmed on disk before a change:*
+  1. **Fixed (Medium).** Confirmed: bold, underscored, angle-bracketed and star-trailed paths, names with
+     seconds in the stamp, a stamp at the end, a date-only name and an unstamped name were all uncounted.
+     A path's token now drops a trailing `*`, `_`, `>` or `|` after its extension, `_` may stand before
+     `logs/`, and a bare name is any name ending `.log` with no folder before it; a name elided with an
+     ellipsis is counted, since it still names a log that opens nothing. The tracked tree went from 411 to
+     456 citations, 151 of them bare names. A name told in words stays unseen, as the rule says.
+  2. **Fixed (Medium).** Confirmed: the rule's "history, not rewritten" covered open items and living
+     documents against the convention's own "true now". Plans and recaps written before the rule are
+     history; an open item or a living document converts when a piece touches it, as a line citation does.
+  3. **Fixed (Low).** The pin is now a list of document and name rows beside the test, compared as a
+     multiset, so a red names its citation and two branches adding the same new total no longer merge
+     into a red neither had; a line number is not in a row.
+  4. **Fixed (Low).** The code comment and the run's printed account say a name after a folder other than
+     `logs/` is not counted.
+  5. **Fixed (Low).** The rule asks of a record that mentions a run that it say how it ended in words and
+     name no log, and leaves where each kind of evidence goes to the rules for that record.
+  6. **Fixed (Low).** The repository test lists tracked and unstaged-new files; an untracked scratch page
+     citing a log turned it red, and with the flag taken out it passed, so the flag matters.
+  7. **Fixed (Info).** The open-items row in the progress table now reads "the list of what is open".
+  Each new case was seen red by one mutation: the bare-name widening, the trailing-mark trim, the
+  underscore before `logs/`, the ellipsis counted, the multiset count; the unstaged case as in finding 6.
+  The scripts gate, whole, exited 0 on the tree as committed.
 
 ## The case table
 

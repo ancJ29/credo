@@ -28,20 +28,49 @@ describe('the living documents cite a file and a symbol that resolve', () => {
   });
 });
 
-/** The log citations already written. One more is red; one fewer asks for this to come down. */
-const LOG_CITATIONS_PINNED = 411;
+/**
+ * The log citations already written, one `document<TAB>text` row each, in `log-citations.pinned.txt`
+ * beside this file; the records accept exactly this list. A line number is not in a row, so moving a
+ * citation down a page is no change. A new row is red naming it; a removal asks for its row out.
+ */
+const PINNED = new URL('./log-citations.pinned.txt', import.meta.url);
+
+/** The multiset difference: what `now` holds more of than `then`, row by row. */
+const surplus = (now: string[], then: string[]) => {
+  const left = new Map<string, number>();
+  for (const row of then) left.set(row, (left.get(row) ?? 0) + 1);
+  return now.filter((row) => {
+    const n = left.get(row) ?? 0;
+    if (n > 0) left.set(row, n - 1);
+    return n === 0;
+  });
+};
 
 describe('a record names no log: the log citations written are counted and pinned', () => {
-  it('the count equals the pin, so a new citation is red and a removal lowers the pin', () => {
-    const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' })
+  it('the list equals the pin, so a new citation is red by name and a removal lowers the pin', () => {
+    const tracked = execFileSync(
+      'git',
+      ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+      {
+        cwd: ROOT,
+        encoding: 'utf8',
+      },
+    )
       .split('\0')
       .filter(Boolean);
     const report = logCitations(tracked, (path) => readFileSync(`${ROOT}${path}`, 'utf8'));
     console.log(describeLogs(report));
+    const now = report.items.map((one) => `${one.doc}\t${one.text}`).sort();
+    const pinned = readFileSync(PINNED, 'utf8').split('\n').filter(Boolean).sort();
     expect(
-      report.total,
-      'A committed record says what ran and how it ended in words and names no log (docs/conventions/documentation.md): a log is a working file on one machine and opens nothing on GitHub. Take the new log path out; if citations were removed, lower LOG_CITATIONS_PINNED.',
-    ).toBe(LOG_CITATIONS_PINNED);
+      { added: surplus(now, pinned), missing: surplus(pinned, now) },
+      'A committed record says how a run ended in words and names no log (docs/conventions/documentation.md): a log is a working file on one machine and opens nothing on GitHub. Take each added citation out; for each missing one, delete its row from scripts/src/log-citations.pinned.txt.',
+    ).toEqual({ added: [], missing: [] });
+  });
+
+  it('tells a row added from a row missing, and counts a repeated row by its number', () => {
+    expect(surplus(['a\tx', 'a\tx', 'b\ty'], ['a\tx', 'b\ty'])).toEqual(['a\tx']);
+    expect(surplus(['a\tx'], ['a\tx', 'b\ty'])).toEqual([]);
   });
 });
 
@@ -297,18 +326,42 @@ describe('logCitations', () => {
     expect(report.items.map((one) => one.text)).toEqual(['logs/archive/old.log']);
   });
 
-  it('counts a log name in either of qa.md shapes with no logs/ before it', () => {
+  it('counts a log file name with no folder before it, whatever its stamp', () => {
     const report = count({
       'a.md':
-        'the gate (2026-11-11-175845-gate-scripts.log) and 20261108-1809-ridge-read.log#L12 ran',
+        'the gate (2026-11-11-175845-gate-scripts.log) and 20261108-1809-ridge-read.log#L12 and 20261111-183000-x-gate.log and 2026-11-10-ui-shape-picture-run.log and check3.log and a-stamp-at-the-end-20261105-1744.log ran',
     });
     expect(report.items.map((one) => one.text)).toEqual([
       '2026-11-11-175845-gate-scripts.log',
       '20261108-1809-ridge-read.log',
+      '20261111-183000-x-gate.log',
+      '2026-11-10-ui-shape-picture-run.log',
+      'check3.log',
+      'a-stamp-at-the-end-20261105-1744.log',
     ]);
   });
 
-  it('counts one citation once: a shaped name inside a logs/ path, or any path, is not counted again', () => {
+  it('counts a path in Markdown dress: bold, underscores, angle brackets, a trailing star', () => {
+    const report = count({
+      'a.md': '**logs/a.log** and _logs/b.log_ and <logs/c.log> and logs/d.log* and | logs/e.log |',
+    });
+    expect(report.items.map((one) => one.text)).toEqual([
+      'logs/a.log',
+      'logs/b.log',
+      'logs/c.log',
+      'logs/d.log',
+      'logs/e.log',
+    ]);
+  });
+
+  it('counts a name elided with an ellipsis, and leaves a star pattern alone', () => {
+    const report = count({
+      'a.md': 'logs/2026-walk-…-team.log#L1-L3 and logs/gate-* and logs/*.log',
+    });
+    expect(report.items.map((one) => one.text)).toEqual(['logs/2026-walk-…-team.log#L1-L3']);
+  });
+
+  it('counts one citation once: a name inside a logs/ path, or after any other folder, is not counted again', () => {
     const report = count({
       'a.md':
         'logs/20261108-1809-ridge-read.log and $ROOT/logs/2026-11-11-175845-gate-x.log and tmp/20261108-1809-a.log',
@@ -319,10 +372,10 @@ describe('logCitations', () => {
     ]);
   });
 
-  it('leaves a lookalike alone: a date-shaped name that is not a log, a pattern', () => {
+  it('leaves a lookalike alone: a name that is not a log, a pattern, a bare extension', () => {
     const report = count({
       'a.md':
-        '20261108-1809-notes.md 2026-11-11-175845-<script>.log <YYYYMMDD-HHMM>-<stem>.log 20261108-18-x.log',
+        '20261108-1809-notes.md 2026-11-11-175845-<script>.log <YYYYMMDD-HHMM>-<stem>.log *.log a `.log` file $NAME.log',
     });
     expect(report.total).toBe(0);
   });

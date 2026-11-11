@@ -259,16 +259,15 @@ export function describeRun(report: Report): string {
 type LogCitation = { doc: string; line: number; text: string };
 export type LogReport = { total: number; byDoc: Map<string, number>; items: LogCitation[] };
 
-// `logs/` with any root before it (`$ROOT_DIR/logs/`, a full path) but not the tail of a longer
-// word; the rest of the token up to a space, a quote, a bracket or a comma.
-const LOG_PATH = /(?<![\w-])logs\/([^\s`'"()[\],;]*)/g;
+// `logs/` with any root before it (`$ROOT_DIR/logs/`, a full path, a Markdown `_` or `**`) but not the
+// tail of a longer word; the rest of the token up to a space, a quote, a bracket or a comma.
+const LOG_PATH = /(?<![A-Za-z0-9-])logs\/([^\s`'"()[\],;]*)/g;
 const LOG_PATTERN = /[<>*{}]/;
-// A log's file name in qa.md's two shapes with no `logs/` before it: `<YYYY-MM-DD>-<HHMMSS>-<script>-<env>.log`
-// (`ops/lib.sh`) and `<YYYYMMDD-HHMM>-<stem>.log` (by hand). A name after a `/` is part of a path, counted above.
-const LOG_SHAPES = [
-  /(?<![\w/.-])\d{4}-\d{2}-\d{2}-\d{6}-[\w.-]*\.log\b/g,
-  /(?<![\w/.-])\d{8}-\d{4}-[\w.-]*\.log\b/g,
-];
+// A name that ends in a file extension may be followed by Markdown's `*`, `_`, `>` or `|`, or a stop.
+const WITH_EXTENSION = /^(.*\.[A-Za-z0-9]+)[*_>|.:]*$/;
+// A log's file name, any name ending `.log`, with no folder before it. A name after a `/` is part of
+// a path: counted above when the folder is `logs/`, and not counted when it is any other folder.
+const LOG_NAME = /(?<![\w/.<>*{}$-])\w[\w.-]*\.log\b/g;
 
 /**
  * Every citation of a log in a tracked Markdown file: a `logs/<name>` path that names a file,
@@ -276,8 +275,9 @@ const LOG_SHAPES = [
  * record that cites one sends a reader to nothing on GitHub and on any other machine. This opens
  * no log, so it reads the same with no `logs/` folder anywhere. Not a citation: a pattern (a name
  * holding `<`, `>`, `*`, `{` or `}`) and the folder named alone.
- * A log's file name in qa.md's two shapes with no `logs/` before it is counted too, once.
- * What it cannot see: a log named in neither shape without `logs/`, or told in words.
+ * A log's file name with no folder before it (any name ending `.log`) is counted too, once. A name
+ * elided with `…` is counted: it still names a log that opens nothing.
+ * What it cannot see: a log named with a folder other than `logs/` before it, or told in words.
  */
 export function logCitations(tracked: string[], read: (path: string) => string): LogReport {
   const items: LogCitation[] = [];
@@ -286,13 +286,12 @@ export function logCitations(tracked: string[], read: (path: string) => string):
       .split('\n')
       .forEach((raw, index) => {
         for (const match of raw.matchAll(LOG_PATH)) {
-          const name = match[1].replace(/[.:]+$/, '');
+          const name = WITH_EXTENSION.exec(match[1])?.[1] ?? match[1].replace(/[.:]+$/, '');
           if (name === '' || name.endsWith('/') || LOG_PATTERN.test(name)) continue;
           items.push({ doc, line: index + 1, text: `logs/${name}` });
         }
-        for (const shape of LOG_SHAPES)
-          for (const match of raw.matchAll(shape))
-            items.push({ doc, line: index + 1, text: match[0] });
+        for (const match of raw.matchAll(LOG_NAME))
+          items.push({ doc, line: index + 1, text: match[0] });
       });
   }
   const byDoc = new Map<string, number>();
@@ -308,9 +307,9 @@ export function describeLogs(report: LogReport): string {
   return [
     'log citations: every tracked Markdown file',
     '  counted: a logs/<name> path that names a file, whatever stands before logs/;',
-    "  counted too: a log file name in qa.md's two shapes with no logs/ before it, once;",
+    '  counted too: a log file name (any name ending .log) with no folder before it, once; a name elided with … is counted;',
     '  not counted: a pattern (a name holding < > * { }) and the folder named alone;',
-    '  cannot see: a log named in neither shape without logs/ before it, or told in words;',
+    '  cannot see: a log named with a folder other than logs/ before it, or told in words;',
     '  opens no log: the same count with no logs/ folder, as on GitHub',
     '  document                                                               citations',
     ...rows,
