@@ -116,7 +116,7 @@ and names no log, or the pin moves with every tick. The stop's report carries th
   exited 0 on the tree as committed, with the first run's knip red (an exported type used nowhere)
   having belonged to step 1.
 
-- [ ] **The rule.** In `docs/conventions/documentation.md`, under "Nothing machine-local or personal
+- [x] **The rule.** In `docs/conventions/documentation.md`, under "Nothing machine-local or personal
   in a committed file" (`#L236`), one paragraph: a log is a working file on one machine; a committed
   record (a plan's tick, a recap's evidence, an open item, a living document) says what ran, when, at
   which commit, its exit and the line that decided it, and names no log; a record written before the
@@ -133,6 +133,17 @@ and names no log, or the pin moves with every tick. The stop's report carries th
   `documentation.md` and the sentence once in `qa.md`, and `pnpm --filter @credo/scripts check`
   exits 0, `logCitations` resolved by the existing check. *Size:* about 10 (a first pass on a
   convention's prose, median 12; the last two 5 and 6).
+  *Ticked 2026-11-11:* the paragraph "A log is such a path" stands once in `documentation.md` under
+  its "Nothing machine-local" heading, with the At a glance bullet (350 to 354 words, `wc -w` from the
+  heading to the next `## `, paid by no trim), "No gate checks the other paths yet", the recap row, and
+  one sentence in `qa.md`'s "The log is the receipt" (its At a glance stays 282), each file with its
+  `Last amended` line. `git grep -n "names no log" -- docs/conventions` finds the paragraph once in
+  `documentation.md` and the sentence once in `qa.md`; the four files the plan names stay as read.
+  The sweep `git grep -nE "logs?/|[Ll]og path|log's (name|path)"` over the conventions, the root and
+  `docs` `CLAUDE.md` pages and `ops/CLAUDE.md` met no other line telling a record to cite a log. The
+  citation test, run alone, passed with the pin still 411. The orchestrator's build and recap skills,
+  which told agents to name a log, are edited outside this tree for the orchestrator to carry.
+
 - [ ] **Reviewed.** Another model reads the check, its tests, this table and the rule; one fix pass;
   the whole check again. *Done when:* the recap lists every finding tagged, and `pnpm check` exits 0.
   *Size:* about 20 (a review with its whole check).
