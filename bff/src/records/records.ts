@@ -43,17 +43,17 @@ export function tenantStorage(store: RecordStore, tenantId: string): TenantStora
   };
 }
 
+/** A record read under its schema; one that does not parse is a fault naming its kind. */
+export function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: unknown }) {
+  const result = schema.safeParse(stored.data);
+  if (!result.success) throw new Error(`${kind} record does not parse`);
+  return result.data;
+}
+
 /** The reads and writes every record route shares, over one storage client. Reader-held: a route
  * module is handed the whole client, so nothing but review stops a list written inline again.
  * `every` is the one place a list under a prefix is read: never short, each record parsed. */
 export function recordTools(storage: RecordStore) {
-  /** A record read under its schema; one that does not parse is a fault naming its kind. */
-  function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: unknown }) {
-    const result = schema.safeParse(stored.data);
-    if (!result.success) throw new Error(`${kind} record does not parse`);
-    return result.data;
-  }
-
   /** Every record under a prefix, never short. */
   async function every<T>(prefix: string, schema: z.ZodType<T>, kind: string) {
     const listed = await storage.listRecords(prefix);

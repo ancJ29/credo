@@ -155,7 +155,7 @@ ridge with the human's next push like any merged work.
   names the new file alone.
   *Size:* 10 minutes, the last back-end step that added one mechanism with its own test and wired
   routes onto it (the activity log's step 3, 10 minutes).
-- [ ] **2. Every call for a company.** The other three route modules, the inline client routes and
+- [x] **2. Every call for a company.** The other three route modules, the inline client routes and
   the tenant sessions onto `request.storage`; `storage` out of `staff.ts`'s `Deps`; the helpers
   widened to `RecordStore`; the operator's three acts making the named company's client. *Done when:*
   the gate's log ends `== exit 0`; `grep -rnE '\(storage, (request\.)?tenantId' bff/src --include='*.ts'`
@@ -164,6 +164,13 @@ ridge with the human's next push like any merged work.
   still names the new test file alone; `pnpm --filter @credo/scripts typecheck` exits 0, a read and
   not a gate, since that package imports these files through the back end's entries; and with `resolveTenant` handing the
   whole client, `pnpm --filter @credo/bff typecheck` goes red naming `tenantId`, then it is put back.
+  *Done, 2026-11-11:* the other three route modules, the inline client routes and the tenant sessions
+  read through `request.storage`; `storage` is out of `staff.ts`'s `Deps`; the helpers take a
+  `RecordStore`; the operator's create, delete and root password make the named company's client. The
+  back end's check ended green at 100 %; the first grep counts 0 and the second shows one line,
+  `resolveTenant`'s index read; the test-file diff against `pre-merge` names the new file alone; the
+  scripts package's typecheck exited 0; with `resolveTenant` handing the whole client the back end's
+  typecheck went red naming `tenantId` missing, then it was put back.
   *Size:* 17 minutes, the last step that moved several files of one package onto a shared piece
   with nothing on screen changed (the shared record page's step 5, 17 minutes), here with this
   package's two largest files.

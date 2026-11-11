@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import {
   ATTEMPTS,
   CStorageError,
-  type CStorageClient,
   type Employee,
   employeeSchema,
   normaliseSignInName,
@@ -16,6 +15,7 @@ import {
   type StoredUser,
   storedUserSchema,
 } from '@credo/shared';
+import type { RecordStore } from './records';
 
 /** The staff records as the routes and the sign-in read them. A record that does not parse is a
  * fault, a 500 that names its kind and never its key: never a person skipped or defaulted. */
@@ -23,11 +23,11 @@ import {
 export type ReadEmployee = { employee: Employee; tag: string };
 
 export async function readEmployee(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   id: string,
 ): Promise<ReadEmployee | null> {
-  const found = await storage.getRecord(recordKeys.tenant(tenantId).employee(id));
+  const found = await store.getRecord(recordKeys.tenant(tenantId).employee(id));
   if (!found) return null;
   const parsed = employeeSchema.safeParse(found.data);
   if (!parsed.success) throw new Error('an employee record does not parse');
@@ -37,8 +37,8 @@ export async function readEmployee(
 /** `version` is `''` for a company that has never saved a setup: it reads as an empty one. */
 export const NO_SETUP_VERSION = '';
 
-export async function readSetup(storage: CStorageClient, tenantId: string) {
-  const found = await storage.getRecord(recordKeys.tenant(tenantId).staffSetup);
+export async function readSetup(store: RecordStore, tenantId: string) {
+  const found = await store.getRecord(recordKeys.tenant(tenantId).staffSetup);
   if (!found) {
     const setup: StaffSetup = { departments: [], positions: [], extra: {} };
     return { setup, version: NO_SETUP_VERSION };
@@ -49,8 +49,8 @@ export async function readSetup(storage: CStorageClient, tenantId: string) {
 }
 
 /** A sign-in record that does not parse is no sign-in. */
-export async function readSignIn(storage: CStorageClient, tenantId: string, name: string) {
-  const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
+export async function readSignIn(store: RecordStore, tenantId: string, name: string) {
+  const found = await store.getRecord(recordKeys.tenant(tenantId).user(name));
   const parsed = found ? storedUserSchema.safeParse(found.data) : null;
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
 }
@@ -65,14 +65,14 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
  * over. The hash is made by the caller, once.
  */
 export async function setSignInPassword(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
   passwordHash: string,
   now: () => number,
 ): Promise<'set' | 'not owned'> {
-  return await rewriteSignIn(storage, tenantId, name, owns, (user) => ({
+  return await rewriteSignIn(store, tenantId, name, owns, (user) => ({
     ...user,
     passwordHash,
     passwordAt: now(),
@@ -86,19 +86,19 @@ export async function setSignInPassword(
  * same read, ownership check and retries as {@link setSignInPassword}.
  */
 export async function endSessions(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
 ): Promise<'set' | 'not owned'> {
-  return await rewriteSignIn(storage, tenantId, name, owns, (user) => ({
+  return await rewriteSignIn(store, tenantId, name, owns, (user) => ({
     ...user,
     generation: randomUUID(),
   }));
 }
 
 async function rewriteSignIn(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
@@ -106,9 +106,9 @@ async function rewriteSignIn(
 ): Promise<'set' | 'not owned'> {
   const key = recordKeys.tenant(tenantId).user(name);
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const signIn = await readSignIn(storage, tenantId, name);
+    const signIn = await readSignIn(store, tenantId, name);
     if (!signIn || !owns(signIn.user)) return 'not owned';
-    if ((await storage.putRecord(key, change(signIn.user), signIn.tag)) === 'saved') return 'set';
+    if ((await store.putRecord(key, change(signIn.user), signIn.tag)) === 'saved') return 'set';
   }
   throw new CStorageError(412, 'the sign-in record moved on every attempt to write it');
 }
@@ -116,11 +116,11 @@ async function rewriteSignIn(
 /** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500
  * that names its kind and never its key. */
 export async function readEmailClaim(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   email: string,
 ): Promise<{ claim: StoredSignInEmail; tag: string } | null> {
-  const found = await storage.getRecord(recordKeys.tenant(tenantId).signInEmail(email));
+  const found = await store.getRecord(recordKeys.tenant(tenantId).signInEmail(email));
   if (!found) return null;
   const parsed = storedSignInEmailSchema.safeParse(found.data);
   if (!parsed.success) throw new Error('an email record does not parse');
@@ -129,11 +129,11 @@ export async function readEmailClaim(
 
 /** A person's QR code as kept. A record that does not parse is a fault, as an email's. */
 export async function readQr(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   employeeId: string,
 ): Promise<{ qr: StoredSignInQr; tag: string } | null> {
-  const found = await storage.getRecord(recordKeys.tenant(tenantId).signInQr(employeeId));
+  const found = await store.getRecord(recordKeys.tenant(tenantId).signInQr(employeeId));
   if (!found) return null;
   const parsed = storedSignInQrSchema.safeParse(found.data);
   if (!parsed.success) throw new Error('a QR record does not parse');
@@ -147,11 +147,11 @@ export const namesPerson = (name: string, person: Employee) =>
 /** A sign-in record is live only while its person names it back: by id, and by the code it is
  * keyed under. */
 export async function namesBack(
-  storage: CStorageClient,
+  store: RecordStore,
   tenantId: string,
   name: string,
   user: StoredUser,
 ) {
-  const person = user.employeeId ? await readEmployee(storage, tenantId, user.employeeId) : null;
+  const person = user.employeeId ? await readEmployee(store, tenantId, user.employeeId) : null;
   return person !== null && namesPerson(name, person.employee);
 }
