@@ -1,0 +1,22 @@
+info:
+  name: The Boundary
+  type: folder
+  seq: 2
+
+request: {}
+
+docs:
+  content: |-
+    ## What a caller without the key, or with only a token, can learn
+
+    Every request here is expected to be refused or answered narrowly, and
+    each answer is the security design rather than a routing accident:
+
+    1. **Which listener** a route is registered on. The keyed routes are
+       unreachable from the open port because they are not there.
+    2. **The key** in front of the whole keyed listener, and **the read
+       token** in front of the whole open one, unknown paths included.
+    3. **What a status code may reveal**: no 405 anywhere, a uniform 401
+       without the credential, and a `/health` that says two things.
+    4. **Whose log a token reads**: its own tenant's, whatever the query says.
+  type: text/markdown

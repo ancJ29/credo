@@ -108,7 +108,7 @@ belongs to the next change to the walk: this one.
 
 ### 5. The orphans
 
-[`scripts/src/processes.ts#L47-L48`](../../scripts/src/processes.ts#L47-L48) stops a child when its
+[`scripts/src/running/processes.ts#L47-L48`](../../scripts/src/running/processes.ts#L47-L48) stops a child when its
 parent exits; a SIGKILL runs no handler, so the BFF and c-storage live on under parent 1, and the next
 run refuses: `$ROOT_DIR/logs/20261030-1838-stop-stray-stack.log#L2`, a c-storage of a test's stack,
 parent 1, up since 09:53.
@@ -251,7 +251,7 @@ raw." The stamp: "**Amended** <date> by the human: rule 7's raw pixel (Decide 30
   when: cases 1 to 7 each seen red from its assertion, `scripts/` green at 100 %; the reader on
   `$ROOT_DIR/walks/full-run-operator-2026-10-30-184201-66fa27c/` reads `fake/` against
   `bases-before/` as 6 of 54, 10 pixels each, shade 1.
-  *Evidence:* `scripts/src/pixels.ts` (PNG reader, raw compare), `strays.ts` (the choice from a `ps`
+  *Evidence:* `scripts/src/running/pixels.ts` (PNG reader, raw compare), `strays.ts` (the choice from a `ps`
   listing), `walks.ts` (`compare` and `strays`, the commands `walk/run.sh` calls, entry
   `walks-main.ts`); cases 1 to 7 each seen red from their assertion before the code (a stub first), and
   cases 1 and 6 broken once by hand (the zero test, the root test, the self test) and red; coverage of

@@ -4,10 +4,10 @@ import { createCStorageClient, registerCStorageService } from './c-storage';
 
 /**
  * The client sends what c-storage's Bruno collection sends. The collection is the service's own
- * description of its routes, run against the real server by `c-storage/scripts/e2e.sh`, so a
+ * description of its routes, run against the real server by `services/c-storage/scripts/e2e.sh`, so a
  * client that drifts from it is a client the real server would refuse.
  */
-const BRUNO = new URL('../../c-storage/bruno/', import.meta.url);
+const BRUNO = new URL('../../services/c-storage/bruno/', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, BRUNO), 'utf8');
 
 /** `name: value` pairs of the environment file, quotes off. */

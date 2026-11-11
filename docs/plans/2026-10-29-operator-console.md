@@ -74,8 +74,8 @@ operator to update password for the root user of clients" ([D](#d-a-clients-root
 | How the operator signs in | a name and a password at `/operator` ([`OperatorApp.tsx#L57`](../../ui/src/OperatorApp.tsx#L57), [`app.ts#L175`](../../bff/src/app.ts#L175)); the hash is scrypt ([`records.ts#L31`](../../shared/src/records.ts#L31)) |
 | How operators come to exist | one record, `operator.user.<name>` ([`records.ts#L9`](../../shared/src/records.ts#L9)). Locally `pnpm stack` writes it and prints its password ([`generator.ts#L40`](../../scripts/src/generator.ts#L40), [`stack.ts#L109`](../../scripts/src/stack.ts#L109)); on ridge `ops/operator.sh` writes it through the tunnel and shows the password on the terminal alone, `--replace` for a lost one ([`operator.sh#L3`](../../ops/operator.sh#L3), [`ridge.ts#L56`](../../scripts/src/ridge.ts#L56)). None is in an environment: the BFF holds c-storage's four names alone ([`env.ts#L4`](../../bff/src/env.ts#L4)), and an operator's key there was rejected ([ridge-app#L166](2026-10-28-ridge-app.md#L166)) |
 | What ridge holds for them | the one operator the human made at ridge-app's step 17 ([ridge-app#L809](2026-10-28-ridge-app.md#L809)); its sessions |
-| The session | a week per device, renewed in its last three days ([`sessions.ts#L13`](../../bff/src/sessions.ts#L13)); every operator route checks it and that the operator's record still exists ([`app.ts#L114`](../../bff/src/app.ts#L114)). Piece 2 re-keys sessions by a minted id, the operator's included |
-| What c-storage exposes | `GET /health`, before its key gate: `{status, buildVersion}`, the build a commit or `dev` ([`server.go#L88`](../../c-storage/internal/server/server.go#L88), [ridge](2026-10-28-ridge.md#which-build-is-running)) |
+| The session | a week per device, renewed in its last three days ([`sessions.ts#L13`](../../bff/src/calling/sessions.ts#L13)); every operator route checks it and that the operator's record still exists ([`app.ts#L114`](../../bff/src/app.ts#L114)). Piece 2 re-keys sessions by a minted id, the operator's included |
+| What c-storage exposes | `GET /health`, before its key gate: `{status, buildVersion}`, the build a commit or `dev` ([`server.go#L88`](../../services/c-storage/internal/server/server.go#L88), [ridge](2026-10-28-ridge.md#which-build-is-running)) |
 | What the BFF exposes | nothing: no route reads `/health`, and no answer may carry its body ([ridge-app#L319](2026-10-28-ridge-app.md#L319), [row 23](2026-10-28-ridge-app.md#L474)). Its commit is the function's description, set at each deploy ([`app.sh#L130`](../../ops/app.sh#L130)); the bundle carries none ([`bundle.ts#L10`](../../bff/src/bundle.ts#L10)) |
 | What the UI exposes | its commit in `index.html`'s metadata in S3 ([`app.sh#L150`](../../ops/app.sh#L150)); the bundle carries none |
 | Who reads them | `ops/check.sh`, in each deploy or the human's terminal: the three commits agree ([`check.sh#L140`](../../ops/check.sh#L140)), and the box's memory, disk and OOM kills over ssh. No browser reads any of it |
@@ -678,16 +678,16 @@ passkey on the human's own device for ridge's address (step 26).
   rows each seen red once; `pnpm check` and `bash ops/test.sh` green; live, `pnpm stack -- <command>`:
   a script with the software authenticator joins by the link, signs out and in, adds a passkey,
   removes one, is refused the last, replays an answer (401), and an options call leaves the record
-  count as it was. *Model files:* `bff/src/clients.ts` (writes that must find nothing, the index
+  count as it was. *Model files:* `bff/src/records/clients.ts` (writes that must find nothing, the index
   last), `sessions.ts`, `scripts/src/ridge.ts`. **Then stop:** for the full run's script.
 
   *Done 2026-10-30 10:26 +0700:* the pin `cf56ad8`, the rest `ebe878d`. *The pin:* `@simplewebauthn/server`
   14.0.3, released 2026-09-25, the newest release there is and past the cutoff of 2026-10-16; the browser
   half is the 14.x line's only release, 14.0.0 (2026-09-02), so no newer browser half was out on the cutoff
   either; read from the registry's metadata, no pnpm command; the human's install at 09:34 +07 added 24
-  packages, no warning. *Model files opened first:* `bff/src/clients.ts` (writes that must find nothing,
+  packages, no warning. *Model files opened first:* `bff/src/records/clients.ts` (writes that must find nothing,
   the roster last, as `createOperator` writes), `sessions.ts` (generalised, not copied: a `sliding` policy
-  beside the tenant's), `scripts/src/ridge.ts`. *What stands:* `bff/src/operator-auth.ts` (the routes and the
+  beside the tenant's), `scripts/src/ridge.ts`. *What stands:* `bff/src/routes/operator-auth.ts` (the routes and the
   session check), `operators.ts` (roster, account and link records), `challenge.ts` (signed, not stored),
   `env.ts` (`APP_ORIGIN`, https or localhost); `shared/src/records.ts`; `scripts/src/stack.ts` (the front's
   port picked before the BFF, the address `http://localhost:<port>`), `ridge.ts`, `generator.ts`,
@@ -726,7 +726,7 @@ passkey on the human's own device for ridge's address (step 26).
   `visual/src/cli.test.ts` alone passed (7 tests), and the second whole run, started at load 3.96 with
   no other gate by my reading of `uptime`, passed in full. Nothing in `visual/` changed in this step, so it
   is load, not a fault of this change; the test builds a production walks page and has a 60-second bound.
-  *Live:* `bff/src/operator-passkeys.route.test.ts` runs every case on the real c-storage;
+  *Live:* `bff/src/routes/operator-passkeys.route.test.ts` runs every case on the real c-storage;
   `scripts/src/stack.test.ts` runs `runStack`, the body of `pnpm stack -- <command>`, with a command that
   has the software authenticator join by `CREDO_OPERATOR_LINK`, sign out (204, then 401), sign in again,
   add a passkey, remove one (200), be refused the last (409), replay an answer (401) and make a client:
@@ -825,8 +825,8 @@ passkey on the human's own device for ridge's address (step 26).
   - **Warning fixed, 2026-10-30 12:33 +0700** (`3c2a37d`): `@simplewebauthn/server` 14.0.3's default
     algorithm list asks the runtime about ML-DSA-44, in `generateRegistrationOptions` and in
     `verifyRegistrationResponse` (`verifyAuthenticationResponse` asks only for a post-quantum key, so
-    it is left as it is). `bff/src/operator-auth.ts` names `PASSKEY_ALGORITHMS` (-8, -7, -257) once and
-    passes it to both. `bff/src/operator-algorithms.route.test.ts` holds the options' `pubKeyCredParams`
+    it is left as it is). `bff/src/routes/operator-auth.ts` names `PASSKEY_ALGORITHMS` (-8, -7, -257) once and
+    passes it to both. `bff/src/routes/operator-algorithms.route.test.ts` holds the options' `pubKeyCredParams`
     and that `SubtleCrypto.supports` is never called through a join and a sign-in; without the option it
     reads "expected [ …(4) ] to deeply equal [ …(3) ]" (the extra `-48`), and with the option dropped
     from the verify alone, "expected "supports" to not be called at all, but actually been called 1
@@ -844,7 +844,7 @@ passkey on the human's own device for ridge's address (step 26).
   - **F2** Low: the touch's "replayed" case was held by the authenticator's counter, not by the spent
     challenge. A new test, "refuses a touch replayed from a synced passkey, whose counter says nothing, and adds
     nothing", replays an add's touch (`{ counter: 0 }`) with fresh add options each time, so only the touch
-    can refuse it (`c3d8e77`); with `bff/src/operator-auth.ts`'s spent check deleted it reads "expected 201 to be 403". It
+    can refuse it (`c3d8e77`); with `bff/src/routes/operator-auth.ts`'s spent check deleted it reads "expected 201 to be 403". It
     is a test of its own because the touch test's operator already has a counter of 1 from its setup, and
     its replay shared the spent add token. `[FIXED]`
   - **F3** Info: in the jsdom replay of the full run's add, `hold` then `forget` did nothing. The test keeps
@@ -863,7 +863,7 @@ passkey on the human's own device for ridge's address (step 26).
   - **Sign-in:** the console's passkey routes stay in `bff/src/app.ts` and `main`'s name-and-password
     operator routes are dropped (the human's call 1). A session holds `main`'s string `generation` and the
     console's `issuedAt`; an operator's `generation` is its account's, as a string
-    (`bff/src/operator-auth.ts`). `main`'s `./sessions` and `tests/c-storage` exports sit beside the
+    (`bff/src/routes/operator-auth.ts`). `main`'s `./sessions` and `tests/c-storage` exports sit beside the
     console's `./operators` and `tests/join` ones.
   - **UI:** the user menu keeps `main`'s `passwordPath` and the console's `menuLinks`; the fake keeps the
     console's authenticator and `main`'s `signIns`, photos, QR secret and tab-kept `?fake` switch (`fakeParts`
@@ -965,7 +965,7 @@ passkey on the human's own device for ridge's address (step 26).
 - [x] **10. B's pages and walk, on the fake.** Who: 🤖, after step 9, about a day: the Operators page
   in place of its "coming later", the create and its link once, a new link, the delete's check, B's six
   scenes. **Note from step 8:** every add or remove of a passkey takes a touch that moves that passkey's
-  `lastUsedAt` (`bff/src/operator-auth.ts`), so the Operators page's "last sign-in" (case row 10) cannot be
+  `lastUsedAt` (`bff/src/routes/operator-auth.ts`), so the Operators page's "last sign-in" (case row 10) cannot be
   read from the passkeys' last use; B records the last sign-in on its own. Done when: as step 4, for B's rows. **Then stop:** for the preview.
 - [x] **11. B's fake walk.** Who: 👤, about 20 minutes. Done when: as step 5, for B's screens.
   **Then stop:** B's UI is fixed here.
@@ -1056,7 +1056,7 @@ passkey on the human's own device for ridge's address (step 26).
   `pnpm check` green; live, `pnpm stack -- <command>`: the operator sets the demo root's password,
   typed and then made, a typed one breaking the rule is a 400, the root's old session is a 401 at its
   next call, the old password is refused and the new one signs in. *Model files:* piece 2's password route (`PUT /api/employees/:id/password`) and
-  `bff/src/clients.ts`. **Then stop:** for the review.
+  `bff/src/records/clients.ts`. **Then stop:** for the review.
 - [x] **23. D's review.** Who: 🤖, another model, about an hour. Done when: as step 8. **Then stop:**
   for the full walk.
 - [x] **24. D's full walk.** Who: 👤 runs the script, about 20 minutes; 🤖 reads. Done when: as step
@@ -1126,7 +1126,7 @@ accept passkeys made for ridge's CloudFront name.
   levels.
 - **A synced passkey lives in the operator's own cloud account**, so whoever holds that account and
   the device's unlock holds the operator. *Accepted:* user verification is required.
-- **A BFF 503 for any cause but c-storage** would show c-storage as silent. *Guard:* row 40's test on
+- **A BFF 503 for any cause but services/c-storage** would show c-storage as silent. *Guard:* row 40's test on
   `me` and `services`. *Trigger:* any route of theirs that answers 503 otherwise.
 - **The page cannot see its own host down**, and no one watches while no page is open: open item 1.
 - **The virtual authenticator is Chromium's.** *Trigger:* WebKit in the walk; Safari's passkeys are

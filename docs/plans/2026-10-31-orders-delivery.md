@@ -74,7 +74,7 @@ the human's, an estimate.
   c-storage answers at most 1,000 records ([the demo seed's ceiling](2026-10-29-demo-seed.md#increments)):
   S2's busiest day is about 40, a week is 7 reads. An order and a request are named by their day and
   id in every address. **c-storage needs no change:** the list by prefix and the conditional write
-  exist ([`handlers.go`](../../c-storage/internal/server/handlers.go#L89)).
+  exist ([`handlers.go`](../../services/c-storage/internal/server/handlers.go#L89)).
 - **The numbering** is the staff numbering's model, not its record: `DH-` and five digits for an
   order, `GH-` for a request, each raised over its tag before its record is written; a number lost to
   a failed write is never given again. *Rejected:* a company's own prefix, which nothing asks for yet.
@@ -126,7 +126,7 @@ catalogue, so piece 2's `setup-1` and `staff-5` change their words and are asked
 | the orders list, the requests by driver | slice 1's `ListPage.tsx`; `StaffListPage.tsx` |
 | the order's form and page, a request's page | `AddPersonPage.tsx` and `PersonPage.tsx` (a record over its version, the conflict, the failed save) |
 | the confirm's driver and day, each cancel's check | `ArchivePanel` in `PersonPage.tsx`; the date input in `ownFields.tsx` |
-| the routes | slice 1's `bff/src/lists.ts` (a list never short); `raiseGiven` in [`staff.ts`](../../bff/src/staff.ts#L235) (the numbering); its archive route (a state over a tag) |
+| the routes | slice 1's `bff/src/routes/lists.ts` (a list never short); `raiseGiven` in [`staff.ts`](../../bff/src/routes/staff.ts#L235) (the numbering); its archive route (a state over a tag) |
 | the fake's calls | slice 1's list calls in `ui/src/fake.ts` |
 | the stack's generator | `seedClient` in `scripts/src/generator.ts`, its clock set as `driverFor`'s in `apply.ts` |
 | the seed's block | `dayEvents` in [`staff.ts`](../../scripts/src/demo/staff.ts#L245); `fill` and the day loop in [`apply.ts`](../../scripts/src/demo/apply.ts#L169); slice 1's `lists.ts` |
@@ -239,13 +239,13 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   `pnpm answers` ("62 written to answers.json, 0 refused"); `pnpm report` then read "0 waiting, 0 asked
   again, 0 no, 138 yes".
 - [x] **6. The BFF, at the gate.** Who: 🤖, after step 5 (the contract as the preview left it), about
-  ¾ day: the routes in `bff/src/orders.ts`, the lists opened to `orders.canView`, the stack's generator
+  ¾ day: the routes in `bff/src/routes/orders.ts`, the lists opened to `orders.canView`, the stack's generator
   writing the data set's week at its times. c-storage does not change, so `make check` is not run.
   Done when: the BFF half of rows 1 to 12 each seen red once; `pnpm check` exit 0 at 100 %, no warning.
   *Where it stopped:* nothing; done 2026-11-01 09:08. *Red evidence, rule 2:* the first run
   (`logs/20261031-1517-orders-delivery-red-bff-rows.log`) holds nothing: 20 of its 22 reds are the setup
   helper's `expected 404 to be 201` (`bff/tests/orders.ts#L77`). The reds that count are from the
-  assertions, by breaking the rule's line in `bff/src/orders.ts` and putting it back: the review's run
+  assertions, by breaking the rule's line in `bff/src/routes/orders.ts` and putting it back: the review's run
   (`logs/20261101-0832-orders-delivery-review-rule2.log`: rows 2, 5, 7, 8, 9, 11 and 12); row 3
   (`logs/20261101-0847-orders-delivery-red-row3.log`: the total as the first line's amount, 640000 for
   690000); row 6 (`logs/20261101-0847-orders-delivery-red-row6.log`: the numbering written back

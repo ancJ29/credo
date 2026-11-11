@@ -9,7 +9,7 @@ step. Never oneself. B2 ends B and closes open items 65 to 68. Cost: $0 a month.
 
 ## What shipped
 
-- Two routes in `bff/src/operator-team.ts`: a link (201, once) and a delete (204), each behind its own touch.
+- Two routes in `bff/src/routes/operator-team.ts`: a link (201, once) and a delete (204), each behind its own touch.
 - A new link removes nothing when made; the old passkeys go at its use, so a link never opened locks no one out.
 - The delete removes the links first, then the roster line, then the account; the review's Medium was that order
   (`4131696`).
@@ -40,10 +40,10 @@ step. Never oneself. B2 ends B and closes open items 65 to 68. Cost: $0 a month.
 - **The push,** when the human calls for it.
 - **Hazards, open items 70 to 73,** all Low:
   - **70:** a link made by the deleted one after the sweep passed a colleague's account survives the 204, and the
-    comment at `bff/src/operators.ts#L165-L166` claims more.
+    comment at `bff/src/records/operators.ts#L165-L166` claims more.
   - **71, 72:** a link's kind from a roster read that can be stale; `--replace` refuses names with a space or accent.
   - **73:** a delete refused at its roster write has already removed the links of an operator who stays listed
-    (`bff/src/operators.ts#L178-L191`); a new link recovers each.
+    (`bff/src/records/operators.ts#L178-L191`); a new link recovers each.
 
 ## Next
 

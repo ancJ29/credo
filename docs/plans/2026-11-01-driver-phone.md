@@ -60,13 +60,13 @@ and an hour and a quarter of the human's, an estimate.
 | **an order** | the state `fulfilled` |
 | **a delivery's photo** | one record a delivered request, `tenant.<id>.delivery-photo.<day>.<request id>`: `{ photo }`, a JPEG, PNG or WebP data URL of at most 200 KB |
 
-- **Where the photo is kept: c-storage** (Decide 45), a record of its own beside the request, as piece 2
+- **Where the photo is kept: services/c-storage** (Decide 45), a record of its own beside the request, as piece 2
   keeps a person's photo and piece 1 the logo. Its key does not start with the day's prefix, so a day's
   list never carries a photo (S2's 40 a day would be 10 MB). The stack carries a record this size
   already: the logo may be 200 KB ([`config.ts`](../../shared/src/config.ts#L61)). On the way: the
   BFF's body limit, Fastify's default of 1 MiB ([`app.ts`](../../bff/src/app.ts#L75)); API Gateway's
   10 MB ([`env.yml`](../../ops/env.yml#L243)); Lambda's 6 MB; c-storage's 10 MB
-  ([`httpx.go`](../../c-storage/internal/httpx/httpx.go#L15)). **Nothing new ships to ridge:** no
+  ([`httpx.go`](../../services/c-storage/internal/httpx/httpx.go#L15)). **Nothing new ships to ridge:** no
   resource, hop or key; $0 a month. *Rejected:* S3 behind presigned uploads, a bucket and a
   credential in each stack, for a demo (Decide 45; it comes with a client, as piece 2's trigger
   [said](2026-10-29-employee-list.md#L267)). *Trigger:* a signed client, whose 30 photos a day (about
@@ -135,7 +135,7 @@ and an hour and a quarter of the human's, an estimate.
 | --- | --- |
 | My deliveries; the driver's request page | slice 2's `DeliveriesPage.tsx` and `DeliveryPage.tsx` |
 | the camera, the preview, the shrink | [`PhotoPanel.tsx`](../../ui/src/PhotoPanel.tsx), `shrinkToPhoto` in [`photo.ts`](../../ui/src/photo.ts#L12) |
-| the routes | slice 2's `bff/src/orders.ts` (`issue` and its write order); the photo route in [`staff.ts`](../../bff/src/staff.ts#L600) |
+| the routes | slice 2's `bff/src/routes/orders.ts` (`issue` and its write order); the photo route in [`staff.ts`](../../bff/src/routes/staff.ts#L600) |
 | the menu's page | [`nav.ts`](../../ui/src/nav.ts) |
 | the fake's calls and cues | slice 2's delivery calls in `ui/src/fake.ts` |
 | the stack's generator | slice 2's week in `scripts/src/generator.ts` |
@@ -255,12 +255,12 @@ The map ([QA](../conventions/qa.md) rule 7); a dash is a part of the day not bui
   here and its fix lands before step 6. **Then stop.**
   *Evidence:* 20 of 20 answers yes on 2026-11-01 about 10:2x, for build `driver-phone`@`d60486b27`; `pnpm answers` wrote 20 to `visual/answers.json`, 0 refused (the 4 asked again replaced, 16 new); no case added.
 - [x] **6. The BFF, at the gate.** Who: 🤖 (Sonnet), after step 5 (the contract as the preview left
-  it), about ½ day: the three routes and the deliver in `bff/src/orders.ts`, the order's shown request
+  it), about ½ day: the three routes and the deliver in `bff/src/routes/orders.ts`, the order's shown request
   and its cancel's refusal of a fulfilled order, the stack's generator delivering the data set's. c-storage does not change, so
   `make check` is not run. Done when: the BFF half of rows 1, 2 and 4 to 8 each seen red once;
   `pnpm check` exit 0 at 100 %, no warning.
   *Evidence (no whole check, as ordered):* the BFF half of each row seen red once from its own
-  assertion, one break at a time, each put back, each in its own log (`bff/src/deliveries.route.test.ts`):
+  assertion, one break at a time, each put back, each in its own log (`bff/src/routes/deliveries.route.test.ts`):
   row 1 (`mustCan` dropped from `mustBeDriver`): `logs/20261101-1055-driver-phone-red-row1.log`, `#L105`
   200, not 403; row 6 (`asShown` returns the order unchanged for a delivered request):
   `logs/20261101-1055-driver-phone-red-row6.log`, `#L246` 'confirmed', not 'fulfilled' (`#L250` is the next
@@ -339,7 +339,7 @@ The demo's steps 5 and 6 need none of these; each waits for its trigger.
    for today (Decide 42). *Trigger:* a real client's day.
 4. **No signal:** one send and a "try again" by hand; nothing queued, nothing sent by itself.
    *Trigger:* a real client's drivers.
-5. **The photo in c-storage** until a client signs, then S3 (Decide 45). *Trigger:* a signed client.
+5. **The photo in services/c-storage** until a client signs, then S3 (Decide 45). *Trigger:* a signed client.
 6. **A delivered request beside a cancelled order** (slice 2's review, finding 3): the order's cancel
    drops a request write that moved. The fix is in slice 2's route: read the request again, and refuse
    a delivered one (409). *Trigger:* the orchestrator places it, or such a pair is seen.

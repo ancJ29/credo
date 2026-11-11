@@ -3,7 +3,7 @@
 **Where it stands — 2026-11-02 11:10 +07:** all four steps done and reviewed (Opus: no High or Medium); the recap is written and the findings are items 42 to 45. Waiting for the merge and the human's push.
 
 > **Drafted** 2026-11-02 by the machine, on the human's yes of 10:4x +07 (Decide 53 amended), from
-> `.github/workflows/seed.yml`, `scripts/src/demo/apply.ts`, `bff/src/orders.ts` and
+> `.github/workflows/seed.yml`, `scripts/src/demo/apply.ts`, `bff/src/routes/orders.ts` and
 > [the demo seed's plan](2026-10-29-demo-seed.md) at `5eda430`.
 
 ## At a glance

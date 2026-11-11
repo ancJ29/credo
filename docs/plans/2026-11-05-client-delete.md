@@ -8,7 +8,7 @@ the New root password button already there (`ui/src/ClientsPage.tsx#L56-L66`), a
 that removes the client and every record it owns. Only the operator reaches the console.
 
 The cheapest safe path is the mirror of the create. `createClient` writes the code's index **last**,
-so a failure before it leaves the code free (`bff/src/clients.ts#L44-L52`); a delete writes it
+so a failure before it leaves the code free (`bff/src/records/clients.ts#L44-L52`); a delete writes it
 **first**, so the client is dark from the first write. The index is the one door: `resolveTenant`
 reads `client.<code>` on every call and answers 404 without it (`bff/src/app.ts#L99-L105`), so
 removing it ends every session of that client at its next step and leaves no sign-in or session
@@ -16,7 +16,7 @@ record anyone can reach. Then the tenant's records go, swept by the prefix the k
 keeps, `tenant.<id>.` (`shared/src/records.ts#L21-L23`).
 
 **The price:** the BFF's function times out at 10 seconds (`ops/env.yml#L223`), c-storage lists at
-most 1,000 records (`c-storage/internal/store/store.go#L132`) and deletes one key a call
+most 1,000 records (`services/c-storage/internal/store/store.go#L132`) and deletes one key a call
 (`#L125-L127`), so one request cannot finish a large client. The route does bounded work and says
 how much is left; the page presses on until the client is gone. A sweep that dies between presses
 leaves records no code can reach: clearing those needs c-storage's own key, the human's act — the
@@ -43,9 +43,9 @@ its records are gone. Walkable end to end on the fake and through the stack.
       list with the button, the page pressing on with its count left) are held by
       `DeleteClientPage.test.tsx`, `ClientsPage.test.tsx` and `fake.test.tsx` in jsdom; `pnpm fake`
       serves them to a browser, which the sandbox cannot start, so it is the human's look. One
-      line outside `ui/`/`shared/`: `'confirm-delete-client'` in `bff/src/challenge.ts`'s `Purpose`
+      line outside `ui/`/`shared/`: `'confirm-delete-client'` in `bff/src/calling/challenge.ts`'s `Purpose`
       type, which the shared act list forces to compile; no route.
-- [x] **2. The route through the stack** (~30 min). `deleteClient` in `bff/src/clients.ts`, one
+- [x] **2. The route through the stack** (~30 min). `deleteClient` in `bff/src/records/clients.ts`, one
       route in `app.ts` beside the create (`#L377-L387`). Every check before any write, as
       `root-password.ts#L27-L48` orders its own: the live session (401); the code parsed (400); the
       index read (404, before anything of the client is read); the body (400); the touch (403). Then
@@ -55,8 +55,8 @@ its records are gone. Walkable end to end on the fake and through the stack.
       `pnpm -C bff test clients-delete` is green and `pnpm stack` shows a deleted client's `me`
       answering 404.
       *Done 11-05* (ticked after the stack look): the code is `deleteClient` in
-      `bff/src/clients.ts`, the route in `bff/src/clients-delete.ts`, its cases in
-      `bff/src/clients-delete.route.test.ts` (20 after the review round), all green. On
+      `bff/src/records/clients.ts`, the route in `bff/src/routes/clients-delete.ts`, its cases in
+      `bff/src/routes/clients-delete.route.test.ts` (20 after the review round), all green. On
       `pnpm stack` a client's root signed in (200) and its `me` answered 200; one delete press with a
       fresh touch answered `{ left: 0 }`; then the same session's `me` answered 404, the root's
       sign-in 404, the operator's list no longer held the client (the data set's other two stayed),
@@ -126,7 +126,7 @@ its records are gone. Walkable end to end on the fake and through the stack.
   **one touch a deletion, not one a press**: a resume reads the deletion record as proof the act was
   allowed, since asking four times through one sweep teaches the operator to tap past it.
 - **Who may do it: today's permission, unchanged** — a live operator session plus the touch, what
-  deleting a colleague already takes (`bff/src/operator-team.ts#L117-L122`). The operator realm has
+  deleting a colleague already takes (`bff/src/routes/operator-team.ts#L117-L122`). The operator realm has
   no roles to add one to.
 - **No audit line is kept.** `recordKeys` holds no log of any kind (`shared/src/records.ts#L7-L69`),
   and a log the console never reads would be a layer ahead of its caller. The deletion record is the
@@ -147,8 +147,8 @@ its records are gone. Walkable end to end on the fake and through the stack.
   The page of a client no longer in the list offers to continue blindly: the route answers 404
   where there is nothing to continue.
 - **The sweep retries a bounded number of times and never past them**, as `deleteOperator` does on a
-  moved roster (`bff/src/operators.ts#L168-L196`); `more` is read as a signal to press on, not as
-  the error `listClients` makes of it (`bff/src/clients.ts#L89-L91`).
+  moved roster (`bff/src/records/operators.ts#L168-L196`); `more` is read as a signal to press on, not as
+  the error `listClients` makes of it (`bff/src/records/clients.ts#L89-L91`).
 
 ## The human's question
 

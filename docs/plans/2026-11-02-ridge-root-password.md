@@ -32,15 +32,15 @@ Nothing new in the cloud, $0 a month. About 6 machine hours and 25 of the human'
 ## Why a command, and which code it runs
 
 - **The root's sign-in is one record,** `tenant.<id>.user.root` ([`records.ts`](../../shared/src/records.ts#L149-L164)):
-  a scrypt hash by `hashPassword` ([`password.ts`](../../bff/src/password.ts#L21)), `passwordAt`, and a `generation`
+  a scrypt hash by `hashPassword` ([`password.ts`](../../bff/src/calling/password.ts#L21)), `passwordAt`, and a `generation`
   every client call compares ([`app.ts`](../../bff/src/app.ts#L154-L163)), so a new one ends every session.
 - **No route sets it without the old one:** the root's own change asks the current password
   ([`app.ts`](../../bff/src/app.ts#L322-L339)); the root's route for a person refuses a record naming no person
-  ([`staff.ts`](../../bff/src/staff.ts#L482-L508)); the first is `newPassword()` at the create
-  ([`clients.ts`](../../bff/src/clients.ts#L63)); `CREDO_PEOPLE` is the local stack's alone
+  ([`staff.ts`](../../bff/src/routes/staff.ts#L482-L508)); the first is `newPassword()` at the create
+  ([`clients.ts`](../../bff/src/records/clients.ts#L63)); `CREDO_PEOPLE` is the local stack's alone
   ([`stack.ts`](../../scripts/src/stack.ts#L54)). Minting a root session as the seed does buys nothing: the own change
   still asks the current password.
-- **So the command calls piece 2's write** (`staff.ts#L493-L507`), lifted into `bff/src/staff-records.ts` beside
+- **So the command calls piece 2's write** (`staff.ts#L493-L507`), lifted into `bff/src/records/staff-records.ts` beside
   `readSignIn` and exported as `@credo/bff/staff-records`, as D's plan says it will lift it: one home for the write
   that ends sessions, and D's step 5 finds it done. No hash is written by hand.
 
@@ -120,7 +120,7 @@ at 100 %.
   `scripts/src/root-password.ts`, a file of its own beside `ridge.ts` (which only routes the command and the
   exit 2); `scripts/src/ridge-seed.test.ts` for `scripts/src/ridge-root-password.test.ts`; `ops/test.sh`'s
   seed section for its new section (placed between the operator's and the seed's). The lift is
-  `setSignInPassword` in `bff/src/staff-records.ts`, exported as `@credo/bff/staff-records`; the person route
+  `setSignInPassword` in `bff/src/records/staff-records.ts`, exported as `@credo/bff/staff-records`; the person route
   calls it with `employeeId` as `owns`, the door with `root`. Rows 1 to 8 each seen red once from their own
   assertion: scripts 1, 2, 4, 5, 6, 7 by a changed line each (the write skipped, the rule check, the
   generation kept, the read-back's sign-out, the mapping check, the set-list), restored after; ops 2, 3, 6, 8 by

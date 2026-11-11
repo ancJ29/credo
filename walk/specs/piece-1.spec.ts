@@ -6,6 +6,7 @@ import {
   type Language,
   ROUTES,
   type TenantConfig,
+  STACK_ENV,
 } from '@credo/shared';
 import { DICTIONARIES, LANGUAGE_NAMES } from '@credo/ui/words';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
@@ -20,11 +21,14 @@ import { required, shot, WIDTHS } from '../support';
  * own dictionaries, so a renamed label turns this red where it was renamed.
  */
 
-const CODE = required('CREDO_CLIENT_CODE');
+const CODE = required(STACK_ENV.CREDO_CLIENT_CODE);
 const LINK = `/login?client-code=${CODE}`;
 /** A code no client holds, for screen 9. */
 const NO_SUCH_COMPANY = 'no-such-company';
-const ROOT = { name: required('CREDO_ROOT_NAME'), password: required('CREDO_ROOT_PASSWORD') };
+const ROOT = {
+  name: required(STACK_ENV.CREDO_ROOT_NAME),
+  password: required(STACK_ENV.CREDO_ROOT_PASSWORD),
+};
 const SCOPE = { [CLIENT_HEADER]: CODE };
 
 const NEW_NAME = 'Minh Phát Sài Gòn';
@@ -54,7 +58,7 @@ async function signedInAsRoot(request: APIRequestContext) {
 }
 
 test.beforeAll(async ({ playwright }) => {
-  const request = await playwright.request.newContext({ baseURL: required('CREDO_URL') });
+  const request = await playwright.request.newContext({ baseURL: required(STACK_ENV.CREDO_URL) });
   original = ((await (await request.get(ROUTES.config, { headers: SCOPE })).json()) as ConfigDoc)
     .config;
   await request.dispose();

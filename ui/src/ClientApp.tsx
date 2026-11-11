@@ -10,41 +10,40 @@ import {
 } from '@credo/shared';
 import { type ReactElement, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
-import { AddCustomerPage } from './AddCustomerPage';
-import { AddPersonPage } from './AddPersonPage';
-import { AddProductPage } from './AddProductPage';
+import { AddRecordPage } from './pages/client/AddRecordPage';
+import { AddPersonPage } from './pages/client/AddPersonPage';
 import { type Api, ApiError } from './api';
-import { Boot } from './Boot';
+import { Boot } from './frame/Boot';
 import { BEFORE_CONFIG } from './brand';
 import { localToday } from './day';
 import type { DeviceStore } from './device';
-import { DeliveriesPage } from './DeliveriesPage';
-import { DriverDayPage } from './DriverDayPage';
-import { CustomerPage } from './CustomerPage';
-import { DeliveryPage } from './DeliveryPage';
-import { MyDeliveriesPage } from './MyDeliveriesPage';
-import { MyDeliveryPage } from './MyDeliveryPage';
-import { ImportPage } from './ImportPage';
-import { ListImportPage } from './ListImportPage';
-import { ListPage } from './ListPage';
+import { DeliveriesPage } from './pages/client/DeliveriesPage';
+import { DriverDayPage } from './pages/client/DriverDayPage';
+import { DeliveryPage } from './pages/client/DeliveryPage';
+import { MyDeliveriesPage } from './pages/client/MyDeliveriesPage';
+import { MyDeliveryPage } from './pages/client/MyDeliveryPage';
+import { ImportPage } from './pages/client/ImportPage';
+import { ListImportPage } from './pages/client/ListImportPage';
+import { ListPage } from './pages/client/ListPage';
 import { type PageProps } from './page';
 import { shrinkToProof } from './photo';
-import { PersonPage } from './PersonPage';
-import { ProductPage } from './ProductPage';
-import { type Look, Providers } from './Providers';
+import { PersonPage } from './pages/client/PersonPage';
+import { RecordPage } from './pages/client/RecordPage';
+import { type Look, Providers } from './frame/Providers';
+import { LISTS, type ListKind } from './listSheet';
 import { mayOpen, type Page, pagesOf } from './nav';
-import { MorePage } from './MorePage';
-import { Notice } from './Notice';
-import { NewOrderPage, OrderPage } from './OrderPage';
-import { OrdersPage } from './OrdersPage';
-import { OwnPasswordPage } from './OwnPasswordPage';
-import { QrLanding } from './QrLanding';
-import { SettingsPage } from './SettingsPage';
-import { Shell } from './Shell';
-import { StaffListPage } from './StaffListPage';
-import { StaffSetupPage } from './StaffSetupPage';
-import { SignIn } from './SignIn';
-import { UnknownClient } from './UnknownClient';
+import { MorePage } from './pages/MorePage';
+import { Notice } from './pages/client/Notice';
+import { NewOrderPage, OrderPage } from './pages/client/OrderPage';
+import { OrdersPage } from './pages/client/OrdersPage';
+import { OwnPasswordPage } from './pages/client/OwnPasswordPage';
+import { QrLanding } from './pages/client/QrLanding';
+import { SettingsPage } from './pages/client/SettingsPage';
+import { Shell } from './frame/Shell';
+import { StaffListPage } from './pages/client/StaffListPage';
+import { StaffSetupPage } from './pages/client/StaffSetupPage';
+import { SignIn } from './pages/SignIn';
+import { UnknownClient } from './pages/client/UnknownClient';
 
 type Props = {
   api: Api;
@@ -58,6 +57,9 @@ type Props = {
   /** Makes a delivery's photo small enough to send; the browser's own by default. */
   shrink?: (file: File) => Promise<string>;
 };
+
+/** Every list kind there is: a kind added to `LISTS` gets its list, add and import routes here. */
+const KINDS = Object.keys(LISTS) as ListKind[];
 
 const SIGNED_OUT = 401;
 const NOT_FOUND = 404;
@@ -371,14 +373,14 @@ export function ClientApp({
                 path="/staff-setup"
                 element={guarded(user, 'staff-setup', <StaffSetupPage {...pageFor(user)} />)}
               />
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}`}
                   element={guarded(user, kind, <ListPage kind={kind} {...pageFor(user)} />)}
                 />
               ))}
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}/new`}
@@ -386,26 +388,21 @@ export function ClientApp({
                     // Whoever may edit orders adds, as they correct these records (case-table row 11),
                     // and only through a page their menu lists: the list's own question comes first.
                     mayOpen(user, kind) && can(user, 'orders.canEdit') ? (
-                      kind === 'customers' ? (
-                        <AddCustomerPage {...pageFor(user)} />
-                      ) : (
-                        <AddProductPage {...pageFor(user)} />
-                      )
+                      <AddRecordPage kind={kind} {...pageFor(user)} />
                     ) : (
                       <Notice kind="forbidden" />
                     )
                   }
                 />
               ))}
-              <Route
-                path="/customers/:id"
-                element={guarded(user, 'customers', <CustomerPage {...pageFor(user)} />)}
-              />
-              <Route
-                path="/products/:id"
-                element={guarded(user, 'products', <ProductPage {...pageFor(user)} />)}
-              />
-              {(['customers', 'products'] as const).map((kind) => (
+              {KINDS.map((kind) => (
+                <Route
+                  key={kind}
+                  path={`/${kind}/:id`}
+                  element={guarded(user, kind, <RecordPage kind={kind} {...pageFor(user)} />)}
+                />
+              ))}
+              {KINDS.map((kind) => (
                 <Route
                   key={kind}
                   path={`/${kind}/import`}

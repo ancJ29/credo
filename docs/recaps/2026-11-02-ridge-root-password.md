@@ -14,7 +14,7 @@
 
 | What | Where |
 | --- | --- |
-| the password write, lifted from the staff route so there is one home for the write that mints a new generation | [`setSignInPassword`](../../bff/src/staff-records.ts#L69) |
+| the password write, lifted from the staff route so there is one home for the write that mints a new generation | [`setSignInPassword`](../../bff/src/records/staff-records.ts#L69) |
 | the command: `--check` with no connection, the reads before any write, the set-list of a stop | [`root-password.ts`](../../scripts/src/root-password.ts#L40), [`ridge.ts`](../../scripts/src/ridge.ts#L51) |
 | the script: ridge alone, main, a terminal, the password on a pipe, `== refused` exit 2 until a write | [`root-password.sh`](../../ops/root-password.sh) |
 | its guards and the runbook | [`ops/test.sh`](../../ops/test.sh#L1850), [`ops/README.md`](../../ops/README.md#L192) |

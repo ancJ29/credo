@@ -1,0 +1,60 @@
+info:
+  name: Mint a Read Token
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{keyedUrl}}/api/read-tokens"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{writeKey}}"
+  body:
+    type: json
+    data: |-
+      { "clientId": "{{clientId}}" }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setVar("readToken", (res.body && res.body.token) || "");
+    - type: tests
+      code: |-
+        test("200 with a token", function() {
+          expect(res.getStatus()).to.equal(200);
+          expect(res.getBody().token).to.be.a('string').and.not.empty;
+        });
+
+        test("expires within the hour", function() {
+          const left = Date.parse(res.getBody().expiresAt) - Date.now();
+          expect(left).to.be.above(59 * 60 * 1000);
+          expect(left).to.be.at.most(60 * 60 * 1000);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Mint the token a browser reads one tenant's feeds with. **Keyed URL with
+  `{{writeKey}}`**: the client's system calls it, and hands its browser the
+  token, never the key.
+
+  **Body** — `{ clientId }`, one JSON object, as a write's: anything after it
+  but whitespace is a 400, over 8 MiB a 413. `clientId` is required and may
+  not contain `#`, as on a write.
+
+  **Returns** `200 { token, expiresAt }`. `expiresAt` is RFC 3339, UTC to the
+  millisecond, one hour on: mint again before it. The token reads `clientId`'s
+  entries and no other tenant's, and neither writes nor mints.
+
+  **No token can be revoked alone.** A new `ACTIVITY_WRITE_KEY` ends every
+  token, and every write until the caller holds the new key.
+
+  This request sets `{{readToken}}` for the two feeds after it.

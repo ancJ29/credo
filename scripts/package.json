@@ -4,16 +4,19 @@
   "type": "module",
   "exports": {
     ".": "./src/stack.ts",
-    "./pixels": "./src/pixels.ts"
+    "./pixels": "./src/running/pixels.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "check": "bash ../ops/gate.sh scripts",
     "test": "vitest run --coverage",
     "stack": "node --import tsx src/main.ts",
     "demo": "node --import tsx src/demo-main.ts",
     "demo-files": "node --import tsx src/demo-files-main.ts",
+    "counts": "node --import tsx src/counts-main.ts",
     "fake": "node --import tsx src/fake-main.ts",
-    "walks": "node --import tsx src/walks-main.ts"
+    "walks": "node --import tsx src/walks-main.ts",
+    "local": "node --import tsx src/local-main.ts"
   },
   "dependencies": {
     "@credo/bff": "workspace:*",

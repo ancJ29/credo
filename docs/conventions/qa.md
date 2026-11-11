@@ -1,18 +1,18 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-07, from the day's parked corrections and the move of the machine's own
-> rules out of one kind's skill: a look is not a gate, what a package's gate is, and how a check is
-> run and logged here, and the load rule cut to what a run can meet. This file holds the rules as
-> they stand; their history is in `git log`.
-> Binds every feature's plan, every test, every check run here and every merge into `main`.
+> **Last amended** 2026-11-11, from the human's proposal that the whole check stop gating each merge:
+> a finished piece lands on `pre-merge`, the whole check runs there at most every two hours, and
+> `main` holds only checked trees. This file holds the rules as they stand; their history is in
+> `git log`.
+> Binds every feature's plan, every test, every check run here and every landing on `pre-merge`.
 
 ## At a glance
 
 **The human has up to five points in a feature, each a look:** its walk, a page or a diagram,
-told in a few sentences, answered yes or no. **A look is not a gate**
-([confirmation points](collaboration.md#confirmation-points)): the work goes on past it, the
-point open; a no reopens the piece; the human's yes gates only the act.
+answered yes or no. **A look is not a gate**
+([confirmation points](collaboration.md#confirmation-points)): the work goes on past it; a no
+reopens the piece.
 
 ```mermaid
 flowchart LR
@@ -20,25 +20,26 @@ flowchart LR
   cheap --> look["fake walk<br/>👤"] --> red["red<br/>🤖 each case once"]
   red --> green["green · 100 %<br/>🤖"]
   green --> review["review<br/>🤖 another model"]
-  review --> merge["merge into main<br/>🤖 whole check"]
+  review --> merge["land on pre-merge<br/>🤖 quick check"]
   merge --> on["work goes on<br/>🤖"]
+  merge -. every two hours .-> main["main<br/>🤖 whole check"]
   green --> walks["walks<br/>👤 yes or no"]
   walks -- yes --> act["the act<br/>👤 deploy · partner"]
-  review -. a finding .-> red
+  review -. a finding, once .-> red
   walks -. a no .-> table
 ```
 
 The eight rules, [below](#the-rules):
 
-1. Each feature starts with a case table, one behaviour a line, all the machine's.
+1. Each feature starts with a case table, one behaviour a line.
 2. A test counts only if it fails when its behaviour breaks: each is seen red once; a route
    only a test calls is dead.
 3. Each case is tested as near its code as it can be.
 4. Each test is named after its case; no second list.
-5. Another model reviews the code before it merges; each finding fixed, rejected or
-   deferred, with its reason.
+5. Another model reviews the code before it merges; one review, one fix pass; each finding
+   fixed, rejected or deferred, with its reason.
 6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
-   package's gate names all five `pnpm check` steps.
+   package's gate is one command; the whole check runs on `pre-merge` at most every two hours.
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
    until its look changes; pixels counted raw.
 8. Every line is tested, or says why not.
@@ -92,12 +93,22 @@ The map of walks. A dash is a part of the day not built yet.
 4. **The test names are the cases.** Once built, each test's name is its case's sentence; the
    plan's table stays as it was at its commit, never kept in step. *Rejected:* a test-case file
    beside the tests. It repeats the names, and goes stale at the first test nobody copies in.
-5. **A model other than the author's reviews the code before it merges into `main`**, with its
+5. **A model other than the author's reviews the code before it lands on `pre-merge`**, with its
    tests and the case table, asking of each test whether breaking its case would turn it red.
    The author's model is the one in the commits' `Co-Authored-By` line. *Rejected:* the
    author's model reviewing its own code. It shares the blind spots that wrote it. Each finding is
    listed in the recap and tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`, with its reason; a
-   deferred one names where it went. A finding made without context that a memo or the plan
+   deferred one names where it went.
+   **One review, one fix pass, and that pass's own gate is the re-check.** The reviewer may be
+   asked to reread the fixed lines; nothing else reads the piece again. What a second round would
+   raise is deferred by the tagging above, never handed to a third reviewer — with one exception,
+   deferred in no round: a finding whose text, acted on, would cost something that cannot be
+   undone. A fix that meets the same red twice stops there
+   ([pacing](collaboration.md#pacing-one-piece-at-a-time)'s budget), and the stop is reported as a
+   diagnosis the human hears. *Rejected:* rounds until the reviewer has nothing left to say. A
+   second reviewing model costs a whole read of the piece to confirm what the fix pass's own gate
+   has already read back, and rounds with no cap have no end a session can name.
+   A finding made without context that a memo or the plan
    already holds is rejected, naming that home. *Why:* treating every finding as a bug erodes
    trust in the memos, and treating none as one misses real defects.
 6. **A flaky red is a defect: never retried until green.** A rerun may reproduce it, but its
@@ -105,20 +116,40 @@ The map of walks. A dash is a part of the day not built yet.
    several worktrees running at once, load is the normal case. *Rejected:* a retry setting,
    which greens the real red too; a longer timeout, which hides the cause.
 
-   **Run the gate that can change a conclusion:** nothing for a read-only task, typecheck and one
-   test while iterating, the touched package's gate at a commit, the whole only before shipping.
-   *Rejected:* the whole gate at every step. Several worktrees run at once, and a full run's
-   minutes buy no verdict a smaller gate does not already give.
+   **Run what can change a conclusion:** nothing for a read-only task; while iterating, whatever
+   answers the session's question (a typecheck, one test), which is not the gate and is never
+   reported as one; the gate, one command, before a stop or a commit: the touched package's at a
+   commit, plus the citation test ([below](#the-whole-check-on-pre-merge)); the whole check on
+   `pre-merge`, at most every two hours, never on each merge result. *Rejected:* the whole gate
+   at every step or every merge. Several worktrees run at once, and a full run's minutes buy no
+   verdict a smaller gate does not already give.
 
-   **A package's gate is the whole `pnpm check` on the merge result; where it is scoped to one
-   package, every one of its five steps is named and run: typecheck, eslint, prettier, that
-   package's tests, knip.** A gate that reports an exit code without naming the steps it ran has
-   not reported a gate, and a step left out is a step nobody ran. *Why:* two sessions on
-   2026-11-07 each assembled a package gate by hand, one of the five steps missing from the
-   second; the two lint errors it let through reached `main` and would have failed the deploy's
-   own job whatever else was fixed. **A branch's green describes the branch, not the tree the
-   deploy will check**, so the whole check belongs on the merge result before a merge — `main`
-   taken in first, as [pacing](collaboration.md#pacing-one-piece-at-a-time) says, then the check.
+   **The gate is one command: `pnpm check` for all six TypeScript packages, on `pre-merge`,
+   and `pnpm --filter @credo/<pkg> check` for one package.** The root's is `package.json`'s
+   `scripts.check` (`bash ops/gate.sh`), each package's is its own `scripts.check`
+   (`bash ../ops/gate.sh <pkg>`), and both run [`ops/gate.sh`](../../ops/gate.sh), which runs
+   typecheck and test through `run_each` and eslint, prettier and knip through `run_step`, each
+   whatever any other did, waits for the load and the gate lock, and writes one log ending
+   `== exit <code>`. **A session reports the gate by running that command and citing its log; it
+   builds no gate from steps.** A step the package lacks is named in the log's `== steps:` line as
+   skipped, and a skip is not a pass, but the standing skip is not a red: `walk` has no `test`
+   script, so every whole gate, green ones included, ends `0+1skipped` for tests. A new skip is
+   the one to question. A `<pkg>` that does not exist aborts before three of the steps and writes
+   no `== steps:` line, so a log without that line is itself the signal.
+   *Why:* two sessions on 2026-11-07 each assembled a package gate by hand, one of the five steps
+   missing from the second; the two lint errors it let through reached `main` and would have
+   failed the deploy's own job whatever else was fixed. **What the command does not do:** it does
+   not cover c-storage, whose gate is `make check` in `services/c-storage/`; a bare `walk/run.sh` takes no
+   lock, so a gate started during one still reddens it; and `pnpm -r run check` exists and is the
+   wrong command (six gates on one lock, with eslint, prettier and knip run six times). Its
+   details are in `ops/README.md`'s "The gate". **A plan in `docs/plans/` written before
+   2026-11-09 may spell a hand-assembled chain of the five steps: it was true when written and is
+   a dated record, not a living document, so it is never read as the current way and never
+   edited to match.** **A branch's green describes the branch, not the tree the
+   deploy will check**, so the whole check belongs on `pre-merge`, where the pieces meet, and
+   `main` is moved only to a tree it has checked
+   ([below](#the-whole-check-on-pre-merge)); a piece takes `pre-merge` in before its own checks, as
+   [pacing](collaboration.md#pacing-one-piece-at-a-time) says.
 7. **The screens are the end-to-end check.** Each person's part of the business's day is walked
    screen by screen, on that person's device. The map places each walk: the day's stages
    across, its people down; an empty cell shows what is missing. A walk shows the main path and
@@ -161,6 +192,56 @@ The map of walks. A dash is a part of the day not built yet.
    is deleted, and "we choose not to cover" has nowhere to be said. *Rejected:* a threshold
    below 100, where a new untested line gets in while the number holds.
 
+## The whole check on `pre-merge`
+
+Rule 6 says what a gate is; this says where each runs. **A finished piece merges into a branch
+named `pre-merge`, never straight into `main`, and a piece's branch starts from `pre-merge`'s tip.**
+*Why:* `main` lags `pre-merge`, so a piece started from `main` would miss the work landed since,
+and a collision between two pieces' files (a page citing a file another piece moved) would meet
+only on the shared branch; the one-second citation test shows it before the landing once the piece
+has taken `pre-merge` in.
+
+- **A piece's own check at each commit, its quick check, is the touched package's whole check
+  (`pnpm --filter @credo/<pkg> check`) plus the citation test,
+  `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`**, about one second, for
+  every piece and not only for a page. *Why:* "its touched tests" alone lets format, lint,
+  unused-code and coverage faults, and pages citing a file a code change moved, onto the branch
+  everyone shares, where each holds back all work until the next run. A code piece that moves a
+  file adds `scripts/src/counts.test.ts` to the same command (`vitest run src/citations.test.ts src/counts.test.ts`), whose rules name code files.
+- **For a change to `.md` files only, the citation test is the whole check.** No formatter
+  governs markdown here (`.prettierignore` excludes `*.md`), and no typecheck, lint or knip step
+  reads a `.md` file; a "prettier exit 0" on a documents change read no file and is not reported
+  as evidence. The citation test reads every living document's citations, and a conflict marker
+  in `docs/open-items.md` or a link to a heading that moved is read by a person, not by a step.
+- **The whole check (`pnpm check`) runs on `pre-merge` at most once every two hours, and only
+  when `pre-merge` has moved past the last commit it checked.** The orchestrator starts it at its
+  first stop after two hours have passed, and once more before the day's push. It reads
+  `git rev-parse HEAD` in `pre-merge`'s worktree as it starts, since the gate's log does not name
+  the commit it checked, and nothing lands on `pre-merge` while the check runs: the tree would
+  change under it.
+- **A green moves `main` to the commit that run checked, not to `pre-merge`'s tip:** from
+  `main`'s worktree, `git merge --ff-only <that commit>`. So `main` holds only checked trees;
+  pushes and deploys stay as they were, the human's.
+- **A red names its step and is fixed forward on the piece's branch, which lands again, or the
+  piece is taken out by a revert of its landing on `pre-merge`, never by rewriting `pre-merge`:**
+  branches started from the tip hold its commits. Landing a reverted branch again is a no-op:
+  after `git revert -m 1` of a landing, merging the same branch with nothing new on it says
+  "Already up to date." and its work stays out; only reverting the revert brings it back. New
+  work never waits on a red. A red made of this machine's stalls is read by
+  [the load rules](#the-load-and-what-a-red-means-under-it), and a rerun is diagnosis, not a
+  verdict.
+- **A piece counts as merged when `main` holds it**, at the fast-forward, not at the landing.
+- **Flips:** the orchestrator's start becomes a timer if work ever lands on `pre-merge` while no
+  orchestrator session is running, or if its stops come more than two hours apart while the branch
+  has moved; the piece's start moves back to `main` if pieces are taken out of `pre-merge` more
+  than rarely; the check gets a second, detached checkout if landings waiting on a run pass ten
+  minutes a day.
+
+*Rejected:* the whole check at every merge result: a whole run per landing, for a collision the
+one-second test shows first. *Rejected:* a scheduled job in the
+human's terminal, which runs with the human's full rights outside the sandbox and takes the shared
+lock unannounced.
+
 ## Running a check on this machine
 
 A gate is a command and a log ([rule 6](#the-rules)), and both are shaped by the one machine every
@@ -188,10 +269,18 @@ alone.
   assertion are different findings, and a go-ahead names the non-timeout case in advance.
 - **A log ending `Failed` with no assertion line, or `exit 137` with no output, is a kill from
   outside, not a red:** read where the log stops before calling it one.
-- **A whole `pnpm -r` run hides every package behind the first failure, and `&&` never reaches
-  knip**, so a red gate has told less than it looks: run the remaining packages on their own to see
-  what it concealed. Where load is the cause, rerun by package
-  (`pnpm -r --no-bail --workspace-concurrency=1 run test`, `ui` with `--maxWorkers=4`), then knip.
+- **A chain of steps hides everything after the first failure, and `&&` never reaches knip**, so a
+  chain's red has told less than it looks. The gate command does not chain: it runs every step
+  whatever another did, and a red names its step with the others still shown. Where load is the
+  cause, rerun the one command by package (`pnpm --filter @credo/<pkg> check`), not a hand-built
+  chain.
+- **`ui`'s tests have failed in whole checks in files the change did not touch**, and passed on a
+  rerun at lower load (`docs/open-items.md`, item 56, which names `SignIns.test.tsx` and
+  `MyDeliveries.test.tsx` and holds the later sightings; it records the cause as not known for
+  `ui`, so load is a suspect there, not a finding). The one command passes no worker flag, so the
+  old `--maxWorkers=4` is not available through it: a `ui` red is run alone and then
+  the command rerun, per the failing-set test above, and the first red is named in the evidence,
+  never tuned away.
 
 ### The gate lock
 
@@ -221,7 +310,7 @@ to the caller, and a release on the script's last line.
   reports in five days sent a reader to a log that did not exist.
 - **A `== exit` line is never written by hand, and it is never read through a pipe.** Put it in a
   small bash script that runs the check, saves `$?` into a variable, releases the lock, then appends
-  `== exit $rc` itself. A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
+  `== exit $rc` itself (that is for a one-off script; a gate is the one command, which writes it). A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
   leaves `PIPESTATUS` empty (it is `pipestatus`), which is how a hard-coded `== exit 0` once stood
   in for a status nobody had read; and unquoted, the line ends `== exit` with no code.
   **[`ops/lib.sh`](../../ops/lib.sh) prints it correctly — call that rather than hand-roll the
@@ -239,7 +328,7 @@ to the caller, and a release on the script's last line.
   `ls -t | head -1` right after a launch picks the previous log, so name the new log's path.
 - **A green measured before a later fix does not cover that fix.** Lint, prettier and knip only ever
   saw the sha they ran on, and knip is the one that objects to a newly exported symbol: re-run over
-  the final tree, and over the merge result, before calling it done ([rule 6](#the-rules)).
+  the final tree, taken in with `pre-merge`, before calling it done ([rule 6](#the-rules)).
 
 ## Hazards no gate catches
 

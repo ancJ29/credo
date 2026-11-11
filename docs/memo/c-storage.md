@@ -2,12 +2,20 @@
 
 > **Decided** 2026-10-27: the machine's decisions on the service as built, written at the human's
 > request for one memo for it, so each section below holds one decision or one hazard in place of
-> a memo each. Arguments kept from the old service's memos where they still hold.
+> a memo each. Arguments kept from the old service's memos where they still hold. **Amended**
+> 2026-11-11: a box holds many tenants, not one client.
 
 ## At a glance
 
-**c-storage keeps one client's records in one SQLite file, and answers only the BFF, the app's
-back end.** Every request passes these checks:
+**c-storage keeps the records of every tenant the BFF sends it in one SQLite file, and answers only
+the BFF, the app's back end.** Today that is every tenant of an environment; in the pooled shape,
+intended and not built, it is one group of them
+([the detail page](../architecture-detail.md#how-a-call-finds-its-tenants-box)). The routing needs
+no change here, since the service reads nothing per tenant
+(`services/c-storage/internal/config/config.go`'s `Load`); the one change the pooled shape asks of
+it, not built, is a reading of its disk used and free for the operator's choice of box, which its
+health answer cannot carry (`services/c-storage/internal/server/server.go`'s `healthBody`, two
+fields and no more). Every request passes these checks:
 
 ```mermaid
 flowchart TD
@@ -28,10 +36,10 @@ flowchart TD
   turn -- "no: 412" --> refused
 ```
 
-Drawn from [`server.go`](../../c-storage/internal/server/server.go),
-[`auth.go`](../../c-storage/internal/auth/auth.go),
-[`store.go`](../../c-storage/internal/store/store.go) and
-[`open.go`](../../c-storage/internal/sqlitedb/open.go).
+Drawn from [`server.go`](../../services/c-storage/internal/server/server.go),
+[`auth.go`](../../services/c-storage/internal/auth/auth.go),
+[`store.go`](../../services/c-storage/internal/store/store.go) and
+[`open.go`](../../services/c-storage/internal/sqlitedb/open.go).
 
 | It promises | Protects against | Why |
 | --- | --- | --- |
@@ -60,7 +68,7 @@ ever answers 405 (`TestUnknownPathsRevealNothingWithoutTheInternalKey`,
   path then answers 404 beside a real one's 401, and a wrong verb 405: a caller with no key maps
   the surface. *Price of the choice:* a wrong verb on a real route reads as 404 even with every
   key, so a caller's mistaken method looks like a missing route.
-- *Rejected:* one internal key per caller. Every caller is ours and runs in the client's own stack
+- *Rejected:* one internal key per caller. Every caller is ours and runs in its environment's own stack
   (the BFF, and on the local stack the demo generator), and a key per caller adds a table and a
   rotation for no boundary each service's access key does not already draw. *Trigger to revisit:*
   a caller that must be cut off without rotating the others' key.
@@ -179,7 +187,7 @@ read a record as absent, exactly one lands (`TestOfWritesNamingNoRecordOneLands`
 
 ## The schema version is checked at open
 
-[`schema.sql`](../../c-storage/internal/store/schema.sql) is the database's whole shape. Opening
+[`schema.sql`](../../services/c-storage/internal/store/schema.sql) is the database's whole shape. Opening
 applies it, in one transaction, only to a file with no table, and stamps `user_version` 1. A file
 at 1 opens; any other version, or a file at 0 that already holds a table, stops the process at
 start-up (`TestOpenRefusesWhatItCannotUse`), so a file this binary did not make fails before
@@ -233,7 +241,7 @@ partner or a CI outside AWS included, reaches it. The plan stays as the record:
 - *Rejected:* an HTTP API with a VPC link to the box (B): VPC links are not offered in
   `ap-southeast-5`.
 - *Rejected:* a CloudFront VPC origin on the box (C): it needs an internet gateway on the one network
-  under every client's stack, against [decision 4](../plans/2026-10-27-architecture.md#decisions--the-machines).
+  under every environment's stack, against [decision 4](../plans/2026-10-27-architecture.md#decisions--the-machines).
 - *Rejected:* a Lambda Web Function behind CloudFront (D): its connector needs two zones and ridge
   has one.
 - *Rejected:* a public function URL with no CloudFront (E): whoever finds it runs the function, on

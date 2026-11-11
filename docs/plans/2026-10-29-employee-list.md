@@ -545,7 +545,7 @@ itself:
   with `?fake` on jsdom and reads the data set's company on the sign-in; in the sandbox,
   `pnpm fake -- curl` reads the page and leaves nothing listening. *Model files:* `ui/src/main.tsx`
   (the seam), the fixture `Api` in `ui/src/App.test.tsx`, `scripts/src/stack.ts` and
-  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/front.ts`. *Evidence:* rows 49, 50 and 51 each seen red once, from their assertions
+  `scripts/src/main.ts` (the `-- <command>` form), `scripts/src/running/front.ts`. *Evidence:* rows 49, 50 and 51 each seen red once, from their assertions
   (`ui/src/fake.test.tsx`, `scripts/src/fake.test.ts`); a jsdom test boots the app on `?fake` and
   reads the demo company's name on the sign-in, signs the root in and reads a cued 503; `pnpm fake --
   curl` read the page and a 404 on `/api`, and a process test reads nothing left listening or in the
@@ -630,7 +630,7 @@ itself:
   no warning; the route in `everyRoute` and one Bruno request with its test; the shared client's
   method and its Bruno parity green; the memo's line on the list and its bound. *Not run here:*
   `e2e.sh`, which is GitHub's run at the push. *Model files:* `getRecord` in
-  `c-storage/internal/server/handlers.go`, `Get` in `c-storage/internal/store/store.go`.
+  `services/c-storage/internal/server/handlers.go`, `Get` in `services/c-storage/internal/store/store.go`.
   *Evidence:* row 39 seen red once per rule, from its assertion, by changing the rule's line and
   putting it back: the prefix ignored (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`), its upper
   bound dropped (the same), the prefix read as a pattern (`TestAListHoldsTheRecordsUnderThePrefixInKeyOrder`),
@@ -641,7 +641,7 @@ itself:
   request (`TestTheCollectionHoldsARequestPerRouteAndATestPerRequest`), and the two edges of the text's
   order (`TestAListHoldsExactlyTheKeysThatStartWithThePrefix`). The shared client's list is red with the
   prefix unencoded, a status other than 200 accepted, `more` defaulted and a wrong query name
-  (`shared/src/c-storage.test.ts`, `c-storage.bruno.test.ts`). `make check` in `c-storage/` green at
+  (`shared/src/c-storage.test.ts`, `c-storage.bruno.test.ts`). `make check` in `services/c-storage/` green at
   100 % of statements, the box's cross-compile included. Six Bruno requests (18 to 23) cover the list,
   its empty answer, the missing prefix and the wrong key; `e2e.sh` is GitHub's run at the push. The
   memo's section "A list reads one prefix" holds the route and its bound. *Read, from the plan's
@@ -662,7 +662,7 @@ itself:
   `pnpm stack -- <command>`: the root sets a department's permissions, adds a person in it, that
   person signs in and is refused a call outside them, the root archives them, and their next call is
   a 401; open item 10 deleted. *Model files:* `bff/src/app.ts` (the tenant, the session check),
-  `bff/src/clients.ts` (writes that must find nothing, the index last), `bff/src/sessions.ts`,
+  `bff/src/records/clients.ts` (writes that must find nothing, the index last), `bff/src/calling/sessions.ts`,
   `bff/src/config.route.test.ts` and `bff/tests/tenant.ts`.
   *Evidence:* the BFF half of rows 1 to 4, 6 to 12, 14 to 16, 32, 36 to 38, 40, 41, 43 and 44 each seen
   red once, from its assertion, by changing the rule's line and putting it back (27 changes in all,
@@ -674,7 +674,7 @@ itself:
   without its tag; an id the setup never held accepted; a typed password ignored; a password made for
   someone who may not give one; a made password with no symbol. The one change left green: the staff
   setup's early version check, which the tag on the write already holds, so it only orders a 409 before
-  a 400. Tests: `bff/src/staff-setup.route.test.ts`, `employees.route.test.ts`, `auth.route.test.ts`,
+  a 400. Tests: `bff/src/routes/staff-setup.route.test.ts`, `employees.route.test.ts`, `auth.route.test.ts`,
   `operator.route.test.ts` (the route list held exact, now with the staff routes), `password.test.ts`.
   *Found by the tests, fixed:* an add of the code `root` took over the root's sign-in as a failed add's,
   and a position's id passed as a department's. *Live,* `pnpm stack -- node <script>`: the root saved a
@@ -724,7 +724,7 @@ itself:
   `CREDO_REFERENCE_DIR` the config points the base images at, each differing screen a soft failure so
   one walk names every one, and a difference is not red, it is what step 11 reads; the `full` project's
   timeout is 120 s, since a walk opens 15 clients. *Model files:* `scripts/src/generator.ts` and
-  `generator.test.ts` as they were, `scripts/src/front.ts` (a small loopback server) for
+  `generator.test.ts` as they were, `scripts/src/running/front.ts` (a small loopback server) for
   `seeding.ts`, `walk/specs/piece-1.spec.ts` (a second save through the real API, a stubbed 503) for
   the full path of `piece-2.spec.ts`, and `one-off/20261029-0305-fake-run-employee-list.sh` for the
   script.
@@ -732,7 +732,7 @@ itself:
 - [x] **10. A's review.** Who: 🤖, a model other than the author's ([QA](../conventions/qa.md) rule
   5), after step 9, about two hours with the fixes. Done when: each finding fixed, rejected or deferred
   with its reason, tagged in the recap; `pnpm check` and `make check` green. *Fix pass, 2026-10-29,
-  re-reviewed by both reviewers, whose findings follow it (`make check` not run: `c-storage/` is
+  re-reviewed by both reviewers, whose findings follow it (`make check` not run: `services/c-storage/` is
   untouched):* two reviewers read `git diff 85d5a2b HEAD`,
   S1 to S10 on the server and C1 to C12 on the client. Each is `[FIXED]` unless said, and each new or
   changed test was seen red once from its assertion, under a mutation or before the code. No screen
@@ -774,7 +774,7 @@ itself:
   - The reviewer's observations, logged and not fixed: open items 19, 20 and 21 (21's mechanism read
     and confirmed by the re-review); fixed at step 12's fix pass.
   - *Re-review, T1 to T5 and D1, D2.* T1 `[FIXED]` a password is hashed and checked in its composed
-    form (NFC) in `hashPassword` and `verifyPassword`, `bff/src/password.ts`, and one with a space at
+    form (NFC) in `hashPassword` and `verifyPassword`, `bff/src/calling/password.ts`, and one with a space at
     either end is refused (`shared/src/staff.ts`); red with each normalisation removed (unit and
     route), and with each end's check removed. T2 `[FIXED]` a young claim no one is named by answers
     503, a named one 409, in `claimSignIn`; row 37's line amended in the table, the section and the
@@ -862,7 +862,7 @@ itself:
   middle square, shrunk to 256 px as a JPEG within 50 KB by `ui/src/photo.ts` (untested on jsdom, the
   page's tests put a stand-in for it); a search finds every typed word among the words the list shows;
   the address holds `q`, `department`, `position`, `left` and `f.<key>`, written only when set;
-  `bff/src/employees.route.test.ts` is the one BFF file touched, two expected answers that now carry
+  `bff/src/routes/employees.route.test.ts` is the one BFF file touched, two expected answers that now carry
   the fifth permission; `ui` and `visual` raise their test timeouts, as the walks page draws 23 scenes
   twice. *Model files:* `ui/src/StaffSetupPage.tsx`, `PersonPage.tsx`, `AddPersonPage.tsx` and
   `StaffListPage.tsx` as they were; `Settings.tsx` for the photo chooser. *Logged:* open item 22. The
@@ -955,7 +955,7 @@ itself:
   record not the person's in the code route, and a bad stored photo (it threw by accident). T4 first:
   the test (a code freed by a code change, claimed again in the same instant, the old session must be a
   401) was red at the clock's `passwordAt` and green once the generation is random. Tests:
-  `bff/src/employee-code.route.test.ts`, `employee-photo.route.test.ts`, and additions to
+  `bff/src/routes/employee-code.route.test.ts`, `employee-photo.route.test.ts`, and additions to
   `staff-setup.route.test.ts`, `config.route.test.ts`, `employees.route.test.ts`; in `shared`, `staff`,
   `photo` and `records` tests; `scripts/src/generator.test.ts` (the setup's three parts and the photo
   on its person). The whole `pnpm check` exit 0 at 100 % in every package, no warning (shared 74 tests,
@@ -982,7 +982,7 @@ itself:
   *Logged:* open item 23. The step's own run on the stack was not made, since the generator's test and
   the route tests meet the real c-storage.
 - [x] **15. B's review.** Who: 🤖, another model. Done when: as step 10. *Fix pass, 2026-10-29 14:55 +07
-  (`make check` not run: `c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
+  (`make check` not run: `services/c-storage/` is untouched), after two reviewers read `git diff 85d5a2b HEAD`'s
   group B, S1 to S4 and R1 to R7 on the server, C1 to C9 and mutations M1 to M36 on the client, each
   with a proof test red on `caa52d7`. The human's two answers: R5, a number freed by a code change is
   never given again ("no, 8 count past"), and S1/C8, no BigInt and no special 409, only the add's
@@ -1124,8 +1124,8 @@ itself:
   *Evidence, 2026-10-30 10:52 +07 (commit `9b26f71`):* the BFF half of rows 25 to 28, 46 and 47, each
   seen red once from its assertion, by changing the rule's line and putting it back (33 changes in
   `bff`, 5 in `shared`, all red; one was green first and got its test: the held session's record left
-  behind by one's own password). Model: `bff/src/employee-code.route.test.ts`
-  and the code route in `bff/src/staff.ts` (claim first, person with its tag, old record removed after,
+  behind by one's own password). Model: `bff/src/routes/employee-code.route.test.ts`
+  and the code route in `bff/src/routes/staff.ts` (claim first, person with its tag, old record removed after,
   three tries, then 503). Tests: `bff/src/sign-ins.route.test.ts` (new, 42), a line each in `shared`'s
   `records.test.ts` and `signins.test.ts`, and the route list in `operator.route.test.ts`. Red, by what
   was changed: the 409 for a held email, the old email's record not removed, the claim not given back
@@ -1232,9 +1232,9 @@ itself:
   - N1 `[FIXED]` (`60bf2d5`) the R1 interference in `bff/src/sign-ins.route.test.ts` runs right after the
     person write, not inside the removal; red under a fresh `readEmailClaim` before `dropEmail`:
     `AssertionError: expected null not to be null`, 1 of 47.
-  - N2 `[FIXED]` (`60bf2d5`) the removal loop in `bff/src/staff.ts` leaves the record when
+  - N2 `[FIXED]` (`60bf2d5`) the removal loop in `bff/src/routes/staff.ts` leaves the record when
     `again.user.passwordHash === mine.user.passwordHash` (a claim copies the hash; a password given
-    writes a fresh salted one). New test in `bff/src/employee-code.route.test.ts`, "leaves the old record
+    writes a fresh salted one). New test in `bff/src/routes/employee-code.route.test.ts`, "leaves the old record
     alone when the change back has claimed it but not yet written the person, as the first change removes
     it"; red on the old code `expected null not to be null`; sign-ins plus employee-code 84/84 after.
     This narrows the window E describes and does not close it: H, below, is the case that remains.
@@ -1342,9 +1342,9 @@ itself:
   imported person; a taken code and an invalid row with their reasons swapped; a 400 of the add not
   kept as a result; every failure kept as a result (the 503 tests); a bad row failing the whole call;
   a setup with no units; the results out of order; the call's body not read (5 answers 200); in `shared`,
-  the call's bound and its element type. Model: `bff/src/employee-code.route.test.ts` and the add in
-  `bff/src/staff.ts`, whose body is now `addPerson`, called by the add (with a password for the root)
-  and by the import (without). Tests: `bff/src/employee-import.route.test.ts` (new, 10), a line in
+  the call's bound and its element type. Model: `bff/src/routes/employee-code.route.test.ts` and the add in
+  `bff/src/routes/staff.ts`, whose body is now `addPerson`, called by the add (with a password for the root)
+  and by the import (without). Tests: `bff/src/routes/employee-import.route.test.ts` (new, 10), a line in
   `operator.route.test.ts`'s route list (red first on `/import`), one in `shared/src/import.test.ts`.
   The new route answers `{results}` as the fake does: `added` with the person, `refused` `taken` for a
   409 (a code taken in the company, or by an earlier row of the call) and `invalid` for a 400 (a unit the
@@ -1368,7 +1368,7 @@ itself:
   and "Not added: the system was busy. Try this row again." (Vietnamese "Chưa thêm: hệ thống đang bận.
   Hãy thử lại dòng này."). The fake does the same: a row whose add fails with a 503 (the cue
   `addEmployee:503`) is `busy`. The two partial-call tests became tests of the new behaviour, seen red
-  first (`expected 503 to be 200`, twice, in `bff/src/employee-import.route.test.ts`; `ApiError:
+  first (`expected 503 to be 200`, twice, in `bff/src/routes/employee-import.route.test.ts`; `ApiError:
   answered 503` and the missing "1 rows were not added" in the fake's and the page's); a third holds
   the 500 (red with every failure made busy: `expected 200 to be 500`). No walked screen's words
   changed: `pnpm report` reads 0 asked again.

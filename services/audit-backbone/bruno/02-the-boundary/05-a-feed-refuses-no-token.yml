@@ -1,0 +1,35 @@
+info:
+  name: A feed refuses a missing token (401)
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{openUrl}}/api/activities/by-actor/{{actorId}}"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401 — a read has a credential too", function() {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+        test("readable cross-origin, so a browser sees it and mints again", function() {
+          expect(res.getHeader("access-control-allow-origin")).to.equal("*");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  A real feed on the open URL with no `authorization` header.
+  **Expected: 401**, with `access-control-allow-origin: *`.
+
+  The open listener answers like the keyed one: without its credential every
+  path is a 401, an unknown one included, so a status code maps nothing. Only
+  `GET /health` and a preflight answer before the token.

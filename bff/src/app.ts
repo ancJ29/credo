@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  type ActivityClient,
   AUTH_HEADER,
   changeOwnPasswordRequestSchema,
   CLIENT_HEADER,
@@ -32,12 +33,13 @@ import {
   tenantConfigSchema,
   type UserView,
 } from '@credo/shared';
-import Fastify, { type FastifyRequest } from 'fastify';
-import { createClient, listClients, ROOT_NAME } from './clients';
+import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
+import { createClient, listClients, ROOT_NAME } from './records/clients';
 import { HttpError, parse, replyFor } from './errors';
-import { constantTimeEqual } from './constant-time';
-import { hashPassword, verifyAgainstNobody, verifyPassword } from './password';
-import { createSessions } from './sessions';
+import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
+import { constantTimeEqual } from './calling/constant-time';
+import { hashPassword, verifyAgainstNobody, verifyPassword } from './calling/password';
+import { createSessions } from './calling/sessions';
 import {
   namesPerson,
   readEmailClaim,
@@ -46,20 +48,22 @@ import {
   readSetup,
   type ReadEmployee,
   readSignIn,
-} from './staff-records';
-import { registerOperatorAuth } from './operator-auth';
-import { registerListRoutes } from './lists';
-import { registerOrderRoutes } from './orders';
-import { registerReconciliationRoutes } from './reconciliations';
-import { registerOperatorTeamRoutes } from './operator-team';
-import { registerDeleteClientRoutes } from './clients-delete';
-import { registerRootPasswordRoutes } from './root-password';
-import { registerStaffRoutes } from './staff';
+} from './records/staff-records';
+import { registerOperatorAuth } from './routes/operator-auth';
+import { registerListRoutes } from './routes/lists';
+import { registerOrderRoutes } from './routes/orders';
+import { registerReconciliationRoutes } from './routes/reconciliations';
+import { registerOperatorTeamRoutes } from './routes/operator-team';
+import { registerDeleteClientRoutes } from './routes/clients-delete';
+import { registerRootPasswordRoutes } from './routes/root-password';
+import { registerStaffRoutes } from './routes/staff';
 
 declare module 'fastify' {
   interface FastifyRequest {
     /** The minted id of the tenant a client's call names, set before the route runs. */
     tenantId: string;
+    /** The entries the route declares for its change; the hook sends them before the reply. */
+    audit: Declared[] | null;
   }
 }
 
@@ -68,6 +72,9 @@ type SetupRead = Awaited<ReturnType<typeof readSetup>>;
 export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
   storage: CStorageClient;
+  /** The audit service, or none where it is not configured: the change is saved and the lost entry
+   * logged, never refused. */
+  activity?: ActivityClient | null;
   now: () => number;
   /** The address the operator opens (`APP_ORIGIN`): passkeys are checked against it, never the
    * request's host. */
@@ -75,19 +82,72 @@ export type AppDeps = {
   /** The BFF's own service key, which the operator's challenges are signed under. */
   serviceKey: string;
   /** On or off, or on into a stream a test reads. */
-  logger: boolean | { stream: { write: (line: string) => void } };
+  logger: boolean | { level?: string; stream: { write: (line: string) => void } };
   /** The commit this BFF was built from, `dev` unstamped. */
   build?: string;
+  /** Told of every route as Fastify registers it: the route-list test reads the list from here. */
+  onRoute?: (route: RouteOptions) => void;
 };
 
 const unauthorized = () => new HttpError(401, 'Unauthorized');
 
-export function buildApp({ storage, now, origin, serviceKey, logger, build = 'dev' }: AppDeps) {
+export function buildApp({
+  storage,
+  activity = null,
+  now,
+  origin,
+  serviceKey,
+  logger,
+  build = 'dev',
+  onRoute,
+}: AppDeps) {
   const app = Fastify({ logger });
+  if (onRoute) app.addHook('onRoute', onRoute);
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
   const sessionsOf = (tenantId: string) =>
     createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
   app.decorateRequest('tenantId', '');
+  app.decorateRequest('audit', null);
+
+  /** Sends the entry a route declared, before the reply and under the client's own bound. Whatever
+   * goes wrong, the change stands: the entry is logged as lost, naming what it was and never a key. */
+  app.addHook('onSend', async (request, reply, payload) => {
+    const declared = request.audit;
+    if (!declared?.length) {
+      // A route that carries an action and answers well without declaring its entry has forgotten
+      // `declare()`: the change stands, and the miss is logged where a test can fail on it. A route
+      // that has nothing to name on purpose declares an empty list.
+      if (!declared && request.routeOptions.config.audit && reply.statusCode < 400) {
+        request.log.error(
+          { action: request.routeOptions.config.audit, url: request.routeOptions.url },
+          'audit route answered with no entry declared',
+        );
+      }
+      return payload;
+    }
+    const lost = {
+      action: declared[0]?.action,
+      targetId: declared[0]?.targetId,
+      entries: declared.length,
+    };
+    if (!activity) {
+      request.log.warn(lost, 'audit entry lost: the log is not configured');
+      return payload;
+    }
+    const timestamp = new Date(now()).toISOString();
+    try {
+      await activity.log(
+        declared.map(({ clientId = request.tenantId, ...entry }) => ({
+          ...entry,
+          clientId,
+          timestamp,
+        })),
+      );
+    } catch (error) {
+      request.log.warn({ ...lost, err: error }, 'audit entry lost');
+    }
+    return payload;
+  });
 
   app.setErrorHandler((error, request, reply) => {
     const { status, body } = replyFor(error);
@@ -217,18 +277,26 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
     return doc;
   });
 
-  app.put(ROUTES.config, forClient, async (request, reply) => {
-    mustCan(await signedIn(request), 'settings.canEdit');
-    const body = parse(saveConfigRequestSchema, request.body);
-    const key = recordKeys.tenant(request.tenantId).config;
-    const result = await storage.putRecord(key, body.config, body.version);
-    if (result === 'moved') {
-      return reply
-        .status(409)
-        .send({ error: 'Conflict', current: await readConfig(request.tenantId) });
-    }
-    return await readConfig(request.tenantId);
-  });
+  app.put(
+    ROUTES.config,
+    { ...forClient, config: { audit: 'config.save' } },
+    async (request, reply) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), 'config');
+      mustCan(who, 'settings.canEdit');
+      const body = parse(saveConfigRequestSchema, request.body);
+      const key = recordKeys.tenant(request.tenantId).config;
+      const before = await readConfig(request.tenantId);
+      const result = await storage.putRecord(key, body.config, body.version);
+      if (result === 'moved') {
+        return reply
+          .status(409)
+          .send({ error: 'Conflict', current: await readConfig(request.tenantId) });
+      }
+      entry.saved(before, body.config);
+      return await readConfig(request.tenantId);
+    },
+  );
 
   /** The sign-in record a typed name opens: the code's own, or, for an email, the record of the code
    * of the person the email names. An email names no one unless that person's record holds it and
@@ -248,65 +316,73 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
     return { name, found: await readSignIn(storage, tenantId, name), handed: { setup, person } };
   }
 
-  app.post(ROUTES.signIn, forClient, async (request): Promise<SessionReplyBody> => {
-    const device = deviceOf(request);
-    const body = parse(signInRequestSchema, request.body);
-    const typed = normaliseSignInName(body.name);
-    const { name, found, handed } = await accountOf(request.tenantId, typed);
-    // A person the root has not given a password yet has no sign-in to check against.
-    const account = found?.user.passwordHash
-      ? { ...found.user, passwordHash: found.user.passwordHash }
-      : null;
-    const user = await checked(account, body.password);
-    // One answer for an unknown name, a wrong password and a person who left: which part was
-    // wrong is not said.
-    const view = user ? await viewOf(request.tenantId, name, user, handed) : null;
-    if (!user || !view) throw new HttpError(401, 'Wrong name or password');
-    const sessions = sessionsOf(request.tenantId);
-    await endKept(request, sessions);
-    const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
-    return { authId, expiresAt, user: userViewOf(view) };
-  });
+  app.post(
+    ROUTES.signIn,
+    exempt('a sign-in changes no client’s data', forClient),
+    async (request): Promise<SessionReplyBody> => {
+      const device = deviceOf(request);
+      const body = parse(signInRequestSchema, request.body);
+      const typed = normaliseSignInName(body.name);
+      const { name, found, handed } = await accountOf(request.tenantId, typed);
+      // A person the root has not given a password yet has no sign-in to check against.
+      const account = found?.user.passwordHash
+        ? { ...found.user, passwordHash: found.user.passwordHash }
+        : null;
+      const user = await checked(account, body.password);
+      // One answer for an unknown name, a wrong password and a person who left: which part was
+      // wrong is not said.
+      const view = user ? await viewOf(request.tenantId, name, user, handed) : null;
+      if (!user || !view) throw new HttpError(401, 'Wrong name or password');
+      const sessions = sessionsOf(request.tenantId);
+      await endKept(request, sessions);
+      const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
+      return { authId, expiresAt, user: userViewOf(view) };
+    },
+  );
 
   /** A phone opening a QR code's link. Every refusal is the same 401, which says only that the code
    * is not good: a wrong secret, one used before or past its time, a company that turned the QR
    * sign-in off, a person who left. The record is removed over the tag it was read at before the
    * session is issued, so two phones opening one code sign in one. */
-  app.post(signInRoutes.qr, forClient, async (request): Promise<SessionReplyBody> => {
-    const device = deviceOf(request);
-    const body = parse(signInQrRequestSchema, request.body);
-    const { tenantId } = request;
-    const held = await readQr(storage, tenantId, body.id);
-    const opened = held ? await sha256Hex(body.secret) : '';
-    const person = held ? await readEmployee(storage, tenantId, body.id) : null;
-    if (
-      !held ||
-      !person ||
-      held.qr.expiresAt <= now() ||
-      !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened))
-    ) {
-      throw unauthorized();
-    }
-    // The person and the setup are read once and handed on to the view.
-    const setup = await readSetup(storage, tenantId);
-    if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
-    const name = normaliseSignInName(person.employee.code);
-    const found = await readSignIn(storage, tenantId, name);
-    const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
-    // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
-    // one, now another's.
-    if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
-    if (
-      (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
-      'moved'
-    ) {
-      throw unauthorized();
-    }
-    const sessions = sessionsOf(tenantId);
-    await endKept(request, sessions);
-    const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
-    return { authId, expiresAt, user: userViewOf(view) };
-  });
+  app.post(
+    signInRoutes.qr,
+    exempt('a sign-in changes no client’s data', forClient),
+    async (request): Promise<SessionReplyBody> => {
+      const device = deviceOf(request);
+      const body = parse(signInQrRequestSchema, request.body);
+      const { tenantId } = request;
+      const held = await readQr(storage, tenantId, body.id);
+      const opened = held ? await sha256Hex(body.secret) : '';
+      const person = held ? await readEmployee(storage, tenantId, body.id) : null;
+      if (
+        !held ||
+        !person ||
+        held.qr.expiresAt <= now() ||
+        !constantTimeEqual(Buffer.from(held.qr.hash), Buffer.from(opened))
+      ) {
+        throw unauthorized();
+      }
+      // The person and the setup are read once and handed on to the view.
+      const setup = await readSetup(storage, tenantId);
+      if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
+      const name = normaliseSignInName(person.employee.code);
+      const found = await readSignIn(storage, tenantId, name);
+      const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
+      // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
+      // one, now another's.
+      if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
+      if (
+        (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
+        'moved'
+      ) {
+        throw unauthorized();
+      }
+      const sessions = sessionsOf(tenantId);
+      await endKept(request, sessions);
+      const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
+      return { authId, expiresAt, user: userViewOf(view) };
+    },
+  );
 
   /** Whether `password` is the one a sign-in record holds. A record with none (a person who has only
    * come in by a QR code) still spends the check, so it takes as long as a wrong one. */
@@ -322,30 +398,40 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
    * device; this device gets the session that replaces the one it held. Every write of a sign-in
    * record mints a generation, so a record that moved since the session read it has ended the
    * session: a 401, never a check of the current password against what someone else wrote. */
-  app.put(signInRoutes.password, forClient, async (request): Promise<SessionReplyBody> => {
-    const who = await signedIn(request);
-    const device = deviceOf(request);
-    const body = parse(changeOwnPasswordRequestSchema, request.body);
-    if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
-    const changed: StoredUser = {
-      ...who.signIn.user,
-      passwordHash: await hashPassword(body.password),
-      passwordAt: now(),
-      generation: randomUUID(),
-    };
-    const key = recordKeys.tenant(request.tenantId).user(who.signInName);
-    if ((await storage.putRecord(key, changed, who.signIn.tag)) === 'moved') throw unauthorized();
-    const sessions = sessionsOf(request.tenantId);
-    await endKept(request, sessions);
-    const issued = await sessions.issue(device, who.signInName, changed.generation);
-    return { ...issued, user: userViewOf(who) };
-  });
+  app.put(
+    signInRoutes.password,
+    { ...forClient, config: { audit: 'employee.password' } },
+    async (request): Promise<SessionReplyBody> => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who));
+      const device = deviceOf(request);
+      const body = parse(changeOwnPasswordRequestSchema, request.body);
+      if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
+      const changed: StoredUser = {
+        ...who.signIn.user,
+        passwordHash: await hashPassword(body.password),
+        passwordAt: now(),
+        generation: randomUUID(),
+      };
+      const key = recordKeys.tenant(request.tenantId).user(who.signInName);
+      if ((await storage.putRecord(key, changed, who.signIn.tag)) === 'moved') throw unauthorized();
+      entry.saved(null, null);
+      const sessions = sessionsOf(request.tenantId);
+      await endKept(request, sessions);
+      const issued = await sessions.issue(device, who.signInName, changed.generation);
+      return { ...issued, user: userViewOf(who) };
+    },
+  );
 
-  app.post(ROUTES.signOut, forClient, async (request, reply) => {
-    const handle = request.headers[AUTH_HEADER];
-    if (typeof handle === 'string') await sessionsOf(request.tenantId).end(handle);
-    return reply.status(204).send();
-  });
+  app.post(
+    ROUTES.signOut,
+    exempt('a sign-out changes no client’s data', forClient),
+    async (request, reply) => {
+      const handle = request.headers[AUTH_HEADER];
+      if (typeof handle === 'string') await sessionsOf(request.tenantId).end(handle);
+      return reply.status(204).send();
+    },
+  );
 
   app.get(ROUTES.me, forClient, async (request): Promise<MeReplyBody> => ({
     user: userViewOf(await signedIn(request)),
@@ -376,17 +462,26 @@ export function buildApp({ storage, now, origin, serviceKey, logger, build = 'de
       .send({ build, storage: { build: buildVersion, ms } });
   });
 
-  app.post(ROUTES.operatorClients, async (request, reply): Promise<CreateClientReply> => {
-    await operatorSignedIn(request);
-    const body = parse(createClientRequestSchema, request.body);
-    const made = await createClient(storage, { ...body, madeAt: now() });
-    if (made === 'taken') throw new HttpError(409, 'That code is taken');
-    return reply.status(201).send({
-      link: clientLinkPath(body.code),
-      rootName: ROOT_NAME,
-      password: made.password,
-    });
-  });
+  app.post(
+    ROUTES.operatorClients,
+    { config: { audit: 'client.create' } },
+    async (request, reply): Promise<CreateClientReply> => {
+      const operator = await operatorSignedIn(request);
+      const body = parse(createClientRequestSchema, request.body);
+      const made = await createClient(storage, { ...body, madeAt: now() });
+      if (made === 'taken') throw new HttpError(409, 'That code is taken');
+      // The client has no id until it is made, so a refusal before has no client to name.
+      declare(request, operatorOf(operator), made.id, made.id).saved(null, {
+        code: body.code,
+        name: body.name,
+      });
+      return reply.status(201).send({
+        link: clientLinkPath(body.code),
+        rootName: ROOT_NAME,
+        password: made.password,
+      });
+    },
+  );
 
   registerStaffRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
   registerListRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });

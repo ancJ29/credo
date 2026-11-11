@@ -18,18 +18,34 @@ const originShape = {
     return url?.origin === value && (url.protocol === 'https:' || url.hostname === 'localhost');
   }),
 };
-const envSchema = z.object({
-  PORT: z.coerce.number().int().min(1).max(65535),
-  HOST: z.string().min(1).default('127.0.0.1'),
-  ...storageShape,
-  ...originShape,
-});
+/** The audit service's keyed address and its key. Both or neither: without them the BFF saves a
+ * change and logs that the log is not configured, so a release that lacks them keeps working. */
+const auditShape = {
+  AUDIT_URL: z.url().optional(),
+  AUDIT_KEY: z.string().min(1).optional(),
+};
+/** One without the other is a half-set configuration, named by the one that is missing. */
+const auditTogether = (env: { AUDIT_URL?: string | undefined; AUDIT_KEY?: string | undefined }) =>
+  (env.AUDIT_URL === undefined) === (env.AUDIT_KEY === undefined);
+const auditPair = { message: 'AUDIT_URL and AUDIT_KEY come together', path: ['AUDIT_KEY'] };
+
+const envSchema = z
+  .object({
+    PORT: z.coerce.number().int().min(1).max(65535),
+    HOST: z.string().min(1).default('127.0.0.1'),
+    ...storageShape,
+    ...originShape,
+    ...auditShape,
+  })
+  .refine(auditTogether, auditPair);
 
 /** The variables the BFF reads, and so the only ones it is given. */
 export const BFF_ENV_KEYS = Object.keys(envSchema.shape);
 
 export type StorageEnv = z.infer<z.ZodObject<typeof storageShape>>;
-export type BffEnv = StorageEnv & z.infer<z.ZodObject<typeof originShape>>;
+export type BffEnv = StorageEnv &
+  z.infer<z.ZodObject<typeof originShape>> &
+  z.infer<z.ZodObject<typeof auditShape>>;
 
 function failure(error: z.ZodError): never {
   const names = [...new Set(error.issues.map((issue) => issue.path.join('.')))];
@@ -45,10 +61,13 @@ export function readEnv(env: Record<string, string | undefined>) {
   return parsed.data;
 }
 
-/** The Lambda's environment: the same four c-storage variables, the app's address and no
+/** The Lambda's environment: the same four c-storage variables, the audit pair if set, the app's address and no
  * listener, since API Gateway is the listener. Errors as `readEnv` does. */
 export function readLambdaEnv(env: Record<string, string | undefined>): BffEnv {
-  const parsed = z.object({ ...storageShape, ...originShape }).safeParse(env);
+  const parsed = z
+    .object({ ...storageShape, ...originShape, ...auditShape })
+    .refine(auditTogether, auditPair)
+    .safeParse(env);
   if (!parsed.success) return failure(parsed.error);
   return parsed.data;
 }

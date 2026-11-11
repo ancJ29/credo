@@ -53,10 +53,10 @@ edit passes it — which is half of what the item says is open; `origin/main` as
 
 **What binds the shape, read first.** A widened comparison could refuse trees that are legitimately
 clean, and that, not the comparison, is the risk. Every build output of this repository is ignored:
-`dist` at `.gitignore#L83` (which `git check-ignore` resolves for `c-storage/dist`, `bff/dist` and
+`dist` at `.gitignore#L83` (which `git check-ignore` resolves for `services/c-storage/dist`, `bff/dist` and
 `ui/dist` alike), `node_modules/` at `#L41`, `coverage` at `#L22`, `playwright-report/` and
 `test-results/` at `#L155-L156`. The box's binary is built into `dist/` too
-(`c-storage/Makefile#L31`), and that Makefile already refuses an uncommitted tree in its own words
+(`services/c-storage/Makefile#L31`), and that Makefile already refuses an uncommitted tree in its own words
 (`#L28-L29`) — a third place in this repository holding the same invariant. So the deploy job's tree
 stays clean across every deployed path after its installs and builds, and the guard does not redden
 it. That is a claim about a job, so it is step 3's own case and the point the human is asked.
@@ -96,7 +96,7 @@ it. That is a claim about a job, so it is step 3's own case and the point the hu
 
 - [x] **1.** 2026-11-07 21:36. `ops_match_main` (`ops/lib.sh`) reads the path set through `push_paths` and compares it, tracked and untracked; both messages say "the code here (every path ci.yml deploys on)". One choice beyond the plan's words: the list is read from the base's own `ci.yml` (`git show <base>:.github/workflows/ci.yml`), not the working copy's, so an edited `ci.yml` cannot shorten the list it is judged by (it is itself a listed path, so the edit is refused). Check, in a scratch repository holding the real `ci.yml`: clean tree `exit 0`; after one appended line under `scripts/`, `exit 1`. `ops/test.sh` still expects the old wording and has no `ci.yml` in its scratch repository; step 2 brings it level.
 
-- [x] **2.** 2026-11-07 21:45. Rows 1 to 8 and 12 to 14 are cases in `ops/test.sh` beside the existing ones: the scratch repository gains a `ci.yml`, and the cases that named `ops/` by its old wording now name the code. Row 14 needed the two whole-tree cases of `seed.sh` and `root-password.sh` to edit a file in `docs/`, because the file they edited (`c-storage/bruno/opencollection.yml`) is itself a deployed path now and would be refused earlier, by the new check. `bash ops/test.sh` at exit 0: `logs/20261107-2137-tree-guard-step2-a.log` ends `== exit 0`. Each new row seen red by a mutation, **9 mutations**: 8 of `ops_match_main` (message back to `ops/`: row 1; path set `ops` alone: rows 2, 3, 4, 6, 7, 12, 13; `ops` left out: row 5; whole tree `.`: row 8; untracked check off: rows 2-3's untracked cases; base `HEAD`: rows 6, 7; fixed list: row 12; parse failure swallowed: row 13) and 1 deleting the `git diff --quiet HEAD` line of both `seed.sh` and `root-password.sh` (row 14: both cases red, `logs/20261107-2141-tree-guard-step2-mut14.log`); files restored from git after.
+- [x] **2.** 2026-11-07 21:45. Rows 1 to 8 and 12 to 14 are cases in `ops/test.sh` beside the existing ones: the scratch repository gains a `ci.yml`, and the cases that named `ops/` by its old wording now name the code. Row 14 needed the two whole-tree cases of `seed.sh` and `root-password.sh` to edit a file in `docs/`, because the file they edited (`services/c-storage/bruno/opencollection.yml`) is itself a deployed path now and would be refused earlier, by the new check. `bash ops/test.sh` at exit 0: `logs/20261107-2137-tree-guard-step2-a.log` ends `== exit 0`. Each new row seen red by a mutation, **9 mutations**: 8 of `ops_match_main` (message back to `ops/`: row 1; path set `ops` alone: rows 2, 3, 4, 6, 7, 12, 13; `ops` left out: row 5; whole tree `.`: row 8; untracked check off: rows 2-3's untracked cases; base `HEAD`: rows 6, 7; fixed list: row 12; parse failure swallowed: row 13) and 1 deleting the `git diff --quiet HEAD` line of both `seed.sh` and `root-password.sh` (row 14: both cases red, `logs/20261107-2141-tree-guard-step2-mut14.log`); files restored from git after.
 
 - [x] **3.** 2026-11-07 21:48. Rows 9 to 11 in `ops/test.sh`: the scratch repository carries the real ignore lines (`dist`, `node_modules/`, `coverage`, `playwright-report/`, `test-results/`) and ignored build outputs in `scripts/`, `bff/`, `ui/` and `shared/`, left in the tree for every case after, so row 9 (the job's checked-out commit passes with them present), row 10 (a commit main does not hold is refused) and row 11 (a push that landed meanwhile does not turn it red) all run with the outputs present. A permanent case moves the scratch `.gitignore` away and asserts the same job tree is refused. `bash ops/test.sh` at exit 0: `logs/20261107-2145-tree-guard-step3.log` ends `== exit 0`. Row 9 red with the scratch `.gitignore` never written (the block run alone): 5 red, row 9 and row 11 among them, 0 red with it.
 
@@ -109,7 +109,7 @@ it. That is a claim about a job, so it is step 3's own case and the point the hu
   delivered, since `--exclude-standard` stays and `.gitignore` is not one of the 16 paths the push trigger names,
   so `node_modules/` and `dist` sit inside deployed paths uncompared. It also proved, from an existing green step
   inside the deploy job rather than from a local `git status`, that this cannot redden that job:
-  `c-storage/Makefile#L28-L29` runs `git status --porcelain` over the whole repository after the install and both
+  `services/c-storage/Makefile#L28-L29` runs `git status --porcelain` over the whole repository after the install and both
   builds and before the role is taken (`.github/workflows/ci.yml#L263-L284`).
 
 - [x] **6.** 2026-11-07 22:02. The fix pass, `138571c4`: both messages now read "the code here (tracked and

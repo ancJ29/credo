@@ -8,8 +8,8 @@ before. Today the new app's archive is final — the page says "no one is brough
 the recorded password (the old repo's `employee.controller.ts#L224-L262`, quoted in the cut).
 
 The cheapest path is the mirror of what `main` holds: the archive route writes the flag over the version read, under
-`staff.canDelete` (`bff/src/staff.ts#L467-L479`), every call then refuses a person who left (`bff/src/app.ts#L136`),
-and their sign-in record, password and code stay untouched (`bff/src/staff.ts#L510-L511`). Back on is one more write
+`staff.canDelete` (`bff/src/routes/staff.ts#L467-L479`), every call then refuses a person who left (`bff/src/app.ts#L136`),
+and their sign-in record, password and code stay untouched (`bff/src/routes/staff.ts#L510-L511`). Back on is one more write
 route with `archived: false`: no field, no migration, nothing to re-create. **Price:** $0 a month; about 76 machine
 minutes and a 16-minute full run.
 
@@ -22,11 +22,11 @@ One: the root switches a person off and back on from the person's page, on the f
 - **The route.** `employeeRoutes.restore` beside `archive` (`shared/src/wire.ts#L36-L42`), body `{ version }` as the
   archive's (`shared/src/staff.ts#L125`). *Rejected:* one route taking `archived: boolean`: that body is a strict
   object, and halves deployed apart would need a default at the wire boundary (`CLAUDE.md#L23`) for no gain.
-- **The sleeping phone.** A session is keyed by its own id (`bff/src/sessions.ts#L29-L35`), lives 7 days (`#L13`) and
+- **The sleeping phone.** A session is keyed by its own id (`bff/src/calling/sessions.ts#L29-L35`), lives 7 days (`#L13`) and
   cannot be reached from the person's record; while they are off only the archived check refuses it, so switched back
   on a handle from before would wake. **The switch off therefore mints a fresh `generation` on the sign-in record**,
   the value every call compares (`bff/src/app.ts#L161`): the write `setSignInPassword` already makes for a password
-  (`bff/src/staff-records.ts#L81-L87`), the password hash left as it is, so the old password still works and back on
+  (`bff/src/records/staff-records.ts#L81-L87`), the password hash left as it is, so the old password still works and back on
   needs none. Someone with no password yet has no record to write, answered already (`#L80`), and no session.
 - **The words.** The legacy's lock and unlock, as decided: `person.archive` and `person.archived` reworded
   (`ui/src/i18n/en.ts#L432-L438`, `ui/src/i18n/vi.ts#L431-L437`: the record and code kept, the person can come back),
@@ -47,7 +47,7 @@ spec.
 | 3 | A switch back on the BFF refuses says so, and the page stays as it was | unit, same |
 | 4 | Both panels read in Vietnamese and in English | unit, same |
 | 5 | The fake switches back on, moves the version, and conflicts on a stale one | unit, `ui/src/fake.test.tsx` |
-| 6 | The route writes `archived: false` over the version read and answers the person as stored | BFF, `bff/src/employees.route.test.ts` |
+| 6 | The route writes `archived: false` over the version read and answers the person as stored | BFF, `bff/src/routes/employees.route.test.ts` |
 | 7 | A stale version is a 409 carrying the person as stored | BFF, same |
 | 8 | Without `staff.canDelete` it is a 403 and nothing is written | BFF, same |
 | 9 | A session issued before the switch off is still a 401 after the switch back on | BFF, same |

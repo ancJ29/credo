@@ -18,7 +18,16 @@ export function goBuildEnv(base: Record<string, string | undefined>) {
  * `pnpm stack` both start what this makes. Needs Go. */
 export async function buildCStorage(output: string) {
   await promisify(execFile)('go', ['build', '-o', output, './cmd/server'], {
-    cwd: fileURLToPath(new URL('../../c-storage', import.meta.url)),
+    cwd: fileURLToPath(new URL('../../services/c-storage', import.meta.url)),
+    env: goBuildEnv(process.env),
+  });
+}
+
+/** Builds the real audit service into `output`: the BFF's route tests and `pnpm stack` both start
+ * what this makes. Needs Go. */
+export async function buildAudit(output: string) {
+  await promisify(execFile)('go', ['build', '-o', output, './cmd/server'], {
+    cwd: fileURLToPath(new URL('../../services/audit-backbone', import.meta.url)),
     env: goBuildEnv(process.env),
   });
 }

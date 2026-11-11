@@ -21,6 +21,7 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 fail=0
+BASE_PATH=$PATH # before the stand-ins below put their folders in front: the gate cases want the real tools
 check() { # name wanted got
   if [ "$2" = "$3" ]; then echo "  ok   $1"; else echo "  FAIL $1: wanted '$2', got '$3'"; fail=1; fi
 }
@@ -706,7 +707,7 @@ check "a server that answers late, and first with the old build, still passes" 0
 check "  after four tries" 4 "$(wc -l <"$WORK/calls" | tr -d ' ')"
 
 echo "== the proof of a Bruno run (e2e.sh and check.sh both ask it)"
-PROOF=$REPO_DIR/c-storage/scripts/bruno-proof.cjs
+PROOF=$REPO_DIR/services/c-storage/scripts/bruno-proof.cjs
 mkdir -p "$WORK/coll/01-things" "$WORK/coll/environments"
 for f in 01-things/a.yml 01-things/b.yml folder.yml opencollection.yml environments/x.yml; do echo 'info: {}' >"$WORK/coll/$f"; done
 report() { # <passedRequests in the summary> <results as a JSON array>
@@ -737,10 +738,10 @@ refuses "no report at all is refused" "no readable report" proof
 
 # a scratch checkout for what writes into the Bruno collection's folder: the real ignore rule, copied
 KR=$WORK/kr
-mkdir -p "$KR/c-storage/bruno/environments"
+mkdir -p "$KR/services/c-storage/bruno/environments"
 git -C "$KR" init -q
-cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$KR/c-storage/bruno/environments/.gitignore"
-ENVS=$KR/c-storage/bruno/environments
+cp "$REPO_DIR/services/c-storage/bruno/environments/.gitignore" "$KR/services/c-storage/bruno/environments/.gitignore"
+ENVS=$KR/services/c-storage/bruno/environments
 KENV=$ENVS/ridge-tunnel.yml
 kr() { REPO_DIR=$KR "$@"; }
 free_port() { python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
@@ -1060,7 +1061,7 @@ refuses "a seed that installs nothing before the role is refused" "the install, 
 
 echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
-check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 c-storage walk .github/workflows/seed.yml" \
+check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
   "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
 # push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
 push_variant() {
@@ -1089,14 +1090,14 @@ refuses "a push trigger with no paths stops the read" "found no paths" push_path
 
 echo "== the checks of /health, against the real c-storage (release.sh and drill.sh wait on it; check.sh reads it once)"
 command -v go >/dev/null || { echo "ops/test.sh: needs go on PATH, to build c-storage" >&2; exit 2; }
-STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/c-storage/Makefile")
-[ -n "$STAMP_VAR" ] || { echo "ops/test.sh: c-storage/Makefile names no STAMP_VAR" >&2; exit 2; }
+STAMP_VAR=$(sed -n 's/^STAMP_VAR[[:space:]]*:=[[:space:]]*//p' "$REPO_DIR/services/c-storage/Makefile")
+[ -n "$STAMP_VAR" ] || { echo "ops/test.sh: services/c-storage/Makefile names no STAMP_VAR" >&2; exit 2; }
 # The first build compiles c-storage; the others only relink it.
 build() { # <output> [<stamp>]
   if [ -n "${2:-}" ]; then
-    (cd "$REPO_DIR/c-storage" && go build -ldflags "-X $STAMP_VAR=$2" -o "$1" ./cmd/server)
+    (cd "$REPO_DIR/services/c-storage" && go build -ldflags "-X $STAMP_VAR=$2" -o "$1" ./cmd/server)
   else
-    (cd "$REPO_DIR/c-storage" && go build -o "$1" ./cmd/server)
+    (cd "$REPO_DIR/services/c-storage" && go build -o "$1" ./cmd/server)
   fi
 }
 build "$WORK/server-want" "$want"
@@ -1350,13 +1351,13 @@ chmod 644 "$kenv"
 passes "a path git ignores is written" kr bruno_env_write "$kenv" 3192 tunnel-x accesskey0
 check "the file is 0600, though an older one was 0644" "$kenv" "$(find "$kenv" -perm 600)"
 check "  and it holds the variables the collection's local.yml names, in order" \
-  "$(sed -n 's/^  - name: //p' "$REPO_DIR/c-storage/bruno/environments/local.yml")" "$(sed -n 's/^  - name: //p' "$kenv")"
+  "$(sed -n 's/^  - name: //p' "$REPO_DIR/services/c-storage/bruno/environments/local.yml")" "$(sed -n 's/^  - name: //p' "$kenv")"
 check "  with this run's port, keys, service code and access key" \
   "http://127.0.0.1:3192 internalkey0 adminkey0 tunnel-x accesskey0" \
   "$(awk '$1 == "value:" {printf "%s%s", sep, $2; sep = " "} END {print ""}' "$kenv" | sed 's/ sample-record$//')"
 rm -f "$kenv"
 printf 'the committed one\n' >"$ENVS/local.yml"
-refuses "a path git does not ignore (the committed local.yml) is refused" "git does not ignore c-storage/bruno/environments/local.yml" \
+refuses "a path git does not ignore (the committed local.yml) is refused" "git does not ignore services/c-storage/bruno/environments/local.yml" \
   kr bruno_env_write "$ENVS/local.yml" 3192 tunnel-x accesskey0
 check "  and the file it would have replaced is untouched" "the committed one" "$(cat "$ENVS/local.yml")"
 rm -f "$ENVS/local.yml"
@@ -1364,7 +1365,7 @@ rm -f "$ENVS/local.yml"
 # it came from: git reads nothing there, and every path would read as kept.
 if git -C "$REPO_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   check "the real repository ignores ridge-tunnel.yml and ridge.yml, not local.yml" "ignored ignored kept" \
-    "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
+    "$(for n in ridge-tunnel ridge local; do if git -C "$REPO_DIR" check-ignore -q "services/c-storage/bruno/environments/$n.yml"; then printf 'ignored '; else printf 'kept '; fi; done | sed 's/ $//')"
 else
   echo "  == skipped: the repository's .git cannot be read here (a worktree copied from another machine), so its ignore rule is not read; GitHub's run reads it"
 fi
@@ -1396,7 +1397,7 @@ fresh_dirs
 printf 'the committed one\n' >"$ENVS/local.yml"
 rc=0
 OPS_DIR=$OPS_DIR OPS_LOG_DIR=$WORK/logs TMPDIR=$WORK/tmp KR=$KR KENV=$ENVS/local.yml bash "$WORK/refused.sh" >/dev/null 2>&1 || rc=$?
-check "a path git does not ignore: the run fails, naming it" "1 1" "$rc $(grep -c 'git does not ignore c-storage/bruno/environments/local.yml' "$WORK"/logs/*.log || true)"
+check "a path git does not ignore: the run fails, naming it" "1 1" "$rc $(grep -c 'git does not ignore services/c-storage/bruno/environments/local.yml' "$WORK"/logs/*.log || true)"
 check "  and the file survives the run's exit" "the committed one" "$(cat "$ENVS/local.yml")"
 rm -f "$ENVS/local.yml"
 cat >"$WORK/twice.sh" <<'CHILD'
@@ -1454,12 +1455,12 @@ echo "== ops/tunnel.sh and check.sh run whole, on stand-ins for aws and ssh, wit
 # lines of the clone's tunnel.sh differ from the real one: its port, so this run neither meets a
 # tunnel the human holds open nor another worktree's test, and the seconds between its checks.
 E2E=$WORK/e2e
-mkdir -p "$E2E/fakebin" "$E2E/repo/c-storage/bruno/environments"
+mkdir -p "$E2E/fakebin" "$E2E/repo/services/c-storage/bruno/environments"
 tport=$(free_port)
 cport=$(free_port)
 cp -R "$OPS_DIR" "$E2E/repo/ops"
-cp "$REPO_DIR/c-storage/bruno/environments/.gitignore" "$E2E/repo/c-storage/bruno/environments/.gitignore"
-echo 'info: {}' >"$E2E/repo/c-storage/bruno/opencollection.yml"
+cp "$REPO_DIR/services/c-storage/bruno/environments/.gitignore" "$E2E/repo/services/c-storage/bruno/environments/.gitignore"
+echo 'info: {}' >"$E2E/repo/services/c-storage/bruno/opencollection.yml"
 # docs/ is outside every path ci.yml deploys on: an edit there passes main_synced and meets the
 # whole-tree check against HEAD that seed.sh and root-password.sh keep.
 mkdir -p "$E2E/repo/docs"
@@ -1596,7 +1597,7 @@ export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
 # ::add-mask::<key> to the terminal, which is not a leak (the mask case below runs with it set).
 unset GITHUB_ACTIONS
-KEYS=$E2E/repo/c-storage/bruno/environments/ridge-tunnel.yml
+KEYS=$E2E/repo/services/c-storage/bruno/environments/ridge-tunnel.yml
 S=''
 RC=0
 LPID=''
@@ -1748,10 +1749,10 @@ check "  before any aws call or ssh" "gone gone" "$(file_state "$S/aws.calls") $
 
 # a keys file git would not ignore is refused before any aws call
 e2e_fresh not-ignored
-mv "$E2E/repo/c-storage/bruno/environments/.gitignore" "$E2E/not-ignored.off"
+mv "$E2E/repo/services/c-storage/bruno/environments/.gitignore" "$E2E/not-ignored.off"
 e2e_run tunnel.sh ridge
-mv "$E2E/not-ignored.off" "$E2E/repo/c-storage/bruno/environments/.gitignore"
-check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
+mv "$E2E/not-ignored.off" "$E2E/repo/services/c-storage/bruno/environments/.gitignore"
+check "a keys file git does not ignore stops the run" "1 1" "$RC $(grep -c '^error: git does not ignore services/c-storage/bruno/environments/ridge-tunnel.yml' "$OPS_LOG_DIR"/*.log || true)"
 check "  before any aws call" gone "$(file_state "$S/aws.calls")"
 
 check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
@@ -2776,6 +2777,258 @@ check "  and an asked screen that is in no walk is said, not left to a diff" 1 "
 check "  and the run still ends green on its counts, exit 0" 0 "$FR_RC"
 fr --moved s1,s2
 check "with nothing seen, the verdict says none for each" 1 "$(grep -c '^== verdict: green: .*moved none, new none, named but not moved none' "$FRW/out" || true)"
+
+# ---- ops/gate.sh (docs/plans/2026-11-09-one-gate-command.md, cases 1 to 13 and the three that step 2 to 4 added)
+# pnpm and uptime are stand-ins on PATH: pnpm logs its arguments to GATE_CALLS and exits 1 when they hold GATE_FAIL,
+# uptime prints a file. The gate's lock, log folder and polling are the overrides its own header names, so no run
+# touches the real .gate-lock or logs/, and none waits more than a couple of seconds.
+echo "== ops/gate.sh (the five steps, the lock, the skips)"
+GW=$WORK/gate
+mkdir -p "$GW/bin"
+cat >"$GW/bin/pnpm" <<'STUB'
+#!/bin/sh
+echo "$*" >>"$GATE_CALLS"
+[ -z "${GATE_SLOW:-}" ] || sleep "$GATE_SLOW"
+if [ -n "${GATE_FAIL:-}" ]; then
+  case "$*" in *"$GATE_FAIL"*) exit 1 ;; esac
+fi
+exit 0
+STUB
+cat >"$GW/bin/uptime" <<'STUB'
+#!/bin/sh
+cat "$GATE_UPTIME_FILE"
+STUB
+chmod +x "$GW/bin/pnpm" "$GW/bin/uptime"
+echo "14:00  up 1 day,  2:00, 3 users,  load averages: 1.00 1.00 1.00" >"$GW/load-ok"
+echo "14:00  up 1 day,  2:00, 3 users,  load averages: 9.50 9.00 9.00" >"$GW/load-high"
+echo "garbage" >"$GW/load-bad"
+GN=0 GRC=0 GOUT='' GLOG='' GCALLS=''
+# gate_run [VAR=value ...] -- <gate.sh arguments>: sets GRC, GOUT (the terminal), GLOG (the log), GCALLS (pnpm's calls)
+gate_run() {
+  local envs=()
+  while [ "$1" != -- ]; do
+    envs+=("$1")
+    shift
+  done
+  shift
+  GN=$((GN + 1))
+  GCALLS=$GW/calls-$GN
+  GOUT=$GW/out-$GN
+  : >"$GCALLS"
+  GRC=0
+  env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
+    GATE_UPTIME_FILE="$GW/load-ok" GATE_POLL=1 GATE_WAIT_MAX=2 \
+    ${envs[@]+"${envs[@]}"} bash "$OPS_DIR/gate.sh" "$@" >"$GOUT" 2>&1 || GRC=$?
+  GLOG=$(find "$GW/logs-$GN" -name '*.log' 2>/dev/null | head -1 || true)
+}
+hits() { grep -cF -- "$2" "$1" || true; } # <file> <fixed text>: how many lines hold it
+lastline() { tail -n 1 "$1"; }
+seenre() { if grep -q -- "$1" "$2"; then echo 1; else echo 0; fi; } # <regex> <file>: 1 if any line matches
+
+# case 1: five steps, each named with its result
+gate_run -- shared
+check "case 1: a package's gate exits 0" 0 "$GRC"
+check "  prints five numbered steps" 5 "$(grep -c '^\[[1-5]/5\]' "$GOUT" || true)"
+check "  and the verdict is green" 1 "$(hits "$GOUT" '== green')"
+check "  and the log's last line is == exit 0" "== exit 0" "$(lastline "$GLOG")"
+check "  and the summary names all five steps passed" "== steps: typecheck 0 eslint 0 prettier 0 test 0 knip 0" "$(grep '^== steps' "$GLOG")"
+check "  and the typecheck ran on the package alone" 1 "$(hits "$GCALLS" '--filter @credo/shared run typecheck')"
+
+# case 5: the test step is the package's own script
+check "case 5: the test step calls the package's own test script" 1 "$(hits "$GCALLS" '--filter @credo/shared run test')"
+check "  and gate.sh never spells vitest" 0 "$(grep -c vitest "$OPS_DIR/gate.sh" || true)"
+
+# case 6: the repo-wide steps run once in a scoped call
+check "case 6: eslint ran once" 1 "$(hits "$GCALLS" 'exec eslint')"
+check "  and prettier once" 1 "$(hits "$GCALLS" 'exec prettier')"
+check "  and knip once" 1 "$(hits "$GCALLS" 'exec knip')"
+
+# cases 2 and 3: a red step stops nothing, and the exit line is 1, in each of the five positions
+for pos in "typecheck|run typecheck" "eslint|exec eslint" "prettier|exec prettier" "test|run test" "knip|exec knip"; do
+  name=${pos%%|*}
+  pat=${pos#*|}
+  gate_run GATE_FAIL="$pat" -- shared
+  check "case 3: a red $name exits 1" 1 "$GRC"
+  check "  the log ends == exit 1" "== exit 1" "$(lastline "$GLOG")"
+  check "  the summary names $name as the red one" 1 "$(grep -c "^== steps:.* $name 1" "$GLOG" || true)"
+  check "case 2: and all five steps still ran ($name red)" 5 "$(grep -c '^\[[1-5]/5\]' "$GLOG" || true)"
+  check "  and the verdict is red" 1 "$(hits "$GLOG" '== red')"
+done
+
+# case 4 and the skip's own marker: a package with no test script is a named skip, shown as skip, not as a pass
+gate_run -- walk
+check "case 4: a package with no test script is a named skip" 1 "$(hits "$GLOG" 'skipped: @credo/walk has no test script')"
+check "  and does not redden the run" 0 "$GRC"
+check "  and the summary shows it as skip, not 0" 1 "$(grep -c '^== steps:.* test skip ' "$GLOG" || true)"
+check "  and walk's test script was never called" 0 "$(hits "$GCALLS" '@credo/walk run test')"
+
+# case 7: no package, every package's typecheck and test, none hiding the rest
+gate_run -- 
+check "case 7: the whole-tree call exits 0" 0 "$GRC"
+check "  names six typecheck results" 6 "$(grep -c '^ok   typecheck @credo/' "$GLOG" || true)"
+check "  and five test results" 5 "$(grep -c '^ok   test @credo/' "$GLOG" || true)"
+check "  and the repo-wide steps once" 1 "$(hits "$GCALLS" 'exec knip')"
+check "  and the skipped package shows beside the passes in the summary" 1 "$(grep -c '^== steps:.* test 0+1skipped ' "$GLOG" || true)"
+gate_run GATE_FAIL="@credo/ui run typecheck" -- 
+check "  and a red package typecheck does not stop the others (6 ran)" 6 "$(grep -c 'run typecheck' "$GCALLS" || true)"
+check "  and the other five tests still ran" 5 "$(grep -c 'run test' "$GCALLS" || true)"
+check "  and the red package is named" 1 "$(hits "$GLOG" 'RED  typecheck @credo/ui exit 1')"
+gate_run -- a b
+check "a call with two packages is a usage refusal, exit 2" 2 "$GRC"
+
+# case 13: the verdict names the gate it is not
+gate_run -- shared
+check "case 13: the log names make check as c-storage's own gate" 1 "$(grep -c "make check in services/c-storage" "$GLOG" || true)"
+
+# case 8: the load is waited for, and the wait is logged
+gate_run GATE_UPTIME_FILE="$GW/load-high" -- shared
+check "case 8: above the load ceiling it logs its wait" 1 "$(seenre '^waiting: one-minute load 9.50 is not under 8' "$GLOG")"
+check "  and gives up with exit 1, no step run" 1 "$GRC"
+check "  and took no lock" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and ran no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+# a held lock names its owner
+mkdir "$GW/lock"
+echo "pid=99999 log=other-lane.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "case 8: a held lock is waited for, naming its owner" 1 "$(seenre '^waiting: lock .* is held by: pid=99999 log=other-lane.log' "$GLOG")"
+check "  and the run gives up with exit 1" 1 "$GRC"
+check "  and ran no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+# the step-3 property that matters most: a giving-up run leaves a foreign lock exactly where it was
+check "case 10b: a giving-up run leaves the foreign lock's owner as it was" "pid=99999 log=other-lane.log started=T" "$(cat "$GW/lock/owner")"
+check "  and the lock itself" 1 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+# case 11: a nested call, whose holder is the lock's owner, does not take it, and the outer lock survives
+echo "pid=4242 log=outer started=T" >"$GW/lock/owner"
+gate_run GATE_HOLDER=4242 -- shared
+check "case 11: a nested call runs the steps" 0 "$GRC"
+check "  says it did not take the lock" 1 "$(hits "$GLOG" 'lock: not taken, held by the calling gate (pid 4242)')"
+check "  and runs all five steps" 5 "$(grep -c '^\[[1-5]/5\]' "$GLOG" || true)"
+check "  and the outer lock and its owner survive" "pid=4242 log=outer started=T" "$(cat "$GW/lock/owner")"
+# a stale holder (not the owner) is not a nested call: it waits
+gate_run GATE_HOLDER=1111 -- shared
+check "case 11b: a holder that is not the owner waits like anyone" 1 "$(seenre '^waiting: lock' "$GLOG")"
+# case 12: under CI there is no lock and no load wait, and the log says so, even with the lock held and the load high
+gate_run CI=1 GATE_UPTIME_FILE="$GW/load-high" -- shared
+check "case 12: under CI the gate runs green past a held lock and a high load" 0 "$GRC"
+check "  and the log says it skipped both" 1 "$(hits "$GLOG" 'lock: skipped, CI is set')"
+check "  and the foreign lock was left alone" "pid=4242 log=outer started=T" "$(cat "$GW/lock/owner")"
+rm -f "$GW/lock/owner"
+rmdir "$GW/lock"
+# case 9: an unreadable load refuses rather than taking the lock
+gate_run GATE_UPTIME_FILE="$GW/load-bad" -- shared
+check "case 9: an unreadable uptime reading refuses, exit 1" 1 "$GRC"
+check "  names why" 1 "$(grep -c "load could not be read from uptime" "$GLOG" || true)"
+check "  and took no lock" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+# case 10: the lock is released from the trap on a red, with its time and "free at the end"
+gate_run GATE_FAIL="exec knip" -- shared
+check "case 10: after a red the lock is gone" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and the log says it was released and free at the end" 1 "$(grep -c "released [0-9:]*: lock free at the end: yes" "$GLOG" || true)"
+check "  and the release is logged before the exit line" "== exit 1" "$(lastline "$GLOG")"
+# case 10: and on a signal. The gate runs slowly under the stand-in; SIGTERM arrives during its first step.
+GN=$((GN + 1))
+GCALLS=$GW/calls-$GN
+: >"$GCALLS"
+env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
+  GATE_UPTIME_FILE="$GW/load-ok" GATE_SLOW=3 bash "$OPS_DIR/gate.sh" shared >"$GW/out-$GN" 2>&1 &
+GPID=$!
+for _ in $(seq 1 50); do
+  [ -s "$GCALLS" ] && break
+  sleep 0.2
+done
+kill -TERM "$GPID" 2>/dev/null || true
+GRC=0
+wait "$GPID" || GRC=$?
+GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
+check "case 10: a SIGTERM during a step exits 143" 143 "$GRC"
+check "  and the lock is gone" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and the log ends == exit 143" "== exit 143" "$(lastline "$GLOG")"
+
+# M1: a package list that cannot be read refuses, it never runs nothing and says green
+printf 'packages:\n' >"$GW/ws-empty.yaml"
+printf 'packages:\n    - shared\n' >"$GW/ws-reformatted.yaml"
+for ws in "$GW/ws-empty.yaml" "$GW/ws-reformatted.yaml" "$GW/ws-missing.yaml"; do
+  gate_run GATE_WORKSPACE="$ws" -- 
+  check "M1: an unreadable or empty package list ($(basename "$ws")) refuses, exit 1" 1 "$GRC"
+  check "  names why" 1 "$(hits "$GLOG" 'no package could be read from')"
+  check "  runs no step" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+  check "  and never says green" 0 "$(hits "$GLOG" '== green')"
+  check "  and the log ends == exit 1" "== exit 1" "$(lastline "$GLOG")"
+done
+gate_run GATE_WORKSPACE="$GW/ws-missing.yaml" -- shared
+check "M1: a named package does not read the list at all" 0 "$GRC"
+
+# L2: a package.json that cannot be asked is a red, never the skip a missing script is
+mkdir -p "$GW/badnode"
+printf '#!/bin/sh\nexit 1\n' >"$GW/badnode/node"
+chmod +x "$GW/badnode/node"
+gate_run PATH="$GW/badnode:$GW/bin:$BASE_PATH" -- shared
+check "L2: a node that fails is a red, exit 1" 1 "$GRC"
+check "  names the package and the node exit" 1 "$(hits "$GLOG" 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 1)')"
+check "  and is not read as a skip" 0 "$(hits "$GLOG" 'has no typecheck script')"
+check "  and the summary shows 1, not skip" 1 "$(grep -c '^== steps: typecheck 1 ' "$GLOG" || true)"
+mkdir -p "$GW/badnode10"
+printf '#!/bin/sh\nexit 10\n' >"$GW/badnode10/node"
+chmod +x "$GW/badnode10/node"
+gate_run PATH="$GW/badnode10:$GW/bin:$BASE_PATH" -- shared
+check "R2: node's own reserved exit 10 is a red, not a plain no" 1 "$(hits "$GLOG" 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 10)')"
+gate_run PATH="$GW/bin:/usr/bin:/bin" -- shared
+check "L2: node absent from PATH is a red naming node exit 127" 1 "$(seenre 'RED  typecheck @credo/shared: could not read its scripts from package.json (node exit 127)' "$GLOG")"
+check "  and the run is red" 1 "$GRC"
+
+# M2: the give-up refusal names the owner, says if its pid is alive, prints the one clearing command, clears nothing
+mkdir "$GW/lock"
+echo "pid=$$ log=other.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: the refusal names the owner" 1 "$(hits "$GLOG" "(owner: pid=$$ log=other.log started=T;")"
+check "  says its pid is alive" 1 "$(hits "$GLOG" "pid $$ is still alive")"
+check "R1: a live owner is waited for, so no rm -rf is printed" 0 "$(hits "$GLOG" "rm -rf")"
+check "  and the refusal says to wait and clear nothing" 1 "$(hits "$GLOG" "That run is still going: wait for it")"
+check "  and the lock is as it was" "pid=$$ log=other.log started=T" "$(cat "$GW/lock/owner")"
+echo "pid=999999 log=other.log started=T" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: a dead owner is said to be not alive" 1 "$(hits "$GLOG" "pid 999999 is not alive")"
+check "R1: a dead owner gets the one command that clears it" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
+check "  and is not told to wait" 0 "$(hits "$GLOG" "wait for it")"
+echo "no pid here" >"$GW/lock/owner"
+gate_run -- shared
+check "M2: an owner with no readable pid says so" 1 "$(hits "$GLOG" "its pid could not be read")"
+check "R1: an unknown owner keeps the hedge and the clearing command" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/lock'")"
+rm -f "$GW/lock/owner"
+rmdir "$GW/lock"
+
+# M3: a full run's lock makes the gate wait, as ops/full-run.sh waits on nothing and refuses on the gate lock
+mkdir "$GW/runlock"
+echo "pid 999999 started T for walks a,b in /tree" >"$GW/runlock/owner"
+gate_run -- shared
+check "M3: a full run's lock is waited for, naming its owner" 1 "$(seenre '^waiting: a full run holds .*runlock: pid [0-9]* started T for walks a,b' "$GLOG")"
+check "  and the gate lock was never taken" 0 "$([ -d "$GW/lock" ] && echo 1 || echo 0)"
+check "  and no step ran" 0 "$(wc -l <"$GCALLS" | tr -d ' ')"
+check "  and the give-up names the run lock's clearing command" 1 "$(hits "$GLOG" "clear it with: rm -rf '$GW/runlock'")"
+check "  and the run lock is as it was" 1 "$([ -d "$GW/runlock" ] && echo 1 || echo 0)"
+echo "pid $$ started T for walks a,b in /tree" >"$GW/runlock/owner"
+gate_run -- shared
+check "R1: a healthy full run (live pid) is not given the rm -rf" 0 "$(hits "$GLOG" "rm -rf")"
+check "  and is told to wait" 1 "$(hits "$GLOG" "That run is still going: wait for it")"
+gate_run CI=1 -- shared
+check "M3: under CI the full run's lock is not waited for" 0 "$GRC"
+# and when the full run ends while the gate waits, the gate goes on and takes its own lock
+GN=$((GN + 1))
+GCALLS=$GW/calls-$GN
+: >"$GCALLS"
+env -u CI -u GATE_HOLDER PATH="$GW/bin:$BASE_PATH" OPS_LOG_DIR="$GW/logs-$GN" GATE_CALLS="$GCALLS" GATE_LOCK="$GW/lock" GATE_RUN_LOCK="$GW/runlock" \
+  GATE_UPTIME_FILE="$GW/load-ok" GATE_POLL=1 GATE_WAIT_MAX=30 bash "$OPS_DIR/gate.sh" shared >"$GW/out-$GN" 2>&1 &
+GPID=$!
+for _ in $(seq 1 50); do
+  grep -qs 'waiting: a full run' "$GW"/logs-"$GN"/*.log && break
+  sleep 0.2
+done
+rm -f "$GW/runlock/owner"
+rmdir "$GW/runlock"
+GRC=0
+wait "$GPID" || GRC=$?
+GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
+check "M3: once the full run's lock goes the gate runs and is green" 0 "$GRC"
+check "  having waited first" 1 "$(seenre '^waiting: a full run holds' "$GLOG")"
+check "  and having taken and freed its own lock" 1 "$(grep -c 'lock free at the end: yes' "$GLOG" || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

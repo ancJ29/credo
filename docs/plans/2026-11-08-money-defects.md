@@ -19,8 +19,8 @@ reads for that day are proved one number.** It is walkable end to end when the p
 close already runs through the real c-storage in `bff/tests/`, and nothing waits on a caller that
 is not there.
 
-Why one and not three: all of it lands in `bff/src/reconciliations.ts` and
-`bff/src/reconciliations.route.test.ts`, and the cases share one fixture (`dayEnd`, the test file's
+Why one and not three: all of it lands in `bff/src/routes/reconciliations.ts` and
+`bff/src/routes/reconciliations.route.test.ts`, and the cases share one fixture (`dayEnd`, the test file's
 tenant with two drivers and the day's calls). Splitting them would write that fixture three times.
 Item 36's finding 5 adds no code at all, so the slice is smaller than the readiness page's "about a
 day for the three together".
@@ -34,7 +34,7 @@ day for the three together".
   `docs/open-items.md#L296` already marks it `[FIXED]`. `docs/client-readiness.md#L393-L399` still
   reads it as the one to fix first, and `#L480-L483` counts it among three.
 - **41.2 — the item is right, the readiness page overstates it.** The precondition **is** in the
-  code: `storage.putRecord(key, record, null)` at `bff/src/reconciliations.ts#L41`, and `null`
+  code: `storage.putRecord(key, record, null)` at `bff/src/routes/reconciliations.ts#L41`, and `null`
   becomes `if-none-match: *` at `shared/src/c-storage.ts#L105-L107`, whose 412 reads as `moved`
   (`#L146`). So two closes cannot overwrite each other's cash, which is what
   `client-readiness.md#L400-L404` says they can. What is true is the item's own words: **nothing
@@ -44,7 +44,7 @@ day for the three together".
   leaves all fourteen green.
 - **41.7 — the item is right, and it is a race only.** A non-root's sign-in already 401s when the
   person is gone or archived (`bff/src/app.ts#L137`, `#L163-L164`), and the root alone has a null
-  `employeeId` (`#L127-L129`). So the fall-through at `bff/src/reconciliations.ts#L138-L140` is
+  `employeeId` (`#L127-L129`). So the fall-through at `bff/src/routes/reconciliations.ts#L138-L140` is
   reached by a person only when their record goes **between** the sign-in's read and the close's,
   a window that today spans the whole cancel loop (`#L109-L127`). When it is reached, the stored
   `closedBy` has the root's shape and the screen says so, with the person's own name
@@ -53,11 +53,11 @@ day for the three together".
 **The invariant, and the one thing it rests on.** The day's sum to collect is made in **one**
 function, `driverDay` (`shared/src/reconciliations.ts#L62`), which the page
 (`ui/src/DriverDayPage.tsx#L57`), the per-driver list (`ui/src/DeliveriesPage.tsx#L54`) and the
-close route (`bff/src/reconciliations.ts#L79-L82`) all call, so the sums agree by construction.
+close route (`bff/src/routes/reconciliations.ts#L79-L82`) all call, so the sums agree by construction.
 What can drift is its **input**: the list of requests each caller reads. That input sums one
-immutable field: a request's `total` is written once at issue (`bff/src/orders.ts#L349`, `#L360`)
+immutable field: a request's `total` is written once at issue (`bff/src/routes/orders.ts#L349`, `#L360`)
 and every later write to a request spreads the record (`#L389`, `#L493`, `#L522`), so no write
-moves it. The set is pinned by `sameIds` (`bff/src/reconciliations.ts#L92-L103`). **Nothing
+moves it. The set is pinned by `sameIds` (`bff/src/routes/reconciliations.ts#L92-L103`). **Nothing
 asserted that the input agrees**, which is case 5 below.
 
 ## The cases
@@ -74,7 +74,7 @@ asserted that the input agrees**, which is case 5 below.
 ## The steps
 
 - [x] **1. The closer is read before the first write, and a person who is gone is a 401.** Move the
-  `readEmployee` of `bff/src/reconciliations.ts#L128-L130` above the cancel loop at `#L109`; the
+  `readEmployee` of `bff/src/routes/reconciliations.ts#L128-L130` above the cancel loop at `#L109`; the
   root keeps the no-id branch, and anyone else whose record cannot be read throws
   `HttpError(401, 'Unauthorized')`, the wording `bff/src/app.ts#L83` already uses. Cases 2, 3, 4. There is no fake
   step and no screen step: this slice draws nothing new, so its cheap end to end is the route
@@ -94,7 +94,7 @@ asserted that the input agrees**, which is case 5 below.
   `'theirs'` (`reconciliations.route.test.ts#L29-L48`) that lands another close under the key and
   then lets ours through to c-storage with its own `null`; case 1 expects 409 and the first
   close's cash. *Done when:* the case is green, and red with the `null` at
-  `bff/src/reconciliations.ts#L41` removed — both runs quoted in the recap. **Size 14.**
+  `bff/src/routes/reconciliations.ts#L41` removed — both runs quoted in the recap. **Size 14.**
   *Done 2026-11-08:* a `flaky` mode `'rival'` lands another close (`handedIn` 1) under the key through
   the real client, then lets our write through with its own `null`; the new case in Row 16 expects 409
   and the first close's cash. Seen red two ways, each restore from `git show HEAD:` verified with `cmp`:
@@ -113,7 +113,7 @@ asserted that the input agrees**, which is case 5 below.
   to it; the file holds 17 cases. A guard, not a fix: the planner's "built twice" is one function,
   `driverDay` (`shared/src/reconciliations.ts#L62`), called by the page, the per-driver list and the
   route, so the sums agree by construction and what can diverge is its input. Seen red by the
-  mutation of the list route (`bff/src/orders.ts#L407-L409`) reporting a delivered request's total
+  mutation of the list route (`bff/src/routes/orders.ts#L407-L409`) reporting a delivered request's total
   one unit high: the page's sum then differs from the stored one (1910002 against 1910000, gap 700
   against 702), the Row 4 close case stays green, restore verified with `cmp`. Gate of `bff`, last
   line of `logs/20261108-121530-money-defects-step3-bff-gate.log`: `== exit 0 (typecheck 0 eslint 0

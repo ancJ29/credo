@@ -7,13 +7,15 @@
     "node": ">=26.0.0"
   },
   "scripts": {
-    "check": "pnpm -r run typecheck && eslint . && prettier --check . && pnpm -r run test && knip",
+    "check": "bash ops/gate.sh",
     "mock": "pnpm --filter @credo/ui run build:mock",
     "report": "pnpm --filter @credo/visual run report",
     "stack": "pnpm --filter @credo/scripts run stack",
     "demo": "pnpm --filter @credo/scripts run demo",
     "demo-files": "pnpm --filter @credo/scripts run demo-files",
-    "fake": "pnpm --filter @credo/scripts run fake"
+    "fake": "pnpm --filter @credo/scripts run fake",
+    "local": "pnpm --filter @credo/scripts run local",
+    "counts": "pnpm --filter @credo/scripts run counts"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

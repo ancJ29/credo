@@ -4,7 +4,7 @@
 
 Whoever may edit orders sees an Add button on the Customers and Products lists, types the record on the detail page's own form with the code box open, and lands on the new record. Before, only the root's Excel import could add one, so a new customer who telephoned could not be taken on. This closes the one product gap the readiness page held.
 
-One route per list (`bff/src/lists.ts`) uses the import's own row rule and write, so an added record is the one an import would make. The import stays root-only. A taken code is refused with a notice and what was typed is kept.
+One route per list (`bff/src/routes/lists.ts`) uses the import's own row rule and write, so an added record is the one an import would make. The import stays root-only. A taken code is refused with a notice and what was typed is kept.
 
 ## The stock decision
 

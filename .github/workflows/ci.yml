@@ -8,7 +8,7 @@ name: ci
 on:
   push:
     paths:
-      - "c-storage/**"
+      - "services/c-storage/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -26,7 +26,7 @@ on:
       - ".github/workflows/seed.yml"
   pull_request:
     paths:
-      - "c-storage/**"
+      - "services/c-storage/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -62,10 +62,10 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: c-storage/go.mod
-          cache-dependency-path: c-storage/go.sum
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
       - name: make check
-        working-directory: c-storage
+        working-directory: services/c-storage
         run: make check
 
   # The assembled server on a real socket: scripts/e2e.sh starts the binary on a
@@ -81,8 +81,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: c-storage/go.mod
-          cache-dependency-path: c-storage/go.sum
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
@@ -91,7 +91,7 @@ jobs:
       - name: Install Bruno CLI
         run: npm install -g --ignore-scripts @usebruno/cli@4.2.0
       - name: End-to-end
-        working-directory: c-storage
+        working-directory: services/c-storage
         env:
           E2E_REPORT: ${{ runner.temp }}/c-storage-e2e-report.html
         run: bash scripts/e2e.sh
@@ -125,8 +125,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: c-storage/go.mod
-          cache-dependency-path: c-storage/go.sum
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -161,8 +161,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: c-storage/go.mod
-          cache-dependency-path: c-storage/go.sum
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
       # The guards read env.yml as JSON through Ruby (the runner's image holds it) and run the
       # CloudFront Function and the ridge scripts under Node, so the job names its Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -194,7 +194,7 @@ jobs:
           mkdir "$RUNNER_TEMP/shellcheck"
           tar -xzf "$archive" -C "$RUNNER_TEMP/shellcheck" --strip-components=1
           "$RUNNER_TEMP/shellcheck/shellcheck" --version | grep -qx 'version: 0.11.0'
-          "$RUNNER_TEMP/shellcheck/shellcheck" -x ops/*.sh walk/*.sh c-storage/scripts/*.sh
+          "$RUNNER_TEMP/shellcheck/shellcheck" -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh
       - name: cfn-lint
         timeout-minutes: 5
         run: |
@@ -240,8 +240,8 @@ jobs:
         if: ${{ !env.ACT }}
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: c-storage/go.mod
-          cache-dependency-path: c-storage/go.sum
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
       - name: Set up Node
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -275,7 +275,7 @@ jobs:
       - name: Build the box's binary
         if: ${{ !env.ACT }}
         timeout-minutes: 5
-        working-directory: c-storage
+        working-directory: services/c-storage
         run: make box
       # No stored key: GitHub's token for environment ridge is exchanged for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
@@ -298,7 +298,7 @@ jobs:
         if: ${{ !env.ACT }}
         timeout-minutes: 8
         env:
-          RELEASE_BINARY: ${{ github.workspace }}/c-storage/dist/c-storage
+          RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
       # masked first. It skips, saying so, until the stack holds layer four.

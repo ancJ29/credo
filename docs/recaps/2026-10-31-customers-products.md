@@ -24,7 +24,7 @@ flowchart LR
 
 | What | Where it lives |
 | --- | --- |
-| the two routes of each list, root-only: a `GET` in code order (a short list is a 500, never a part) and an import of up to 100 rows a call, each row one add checked against the list read once a call (`added`, `taken`, `invalid`, `busy`) | [`registerListRoutes`](../../bff/src/lists.ts#L63) |
+| the two routes of each list, root-only: a `GET` in code order (a short list is a 500, never a part) and an import of up to 100 rows a call, each row one add checked against the list read once a call (`added`, `taken`, `invalid`, `busy`) | [`registerListRoutes`](../../bff/src/routes/lists.ts#L63) |
 | the wire and the keys: `customerSchema`, `productSchema` (with `stocked`), the add requests, one reply shape for both imports | [`lists.ts`](../../shared/src/lists.ts#L9), [`records.ts`](../../shared/src/records.ts#L26) |
 | the list pages and the one import page, the template, the preview and the fake's four calls | [`ListPage.tsx`](../../ui/src/ListPage.tsx#L14), [`ListImportPage.tsx`](../../ui/src/ListImportPage.tsx#L66), [`readList`](../../ui/src/listSheet.ts#L172) |
 | the stack's data: the same data set as the fake, sent through the import routes | [`generator.ts`](../../scripts/src/generator.ts#L50) |

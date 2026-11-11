@@ -1,0 +1,13 @@
+variables:
+  - name: keyedUrl
+    value: http://127.0.0.1:3190
+  - name: openUrl
+    value: http://127.0.0.1:3191
+  - name: writeKey
+    value: dev-activity-write-key
+  - name: clientId
+    value: acme
+  - name: actorId
+    value: emp-001
+  - name: targetId
+    value: so-001

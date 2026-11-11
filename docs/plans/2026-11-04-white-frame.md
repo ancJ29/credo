@@ -19,7 +19,7 @@ machine minutes and one full run; the full flow, as a client's stored settings c
 (`bff/src/app.ts#L194-L197`) and the UI the reply (`ui/src/api.ts#L273`, `#L298`): a record stored before reads all
 off (`CLAUDE.md#L23`). Typed, never `extra` (`docs/memo/extra.md#L44-L45`). c-storage is unchanged; the route keeps
 its one write and its right, `settings.canEdit` (`bff/src/app.ts#L220`); a new client starts all off
-(`bff/src/clients.ts#L30-L39`).
+(`bff/src/records/clients.ts#L30-L39`).
 
 Decided here:
 

@@ -2,7 +2,7 @@ import type { Language } from '@credo/shared';
 import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
-import { Providers } from '../src/Providers';
+import { Providers } from '../src/frame/Providers';
 
 const inApp = (screen: ReactNode, language: Language) => (
   <Providers colour="#2f7d6d" language={language} test>

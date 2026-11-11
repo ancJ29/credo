@@ -1,11 +1,11 @@
-import type { Language } from '@credo/shared';
+import type { Language, Width } from '@credo/shared';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MemoryRouter } from 'react-router';
-import { Providers } from '../Providers';
+import { Providers } from '../frame/Providers';
 
 export type Scheme = 'light' | 'dark';
-export type Width = 390 | 768 | 1280;
+export type { Width };
 
 type StageProps = {
   colour: string;

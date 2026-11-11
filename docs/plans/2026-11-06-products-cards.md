@@ -8,13 +8,13 @@ either:** products are a list and an Excel import (`ui/src/ClientApp.tsx#L371-L3
 as the customer's was built, on the same frame (`ui/src/DetailCards.tsx`) and the same 7/5, with its own columns.
 
 No server work: `GET /api/products` answers every product whole — unit, price and `stocked` typed, the note in
-`extra` (`shared/src/lists.ts#L24-L33`, `bff/src/lists.ts#L95-L100`) — so the page reads that list and picks its id.
+`extra` (`shared/src/lists.ts#L24-L33`, `bff/src/routes/lists.ts#L95-L100`) — so the page reads that list and picks its id.
 **Price:** $0 a month; every product read to show one, bounded by the import's 500 rows (`shared/src/import.ts#L7`).
 *Trigger:* editing by hand, which wants a record read for its version.
 
 ## The slice
 
-- **The page**, `/products/:id`, for whoever may see orders, as the list is (`bff/src/lists.ts#L96`). Above the
+- **The page**, `/products/:id`, for whoever may see orders, as the list is (`bff/src/routes/lists.ts#L96`). Above the
   columns: the name, the code and "Back to the products" (`ui/src/i18n/en.ts#L677`, the key is there), as
   `ui/src/CustomerPage.tsx#L27-L38` sets it. `main`: **Basic information** (code and name in a `FieldPair`),
   **Unit and price** (the price as the language writes a number, `ui/src/listSheet.ts#L56`), **Stock** (Yes or No,
@@ -26,7 +26,7 @@ No server work: `GET /api/products` answers every product whole — unit, price 
   noted record by non-empty text, the page's own rule, in place of `'note' in extra` and of an array index
   (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `words.test.tsx#L224-L225`). Both close
   with this merge.
-- Read only: no add, no edit, no delete. `bff/`, `shared/` and `c-storage/` are untouched.
+- Read only: no add, no edit, no delete. `bff/`, `shared/` and `services/c-storage/` are untouched.
 
 Decided here, not asked:
 
@@ -48,7 +48,7 @@ Decided here, not asked:
 | 6 | A `side` of `null` or `false` draws no column (item 99) | unit; red first |
 | 7 | From 992 two columns, 7 to 5; below one, details first; fields two a row from 768 | the walk |
 | 8 | Every card is `DetailCard` (`grep -c withBorder ui/src/ProductPage.tsx` is 0); the titles read in both languages | the grep; unit |
-| 9 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `c-storage/`; the report moves lists screens 6, 12 and 13 alone | the diff; `raw.txt` |
+| 9 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `services/c-storage/`; the report moves lists screens 6, 12 and 13 alone | the diff; `raw.txt` |
 
 ## What moves
 
@@ -60,7 +60,7 @@ never inserted, or the eleven ids renumber and lose their yeses. 12 is a product
 both: `VT-001` has a note, `DV-001` none (`shared/src/demo.ts#L449-L467`).
 
 **The named guard:** a walk screen never opens a record by a data-set id. On the stack the import mints each id
-(`bff/src/lists.ts#L123`), so screens 12 and 13 click the list's name link, as `openCustomer` does
+(`bff/src/routes/lists.ts#L123`), so screens 12 and 13 click the list's name link, as `openCustomer` does
 (`walk/specs/lists.spec.ts#L170-L175`). That mistake reddened all 12 full-stack cases in milestone 1, unseen by
 every unit test.
 
@@ -83,7 +83,7 @@ run and never broken.
   ternary and row 5 and 6 are proved through it, `DetailCards.tsx` untouched. Whole run per package green, ui 774
   tests at 100 %; tsc, eslint, prettier and knip clean. `pnpm report` 118 screens, 236 captures against `main`'s
   116, 232: screen 6 moved, 12 and 13 new, nothing else. Rows 8 and 9: 0 `withBorder`, no diff under `bff/`,
-  `shared/`, `c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
+  `shared/`, `services/c-storage/`. The words test and the walk's pickers pick by non-empty text (item 100).
 - [x] **3. The look** (👤 1); the machine goes on.
 - [x] **4. The gate.** 🤖 Sonnet, about 15 minutes: `main` taken in first, then the whole `pnpm check` under the
   lock, `== exit 0`.

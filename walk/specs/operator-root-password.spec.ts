@@ -1,4 +1,4 @@
-import { AUTH_HEADER, CLIENT_HEADER, type Language } from '@credo/shared';
+import { AUTH_HEADER, CLIENT_HEADER, type Language, STACK_ENV } from '@credo/shared';
 import { DEMO_CLIENTS, DEMO_CODE } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
@@ -16,7 +16,7 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
  * act asks for is a real one that the BFF checks. After screens 1 and 3, no picture: the spec reads
  * by the API that a root session from before is refused, that the old password signs in no more
  * and that the new one does. The stack's made password is masked on screen 3 (held by
- * bff/src/password.test.ts: "a made password is 12 characters that pass the typed rule"); the
+ * bff/src/calling/password.test.ts: "a made password is 12 characters that pass the typed rule"); the
  * failure of screen 4 is stubbed at the browser.
  */
 
@@ -48,7 +48,7 @@ async function open(page: Page, language: Language, { operator, cue }: Opening) 
   }
   // A failure stubbed for an earlier screen is not this one's.
   await page.unrouteAll();
-  const handle = operator ? required('CREDO_OPERATOR_HANDLE') : '';
+  const handle = operator ? required(STACK_ENV.CREDO_OPERATOR_HANDLE) : '';
   await page.addInitScript(
     ([chosen, kept]) => {
       localStorage.setItem('credo.language', chosen);
@@ -86,7 +86,9 @@ async function walk(page: Page, language: Language, width: number) {
   const authenticator = FULL() ? await virtualAuthenticator(page) : null;
   if (authenticator) {
     await authenticator.hold(
-      JSON.parse(required('CREDO_OPERATOR_PASSKEY')) as Parameters<typeof authenticator.hold>[0],
+      JSON.parse(required(STACK_ENV.CREDO_OPERATOR_PASSKEY)) as Parameters<
+        typeof authenticator.hold
+      >[0],
     );
   }
   /** What the BFF says to a client's call, by status alone: a failed call is rethrown without
@@ -96,7 +98,7 @@ async function walk(page: Page, language: Language, width: number) {
       .fetch(path, {
         method: data ? 'POST' : 'GET',
         headers: {
-          [CLIENT_HEADER]: required('CREDO_CLIENT_CODE'),
+          [CLIENT_HEADER]: required(STACK_ENV.CREDO_CLIENT_CODE),
           'x-device-id': 'walk-device-0001',
           ...(handle ? { [AUTH_HEADER]: handle } : {}),
         },
@@ -111,14 +113,14 @@ async function walk(page: Page, language: Language, width: number) {
     };
   };
   const signIn = (current: string) =>
-    call('/api/auth/sign-in', { name: required('CREDO_ROOT_NAME'), password: current });
+    call('/api/auth/sign-in', { name: required(STACK_ENV.CREDO_ROOT_NAME), password: current });
   /** A root session from before is refused, the old password signs in no more, the new one does. */
   async function endsOldAndOpensNew(before: string, old: string, now: string) {
     expect((await call('/api/auth/me', null, before)).status, 'the old session').toBe(401);
     expect((await signIn(old)).status, 'the old password').toBe(401);
     expect((await signIn(now)).status, 'the new password').toBe(200);
   }
-  let current = FULL() ? required('CREDO_ROOT_PASSWORD') : '';
+  let current = FULL() ? required(STACK_ENV.CREDO_ROOT_PASSWORD) : '';
   const sessionBefore = async () => (await signIn(current)).authId!;
 
   // 1. The page, a password typed: the company, its code typed, the password twice, what it ends.

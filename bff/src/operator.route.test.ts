@@ -16,8 +16,8 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { bffOn, DAY_MS, DEVICE, scoped, seedTenant, signIn, withAuth } from '../tests/tenant';
 import { joinedOperator, session, signInWith } from '../tests/operator';
-import { createClient } from './clients';
-import { verifyPassword } from './password';
+import { createClient } from './records/clients';
+import { verifyPassword } from './calling/password';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -573,7 +573,7 @@ describe('The operator is shown every client on the stack, newest first, from th
 
   it('logs each of those 500s by its kind, holding neither the key nor a value', async () => {
     const broken = {
-      'the client list is longer than c-storage returns': { records: [], more: true },
+      'the client index list is longer than c-storage returns': { records: [], more: true },
       'a client index record does not parse': {
         records: [
           { key: 'client.secret-co', data: { id: 'not an id', name: 'Secret Name' }, tag: 'x' },

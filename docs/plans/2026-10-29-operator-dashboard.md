@@ -76,8 +76,8 @@ beside it.
 | The form's checks | none in the page: a code not in the form reaches the BFF, whose 400 reads "try again" ([`NewClient.tsx#L19`](../../ui/src/NewClient.tsx#L19), [`api.ts#L159`](../../ui/src/api.ts#L159), [`OperatorApp.tsx#L79`](../../ui/src/OperatorApp.tsx#L79)) | **new**: the shared schemas on the form |
 | The answer, once | the link, `root` and the first password, read-only fields ([`ClientMade.tsx#L16`](../../ui/src/ClientMade.tsx#L16)) | kept, with a copy button each |
 | The BFF | `sign-in`, `sign-out`, `me` and `POST /api/operator/clients`, each behind the operator's session ([`app.ts#L157`](../../bff/src/app.ts#L157), [`app.ts#L254`](../../bff/src/app.ts#L254)); the route list held exact ([`operator.route.test.ts#L407`](../../bff/src/operator.route.test.ts#L407)) | **new**: `GET /api/operator/clients` |
-| A client's record | the index `client.<code>` in c-storage: the minted id and the name as made, no time ([`records.ts#L8`](../../shared/src/records.ts#L8), [`records.ts#L33`](../../shared/src/records.ts#L33)), written last by the create ([`clients.ts#L32`](../../bff/src/clients.ts#L32)) | **new**: the time it was made |
-| c-storage | a record by its key, and piece 2's list by prefix ([`server.go#L42`](../../c-storage/internal/server/server.go#L42)) | unchanged: the list reads the index |
+| A client's record | the index `client.<code>` in c-storage: the minted id and the name as made, no time ([`records.ts#L8`](../../shared/src/records.ts#L8), [`records.ts#L33`](../../shared/src/records.ts#L33)), written last by the create ([`clients.ts#L32`](../../bff/src/records/clients.ts#L32)) | **new**: the time it was made |
+| c-storage | a record by its key, and piece 2's list by prefix ([`server.go#L42`](../../services/c-storage/internal/server/server.go#L42)) | unchanged: the list reads the index |
 | The fake | piece 2's, already answering the operator's sign-in, `me` and the create ([`fake.ts#L290`](../../ui/src/fake.ts#L290)); scenes signed in as a client's person ([`scene.ts#L31`](../../ui/src/scene.ts#L31)) | **new**: the list; a scene signed in as the operator |
 | The walk | four screens from the static mock ([`walks.ts#L216`](../../visual/src/walks.ts#L216)), 24 bases ([`operator.spec.ts#L21`](../../walk/specs/operator.spec.ts#L21)) | **reshaped**: nine fake scenes ([the walks](#the-walks)) |
 
@@ -316,7 +316,7 @@ worktree; B to D will touch more of the same:
 | `ui/src/i18n/en.ts`, `vi.ts` | the staff's words | the operator's, under `operator` |
 | `ui/src/api.ts`, `ui/src/fake.ts`, `ui/src/scene.ts`, `ui/tests/unused.ts` | the staff calls; the fake and the scenes | `listClients`; the scene signed in as the operator |
 | `shared/src/wire.ts`, `shared/src/demo.ts`, `shared/src/records.ts` | the staff's schemas, the data set, the keys | the list's reply, the link's path, the data set's clients, `madeAt` |
-| `bff/src/app.ts`, `bff/src/clients.ts`, `bff/src/operator.route.test.ts`, `scripts/src/generator.ts` | the staff routes, the root's sign-in record, the route list, the generator | the list's route and its line, `madeAt`, the clients made |
+| `bff/src/app.ts`, `bff/src/records/clients.ts`, `bff/src/operator.route.test.ts`, `scripts/src/generator.ts` | the staff routes, the root's sign-in record, the route list, the generator | the list's route and its line, `madeAt`, the clients made |
 | `visual/src/walks.ts`, `visual/answers.json`, `walk/` | its scenes and answers, the `fake` and `full` projects | the operator's scenes, 18 answers, the operator's spec and its bases |
 
 - **Keeping it small:** this piece adds beside piece 2's lines and rewrites none of them, so each
@@ -425,7 +425,7 @@ worktree; B to D will touch more of the same:
   22 and 26, each seen red once; `pnpm check` green at 100 %; live, `pnpm stack -- <command>`: the
   operator lists the data set's three with their days, makes one and lists four with the new one
   first, and a root's handle is a 401.
-  *Evidence:* 15:21 +07. `GET /api/operator/clients` (`listClients` in `bff/src/clients.ts`): one
+  *Evidence:* 15:21 +07. `GET /api/operator/clients` (`listClients` in `bff/src/records/clients.ts`): one
   c-storage list under `recordKeys.clientPrefix`, newest first, 500 on `more`, a record that does not
   parse or a key that holds no code, behind the operator's session; the create writes `madeAt` from
   the BFF's `now()` (a time in the body is a 400) and builds the link with `clientLinkPath`; the
@@ -436,7 +436,7 @@ worktree; B to D will touch more of the same:
   `pnpm stack -- <command>`: the operator listed `binh-an`, `hoa-sen`, `demo` with their days
   (21 Oct, 2 Oct and 14 Sep), made `live-check` (201, `/login?client-code=live-check`), listed four
   with it first dated today, a root's handle was 401 and no handle 401. `pnpm check` exit 0 but for
-  `scripts`, which missed coverage only at `scripts/src/processes.ts#L83` (the timing test, open item
+  `scripts`, which missed coverage only at `scripts/src/running/processes.ts#L83` (the timing test, open item
   23 of `employee-list`) under load, and passed at 100 % alone; visual alone 100 %. Counts: shared 65
   tests, ui 219, bff 160, scripts 77, visual 220, each at 100 %; eslint, prettier, knip and every
   typecheck clean. c-storage unchanged, so no `make check`. The 88 scene dumps (the 70 of piece 1 and

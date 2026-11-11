@@ -1,0 +1,60 @@
+info:
+  name: Get Activities by Target
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{openUrl}}/api/activities/by-target/{{targetId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{readToken}}"
+  params:
+    - name: limit
+      value: "20"
+      type: query
+      disabled: true
+    - name: cursor
+      value: "{{byTargetCursor}}"
+      type: query
+      disabled: true
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setVar("byTargetCursor", (res.body && res.body.nextCursor) || "");
+    - type: tests
+      code: |-
+        test("200 with the token", function() {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("only entries that named this target", function() {
+          // An entry with no targetId matches no target, so it is never here.
+          const actions = res.getBody().activities.map((a) => a.action);
+          expect(actions).to.not.include("employee.toggleStatus");
+        });
+
+        test("every row here carries the target", function() {
+          res.getBody().activities.forEach((a) => {
+            expect(a.targetId).to.equal(bru.getEnvVar("targetId"));
+          });
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Everything that happened *to* one record, newest first, within the token's
+  tenant. **Open URL, with the token.**
+
+  Same shape and same rules as `by-actor`. An entry written without a `targetId`
+  is never here.
+
+  A cursor from `by-actor` is a **400** here: the two feeds issue cursors under
+  different scopes precisely so one cannot silently walk the other's index.

@@ -22,6 +22,8 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
+| a copy of the app on this Mac that stays up between commands | [the quick start](../docs/quick-start.md), which holds the five commands, what each prints and which two print a password | the build, then seconds |
+| a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env>` | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -128,7 +130,7 @@ old loopback listener does not answer: the log then finds no running commit, and
 
 ## The deploy job
 
-The human's push to `main` that touches `c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
+The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
 `scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, once `check`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
@@ -313,13 +315,37 @@ Parameters: `--worktree`, `--branch` and `--walks` (comma separated, as `walk/ru
 (`logs/<YYYYMMDD-HHMM>-<stem>.log`, each run's text beside it as `…-run-<n>.out`); `--node` the Node it needs (default
 v26.12.1, from nvm); `--lock` the gate lock it refuses on (default `<credo root>/.gate-lock`); `--run-lock` its own lock (default
 `<credo root>/.full-run-lock`); `--check` runs the refusals and shows the two commands, then stops, taking no lock. It never
-takes the gate lock: `walk/run.sh` refuses while it exists. It takes `.full-run-lock` after the refusals, so two full runs
+takes the gate lock: `walk/run.sh` refuses while it exists, and the gate waits while `.full-run-lock` exists. It takes `.full-run-lock` after the refusals, so two full runs
 cannot overlap, and releases it on green, red and interrupt. A lock left behind (a run killed hard) is refused on, never
 cleared by the script: the refusal names the owner and prints the `rm -rf` that clears it.
 - **== refused: ...:** nothing ran; the line names why (a missing parameter, no worktree, the wrong branch, a dirty tree,
   the gate lock held with its owner, another full run's lock held with its owner, the wrong Node). It is in the log too.
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
+
+## The gate
+
+`ops/gate.sh [<pkg>]` is the five steps of one package's check, or of all six: typecheck and test of each
+package (its own scripts, so the coverage and the 100 % thresholds are the package's), then eslint, prettier
+and knip once over the whole tree, because their configs are repo-wide. It runs all five whatever any one
+does, takes `.gate-lock` once the one-minute load is under 8, and writes `logs/<stamp>-gate-<pkg>.log` ending
+`== exit <code>`. Read the `== steps:` line: `skip` is a step that ran nowhere (a package with no `test`
+script, `walk`), `0+1skipped` is one that skipped a package, and neither is a pass. A red names its step and
+the other four still show. It does not cover c-storage: that gate is `make check` in `services/c-storage/`.
+
+- **The lock is held by someone:** the log says by whom and waits; after 30 minutes it gives up. A lock left behind
+  (a run killed hard) is refused on, never cleared by the script: the refusal names the owner, says whether its pid
+  is still alive, and prints the one `rm -rf` that clears it only when the owner is gone or cannot be checked; a live
+  owner is told to be waited for, since a healthy full run (6 to 35 minutes) outlasts the 30-minute wait.
+- **A full run is going:** `ops/full-run.sh` holds `.full-run-lock` for its whole time, and `walk/run.sh` stops its
+  lanes and ends red when `.gate-lock` appears mid-run. So the gate waits (same loop, same 30 minutes, same refusal
+  naming `.full-run-lock`) while that lock exists, and a short check never reddens a long run. A bare
+  `walk/run.sh` takes no lock, so a gate cannot wait for it: start the gate when no walk is running.
+- **No package list, or a package.json that cannot be read:** `pnpm check` refuses when `pnpm-workspace.yaml` yields
+  no package, and a `package.json` it cannot parse (or no `node`) is a red step, never a skip.
+- **A forced red, to see the gate catch it:** break one line in one position, run `pnpm --filter @credo/shared
+  check`, put it back. A new export in a file `shared/src/index.ts` re-exports is not a knip red (it is the
+  package's public entry); one in a file only the app uses is.
 
 ## The check
 
@@ -329,7 +355,7 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
    fresh client `check-<time>` through the tunnel and signs it in through the app's address, as a
    partner would, with no cache in front of `/api/*`. The run deletes that client at its end, green or red; a delete that fails is a `WARN` line, not a red.
    - **needs pnpm install done:** the client is made by `scripts/`, run under Node.
-   - **no c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
+   - **no services/c-storage/bruno, or the wrong Bruno CLI:** merge `main` in, or install 4.2.0.
    - **something already answers on the check's local port:** free it, or set `CHECK_LOCAL_PORT`.
    - **a key is in this log:** delete the log, delete `/etc/c-storage/keys.env` on the box, then run
      `ops/release.sh ridge`, which makes new keys and restarts c-storage.
@@ -345,9 +371,9 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
 
 1. `ops/tunnel.sh ridge`, from a worktree at `main`. Wait for the `ready:` lines; the run says ready
    only once `/health` names a commit of `main`, and writes
-   `c-storage/bruno/environments/ridge-tunnel.yml` (0600, git-ignored) with ridge's keys and a fresh
+   `services/c-storage/bruno/environments/ridge-tunnel.yml` (0600, git-ignored) with ridge's keys and a fresh
    service's.
-2. In Bruno, open the collection `c-storage/bruno`, pick the environment `ridge-tunnel`: Health, then
+2. In Bruno, open the collection `services/c-storage/bruno`, pick the environment `ridge-tunnel`: Health, then
    the collection once. Or `curl http://127.0.0.1:3192/health`. Use `127.0.0.1`, not `localhost`.
    - A second collection run in the same session answers 409 at its register; run the tunnel again
      for a fresh service.
@@ -463,7 +489,7 @@ the real c-storage, built there, so Go must be installed. The guards also need R
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
 
-1. `shellcheck -x ops/*.sh`
+1. `shellcheck -x ops/*.sh walk/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,

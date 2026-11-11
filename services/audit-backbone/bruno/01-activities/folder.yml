@@ -1,0 +1,34 @@
+info:
+  name: Activities
+  type: folder
+  seq: 1
+
+request: {}
+
+docs:
+  content: |-
+    ## One write, one mint, two reads — on two URLs
+
+    Both `POST`s go to `{{keyedUrl}}` with `{{writeKey}}`: the client's
+    system writes, and mints a read token for one tenant. Both `GET`s go to
+    `{{openUrl}}` with that token, which is what a browser holds. The open
+    listener has no write or mint handler to reach.
+
+    ### A read is one tenant's, for an hour
+
+    The feeds take the tenant from the token alone. A token expires an hour
+    after it is minted; mint again before then. Why a token, and its price:
+    `docs/memo/the-reader-takes-a-token.md`.
+
+    ### targetId decides which feed an entry appears in
+
+    An entry with a `targetId` is in both feeds; one without is only in
+    `by-actor`. *Log Activities* writes one of each.
+
+    ### Pagination
+
+    Both reads are newest written first (by `id`) and cursor-paginated,
+    `limit` 1–100: below 1 is the default 20, above 100 is 100. The cursor
+    names the feed that issued it, so a `by-actor` cursor sent to
+    `by-target` is a 400.
+  type: text/markdown

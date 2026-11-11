@@ -13,7 +13,7 @@ This piece cuts eleven walks from about 78 minutes to about 18, tooling only. Mi
 The cheapest safe path is what exists: run 2's reader is `compare` (`scripts/src/walks.ts#L51-L133`) on bytes, over
 the bases view run 1 builds (`walk/run.sh#L376-L382`); the lanes are today's passes (`walk/run.sh#L291-L314`). Each
 stack builds into its own temp folder (`scripts/src/cli.ts#L97`, `scripts/src/stack.ts#L115`) on ports the OS hands
-out; a port taken before its bind is a red naming the child's log (`scripts/src/processes.ts#L7-L18`).
+out; a port taken before its bind is a red naming the child's log (`scripts/src/running/processes.ts#L7-L18`).
 **Price:** $0; about 29 machine minutes and one ~18-minute run.
 
 ## The slice

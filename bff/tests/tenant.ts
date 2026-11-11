@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { InjectOptions } from 'fastify';
 import {
   CLIENT_HEADER,
+  type ActivityClient,
   type CStorageClient,
   type Employee,
   normaliseSignInName,
@@ -9,7 +10,7 @@ import {
   type StoredUser,
 } from '@credo/shared';
 import { buildApp } from '../src/app';
-import { hashPassword } from '../src/password';
+import { hashPassword } from '../src/calling/password';
 import { freshTenant, type RunningCStorage } from './c-storage';
 
 export const DEVICE = 'device-aaaa-0001';
@@ -99,12 +100,24 @@ export async function seedTenant(storage: CStorageClient, code: string) {
   return id;
 }
 
+/** The default request log of a test: silent, but a route that carries an action and answers well
+ * without declaring its entry throws out of the hook, so the route's own test goes red. */
+const forgottenEntryFails = {
+  level: 'error',
+  stream: {
+    write: (line: string) => {
+      if (line.includes('audit route answered with no entry declared')) throw new Error(line);
+    },
+  },
+};
+
 /** The BFF over a service of its own on the running c-storage, where tests keep apart. */
 export async function bffOn(
   cs: RunningCStorage,
   options: {
     now?: () => number;
     wrap?: (client: CStorageClient) => CStorageClient;
+    activity?: ActivityClient;
     logger?: Parameters<typeof buildApp>[0]['logger'];
     build?: string;
   } = {},
@@ -114,10 +127,11 @@ export async function bffOn(
   const storage = options.wrap ? options.wrap(service.client) : service.client;
   const app = buildApp({
     storage,
+    ...(options.activity === undefined ? {} : { activity: options.activity }),
     now: options.now ?? time.now,
     origin: ORIGIN,
     serviceKey: service.accessKey,
-    logger: options.logger ?? false,
+    logger: options.logger ?? forgottenEntryFails,
     ...(options.build === undefined ? {} : { build: options.build }),
   });
   return { ...service, app, time };

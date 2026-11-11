@@ -12,7 +12,7 @@ pnpm install
 pnpm mock
 ```
 
-Then open `ui/dist/mock/mock.html` in a browser. The page's filters narrow it to a language, a
+Then open the page built from `ui/mock.html`, which the build writes under `ui/dist/mock/`, in a browser. The page's filters narrow it to a language, a
 theme or a width.
 
 ## Try the stack
@@ -38,3 +38,8 @@ pnpm fake
 
 It prints an address; open it with `?fake` after it, and sign in as `root` with any password.
 Ctrl-C stops it.
+
+## Inside
+
+[`docs/README.md`](docs/README.md) is the index: what is seen when something is wrong and where its
+answer is, then what each document holds and the order to read them.

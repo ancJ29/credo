@@ -3,6 +3,13 @@
 Numbered, never renumbered; an entry is deleted when done
 ([documentation](conventions/documentation.md)).
 
+**"A client's own stack" or "a client's stack", in a trigger or a severity below, means the first
+stack that holds a real tenant's data.** The items were written when each client was to have a
+stack of its own; since 2026-11-11 the shape intended for production, and not built, is one stack
+per environment with its tenants pooled on boxes
+([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), so
+such a trigger fires at that environment's stack, not at a stack for each client.
+
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
 
 The old app counted each 5xx in its Lambda logs and posted it to a chat channel. Before the first
@@ -29,9 +36,12 @@ through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with
 gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet, it comes with the backup, item 6),
 `ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
-distribution). ridge is the first stack from each. A signed client's stack is one more from
-`env.yml`, and still waits for a client, with its ACM certificate requested in `us-east-1` and its
-name in Cloudflare.
+distribution). ridge is the first stack from each. Production is one more stack from `env.yml`,
+and still waits for a client; in the pooled shape, intended and not built, it holds every tenant
+group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`,
+with one wildcard name in Cloudflare
+([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)). A
+tenant takes a stack of its own only where its contract needs its keys apart.
 
 ## 5. The arm64 builds and how each release lands — the machine writes, GitHub Actions runs on the human's push to main; c-storage's first, for ridge (the architecture plan, 2026-10-27)
 
@@ -86,7 +96,7 @@ the database are still unrecoverable, and the fence, though live on ridge (its c
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
-`bff/tests/c-storage.ts` (the route tests) and `scripts/src/processes.ts` with `scripts/src/stack.ts`
+`bff/tests/c-storage.ts` (the route tests) and `scripts/src/running/processes.ts` with `scripts/src/stack.ts`
 (`pnpm stack`) each start the real c-storage on a free port, with the same keys and the same health
 wait. They share only the build (`bff/tests/build.ts`). They differ in what they need: the tests
 retry a port taken between the probe and the bind and stop at the process's exit; the stack logs
@@ -100,7 +110,7 @@ on.
 the port in between makes the child exit, and the stack stops naming the child and the end of its
 log; running it again is the remedy. A stranger already answering on that port is not mistaken for
 the child: `waitUntilUp` also needs the child's own log to say it is listening
-(`scripts/src/processes.ts`). The route tests retry on another port. *Trigger:* a second
+(`scripts/src/running/processes.ts`). The route tests retry on another port. *Trigger:* a second
 `pnpm stack` failing this way, when it retries too.
 
 ## 12. A lockfile for Bruno CLI in CI — the machine; *parked* until the CLI's dependencies are a problem (the ridge plan, step 12, 2026-10-28)
@@ -135,7 +145,7 @@ a call without it.
 
 ## 23. A scripts test depends on how fast a child starts, and the gate's coverage goes red under load — the machine; *parked* until the scripts package is next touched (the employee list plan, step 14, 2026-10-29)
 
-`scripts/src/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
+`scripts/src/running/processes.test.ts`, "it logged that it is listening, and the url still does not answer",
 gives `waitUntilUp` 200 ms, and the child must log "listening" inside them. In a whole `pnpm check`,
 where every package's tests run at once, the child sometimes starts later: the loop then ends before
 it reaches the `fetch(...).catch(() => null)` in `processes.ts`, and the package's coverage reads
@@ -165,13 +175,13 @@ Seen again in the fix pass of step 20 (2026-10-30), two more reds. At 12:38 the 
 "The app gives a template in Vietnamese or English…", `expected [] to have a length of 1 but got +0`: not load but a real defect of the
 test, which asserted the saved file before the lazily loaded libraries had loaded; fixed in `b0a1150` (it waits), seen red under a
 300 ms delay in the load. At 12:42 the whole check (`logs/20261030-1242-employee-list-fix-pass-check.log`) failed again on
-`ui/src/StaffRecord.test.tsx#L301`, "The editor refuses fields it cannot take and says so…", `Test timed out in 5000ms` (5139 ms; the
+`ui/src/pages/client/StaffRecord.test.tsx#L301`, "The editor refuses fields it cannot take and says so…", `Test timed out in 5000ms` (5139 ms; the
 file took 32079 ms): the load was 4.58 at the start and 15.55 at the end, with a second agent testing in another worktree, and the
 `scripts` package was killed by that first failure. This is the same test as in run 2 above; it is load, and still unexplained.
 
 Cause found for the `StaffRecord.test.tsx` reds (main merge, 2026-10-30). The first test typed 28 characters one key at a time with
 `userEvent.type`: each key draws the whole staff editor (30 to 45 ms a key at a load of 4) and waits a turn of the event loop, so the
-test took 1667 ms alone (`ui/src/StaffRecord.test.tsx#L310`) and a loaded machine stretched it past 5 s. The second test's "Saved."
+test took 1667 ms alone (`ui/src/pages/client/StaffRecord.test.tsx#L310`) and a loaded machine stretched it past 5 s. The second test's "Saved."
 miss is not its own: a test that times out keeps running its remaining keystrokes, and they land in the next test's page (seen by
 running the file with `--testTimeout=1000`: the second test then read `['ĐBỏ2 cl', …]`, the first test's `Đ` among its own keys). A
 longer `findBy` would hide that; its default stands. The change: those two tests put text in with a helper `enter` (a click, then
@@ -201,7 +211,7 @@ at a load of 1.4 to 1.8, the other draws in that process staying at 26 to 27 s
 and no test budget covers it. To diagnose after the 11-04 demo, or the first time it shows on GitHub: log in `drawnSceneWords`
 whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visual` test stays (Decide 48); item 37 holds the finer budget.
 
-`ui/src/StaffRecord.test.tsx#L315` (the editor's refusal of three bad fields) timed out at 5302 ms in a loaded whole check (`logs/20261101-0852-orders-delivery-check.log`). `4760ad9` cut it from 975 to 803 ms alone, a margin of about 2x under load. The next step, after 11-04 or at its next red: split it into its three cases, one behaviour a test (QA rules 1 and 4). **Done (line 36, 2026-11-01).** The next red was on GitHub, the push of `main`@`fae4dee`: 5351 ms of 5000 (`logs/20261101-1333-push-and-save-runs-ci.log#L2215`), where the test had run 1.9 to 5.4 s for days and 4813 ms at `fe7d31f`. What was left in it was the page's own draws, so it is split into four tests, each opening `/staff-setup` once: a field with no key is refused, the same key twice is refused, a choice with no options is refused and saved once it has one, and an option and a field are removed (the old test's tail, which its name never held). Alone: 267, 290, 614 and 477 ms (`logs/20261101-1356-staff-test-split-alone2.log`). Each is red from its own assertion with its rule's line changed and put back (`logs/20261101-1353-staff-test-split-red-*.log`, `20261101-1356-staff-test-split-red-nokey2.log`); the no-key test gives both names, since with them empty the names' own rule refused the field and the key's rule was held by nothing (two reds with the key's rule changed passed, `20261101-1353-staff-test-split-red-nokey.log` and `20261101-1355-staff-test-split-red-nokeyretry.log`). No budget or retry changed; `SLOW` stays as it was.
+`ui/src/pages/client/StaffRecord.test.tsx#L315` (the editor's refusal of three bad fields) timed out at 5302 ms in a loaded whole check (`logs/20261101-0852-orders-delivery-check.log`). `4760ad9` cut it from 975 to 803 ms alone, a margin of about 2x under load. The next step, after 11-04 or at its next red: split it into its three cases, one behaviour a test (QA rules 1 and 4). **Done (line 36, 2026-11-01).** The next red was on GitHub, the push of `main`@`fae4dee`: 5351 ms of 5000 (`logs/20261101-1333-push-and-save-runs-ci.log#L2215`), where the test had run 1.9 to 5.4 s for days and 4813 ms at `fe7d31f`. What was left in it was the page's own draws, so it is split into four tests, each opening `/staff-setup` once: a field with no key is refused, the same key twice is refused, a choice with no options is refused and saved once it has one, and an option and a field are removed (the old test's tail, which its name never held). Alone: 267, 290, 614 and 477 ms (`logs/20261101-1356-staff-test-split-alone2.log`). Each is red from its own assertion with its rule's line changed and put back (`logs/20261101-1353-staff-test-split-red-*.log`, `20261101-1356-staff-test-split-red-nokey2.log`); the no-key test gives both names, since with them empty the names' own rule refused the field and the key's rule was held by nothing (two reds with the key's rule changed passed, `20261101-1353-staff-test-split-red-nokey.log` and `20261101-1355-staff-test-split-red-nokeyretry.log`). No budget or retry changed; `SLOW` stays as it was.
 
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
@@ -225,7 +235,7 @@ red anyway. Fix: write the description after the code, in `ops/app.sh`, and a st
 
 ## 30. Adding a passkey in Safari may be refused — the machine, with the human's 3 minutes; *parked* until the console is used in Safari (the operator console plan, step 8, 2026-10-30)
 
-One click on "Add a passkey" (`ui/src/PasskeysPage.tsx`) runs two WebAuthn ceremonies: the touch of a
+One click on "Add a passkey" (`ui/src/pages/operator/PasskeysPage.tsx`) runs two WebAuthn ceremonies: the touch of a
 passkey already held (`passkeys.authenticate`), then the registration (`passkeys.register`). WebKit
 may spend the click's user activation on the first and refuse the second, so an operator on Safari
 might never add a second passkey. Chromium and jsdom have no such rule, so no test or walk can see it;
@@ -243,8 +253,8 @@ each ceremony has its own user activation. The picture of pk-2 stays as it is.
 
 On a phone, a wide table scrolls sideways inside its box, and nothing tells the person so: Mantine's
 `ScrollArea` draws its scrollbar on hover only, and a thumb has no hover. It touches the two
-`Table.ScrollContainer`s, the import preview's (`ui/src/ImportPage.tsx#L261`) and the staff list's
-(`ui/src/StaffListPage.tsx#L191`), so a field manager who opens the list on a phone sees the first
+`Table.ScrollContainer`s, the import preview's (`ui/src/pages/client/ImportPage.tsx#L261`) and the staff list's
+(`ui/src/pages/client/StaffListPage.tsx#L191`), so a field manager who opens the list on a phone sees the first
 columns and may not know that the rest is there. The fix, if taken: `scrollAreaProps={{ type: 'auto' }}`
 on both, which keeps the scrollbar on screen. It would move the pictures of staff-1, staff-8 and
 staff-14 at 390 and 768 wide, in both languages, and the human is asked about them again. *Trigger:* the
@@ -257,7 +267,7 @@ left running on a Ctrl-C. The stand-in tests in `scripts/src/walk-run.test.ts` n
 sandbox cannot signal a process an earlier command started or read the process list. The first real
 stray or interrupt shows them; read that run's log for the `stopped` lines. The BFF a stack starts is
 matched by its relative `src/main.ts` only when `lsof` puts its working folder under the root
-(`scripts/src/strays.ts`), so a Mac where `lsof` is denied leaves such a BFF running and the next run
+(`scripts/src/running/strays.ts`), so a Mac where `lsof` is denied leaves such a BFF running and the next run
 refuses on it by name. A Ctrl-C during the first step's listings ends as a refusal (exit 2), not 130;
 nothing was acted on. *Trigger:* a refusal naming a stray the script did not stop, or a log with
 `stopped` lines that look wrong.
@@ -269,10 +279,10 @@ with the behaviour broken. Under the demo's ceremony (Decide 46) only the High a
 are fixed; these stay.
 - **Row 14:** the 500 on a short or unparsable list is asserted by status and by the key being absent
   from the body, but the log line is never read. Capture the logger as
-  `bff/src/employees.route.test.ts#L1132` does and assert it names the kind and never the key.
+  `bff/src/routes/employees.route.test.ts#L1132` does and assert it names the kind and never the key.
 - **Row 13:** the record is written with `If-None-Match: *`, but no test would fail if the precondition
   went. Record the `ifTag` the wrapped client receives in the "adds each row" test of
-  `bff/src/lists.route.test.ts` and assert it is `null`.
+  `bff/src/routes/lists.route.test.ts` and assert it is `null`.
 - **Row 19:** the fake lists in code order, but no test imports a code that sorts first. Import one at
   `ui/src/fake.test.tsx#L594` and assert the list starts with it.
 
@@ -282,11 +292,11 @@ are fixed; these stay.
 
 Found while building the BFF half; none breaks a demo step or the gate, so none is fixed now.
 - **`[FIXED]` in edit-an-order, step 4 (`20ba3846`):** **a first save that carries a `version`** is
-  refused 400 and no order is made (case 6, `bff/src/orders.route.test.ts`).
-- **A cancelled request's order is freed by one write that may not land** (`bff/src/orders.ts`, the
+  refused 400 and no order is made (case 6, `bff/src/routes/orders.route.test.ts`).
+- **A cancelled request's order is freed by one write that may not land** (`bff/src/routes/orders.ts`, the
   request's cancel; the same again in the close of a driver's day, item 41 finding 3): a moved order is left as it is and the page reads the request as none, so the
   order offers to send again either way; no test moves the order between the two writes. Also a
-  false conflict (`bff/src/orders.ts#L388-L406`): a send pressed on a page read between the two
+  false conflict (`bff/src/routes/orders.ts#L388-L406`): a send pressed on a page read between the two
   writes meets a 409 though nothing the page showed has moved, in a window of milliseconds; a
   re-read that compares the shown order would recover it.
 - **The orders list reads each day of the span and each day its requests name**, one list read a day:
@@ -300,26 +310,26 @@ Found while building the BFF half; none breaks a demo step or the gate, so none 
 
 Found by the line 30 review; only its High and Medium findings are fixed under the demo's ceremony
 (Decide 46). None breaks a demo step or the gate.
-- **Finding 3, `bff/src/orders.ts#L341-L347`:** the order's cancel drops the request write's `moved`
+- **Finding 3, `bff/src/routes/orders.ts#L341-L347`:** the order's cancel drops the request write's `moved`
   result, so from slice 3 a request delivered between the read and the write leaves a cancelled order
   beside a delivered request. *Fix (slice 3):* on `moved`, re-read the request; if still waiting, retry
   a bounded number of times; if delivered, answer 409 with the order.
-- **`[FIXED]` in edit-an-order (step 2: the page sends the order's stored `extra`, case 10).** **Finding 4, `ui/src/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
-  included, and the BFF stores it as given (`bff/src/orders.ts#L274`); nothing writes an order's
+- **`[FIXED]` in edit-an-order (step 2: the page sends the order's stored `extra`, case 10).** **Finding 4, `ui/src/pages/client/OrderPage.tsx#L117`:** every save sends `extra: {}`, a draft's re-save
+  included, and the BFF stores it as given (`bff/src/routes/orders.ts#L274`); nothing writes an order's
   `extra` yet, so nothing is lost today. *Fix:* send `existing?.doc.order.extra ?? {}`, as
-  `ui/src/PersonPage.tsx#L328` merges into the stored one.
-- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** *Fixed by that earlier piece on 2026-11-07, not by money-defects; the money-defects piece (2026-11-08; it was thought still open from `docs/client-readiness.md`) built nothing for it and only re-read the code and corrected the stale prose (recap `docs/recaps/2026-11-08-money-defects.md`). The form draws a saved draft at its saved prices and marks a moved line (`ui/src/OrderPage.tsx#L89-L92`), a moved price alone makes the save worth making (`#L106`), and the moved price is shown (`#L219-L222`).* As filed: **Finding 5, `ui/src/OrderPage.tsx#L85-L89` and `bff/src/orders.ts#L303-L317`:** the form prices a
+  `ui/src/pages/client/PersonPage.tsx#L328` merges into the stored one.
+- **`[FIXED]` in edit-an-order (steps 2 and 4: the page draws a saved draft at its saved prices and marks a moved line, and a save reprices it, so the page's total and the request's agree).** *Fixed by that earlier piece on 2026-11-07, not by money-defects; the money-defects piece (2026-11-08; it was thought still open from `docs/client-readiness.md`) built nothing for it and only re-read the code and corrected the stale prose (recap `docs/recaps/2026-11-08-money-defects.md`). The form draws a saved draft at its saved prices and marks a moved line (`ui/src/pages/client/OrderPage.tsx#L89-L92`), a moved price alone makes the save worth making (`#L106`), and the moved price is shown (`#L219-L222`).* As filed: **Finding 5, `ui/src/pages/client/OrderPage.tsx#L85-L89` and `bff/src/routes/orders.ts#L303-L317`:** the form prices a
   saved draft from today's lists, but Confirm copies the saved lines, so after a price change the
   page's total and the request's total to collect differ. *Fix:* draw a saved draft at its saved
   prices and mark a line whose product's price has since moved, so that a save reprices it.
-- **Finding 6, `bff/src/orders-records.route.test.ts#L338-L347`:** row 18's second half ends at the
+- **Finding 6, `bff/src/routes/orders-records.route.test.ts#L338-L347`:** row 18's second half ends at the
   503, so a numbering that hands out the lost number again would stay green. *Fix:* one more `made()`
   after the 503, expecting `DH-00002`.
-- **Finding 7, `bff/src/orders.ts#L367-L369` and `ui/src/fake.ts#L629-L632`:** requests sort by number
+- **Finding 7, `bff/src/routes/orders.ts#L367-L369` and `ui/src/fake.ts#L629-L632`:** requests sort by number
   as text, so the order breaks past 99,999 requests. *Fix:* one shared comparator for both, as
   `newestOrdersFirst` (`shared/src/orders.ts#L183-L186`) compares the length first, the next time
   either is touched.
-- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
+- **`[FIXED]` in edit-an-order (step 4: the re-save schema takes a `tagSchema` version, a malformed one is a 400, case 5).** **Finding 8, `bff/src/routes/orders.ts#L262-L265`:** the PUT body extends `saveOrderRequestSchema` with
   `version: z.string().min(1)`, outside `shared/` and looser than `tagSchema`, so a malformed version
   reads as a moved one (409), not a 400. *Fix:* a re-save schema in `shared/src/orders.ts`, beside
   item 35's first bullet.
@@ -352,7 +362,7 @@ The review of line 24 fixed its High and Medium findings and the Low that made t
   and in the page test.
 - **Finding 6, `bff/src/operator.route.test.ts#L92`:** no test tries a client root's handle on `/api/operator/services`. Fix: add the
   route to that loop.
-- **Finding 7, `bff/src/operator-auth.ts#L274`:** sv-5 is provoked by an options 503 the BFF never answers for c-storage (cue
+- **Finding 7, `bff/src/routes/operator-auth.ts#L274`:** sv-5 is provoked by an options 503 the BFF never answers for c-storage (cue
   `operatorPasskeyOptions:503`, `visual/src/walks.ts#L554`, `walk/specs/operator-services.spec.ts#L82` and `#L182`). Fix: cue
   `operatorPasskeySignIn:503` in the fake and the scene; the full spec stubs the sign-in POST and lets the virtual authenticator answer the
   touch; or record why the shortcut stays.
@@ -379,16 +389,16 @@ The review of line 24 fixed its High and Medium findings and the Low that made t
 ## 39. The driver's phone: line 32's review findings 2 to 6 and 8 to 14, deferred under the 11-04 demo's exception — the machine; *parked* until the deliveries are next touched, and worked after the demo (driver-phone, step 7, 2026-11-01)
 
 Found by the line 32 review; only its Medium finding is fixed under the demo's ceremony (Decide 46). None breaks a demo step or the gate.
-- **Finding 2, `bff/src/orders.ts#L362-L365`:** the order's cancel still drops its request write's `moved` result (slice 2's finding 3, the plan's parked 6), so a cancel racing a delivery leaves a cancelled order beside a delivered request with a photo. *Fix:* read the write's result; on `moved` re-read the request: delivered, answer 409 with `orderDoc`; still waiting, retry a bounded number of times. Test: a flaky client that delivers the request just before the cancel's request write.
-- **Finding 3, `bff/src/orders.ts#L396`:** no test holds the "not allowed to deliver" check on a request's read (`someone` and the other driver are refused at `#L398` anyway), so a driver whose right was taken away still reads their own photo. *Fix:* two assertions in `bff/src/deliveries.route.test.ts#L368-L397`: that driver reads their delivered request's photo, 403; `someone` on a request id that is not there, 403.
-- **Finding 4, `bff/src/orders.ts#L473-L483` and `ui/src/MyDeliveryPage.tsx#L73-L76`:** when only the order's write fails, deliver answers 503 and the phone says "Not sent" for a request it delivered. *Fix:* treat the fulfil write as best effort, catch it, answer 200, and change `bff/src/deliveries.route.test.ts#L242` to expect 200.
-- **Finding 5, `bff/src/app.ts#L76` and `bff/src/orders.ts#L453-L455`:** a body up to 1 MiB (Fastify's default) is read and parsed before the sign-in and the 200 KB check. *Fix:* a route `bodyLimit` of about 300 KB on deliver and about 80 KB on the person's photo route.
+- **Finding 2, `bff/src/routes/orders.ts#L362-L365`:** the order's cancel still drops its request write's `moved` result (slice 2's finding 3, the plan's parked 6), so a cancel racing a delivery leaves a cancelled order beside a delivered request with a photo. *Fix:* read the write's result; on `moved` re-read the request: delivered, answer 409 with `orderDoc`; still waiting, retry a bounded number of times. Test: a flaky client that delivers the request just before the cancel's request write.
+- **Finding 3, `bff/src/routes/orders.ts#L396`:** no test holds the "not allowed to deliver" check on a request's read (`someone` and the other driver are refused at `#L398` anyway), so a driver whose right was taken away still reads their own photo. *Fix:* two assertions in `bff/src/routes/deliveries.route.test.ts#L368-L397`: that driver reads their delivered request's photo, 403; `someone` on a request id that is not there, 403.
+- **Finding 4, `bff/src/routes/orders.ts#L473-L483` and `ui/src/pages/client/MyDeliveryPage.tsx#L73-L76`:** when only the order's write fails, deliver answers 503 and the phone says "Not sent" for a request it delivered. *Fix:* treat the fulfil write as best effort, catch it, answer 200, and change `bff/src/routes/deliveries.route.test.ts#L242` to expect 200.
+- **Finding 5, `bff/src/app.ts#L76` and `bff/src/routes/orders.ts#L453-L455`:** a body up to 1 MiB (Fastify's default) is read and parsed before the sign-in and the 200 KB check. *Fix:* a route `bodyLimit` of about 300 KB on deliver and about 80 KB on the person's photo route.
 - **Finding 6, `ui/src/photo.ts#L45`:** `imageOrientation: 'from-image'` is a TypeError in a browser that predates the value, so every picture fails to shrink. *Fix:* on a TypeError, retry `createImageBitmap(file)` without the option. The human's phone at step 13 settles whether it is needed.
 - **Finding 8, `ui/src/photo.ts#L8`:** the rule 8 hint says the walk's browser and the human's phone hold the bound, the quality loop and the orientation; the walk's 240x180 PNG meets none. *Fix:* "the walk's browser runs it on a small PNG; the bound, the quality loop and the orientation meet a real photo only on the human's phone (step 13)".
 - **Finding 9 (skew and rollback), `shared/src/orders.ts`:** an office tab opened before the deploy fails to parse `fulfilled`, `delivered` and `deliveredAt` until reloaded, and a BFF rolled back past this slice answers 500 for any day with a delivered request. *Fix:* a line in the recap's hazards (same class as slice 2's finding 9).
-- **Finding 10, `bff/src/orders.ts#L52-L55` and `ui/src/fake.ts#L699`:** the module comment says an order naming a request that is "not waiting" reads as having none, which a delivered one no longer does; the fake stamps the real clock into `deliveredAt` (QA rule 7). *Fix:* "not there, or cancelled"; a fixed time, such as the data set's today at 10:00.
+- **Finding 10, `bff/src/routes/orders.ts#L52-L55` and `ui/src/fake.ts#L699`:** the module comment says an order naming a request that is "not waiting" reads as having none, which a delivered one no longer does; the fake stamps the real clock into `deliveredAt` (QA rule 7). *Fix:* "not there, or cancelled"; a fixed time, such as the data set's today at 10:00.
 - **Finding 11, `scripts/src/generator.ts#L253`:** the generator signs a driver in once per delivered request, about a dozen scrypt checks and session records per seed. *Fix:* sign each driver in once per seed, keyed by code.
-- **Finding 14, `bff/src/orders.ts#L444-L451`:** two delivers of one request at once by its driver let the losing call's photo overwrite the winner's (same driver, same goods). *Fix:* none now.
+- **Finding 14, `bff/src/routes/orders.ts#L444-L451`:** two delivers of one request at once by its driver let the losing call's photo overwrite the winner's (same driver, same goods). *Fix:* none now.
 - **Finding 14, `walk/specs/piece-2.spec.ts#L125` and `walk/specs/orders.spec.ts#L126`:** `withoutDriversAllowed` is written twice with two signatures. *Fix:* fold it into `walk/support.ts` when either spec is next touched.
 
 *Trigger:* after the 11-04 demo, the deliveries next touched, a cancel and a delivery seen racing, or the human's phone at step 13 showing a picture refused.
@@ -402,13 +412,13 @@ Found by the line 32 review; only its Medium finding is fixed under the demo's c
 ## 41. Slice 4, đối soát: line 35's review findings 1 to 11, deferred under the 11-04 demo's exception — the machine; *partly closed* by money-defects (`f6a12579` to `333a7f2d`, 2026-11-08): findings 2 and 7 are `[FIXED]`, finding 5 half so, the rest stay parked until the day's end is next touched (driver-reconcile, step 6, 2026-11-01)
 
 Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; its file is `logs/20261101-1427-driver-reconcile-review.md`, its runs `logs/20261101-1424-driver-reconcile-review-runs.log`). It found no High and no Medium, so under the demo's ceremony (Decide 46) nothing is fixed now; each finding is `[DEFERRED]` here. None breaks a demo step or the gate.
-- **Finding 1, `docs/plans/2026-11-01-driver-reconcile.md`, step 5's evidence:** row 5's two clauses were seen red only through other rows' assertions (the BFF's through the 409 body, the UI's through the Closed table). *Fix:* none in code; the reviewer's runs 1 and 3 hold them (BFF `bff/src/reconciliations.route.test.ts#L220`, UI `ui/src/Reconcile.test.tsx#L379`) and step 6's tick names that log.
-- **`[FIXED]` in money-defects (`bc5ddb24`, 2026-11-08, Low as filed, on money; it was a missing test, not a missing safeguard).** *The precondition was always in the code: `bff/src/reconciliations.ts#L41` passes `null` and `shared/src/c-storage.ts#L105-L107` turns it into `if-none-match: *`, so two closes could never overwrite each other's cash. What was missing was anything holding it, and `bc5ddb24` adds that: a `'rival'` mode that lands a rival close under the key and lets our write through, so the precondition itself refuses it (409, the first close's cash kept); with the `null` dropped the case is red. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 2, `bff/src/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
-- **Finding 3, `bff/src/reconciliations.ts#L115-L126`, tests `#L153-L154` and `#L420-L432`:** the order's free and its guard are held by no test, item 35's second bullet a second time. *Fix:* assert the stored order's `request` in the close test; at `#L420` make the order name another request id and expect it kept.
-- **Finding 4, `bff/src/reconciliations.route.test.ts#L406` and `#L371-L372`:** a test name and a comment say more than their tests hold (a throwing order write, not a `moved` one; a fresh body, not the old). *Fix:* rename `#L406` and add the `moved` case (200, the order left); at `#L372` send the old body first (409), then the fresh one (200).
-- **Half `[FIXED]` in money-defects (`f6a12579`, 2026-11-08); the page's reload stays open on purpose.** *The closer is now read before the first write, so a gone person stops the close with nothing cancelled. The `catch` calling `loaded.reload()` was out of this piece's scope and stays open; the 409 wording still blames a delivery.* As filed: **Finding 5, `ui/src/DriverDayPage.tsx#L69-L72`, `bff/src/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
+- **Finding 1, `docs/plans/2026-11-01-driver-reconcile.md`, step 5's evidence:** row 5's two clauses were seen red only through other rows' assertions (the BFF's through the 409 body, the UI's through the Closed table). *Fix:* none in code; the reviewer's runs 1 and 3 hold them (BFF `bff/src/routes/reconciliations.route.test.ts#L220`, UI `ui/src/pages/client/Reconcile.test.tsx#L379`) and step 6's tick names that log.
+- **`[FIXED]` in money-defects (`bc5ddb24`, 2026-11-08, Low as filed, on money; it was a missing test, not a missing safeguard).** *The precondition was always in the code: `bff/src/routes/reconciliations.ts#L41` passes `null` and `shared/src/c-storage.ts#L105-L107` turns it into `if-none-match: *`, so two closes could never overwrite each other's cash. What was missing was anything holding it, and `bc5ddb24` adds that: a `'rival'` mode that lands a rival close under the key and lets our write through, so the precondition itself refuses it (409, the first close's cash kept); with the `null` dropped the case is red. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 2, `bff/src/routes/reconciliations.ts#L41`:** the closed day's `If-None-Match` is held by no test (dropping the `null` kept all 14 green); two closes at once would let the later overwrite the first's cash. *Fix:* a `flaky()` mode that writes another close under the key and passes ours on to c-storage with its own tag; expect 409, the record theirs.
+- **Finding 3, `bff/src/routes/reconciliations.ts#L115-L126`, tests `#L153-L154` and `#L420-L432`:** the order's free and its guard are held by no test, item 35's second bullet a second time. *Fix:* assert the stored order's `request` in the close test; at `#L420` make the order name another request id and expect it kept.
+- **Finding 4, `bff/src/routes/reconciliations.route.test.ts#L406` and `#L371-L372`:** a test name and a comment say more than their tests hold (a throwing order write, not a `moved` one; a fresh body, not the old). *Fix:* rename `#L406` and add the `moved` case (200, the order left); at `#L372` send the old body first (409), then the fresh one (200).
+- **Half `[FIXED]` in money-defects (`f6a12579`, 2026-11-08); the page's reload stays open on purpose.** *The closer is now read before the first write, so a gone person stops the close with nothing cancelled. The `catch` calling `loaded.reload()` was out of this piece's scope and stays open; the 409 wording still blames a delivery.* As filed: **Finding 5, `ui/src/pages/client/DriverDayPage.tsx#L69-L72`, `bff/src/routes/reconciliations.ts#L109-L130`, `ui/src/fake.ts#L449-L486`:** a close that stops part way leaves the page showing requests it already cancelled, and its retry meets a 409 whose words blame a delivery; the fake's 503 moves nothing, so it differs from the stack. *Fix:* read the closer before the first write; in the page's `catch` call `loaded.reload()` too.
 - **Finding 6, `ui/src/i18n/en.ts#L172`, `ui/src/i18n/vi.ts#L173`, `shared/src/permissions.ts#L6-L7`:** the editors' words for `orders.canEdit` do not say it closes a driver's day. *Fix:* a code comment now; the words with the next change to piece 2's editors or the cashier right (re-asks their screens).
-- **`[FIXED]` in money-defects (`f6a12579`, 2026-11-08, Low as filed, on money; a race only).** *Reached only when the closer's staff record went between the sign-in's read and the close's, a window that spanned the whole cancel loop; then the close was stored with the root's shape and the cashier's own name. The read now sits above the cancel loop and a gone record is a 401 with nothing cancelled and nothing written; the root alone has no id, so the mis-attribution branch is unreachable for anyone else. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 7, `bff/src/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
+- **`[FIXED]` in money-defects (`f6a12579`, 2026-11-08, Low as filed, on money; a race only).** *Reached only when the closer's staff record went between the sign-in's read and the close's, a window that spanned the whole cancel loop; then the close was stored with the root's shape and the cashier's own name. The read now sits above the cancel loop and a gone record is a 401 with nothing cancelled and nothing written; the root alone has no id, so the mis-attribution branch is unreachable for anyone else. Recap `docs/recaps/2026-11-08-money-defects.md`.* As filed: **Finding 7, `bff/src/routes/reconciliations.ts#L128-L140`:** a person whose record cannot be read at the close is recorded as the root (a race only). *Fix:* branch on `who.root`; a gone person is a 401; read it before the writes (finding 5).
 - **Finding 8, `ui/src/fake.ts#L449-L456` and `#L364-L370`:** the fake looks for the driver (404) before parsing the body (400), frees the order whatever it names, and refuses no extra key. *Fix:* when the fake is next touched, parse `closeDayRequestSchema` first.
 - **Finding 9, `shared/src/reconciliations.ts#L65`:** `driverDay` sorts request numbers as text, item 36's finding 7 in another place. *Fix:* the shared comparator that item 36 names.
 - **Finding 10, `ui/src/i18n/en.ts#L685` (and `vi.ts#L685`), `ui/src/fake.test.tsx#L1908-L1939`:** the moved words name two of the 409's causes; the fake's test asserts less than its name. *Fix:* the words on a no at step 8 or 12 (re-asks screen 7); assert that Nam's two waiting requests still wait.
@@ -502,14 +512,14 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 **History, so the next reader meets no third confident claim.** This item first said the reds were load. This morning it was rewritten to say they were headroom, one shared cause for the `bff` case and for "some `ui` tests". That shared cause was asserted and then withdrawn the same day: only the `bff` half was ever measured.
 
-**Measured, for the `bff` case only.** `bff/src/clients-delete.route.test.ts` case 13 was run alone, three times on an idle machine, and took **4155 ms, 4132 ms and 4175 ms against a 5000 ms limit**, about **82 per cent of its own timeout every run** (`logs/20261108-1205-money-defects-clients-delete-alone.log`). A case that close to its limit reddens at any load, which is why "the load that does it" was never a stable number. *Fix:* make that case cheaper or give it a limit that leaves room, and hold what it waits on by the test's own signal, not a time.
+**Measured, for the `bff` case only.** `bff/src/routes/clients-delete.route.test.ts` case 13 was run alone, three times on an idle machine, and took **4155 ms, 4132 ms and 4175 ms against a 5000 ms limit**, about **82 per cent of its own timeout every run** (`logs/20261108-1205-money-defects-clients-delete-alone.log`). A case that close to its limit reddens at any load, which is why "the load that does it" was never a stable number. *Fix:* make that case cheaper or give it a limit that leaves room, and hold what it waits on by the test's own signal, not a time.
 
 **Not known, for the `ui` cases.** No `ui` case was ever timed alone, so nothing says they sit near a limit. The best evidence of how one fails is the sighting from GitHub below: an element that never appeared, which is not a clock running out. The two may well be unrelated faults filed under one number; the first step for the `ui` side is to time that case alone and to read why "Send it again" was not on the page, before any fix.
 
 **The sightings, as history, with their loads:**
-- 2026-11-02, load 12.6 (the gate's limit is 8), a whole `pnpm check`: two `ui` tests failed in files the change did not touch and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times.
+- 2026-11-02, load 12.6 (the gate's limit is 8), a whole `pnpm check`: two `ui` tests failed in files the change did not touch and both passed on a rerun at load 4.7, which is no verdict (QA rule 6: a flaky red is a defect). [`SignIns.test.tsx#L129`](../ui/src/pages/SignIns.test.tsx#L129), "C: the root turns the email and the QR sign-in on…", timed out at 5000 ms; [`MyDeliveries.test.tsx#L39`](../ui/src/pages/client/MyDeliveries.test.tsx#L39), "a driver … lands on My deliveries", saw `myDeliveries` called 0 times.
 - 2026-11-03, load about 12: `MyDeliveries.test.tsx` alone, the same no call, nothing in `ui` changed (once item 57, folded in here; `logs/20261103-walks-page-step2-gate-run3-red-ui.log`).
-- 2026-11-07 14:22Z, **the first sighting from GitHub rather than from this machine, and the first with a real error message**: CI run `42380906824`, commit `5073bbc9bebc2bc881e7f05a46c6ede0f3e54379`, job `app`, step `pnpm check`. In [`OrdersPages.test.tsx`](../ui/src/OrdersPages.test.tsx), "the order's page on the cards > a confirmed order whose request is gone puts its facts and lines left, its request and its steps right", at line 354: `TestingLibraryElementError: Unable to find an accessible element with the role "heading" and name "Send it again"`. The summary was `Test Files 1 failed | 62 passed (63)` and `Tests 1 failed | 811 passed (812)`. The `shared` and `bff` parts of the same check were green. No load is known for a GitHub runner (`logs/20261108-1214-github-reds-run-42380906824.failed.txt`).
+- 2026-11-07 14:22Z, **the first sighting from GitHub rather than from this machine, and the first with a real error message**: CI run `42380906824`, commit `5073bbc9bebc2bc881e7f05a46c6ede0f3e54379`, job `app`, step `pnpm check`. In [`OrdersPages.test.tsx`](../ui/src/pages/client/OrdersPages.test.tsx), "the order's page on the cards > a confirmed order whose request is gone puts its facts and lines left, its request and its steps right", at line 354: `TestingLibraryElementError: Unable to find an accessible element with the role "heading" and name "Send it again"`. The summary was `Test Files 1 failed | 62 passed (63)` and `Tests 1 failed | 811 passed (812)`. The `shared` and `bff` parts of the same check were green. No load is known for a GitHub runner (`logs/20261108-1214-github-reds-run-42380906824.failed.txt`).
 - 2026-11-07 23:31, load 7.97, under the limit of 8: the same `OrdersPages.test.tsx` case failed in a whole check (`logs/20261107-233125-clerk-add-records-step7-whole-check.log` red, `logs/20261107-233422-clerk-add-records-step7-whole-check.log` green). Its error was not read for this item, so whether it is the same missing heading is not known.
 - 2026-11-08, load 3.4: a further red. The same morning money-defects' first run of `bff` timed out one case in `clients-delete.route.test.ts` (`logs/20261108-120141-money-defects-step1-bff-gate.log`, exit 1; the rerun was green), which the measurement above then explained.
 
@@ -536,32 +546,32 @@ undefined. Fix: take the language from the build's data, or fall back to `vi`.
 
 ## 61. After a timeout the failure message says nothing changed, yet the write may have landed — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
 
-c-storage saves the root's record but its answer misses the BFF's 5-second timeout: the BFF answers 503 and the page says the password is as it was, while the root is signed out and holds the new one. A retry repairs it. Lines: `ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/root-password.ts#L50`. *Fix:* word it "may not have been set: set it again" in both languages and re-take screen 4; or `setSignInPassword` re-reads once after a write with no answer.
+c-storage saves the root's record but its answer misses the BFF's 5-second timeout: the BFF answers 503 and the page says the password is as it was, while the root is signed out and holds the new one. A retry repairs it. Lines: `ui/src/i18n/en.ts#L104`, `ui/src/i18n/vi.ts#L103`, `bff/src/routes/root-password.ts#L50`. *Fix:* word it "may not have been set: set it again" in both languages and re-take screen 4; or `setSignInPassword` re-reads once after a write with no answer.
 
 *Trigger:* the first client's root, or the next change to the route.
 
 ## 62. The root-password touch is not tied to the client, and nor is the delete's — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low; widened 2026-11-07)
 
-Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
+Within its 5 minutes and before it is spent, a touch made for client A, posted to client B's route, sets B's root; this goes beyond the plan's row 11 (the act and the operator). Lines: `bff/src/routes/operator-auth.ts#L375` (mint), `#L264` (open), used at `bff/src/routes/root-password.ts#L48`. *Fix:* confirm-options takes the client's code and mints with the subject `${operator.id}:${code}`; the route opens it with the same subject.
 
-**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/operator-auth.ts#L266-L275`, `bff/src/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
+**Widened by the client-readiness read (2026-11-07): the same holds for deleting a client, which is the heavier act, and it is held here rather than in a new item because one fix closes both.** `confirmed` opens any act's token with the operator's id as its only subject (`bff/src/routes/operator-auth.ts#L266-L275`, `bff/src/calling/challenge.ts#L42-L48`), so every `ConfirmAct` has this shape, and `delete-client` is the one that cannot be undone: `bff/src/routes/clients-delete.ts#L50` passes the touch with no code of its own, though the route knows the code at `#L44`. The page asks for the company's code typed, which is the UI's check and not the guard. *Fix, both routes together:* the subject becomes `${operator.id}:${code}` at the mint and at the open, with a case for each route that a touch made for one client does not open on another. *Severity:* Low while one operator runs the console; it is the only gate between a live session and an irreversible delete once there are two.
 
 *Trigger:* before a second operator or a client signs.
 
 ## 63. No page test for the BFF refusing the touch (403) — the machine; `[DEFERRED]` (D, plan step 6, review at `e6320b9`, 2026-11-03, Low)
 
-The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/RootPasswordPage.tsx#L61` (the catch), `ui/src/RootPasswordPage.test.tsx#L124` (the 503 test to copy). *Fix:* one test with the fake's `setRootPassword:403` cue, asserting the "not changed" alert and that the code and passwords are still typed.
+The page's half of the case table's rows 5 and 7 has no test. Lines: `ui/src/pages/operator/RootPasswordPage.tsx#L61` (the catch), `ui/src/pages/operator/RootPasswordPage.test.tsx#L124` (the 503 test to copy). *Fix:* one test with the fake's `setRootPassword:403` cue, asserting the "not changed" alert and that the code and passwords are still typed.
 
 *Trigger:* the next change to the page.
 
 ## 64. The scripts' coverage missed 100 % once, at the wait's retry sleep — the machine; *parked* (B1, plan step 2, 2026-11-03)
 
-`scripts/src/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
+`scripts/src/running/processes.ts#L83` (`await sleep(25)` in `waitUntilUp`, run only when the first look finds nothing listening)
 and the function around it showed uncovered in one whole run of the scripts' tests (263 pass, statements 99.92 %,
 branches 99.82 %), under a load near 8; the same tests passed at 100 % when run again with nothing else changed (the
-only change between the two runs was a type in `bff/src/challenge.ts`, which `scripts` does not run). So the retry is
+only change between the two runs was a type in `bff/src/calling/challenge.ts`, which `scripts` does not run). So the retry is
 covered by timing, not by a test of its own. *Fix:* a test that answers the first poll "not yet" on purpose, with the
-stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/processes.ts`.
+stand-in's own clock. *Trigger:* the next red of this kind, or the next change to `scripts/src/running/processes.ts`.
 
 ## 69. A BFF rolled back past B1 cannot read the accounts B1 writes — the machine; `[DEFERRED]` (B1, plan step 5, review at `5bae528`, 2026-11-03, Low)
 
@@ -571,13 +581,13 @@ stand-in's own clock. *Trigger:* the next red of this kind, or the next change t
 
 ## 70. An add or a link the target began before its delete can land after the sweep — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, amended after the reread of `4131696`, 2026-11-03, Low)
 
-`createOperator`'s retry (`bff/src/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. The gap is wider since the fix at `4131696`: the target stays signed in until the roster write, so a link they make after the sweep has passed that colleague's account and before the roster write survives the 204 (`bff/src/operators.ts#L181-L190`). The comment at `#L165-L166` ("no link of theirs or of their making is left") claims more than this. *Fix:* none now; check the maker on the roster at the last write, and say so in the comment.
+`createOperator`'s retry (`bff/src/records/operators.ts#L135-L143`) checks the name, not that `addedBy` is still on the roster, and `makeLink` (`#L83-L95`) can finish after the sweep passed that account, so a deleted operator could end up holding a working link. The gap is wider since the fix at `4131696`: the target stays signed in until the roster write, so a link they make after the sweep has passed that colleague's account and before the roster write survives the 204 (`bff/src/records/operators.ts#L181-L190`). The comment at `#L165-L166` ("no link of theirs or of their making is left") claims more than this. *Fix:* none now; check the maker on the roster at the last write, and say so in the comment.
 
 *Trigger:* two operators acting in the same instants.
 
 ## 71. The link's kind comes from a roster read that can be stale — the machine; `[DEFERRED]` (B2, plan step 5, review at `44db639`, 2026-11-03, Low)
 
-A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) and `makeLink` gets a `join` link while active; using it replaces their passkeys (`bff/src/operator-auth.ts#L328-L332`) without raising the generation, so their sessions are not ended. *Fix:* none now; make the link's kind from the account, not the roster.
+A colleague who joins between the read (`bff/src/routes/operator-team.ts#L100-L107`) and `makeLink` gets a `join` link while active; using it replaces their passkeys (`bff/src/routes/operator-auth.ts#L328-L332`) without raising the generation, so their sessions are not ended. *Fix:* none now; make the link's kind from the account, not the roster.
 
 *Trigger:* a join in the instant a link is made for the same colleague.
 
@@ -589,7 +599,7 @@ A colleague who joins between the read (`bff/src/operator-team.ts#L100-L107`) an
 
 ## 73. A delete refused at its roster write has already removed the links of an operator who stays listed — the machine; `[DEFERRED]` (B2, plan step 5, reread of `4131696`, Opus, 2026-11-03, Low)
 
-A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
+A delete that stops at its roster write (an actor gone, 401; three roster moves, 503; a write that throws) has already removed, in `bff/src/records/operators.ts#L178-L191`, the links of an operator who stays listed. In the race of two deletes the survivor loses its own recovery link and its invitees' join links, and nobody is told until a colleague opens a dead link. A new link recovers each. The plan's case 3 ("one remains … deletes nothing more") no longer holds for links. *Fix:* none now; remove the links only after the actor is checked at the last roster read, or note that a refused delete may need new links.
 
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
 
@@ -602,7 +612,7 @@ The header shows the company's name beside a stand-in logo (Tabler's `IconBrandA
 
 ## 77. A process left in a lane's group holds the wait with no line saying why — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Low)
 
-In a run nobody stops, a process left in a lane's process group holds the wait after the last pass, and no line says why (`walk/run.sh#L459`). Unlikely, since the stack kills its children at exit (`scripts/src/processes.ts#L47-L48`). *Fix:* once every lane's `.rc` is written, a short grace, then name what is left and TERM it.
+In a run nobody stops, a process left in a lane's process group holds the wait after the last pass, and no line says why (`walk/run.sh#L459`). Unlikely, since the stack kills its children at exit (`scripts/src/running/processes.ts#L47-L48`). *Fix:* once every lane's `.rc` is written, a short grace, then name what is left and TERM it.
 
 ## 78. On the stop path bash prints its job lines unprefixed — the machine; `[DEFERRED]` (full-run-speed, plan step 5, reread of `f9e33a0`, Opus, 2026-11-04, Info)
 
@@ -610,7 +620,7 @@ On the KILL path, bash still prints its job lines without the `[lane n]` prefix 
 
 ## 79. A rare port clash between lanes — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info)
 
-`freePort` releases its port before the child binds it (`scripts/src/processes.ts#L7-L18`), so two lanes can meet on one. It shows as a named red, never a green. *Fix:* only if a run meets it.
+`freePort` releases its port before the child binds it (`scripts/src/running/processes.ts#L7-L18`), so two lanes can meet on one. It shows as a named red, never a green. *Fix:* only if a run meets it.
 
 ## 80. The full run's stray filter does not take a staged rename — the machine; `[DEFERRED]` (full-run-speed, plan step 5, review at `56bc475`, Opus, 2026-11-04, Info; older than the piece)
 
@@ -623,7 +633,7 @@ The staff-cards full run (rerun, 2026-11-04, 16m00s) shows it again: lane 3 ende
 
 ## 82. A test types a hex with no letters and calls it a case check — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Low)
 
-`ui/src/Settings.test.tsx#L277` types `'#047857'.toUpperCase()`, which has no letters, so it proves no case handling. *Fix:* a stock shade 7 with a letter in it, such as `#4A76A9`, when the file is next touched.
+`ui/src/parts/Settings.test.tsx#L277` types `'#047857'.toUpperCase()`, which has no letters, so it proves no case handling. *Fix:* a stock shade 7 with a letter in it, such as `#4A76A9`, when the file is next touched.
 
 ## 83. Six palettes' menu text falls below 4.5:1 at shade 8 — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
 
@@ -640,7 +650,7 @@ The demo script draws a client's colour from seven (`scripts/src/demo/company.ts
 
 ## 86. The services walk's sv-5 does not move with a palette — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
 
-The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pictures were committed, not the plan's 216 (log line "named, not moved: sv-5-unavailable" in `20261104-1447-palettes-full-run.log`). It is right: the screen is `Boot` in its unavailable state (`ui/src/Boot.tsx#L19-L39`), a red alert, a title and a Retry button, and the button draws shade 7 only (`ui/src/theme.ts#L109`), which is the colour itself in the mix and in steel's own ten. Nothing on it draws another shade.
+The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pictures were committed, not the plan's 216 (log line "named, not moved: sv-5-unavailable" in `20261104-1447-palettes-full-run.log`). It is right: the screen is `Boot` in its unavailable state (`ui/src/frame/Boot.tsx#L19-L39`), a red alert, a title and a Retry button, and the button draws shade 7 only (`ui/src/theme.ts#L109`), which is the colour itself in the mix and in steel's own ten. Nothing on it draws another shade.
 
 ## 87. A lane's child could not set its process group — the machine; `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
 
@@ -660,9 +670,9 @@ The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `u
 
 ## 90. The frame draws its side column even when empty — the machine; **Done (customer-cards, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
-`ui/src/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
+`ui/src/parts/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
 
-**Done (customer-cards, `a71e6a1`, 2026-11-05).** The fix is the one named: `side` is optional and `main` spans 12 when it is absent (`ui/src/DetailCards.tsx#L12-L13`), held by `ui/src/DetailCards.test.tsx#L12-L20`; the customer with no note is its first live case. What is left of the symptom — a side passed but empty — is item 99.
+**Done (customer-cards, `a71e6a1`, 2026-11-05).** The fix is the one named: `side` is optional and `main` spans 12 when it is absent (`ui/src/parts/DetailCards.tsx#L12-L13`), held by `ui/src/parts/DetailCards.test.tsx#L12-L20`; the customer with no note is its first live case. What is left of the symptom — a side passed but empty — is item 99.
 
 ## 91. Eight walk specs press a loading button and take a picture with no wait for its loader — the machine; **Done (walk-machinery, step 6, 2026-11-06)**; was `[DEFERRED]` (staff-cards, full run, 2026-11-04, Info)
 
@@ -672,7 +682,7 @@ Found while fixing the services walk (`926c1b2`): `operator-services` sv-5 and i
 
 ## 92. The card's avatar condition is untested — the machine; `[DEFERRED]` (staff-list, review, Opus, 2026-11-04, Low)
 
-The photo-off and photo checks read the table row only (`ui/src/StaffRecord.test.tsx#L67-L70`, `#L565`); the phone card's avatar condition has no test of its own. *Fix:* the same two checks scoped to the card, when the card is next touched.
+The photo-off and photo checks read the table row only (`ui/src/pages/client/StaffRecord.test.tsx#L67-L70`, `#L565`); the phone card's avatar condition has no test of its own. *Fix:* the same two checks scoped to the card, when the card is next touched.
 
 ## 93. At 992 the last filter select wraps — the machine; `[DEFERRED]` (staff-list, second look, 2026-11-04, Low)
 
@@ -684,11 +694,11 @@ One pairing fault, line 54's own (the old app's colours kept as they are), not t
 
 ## 95. The icon strip's tip is tested by the CSS file's text, never drawn — the machine; `[DEFERRED]` (white-frame, review, Opus, 2026-11-04, Low)
 
-The strip's tip on `:focus-visible` is held by a test that reads `ui/src/frameLook.module.css` as text, since jsdom has no computed styles; a browser check would be the first to see it drawn. *Trigger:* the first browser check of the app, or the next change to the strip.
+The strip's tip on `:focus-visible` is held by a test that reads `ui/src/frame/frameLook.module.css` as text, since jsdom has no computed styles; a browser check would be the first to see it drawn. *Trigger:* the first browser check of the app, or the next change to the strip.
 
 ## 96. The start, birth and address values are checked in the browser only — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
 
-The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-day shows as a blank date input and is re-sent unchanged (`ui/src/personalFields.tsx#L23`). The company's own date field behaves the same, so this is consistent, not new. *Fix:* a day check on the three keys in the BFF's save of a person, about a route test and ten lines; *trigger:* a second client that writes `extra` (an import of the dates, or a partner's tool).
+The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-day shows as a blank date input and is re-sent unchanged (`ui/src/parts/personalFields.tsx#L23`). The company's own date field behaves the same, so this is consistent, not new. *Fix:* a day check on the three keys in the BFF's save of a person, about a route test and ten lines; *trigger:* a second client that writes `extra` (an import of the dates, or a partner's tool).
 
 ## 97. The day check's production path is nearly unreachable on these two fields — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
 
@@ -696,45 +706,45 @@ A real browser's date input never yields a day that is not one, so `dayIsValid` 
 
 ## 98. The customers and the products have no detail page to re-lay — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
 
-The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.
+The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/pages/client/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.
 
-**Done (products-cards, `02bbebc`, 2026-11-06).** The trigger was met: this milestone's plan sized the product's page as a new page with its own columns, and the page is built (`ui/src/ProductPage.tsx`, `/products/:id` at `ui/src/ClientApp.tsx#L383-L386`). Both lists now have a detail page, so nothing of the campaign's "re-lay" reading is left unsized; the order's page, already there, is lane B's.
+**Done (products-cards, `02bbebc`, 2026-11-06).** The trigger was met: this milestone's plan sized the product's page as a new page with its own columns, and the page is built (`ui/src/pages/client/ProductPage.tsx`, `/products/:id` at `ui/src/ClientApp.tsx#L383-L386`). Both lists now have a detail page, so nothing of the campaign's "re-lay" reading is left unsized; the order's page, already there, is lane B's.
 
 ## 99. An empty side still draws its column — the machine; **Done (orders-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Low)
 
-Item 90's fix reads `side !== undefined` (`ui/src/DetailCards.tsx#L13`), so the two other ways a page says "nothing here" still draw a blank 5/12 column: `side={null}` and the usual `side={has && <Card />}`, which is `false` when `has` is false. The person's page passes a `<Stack>` that is always defined (`ui/src/PersonPage.tsx#L552`), so a viewer with no photo field, not the root and not allowed to delete still reads the details at 7/12 beside a blank — the case item 90 opened. *Fix:* treat a falsy side as absent, or have the person's page pass `undefined` when every panel is out; line 58's milestone 2 is in that file. *Trigger:* the next detail page or the next change to the person's page's side.
+Item 90's fix reads `side !== undefined` (`ui/src/parts/DetailCards.tsx#L13`), so the two other ways a page says "nothing here" still draw a blank 5/12 column: `side={null}` and the usual `side={has && <Card />}`, which is `false` when `has` is false. The person's page passes a `<Stack>` that is always defined (`ui/src/pages/client/PersonPage.tsx#L552`), so a viewer with no photo field, not the root and not allowed to delete still reads the details at 7/12 beside a blank — the case item 90 opened. *Fix:* treat a falsy side as absent, or have the person's page pass `undefined` when every panel is out; line 58's milestone 2 is in that file. *Trigger:* the next detail page or the next change to the person's page's side.
 
-**Done (orders-cards, `d96f810`, 2026-11-06).** Of the two fixes named above this build took the first: a falsy `side` counts as absent (`ui/src/DetailCards.tsx#L11`, `#L14-L15`), held for `null`, `false` and `undefined` alike by `ui/src/DetailCards.test.tsx#L34-L43`. That closes the two shapes this item opened with — `side={null}` and the usual `side={has && <Card />}` — and the order's page is the live proof: a new order passes `side={existing && <OrderActions/>}`, which is `null` there (`ui/src/OrderPage.tsx#L256`), and the built screen draws one column at 100 %. **The second fix was not made, so the case this item was opened for survives the fix that closes it:** the person's page still passes an always-truthy `<Stack>` (`ui/src/PersonPage.tsx#L552-L553`), so a viewer with no photo field, neither the root nor allowed to delete, still reads the details at 7/12 beside a blank half. That residue is **item 106**, where it is now held with its own fix and trigger — read the two together before believing the blank half is gone everywhere.
+**Done (orders-cards, `d96f810`, 2026-11-06).** Of the two fixes named above this build took the first: a falsy `side` counts as absent (`ui/src/parts/DetailCards.tsx#L11`, `#L14-L15`), held for `null`, `false` and `undefined` alike by `ui/src/parts/DetailCards.test.tsx#L34-L43`. That closes the two shapes this item opened with — `side={null}` and the usual `side={has && <Card />}` — and the order's page is the live proof: a new order passes `side={existing && <OrderActions/>}`, which is `null` there (`ui/src/pages/client/OrderPage.tsx#L256`), and the built screen draws one column at 100 %. **The second fix was not made, so the case this item was opened for survives the fix that closes it:** the person's page still passes an always-truthy `<Stack>` (`ui/src/pages/client/PersonPage.tsx#L552-L553`), so a viewer with no photo field, neither the root nor allowed to delete, still reads the details at 7/12 beside a blank half. That residue is **item 106**, where it is now held with its own fix and trigger — read the two together before believing the blank half is gone everywhere.
 
 ## 100. The walk and the page disagree on what "has a note" means — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Info)
 
-The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`), while the page draws the Note card on the text being non-empty (`ui/src/CustomerPage.tsx#L19`, `#L68`). A customer whose `note` is `''` or not a string would be the walk's "noted" one and show no Note card, so screen 10 would fail on a heading that is correctly absent. The data set has no such customer, so nothing fails today. *Fix:* pick by the same rule the page uses. *Trigger:* a change to the data set's customers, or a second page that draws a conditional card.
+The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`), while the page draws the Note card on the text being non-empty (`ui/src/pages/client/CustomerPage.tsx#L19`, `#L68`). A customer whose `note` is `''` or not a string would be the walk's "noted" one and show no Note card, so screen 10 would fail on a heading that is correctly absent. The data set has no such customer, so nothing fails today. *Fix:* pick by the same rule the page uses. *Trigger:* a change to the data set's customers, or a second page that draws a conditional card.
 
 **Done (products-cards, `02bbebc`, 2026-11-06).** The fix is the one named: all four pickers read a `hasNote` of "a string that is not empty", the page's own rule — `walk/specs/lists.spec.ts#L17-L19`, `visual/src/walks.ts#L181-L183`, `visual/src/words.test.tsx#L26-L28`, and `visual/src/walks.test.ts#L668`, whose opener check no longer reads `DEMO_CUSTOMERS[0]` by index. The customers' two records are unchanged by the new rule (only `KH-001` carries a `note`, and it is a non-empty string), which step 2's picture compare proves: 118 screens against `main`'s 116, with screens 10 and 11 byte-identical. What is left — the rule written out four times with nothing shared — is item 105.
 
 ## 102. The QR landing card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
 
-`ui/src/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
+`ui/src/pages/client/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
 
 ## 103. A door draws the client's logo, the shell does not — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
 
-A door draws `brand.logo` when there is one (`ui/src/SignIn.tsx#L74-L78`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/Shell.tsx#L145-L147`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
+A door draws `brand.logo` when there is one (`ui/src/pages/SignIn.tsx#L74-L78`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/frame/Shell.tsx#L145-L147`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
 
 ## 104. The words test's BEFORE table was written by hand, not rendered from the old doors — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
 
-Case 8's `BEFORE` table (`ui/src/words.test.tsx#L10-L11`) was hand-written from the doors as they then read, not rendered from `c759c43`, so it pins the words firmly from now on but did not itself prove the rewrite changed no word; the reviewer hand-checked three entries (`qr-busy`, `signin-refused`, `operator-notgiven`) and they matched. *Fix:* render the doors at `c759c43` once and compare the table to the output. *Trigger:* a doubt about a door's wording after this piece, or the next rewrite of the doors' markup.
+Case 8's `BEFORE` table (`ui/src/i18n/words.test.tsx#L10-L11`) was hand-written from the doors as they then read, not rendered from `c759c43`, so it pins the words firmly from now on but did not itself prove the rewrite changed no word; the reviewer hand-checked three entries (`qr-busy`, `signin-refused`, `operator-notgiven`) and they matched. *Fix:* render the doors at `c759c43` once and compare the table to the output. *Trigger:* a doubt about a door's wording after this piece, or the next rewrite of the doors' markup.
 
 ## 105. One rule for "has a note", written out six times — the machine; `[DEFERRED]` (products-cards, review, Opus, 2026-11-06, Low)
 
-Item 100 is closed by making every picker read the page's rule, but each reads its own copy of it: `walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `visual/src/words.test.tsx#L27-L28`, the inline pair in `visual/src/walks.test.ts#L668`, and a fifth shape in the unit test, `ui/src/ListPage.test.tsx#L12` with `#L240` and `#L301`. The pages themselves hold the sixth, as the truthiness of `textIn` (`ui/src/listSheet.ts#L63`, used at `ui/src/ProductPage.tsx#L20` and `ui/src/CustomerPage.tsx#L20`). Nothing fails today — all six agree — but the next change to what a page counts as a note (a trim, say, so that a note of spaces draws no card) moves one and leaves five, and the red appears only in the human's full picture run, where a walk opens the record it still calls noted and waits for a heading that is correctly absent. *Fix:* export the rule once beside `textIn` (`noteOf`, or `hasNote` taking `extra`) and add `./lists` to `ui/package.json`'s exports, which today offers `./import-demo`, `./mock`, `./scene` and `./words` only; the walk and the visual package already import `@credo/ui/words`, so both can take it. *Trigger:* the next change to how a page decides to draw a conditional card, or a seventh copy of the rule.
+Item 100 is closed by making every picker read the page's rule, but each reads its own copy of it: `walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `visual/src/words.test.tsx#L27-L28`, the inline pair in `visual/src/walks.test.ts#L668`, and a fifth shape in the unit test, `ui/src/pages/client/ListPage.test.tsx#L12` with `#L240` and `#L301`. The pages themselves hold the sixth, as the truthiness of `textIn` (`ui/src/listSheet.ts#L63`, used at `ui/src/parts/ProductForm.tsx#L55` and `ui/src/parts/CustomerForm.tsx#L34` and `#L36`). Nothing fails today — all six agree — but the next change to what a page counts as a note (a trim, say, so that a note of spaces draws no card) moves one and leaves five, and the red appears only in the human's full picture run, where a walk opens the record it still calls noted and waits for a heading that is correctly absent. *Fix:* export the rule once beside `textIn` (`noteOf`, or `hasNote` taking `extra`) and add `./lists` to `ui/package.json`'s exports, which today offers `./import-demo`, `./mock`, `./scene` and `./words` only; the walk and the visual package already import `@credo/ui/words`, so both can take it. *Trigger:* the next change to how a page decides to draw a conditional card, or a seventh copy of the rule.
 
 ## 106. The person's page can still draw a blank half, and no test says so — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Low)
 
-Item 99 is marked done on the first of the two fixes it named, and this is the second, unmade: the case that item was opened for is still live. The person's page passes `side={<Stack>…</Stack>}` (`ui/src/PersonPage.tsx#L552-L553`), an element that is always truthy, and every panel inside it is conditional (`#L554`, `#L564`, `#L567`, `#L577`, `#L587`, `#L590`). A viewer who is not the root, may not delete and has no photo field gets an empty `Stack`, so `DetailColumns` still draws the details at 7/12 beside a blank 5/12 — the symptom item 90 opened. No screen shows it: of the 116 built screens 40 draw a 5/12 column and none of them is empty, so the fix would move no picture. Nothing tests the case either: only `ui/src/DetailCards.test.tsx` and `ui/src/OrdersPages.test.tsx` read a grid column, so the person's page's own tests (`ui/src/StaffPages.test.tsx`) never count its columns. *Fix:* have the page pass `undefined` when every panel is out — one `const` over the six conditions — with a test for that viewer; or, narrower, let `DetailColumns` count an element with no rendered children as none. *Trigger:* the next change to the person's page's side, or a client whose office staff are neither root nor deleters.
+Item 99 is marked done on the first of the two fixes it named, and this is the second, unmade: the case that item was opened for is still live. The person's page passes `side={<Stack>…</Stack>}` (`ui/src/pages/client/PersonPage.tsx#L552-L553`), an element that is always truthy, and every panel inside it is conditional (`#L554`, `#L564`, `#L567`, `#L577`, `#L587`, `#L590`). A viewer who is not the root, may not delete and has no photo field gets an empty `Stack`, so `DetailColumns` still draws the details at 7/12 beside a blank 5/12 — the symptom item 90 opened. No screen shows it: of the 116 built screens 40 draw a 5/12 column and none of them is empty, so the fix would move no picture. Nothing tests the case either: only `ui/src/parts/DetailCards.test.tsx` and `ui/src/pages/client/OrdersPages.test.tsx` read a grid column, so the person's page's own tests (`ui/src/pages/client/StaffPages.test.tsx`) never count its columns. *Fix:* have the page pass `undefined` when every panel is out — one `const` over the six conditions — with a test for that viewer; or, narrower, let `DetailColumns` count an element with no rendered children as none. *Trigger:* the next change to the person's page's side, or a client whose office staff are neither root nor deleters.
 
 ## 107. The new column tests count every grid column in the document — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Info)
 
-`columnOf` and `columnCount` (`ui/src/OrdersPages.test.tsx#L349-L353`) query `document` for `.mantine-Grid-col`, so they hold only while the page's frame draws no other `Grid`. They are right today and read the real class the component emits, which is the point; but a `Grid` added to the shell or a banner would turn the column *indexes* wrong rather than merely failing, and the message would point at the order's page. *Fix:* scope both to the page's own grid (the `.mantine-Grid` nearest the found heading). *Trigger:* a `Grid` added to `ui/src/Shell.tsx`, or the next page to copy these helpers.
+`columnOf` and `columnCount` (`ui/src/pages/client/OrdersPages.test.tsx#L349-L353`) query `document` for `.mantine-Grid-col`, so they hold only while the page's frame draws no other `Grid`. They are right today and read the real class the component emits, which is the point; but a `Grid` added to the shell or a banner would turn the column *indexes* wrong rather than merely failing, and the message would point at the order's page. *Fix:* scope both to the page's own grid (the `.mantine-Grid` nearest the found heading). *Trigger:* a `Grid` added to `ui/src/frame/Shell.tsx`, or the next page to copy these helpers.
 
 ## 108. Two full runs can overlap: the lock is refused on, never taken — the machine; **Done (walk-machinery, step 2, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Medium)
 
@@ -762,11 +772,11 @@ In the step 3 gate, `visual`'s `src/words.test.tsx` took 325,709 ms for the file
 
 ## 113. `ui`'s 5-second per-test limit starves its slowest files under load — the machine; `[DEFERRED]` (walk-machinery, step 5 gate, 2026-11-06, Medium)
 
-In three whole gates of the same tree, `ui`'s `src/StaffSetupPage.test.tsx` timed out at 5,000 ms in every run, and the others moved about: 6 timeouts, then 4, then 1, the last being that file alone at the quietest load (`20261106-1324-walk-machinery-step5-gate.log`, `20261106-1329-walk-machinery-step5-gate.log`, `20261106-1337-walk-machinery-step5-gate.log`). The four failing files passed alone. It is the slowest file rather than a broken one, and the first to starve; item 112 is the same shape in `visual`. Not chased in the walk-machinery piece. *Trigger:* the next such red; first time the file alone and raise its limit or split it.
+In three whole gates of the same tree, `ui`'s `src/pages/client/StaffSetupPage.test.tsx` timed out at 5,000 ms in every run, and the others moved about: 6 timeouts, then 4, then 1, the last being that file alone at the quietest load (`20261106-1324-walk-machinery-step5-gate.log`, `20261106-1329-walk-machinery-step5-gate.log`, `20261106-1337-walk-machinery-step5-gate.log`). The four failing files passed alone. It is the slowest file rather than a broken one, and the first to starve; item 112 is the same shape in `visual`. Not chased in the walk-machinery piece. *Trigger:* the next such red; first time the file alone and raise its limit or split it.
 
 ## 114. A `ui` test reads a call count straight after awaiting a heading, and can read zero under load — the machine; `[DEFERRED]` (walk-machinery, step 5 gate, 2026-11-06, Low)
 
-`ui/src/MyDeliveries.test.tsx#L48` expects `myDeliveries` to have been called exactly once with `DEMO_TODAY` right after awaiting the "My deliveries" heading, and read zero calls in one whole gate (`20261106-1343-walk-machinery-step5-gate.log`, the file ran 1,856 ms, no timeout). The file passed alone twice straight afterwards at a load of 16 to 18. A separate flake from item 113; neither is the walk-machinery piece's to fix. *Trigger:* the next such red; first wait for the call (`waitFor`) rather than reading it at once.
+`ui/src/pages/client/MyDeliveries.test.tsx#L48` expects `myDeliveries` to have been called exactly once with `DEMO_TODAY` right after awaiting the "My deliveries" heading, and read zero calls in one whole gate (`20261106-1343-walk-machinery-step5-gate.log`, the file ran 1,856 ms, no timeout). The file passed alone twice straight afterwards at a load of 16 to 18. A separate flake from item 113; neither is the walk-machinery piece's to fix. *Trigger:* the next such red; first wait for the call (`waitFor`) rather than reading it at once.
 
 ## 115. The verdict's cross-walk guard covers a moved screen but not a new one — the machine; `[DEFERRED]` (walk-machinery, review, 2026-11-06, Low)
 
@@ -805,7 +815,7 @@ Deferred from line 72's review, not a fault of the piece. `browser_lost` is set 
 
 ## 124. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
-Deferred from line 72's review, not a fault of the piece. `scripts/src/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
+Deferred from line 72's review, not a fault of the piece. `scripts/src/running/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
 
 ## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
 
@@ -813,11 +823,11 @@ Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now 
 
 ## 126. The 409's `current: null` arm has no case — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
-In `bff/src/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
+In `bff/src/routes/lists.ts` the save's conflict answer carries `current: now && docOf(now)`, so it is `null` when the record was deleted between the read and the failed write. No test reaches that arm: it needs the record removed between those two calls, and the customer route merged with the same gap. *Trigger:* the order page's plan, or a customer delete.
 
 ## 127. The product page's `extra` test dropped two of its three variants — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
-In `ui/src/ListPage.test.tsx` the test that became the editable-versus-reader one kept only one of its three `extra` shapes: `{ note: 5 }` is still exercised as a save, while `{ note: '' }` is covered only through the `textIn` behaviour, and the third is gone. A change to how an emptied or non-string note is written would not fail a case of its own. *Trigger:* the next change to how a note is read or written on a detail page.
+In `ui/src/pages/client/ListPage.test.tsx` the test that became the editable-versus-reader one kept only one of its three `extra` shapes: `{ note: 5 }` is still exercised as a save, while `{ note: '' }` is covered only through the `textIn` behaviour, and the third is gone. A change to how an emptied or non-string note is written would not fail a case of its own. *Trigger:* the next change to how a note is read or written on a detail page.
 
 ## 128. `src/walk-run.test.ts` is now the `scripts` package's floor — the machine; `[DEFERRED]` (scripts-time, review of line 73, 2026-11-07, Medium)
 
@@ -867,7 +877,7 @@ check (item 131), run the crash drill — which kills c-storage and reboots the 
 the operator with a one-time join link, `--replace` being the way back from lost passkeys
 (`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
 that client's root password from a terminal**: the only path is the console's route, which needs a live operator
-session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
+session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
 *Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
 the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
 *Trigger:* a client's own stack.
@@ -875,8 +885,8 @@ the terminal path to a root password is the one gap that is a missing capability
 ## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
 
 `deleteClient` removes the index first — from that write the client is out of the list and every session of it is
-refused — then sweeps at most 200 records a press (`bff/src/clients.ts#L112-L174`), and a press after the index is
-gone resumes on the session alone (`bff/src/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
+refused — then sweeps at most 200 records a press (`bff/src/records/clients.ts#L112-L174`), and a press after the index is
+gone resumes on the session alone (`bff/src/routes/clients-delete.ts#L32-L33`). If nobody presses again, the records stay
 in the file for good, reachable by nothing: `listClients` reads the index prefix alone (`clients.ts#L93-L94`), and
 the deletion record's only two readers are inside `clients.ts` itself (`#L67`, `#L145`) — no route, no page and no
 script lists one. The code is held, so the client cannot be made again (`#L67`), which is right; what is missing is
@@ -904,15 +914,15 @@ stack.
 *Fixed in add records (`4552e6ea` to `cee6a814`, recap `docs/recaps/2026-11-08-add-records.md`):* an Add path now exists beside the import on both lists, for whoever holds `orders.canEdit`: `POST /api/customers` and `POST /api/products` through the import's own row rule and write, an Add button on each list, and a page that copies the detail form with the code box open. **The import is still root-only**, deliberately, and a review re-proved it with a test using a person holding every permission; the closure does not open it. The right chosen is `orders.canEdit`, because the catalogue holds no `orders.canCreate` and that right already makes records on these pages. As filed:
 
 The only way a record enters the customers or the products list is the Excel import, and the import is the
-root's: `bff/src/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
+root's: `bff/src/routes/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
 comment — "Only the root imports (case-table row 22): no permission allows it." Neither list page draws an
-Add, and the Import button is drawn for the root alone (`ui/src/ListPage.tsx#L26`), so a person with
+Add, and the Import button is drawn for the root alone (`ui/src/pages/client/ListPage.tsx#L26`), so a person with
 `orders.canEdit` sees no path at all, not even a refused one. That person can already *correct* a customer
-and a product on its page (`bff/src/lists.ts#L212`, the same right), so the gap is the add and the add only.
+and a product on its page (`bff/src/routes/lists.ts#L212`, the same right), so the gap is the add and the add only.
 **What it costs a real client:** a new customer telephones, and the order cannot be taken until the owner
 signs in and builds a spreadsheet. Of everything the client-readiness read found, this is the one that
 blocks the first order. *Fix:* one add form a list, over the add path the import already uses
-(`bff/src/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
+(`bff/src/routes/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
 the cheapest answer and the weaker decision. *Severity:* High for a first client; none for ridge, where the
 demo seed writes both lists. *Trigger:* the first client takes an order.
 
@@ -921,7 +931,7 @@ demo seed writes both lists. *Trigger:* the first client takes an order.
 A line is a product id and a quantity, and the price is always the product list's: the schema says so in its
 own words, "the customer and the lines by id and quantity, never a price or a total"
 (`shared/src/orders.ts#L130-L146`), and the BFF prices every save and every confirm from the lists
-(`bff/src/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
+(`bff/src/routes/orders.ts#L257`, `#L303-L317`). So there is no discount, no customer-specific price, no delivery
 fee and no VAT line, and because `total` is `z.number().int().min(1)` (`shared/src/orders.ts#L108`) an order
 worth nothing — a free replacement after a damaged delivery — cannot be recorded at all. This is a
 deliberate shape, not a defect: it is what makes the server the only pricer and keeps a tampered total out.
@@ -933,12 +943,12 @@ delivery.
 ## 137. Nothing older than seven days can be found: no search by number or customer, and "Earlier" re-reads every week again — the machine; *parked* until a client's second week (the client-readiness read, 2026-11-07)
 
 The orders route answers at most seven days and refuses a wider span (`shared/src/orders.ts#L23`,
-`bff/src/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
-count and re-reads *every* week from today (`ui/src/OrdersPage.tsx#L13-L19`, `#L83`): at twelve weeks that
+`bff/src/routes/orders.ts#L218-L226`), and the page's only way back in time is an Earlier button that raises a week
+count and re-reads *every* week from today (`ui/src/pages/client/OrdersPage.tsx#L13-L19`, `#L83`): at twelve weeks that
 is twelve calls of seven day-lists each. There is no search by order number, no search by customer, no
 filter by state and no day to open at. Finding last month's order means pressing Earlier five times and
 reading an unfiltered table. The delivery requests page has the same shape, a day at a time
-(`bff/src/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
+(`bff/src/routes/orders.ts#L389`). Item 35's third bullet already notes that a longer span would need an index;
 this item is the other half of it, what a person can and cannot find. *Fix:* a search by number and by
 customer, and a day to open the list at, which together need an index rather than a wider day span.
 *Trigger:* a client's second week, or the first time someone is asked for last month's order.
@@ -963,7 +973,7 @@ fifteen minutes (`shared/src/signins.ts#L29`) — it is handed over, never sent.
 - **A staff member who forgets their password** has no self-service path; the root types them a new one
   (the root's own screen, `staff-6-password`).
 - **The root has none at all.** Only an operator can set a client's root password, from the console, with a
-  live session and a fresh passkey touch (`bff/src/root-password.ts#L41-L48`) — and that door can report
+  live session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`) — and that door can report
   "as it was" over a password that was in fact set (item 61).
 - **Nothing reaches a customer**: no order confirmation, no delivery notice.
 The walks page's partner sign-in by emailed code is Cloudflare's, not the product's, so it is no precedent.
@@ -973,11 +983,11 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 ## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[FIXED]` (edit-an-order, step 5's whole check, 2026-11-07, High)
 
-`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
+`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/routes/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
 
 ## 141. The page's "Now X" figure is the list as read when the editor mounted — the machine; `[DEFERRED]` (edit-an-order, review of line 64, milestone 3, 2026-11-07, Low)
 
-`ui/src/OrderPage.tsx#L86-L92` takes the moved-price advisory from the product list read at mount, so a price moving while the page stays open shows a stale figure and a save takes another. No money diverges: the screen and the driver both carry the saved prices until a save, and the save's answer redraws the page. *Trigger:* a second office editing prices while an order is open, or a reader of a test names it.
+`ui/src/pages/client/OrderPage.tsx#L86-L92` takes the moved-price advisory from the product list read at mount, so a price moving while the page stays open shows a stale figure and a save takes another. No money diverges: the screen and the driver both carry the saved prices until a save, and the save's answer redraws the page. *Trigger:* a second office editing prices while an order is open, or a reader of a test names it.
 
 ## 142. Files under `scripts/node_modules/` are executed by the ops scripts and nothing compares them with the lock — the machine; `[OPEN]` (tree guard, review of the guard, 2026-11-07, Low)
 
@@ -997,23 +1007,23 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 ## 146. A taken code reddens the code box with no message in it, and the red outlasts the retyping — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
 
-`ui/src/CustomerPage.tsx#L124` and `ui/src/ProductPage.tsx#L194` pass `adding.taken || undefined` to a prop that takes a node, so a taken code reddens the box with no message in it (the words are in the orange alert above). `adding.taken` also stays true while the clerk retypes the code and clears only on the next press, so the box stays red over a code that may now be free. The same shape is in the save form the human approved, so it was left. *Fix:* pass the words as the box's error, and clear `taken` when the code box changes. *Trigger:* a clerk misreading the red box, or the next edit of either form.
+`ui/src/parts/CustomerForm.tsx#L42` and `ui/src/parts/ProductForm.tsx#L75` pass `adding.taken || undefined` to a prop that takes a node, so a taken code reddens the box with no message in it (the words are in the orange alert above). `adding.taken` also stays true while the clerk retypes the code and clears only on the next press, so the box stays red over a code that may now be free. The same shape is in the save form the human approved, so it was left. *Fix:* pass the words as the box's error, and clear `taken` when the code box changes. *Trigger:* a clerk misreading the red box, or the next edit of either form.
 
 ## 147. A customer's name over 200 characters is sent, refused 400 and shown as the generic "could not add" — the machine; `[OPEN]` (add-records, review, 2026-11-07, Low)
 
-`CustomerForm.submit` checks only `!name.trim()` (`ui/src/CustomerPage.tsx#L128`) while `nameSchema` allows 200 (`shared/src/staff.ts#L36`), so a 250-character name goes to the server, comes back 400 and shows the generic alert, where the import refuses the same row with its own word (`ui/src/listSheet.ts#L203`). The save form has the same shape. *Fix:* refuse on the page with the import's word, before any call. *Trigger:* a clerk pasting a long text into the name box, or the next edit of the form.
+`CustomerForm.submit` checks only `!name.trim()` (`ui/src/parts/CustomerForm.tsx#L47`) while `nameSchema` allows 200 (`shared/src/staff.ts#L36`), so a 250-character name goes to the server, comes back 400 and shows the generic alert, where the import refuses the same row with its own word (`ui/src/listSheet.ts#L203`). The save form has the same shape. *Fix:* refuse on the page with the import's word, before any call. *Trigger:* a clerk pasting a long text into the name box, or the next edit of the form.
 
 ## 148. An add's uniqueness is read-then-write, so two adds of one code can both land, and a lost answer can duplicate — the machine; `[OPEN]` (add-records, plan and review, 2026-11-07, Low)
 
-A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.
+A record's key is its uuid, not its code (`bff/src/routes/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land, as two simultaneous imports can today. The review found how the limit could **duplicate** rather than merely answer 409: `write`'s recovery confirms with a point read (`bff/src/routes/lists.ts#L121`) while the retry's duplicate guard uses a list read (`#L104`), so if the list lags the point read the retry writes a second record under a new uuid. *Fix:* a key by code, or a conditional write on a code index. *Trigger:* a client reporting a doubled code, or the first client with more than one order-taker adding at once.
 
 ## 149. The 409 case's post-condition is narrower than its sentence — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
 
-`bff/src/reconciliations.route.test.ts#L478` asserts only `handedIn === 1` of the surviving record. The rival the `'rival'` mode writes is our own record with `handedIn` forced, so its `difference` is still the one computed for 5 and the stored record is internally inconsistent. The 409 and the surviving cash both hold, so nothing is wrong today, but an assertion over the whole stored record would also catch a future change that merged fields. It is a pre-existing pattern inherited from the `'theirs'` mode (`#L45-L48`). *Fix:* assert the whole stored record, with a rival that is consistent. *Trigger:* the next edit of the close route or of that mode.
+`bff/src/routes/reconciliations.route.test.ts#L478` asserts only `handedIn === 1` of the surviving record. The rival the `'rival'` mode writes is our own record with `handedIn` forced, so its `difference` is still the one computed for 5 and the stored record is internally inconsistent. The 409 and the surviving cash both hold, so nothing is wrong today, but an assertion over the whole stored record would also catch a future change that merged fields. It is a pre-existing pattern inherited from the `'theirs'` mode (`#L45-L48`). *Fix:* assert the whole stored record, with a rival that is consistent. *Trigger:* the next edit of the close route or of that mode.
 
 ## 150. The day page's pre-close sum is held by pixels, not by an assertion — the machine; `[OPEN]` (money-defects, review, 2026-11-08, Low)
 
-`ui/src/DriverDayPage.tsx#L108` renders `money(figures.toCollect)`. The only holder is `walk/specs/reconcile.spec.ts`, whose own `CASH` is derived from `driverDay` (`#L23`) and so is tautological on the UI side; what actually pins the rendered number is the base-image byte compare. `ui/src/fake.test.tsx#L2301`'s literal pins the fake Api's arithmetic, not the render. *Fix:* one `ui` test that mounts the page over a known day and asserts the rendered sum as a literal. *Trigger:* the next edit of the page's figures.
+`ui/src/pages/client/DriverDayPage.tsx#L108` renders `money(figures.toCollect)`. The only holder is `walk/specs/reconcile.spec.ts`, whose own `CASH` is derived from `driverDay` (`#L23`) and so is tautological on the UI side; what actually pins the rendered number is the base-image byte compare. `ui/src/fake.test.tsx#L2301`'s literal pins the fake Api's arithmetic, not the render. *Fix:* one `ui` test that mounts the page over a known day and asserts the rendered sum as a literal. *Trigger:* the next edit of the page's figures.
 
 ## 151. The nightly seed of ridge is killed by GitHub's 15-minute step limit, with no error of its own, and nobody is told — the machine; `[CLOSED BY REMOVAL, NOT FIXED]` (the nightly schedule and its failure notice removed from `seed.yml`, 2026-11-08, Medium; the GitHub reds read, 2026-11-08)
 
@@ -1035,7 +1045,7 @@ A record's key is its uuid, not its code (`bff/src/lists.ts#L116`, `#L157`), so 
 
 ## 152. No line names the client whose records were read: the stage's access log cannot carry the client's code — the machine; `[OPEN]` (the access log, 2026-11-08, Low: ridge holds no real client records today, and the path already names a record id on detail routes, so the gap costs nothing until a client signs)
 
-**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
+**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/routes/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
 
 **What is not known.** Whether the two lines can be joined by a shared request id, and whether the BFF should write one line of its own with the client's code and the record read. Neither was looked at; this item records the gap so it is not left silent.
 
@@ -1071,4 +1081,344 @@ Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-rea
 
 ## 159. A failed sweep or a failed check-client delete is announced only by a `WARN` nothing reads, and a half-swept client cannot be resumed — the machine; `[DEFERRED]` (clear-test-clients-sweep, review of line 77.1, 2026-11-09, Low)
 
-Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.github/workflows/*.yml` reads `WARN`: the two echo lines (`ops/check.sh#L169` for the sweep, `#L44` for the check's own delete) are the whole announcement. Second shape, pre-existing in `untenant`: `deleteClient` removes the client's index before its records (`bff/src/clients.ts#L148-L152`), so a delete that stops midway leaves the client out of `listClients` and no later sweep can resume it. Unreachable today (a check client holds 3 records against `DELETE_BOUND = 200`). Third: nothing reserves the `check-<stamp>` code shape (`shared/src/records.ts#L77` admits it), so a client typed with such a code and an old stamp would be swept. *Trigger:* a `check-…` client surviving two deploys; then make the workflow surface `WARN`, and for the other two a reservation or a resumable delete as a piece of their own.
+Replaces item 117, which the sweep's piece deleted. Nothing in `ops/*.sh` or `.github/workflows/*.yml` reads `WARN`: the two echo lines (`ops/check.sh#L169` for the sweep, `#L44` for the check's own delete) are the whole announcement. Second shape, pre-existing in `untenant`: `deleteClient` removes the client's index before its records (`bff/src/records/clients.ts#L148-L152`), so a delete that stops midway leaves the client out of `listClients` and no later sweep can resume it. Unreachable today (a check client holds 3 records against `DELETE_BOUND = 200`). Third: nothing reserves the `check-<stamp>` code shape (`shared/src/records.ts#L77` admits it), so a client typed with such a code and an old stamp would be swept. *Trigger:* a `check-…` client surviving two deploys; then make the workflow surface `WARN`, and for the other two a reservation or a resumable delete as a piece of their own.
+## 160. The convention's rules that a check should hold instead of prose — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+[The code convention](conventions/code.md) states these rules in prose, which holds them only while
+someone reads the diff. Each row below is its own small piece, and the review's model for all of
+them is `services/c-storage/internal/server/server.go#L51-L54`, where the function that registers a route
+appends its pattern to the list a test reads (`server_test.go#L106`).
+
+| The rule it would hold | The check |
+| --- | --- |
+| no screen imports the API client; nothing in `bff/src` calls `fetch` | an eslint import-boundary rule (`no-restricted-imports` on `./api` outside `ui/src/api.ts` and the two app shells) in `eslint.config.js`, which today is 35 lines with one configured rule |
+| every `CREDO_*` name comes from one declaration | export the eleven names at `scripts/src/cli.ts#L132-L141` from `shared/` and import them in the twelve `walk/specs/*.spec.ts` and `walk/run.sh`, so a dropped name is a compile error rather than an `undefined` |
+| the three screen widths are declared once | one exported set in `shared/`, replacing `visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`, `ui/src/mock/Frame.tsx#L8` — and retiring the regex in `visual/src/walks.test.ts` that reads one of them as source text |
+| the retry bound is one number | one export imported by `bff/src/records/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
+| the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/routes/staff.ts` and `bff/src/routes/orders.ts` (single closures of 629 and 453 lines) |
+| the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 161 is the two it misses today) |
+| one `refuse()` and one log opener, one shebang | two greps in `ops/test.sh`: `ops/lib.sh#L75`'s opener used by all seventeen scripts, and `#!/usr/bin/env bash` on each — four scripts the human runs by hand pin `#!/bin/bash` (bash 3.2) and define `refuse()` separately, one of them already using newer-bash arrays |
+| no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
+| a walk has one identity | `walk/playwright.config.ts#L30-L96` derives its projects from the table at `walk/run.sh#L45-L57`, or one test fails when the two disagree |
+
+## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+`services/c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `services/c-storage/scripts/e2e.sh` (the
+end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
+(`.github/workflows/ci.yml#L197`, glob `ops/*.sh walk/*.sh`), outside lint and outside the
+formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Worse, `cover.sh#L29`
+and `#L37` carry suppression comments written for a checker that never reads them, telling the next
+reader the opposite of the truth. The small Node file that proves a request run actually asserted
+something (`services/c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
+`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
+correct the two comments. *Trigger:* none needed; it is one line and a read.
+
+## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+
+Recorded so the next session sizes them right, not as work to start. `ops/test.sh`: 2,771 lines, 95
+functions, 42 sections, every section sharing one temp directory and one failure flag, with no way
+to run one — the cheap half is an optional section name that skips the rest, which splits nothing.
+`ui/src/fake.ts`: 1,466 lines, 201 branches, a second implementation of the server's behaviour used
+by the fake build, the walks page and 25 test files; its existence is a stated decision, its being
+one undivided file is not, and the `const fake: Api` binding would keep a split by feature honest.
+`ui/src/pages/client/PersonPage.tsx`: 732 lines, five components, 25 pieces of state, with one 302-line form
+taking 21 props — the file split is separable from the 21-prop boundary, which should wait for the
+record-page shell. `scripts/src/ridge.ts#L51`: 155 lines, 40 branch points, seven unrelated commands
+in one `try` whose shared catch turns a new failure into exit 1. `visual/site/page.ts`: 811 lines in
+one bare block with no seam, driven through the DOM by a 971-line test. `visual/src/walks.ts`: 1,813
+lines of screen data, where only navigation costs anything. `ops/lib.sh`: 896 lines of small
+functions with no section markers. **Not a fault:** `ui/src/api.ts` at 829 lines is a flat list of
+independent calls, and its one-place property is worth more than its length.
+
+## 163. The two compiler flags governing index and optional access are off — the machine; *parked* until it is a piece of its own (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`tsconfig.base.json#L14` sets `strict: true` and neither `noUncheckedIndexedAccess` nor
+`exactOptionalPropertyTypes`; across 372 TypeScript files the escape hatches are essentially unused
+(no `@ts-expect-error`, no `@ts-ignore`, no `any` annotation, three `eslint-disable` lines each with
+its reason), so the gate is strong where it is configured. Turning either flag on is a repo-wide
+piece. *Trigger:* a defect that either flag would have caught, or a quiet week.
+
+## 164. Go has `gofmt` and `go vet` and no linter — the machine; *parked* until a second internal package (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`c-storage`'s gate is `make check`: `gofmt -l`, `go vet ./...`, the race tests at 100 % through
+`scripts/cover.sh`, and the box's cross-compile. Over 16 Go files that is proportionate; a linter
+earns its place at a second internal package. *Trigger:* the second internal package.
+
+## 165. The orders page discards the weeks it already read — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`ui/src/pages/client/OrdersPage.tsx#L14` makes one call per week and `weeks` is state (`#L28`), so "7 more days"
+refetches the weeks already on screen. It is the one file the data-and-cache reading names as worth
+fixing, and the one place where accumulation, not volume, bites first — orders is already paged a
+week at a time. *Fix:* keep the weeks already read and ask only for the new one, inside `readWeeks`
+and the `weeks` state. Not a cache: it is the trigger that would otherwise argue for one
+([the code convention](conventions/code.md#server-data-and-client-state)).
+
+## 166. Which of the 148 flat UI files belongs to which app is readable only by opening the two app files — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+28 screens mount in one app, 18 in the other, four in common, and the layout says none of it. A
+reader told to add a screen cannot tell where it goes or what it may reuse, and a change meant for
+one app can land in a file the other mounts. A convention now says how a package decides its own
+directories ([the shape of a package](conventions/code.md#the-shape-of-a-package)), and `ui` is one of
+the two packages that has yet to write its set, so the undivided directory is no longer the stated
+shape. *Fix:* the layout the human approved for piece 100, moves only, with `ui`'s own directory set
+written into `ui/CLAUDE.md` in the same change — the one structural change every piece in the coming
+weeks would feel. *Trigger:* before the next several screens, since the move gets dearer with each
+one.
+
+## 167. Where a test goes is unstated, and two tests live in the wrong package — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+
+`visual/src/import-file.test.ts` tests code that lives in the UI, under Node, so whoever changes
+that UI file runs the UI's own tests green and hears nothing: a move and one import.
+`visual/src/walks.test.ts` makes 15 assertions over the *source text* of twelve `walk/` files, one a
+whitespace-exact regex over a function body, so a reformat in `walk/` reddens another package — the
+two that are really rules about the walk (no screenshot comparator, the raster flag) move into
+`walk/`, and the whitespace regex waits for a check on behaviour. And nothing says which test covers
+what: in the UI 12 test files have no same-named source and 40 sources have no same-named test,
+including the five largest screens; in the tooling 17 sources have no same-named test,
+`scripts/src/cli.ts` among them. The 100 % gate means the cases exist, nothing says where. *Fix:*
+the two moves, and one line in each grouping test naming what it covers; any renaming is parked.
+
+## 168. `knip.json` does not set `includeEntryExports`, so unused exports in 26 entry files are invisible to the gate — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`knip.json` is 12 lines, and the six packages declare 26 entry files between them — the
+widest-surface files in the repo. The legacy project's own rule, which this base has never written,
+is that unconsumed code is dead code and how hard liveness is to prove depends on where the caller
+lives, with the warning that an unused-export checker cannot answer route reachability because a
+test is a reference. *Fix:* set the option, run it once and read what it prints; that run settles
+whether this is theoretical. *Trigger:* none needed.
+
+## 169. Four structural duplications named for the record, each needing a designed signature rather than a move — the machine; *parked* until one is touched (the 2026-11-08 structure review, 2026-11-09, Low)
+
+A walk's opening is hand-written in eleven specs, whose per-spec differences need a designed
+signature, not a copy (the two pure helpers it also found, `exactly()` in eight specs and
+`unfocus()` in five, are byte-identical and a move each). A page is split from its form three
+different ways. Route paths have three homes in `shared` (`wire.ts`, `signins.ts`, `import.ts`).
+And every screen's flow is described twice — declaratively in `visual/src/walks.ts`, imperatively in
+its spec — with only the screen *names* held in agreement, so a step added to one and not the other
+leaves both green while the two draw different states. Four derivations of the repository root and
+its logs folder also cannot share a shell helper and stay as they are (`walk/run.sh#L70`,
+`services/c-storage/scripts/e2e.sh#L38`, `visual/src/home.ts#L48`, `scripts/src/demo-files-main.ts#L6`).
+*Trigger:* the next change to any one of them.
+
+## 170. None of the 121 Markdown files is formatted or checked, and there is no commit hook — the machine; *parked*, and both may be deliberate (the 2026-11-08 structure review, 2026-11-09, Low)
+
+`.prettierignore` excludes `*.md`, so `prettier --check` on a Markdown file inspects nothing, and
+every "prettier passed" receipt on a docs-only change here has read no Markdown. The repository has
+no `core.hooksPath`, no `.githooks` and no hook package, and the stated convention is that the local
+gate and CI are the checks. Both are recorded because a receipt naming a check that cannot fail is a
+shape this project keeps paying for, not because either is a defect. *Trigger:* the first Markdown
+defect a formatter would have caught.
+
+## 171. Two gate runs that start in the same second with the same package share one log, and `tee -a` interleaves them — the machine; `[DEFERRED]` (the one-gate-command piece, step 5, 2026-11-09, Low)
+
+`ops/lib.sh#L82` names a log `<date>-<time to the second>-<script>-<env>.log` and opens it with `tee -a`. The gate lock admits one run at a time, but a run that is waiting for the lock or giving up logs from its first line, so a second `ops/gate.sh shared` begun in the same second as a first writes its wait lines into the first run's log, and the first's `== exit` line then closes both. *Trigger:* two lanes starting the same package's gate in one second, which needs a lock held at that moment by a third run, or a retry loop. *Not fixed here:* the stamp is `log_start`'s, shared by every `ops/` script, and a suffix there would change every log name. *Cheapest fix when it bites:* `log_start` appends `$$` to the stamp (not a counter, which needs the folder to be read).
+
+## 172. A lock the gate fails to release is prose only, and the run still exits 0 — the machine; `[OPEN]` (the one-gate-command piece's review, L1, 2026-11-09, Low)
+
+`ops/gate.sh`'s `cleanup_extra` runs from `ops/lib.sh`'s `on_exit` after `verdict` has already printed `== green`; when the `rmdir` fails it only echoes `lock free at the end: NO`, and the echo returns 0, so the log ends `== exit 0` with the lock still on disk and the next gate, walk and full run blocked. *Trigger:* something else written into the lock folder. *Cheapest fix when it bites:* have `cleanup_extra` set a non-zero status that `on_exit` folds into the exit code.
+
+## 173. `ops/gate.sh` validates the package name after it takes the lock, so a typo waits up to 1800 s and then refuses — the machine; `[OPEN]` (the one-gate-command piece's review, L3, 2026-11-09, Low)
+
+`run_each` dies with `no package <name>` only inside its loop, after `take_lock`, where `ops/full-run.sh` refuses before it takes its lock. A mistyped package behind a held lock waits the full wait and then refuses on the lock, never saying the name was wrong. *Cheapest fix when it bites:* check `[ -f "$REPO_DIR/$d/package.json" ]` for each directory before `take_lock`.
+
+## 174. The gate's `== steps:` codes are pnpm's exit codes, not the tools' — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+`typecheck 1` means the `pnpm --filter ... run typecheck` call exited 1, and the same for `test`; for eslint, prettier and knip the code is `pnpm exec`'s, which passes the tool's own through. A reader taking the number for the tool's own code (for example prettier's 2 against 1) can misread a red. *Trigger:* a red read by its number rather than its name.
+
+## 175. Nothing lints `ops/gate.sh` or the other `ops/` shell locally; shellcheck runs only in CI — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+`.prettierignore` excludes `ops/`, and no script or hook runs shellcheck locally (it is installed, but only CI runs it), so the gate's own shell is checked by `ops/test.sh` and CI's shellcheck job alone; a quoting slip passes every local run. *Trigger:* the first CI shellcheck red on a gate change.
+
+## 176. `pnpm -r run check` now exists and is the wrong command — the machine; `[OPEN]` (the one-gate-command piece's review, Info, 2026-11-09, Info)
+
+Six packages each have a `check` script that calls `ops/gate.sh`, so `pnpm -r run check` starts six gates on one lock (they queue) and runs eslint, prettier and knip six times. The right command is `pnpm check` (the root's, over every package). *Cheapest fix:* one line in the gate's header and one in `ops/README.md` saying so.
+
+## 177. `walk/run.sh` writes the stack's environment names by hand, outside any typecheck, and still carries the dead `CREDO_OPERATOR_PASSWORD` — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`walk/run.sh#L296` lists the names a spec listing needs (`CREDO_URL`, `CREDO_SEED_URL`, `CREDO_CLIENT_CODE`, `CREDO_ROOT_NAME`, `CREDO_ROOT_PASSWORD`, `CREDO_OPERATOR_NAME`, plus `CREDO_OPERATOR_PASSWORD`) in shell, where `STACK_ENV`'s type error does not reach. `CREDO_OPERATOR_PASSWORD` is the name dropped when the operator console replaced it with `CREDO_OPERATOR_LINK`. *Trigger:* the next change to that line, which then reads the names from a check against `shared/src/env.ts`.
+
+## 178. The walk config and the legacy capture spell the PC width by hand — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`walk/playwright.config.ts#L28` has `viewport: { width: 1280, height: 800 }` and `walk/legacy-capture.ts#L211` the same pair: `WIDTHS.pc` written out, in a file the one-home piece edited. *Trigger:* the next change to either file.
+
+## 179. The two plain-JS mock pages hold the three widths again, so the widths were six spellings, not the four the structure review named — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`ui/frame-mock/frame.js` (the width buttons, `#L264`) and `ui/signin-mock/signin.js` (`#L278`, 1280 and 390) spell the widths in JS with no typecheck, beyond reach of `shared/src/widths.ts`. *Trigger:* the next change to either page.
+
+## 180. `scripts/src/demo/apply-support.ts`'s `staffOf` lists under a prefix and parses each record with no truncation guard at all — the machine; *parked* (the one-home review, 2026-11-09, Medium)
+
+**A live failure mode:** `staffOf` (`#L60`) reads `listed.records` and never asks `listed.more`, so a staff list longer than one answer is read short and every caller goes on with part of the staff, silently. Its sibling `demo/apply.ts`'s `isFresh` does guard. The package cannot import the back end's one home (`bff/src/records/records.ts`), so the guard must be written here or lifted to `shared`. *Trigger:* any demo copy with a long staff list; the fix is small and need not wait.
+
+## 181. `bff/src/routes/lists.ts`'s `readOne` parses one record inline with its own message — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`#L184`, while the one home's helper (`bff/src/records/records.ts`) is already imported in that file. *Trigger:* the next change to `lists.ts`.
+
+## 182. What a 401 means is declared twice, and the new 403 home spells `401` inline — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+`ClientApp.tsx#L62` and `OperatorApp.tsx` each hold their own `SIGNED_OUT = 401`, and `ui/src/page.ts`'s `refusal` writes `401` inline. The next shape of this kind, not the one-home piece's. *Trigger:* the next change to any of the three.
+
+## 183. `visual/src/walks.test.ts`'s replacement assertion trips on a reformat of the re-export line, not on a fifth copy — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+It checks that `walk/support.ts` contains `export { WIDTHS } from '@credo/shared';` as text. What really holds the report and the walks level is the re-export's identity and the type derived from `shared/src/widths.ts`; the text check is the weaker part. *Trigger:* piece 98's conformance work.
+
+## 184. The settings save's 401 now sets `'failed'` where the old chain left it null, and no run has shown the redraw wins — the machine; *parked* (the one-home review, 2026-11-09, Low)
+
+One-home step 2 collapsed `SettingsPage`'s own status check into `refusal`; a 401 on the save now signs out and also sets the outcome to failed. The reviewer reasoned the sign-out redraw replaces the page and did not run it; the test pins the outcome, not the redraw. No data effect. *Trigger:* a run of the settings save under a 401 in the walk or the browser.
+
+## 190. A mixed-indent `pnpm-workspace.yaml` gives the gate a shorter package list, which it checks and calls green — the machine; `[OPEN]` (the one-gate-command piece's reread, R3, 2026-11-09, Medium)
+
+The gate's M1 refusal fires on *no* packages, not on *fewer packages than the file lists*. `dirs` is read by `sed -n 's/^  - //p'`, which needs exactly two spaces: a list with one line indented differently yields a shorter `dirs`, and the whole-repo gate then checks only those packages, prints `== green` and exits 0. Only CI's count-of-six assertion catches it, never the local gate. It is the same shape as the empty-list refusal, narrowed. *Cheapest fix when it bites:* count the `- ` lines of the file by a looser pattern (`^ *- `) and refuse when the two counts differ.
+
+## 191. `give_up` with no lock held says the load was never under the ceiling, but `held` only records the last look — the machine; `[OPEN]` (the one-gate-command piece's reread, R4, 2026-11-09, Low)
+
+`take_lock` resets `held` each iteration, so an empty `held` at the give-up means only that the last look was blocked by the load; the wait may have been lock-blocked throughout. The refusal now says "the last look found the one-minute load not under N", which is true but may hide a long lock wait. *Cheapest fix:* keep a flag for whether any look was lock-blocked and name it.
+
+## 192. The "run lock goes mid-wait, the gate then runs green" leg of the gate's tests has no mutation of its own — the machine; `[OPEN]` (the one-gate-command piece's reread, R6, 2026-11-09, Low)
+
+The mutation run turned that case's "having waited first" line red through a mutation of the wait itself, but nothing breaks only the go-on-after-release path (for example a gate that stops waiting yet never takes its own lock). *Cheapest fix:* one named mutation of `take_lock`'s success branch and a run of that case.
+
+## 193. `docs/conventions/collaboration.md`'s loop cell still presents the gate as a list of steps — the machine; `[OPEN]` (the one-gate-command convention's cross-model read, 2026-11-09, Low)
+
+The loop's cell in `collaboration.md` describes the gate as steps a session runs, while `qa.md`'s rule 6 now names one command, `pnpm --filter @credo/<pkg> check` or `pnpm check`. It is descriptive, in a document the convention piece did not touch. *Fix:* the next conventions pass words that cell as the one command.
+
+## 194. `ops/gate.sh`'s own comment says "the loop is --no-bail", and the loop is a hand-rolled `for` — the machine; `[OPEN]` (the one-gate-command convention's cross-model read, 2026-11-09, Low)
+
+The comment above `run_each` says the loop is `--no-bail`; the loop is a plain `for d in $dirs` over `pnpm --filter` calls, which runs every package whatever one did but is not pnpm's flag. A comment saying the wrong mechanism sends a reader to look for a flag that is not there. It is in `main`'s script, not in the convention's diff, so it was filed, not fixed. *Fix:* reword the comment when `ops/gate.sh` is next touched.
+
+## 195. `describeRun` never prints `report.empty`, so a citation scope pattern that has gone stale shows only as a red in the gate — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+`scripts/src/citations.ts`'s `describeRun` lists the documents found and the counts but not which scope pattern matched nothing, so a `LIVING` entry that no tracked file matches any more is seen only when `citations.test.ts` reds inside the gate, never in `pnpm counts`. *Trigger:* the next change to `LIVING`, or a move of files.
+
+## 196. A citation to a file that is written but not yet staged reds the gate until `git add` — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+The citation test reads `git ls-files`, so a living document that cites a newly written, unstaged file is red with "the file is not there". Recommended: accept it and add one sentence to `docs/conventions/documentation.md`'s citation section ("stage a new file before the gate reads the page that cites it"), since reading the working tree instead would let a cited file pass that is never committed. *Trigger:* the next piece that cites a file it has just written.
+
+## 197. `shared/CLAUDE.md`'s SH6 says `isHexColour` is "the one other spelling", which is true of exports only — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Low)
+
+Two private helpers also break the `<thing>IsValid` suffix: `shared/src/extra.ts`'s `isBoundedJson` and `shared/src/fields.ts`'s `keyIsReadable`. Recommended: say "the one other exported spelling" in SH6 and leave the helpers, since a private name binds no caller. *Trigger:* the next edit to SH6.
+
+## 198. The counted rules' scope patterns are bound to a flat package layout, and piece 100 moves files — the machine; `[OPEN]` (the guideline skeleton's cross-model review, 2026-11-09, Medium; **piece 100 reads this first**)
+
+`scripts/src/counts.ts`'s `RULES` match `^bff/src/[^/]+\.ts$` (C5, C7) and `^ui/src/[^/]+\.tsx$` (C6, C4). After a move into folders, C5 and C7 print "0 of 0" and C6 reports every screen compliant, silently, because a screen in a subfolder is simply not in scope. Piece 100 must update those patterns in the same change as the move and read `pnpm counts` before and after; the cheaper guard is for `counts` to refuse (exit 1) when a rule's scope matches no file. *Trigger:* piece 100.
+
+## 200. A package outside the pnpm gate must be added to the root's ignore lists, and no document says so — the machine; `[OPEN]` (the audit backbone's move, 2026-11-09, Medium)
+
+The one-gate-command convention gives every package one check command, and the root's steps run over the whole tree. A Go package has no `package.json`, so it has no `check` script, yet the root formatter and the unused-code check still reach its files: the audit backbone arrived with its own `make check` green and 17 of its files reported by the root formatter. The fix is two lines, one in `.prettierignore` and one in `knip.json`, and it was found by running the formatter on the moved tree, not by any rule. *Cheapest fix:* one sentence in the gate convention naming both files, so the next non-pnpm package costs two lines rather than an unexpected red.
+
+## 201. A piece that ships no product owes its recap a `docs/products.md` row the convention does not need — the machine; `[OPEN]` (the guideline skeleton's recap, 2026-11-09, Low)
+
+`docs/conventions/documentation.md` requires a piece's recap to add or change the piece's row in `docs/products.md` in the same commit, with no exemption. Four recaps written on 2026-11-09 added none: the gate command, the one-home piece, the gate convention and the guideline skeleton. All four are internal and change no product anyone opens. Recommended (a recommendation, not a decision): the convention gains an explicit exemption for a piece that ships no product, with the recap saying "no row" in its evidence, rather than four rows being owed. *Trigger:* the next recap of an internal piece.
+
+## 202. The architecture page is past one sitting, and the activity-log section is the split — the machine; **Done (the architecture page rearranged for a person, 2026-11-09)**; was `[OPEN]` (the architecture page's audit-backbone section, 2026-11-09, Low)
+
+[`architecture.md`](architecture.md) is 594 lines and about 6,731 words now that the activity log is on it, and [`CLAUDE.md`](../CLAUDE.md) makes its `## At a glance` part of every session's opening, so its length is paid by every session that starts. *Recommended:* move `## The activity log: intended, and not built` into a page of its own and leave the architecture page pointing at it, as it points at the day-one plan. **Trimming is not the answer — moving is:** every paragraph of that section is a measured fact, a decision with its price, or a hazard no gate catches, which is what the documentation convention asks a doc to hold. *Trigger:* the piece that builds the actor change, which is the first thing that will read it.
+
+**Done (the architecture page rearranged for a person, 2026-11-09).** The section was carried whole into [`activity-log.md`](activity-log.md) — nothing shortened, its own "what this page did not read" written for it — and `architecture.md` points at it as it points at the day-one plan. The move was made inside a larger rearrangement the human asked for after reading the page: "the only thing a human can read is the diagram". The page now opens with one sentence, the diagram, one request walked end to end and a one-line codemap, with the detail below a line; it is 506 lines against 594, and the detail it lost went to the nine packages' own `CLAUDE.md` files rather than being trimmed. The root [`CLAUDE.md`](../CLAUDE.md)'s reading instruction was rewritten in the same change, since the per-package sections it named no longer exist.
+
+## 203. A line citation can name an entirely unrelated sentence, and nothing reports it — the machine; `[OPEN]` (the architecture page's audit-backbone section, 2026-11-09, Medium)
+
+[`architecture.md`](architecture.md) cited `services/c-storage/CLAUDE.md#L11` for the claim that `pnpm check` never reaches that directory. Line 11 of that file says "A route belongs only with a caller named above"; the sentence cited is at line 45. The citation check verifies that a line citation's *file* exists and, in its own words, never that its line says anything — `scripts/src/citations.ts`'s header: "a line citation (`path#L12`) is counted per document and its line is never checked" — so the page was green with that citation throughout, and the only reason it surfaced is that this piece happened to touch the claim. `docs/architecture.md` carried **106** line citations when this was written (the 2026-11-09 rearrangement took it to a lower count, and five of the ones it touched did name unrelated lines), `docs/client-readiness.md` 110 and `docs/conventions/code.md` 52, and **how many of them name an unrelated line is unknown**. The conversion-on-touch policy is the only thing that finds them, so the rot is discovered at the rate pieces happen to touch it. Recorded with nothing recommended: the alternative is the sweep that policy deliberately refuses, and that is the human's call rather than an item's.
+
+## 204. The citation check never sees a name citation whose file sits inside a markdown link, so it is green because of its parser — the machine; `[OPEN]` (the ui move's cross-model read, 2026-11-09, Medium)
+
+`citationsOf` in `scripts/src/citations.ts` recognises a file and its symbol only when the text between two backtick spans is exactly `'s `, so a file written as a markdown link (``[`path`](../path)'s `name` ``) is not recognised and its symbol is never looked for. Measured: `docs/README.md` registers 0 name citations out of 48, and `docs/client-readiness.md` 1 out of 185. Three citations written during the ui move passed for that reason alone while naming something the file does not declare, and were found by a reader. Recommended: teach `citationsOf` to see through a markdown link, and expect it to red any citation that is not fixed properly when it does; the first run will list what the reds are.
+
+## 205. Both of C6's patterns identify the API module by the shape of a path, so a second `api.ts` would be counted as the client — the machine; `[OPEN]` (the ui move's cross-model read, 2026-11-09, Low)
+
+`UI_API` and `UI_SCREENS` in `scripts/src/counts.ts` match an import ending in `api` at any depth, so a future `ui/src/pages/client/api.ts` would be counted as the one API client while pointing at something else. The old pattern, `from './api'`, had the same hole; the move widens the surface from one directory to five. Recorded with nothing recommended until a second module of that name is proposed.
+
+## 206. `pnpm --filter <pkg> check` does not narrow three of the gate's five steps — the machine; `[OPEN]` (the story-rule convention's gate run, 2026-11-09, Medium)
+
+`ops/gate.sh` runs its five steps as two kinds: `run_each` asks the selected packages for `typecheck` and `test`, and `run_step` runs `eslint .`, `prettier --check .` and `knip` over the whole repository, which no filter narrows. `pnpm install --filter` populates only the filtered scope's projects. **So in a worktree where the install was run filtered, a package-scoped gate reds on packages the change never touched.** Measured on a docs-only change to one markdown file: `eslint` exit 1 with **6,501 errors across 32 files**, every one of them "a type that could not be resolved" on a Playwright call, and `knip` exit 2 reporting 13 unused files, 2 unused dependencies and 2 unlisted binaries. All of it came from `@playwright/test` being absent in `visual/` and `walk/`, the two of seven workspace projects with no `node_modules` in that worktree; `typecheck`, `prettier` and `test` were green, and no reddening step reads markdown at all.
+
+**The cheap discriminator, worth more than the diagnosis:** group the eslint error paths by top-level folder — all 32 files were under the two uninstalled packages and none outside them — and read `knip`'s first line, which names the cause outright, `ERROR: Error loading walk/playwright.config.ts (Cannot find module '@playwright/test')`. Both are one command each, against a red that is otherwise large and convincing enough to be read as the change's own.
+
+*Recommended, and the preference is deliberate:* **the gate refuses a filtered run that meets a partial install, rather than narrowing those three steps.** Narrowing is the wrong fix on principle — `knip` exists to find dead code and unlisted dependencies *across* packages, and scoped to one it would report every cross-package export as unused, turning a real check into noise; the whole-repo scope of those three steps is the guarantee, not an oversight. The refusal is cheap and fits the script's own manner: one look, beside the load and lock waits it already does, for a workspace project in scope with no `node_modules`, then a `die` naming the packages and the install that would fix them, before any step runs. **Installing Playwright is not the workaround, and this is the reason:** an install deletes other projects' browsers, including mid-run, so an agent that installs to clear this red can red a sibling worktree's live run. The judgement here was to leave the red standing and say what caused it, with two other agents active; an item that recommended the install would have the next agent undo that. *Trigger:* the next filtered gate run in a fresh worktree, or whoever next reads a red they did not cause.
+
+## 207. The kind-to-spec pairing in the record page and the add page is untyped, so a mis-paired kind draws another kind's words — the machine; `[OPEN]` (the ui shape piece's review, 2026-11-10, Medium)
+
+`ui/src/pages/client/RecordPage.tsx#L76-L79` and `ui/src/pages/client/AddRecordPage.tsx#L84-L87` each hold a `Record<ListKind, …>` whose entry for a kind builds the page from a spec: `customers` takes the customer spec and `products` the product spec. The record is keyed by the kind, so a kind with no entry is a type error, but nothing ties an entry to its own spec: `customers: (kind, page) => <Record kind={kind} spec={PRODUCT} …/>` typechecks, and the kind then draws the other kind's form and words. The convention's "not a screen that silently draws the wrong one" (`docs/conventions/code.md`, C3) is therefore true for a *missing* entry and not for a *mis-paired* one. *Fix:* needs type design rather than a line, for example a spec that carries the kind it answers for and an entry that checks it, so this piece is not the place. *Trigger:* the third kind, or the first edit to either record.
+
+## 208. The local-env plan took the front and the seed door for children; they are servers inside the starting process — the machine; `[OPEN]` (the local environment's first step, 2026-11-10, Medium)
+
+`scripts/src/stack.ts` starts only c-storage and the BFF as processes; `createFront` and `createSeeding` are `http` servers in the process that called `withStack`. The plan's step 1 (`keepOnExit` on `startProcess`) would have left c-storage and the BFF standing and the front dead as `up` returned, so its done-when (`curl` on 3180 from a second shell) could not hold. Step 1 was built with a keeper process instead (`scripts/src/local.ts`, `local keep`): it holds all four parts and is the only process started with `keepOnExit`. Steps 2 and 5 read the handle's `keeper` pid, and the seed door's status is the keeper's. Nothing here is run detached by the build: the real reading is the human's.
+
+## 209. The teardown's read-back checks three paths, not the whole environment folder — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` (`scripts/src/local.ts`, the read-back at the end of `down`) reads the data folder, the build folder and the handle, not `.local-env` as a whole, so a file left in the folder beside them (the keeper's log, for one) is not named when the removal half-failed. The removal itself is of the whole folder, so only the naming is short.
+
+## 210. A zombie child can stall the teardown of an already-dead stack — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` asks a process whether it is alive with `kill(pid, 0)`, which also succeeds for a zombie that has ended but not been reaped; the stop loop (`scripts/src/local.ts`, the wait after the signal) then waits out the whole settle time and ends red naming a process that is already dead. It resolves once the parent reaps it.
+
+## 211. The ownership matchers are substrings, so another checkout's process could match on an exact pid collision — the machine; `[OPEN]` (the local environment's review, 2026-11-10, Low)
+
+`down` signals a pid only when its command line contains `local-main.ts`, the build folder's `c-storage` path, or `bff/src/main.ts` (`scripts/src/local.ts`, the ownership matchers in `down`). The first and the last are not specific to this checkout, so another checkout's keeper or BFF that took a handle's pid after its process died would be signalled. It needs an exact pid collision with a live process of the same shape.
+
+## 212. The staff walk's test titles say thirty-three screens; it walks thirty-four — the machine; `[OPEN]` (the ui shape piece's picture run, 2026-11-10, Low)
+
+`walk/specs/piece-2.spec.ts` names its tests "walks all thirty-three screens" (the title in the loop at the end of the file) and its header comment counts thirty-three (A's sixteen, B's seven, C's six and D's four, 33 × 2 × 3 = 198). Its committed pictures are `walk/specs/piece-2.spec.ts-snapshots/`, six a screen (two languages at three widths), 204 files naming 34 distinct screens, and the picture run compared 204. So a screen was added and the count was left. The verdict is untouched (the bases hold the same 204); the fault is a title that miscounts its own subject and later reads as evidence. *Fix:* correct the title and the comment's arithmetic, or say which group gained the screen.
+
+## 213. The picture walk's log ends with a verdict and `== done`, not the `== exit` line the QA convention asks for — the machine; `[OPEN]` (the ui shape piece's picture run, 2026-11-10, Low)
+
+`docs/conventions/qa.md` says a gate's log ends `== exit <code>` and that a one-off script appends `== exit $rc` itself, because "a receipt whose own marker cannot be read is the same class of fault as a check that cannot fail". `walk/run.sh`'s `finish` writes `== verdict: …` and `== done at … (elapsed …)`, then exits with the code, and its last line tees the log and exits with the pipe's status; the code never reaches the log. The run's log (`2026-11-10-ui-shape-picture-run.log`) ends exactly so. A reader looking for the marker cannot tell a finished run from a killed one by it; `== done` is the nearest sign, and the convention names one like it as a fault. *Fix:* have `finish` print `== exit <code>` last, through `ops/lib.sh`'s helper.
+
+## 214. The stop reports the keeper's own children as "was not running", though its ending them is what removed them — the machine; `[OPEN]` (the local copy's stop reading, 2026-11-10, Low)
+
+`stop` and `down` signal the keeper first and wait for it to go (`endProcesses` in `scripts/src/local.ts`). The keeper ends c-storage and the BFF itself when signalled (`keep`: `await io.stopped`, then `stack?.stop()`; the signals are held in `scripts/src/local-main.ts`). So by the time `endProcesses` reaches them they are already gone, and it prints `<part> (pid N): was not running`. The human's stop log (`2026-11-10-local-stop.log`) reads, on both lines, as though both had died before the stop, when both were serving. Nothing is lost and the read-back is right; only the wording misleads. *Fix:* when a part is gone only after the keeper was asked to end, say "ended with the keeper" instead of "was not running". *Trigger:* the next edit to `endProcesses`, or the next reader of that log who looks for a crash.
+
+## 215. The activity command asks for a record id, because the audit service reads only by record or by person — the machine; `[OPEN]` (the activity log plan, step 1, 2026-11-10, Medium)
+
+The plan's slice has `pnpm local activity <client code>` print "that customer's history", but the service has no read of a client's every entry, only `GET /api/activities/by-actor/{actorId}` and `by-target/{targetId}` (`services/audit-backbone/internal/activity/handler.go`, `RegisterReader`). The command as built takes the client code and a record id (`pnpm local activity <client code> <record id>`) and reads by record; a by-person form is not built. Also still so: its log level stays `info`, because `waitUntilUp` waits for the word "listening" in the child's log.
+
+## 217. Entries that name no target or no client where the route has none to name — the machine; `[OPEN]` (the activity log plan, step 2, 2026-11-10, Low)
+
+Three routes write an entry with a gap on purpose. A person's own password change (`app.ts`) has no target, since the change is to the signed-in person and a read by person is the one that finds it (item 218). A client made by the operator is entered only once made (it has no id before), so a refused create (the code taken) writes nothing. A reconciliation close names the driver's id as its target, because the closed day has no id of its own; its memo lists the waiting requests it cancelled, each with its state before and after. A client deleted is entered from the moment its index is read, and a press that resumes a deletion after the index is gone enters under the client's id from the deletion record, marked saved; only a code with neither an index nor a deletion record (a 404) writes nothing. The reads by record and by person (`pnpm local activity`, item 215) show each of these as they are. *Fix:* if the history screen needs more, give a day close its own target. *Trigger:* the history screen.
+
+## 218. A person's own password change has no target, so no command can read it — the machine; `[DEFERRED]` (the activity log plan, review of step 4, L2, 2026-11-10, Low)
+
+`bff/src/app.ts#L406` declares the entry with `declare(request, personOf(who))`, no target. Item 217 says a read by person is the one that finds it, but no read by person is built (item 215), and `pnpm local activity` takes a record id, so the entry is written and nothing reads it. The root's change of the same person's password is targeted (`bff/src/routes/staff.ts#L578` declares the person's id). *Fix:* `declare(request, personOf(who), who.employeeId ?? 'root')`. *Trigger:* the history screen, or a by-person read.
+
+## 219. A `#` in a URL id makes the audit service refuse the whole entry — the machine; `[DEFERRED]` (the activity log plan, review of step 4, L4, 2026-11-10, Low)
+
+The routes declare the target from the URL before `idOf` checks it (`bff/src/routes/lists.ts#L263` and every `declare(…, request.params.id)`). The audit service's key separator is `#` (`services/audit-backbone/internal/activity/model.go#L23`), and `validateID` (`#L90`) refuses an id holding it, so one signed-in caller who sends `PUT /api/customers/x%23y` makes the service answer 400 to the whole batch (`handler.go#L167-L168`), and that refused attempt is lost from the log. The change itself is refused as usual, so only the caller's own refused attempt is kept out. *Fix:* declare the target only after `idOf` has validated it, or have the hook leave out a target the service would refuse. *Trigger:* the history screen, or any reader who counts refused attempts.
+
+## 220. A timeout is logged as "audit entry lost" when the service may have saved it — the machine; `[DEFERRED]` (the activity log plan, review of step 4, L5, 2026-11-10, Low)
+
+On a timeout the audit service may already have committed the entry: `AbortSignal.timeout` (`shared/src/activity.ts#L94`) ends the wait, and the client throws an `ActivityError` with no status (`#L97`). The hook then writes `audit entry lost` for it (`bff/src/app.ts#L147`), the same words it uses for a status the service did send, so anyone replaying "lost" entries from the request log would write some twice. *Fix:* word a timeout (status `null`) "audit entry not confirmed" and keep "lost" for a refusal or an answer the service sent. *Trigger:* the first replay of lost entries, or the ridge move.
+
+## 221. A day close's `before` is the list of cancelled requests, not the record as stored — the machine; `[DEFERRED]` (the activity log plan, reread of the fix pass, N1, 2026-11-10, Low)
+
+`bff/src/routes/reconciliations.ts#L157-L163` enters the close with `before` set to `{ cancelled: [...] }`, where the plan's memo contract (`docs/plans/2026-11-10-audit-bff.md`) says `before` is the record as stored, so that a restore can push it back as it stands. A later restore would write that list over the day's record, and the printout reads a close as `changed:` across every field where it would otherwise say `new`. Nothing is lost today, since no restore exists. *Fix:* keep `before` empty and carry the cancelled requests in `after`, or in a memo field of their own. *Trigger:* the history screen's undo.
+
+## 222. The other-client test's first case accepts any status below 500 — the machine; `[DEFERRED]` (the activity log plan, reread of the fix pass, 2026-11-10, Low)
+
+`bff/tests/customer-audit.route.test.ts#L98` expects `toBeLessThan(500)` where it expected exactly 200, so a 400 refusal also passes. The case still checks that the entry's client is the caller's own and that none is written under `someone-else`, which is its point. *Fix:* expect the status the save answers once the body's extra field is accepted or refused, and name which. *Trigger:* the next change to that test file.
+
+## 223. GitHub's run never checks a push that changes only documents — the machine; `[OPEN]` (the lighter check's research, 2026-11-11, Medium)
+
+`.github/workflows/ci.yml`'s `on.push.paths` lists the packages, `ops/`, the root manifests and the two workflow files, and no `docs/` and no `*.md`, so a push of documents alone starts no run, and `walks.yml` runs only on `main`. The citation test is the whole check of a documents-only change ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), and nothing on GitHub's side reads it. A page citing a file that a later code push moves is caught by that code push's run; a documents-only push whose citations are already broken is caught by no run until a code push follows. Open: whether the citation test earns a path-free job, or the local check stays the only reader.
+
+## 224. The gate's log names neither the worktree nor the commit it checked — the machine; `[OPEN]` (the lighter check's research, 2026-11-11, Medium)
+
+`log_start` in `ops/lib.sh` prints the script, the package and the time (`== <script> <package> started <time>`) and writes the log under a name made of the date, the time, the script and the package. A fast-forward of `main` needs the commit a run checked ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), so today the command that starts the run reads `git rev-parse HEAD` first and the log cannot confirm it; and placing 2026-11-10's 70 runs in their worktrees took vitest's own `RUN` line in each. Open: a `== tree` line with the folder and `git rev-parse HEAD`, written by `log_start` itself.
+
+## 225. No convention says that every number a convention writes is measured, with its pattern quoted — the machine; `[DEFERRED]` (the lighter check's conventions drain, 2026-11-11, Low)
+
+Piece 99's rounds on one convention fixed five numbers and sentences nobody had measured, and the conventions skill now holds the rule (every number the change writes is in the report with the pattern that measured it), but `docs/conventions/documentation.md` does not, so a session that has not loaded the skill is not bound. Deferred: the rule would be one bullet in documentation.md's rules for a convention; written when the next conventions change touches that section.
+
+## 226. No convention says which branch renumbers when two branches mint the same item number — the machine; `[DEFERRED]` (the lighter check's conventions drain, 2026-11-11, Low)
+
+documentation.md says an item is numbered and never renumbered, which holds for `main`'s published numbers and says nothing of two branches that each take the next free number. The practice, from 2026-11-09, is that the side not yet in `main` renumbers; two branches appending to the end of the open-items log also conflict even with distinct numbers, and the merge keeps both hunks. Deferred: one sentence in documentation.md's open-items rule; written with the next change to that rule.
+
+## 227. Some handlers in orders, staff and closed days still have no second-company case — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
+
+`bff/src/routes/cross-tenant.route.test.ts` puts two companies in one service and has the second try the first's records; it reaches 14 of the 31 handlers in `bff/src/routes/orders.ts`, `bff/src/routes/staff.ts` and `bff/src/routes/reconciliations.ts` (the review's count before the fix pass, which added the photo, the drivers list, the password set and the lists). Still without such a case: the QR issue and the other sign-in routes of a person in staff.ts, a code change, a photo save and the import there, the pricing and the driver lookup inside order create, confirm and send, a driver's own list and delivering, and the rest of those three files. Deferred: a handler is added to the file when its route is next changed, since each handler builds its key from `request.tenantId` at its own call site, so a fault in one stays uncaught where no case reaches it. *Trigger:* the first change to a handler in those three files, or the pooling of tenants on one box.
+
+## 230. The open-items log is outside the citation check's living set — the machine; `[DEFERRED]` (the architecture page's fixes, 2026-11-11, Low)
+
+`LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
+
+## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
+
+`PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.

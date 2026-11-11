@@ -2,11 +2,11 @@
 
 Diagnosis only; no source changed. Evidence: the two GitHub logs (6b8627e2, run 42167839708; f8162ace, run 42065001948), the sources at `main`@`02a8d631`, and two local single-test runs.
 
-## Red A: bff coverage at `bff/src/operator-auth.ts#L326` (11-06)
+## Red A: bff coverage at `bff/src/routes/operator-auth.ts#L326` (11-06)
 
 - L326 is `if (removed === 'moved') throw gone();` in the join route: the loser of two joins on one link, whose `removeRecord` finds the link already removed by the winner.
 - The loser can also be refused one step earlier, at `operator-auth.ts#L318-L319` (`readLiveLink` finds the link already gone). Both give a 404, so the test passes either way; only coverage differs.
-- Only `bff/src/operator-passkeys.route.test.ts#L213` ("makes one passkey when two openings race") was found to reach L326, by firing two `joinWith` at once (`Promise.all`) and hoping both read the link before either removes it. That is an unforced interleaving over real HTTP to a real c-storage process. It is not a platform, Node or transpile difference: no `v8 ignore` hint is in the file, and the file and test are identical in `main` today.
+- Only `bff/src/routes/operator-passkeys.route.test.ts#L213` ("makes one passkey when two openings race") was found to reach L326, by firing two `joinWith` at once (`Promise.all`) and hoping both read the link before either removes it. That is an unforced interleaving over real HTTP to a real c-storage process. It is not a platform, Node or transpile difference: no `v8 ignore` hint is in the file, and the file and test are identical in `main` today.
 - Local read-back: that test alone, six runs, covered L326 every time (statement hits 1). On the runner the same package ran 29 files at 115 s beside `ui` on 2 cores, and the interleaving fell the other way. This is inferred from the code and the missing line; the log does not say which refusal the loser took.
 - Fix: a test that forces the interleaving, not a hint. A hint would hide a real, reachable branch. `operator-passkeys.route.test.ts#L1109-L1130` already has a `meddling` client with `onPut`/`afterRemove` hooks; a test that removes the link between `readLiveLink` and `removeRecord` (or wraps `removeRecord` to return `moved` once) covers L326 every time, and the race test can stay as it is. Size: one test, about 15 lines.
 
@@ -37,4 +37,4 @@ A and C are independent causes (different packages, both unforced timing in a te
 
 ## Ran
 
-`vitest run src/operator-passkeys.route.test.ts -t "two openings race"` with coverage on `operator-auth.ts`, six times (bff); `vitest run src/walk-run.test.ts -t "holds the first TERM"`, twice (scripts). No `pnpm check`, no long suite.
+`vitest run src/routes/operator-passkeys.route.test.ts -t "two openings race"` with coverage on `operator-auth.ts`, six times (bff); `vitest run src/walk-run.test.ts -t "holds the first TERM"`, twice (scripts). No `pnpm check`, no long suite.

@@ -63,7 +63,7 @@ Decided here:
 | 4 | A value stored while a switch was on survives a save made while it is off | unit, `StaffPages.test.tsx` |
 | 5 | A company's own field may not take the key `startDate`, `birthDate` or `address` | unit, `shared/src/fields.test.ts` |
 | 6 | A setup saved before the three existed reads as off | unit, `shared/src/staff.test.ts` (`staffConfig`) |
-| 7 | The setup page switches each on and off and saves it, and the route keeps all three over a round trip | unit, `ui/src/StaffSetupPage.test.tsx`; route, `bff/src/staff-setup.route.test.ts#L171-L177` |
+| 7 | The setup page switches each on and off and saves it, and the route keeps all three over a round trip | unit, `ui/src/StaffSetupPage.test.tsx`; route, `bff/src/routes/staff-setup.route.test.ts#L171-L177` |
 | 8 | The three read in Vietnamese and English on all three pages | unit, `StaffPages.test.tsx`, `StaffSetupPage.test.tsx` |
 | 9 | No screen outside the 22 moves | the full run's `raw.txt` |
 

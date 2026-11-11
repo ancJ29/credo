@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "check": "bash ../ops/gate.sh visual",
     "test": "vitest run --coverage",
     "report": "node run.mjs report"
   },

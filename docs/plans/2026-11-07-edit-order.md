@@ -4,7 +4,7 @@
 
 **The order page is already editable, and this piece finishes it.** A draft's customer and lines
 have been editable since 11-01: the form (`ui/src/OrderPage.tsx#L57-L259`), the save over the version
-it was read at (`bff/src/orders.ts#L280-L300`), the conflict notice, the route tests and five walk
+it was read at (`bff/src/routes/orders.ts#L280-L300`), the conflict notice, the route tests and five walk
 screens all exist. What is missing is the money. The form draws a saved draft at **today's** product
 prices while Confirm sends the **saved** ones, so the page's total and the paperwork a driver carries
 can differ — `docs/open-items.md` item 36, finding 5, parked with the trigger "the orders are next
@@ -29,7 +29,7 @@ picture run; one screen re-asked and two added.
   `version` a required `tagSchema`, so a malformed version is a 400 and not a false conflict; and the
   create route refusing a body that carries one (item 36 finding 8 and item 35's first bullet, which
   that finding asks to be done beside it).
-- **The route** (`bff/src/orders.ts`): the lost-answer recovery it lacks — see the write shape below.
+- **The route** (`bff/src/routes/orders.ts`): the lost-answer recovery it lacks — see the write shape below.
 - **The data set** (`shared/src/demo.ts`): one more draft, taken yesterday, one of whose lines was
   priced before the product list changed. `OrderSpec` gains an optional saved price for a line
   (`#L569-L579`); every demo order is priced from `DEMO_PRODUCTS` at generation today (`#L762-L768`),
@@ -44,12 +44,12 @@ picture run; one screen re-asked and two added.
 ## The write shape an order takes
 
 Today's architecture review found the write recovery in four shapes here, none shared. **An order's
-save takes none of them whole, and the reason is in the code:** `bff/src/lists.ts#L192-L195` says the
+save takes none of them whole, and the reason is in the code:** `bff/src/routes/lists.ts#L192-L195` says the
 customer route's re-read-and-compare holds "only while a customer's code and id never change", and
 names "an order's status" as the case to re-think. An order has one.
 
 So the save keeps the shape it has — an immediate 409 carrying the order as it is now, refusing on
-the version **and** on the state (`bff/src/orders.ts#L290`), which none of the four does — and
+the version **and** on the state (`bff/src/routes/orders.ts#L290`), which none of the four does — and
 borrows only the **lost-answer** half of `lists.ts#L189-L198`: a `putRecord` that throws is read
 again once. The compare is over the whole record the route built, `state` and `request` included, so
 another writer's confirm can never read as our save; two offices typing the same correction can, and
@@ -62,7 +62,7 @@ it lost to.
 
 | # | The case | Held by |
 | --- | --- | --- |
-| 1 | A draft's save stores the customer, the lines and the order's own `extra`, and answers the order with its new version | BFF route, `bff/src/orders.route.test.ts`; red first |
+| 1 | A draft's save stores the customer, the lines and the order's own `extra`, and answers the order with its new version | BFF route, `bff/src/routes/orders.route.test.ts`; red first |
 | 2 | A save whose write landed and whose answer was lost counts as saved, the stored record compared whole | BFF route, `orders-records.route.test.ts`; red first |
 | 3 | A save over a version that moved writes nothing and answers 409 with the order as it is now | BFF route; holds today, one assertion added |
 | 4 | A save of a confirmed, a fulfilled and a cancelled order each writes nothing and answers 409 with the order as it is now | BFF route; red first |
@@ -160,7 +160,7 @@ no becomes a case, fixed before step 7.
 👤 **2. What an order lets the office change, and in which state. Recommendation: only a draft, and
 only its customer and its lines — what the page already allows.** The reason is not caution: at
 Confirm the delivery request takes its own copy of the customer, the lines and the total
-(`bff/src/orders.ts#L329-L341`), and the driver's phone reads that copy, so correcting a confirmed
+(`bff/src/routes/orders.ts#L329-L341`), and the driver's phone reads that copy, so correcting a confirmed
 order could never change the paperwork being carried. A confirmed order is corrected by cancelling
 and taking it again, which the page already offers. A no — a typo fixed on a confirmed order — costs
 this piece nothing: a second, narrower save would be added and the request rewritten with it, its own

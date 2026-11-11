@@ -18,7 +18,7 @@ Copying `git diff --quiet HEAD` into the three scripts the item named: it leaves
 ## What proves it
 
 - Fourteen cases beside the existing ones, each seen red under at least one of nine mutations in the function.
-- The deploy job stays green. This rests on a step already green inside that job: `c-storage/Makefile#L28-L29` runs `git status --porcelain` after the install and both builds, before the role is taken, and would fail on any dirty tree there. A local scratch tree with ignored build outputs agrees.
+- The deploy job stays green. This rests on a step already green inside that job: `services/c-storage/Makefile#L28-L29` runs `git status --porcelain` after the install and both builds, before the role is taken, and would fail on any dirty tree there. A local scratch tree with ignored build outputs agrees.
 - The whole ops gate, `20261107-2159-tree-guard-step6.log`: `== ops/test.sh exit 0` (L576), `== exit 0` (L577), no `FAIL`. ShellCheck exit 0 in `20261107-2147-tree-guard-step4.log` (L6); its L224 pins the real trigger at 16 paths. Mutation 14 red: `20261107-2141-tree-guard-step2-mut14.log` (L569).
 - **Not run:** cfn-lint (needs pip and the network). GitHub confirms it on the push.
 

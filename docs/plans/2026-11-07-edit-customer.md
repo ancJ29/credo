@@ -7,7 +7,7 @@ going back to the old app. The page is the one built on 11-05 (`ui/src/CustomerP
 **This is the new app's first write,** so the shape settled here is the one the product and order pages copy.
 
 The cheapest safe path is the person's page, copied: a record read with the version it was read at, a save sent back
-over that version, a 409 carrying the record as it is now — `bff/src/staff.ts#L417-L460` and
+over that version, a 409 carrying the record as it is now — `bff/src/routes/staff.ts#L417-L460` and
 `ui/src/PersonPage.tsx#L634-L663` hold it already, down to the orange notice and its reload button, and the walk
 holds the recipe for a genuine conflict on the stack (`walk/specs/piece-2.spec.ts#L173-L191`). **Price:** no new
 infrastructure, $0 a month; about 110 machine minutes and one 17-minute picture run. The page also stops reading
@@ -17,7 +17,7 @@ every customer to show one.
 
 - **The wire**, in `shared/src/lists.ts` beside the employee's (`shared/src/staff.ts#L62-L101`):
   `customerDocSchema` (`{ customer, version }`) and `saveCustomerRequestSchema` (`{ version, name, extra }`).
-- **Two routes, customers only** (`bff/src/lists.ts`): `GET /api/customers/:id` answers the record with its tag, for
+- **Two routes, customers only** (`bff/src/routes/lists.ts`): `GET /api/customers/:id` answers the record with its tag, for
   whoever may see orders, as the list is (`#L96`); `PUT /api/customers/:id` saves over that version. Products get
   neither until their own milestone.
 - **The page**: the same cards, their values in editable inputs, one Save, and the person's page's three notices —
@@ -48,7 +48,7 @@ Decided here:
 
 | # | The case | Held by |
 | --- | --- | --- |
-| 1 | A name, phone, address and note saved over the version read are stored, and the answer carries the record and its new version | BFF route, `bff/src/lists.route.test.ts`; red first |
+| 1 | A name, phone, address and note saved over the version read are stored, and the answer carries the record and its new version | BFF route, `bff/src/routes/lists.route.test.ts`; red first |
 | 2 | A save over a version that moved writes nothing and answers 409 with the customer as it is now | BFF route; red first |
 | 3 | A save whose write landed and whose answer was lost counts as saved, not as a conflict | BFF route; red first |
 | 4 | Whoever may see orders but not edit them cannot save: 403, and nothing written | BFF route; red first |
@@ -95,7 +95,7 @@ both sides. Nothing else of this piece is shared.
   moving. Done when: rows 1 to 5 each red once, then green (`bff/tests/` builds the real c-storage per file);
   the gate steps over `bff` green at 100 % (a per-package `check` command was written here and does not exist:
   only the root has a `check` script, and the log named below is what ran; the code is proved by step 5's whole check).
-  *Done 2026-11-07, code, tests and tick in `7e3c941c`:* `GET` and `PUT /api/customers/:id` in `bff/src/lists.ts`
+  *Done 2026-11-07, code, tests and tick in `7e3c941c`:* `GET` and `PUT /api/customers/:id` in `bff/src/routes/lists.ts`
   (`orders.canView` reads, `orders.canEdit` saves, the version never skipped). Rows 1 to 5 each red once (10 new
   cases failed against the old `lists.ts`), then green; the false conflict is forced, not hoped for: a wrapped
   `putRecord` lets the real write land and then answers `moved` (or loses its answer), a counter fails the test

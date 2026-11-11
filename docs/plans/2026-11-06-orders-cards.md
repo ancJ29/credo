@@ -26,7 +26,7 @@ pictures already said yes to are redrawn.
   with this merge**, the new order its first live case, and the person's page's own blank half
   (`ui/src/PersonPage.tsx#L552`) goes with it.
 - Left alone: every word, call and state (save, confirm, send again, cancel, the conflict, the
-  refusals); the orders list; `bff/`, `shared/`, `c-storage/`; the walk and the mock; and the panels
+  refusals); the orders list; `bff/`, `shared/`, `services/c-storage/`; the walk and the mock; and the panels
   in `ui/src/OrderParts.tsx`, which draw their own bordered block with a level-3 title already and
   are shared with `ui/src/DeliveryPage.tsx` and `ui/src/MyDeliveryPage.tsx`, so converting them would
   move screens 6 and 12 for nothing.
@@ -51,7 +51,7 @@ Decided here:
 | 4 | An order read puts facts and lines left, request and steps right, in every state | unit, `OrdersPages.test.tsx`; red first |
 | 5 | The lines table's five columns do not scroll in the 7/12 column at 1280 | the walk, screens 3 and 11 |
 | 6 | Every block is a `DetailCard`: `grep -c withBorder ui/src/OrderPage.tsx` is 0, from 4 | the grep |
-| 7 | No behaviour moved: the orders suite unchanged; `git diff --stat main` names nothing under `bff/`, `shared/`, `c-storage/`, `walk/`, `visual/` | the suite; the diff |
+| 7 | No behaviour moved: the orders suite unchanged; `git diff --stat main` names nothing under `bff/`, `shared/`, `services/c-storage/`, `walk/`, `visual/` | the suite; the diff |
 | 8 | Eight screens move and no ninth: 1, 5, 6 and 12 keep their versions | `pnpm report` against `main`'s |
 
 ## What moves

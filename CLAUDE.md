@@ -1,18 +1,55 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: pnpm check; make check in c-storage/ · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: six commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
+
+## The gate
+
+Six commands cover this repository, and this is the whole list; which of them a step runs is
+[QA](docs/conventions/qa.md#the-rules)'s rule 6. Each is run from the repository root unless its row
+says otherwise.
+
+| # | Command | What it covers | In CI |
+| --- | --- | --- | --- |
+| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s step `name: pnpm check` |
+| 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml#L69` |
+| 3 | `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `services/c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
+| 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml#L198-L203`, cfn-lint 1.46.0 |
+| 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
+| 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
+
+A piece's own check at a commit is its package's `pnpm --filter @credo/<pkg> check` plus row 1's
+citation test run alone, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, about
+one second; for a change to `.md` files only that test is the whole check
+([QA](docs/conventions/qa.md#the-whole-check-on-pre-merge)).
+
+Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
+operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the
+Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts#L39` reads `BUNDLE_NODE`, which
+only the `app` job sets (`ci.yml#L130-L136`), so locally that one assertion is skipped while row 1
+otherwise runs whole.
 
 ## Non-obvious facts
 
 - **Read [collaboration](docs/conventions/collaboration.md) before working here,
   [documentation](docs/conventions/documentation.md) before writing any doc, `CLAUDE.md` or
-  comment, or committing any path, and [QA](docs/conventions/qa.md) before writing any test or
+  comment, or committing any path, [code](docs/conventions/code.md) before adding or changing any
+  code, and
+  [QA](docs/conventions/qa.md) before writing any test or
   feature plan, and before running any check on this machine or writing its log.**
+  **And for the big picture, read [`docs/architecture.md`](docs/architecture.md)'s `## At a glance`
+  and `## One request, end to end` — two short sections which are the whole system — then
+  `## What each part is for` and `## What is never there` for your piece's part and what it must not
+  break. That part's own `CLAUDE.md` holds its internals; where a thing lives is
+  [`docs/architecture-detail.md`](docs/architecture-detail.md)'s `## The codemap`, and that page's
+  other sections only as your piece needs them, and that page whole only when the piece crosses a
+  layer.**
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
-  is the trunk and only receives merges; each piece works on its own branch in its own worktree.
+  is the trunk and only receives fast-forwards, from `pre-merge`, to a commit its whole check has
+  passed; `pre-merge` receives each finished piece's merge, and each piece works on its own branch,
+  started from `pre-merge`'s tip, in its own worktree ([QA](docs/conventions/qa.md#the-whole-check-on-pre-merge)).
   The worktrees share one stash stack, so never run a bare `git stash`. The `orchestrator` branch
   holds the orchestrator's board. It never takes `main` in, and reaches `main` only as one squash
   merge, when the human says.
@@ -46,8 +83,9 @@ The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF 
   never committed or printed), `CREDO_OPERATOR_LINK` (the
   invited operator's one-time join link, at `http://localhost:<port>`, since a
   passkey is bound to a name and no IP address has one), `CREDO_PEOPLE` (JSON: each data-set
-  person's code to a first password) and `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client
-  of its own); the stack, never the BFF, holds c-storage's super-admin key and registers
+  person's code to a first password), `CREDO_SEED_URL` (a `POST` makes another client from the data set, the one door a walk has to a client
+  of its own) and `CREDO_AUDIT` (JSON: the audit service's two addresses and key, and c-storage's, for
+  `pnpm local activity <client code> <record id>`; never printed); the stack, never the BFF, holds c-storage's super-admin key and registers
   the BFF's service (a 409 is read by status, then the key is checked)
   ([the app frame](docs/plans/2026-10-27-app-frame.md#the-frame)).
 - **An order's day is the page's, never the BFF's clock** (`localToday()` in `ui/src/day.ts`): the fake

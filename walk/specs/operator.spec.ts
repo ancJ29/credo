@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
@@ -50,7 +50,7 @@ async function open(page: Page, language: Language, { path, operator, cue }: Ope
   }
   // A failure stubbed for an earlier screen is not this one's.
   await page.unrouteAll();
-  const handle = operator ? required('CREDO_OPERATOR_HANDLE') : '';
+  const handle = operator ? required(STACK_ENV.CREDO_OPERATOR_HANDLE) : '';
   await page.addInitScript(
     ([chosen, kept]) => {
       localStorage.setItem('credo.language', chosen);
@@ -123,7 +123,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 3. Made: the link, the root's name and its first password, once. The link's address and the
   // password differ between the fake and the stack, so both are masked (QA rule 7). Held by
   // bff/src/operator.route.test.ts: "answers the link’s path, the root’s name and a first password
-  // that signs the root in", and bff/src/password.test.ts: "holds a capital, a small letter, a digit
+  // that signs the root in", and bff/src/calling/password.test.ts: "holds a capital, a small letter, a digit
   // and one of @$!%*?& in 12 characters, and differs each time".
   await open(page, language, { path: '/operator/clients/new', operator: true });
   await fillClient();

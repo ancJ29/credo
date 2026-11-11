@@ -8,14 +8,14 @@ Excel import, nothing more (`ui/src/ListPage.tsx#L14`, `ui/src/ClientApp.tsx#L36
 page onto the frame the person's page made (`ui/src/DetailCards.tsx`), the same cards and the same 7/5.
 
 The cheapest safe path costs no server work: `GET /api/customers` already answers every customer whole, `extra`'s
-phone, address and note included (`shared/src/lists.ts#L9-L14`, `bff/src/lists.ts#L60-L62`), so the page reads that
+phone, address and note included (`shared/src/lists.ts#L9-L14`, `bff/src/routes/lists.ts#L60-L62`), so the page reads that
 list and picks its id — every customer read to show one, bounded by the import's 500 rows
 (`shared/src/import.ts#L7`). No route, no field, no wire. **Price:** $0 a month; about 45 machine minutes and a
 17-minute full run. *Trigger:* editing by hand, which wants a record read for its version.
 
 ## The slice
 
-- **The page**, `/customers/:id`, for whoever may see orders, as the list is (`bff/src/lists.ts#L96`). Above the
+- **The page**, `/customers/:id`, for whoever may see orders, as the list is (`bff/src/routes/lists.ts#L96`). Above the
   columns: the name, the code and "Back to the customers" (`ui/src/i18n/en.ts#L662`, the key is there), as the
   person's page sets it (`ui/src/PersonPage.tsx#L395`, `#L433`). `main`: **Basic information** (code and name in a
   `FieldPair`), **Contacts** (the phone), **Address** — the legacy's three left cards
@@ -26,7 +26,7 @@ list and picks its id — every customer read to show one, bounded by the import
 - **The frame's side column becomes optional** — open item 90 (`docs/open-items.md#L619`), whose trigger is this
   milestone: `side` absent gives `main` the full 12 (`ui/src/DetailCards.tsx#L8-L15`). **The item closes with this
   merge**, a customer with no note being its first live case.
-- Read only: no add, no edit, no delete. `bff/`, `shared/` and `c-storage/` are untouched.
+- Read only: no add, no edit, no delete. `bff/`, `shared/` and `services/c-storage/` are untouched.
 
 Decided here:
 
@@ -48,7 +48,7 @@ Decided here:
 | 5 | From 992 two columns, 7 to 5; below one column, details first; fields two a row from 768 | the walk |
 | 6 | A customer with no note is one column at the full width, at every width | unit, `ui/src/DetailCards.test.tsx`, red first; the walk |
 | 7 | Every card is `DetailCard` (`grep -c withBorder ui/src/CustomerPage.tsx` is 0); the titles read in both languages | the grep; unit, `ListPage.test.tsx` |
-| 8 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `c-storage/`; no fourth screen moves | the diff; the run's `raw.txt` |
+| 8 | No server change: `git diff --stat main` names nothing under `bff/`, `shared/`, `services/c-storage/`; no fourth screen moves | the diff; the run's `raw.txt` |
 
 ## What moves
 
@@ -70,7 +70,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   `main`'s build exactly the three screens' versions differ.
   *Evidence:* rows 1 to 4 and 6 each red first, then green; `ui` 756 tests at 100 %, lint, knip, tsc clean;
   `grep -c withBorder ui/src/CustomerPage.tsx` is 0; `git diff --stat main` names nothing under `bff/`, `shared/`,
-  `c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
+  `services/c-storage/`; `pnpm report` 116 screens against `main`'s 114: screen 1's version moved and screens 10 and 11 are new,
   nothing else differs (log `logs/customer-cards-step2-report-20261105-1707.log`, `== exit 0`).
 - [ ] **3. The look** (👤 1); the machine goes on.
 - [x] **4. The gate.** 🤖 Sonnet, about 11 minutes: `main` taken in; the whole `pnpm check` under the lock,
@@ -84,7 +84,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   - **High** — the walk's two new screens open an address no client on the stack has.
     `walk/specs/lists.spec.ts#L171` and `#L179` open `/customers/${DEMO_CUSTOMERS[n].id}`, but the `lists-full`
     project's seed door makes a client whose customers were imported through the root's route, where the BFF mints
-    each id (`scripts/src/generator.ts#L182-L187`, `bff/src/lists.ts#L123`; the generator itself maps code to minted
+    each id (`scripts/src/generator.ts#L182-L187`, `bff/src/routes/lists.ts#L123`; the generator itself maps code to minted
     id at `#L269-L270`). On the stack both screens show "This customer is not in the list" and
     `expect(title(NOTED_CUSTOMER.name)).toBeVisible()` times out, so step 6's run 1 goes red in all 12 full-stack
     cases and writes no picture. The fake project passes, and `visual/src/walks.test.ts#L628-L633` compares the
@@ -104,7 +104,7 @@ frame's `side` on every person's page; the second to merge takes `main` at its g
   Item 90 is marked done with `a71e6a1` (`docs/open-items.md#L619-L623`). Read and found sound: every
   `DetailColumns` caller still passes a `side`; the guard `mayOpen(user, 'customers')`
   (`ui/src/ClientApp.tsx#L233-L235`, `#L375-L378`, `ui/src/nav.ts#L76`) matches the route's own
-  `orders.canView` (`bff/src/lists.ts#L96`) and gives the 403 page, not a redirect; `/customers/import` still
+  `orders.canView` (`bff/src/routes/lists.ts#L96`) and gives the 403 page, not a redirect; `/customers/import` still
   outranks `/customers/:id`; a missing id and a failed read each say so (`ui/src/Loaded.tsx#L12-L33`);
   `Shown`'s new `id` is filled by both loaders and read by name only; screens 1 to 9 keep their ids and numbers;
   the five new keys are in both languages and the field labels' `lists.columns.*` are too.

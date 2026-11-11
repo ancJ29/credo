@@ -1,0 +1,82 @@
+info:
+  name: Get Activities by Actor
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{openUrl}}/api/activities/by-actor/{{actorId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer {{readToken}}"
+  params:
+    - name: limit
+      value: "20"
+      type: query
+      disabled: true
+    - name: cursor
+      value: "{{byActorCursor}}"
+      type: query
+      disabled: true
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        bru.setVar("byActorCursor", (res.body && res.body.nextCursor) || "");
+    - type: tests
+      code: |-
+        test("200 with the token", function() {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+        test("only the token's tenant", function() {
+          res.getBody().activities.forEach((a) => {
+            expect(a.clientId).to.equal(bru.getEnvVar("clientId"));
+          });
+        });
+
+        test("activities is always an array, never null", function() {
+          expect(res.getBody().activities).to.be.an('array');
+        });
+
+        test("newest written first, by id", function() {
+          // The id is minted at insert; createdAt is the caller's stamp, which
+          // may be backdated, so it orders nothing.
+          const ids = res.getBody().activities.map((a) => a.id);
+          expect([...ids].sort().reverse()).to.deep.equal(ids);
+        });
+
+        test("the targetless entry is here", function() {
+          // Both entries from Log Activities appear in this feed; only one of them
+          // appears in by-target.
+          const actions = res.getBody().activities.map((a) => a.action);
+          expect(actions).to.include("employee.toggleStatus");
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Everything one actor did, newest written first (by `id`, never `createdAt`),
+  within one tenant. **Open URL, with `authorization: Bearer {{readToken}}`**
+  from *Mint a Read Token*; without it, or once it expires, a 401.
+
+  **Path** `actorId` — raw employee id, no client prefix.
+
+  **Query** — the tenant is the token's, never a parameter: a `clientId` here
+  names nothing.
+
+  - `limit` — 1–100, default 20. Below 1 is 20 and above 100 is 100; not an
+    integer is a 400.
+  - `cursor` — bound to this feed; a `by-target` cursor here is a 400.
+
+  **Returns** `200 { activities: [...], nextCursor?: string }`. Served by a range
+  read on `(client_id, actor_id, id DESC)` — no scan, no filter.
+
+  `targetId` is `string | null` and always present: a missing field would make a
+  caller branch on `undefined`.

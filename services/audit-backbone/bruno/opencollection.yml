@@ -1,0 +1,49 @@
+opencollection: 1.0.0
+
+info:
+  name: "[Credo] audit-backbone"
+
+docs:
+  content: |-
+    ## audit-backbone
+
+    The activity log: one Go binary, one SQLite file, two listeners. The
+    client's system writes and mints read tokens; its browser reads.
+
+    ### Two base URLs
+
+    - `{{keyedUrl}}` — `POST /api/activities` and `POST /api/read-tokens`,
+      behind `{{writeKey}}` in `x-internal-access-key`.
+    - `{{openUrl}}` — the two activity `GET` feeds, behind a read token in
+      `authorization: Bearer`, one tenant's for an hour. The run mints it
+      as `{{readToken}}` before the feeds.
+
+    On a box each is its own hostname in front of a loopback port. Locally
+    they are two ports.
+
+    ### There is no 405, anywhere
+
+    A 405 would confirm that a path exists. So a wrong verb on a real route
+    is a **404**, and so is a keyed route probed on the open port.
+
+    ### An unauthenticated request learns nothing from a status code
+
+    On either listener **every** path answers 401 without its credential,
+    registered or not — except `GET /health`, and a preflight on the open
+    one. With the credential, the honest 404 comes back.
+
+    ### Running it locally
+
+    ```bash
+    ./scripts/dev-up.sh --fresh     # build, start, wait for /health
+    cd bruno && bru run --env local
+    ./scripts/dev-down.sh --purge   # stop and drop the database
+    ```
+
+    `environments/local.yml` carries the development key `dev-up.sh` uses,
+    so a fresh clone runs without editing anything. Every other environment
+    file is git-ignored, since it holds a real key, but a live env's whose
+    key is a Bruno secret.
+  type: text/markdown
+bundled: false
+extensions: {}

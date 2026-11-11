@@ -1,7 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
-    ".": { "ignore": ["c-storage/**"] },
+    ".": {
+      "ignore": ["services/c-storage/**", "services/audit-backbone/**"],
+      "ignoreDependencies": ["prettier"]
+    },
     "bff": { "entry": ["src/main.ts", "src/lambda-main.ts"] },
     "scripts": { "entry": ["src/ridge-main.ts"] },
     "shared": {},

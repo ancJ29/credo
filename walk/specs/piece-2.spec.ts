@@ -1,4 +1,4 @@
-import { type Language } from '@credo/shared';
+import { type Language, STACK_ENV } from '@credo/shared';
 import { DEMO_CODE, DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@credo/shared/demo';
 import { demoImportFile } from '@credo/ui/import-demo';
 import { DICTIONARIES } from '@credo/ui/words';
@@ -43,7 +43,7 @@ const handleOf = (code?: string) =>
 /** A client of its own, made by the stack from the data set: an add or an archive cannot be undone,
  * so no screen opens on a client an earlier one changed. */
 async function seed(): Promise<Seeded> {
-  const reply = await fetch(required('CREDO_SEED_URL'), { method: 'POST' });
+  const reply = await fetch(required(STACK_ENV.CREDO_SEED_URL), { method: 'POST' });
   if (!reply.ok) throw new Error(`the stack's seed door answered ${reply.status}`);
   return (await reply.json()) as Seeded;
 }
@@ -260,8 +260,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-2-add');
 
   // 3. Added: the sign-in name and a first password, shown once; the password is masked, since the
-  // full run's is minted (QA rule 7). Held by bff/src/employees.route.test.ts: "answers 201 with the
-  // first password, and lists the person once, …", and bff/src/password.test.ts: "holds a capital, a
+  // full run's is minted (QA rule 7). Held by bff/src/routes/employees.route.test.ts: "answers 201 with the
+  // first password, and lists the person once, …", and bff/src/calling/password.test.ts: "holds a capital, a
   // small letter, a digit and one of @$!%*?& in 12 characters, and differs each time".
   await press(words.addPerson.submit);
   await expect(title(words.addPerson.madeTitle)).toBeVisible();
@@ -286,8 +286,8 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-5-permissions');
 
   // 6. A password made, shown once; masked, since it is minted (QA rule 7). Held by
-  // bff/src/employees.route.test.ts: "signs the person out on every device: a session issued before
-  // the new password is a 401", and bff/src/password.test.ts as for screen 3.
+  // bff/src/routes/employees.route.test.ts: "signs the person out on every device: a session issued before
+  // the new password is a 401", and bff/src/calling/password.test.ts as for screen 3.
   await open(page, language, { path: '/staff' });
   await personNamed(page, 'Bùi Ngọc Anh');
   await press(words.person.passwordMake);

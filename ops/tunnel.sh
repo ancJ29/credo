@@ -3,7 +3,7 @@
 # Holds http://127.0.0.1:3192 open to <env>'s c-storage from this machine, in the caller's own AWS
 # session, until Ctrl-C or the endpoint's hour, so Bruno or curl can read it. Says ready only once
 # /health through it names a commit of main; then writes <env>'s keys and a fresh service's into one
-# Bruno environment, c-storage/bruno/environments/<env>-tunnel.yml, removed when the tunnel ends.
+# Bruno environment, services/c-storage/bruno/environments/<env>-tunnel.yml, removed when the tunnel ends.
 # Needs the caller's AWS session. Run from a worktree whose ops/ is origin/main's.
 # Why it is shaped so: docs/plans/2026-10-28-ridge-tunnel.md.
 set -euo pipefail
@@ -20,7 +20,7 @@ STEPS=4
 # Fixed, with no override: the port is the lock against a second run. Neither the local stack's
 # (3181) nor the check's (3191), so ops/check.sh runs beside an open tunnel.
 TUNNEL_PORT=3192
-KEYS_FILE=$REPO_DIR/c-storage/bruno/environments/$ENVNAME-tunnel.yml
+KEYS_FILE=$REPO_DIR/services/c-storage/bruno/environments/$ENVNAME-tunnel.yml
 CHECK_EVERY=5
 
 # clock <epoch seconds> → HH:MM local time (GNU date, then BSD's)
@@ -60,7 +60,7 @@ if [ -e "$KEYS_FILE" ]; then echo "note: replacing a keys file an earlier run le
 bruno_env_write "$KEYS_FILE" "$TUNNEL_PORT" "$service_code" "$access_key"
 
 echo "ready: http://127.0.0.1:$TUNNEL_PORT is $ENVNAME's c-storage, until Ctrl-C or $(clock $((opened + 3600))) (the endpoint's hour)"
-echo "  Bruno: open the collection c-storage/bruno, pick the environment $ENVNAME-tunnel"
+echo "  Bruno: open the collection services/c-storage/bruno, pick the environment $ENVNAME-tunnel"
 echo "  curl:  curl http://127.0.0.1:$TUNNEL_PORT/health; the keys are in ${KEYS_FILE#"$REPO_DIR"/}"
 echo "  this run's service: $service_code, registered by the collection's first request"
 

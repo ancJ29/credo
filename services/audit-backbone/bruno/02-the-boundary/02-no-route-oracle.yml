@@ -1,0 +1,40 @@
+info:
+  name: An unknown path is 401, exactly like a real one
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{keyedUrl}}/api/nothing-here"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401 without a key, even though this path does not exist", function() {
+          // Compare with 01: a REAL route without a key is also 401. If this one
+          // answered 404, the pair would let anyone enumerate the keyed surface by
+          // diffing status codes.
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  A path that is registered nowhere, sent to the keyed listener with no key.
+  **Expected: 401.**
+
+  A real route without a key is a 401 (`01`). If an unknown path answered 404,
+  the two together would be a **route oracle**: an unauthenticated caller could
+  map the keyed surface by sending paths and watching which came back 401. So
+  the key gate stands in front of the whole keyed mux, its 404 fallback
+  included.
+
+  **Add the key and the honest 404 comes back** — a caller who is already
+  trusted gets a straight answer. Set `x-internal-access-key: {{writeKey}}` and
+  re-send.

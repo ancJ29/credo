@@ -4,7 +4,7 @@
 
 A new customer telephones and the order-taker adds it from the Customers list, then stocks a new product from the
 Products list, with nobody signing in as the root and nobody building a spreadsheet. Today the only way into either
-list is the root's Excel import (`bff/src/lists.ts#L140-L141`), and neither list page draws an Add
+list is the root's Excel import (`bff/src/routes/lists.ts#L140-L141`), and neither list page draws an Add
 (`ui/src/ListPage.tsx#L22-L31`, the whole page): a person with `orders.canEdit` has no path at all.
 
 The cheapest safe path is **the editable detail pages of 11-07, copied**: their forms already hold every field,
@@ -16,14 +16,14 @@ picture run.
 ## The slice
 
 One slice for **both** lists, because the server work is one block, not two: `registerList` is generic over a
-`ListKind` and registered twice (`bff/src/lists.ts#L97-L100`, `#L240-L241`), so `app.post(kind.route, …)` written
+`ListKind` and registered twice (`bff/src/routes/lists.ts#L97-L100`, `#L240-L241`), so `app.post(kind.route, …)` written
 once gives customers and products their add together. Splitting the lists would write that route twice, or build it
 for one caller and leave the second list's page waiting on it.
 
 - **The wire: nothing new.** The body is `addCustomerRequestSchema` / `addProductRequestSchema`, which the import
-  already parses each row with (`shared/src/lists.ts#L71-L85`, `bff/src/lists.ts#L59`, `#L76`); the answer is
+  already parses each row with (`shared/src/lists.ts#L71-L85`, `bff/src/routes/lists.ts#L59`, `#L76`); the answer is
   `customerDocSchema` / `productDocSchema` (`shared/src/lists.ts#L38`, `#L51`), as the detail page reads.
-- **One route per list, from one registration** (`bff/src/lists.ts`): `POST /api/customers` and `POST /api/products`
+- **One route per list, from one registration** (`bff/src/routes/lists.ts`): `POST /api/customers` and `POST /api/products`
   for whoever may edit orders. Its body is the import's row rule, its code search the import's own `codes` set
   (`#L144`, `#L152-L156`), its write the import's `write` under a fresh id (`#L115-L127`, `#L157`). The import
   keeps its `mustBeRoot` untouched.
@@ -48,20 +48,20 @@ Decided here, each from what the repository already holds rather than from prefe
 - **The code is typed, never generated.** Adding a person may leave it empty for the next number
   (`ui/src/AddPersonPage.tsx#L62-L63`), but these lists have no number series and the import demands a code in
   every row. Its rule is the shared one the import's rows use (`shared/src/lists.ts#L70-L72`), capitalised on the
-  server before the list is searched (`bff/src/lists.ts#L152`). 👤 4.
+  server before the list is searched (`bff/src/routes/lists.ts#L152`). 👤 4.
 - **A code the list already holds is refused, nothing written, and the page says so keeping every field as
-  typed** — 409, as a taken staff code is answered (`bff/src/staff.ts#L209`) and mapped to a result rather than an
+  typed** — 409, as a taken staff code is answered (`bff/src/routes/staff.ts#L209`) and mapped to a result rather than an
   error (`#L71`). *Rejected:* adding anyway under a second id, which would break the uniqueness rule every
   imported row is held to.
 - **`orders.canEdit` gates the add, and no new permission is made.** The catalogue holds eight ids and no
   `orders.canCreate` (`shared/src/permissions.ts#L9-L17`; the plan first said seven and cited `#L10-L16`, one line
   short of `deliveries.canDeliver` — corrected at step 7, the decision unaffected; for the recap); `orders.canEdit` is already the right that *makes*
-  records here and already corrects these two (`bff/src/lists.ts#L213`). A new id would cost the catalogue, the
+  records here and already corrects these two (`bff/src/routes/lists.ts#L213`). A new id would cost the catalogue, the
   permission editor, the labels and every role's defaults — its own milestone. 👤 2.
 - **A clerk sets no id and no version:** the id is the server's fresh uuid and the body is a strict object, so
   either one sent is a refusal, not a silent drop.
 - **Not fixed here:** uniqueness is read-then-write, a record's key being its uuid and not its code
-  (`bff/src/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land — as two simultaneous
+  (`bff/src/routes/lists.ts#L116`, `#L157`), so two adds of one code at one instant can both land — as two simultaneous
   imports can today. Filed as an open item at step 7; *trigger:* a client reporting a doubled code.
 
 ## What a merged tree must satisfy
@@ -82,7 +82,7 @@ The invariants, not a file list:
 
 | # | The case | Held by |
 | --- | --- | --- |
-| 1 | An add whose code the list does not hold writes one record under a fresh id and answers it with its version | BFF route, `bff/src/lists.route.test.ts`; red first |
+| 1 | An add whose code the list does not hold writes one record under a fresh id and answers it with its version | BFF route, `bff/src/routes/lists.route.test.ts`; red first |
 | 2 | An add whose code the list already holds is refused 409 and writes nothing — in either case, whichever the code was typed in | BFF route; red first |
 | 3 | Whoever may see orders but not edit them cannot add: 403, nothing written, the body never parsed | BFF route; red first |
 | 4 | An add carrying an id, a version or an unknown field is refused and writes nothing | BFF route; red first |

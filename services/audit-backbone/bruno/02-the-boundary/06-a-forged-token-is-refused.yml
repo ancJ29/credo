@@ -1,0 +1,35 @@
+info:
+  name: A forged token is refused (401)
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{openUrl}}/api/activities/by-actor/{{actorId}}"
+  headers:
+    - name: Authorization
+      value: "Bearer eyJjIjoiYWNtZSIsIngiOjQxMDI0NDQ4MDB9.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401 — the claims are not what the server checks first", function() {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  A token whose payload claims tenant `acme` until the year 2100, signed with
+  zeros. **Expected: 401.**
+
+  A token is `<payload>.<signature>`, both base64url. The payload is readable by
+  anyone, so it is never trusted until the signature, made under a key only the
+  server derives, matches; an expired token, or one minted under another key,
+  meets the same 401.

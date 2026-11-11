@@ -3,9 +3,10 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-07, from the measurement of every plan written under the one-page shape:
-> the plan's word cap set to what that shape costs. This file holds the rules as they stand; their
-> history is in `git log`.
+> **Last amended** 2026-11-11, from the human's proposal that a finished piece land on `pre-merge`,
+> so a plan's hardened build ends at that landing, not at a merge into `main`; the amendment of
+> 2026-11-10 stands: every part which behaves has a behaviour memo, and a plan's word figure is what
+> the shape costs. This file holds the rules as they stand; their history is in `git log`.
 
 ## At a glance
 
@@ -14,18 +15,23 @@ without it, would get the next change wrong.
 
 | Reader | Reads | Form |
 | --- | --- | --- |
-| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo and plan | **Visual first**: a diagram or a table for a flow, a structure or a comparison. Prose only for the why |
+| 👤 human | `README.md`, recaps, and the "At a glance" atop each convention, memo, plan and page written for them | **Visual first, in the order things happen**: a diagram or a table for a flow, a structure or a comparison. Prose only for the why |
 | 🤖 machine | `CLAUDE.md`, and the detail below each "At a glance" | **Detailed on the why**: exact names, the rejected alternative and its price, the trigger to revisit it |
 | both | the code | the what. No doc copies it |
 
-- Each doc a human reads opens with a short version; a README starts a newcomer in 30 minutes
-  ([two readers](#two-readers)).
+- Each doc a human reads opens with a short version in its own file, never a separate summary of
+  it; a README starts a newcomer in 30 minutes ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters; a runbook holds the steps alone and links their why
   ([what earns a line](#what-earns-a-line)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes; a convention carries one `Last amended`
   line and no changelog ([one fact, one home](#one-fact-one-home)).
+- A part whose behaviour a caller can be surprised by has a memo at `docs/memo/<part>.md`, its
+  sections titled as claims, and a new service arrives with one
+  ([one fact, one home](#one-fact-one-home)).
+- A living document cites a file and a symbol in it, never a line
+  ([how a living document cites code](#how-a-living-document-cites-code)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
   holds the evidence and keeps the piece's row in `docs/products.md` true
   ([where progress lives](#where-progress-lives-three-files-one-job-each)).
@@ -38,15 +44,30 @@ without it, would get the next change wrong.
 The table [at a glance](#at-a-glance) says who reads what.
 
 - **Every doc a human reads opens with its human version, in the same file**, under
-  `## At a glance`: each convention, memo and plan. A recap is the human's already; `CLAUDE.md`
-  stays the machine's alone. The human version fits one screen: about 150 words of plain prose,
-  no jargon, a diagram or a table first, and each line pointing to the rule or section below
-  that holds it. The machine's detail follows, unchanged in kind. Nothing in the human version
-  is new: it is a view of the detail, which stays the one home. *Rejected:* a separate human
-  file per doc. It is a second home for the same rules, and the copy is the one that rots: the
-  change that alters a rule touches no line there. *Hazard no gate catches:* the two drift
-  apart. *Guard:* a change to a rule changes its line in the human version in the same commit,
-  and [QA](qa.md)'s rule 5 reviewer reads both.
+  `## At a glance`: each convention, memo and plan, **and every page written for the human or for
+  both** — today [`docs/architecture.md`](../architecture.md), the index
+  [`docs/README.md`](../README.md), [`docs/products.md`](../products.md) and
+  [`docs/client-readiness.md`](../client-readiness.md). **A page this list does not name and a person
+  is handed anyway joins the list the moment that happens**: written to no reader it takes the
+  machine's register by default, and nobody sees that until a human is reading it. A recap is the
+  human's already; the operator's runbook and the numbered log have their own shapes below;
+  `CLAUDE.md` stays the machine's alone. The human version fits one screen: about 150 words of
+  plain prose, no jargon, a diagram or a table first, **ordered by what happens next — one
+  request, one record, one change followed through — and not as a tour of the parts**, each line
+  pointing to the rule or section below that holds it. *Why that order:* a page can be visual,
+  short and still unreadable. The page that set this rule off opened with a diagram and a plain
+  summary, and the diagram was all the human could read; the project they held up as readable
+  followed one statement through the system instead. The machine's detail follows, unchanged in
+  kind. Nothing in the human version is new: it is a view of the detail, which stays the one
+  home. *Rejected:* a separate human file per doc. It is a second home for the same rules, and
+  the copy is the one that rots: the change that alters a rule touches no line there. **So a
+  separate human-facing summary is a symptom, not a service.** Where one is kept because the
+  other documents cannot be understood, those documents are the ones missing their human
+  version, and the fix is upstream, in them. *The test:* the summary shrinks as each document it
+  compensates for gains its own. One kept for exactly that reason had four of its numbers
+  corrected in a single day, which is this rejection coming true rather than an argument for the
+  summary. *Hazard no gate catches:* the two drift apart. *Guard:* a change to a rule changes its
+  line in the human version in the same commit, and [QA](qa.md)'s rule 5 reviewer reads both.
 - **A README lets a newcomer grasp the project in 30 minutes**: what it is in three plain
   sentences, then a tested "try it in 10 minutes"; internals last.
 - **A diagram is drawn from committed code and names the files it is drawn from.** A change to
@@ -95,6 +116,49 @@ to rot, because the change that breaks it touches no line there.
   Seven of them went into one principles memo's header, one per rule the piece had touched, and
   the human cut the block on sight: there are always exceptions, and logging each one is not
   worth the reader's attention in a memo of principles.
+- **A part whose behaviour a caller can be surprised by has a behaviour memo at
+  `docs/memo/<part>.md`, one section per claim and each section titled as its claim, so a reader
+  scanning the headings reads a list of promises; and a new service arrives with one.** It is the
+  third of three homes, and naming them against each other is the point: the part's own `CLAUDE.md`
+  says what belongs in it and how to write code there, [`docs/architecture.md`](../architecture.md)
+  says in one paragraph what it is *for* and links to the memo, and the memo says how it *behaves* —
+  each promise with its price, and what no gate catches. A claim lands in exactly one of the three;
+  where it would fit two it belongs to the memo, and the other links to it. Today
+  [`docs/memo/bff.md`](../memo/bff.md), [`docs/memo/ui.md`](../memo/ui.md) and
+  [`docs/memo/c-storage.md`](../memo/c-storage.md), and the first two are living, so the citation
+  check reads them
+  (`scripts/src/citations.ts`'s `LIVING`). *Rejected:* the behaviour in the part's `CLAUDE.md`. That
+  file is read by a session about to write code; a promise is read by whoever calls the part, which
+  is a different reader at a different moment, and the two crowd each other out.
+
+### How a living document cites code
+
+**A living document cites a file and a symbol in it, never a line number.** *Why:* a line moves with
+every edit above it and fails nothing when it does, so the citation rots in silence; a symbol
+survives every edit and reformat, a rename is a real change worth noticing, and one grep checks it
+where a line number never can. Three forms, in this order of preference:
+
+1. **A file and a symbol** is the default: `bff/src/errors.ts`'s `replyFor`.
+2. **A key or resource name the file itself contains**, for config and shell, where there is no code
+   symbol: `package.json`'s `scripts.check`, `ops/env.yml`'s `BoxGroup`, `walk/run.sh`'s `main`.
+   This is no concession: YAML and JSON have no symbols.
+3. **A quoted fragment of the line**, only where neither exists, and deliberately ugly so that
+   nobody reaches for it first.
+
+**The name must be declared once in its file** (its other occurrences are uses): a name that
+resolves twice lets a check pass on the wrong declaration. In Go a method is cited as
+`func (s *Server) handle(`, not `handle`, and its case counts.
+
+*Who it binds:* the living documents, which must be true now (the conventions, the architecture
+page, the index, every `CLAUDE.md`, the root `README.md`, `docs/client-readiness.md` and
+[`docs/activity-log.md`](../activity-log.md)), and not plans or recaps, which were written once and
+were true then. **A page of decisions about code not yet written is still bound**, because the check
+only verifies what is cited and never asks for a citation to an unbuilt thing: the citations such a
+page makes to code that *does* exist are exactly the ones that rot when the work lands. *When:* it binds new writing, and an
+existing line citation converts when a piece touches it, not in a sweep of its own; its line is never
+checked, but a line citation whose file has gone is red today. *What it cannot hold:* a symbol that still exists and has changed its
+meaning passes every grep (a constant that became an import still resolves); only the reader of the
+change sees that, so a piece that moves a decision rereads the citations to it.
 
 ## Where progress lives: three files, one job each
 
@@ -109,7 +173,7 @@ content, never ahead of it.
 
 ### The plan: one short page
 
-**A plan is about 2,000 words at most, its case table included**, in this order:
+**A plan is about 2,500 words, its case table included**, in this order:
 
 1. **The purpose**, as its `## At a glance`: what the piece is for, who sees it, and the cheapest
    safe path there, what exists picked over a design from zero, the price in one line.
@@ -118,7 +182,7 @@ content, never ahead of it.
    count. The first is the cheap end-to-end build: where the piece has a screen, its fake
    (`pnpm fake`) first, then the slice through the stack at its thinnest. The hardened build
    follows, each case seen red once ([QA](qa.md)'s rule 2) and coverage at 100 % (rule 8),
-   before the merge into `main`.
+   before it lands on `pre-merge`.
 4. **The human's points**, up to five, the ones [QA](qa.md#at-a-glance) names, each at the step
    that needs it. **Each point reads on its own, in plain words:** a few sentences, about 60 words,
    that say what the human will see, why it matters, and what a yes and a no each start. A sha, a
@@ -128,17 +192,23 @@ content, never ahead of it.
    story from it, and digging for the rest costs the speed the short page buys. The human gave
    that correction twice on 2026-11-02, of a plan's points and of the orchestrator's day list.
 
-**The 2,000 is what this shape costs, not a target.** Over the eighteen plans written since the
-shape was set, `wc -w` ran from 986 to 1,970 words, median 1,610. The parts above cost about
-800 of that before the first step: about 150 words for the `## At a glance`, 260 for the slice,
-240 for the case table and 150 for the points. A slice of six to nine steps, each with its
-done-when and the file-and-line citations a reviewer reads it against, costs about 600 more.
-About a fifth of the case table's words are the table's own pipes and dashes, which `wc -w`
-counts as words, so the number is not a prose budget. *Rejected:* 1,000 words, what this
-convention asked for until 2026-11-07. Seventeen of the eighteen were over it; the cost was not
-the overage but about fifteen passes spent shortening prose nobody had asked to be shorter,
-while the parts this convention itself demands could not fit in the number — its own arithmetic
-had left the slice out and put the steps at a figure no plan has met.
+**The 2,500 is what this shape costs, not a target.** Over the twelve plans added under
+`docs/plans` since 2026-11-07, `wc -w` ran from 1,048 to 3,612 words at a median of about 2,490.
+The two plans at that median show where the words go: one spends 169 on its `## At a glance`, 336
+on the slice, 383 on the case table, 840 on its steps and 346 on the human's points; the other 151,
+147 and, with no case table of its own, 1,052 on its steps and 42 on its points — eight steps in
+the first and six in the second, each with its done-when and the file-and-line citations a
+reviewer reads it against. Each also carries sections of its own — what moves and what must not,
+the shapes and their one home, the order and what is independent — 205 words of them in the first
+and 1,020 in the second, and that is where the rest of the median sits. About a fifth of the case
+table's words are the table's own pipes and dashes, which `wc -w` counts as words, so the number is
+not a prose budget. *Rejected:* 2,000 words, what this convention asked for until 2026-11-10. Ten
+of the twelve plans written under it were over it, so the figure described no plan this project
+writes, and a cap nobody meets is a complaint rather than a rule. *Rejected:* 1,000 words, what it
+asked for until 2026-11-07, when seventeen of the eighteen plans then measured were over it; the
+cost was not the overage but about fifteen passes spent shortening prose nobody
+had asked to be shorter, while the parts this convention itself demands could not fit in the number — its own arithmetic had left the slice out and put the
+steps at a figure no plan has met.
 
 Nothing the builder finds in the repo or in git goes in: no status block, no list of the files it
 was drawn from, no evidence. Where a piece stands is its ticks, and across pieces the
@@ -148,12 +218,12 @@ in one, the shape these conventions asked for until 2026-11-02, against the one 
 27,036 words, every reader paid for the four other files to reach the steps, and the best of the
 six reviewed on 2026-11-02 was the shortest. A rewritten "Where it stands" was one more copy of what
 the ticks and the board already said. *Hazard no gate catches:* the page grows back, one step's
-evidence at a time. *Guard:* `wc -w` on the plan before its commit; well over 2,000 words, the
+evidence at a time. *Guard:* `wc -w` on the plan before its commit; well past 3,000 words, the
 part that grew is named and cut back, and the two limits that bind are the `## At a glance` at
 about 150 words and each of the human's points at about 60. *Rejected:* cutting the slice in
 two on the word count, what this guard asked for until 2026-11-07. No slice was ever cut on
 that ground in the shape's first week, and the count does not diagnose one: the longest of the
-eighteen plans is a single walkable slice of eight steps, and the plans this guard was written
+twelve is a single walkable slice of nine steps, and the plans this guard was written
 against ran from 2,400 to 27,000 words at the same step counts, so what cut them down was
 dropping the status, provenance and evidence blocks, not cutting slices. A slice is cut by its
 own test above: not walkable end to end when the plan ends.
