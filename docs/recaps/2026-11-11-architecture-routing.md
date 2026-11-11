@@ -12,7 +12,7 @@ Documents only: eight files, no code, template or workflow. The two memos for th
 
 - **The pooled shape is written as intended on the human's request, not decided by a test.** The piece file records that the request was read as a yes to it; a no turns the part into a proposal.
 - **The old pages were not re-read against the new shape.** The client-readiness note says so itself.
-- **Five line citations were removed, none replaced:** `ops/seed.sh`, `ops/env.yml`, and three bare ones in the day-one plan section. The commit message says four; the diff shows five.
+- **Five line citations were removed, none replaced,** all in `docs/architecture-detail.md`: the links to `ops/seed.sh` and `ops/env.yml`, and three bare ones (`#L181`, `#L5`, `#L68`). The commit message says four; the diff shows five.
 
 ## Open looks
 
