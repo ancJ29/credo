@@ -39,7 +39,9 @@ operator console is not a separate deployment, only the path it is opened at (`u
 
 ## The data
 
-**Where it lives.** One SQLite file per deployment, at the path the box's systemd unit names
+**Where it lives.** One SQLite file per box, and today one box per deployment (in the pooled shape,
+intended and not built, one box per group of tenants:
+[how a call finds its tenant's box](#how-a-call-finds-its-tenants-box)), at the path the box's systemd unit names
 (`ops/c-storage.service`'s `DB_PATH`), served by a unit that restarts the process whenever it stops
 (`ops/c-storage.service`'s `Restart=always`), opened in WAL with
 `_txlock=immediate` ([`services/c-storage/internal/sqlitedb/open.go#L33`](../services/c-storage/internal/sqlitedb/open.go#L33)).
@@ -119,6 +121,111 @@ seven — `PORT`, `HOST`, the four for c-storage and `APP_ORIGIN`, all supplied 
 without the listener's two, since API Gateway is the listener
 ([`bff/src/env.ts#L48`](../bff/src/env.ts#L48)).
 
+## How a call finds its tenant's box
+
+> **Built today** is cited by file and symbol. **Intended, not built** is the pooled shape the human
+> gave on 2026-11-10 and 2026-11-11, priced in two research pages kept outside this repository:
+> nothing here implements it, so its lines cite only the code it would change.
+
+### Built today: one stack, one box, every tenant in it
+
+- **The stacks.** Three templates make three kinds of stack, and only `ops/stack.sh` makes them
+  (`network | github | env <name>`): the network under every environment (`ops/stack.sh`'s
+  `NETWORK_STACK`), the account's one GitHub provider (`ops/stack.sh`'s `GITHUB_STACK`), and one
+  stack per environment from `ops/env.yml`. That last holds 21 resources: the box and its door, the
+  back end's door and its rule into the box (`ops/env.yml`'s `BoxFromBff`), the function, its role
+  and two log groups, the HTTP API with its integration, route, stage and permission, the bucket of
+  screens with its access and policy, the page-path rewrite, the distribution, the deploy role, and
+  the subnet with its route.
+- **The box.** One (`ops/env.yml`'s `Box`), whose type, disk size and image are template
+  parameters it alone reads, kept by the stack on replacement and on deletion
+  (`UpdateReplacePolicy: Retain`, `DeletionPolicy: RetainExceptOnCreate`), its address an output
+  (`ops/env.yml`'s `BoxAddress`).
+- **The back end knows one box.** Its environment holds one storage address and its keys
+  (`bff/src/env.ts`'s `storageShape`), set at each deploy from the keys file read off the box
+  (`ops/lib.sh`'s `read_keys`, run by `ops/app.sh`).
+- **The routing table is the tenant index.** One record a tenant, `client.<code>` to `{id, name,
+  madeAt}` (`shared/src/records.ts`'s `recordKeys` and `storedClientSchema`), written last by
+  `bff/src/records/clients.ts`'s `createClient` from the operator's form, which sends a code and a
+  name and nothing else (`shared/src/wire.ts`'s `createClientRequestSchema`). It names no box. The
+  operator's own records sit in the same box, under `operator.` keys in the same `recordKeys`.
+- **Every client call reads it, uncached.** `bff/src/app.ts`'s `resolveTenant` reads the code from
+  the header `shared/src/wire.ts`'s `CLIENT_HEADER` names, then the index record, on every call.
+  Nothing in `bff/src` caches it: a search of its non-test files for `cache` and `new Map` finds two
+  `cache-control: no-store` replies and one `Map` local to one handler in
+  `bff/src/routes/orders.ts`, against a control that hits: `getRecord`, twice in `bff/src/app.ts`.
+- **The code comes from the screens, never from the address.** `ui/src/ClientApp.tsx`'s
+  `linkedCode` reads the link's `?client-code=` (made by `shared/src/wire.ts`'s `clientLinkPath`),
+  and `ui/src/ClientApp.tsx`'s `boot` falls back to the code the device keeps. The distribution
+  forwards every viewer header to the back end but `Host` (the comment above `ops/env.yml`'s
+  `Distribution`), so the back end could not read the address if it tried, and it serves
+  CloudFront's own name and certificate (`ops/env.yml`'s `CloudFrontDefaultCertificate`).
+- **What a screen reads of its tenant** is the tenant's settings record (`shared/src/config.ts`'s
+  `TenantConfig`), through the back end, before sign-in (`boot`). No config file exists for a screen
+  to read.
+- **The box reads nothing per tenant.** c-storage starts on five values
+  (`services/c-storage/internal/config/config.go`'s `Load`), and its Go code has no word for a
+  tenant: zero lines say `tenant`, one says `client` and names a caller that hung up, against 38
+  that say `service`. It knows its callers as services, each with a key.
+- **The audit store has one write key** (`services/audit-backbone/internal/config/config.go`'s
+  `Load` reads `ACTIVITY_WRITE_KEY`), and the tenant is named in each entry's body, so the one key
+  writes as any tenant.
+- **The first bound a shared back end meets is a setting:** the HTTP API's stage, at 10 calls a
+  second with bursts of 50 (`ops/env.yml`'s `ApiStage`).
+
+### Intended, not built: tenants pooled on boxes in the same one stack
+
+- **The groups.** About twenty tenants a box, at the human's figures for a tenant (under 10,000
+  calls and 500 records a day). The disk is the first limit, at about 6 GB a year for twenty: that
+  figure leaves out the delivery photos, which today are records on the box
+  (`shared/src/records.ts`'s `deliveryPhoto`) and which the human means to keep in Cloudflare R2, a
+  piece not opened. The
+  operator puts each tenant on a box when adding it and can move it later; the code holds no
+  grouping rule. For the choice not to be blind, the operator's screen is to show each box's
+  headroom, which takes c-storage's one code change in this shape: a reading of its disk used and
+  free, since its health answer holds two fields and no more
+  (`services/c-storage/internal/server/server.go`'s `healthBody`). A premium tenant is a group of one. The operator's own records, the tenant list
+  among them, move to a box of their own.
+- **The record.** `storedClientSchema` gains the tenant's box, its audit store and a mark that it
+  is moving, and never a key. `resolveTenant` reads it through a memory each running copy of the
+  function keeps for a minute, and refuses a tenant that is moving. **A guard to build with it:** the
+  box confirms it holds that code under that id before the call uses it, so a wrong row meets a
+  refusal rather than another tenant's box. Today a code chooses a tenant and proves nothing; the
+  session check is the wall (`bff/src/tenants.route.test.ts`).
+- **The boxes and their keys.** The list of boxes comes from the stack's outputs at each deploy and
+  is written into the operator's store for the form to pick from. The keys stay where they are now,
+  in the function's environment, read off each box at each deploy, which by an estimate holds about
+  twenty boxes, some four hundred tenants, under the function's 4 KB environment; past that the
+  keys go to a secret store, and the record still holds none.
+- **One stack per environment, every box in it.** The network and the GitHub provider stay apart,
+  since one is under every environment and the other is one per account. Each box gets a block of
+  its own in `ops/env.yml` with its own type, disk size and image, never a parameter another box
+  reads, so that a change set names each box it would restart. Adding a tenant is the operator's
+  form and no stack update; adding a box is a block and one `ops/stack.sh env <name>`. *What flips
+  it to a small stack a box:* real tenants' data is live and reading a change set is no longer
+  assurance enough that a back-end change cannot restart a pooled box, or someone other than the
+  human must be able to change some boxes and not others.
+- **A tenant whose contract needs its keys or its code apart** takes a stack of its own from
+  `ops/env.yml` as it is, and the rest stay pooled.
+- **The address.** `<tenant-code>.<credo-domain>` on the one distribution, through one free ACM
+  certificate for `*.<credo-domain>` in `us-east-1` and one wildcard DNS name; the screens read the
+  code from the address instead of the link, and `CLIENT_HEADER` still carries it to the back end.
+  The operator keeps one name of its own, because every passkey is checked against it
+  (`bff/src/env.ts`'s `originShape`), and a few codes are kept back from tenants. The domain is a
+  setting.
+- **The audit store** is routed by the same record, one store a group, the fit being the group's
+  own box beside storage, which is still the nano's unmeasured memory
+  ([the activity log](activity-log.md#where-it-runs-open-and-cheap-to-leave-open)).
+- **Rejected:** a cache service for the lookup, which would be a hop of the same kind as the read
+  it saves, from about $6 a month; a Caddy server for the addresses, about $8 a month fixed, with a
+  public address, a network that has no way out, and either a key to the DNS zone on the box or a
+  certificate per name; a config file in the bucket, which anyone can read, or in the build, which
+  is public.
+- **The price, which is the human's call and comes with the shape:** the one back end holds every
+  box's key, which guards narrow and only a tenant's own stack removes; on a shared box the back end's check is
+  the only wall between its tenants, one box down stops them all, and a restore rolls them all
+  back. Pooling saves about $3.70 a tenant a month at twenty a box.
+
 ## How it reaches a machine
 
 | Lane | How | What it is for |
@@ -126,7 +233,7 @@ without the listener's two, since API Gateway is the listener
 | Local | `pnpm stack` builds c-storage with `go build` and the UI with Vite, then runs both behind the local front; `pnpm stack -- <command>` is one invocation, up-command-down, because the sandbox cannot signal a process an earlier command started ([`scripts/src/stack.ts`](../scripts/src/stack.ts), [`CLAUDE.md`](../CLAUDE.md)) | the real stack, data gone on Ctrl-C |
 | Local, no server | `pnpm fake` — the UI alone over invented data, the one build that holds `?fake` and the fake `Api`; the bundle that deploys contains none of it ([`ui/src/main.tsx#L10`](../ui/src/main.tsx#L10)) | a screen's look before its back end exists |
 | ridge | the shared pre-production environment, and the only deployed one | others check a piece without the code |
-| a client's own stack | **not built.** `ops/env.yml` is parameterised by `Env` and ridge is one instance of it; several scripts hard-refuse any environment but ridge ([`ops/seed.sh#L36`](../ops/seed.sh#L36)) | — |
+| production | **not built.** Intended as one more stack from `ops/env.yml`, every group's box in it ([how a call finds its tenant's box](#how-a-call-finds-its-tenants-box)), with a stack of a tenant's own only where a contract needs its keys apart. `ops/env.yml` is parameterised by `Env` and ridge is one instance of it; several scripts hard-refuse any environment but ridge (`ops/seed.sh`'s `seeds ridge alone`) | — |
 
 **Stack shape is the human's; code is CI's.** Only [`ops/stack.sh`](../ops/stack.sh) touches
 CloudFormation, and only through change sets — `create-change-set`, print every change, then
@@ -228,18 +335,27 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   ([`#L176-L181`](../ops/env.yml#L176), [`#L284-L286`](../ops/env.yml#L284)), is in the template
   and runs on a stack only once the change set for it has been applied. Neither names the client
   whose records were read ([open item 152](open-items.md)).
-- **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**
-  (`#L181`). There is no Route53, ACM or custom domain anywhere in the repository; the distribution
-  uses CloudFront's own certificate and name
-  ([`ops/env.yml#L380`](../ops/env.yml#L380)).
+- **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**.
+  There is no Route53, ACM or custom domain anywhere in the repository; the distribution uses
+  CloudFront's own certificate and name (`ops/env.yml`'s `CloudFrontDefaultCertificate`). The
+  pooled shape, intended and not built, keeps a name a tenant but puts every one under one wildcard
+  certificate on the one distribution, rather than a certificate and a stack a client
+  ([how a call finds its tenant's box](#how-a-call-finds-its-tenants-box)).
+- **"One stack per client"**, the human's answer of 2026-10-27, recorded in the plan, to its
+  question "One stack per client, or one shared". The human's own pooled shape of 2026-11-10 and
+  2026-11-11 replaces it:
+  one stack per environment, its tenants pooled on boxes, and a tenant's own stack kept for a
+  contract that needs its keys apart. It is intended and not built, so today's one box per
+  environment is still the whole of what runs.
 - **"Left behind from the old app, until something calls it: … audit-backbone"**
   (`docs/plans/2026-10-27-architecture.md`'s `Left behind from the old app`, its decision 7). Half of
   that went wrong on 2026-11-09: the service is in this repository, with its own gate
   ([its recap](recaps/2026-11-09-audit-backbone-move.md)). The other half has gone too: the back end
   calls it for every change a person makes, in the local copy ([the activity log](activity-log.md)), and the rest of that decision's list (credo-sso, the upload, Caddy, the
   `x-origin-key`) is unchanged.
-- **"Nothing is built before a client signs"** and **"no code holds it yet"** (`#L5`, `#L68`).
-  ridge is built and deploys on every push to `main`. What is still unbuilt is a *client's* stack.
+- **"Nothing is built before a client signs"** and **"no code holds it yet"**.
+  ridge is built and deploys on every push to `main`. What is still unbuilt is production: in the
+  pooled shape one more environment's stack holding many tenants, not a stack for each client.
 
 **Not in that list: the nightly backup.** The plan's diagram shows a nightly copy to S3 through an
 S3 gateway endpoint, under a put-only role on the box (`#L28`, `#L76`, `#L97`), and none of those
@@ -262,6 +378,9 @@ has to be built — not a description of what is already there.
 **Written** 2026-11-07, **rearranged 2026-11-09** so that a person can read the first screen and a
 session can read on for the detail it needs, and **split in two on 2026-11-10**: the system on
 [`architecture.md`](architecture.md), the detail and the page-about-page material here.
+**Amended 2026-11-11** with where a tenant's records live and
+[how a call finds its tenant's box](#how-a-call-finds-its-tenants-box): what is built today, cited,
+and the pooled shape the human gave, marked on both pages as intended and not built.
 
 **Nothing was shortened when this page was rearranged** ([open item 202](open-items.md)): the detail
 moved to the page beside the code it describes — each part's own `CLAUDE.md` for that part's
@@ -275,7 +394,9 @@ this page is named at [the end](#what-this-page-did-not-read).
 **The diagram on [`architecture.md`](architecture.md) is drawn from**
 [`ops/env.yml`](../ops/env.yml) (`ops/env.yml`'s `Distribution`, `Api`, `Bff` and `Box`),
 `bff/src/lambda.ts`, `shared/src/c-storage.ts`'s `createCStorageClient` and
-`services/c-storage/internal/server/server.go`'s `func Build(`. The dashed part is drawn from no code.
+`services/c-storage/internal/server/server.go`'s `func Build(`. The two dashed boxes are drawn from
+no deployment: the activity log is built and not on ridge, and the further boxes are the pooled
+shape, intended and drawn from no code.
 
 ## What this page did not read
 
@@ -334,6 +455,21 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   every tracked path; and the coverage thresholds are declared per package (`ui/vitest.config.ts`'s
   `thresholds`, and the same line in the other four). The nine parts' one-line descriptions were read off each part's own `CLAUDE.md`,
   and nothing of their internals was re-derived here.
+- **For the 2026-11-11 amendment** ([how a call finds its tenant's box](#how-a-call-finds-its-tenants-box)
+  and its pair, [where a tenant's records live](architecture.md#where-a-tenants-records-live)), read
+  first-hand at the trunk's `c52658ba`: `ops/env.yml`'s header, parameters, `Box`, `ApiStage`,
+  `Distribution` and outputs, its 21 resources counted by name; `ops/stack.sh`'s header and stack
+  names; `ops/lib.sh`'s `read_keys` and the key step of `ops/app.sh`; `bff/src/env.ts` whole;
+  `bff/src/app.ts`'s `resolveTenant` and the operator's add route; `shared/src/records.ts`'s key
+  layout and index schema; `shared/src/wire.ts`'s header, link and add request;
+  `ui/src/ClientApp.tsx`'s `linkedCode` and `boot`; both services' `config.go`. **Established by
+  search with a control that hits**, so a file added later is not in them: no cache in `bff/src`'s
+  non-test files, and no word for a tenant in c-storage's Go. **Not read for it:**
+  `ops/network.yml` and `ops/github.yml`, whose resources are not counted here; the rest of
+  `ops/app.sh` and `ops/lib.sh`. **The intended part rests on two research pages kept outside this
+  repository**, whose AWS quotations and prices (the $6, $8 and $3.70 a month, the 4 KB
+  environment, the twenty boxes) are taken from them and were not re-read against AWS for this
+  page; the twenty boxes are their own estimate.
 - **A caution from this page's own review**, worth knowing when you rely on it: of 52 citations
   checked, 50 held — and every claim that was wrong was a *count or a summary with no line
   attached* ("ten specs", "five variables", a script characterised without being opened), never a
@@ -342,6 +478,7 @@ Stated plainly, for both pages, so the next reader knows which parts to trust.
   page's own, in the diagram's sources, named unrelated lines and were replaced by named resources
   in the 2026-11-09 rearrangement.
 - **Not checked at all:** anything live. Nothing was run for this page beyond this repository's own
-  citation check and `pnpm counts`, both of which read committed files and nothing live, and no
+  citation check and `pnpm counts`, both of which read committed files and nothing live (for the
+  2026-11-11 amendment, the citation check inside the `scripts` package's gate), and no
   AWS or Cloudflare state was queried — so what *actually* exists in the account today is outside
   what this page can say.

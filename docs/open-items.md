@@ -3,6 +3,13 @@
 Numbered, never renumbered; an entry is deleted when done
 ([documentation](conventions/documentation.md)).
 
+**"A client's own stack" or "a client's stack", in a trigger or a severity below, means the first
+stack that holds a real tenant's data.** The items were written when each client was to have a
+stack of its own; since 2026-11-11 the shape intended for production, and not built, is one stack
+per environment with its tenants pooled on boxes
+([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), so
+such a trigger fires at that environment's stack, not at a stack for each client.
+
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
 
 The old app counted each 5xx in its Lambda logs and posted it to a chat channel. Before the first
@@ -29,9 +36,12 @@ through change sets, in Malaysia: `ops/network.yml`, the one network (a VPC with
 gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet, it comes with the backup, item 6),
 `ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
-distribution). ridge is the first stack from each. A signed client's stack is one more from
-`env.yml`, and still waits for a client, with its ACM certificate requested in `us-east-1` and its
-name in Cloudflare.
+distribution). ridge is the first stack from each. Production is one more stack from `env.yml`,
+and still waits for a client; in the pooled shape, intended and not built, it holds every tenant
+group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`,
+with one wildcard name in Cloudflare
+([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)). A
+tenant takes a stack of its own only where its contract needs its keys apart.
 
 ## 5. The arm64 builds and how each release lands — the machine writes, GitHub Actions runs on the human's push to main; c-storage's first, for ridge (the architecture plan, 2026-10-27)
 

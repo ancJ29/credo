@@ -9,6 +9,12 @@
 > read beside it is [`architecture.md`](architecture.md), which says how the parts fit, and
 > [`products.md`](products.md), which says what each part does for whom. Where a document and the
 > code disagreed, the code was taken and the disagreement is written out.
+>
+> **Read "a client's stack" below as the first stack that holds a real tenant's data.** The page was
+> written when each client was to have a stack of its own; since 2026-11-11 the shape intended for
+> production, and not built, pools tenants on boxes in one stack per environment
+> ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)).
+> The page was not re-read against that shape.
 
 ## Operations and safety
 

@@ -67,8 +67,8 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    between two workable ways, and asking the human to confirm each section, which hands back a
    task already delegated. *Why:* each question spends the attention the work needs.
 
-   **An act on production, a client's own stack, sits at the latest point its done-when needs
-   it**, its price said in days ("up to N days"), never moved earlier to save calendar time. A
+   **An act on production, a stack that holds a real tenant's data, sits at the latest point its
+   done-when needs it**, its price said in days ("up to N days"), never moved earlier to save calendar time. A
    script that changes a box, ridge's included, reads the box's disk and memory first and refuses
    below a floor, never only printing them. *Why:* an early act on production takes its risk
    before it buys anything. It is no reason to wait otherwise: a finished change with nothing to

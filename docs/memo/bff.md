@@ -80,6 +80,12 @@ client`. Nothing about the caller has been established at that point.
   themselves (`bff/src/routes/root-password.ts`, `bff/src/records/clients.ts`), so "one home" holds
   for the key *layout* and not for resolving a company. *Trigger:* each operator route that names a
   client.
+- *Intended, not built:* in the pooled shape
+  ([the detail page](../architecture-detail.md#how-a-call-finds-its-tenants-box)) the same index
+  record also names the tenant's box, `resolveTenant` reads it through a memory kept a minute and
+  refuses a tenant marked as moving, and the box confirms it holds the code before the call goes on.
+  Today the record names no box, because this package is given exactly one
+  (`bff/src/env.ts`'s `storageShape`).
 
 ## A session lasts a week, and an operator's an hour unused
 
@@ -276,7 +282,8 @@ if this package built the wrong key.
   *structural* guard: **no lint rule and no test forces every key through `recordKeys`.** No
   hand-built key exists outside that file today.
 - *Price of the choice:* one SQLite file holds every company's records, so one company's write rate
-  is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)).
+  is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)). In the pooled
+  shape, intended and not built, that narrows to the companies on the same box.
 
 ## No record says who changed it
 

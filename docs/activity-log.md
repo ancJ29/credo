@@ -126,6 +126,13 @@ same box or a box of its own is then a configuration value and a deploy, not a r
 a URL, measure once the environment is back, and decide then; [open item 2](open-items.md) is the
 thing that decides it.
 
+**In the pooled shape, intended and not built**
+([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), the
+audit store is routed by the same tenant record as storage, one store a group of tenants, so the
+question above becomes whether it fits beside `c-storage` on a group's box. A store has one write
+key (`services/audit-backbone/internal/config/config.go`'s `Load` reads `ACTIVITY_WRITE_KEY`), so a
+group's key writes as any tenant of the group.
+
 ### What is guaranteed, and what cannot be
 
 **A failed audit write must not fail the user's request.** That is decided, and it bounds everything
