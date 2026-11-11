@@ -11,19 +11,19 @@ A new file, `bff/src/routes/cross-tenant.route.test.ts`, starts one store holdin
 ## What the next session would otherwise re-learn
 
 - **The first draft missed cases.** One review found the photo case had no delivered request, the close case no driver with an open day, and the lists no one-service case. The second commit fixed them.
-- **Not every handler is covered.** Open item 227 lists what has no second-company case, and why that waits: each reads its key from the same first step as the covered ones.
+- **Not every handler is covered.** Open item 227 lists what has no second-company case, because each handler builds its key from the tenant at its own call site, so a fault in one stays uncaught where no case reaches it.
 - **The architecture row is now exact.** "No concept of a tenant in c-storage" in `docs/architecture.md` names the files that prove separation.
 
 ## Still yours
 
 - No look of this piece is open.
-- The review's verdict on the fixed lines. <!-- FILL: the second read's verdict -->
+- Nothing: the review's last read of the fixed lines says it may land, all five findings fixed at `455b9310`.
 
 ## Evidence
 
 - Base `a590f8f1`. Tests `18eaa40b`; merge of `pre-merge` into the branch `65111e87`; fix pass `455b9310`.
 - Gate of the tests, `logs/2026-11-11-150911-gate-bff.log`: five steps exit 0, 645 tests passed, coverage 100 % on all four counts, `== exit 0`.
 - Gate of the fix pass, `logs/2026-11-11-152241-gate-bff.log`: the same, 649 tests passed.
-- Each test seen failing against a deliberately broken key: from the piece's card alone, no log read.
+- Each test seen failing on a broken key: the card alone, no log read.
 - The citation test, run alone in this worktree: 1 file, 20 tests passed.
 - `docs/products.md` changes no row: tests add nothing a partner or an operator can do.
