@@ -1,7 +1,7 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-11, from the human's proposal that the whole check stop gating each merge:
+> **Last amended** 2026-11-11, with a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
 > a finished piece lands on `pre-merge`, the whole check runs there at most every two hours, and
 > `main` holds only checked trees. This file holds the rules as they stand; their history is in
 > `git log`.
@@ -307,7 +307,8 @@ to the caller, and a release on the script's last line.
   by hand follows `<YYYYMMDD-HHMM>-<stem>.log`, from `$(date +%Y%m%d-%H%M)` in that same script, in
   the same folder
   ([the loop](collaboration.md#the-loop)). Every log a report cites is then pasted from `ls`: five
-  reports in five days sent a reader to a log that did not exist.
+  reports in five days sent a reader to a log that did not exist. A stop's report cites its log by path, and the record it lands in says the
+  verdict in words and names no log ([documentation](documentation.md#nothing-machine-local-or-personal-in-a-committed-file)).
 - **A `== exit` line is never written by hand, and it is never read through a pipe.** Put it in a
   small bash script that runs the check, saves `$?` into a variable, releases the lock, then appends
   `== exit $rc` itself (that is for a one-off script; a gate is the one command, which writes it). A step piped through `tail` reports the `tail`'s exit and loses its own; zsh
