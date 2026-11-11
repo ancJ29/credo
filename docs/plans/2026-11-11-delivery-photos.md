@@ -183,7 +183,7 @@ minutes a part.
 step's cases are seen red as it is built, since the gate holds 100 % at every commit); stage 2 each
 step's gate; stage 3 step 5's
 walk; stage 4 ridge, stood up because the piece ships a new resource and a new key, after acts 1
-to 6. About 170 machine minutes in all.
+to 6. About 145 machine minutes in all, the seven steps that are the machine's, summed.
 
 ## Where this meets the other lanes
 
