@@ -35,7 +35,7 @@ log_start seed "$ENVNAME"
 mkwork
 
 step "ridge alone, main, and this commit"
-[ "$ENVNAME" = ridge ] || die "seed.sh seeds ridge alone: a client's stack must never receive demo data"
+refuse_real "$ENVNAME" "seed.sh seeds ridge alone: a client's stack must never receive demo data"
 main_synced
 sha=$(git -C "$REPO_DIR" rev-parse HEAD)
 git -C "$REPO_DIR" merge-base --is-ancestor "$sha" origin/main || die "$sha is not a commit of main: only main is seeded"
