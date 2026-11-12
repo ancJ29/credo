@@ -107,7 +107,10 @@ box 'sudo tee /opt/c-storage/litestream.new >/dev/null' <"$litestream_bin"
 got_sum=$(box 'sudo sha256sum /opt/c-storage/litestream.new' | cut -d' ' -f1)
 [ "$got_sum" = "$litestream_sum" ] || die "litestream arrived as $got_sum, sent as $litestream_sum"
 box 'sudo tee /opt/c-storage/litestream.yml.new >/dev/null' <"$src/ops/litestream.yml"
-printf 'COPY_URL=s3://%s/Box/records\nAWS_REGION=%s\n' "$COPY_BUCKET" "$CREDO_REGION" | box 'sudo tee /opt/c-storage/copy.env.new >/dev/null'
+# The address carries the bucket's region (?region=): Litestream takes its region from this query or its own
+# region key, never from AWS_REGION, and with none it asks us-east-1 where the bucket is, which the box's role
+# may not do and the box cannot reach. ops/lib.sh's box_restore reads the same address from the same file.
+printf 'COPY_URL=s3://%s/%s?region=%s\nAWS_REGION=%s\n' "$COPY_BUCKET" "$COPY_PATH" "$CREDO_REGION" "$CREDO_REGION" | box 'sudo tee /opt/c-storage/copy.env.new >/dev/null'
 ok "sent, checksums match"
 keys_before=$(keys_sum)
 
@@ -137,22 +140,31 @@ step "the records disk, mounted"
 # A blank disk is formatted once; a file on the system disk moves onto it once, c-storage stopped, the
 # old one kept beside it; a blank disk with a copy waiting in the bucket stops here (exit 4).
 RECORDS_RC=0
-box sudo bash -s -- "$RECORDS_VOLUME" "$COPY_BUCKET" "$RECORDS_MOUNT" "$CREDO_REGION" <<'REMOTE' || RECORDS_RC=$?
+box sudo bash -s -- "$RECORDS_VOLUME" "$COPY_BUCKET" "$RECORDS_MOUNT" "$CREDO_REGION" "$COPY_PATH" <<'REMOTE' || RECORDS_RC=$?
 set -euo pipefail
-vol=${1//-/} bucket=$2 mnt=$3 region=$4
+vol=${1//-/} bucket=$2 mnt=$3 region=$4 cpath=$5
 dev=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$vol
 [ -e "$dev" ] || { echo "the records disk $vol is not attached to this box" >&2; exit 3; }
+# copy_held: succeeds when the bucket holds anything under this box's path. A listing that fails ends the step
+# (exit 1), never reads as "no copy".
+copy_held() {
+  local have
+  have=$(AWS_DEFAULT_REGION=$region aws s3api list-objects-v2 --bucket "$bucket" --prefix "$cpath/" --max-keys 1 --query KeyCount --output text) ||
+    { echo "the copy's bucket could not be listed" >&2; exit 1; }
+  [ "$have" != 0 ]
+}
+refuse_held() {
+  echo "the records disk holds no c-storage.db, and s3://$bucket/$cpath/ already holds a copy: restoring it is ops/restore.sh --onto-blank, a fresh start would copy an empty file over it" >&2
+  exit 4
+}
 install -d -m 0700 /var/lib/private "$mnt"
 if mountpoint -q "$mnt"; then
+  if [ ! -e "$mnt/c-storage.db" ] && copy_held; then refuse_held; fi
   echo "records disk: already mounted"
   exit 0
 fi
 if [ -z "$(blkid -o value -s TYPE "$dev" || true)" ]; then
-  have=$(AWS_DEFAULT_REGION=$region aws s3api list-objects-v2 --bucket "$bucket" --prefix Box/records/ --max-keys 1 --query KeyCount --output text)
-  if [ "$have" != 0 ]; then
-    echo "the records disk is blank, and s3://$bucket/Box/records/ already holds a copy: restoring it is the runbook's, a fresh start would copy an empty file over it" >&2
-    exit 4
-  fi
+  if copy_held; then refuse_held; fi
   mkfs.xfs -q "$dev"
   echo "records disk: formatted"
 fi
@@ -178,11 +190,12 @@ if [ -f "$old" ]; then
   umount "$tmp"
 fi
 mount "$mnt"
+if [ ! -e "$mnt/c-storage.db" ] && copy_held; then refuse_held; fi
 echo "records disk: mounted at $mnt"
 REMOTE
 case $RECORDS_RC in
   0) ;;
-  4) die "the records disk is blank and the bucket holds a copy of this box's records: nothing was started" ;;
+  4) die "the records disk holds no c-storage.db and the bucket holds a copy of this box's records: nothing was started. Run ops/restore.sh $ENVNAME --onto-blank (it formats a blank disk, mounts it and restores onto it before c-storage ever starts), then release again" ;;
   *) die "the records disk could not be mounted (exit $RECORDS_RC): c-storage was not restarted" ;;
 esac
 box "mountpoint -q $RECORDS_MOUNT" || die "the records disk is not mounted at $RECORDS_MOUNT: c-storage is not restarted"

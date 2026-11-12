@@ -64,15 +64,15 @@ deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
 ([`records.ts#L41`](../shared/src/records.ts#L41),
-[`services/c-storage/internal/store/store.go#L132`](../services/c-storage/internal/store/store.go#L132)).
+[`MaxList` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)).
 
 **How a record is written safely.** The version token is a `tag`: the hex SHA-256 of the record's
 stored text, computed fresh on every read and stored nowhere
-([`store.go#L54`](../services/c-storage/internal/store/store.go#L54)). A writer sends it back as `If-Match`
+([the store](../services/c-storage/internal/store/store.go), its tag function). A writer sends it back as `If-Match`
 (or `If-None-Match: *` to claim a key that must not exist); c-storage compares inside the write's
 own transaction and answers **412** if the record moved
-([`store.go#L68`](../services/c-storage/internal/store/store.go#L68),
-[`services/c-storage/internal/server/handlers.go#L132`](../services/c-storage/internal/server/handlers.go#L132)). A precondition
+([`Store.write` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go),
+[the `store.ErrMoved` case in `services/c-storage/internal/server/handlers.go`](../services/c-storage/internal/server/handlers.go)). A precondition
 it cannot parse is a 400, never ignored — but a request sending *no* precondition overwrites
 whatever is there, so the guard holds only where the BFF sends the tag.
 
@@ -109,8 +109,8 @@ route but `/health` including the 404 fallback, so an unknown path answers 401 e
 one; a per-service `x-access-key`, stored only as a SHA-256 and compared in constant time; and
 `x-super-admin-key`, whose sole power is creating a service
 ([`services/c-storage/internal/auth/auth.go#L17`](../services/c-storage/internal/auth/auth.go#L17),
-[`services/c-storage/internal/server/server.go#L59`](../services/c-storage/internal/server/server.go#L59),
-[`services/c-storage/internal/store/store.go#L93`](../services/c-storage/internal/store/store.go#L93)). **The BFF never holds
+[`Server.Handler` in `services/c-storage/internal/server/server.go`](../services/c-storage/internal/server/server.go),
+[`Store.Admits` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
 ([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
 [`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
@@ -315,7 +315,7 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"CloudFront → the BFF's function URL, signed by origin access control", and the API client
   hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`, the body hash at `#L133`).
   CloudFront reaches an API
-  Gateway HTTP API ([`ops/env.yml#L411`](../ops/env.yml#L411)); function URLs are not offered in the
+  Gateway HTTP API ([`ops/env.yml`](../ops/env.yml), `Distribution`); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a

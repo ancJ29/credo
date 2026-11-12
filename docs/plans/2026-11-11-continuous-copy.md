@@ -207,6 +207,30 @@ Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/
   prettier over the pages touched exit 0; the branch's added lines hold no local path. One fix outside the row: step
   2's tick above named a gate log by file name, which the citation test refused, so its words now say only that the
   run ended at exit 0. The merge of `pre-merge` came in with no conflict; `bash ops/test.sh` on the merged tree exit 0.
+- [x] **Step 8, ticked 2026-11-12.** The review's one High, three Mediums and eight Lows, on top of `pre-merge` at
+  `fab8d02a` (taken in first; conflicts in four pages and in `ops/test.sh`, resolved by keeping the copy's prose and
+  `pre-merge`'s layer-four pin). **High 1:** the copy's address now carries the bucket's region
+  (`s3://<bucket>/<path>?region=<region>`, which Litestream 0.5.18 reads in `cmd/litestream/main.go` before it falls
+  back to asking `us-east-1`), so the unit, the restore and the drill's row 17 (all read the one `copy.env`) start
+  against the bucket; the row refuses a release that writes the address with no region, seen red. **Medium 1:**
+  `DESTROY_BY_HAND` lists the copy bucket and the records disk, `ops/destroy.sh` empties and deletes the copy bucket,
+  accepts the records disk on the box, reads back the stack delete's snapshot of it, and no longer says the records
+  are one file on the root disk; row 14 is green on the merged tree, its control moved to an invented pair, and a
+  whole run on a stack with both resources, with two refusals, was added; the whole run seen red with the bucket's
+  delete removed. **Medium 2 (the smaller fix):** after a restart the check's green line says the lag was not read and
+  never says the copy holds the last write; seen red against the old line; the reading that survives a restart is open
+  item 378. **Medium 3:** `ops/restore.sh <env> --onto-blank` is the one path (format if blank, mount, restore, before
+  c-storage starts), the release refuses a disk with no `c-storage.db` while the bucket holds a copy (blank, or
+  mounted by hand) and names it, and the runbook says "never release before the restore"; seen red with the dispatch
+  broken and each guard mutated. **Lows:** the path is passed from `COPY_PATH` (1); the role guard reads the list's
+  prefix condition (2); the trust guard reads every role's trust, not a cut between two names (3); a default restore
+  refuses under twice the live file free (4); the `--onto-live` failure names the stopped c-storage and the
+  `.aside-<stamp>` files (5); the recovery prose and the quote of item 6 follow the records disk (6); the moved
+  line citations in living pages (35 by the review's count, 38 by a line-by-line comparison with `pre-merge`) were converted to a
+  file and a name, one left that is pinned to a commit and so stays right (7); the
+  500 tests skip routes by path (8). Deferred as items 378 to 382. On the merged tree `bash ops/test.sh` exit 0 with no
+  FAIL line, `shellcheck -x` as the gate runs it exit 0, `cfn-lint` on the three templates exit 0 (none was touched), the
+  citation test exit 0, prettier over the pages touched exit 0, and c-storage's server package tests exit 0.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.

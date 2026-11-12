@@ -133,8 +133,12 @@ else
   copy_listing=$(aws s3api list-objects-v2 --bucket "$copy_bucket" --prefix "$COPY_PATH/" \
     --query 'Contents[].{Key: Key, LastModified: LastModified}' --output json)
   copy_faults=$(copy_problems "$copy_state" "$copy_listing" "$(date +%s)")
-  if [ -z "$copy_faults" ]; then
+  if [ -z "$copy_faults" ] && [ "$(copy_lag_read "$copy_state")" = yes ]; then
     ok "the copy holds the last write within ${COPY_LAG_S}s, a full copy under six days old, and the records disk is above its floor: $(jq -c . <<<"$copy_state")"
+  elif [ -z "$copy_faults" ]; then
+    # c-storage keeps the time of its last write in memory, so right after a restart (every release is one) there
+    # is none to compare with: the copy is not claimed current. The drill on ridge reads the copy for real.
+    ok "a copy and a full copy under six days old exist and the records disk is above its floor, but the lag was NOT read: c-storage has seen no write since it started, so this does not say the copy holds the last write: $(jq -c . <<<"$copy_state")"
   else
     while IFS= read -r fault; do red "$fault"; done <<<"$copy_faults"
   fi

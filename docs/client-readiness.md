@@ -65,7 +65,7 @@ run on an environment**: the human's changes, the release and the drill are stil
 
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
-[`ops/env.yml#L145-L151`](../ops/env.yml#L145)). So anything that terminated or replaced the instance took every
+[`ops/env.yml`](../ops/env.yml), the `BlockDeviceMappings` of `Box`). So anything that terminated or replaced the instance took every
 record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
 advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `0f7d69c1`),
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
@@ -162,7 +162,7 @@ JSON line a call with the time, the address of whoever opened the connection, th
 distribution the line recorded one public address, outside AWS's published ranges (the
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
-connection and the template makes the API a CloudFront origin (`ops/env.yml#L411`); that was
+connection and the template makes the API a CloudFront origin (`ops/env.yml`, `Distribution`); that was
 reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing yet telling anyone when the
 server stops ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
@@ -216,9 +216,9 @@ says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/li
 and re-registering the service; the order is not written down anywhere. Open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
-end ([`ops/lib.sh#L118-L139`](../ops/lib.sh#L118)). Two known weaknesses in *how* it searches are
+end ([`ops/lib.sh`](../ops/lib.sh), `on_exit`'s search of the log for each secret). Two known weaknesses in *how* it searches are
 already recorded as [open item 50](open-items.md) — the keys reach `grep`'s argument list
-([`#L122`](../ops/lib.sh#L122)) and the here-strings that read the box's key files
+(`on_exit`'s `grep -qF`, in [`ops/lib.sh`](../ops/lib.sh)) and the here-strings that read the box's key files
 (`read_keys` and `bff_env_read` in [`ops/lib.sh`](../ops/lib.sh)) are written to a temp file
 by the Mac's bash 3.2.
 

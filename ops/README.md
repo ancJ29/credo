@@ -28,7 +28,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
-| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live]` ([restoring the records](#restoring-the-records)) | about a minute |
+| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
 | the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
@@ -253,8 +253,9 @@ in the credo root's `logs/`.
 
 1. Down, about 5 minutes. It reads the account, prints what will go, asks you to type `ridge`, switches
    off the workflows that name `environment: ridge` (`ci.yml` and `seed.yml`, never `walks.yml`), then
-   deletes the box, its disk, the bucket's files, the stack and the two log groups, each read back as gone.
-   `RIDGE_KEEP_DISK_SNAPSHOT=1` keeps one snapshot of the disk.
+   deletes the box and its root disk, the UI bucket's files, the copy bucket's files and the bucket, the stack
+   (its records disk goes with it, after the stack's own snapshot of it, which stays) and the two log groups,
+   each read back as gone. `RIDGE_KEEP_DISK_SNAPSHOT=1` takes one more snapshot of the records disk first.
 
    ```
    cd <the worktree at main> && bash ops/destroy.sh ridge
@@ -489,11 +490,13 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
 make the records come back, and **nobody has done either path below**: every step is written from
 what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked
 *untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. There
-is still no copy of any client's records anywhere else ([open item 6](../docs/open-items.md)). The
+is no copy of any client's records that has been read back: the continuous copy is built and has not run
+on an environment ([open item 6](../docs/open-items.md)), so the paths below are for a bad day before it. The
 first real run of either path is a drill, and until then treat these as notes for a bad day, not a
 rehearsed procedure. Region `ap-southeast-5`, your own AWS session, every `aws` line yours to run.
 
-The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`).
+The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`); on a box
+that has had a release with the copy it sits on the records disk, mounted where the state directory resolves.
 The unit is `DynamicUser=yes` with `StateDirectoryMode=0700`, so only root reads it: `sudo` on the
 box (`ops/release.sh` uses `sudo` for everything). *Untested:* systemd documents that a dynamic-user
 service keeps its state under `/var/lib/private/c-storage`, with `/var/lib/c-storage` a link to it.
@@ -542,20 +545,23 @@ The instance was terminated (console, or any act outside CloudFormation) and its
 status `available`.
 
 1. Find it: `aws ec2 describe-volumes --region ap-southeast-5 --filters Name=status,Values=available --query 'Volumes[].[VolumeId,Size,AvailabilityZone,CreateTime]' --output text`.
-   Pick by size (the stack's `VolumeSize`), by zone and by a `CreateTime` close to the box's launch.
-   *Untested:* the template tags the instance, not the disk, so expect no name on the volume.
+   The records are on the **records disk**, a separate whole-disk XFS volume tagged `Name` = `credo-<env>-records`
+   (`RecordsVolume`, `ops/env.yml`; a stack delete snapshots it too). The root disk, picked by the stack's
+   `VolumeSize` and a `CreateTime` close to the box's launch, holds only `c-storage.db.moved`, the records as
+   they stood before the copy began, which is old.
 2. Launch any instance in the same zone and attach the volume to it as a second disk
    (`aws ec2 attach-volume --volume-id <id> --instance-id <new> --device /dev/sdf`). The disk is
    encrypted under the account's default EBS key (`ops/env.yml` sets `Encrypted: true` and no key id),
    so the same account reads it. *Untested:* a way in to that instance: the repository only shows a box
    reached through the endpoint with `BoxGroup`'s port-22 rule, so the easy case is a new instance in
    the same subnet with that group, which exists only while the environment stack does.
-3. On it, find the disk with `lsblk`, and mount its root partition read-only. *Untested, expected:*
-   the root is XFS (`ops/env.yml`'s UserData comment), and XFS refuses a second filesystem with the
-   running root's id, so `sudo mount -o ro,nouuid /dev/<partition> /mnt`.
-4. Stop at `/mnt/var/lib/c-storage/c-storage.db` (or `/mnt/var/lib/private/c-storage/`): copy and
-   compare as in the retained box's step 4. Nothing was running on it, so no `-wal` is expected beyond what
-   the last stop left.
+3. On it, find the disk with `lsblk`. The records disk has no partition table: mount the whole device
+   read-only, `sudo mount -o ro,nouuid /dev/<device> /mnt` (XFS refuses a second filesystem with the
+   running root's id, hence `nouuid`). *Untested, expected.* A root disk is mounted the same way on its root
+   partition, for the old file only.
+4. Stop at `/mnt/c-storage.db` on the records disk (`/mnt/var/lib/private/c-storage/c-storage.db` on a root
+   disk from before the move): copy and compare as in the retained box's step 4. Nothing was running on it, so
+   no `-wal` is expected beyond what the last stop left.
 5. Remove the volume and the helper instance when the copy has been read, not before.
 
 ## The drill
@@ -571,7 +577,10 @@ state, so release first.
 
 The records are copied to the bucket a second at a time ([the plan](../docs/plans/2026-11-11-continuous-copy.md)).
 `ops/check.sh` reads the copy: red when the newest copy lags the last write by over five minutes, when the
-newest full copy is over six days old, or when the records disk is under 1 GiB free.
+newest full copy is over six days old, or when the records disk is under 1 GiB free. c-storage keeps the time
+of its last write in memory only, so right after a restart (every release is one) there is none to compare
+with: the check then says plainly that **the lag was not read** and does not say the copy holds the last write.
+The drill reads the copy for real.
 
 1. `ops/restore.sh <env>` writes the newest copy to a new file, `restored-<stamp>.db`, on the records disk, and
    touches nothing live. `--at <time>` (such as `2026-11-12T10:00:00Z`) restores the records as of that moment.
@@ -579,9 +588,15 @@ newest full copy is over six days old, or when the records disk is under 1 GiB f
    its companions are moved aside (`c-storage.db.aside-<stamp>`, never deleted), the restored file takes the live
    path and c-storage starts again. Refused on an environment that may hold real data ([on production](#on-production)):
    restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
-   - **a release refuses a blank records disk and names this restore:** the restore needs the disk mounted at the
-     records path, which the refused release leaves unmounted; mount it by hand as the release's records step does
-     (without formatting), restore with `--onto-live`, then release again. Not yet walked on a real blank disk.
+   - **a records disk that holds no `c-storage.db`, while the bucket holds a copy** (a replacement box, or a
+     disk made blank): a release refuses it, blank or mounted by hand alike, and names the one path:
+     `ops/restore.sh <env> [--at <time>] --onto-blank`. It formats a disk with no filesystem, mounts it at the
+     records path and restores the newest copy (or the copy as of `--at`) onto it, with c-storage stopped and
+     never started in between; it runs on any environment, since nothing live exists there, and refuses a
+     c-storage that is running, a filesystem other than XFS and a disk that already holds a `c-storage.db`.
+     Then release again. **Never release before the restore, and never format the disk by hand first:** a
+     c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
+     copy. Not yet walked on a real blank disk.
    - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
 ## The watch
 

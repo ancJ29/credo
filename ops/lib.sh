@@ -23,7 +23,8 @@ FLOOR_SWAP_MB=1024
 FLOOR_RECORDS_MB=1024
 COPY_LAG_S=300
 COPY_FULL_MAX_S=518400
-# The box's path in the copy's bucket (the release writes it into COPY_URL), and where Litestream's S3 client keeps full
+# The box's path in the copy's bucket (the one home: the release builds COPY_URL, with the region, from it and
+# passes it to the box's records step, and the check lists it), and where Litestream's S3 client keeps full
 # copies under it: <path>/<level as four hex digits>/<min TXID>-<max TXID>.ltx, level 9 being the full copy
 # (the pinned release's s3/replica_client.go, lines 698 and 1571). The ltx/<level>/ layout is the file replica's, not S3's.
 COPY_PATH=Box/records
@@ -197,7 +198,7 @@ INVENTED_ENVS="ridge"
 # cannot empty (a bucket), this list's one home. ops/destroy.sh deletes each by hand, and stops before its
 # prompt on an id none of its steps deletes; ops/test.sh row 14 compares the list with env.yml.
 # shellcheck disable=SC2034 # read by destroy.sh and test.sh
-DESTROY_BY_HAND="Box UiBucket"
+DESTROY_BY_HAND="Box CopyBucket RecordsVolume UiBucket"
 # WANT_BRUNO: the Bruno CLI version ops/check.sh runs and ops/remake.sh refuses to start without, one home.
 # shellcheck disable=SC2034 # read by check.sh and remake.sh
 WANT_BRUNO=4.2.0
@@ -667,6 +668,49 @@ copy_problems() {
   '
 }
 
+# copy_lag_read <status json> → yes when the status holds a time of the last write (so copy_problems can read the
+# lag), no when it is null: c-storage keeps that time in memory only, so after any restart there is none until
+# the next save, and the lag test then has nothing to compare. The check says so rather than call the copy current.
+copy_lag_read() {
+  jq -nr --argjson st "$1" 'if $st.lastWriteAt == null then "no" else "yes" end'
+}
+
+# box_restore_blank <time or -> <records disk id> → the one path onto a records disk that holds no c-storage.db:
+# on the box, a disk with no filesystem is formatted, the disk is mounted at the records path, and the newest
+# copy (or the copy as of <time>) is restored onto c-storage.db there, before c-storage ever starts. It refuses
+# when c-storage is running, when the disk holds a filesystem other than XFS, and when it already holds a
+# c-storage.db. Prints restored=<the file>.
+box_restore_blank() {
+  box sudo bash -s -- blank "$RECORDS_MOUNT" "$1" "$2" <<'REMOTE'
+set -euo pipefail
+mount=$2 at=$3 vol=${4//-/}
+dev=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$vol
+[ -e "$dev" ] || { echo "the records disk $vol is not attached to this box" >&2; exit 3; }
+if systemctl is-active --quiet c-storage; then echo "c-storage is running: a blank-disk restore runs before it starts" >&2; exit 1; fi
+install -d -m 0700 /var/lib/private "$mount"
+if ! mountpoint -q "$mount"; then
+  type=$(blkid -o value -s TYPE "$dev" || true)
+  [ -z "$type" ] || [ "$type" = xfs ] || { echo "the records disk holds a $type filesystem, not the XFS this restore makes or mounts" >&2; exit 1; }
+  if [ -z "$type" ]; then mkfs.xfs -q "$dev"; echo "records disk: formatted"; fi
+  uuid=$(blkid -o value -s UUID "$dev")
+  grep -q " $mount " /etc/fstab || echo "UUID=$uuid $mount xfs defaults,nofail 0 2" >>/etc/fstab
+  systemctl daemon-reload
+  mount "$mount"
+fi
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+[ ! -e "$mount/c-storage.db" ] || { echo "the records disk already holds c-storage.db: this restore is for a disk without one" >&2; exit 1; }
+set -a
+. /etc/c-storage/copy.env
+set +a
+args=(-o "$mount/c-storage.db")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+/opt/c-storage/litestream restore "${args[@]}" "$COPY_URL"
+[ -s "$mount/c-storage.db" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$mount/c-storage.db"
+echo "restored=$mount/c-storage.db"
+REMOTE
+}
+
 # box_restore <time or -> <1 to put it onto the live file, else 0> <stamp> → restores the records from the copy
 # on the box, with its role's credentials. By default to a new file beside the live one and nothing live touched;
 # onto the live file, c-storage is stopped, the live file and its companions are moved aside (never deleted) and
@@ -678,6 +722,14 @@ mount=$1 at=$2 live=$3 stamp=$4 addr=$5 port=$6
 db=$mount/c-storage.db
 new=$mount/restored-$stamp.db
 mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+# The restore writes a second whole file onto the disk the live c-storage writes to: it must leave room, or the
+# live saves fail. Under twice the live file (and its companions) free, nothing is written.
+used=$(du -sk "$db" "$db-wal" 2>/dev/null | awk '{s+=$1} END{print s+0}')
+free=$(df -Pk "$mount" | awk 'NR==2{print $4}')
+if [ "$free" -lt $((used * 2)) ]; then
+  echo "the records disk has $((free / 1024)) MiB free, under twice the live file's $((used / 1024)) MiB: nothing was written" >&2
+  exit 1
+fi
 set -a
 . /etc/c-storage/copy.env
 set +a

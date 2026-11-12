@@ -491,7 +491,10 @@ func TestAStoreFailureIsAGeneric500(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE records`); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
-	for _, rt := range everyRoute[:4] {
+	for _, rt := range everyRoute {
+		if !rt.record {
+			continue // the routes that read or write records; the register route and the status route do not
+		}
 		res := serve(s, request(rt.method, rt.path, rt.body, allKeys))
 		var body map[string]any
 		_ = json.Unmarshal(res.Body.Bytes(), &body)
@@ -502,7 +505,10 @@ func TestAStoreFailureIsAGeneric500(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE services`); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
-	for _, rt := range everyRoute[:5] {
+	for _, rt := range everyRoute {
+		if rt.path == statusPath {
+			continue // the status route reads the store's memory, not a table
+		}
 		if got := rt.send(s, allKeys); got != http.StatusInternalServerError {
 			t.Errorf("%s with no services table = %d, want 500", rt, got)
 		}
