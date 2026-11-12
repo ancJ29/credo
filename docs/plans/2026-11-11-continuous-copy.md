@@ -161,6 +161,20 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   move ("deletes a file"); row 12 the bucket check's `!= 0` made unreachable ("does not stop the release"). Rows 8
   to 12 shared one run, row 7 had its own (the first try deleted the ShellCheck step's line, not the Litestream
   step's, and stayed green). Rows 9 to 11's second halves are read on ridge.
+- [x] **Step 4, ticked 2026-11-12.** `GET /api/status` is in `services/c-storage/internal/server/handlers.go`
+  (`status`), registered in `Build`, behind the internal key. It answers `{"freeBytes", "lastWriteAt"}`: the free bytes
+  of the disk under the file (`Store.FreeBytes`, the file's directory read through `pragma_database_list`, so `Build`
+  keeps its signature) and the last committed write's time (`Store.LastWrite`, kept by the process after a commit and
+  after a registration), `null` before the first since the process started. Its row is in `everyRoute`, its request is
+  `bruno/04-the-reading/01-status.yml` (not run: Bruno CLI is not in the sandbox, `make check` holds its shape).
+  `make check` in `services/c-storage/` exit 0, "coverage: 100 % of statements outside cmd/server" (log
+  `orch-49-continuous-copy/gate.log`, last line `== exit 0`). Row 13 was seen red by three mutations, each put back
+  (backup first, compared equal after): the commit's note of the write deleted (`TestTheStatusNamesTheLastCommittedWriteAndNoRefusedOne`,
+  "want later than the registration's"), the note moved before the precondition check so a refused write counts (the
+  same test, "after a refused write ... unchanged"), and the free bytes forced to 0 (`TestTheStatusHoldsTheFreeBytesAndNoWriteTimeBeforeTheFirstWrite`).
+  Two old tests touched, named: `TestAStoreFailureIsAGeneric500`'s last loop takes the first five routes (the status
+  reads no services table), and `TestEveryServiceRouteRefusesAMissingOrWrongAdminKey` skips the status path (it takes
+  no admin key). The seven-routes count in c-storage's `CLAUDE.md` and `README.md` follows.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.

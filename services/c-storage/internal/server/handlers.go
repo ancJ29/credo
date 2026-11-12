@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"time"
 	"unicode/utf8"
 
 	"credo/c-storage/internal/httpx"
@@ -178,4 +179,26 @@ func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
 	default:
 		httpx.JSON(w, http.StatusCreated, codeBody{Code: body.Code})
 	}
+}
+
+type statusBody struct {
+	FreeBytes uint64 `json:"freeBytes"`
+	// LastWriteAt is the last commit this process made, null before its first since it started.
+	LastWriteAt *time.Time `json:"lastWriteAt"`
+}
+
+// status answers what the copy's check reads from outside the box: the free bytes of the disk
+// under the file, and when the last write committed.
+func (s *Server) status(w http.ResponseWriter, r *http.Request) {
+	free, err := s.store.FreeBytes(r.Context())
+	if err != nil {
+		httpx.Internal(w, err)
+		return
+	}
+	body := statusBody{FreeBytes: free}
+	if at, ok := s.store.LastWrite(); ok {
+		at = at.UTC()
+		body.LastWriteAt = &at
+	}
+	httpx.JSON(w, http.StatusOK, body)
 }
