@@ -1450,3 +1450,7 @@ The one teardown, on 2026-11-08, was a one-off outside git, read by a second mod
 ## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
 
 Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
+
+## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
+
+`ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
