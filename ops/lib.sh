@@ -519,20 +519,61 @@ tunnel_hold() {
   die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network): run it again"
 }
 
-# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), logged
+# The records disk's mount on the box: the path c-storage's state directory resolves to (a dynamic
+# user's /var/lib/c-storage is a link to it), where ops/c-storage.service waits for the mount.
+RECORDS_MOUNT=/var/lib/private/c-storage
+
+# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), and RECORDS_MB (free on
+# the records disk beside it, -1 when that disk is not mounted), logged
 MEM_MB=0
 SWAP_MB=0
 DISK_MB=0
+RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s <<'REMOTE'
+    box bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
-df -Pm / | awk 'NR==2{print $4}'
+df -Pm / | awk 'NR==2{printf "%s ", $4}'
+if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi
 REMOTE
   )
-  read -r MEM_MB SWAP_MB DISK_MB <<<"$r"
-  echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free"
+  read -r MEM_MB SWAP_MB DISK_MB RECORDS_MB <<<"$r"
+  RECORDS_MB=${RECORDS_MB:--1}
+  if [ "$RECORDS_MB" = -1 ]; then
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, no records disk mounted"
+  else
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, records disk $RECORDS_MB MiB free"
+  fi
+}
+
+# litestream_pin → LITESTREAM_VERSION and LITESTREAM_ARM64_SHA256, from the pin's one home (the tests point
+# LITESTREAM_PIN at a pin of their own)
+litestream_pin() {
+  # shellcheck source=litestream.pin
+  . "${LITESTREAM_PIN:-$OPS_DIR/litestream.pin}"
+  [[ "${LITESTREAM_VERSION:-}" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || die "ops/litestream.pin names no version"
+  [[ "${LITESTREAM_ARM64_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || die "ops/litestream.pin holds no SHA-256 for the arm64 archive (a FILL marker is not a sum)"
+}
+
+# litestream_binary <out file> → Litestream's arm64 binary at <out file>, taken from the pinned archive
+# alone. LITESTREAM_ARCHIVE names an archive already fetched (the deploy job's); otherwise it is fetched
+# from the release. Either way its SHA-256 must be the pin's, or nothing is unpacked.
+litestream_binary() {
+  local archive=${LITESTREAM_ARCHIVE:-} got
+  litestream_pin
+  if [ -z "$archive" ]; then
+    archive=$WORK/litestream.tar.gz
+    curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz" ||
+      die "Litestream $LITESTREAM_VERSION could not be fetched"
+  fi
+  [ -f "$archive" ] || die "LITESTREAM_ARCHIVE $archive does not exist"
+  got=$(shasum -a 256 "$archive" | cut -d' ' -f1)
+  [ "$got" = "$LITESTREAM_ARM64_SHA256" ] || die "the Litestream archive is $got, the pin says $LITESTREAM_ARM64_SHA256: nothing unpacked"
+  mkdir -p "$WORK/litestream"
+  tar -xzf "$archive" -C "$WORK/litestream" litestream
+  [ -f "$WORK/litestream/litestream" ] || die "the pinned archive holds no litestream binary"
+  cp "$WORK/litestream/litestream" "$1"
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release

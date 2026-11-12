@@ -652,6 +652,139 @@ check "  and stack.sh's guard refuses that box, naming it" "Box (AWS::EC2::Insta
 refuses "  a box shown as Conditional is not that update either" "not a Modify of Box" \
   copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
 
+echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
+# need <file> <ERE> <what is missing>: dies unless a line of the file matches
+CI_YML=$REPO_DIR/.github/workflows/ci.yml
+# mutated <name> <sed expression> <file> → the path of a copy of the file with the expression applied
+mutated() {
+  sed "$2" "$3" >"$WORK/$1"
+  echo "$WORK/$1"
+}
+need() { grep -qE -- "$2" "$1" || die "$3"; }
+# first_before <file> <ERE first> <ERE second> <what is wrong>: dies unless the first match comes before the second, both present
+first_before() {
+  FB_A=$2 FB_B=$3 awk '$0 ~ ENVIRON["FB_A"] && !x {x=NR} $0 ~ ENVIRON["FB_B"] && !y {y=NR} END{exit !(x && y && x < y)}' "$1" || die "$4"
+}
+# records_block <release.sh> → the script the release runs on the box to mount the records disk
+records_block() { sed -n "/<<'REMOTE' || RECORDS_RC/,/^REMOTE\$/p" "$1"; }
+# row 7: the version and the sum have one home (the pin); the job and the release both compare the archive's sum before
+# unpacking it, and nothing else holds the sum or the version
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+pin_guard() { # <pin> <release.sh> <lib.sh> <ci.yml>
+  need "$1" '^LITESTREAM_VERSION=[0-9]+[.][0-9]+[.][0-9]+$' "the pin holds no version"
+  need "$1" '^LITESTREAM_ARM64_SHA256=[0-9a-f]{64}$' "the pin holds no SHA-256 for the arm64 archive"
+  local ver sum other
+  ver=$(sed -n 's/^LITESTREAM_VERSION=//p' "$1")
+  sum=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$1")
+  other=$(grep -cF -e "$sum" -e "$ver" "$2" "$3" "$4" | tr '\n' ' ')
+  case $other in *:[1-9]*) die "the version or the sum is written outside the pin ($other)" ;; esac
+  local step=$WORK/ci-litestream-step.txt
+  sed -n '/name: Litestream, the pinned archive/,/^      # No stored key/p' "$4" >"$step"
+  [ -s "$step" ] || die "the deploy job has no Litestream step"
+  need "$step" 'sha256sum -c -$' "the deploy job does not check the Litestream archive's sum"
+  first_before "$step" 'curl -fsSL' 'sha256sum -c -$' "the job checks the sum before it fetches"
+  first_before "$4" 'name: Litestream, the pinned archive' 'run: bash ops/release.sh ridge' "the job releases before it fetches the archive"
+  need "$4" 'LITESTREAM_ARCHIVE: ' "the job does not hand the archive to the release"
+  first_before "$3" 'LITESTREAM_ARM64_SHA256" ]' 'tar -xzf' "the release unpacks the archive before comparing its sum"
+  need "$3" 'die "the Litestream archive is' "the release has no refusal for an archive that is not the pin's"
+}
+# unpack_with <pin dir> <archive>: litestream_binary on a pin and an archive of the test's own, 
+unpack_with() {
+  local WORK=$1/work
+  mkdir -p "$WORK"
+  LITESTREAM_PIN=$1/litestream.pin LITESTREAM_ARCHIVE=$2 litestream_binary "$1/out"
+}
+lpin=$WORK/lpin
+mkdir -p "$lpin"
+printf 'a binary' >"$lpin/litestream"
+tar -czf "$lpin/real.tar.gz" -C "$lpin" litestream
+printf 'another' >"$lpin/litestream"
+tar -czf "$lpin/other.tar.gz" -C "$lpin" litestream
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=%s\n' "$(shasum -a 256 "$lpin/real.tar.gz" | cut -d' ' -f1)" >"$lpin/litestream.pin"
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=FILL\n' >"$WORK/fill.pin"
+passes "the pin, the job and the release: one home for the version and the sum, each checking the archive before it is unpacked (row 7)" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a sum written in the release too is refused" "outside the pin" \
+  pin_guard "$OPS_DIR/litestream.pin" "$(mutated release-sum.sh "s#^set -euo pipefail#LS_SUM=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$OPS_DIR/litestream.pin")#" "$OPS_DIR/release.sh")" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a pin that is a FILL marker is refused" "holds no SHA-256" \
+  pin_guard "$WORK/fill.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a deploy job that does not compare the archive's sum is refused" "does not check the Litestream archive's sum" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$(mutated wf-nosum.yml '/LITESTREAM_ARM64_SHA256  \$archive/d' "$CI_YML")"
+passes "  the release unpacks an archive whose sum is the pin's" unpack_with "$lpin" "$lpin/real.tar.gz"
+refuses "  and refuses one whose sum is not, unpacking nothing" "the pin says" unpack_with "$lpin" "$lpin/other.tar.gz"
+fill_pin() { LITESTREAM_PIN=$WORK/fill.pin litestream_pin; }
+refuses "  a pin with a FILL marker stops the release before anything is fetched" "holds no SHA-256" fill_pin
+# row 8: the copy's configuration
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+copy_config_guard() { # <litestream.yml> <release.sh>
+  need "$1" '^  enabled: false$' "the copy's own deleting is not off"
+  need "$1" '^  - path: /var/lib/c-storage/c-storage[.]db$' "the configuration does not name the records' file"
+  need "$1" '^      url: \$\{COPY_URL\}$' "the copy's address is not the box's path"
+  need "$1" '^      sync-interval: 1s$' "the copy does not sync every second"
+  need "$1" '^  interval: 24h$' "the copy does not take a full copy a day"
+  need "$2" "COPY_URL=s3://%s/Box/records" "the release does not write the box's path in the bucket"
+}
+passes "the copy's configuration names the records' file, the box's path, a sync a second, a full copy a day and its own deleting off (row 8)" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$OPS_DIR/release.sh"
+refuses "  a configuration that deletes in the bucket is refused" "own deleting is not off" \
+  copy_config_guard "$(mutated ls-del.yml 's#^  enabled: false#  enabled: true#' "$OPS_DIR/litestream.yml")" "$OPS_DIR/release.sh"
+# row 9: the unit
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+unit_guard() { # <c-storage.service> <lib.sh>
+  need "$1" '^ExecStart=/opt/c-storage/litestream replicate .*-exec /opt/c-storage/c-storage$' "the unit does not start Litestream with c-storage as its child"
+  need "$1" '^RequiresMountsFor=/var/lib/private/c-storage$' "the unit does not wait on the records disk's mount"
+  need "$1" '^EnvironmentFile=/etc/c-storage/copy.env$' "the unit does not read the copy's address"
+  need "$2" '^RECORDS_MOUNT=/var/lib/private/c-storage$' "the scripts and the unit name different mounts"
+}
+passes "c-storage's unit starts Litestream with c-storage as its child, and waits on the records disk's mount (row 9)" \
+  unit_guard "$OPS_DIR/c-storage.service" "$OPS_DIR/lib.sh"
+refuses "  a unit that starts c-storage alone is refused" "c-storage as its child" \
+  unit_guard "$(mutated unit-plain.service 's#^ExecStart=.*#ExecStart=/opt/c-storage/c-storage#' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+refuses "  a unit that does not wait on the mount is refused" "wait on the records disk" \
+  unit_guard "$(mutated unit-nomount.service '/^RequiresMountsFor=/d' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+# row 10: the release stops before the restart when the disk is not mounted
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+mount_refusal_guard() { # <release.sh>
+  need "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die "the records disk is not mounted' "the release does not refuse a records disk that is not mounted"
+  first_before "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die' 'systemctl restart c-storage' "the release restarts c-storage before it reads the mount"
+}
+passes "a release refuses to start c-storage when the records disk is not mounted (row 10)" mount_refusal_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release with no such refusal is refused" "does not refuse a records disk" \
+  mount_refusal_guard "$(mutated release-nomount.sh '/mountpoint -q \$RECORDS_MOUNT" || die/d' "$OPS_DIR/release.sh")"
+# row 11: a file on the system disk moves once, c-storage stopped, and the old one is kept
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+move_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  [ -s "$b" ] || die "the release has no records disk step"
+  first_before "$b" 'systemctl stop c-storage' 'cp -p "\$old" ' "the file is copied before c-storage is stopped"
+  first_before "$b" 'cp -p "\$old" ' 'mv "\$old" "\$old[.]moved"' "the old file is set aside before it is copied"
+  first_before "$b" '\[ -e "\$tmp/c-storage.db" \]' 'cp -p "\$old" ' "the file is moved without asking whether the disk holds one already"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the records disk step deletes a file"
+}
+passes "a file on the system disk is moved once onto a blank records disk with c-storage stopped, and the old one is kept (row 11)" move_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that deletes the old file is refused" "deletes a file" \
+  move_guard "$(mutated release-rm.sh 's#mv "\$old" "\$old.moved"#rm -f "$old"; mv "$old" "$old.moved"#' "$OPS_DIR/release.sh")"
+# row 12: a blank disk with a copy waiting is a restore, never a fresh start
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+blank_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  first_before "$b" 'list-objects-v2 --bucket "\$bucket" --prefix Box/records/' 'mkfs[.]xfs' "the disk is formatted before the bucket is read"
+  need "$b" '"\$have" != 0 \]; then' "a copy in the bucket does not stop the release"
+  need "$b" '^    exit 4$' "a copy in the bucket does not end the step with exit 4"
+  need "$1" '4\) die "the records disk is blank and the bucket holds a copy' "the release does not name the refusal"
+}
+passes "a blank records disk whose box path in the bucket holds a copy refuses a fresh start and says why (row 12)" blank_guard "$OPS_DIR/release.sh"
+refuses "  a release that formats first is refused" "formatted before the bucket" \
+  blank_guard "$(awk '/have=\$\(AWS_DEFAULT_REGION/ && !d {print "  mkfs.xfs -q \"$dev\""; d=1} {print}' "$OPS_DIR/release.sh" >"$WORK/release-mkfs.sh"; echo "$WORK/release-mkfs.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose check never stops it is refused" "does not stop the release" \
+  blank_guard "$(mutated release-nostop.sh 's#"\$have" != 0 \]; then#"$have" = x ]; then#' "$OPS_DIR/release.sh")"
+
 echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
 # A scratch repository of the paths a script can run or deploy, and one (docs/) it cannot. Its ci.yml

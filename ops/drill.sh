@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ops/drill.sh <env>
 # The human's drill, run once on a new box and again when the unit, the templates or the box change:
-#   row 13: c-storage is killed (SIGKILL) and must answer again within 10 s, as a new process;
+#   row 13: c-storage is killed (SIGKILL) and must answer again within 10 s, as a new process; the unit's
+#   main process is Litestream, c-storage its child, so both must come back new;
 #   row 14: a code is registered, the box is rebooted cleanly, and c-storage must be back by itself
 #   on the same build, the code answering 409 (the data outlived the reboot).
 # It breaks the known state a green deploy left, so run ops/check.sh <env> after it.
@@ -50,8 +51,11 @@ step "the build running, and the process"
 build=$(build_of "$(health)")
 [ -n "$build" ] && [ "$build" != dev ] || die "/health names no commit: release first"
 echo "build: $build"
+# The unit's MainPID is Litestream's (it runs c-storage as its child, replicate -exec), so c-storage's own
+# process is the main one's child.
 pid_before=$(box systemctl show -p MainPID --value c-storage)
-echo "main pid: $pid_before"
+child_before=$(box pgrep -P "$pid_before" || echo 0)
+echo "main pid (litestream): $pid_before, c-storage pid: $child_before"
 
 step "kill c-storage; it must answer again within 10 s"
 box 'sudo systemctl kill -s SIGKILL c-storage'
@@ -59,12 +63,13 @@ up=0
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
   pid_now=$(box systemctl show -p MainPID --value c-storage || echo 0)
-  if [ "$pid_now" != 0 ] && [ "$pid_now" != "$pid_before" ] && health >/dev/null 2>&1; then
+  child_now=$(box pgrep -P "$pid_now" || echo 0)
+  if [ "$pid_now" != 0 ] && [ "$pid_now" != "$pid_before" ] && [ "$child_now" != 0 ] && [ "$child_now" != "$child_before" ] && health >/dev/null 2>&1; then
     up=1
     break
   fi
 done
-expect "row 13: c-storage answers again, as a new process, within 10 s" yes "$([ "$up" = 1 ] && echo yes || echo no)"
+expect "row 13: c-storage answers again, as a new process under a new Litestream, within 10 s" yes "$([ "$up" = 1 ] && echo yes || echo no)"
 
 step "register a code"
 code="drill-$(date -u +%Y%m%dT%H%M%SZ)"
