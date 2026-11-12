@@ -1071,7 +1071,8 @@ describe.each(LISTS)(
             return await client.putRecord(key, data, ifTag);
           },
           async removeRecord(key, ifTag) {
-            if (live) asks.push(`remove ${key}`);
+            // a sign-in's clear of its wait is the sign-in's, not the list route's
+            if (live && !key.includes('.signin-wait.')) asks.push(`remove ${key}`);
             return await client.removeRecord(key, ifTag);
           },
         }),

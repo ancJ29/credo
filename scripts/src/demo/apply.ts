@@ -155,7 +155,8 @@ type Driver = ReturnType<typeof driverFor>;
 
 /** Whether a client holds what the operator's create leaves and nothing else: its root, its
  * settings as `createClient` writes them (`startingConfig` under the index's name, whole), and
- * sessions, which a root signing in leaves and nothing sweeps. */
+ * sessions, which a root signing in leaves and nothing sweeps, and sign-in waits, which one wrong
+ * name typed leaves. */
 async function isFresh(storage: CStorageClient, tenantId: string, name: string) {
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
@@ -169,6 +170,7 @@ async function isFresh(storage: CStorageClient, tenantId: string, name: string) 
       ({ key, data }) =>
         key === keys.user(ROOT_NAME) ||
         key.startsWith(keys.session('')) ||
+        key.startsWith(keys.signInWait('')) ||
         (key === keys.config && asMade(data)),
     )
   );

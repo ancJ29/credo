@@ -10,6 +10,9 @@ import {
   signInRoutes,
   storedSignInEmailSchema,
   storedSignInQrSchema,
+  waitAfter,
+  waitReplySchema,
+  waitShown,
 } from './signins';
 
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
@@ -99,5 +102,24 @@ describe('the ways to sign in', () => {
     expect(signInRoutes.issueQr(ID)).toBe(`/api/employees/${ID}/qr`);
     expect(signInRoutes.qr).toBe('/api/auth/sign-in-qr');
     expect(signInRoutes.password).toBe('/api/auth/password');
+  });
+
+  it('C: Five wrong tries wait nothing, the sixth waits 30 seconds, and the wait doubles', () => {
+    expect([1, 2, 3, 4, 5].map(waitAfter)).toEqual([0, 0, 0, 0, 0]);
+    expect([6, 7, 8, 9, 10].map(waitAfter)).toEqual([30, 60, 120, 240, 480]);
+  });
+
+  it('C: No wait passes 15 minutes, from the eleventh wrong try on', () => {
+    expect([11, 12, 50, 1000].map(waitAfter)).toEqual([900, 900, 900, 900]);
+  });
+
+  it('C: A wait is told in seconds under a minute and whole minutes, rounded up, from one, and the reply has one shape', () => {
+    expect(waitShown(30)).toEqual({ unit: 'second', count: 30 });
+    expect(waitShown(0.2)).toEqual({ unit: 'second', count: 1 });
+    expect(waitShown(60)).toEqual({ unit: 'minute', count: 1 });
+    expect(waitShown(61)).toEqual({ unit: 'minute', count: 2 });
+    expect(waitReplySchema.safeParse({ error: 'Wait', waitSeconds: 30 }).success).toBe(true);
+    expect(waitReplySchema.safeParse({ error: 'Wait', waitSeconds: 0 }).success).toBe(false);
+    expect(waitReplySchema.safeParse({ error: 'Wait' }).success).toBe(false);
   });
 });

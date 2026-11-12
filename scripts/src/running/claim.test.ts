@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -123,19 +122,16 @@ describe('the browser claim is the trunk’s, a file named by the sha1 of its pl
 
   it('says in one line that a claim folder cannot be written, and tries nothing else', () => {
     const s = setup();
-    chmodSync(s.browsersDir, 0o500);
+    // a file where the claim folder should be: it cannot be made, for root too (EEXIST)
+    writeFileSync(join(s.browsersDir, '.links'), 'not a folder');
 
-    try {
-      expect(() =>
-        registerClaim({ porcelain: s.porcelain, browsersDir: s.browsersDir, revision: '1248' }),
-      ).toThrow(
-        /the claim folder .*\.links cannot be written from here \(EACCES\), and nothing else was tried$/,
-      );
-    } finally {
-      chmodSync(s.browsersDir, 0o700);
-    }
-    expect(existsSync(join(s.browsersDir, '.links'))).toBe(false);
-    expect(readdirSync(s.browsersDir)).toEqual([]);
+    expect(() =>
+      registerClaim({ porcelain: s.porcelain, browsersDir: s.browsersDir, revision: '1248' }),
+    ).toThrow(
+      /the claim folder .*\.links cannot be written from here \(EEXIST\), and nothing else was tried$/,
+    );
+    expect(readdirSync(s.browsersDir)).toEqual(['.links']);
+    expect(readFileSync(join(s.browsersDir, '.links'), 'utf8')).toBe('not a folder');
   });
 
   it('refuses a trunk whose browsers.json names another revision, naming both and the install', () => {

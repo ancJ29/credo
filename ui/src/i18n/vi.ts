@@ -500,6 +500,12 @@ export const vi: Dictionary = {
     qrOnce: 'Mã dùng được một lần, trong 15 phút. Hiện mã mới sẽ hủy mã này.',
     qrFailed: 'Chưa tạo được mã: hãy thử lại.',
   },
+  wait: {
+    second: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} giây.',
+    seconds: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} giây.',
+    minute: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} phút.',
+    minutes: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} phút.',
+  },
   ownPassword: {
     title: 'Đổi mật khẩu của bạn',
     text: 'Nhập mật khẩu đang dùng, rồi mật khẩu mới. Mọi thiết bị khác đang đăng nhập sẽ bị đăng xuất.',

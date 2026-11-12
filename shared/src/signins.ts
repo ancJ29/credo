@@ -67,3 +67,31 @@ export const signInRoutes = {
   email: (id: string) => `${ROUTES.employees}/${id}/email`,
   issueQr: (id: string) => `${ROUTES.employees}/${id}/qr`,
 };
+
+/** Wrong tries a name has free before any wait. */
+export const WAIT_FREE_TRIES = 5;
+/** The wait the sixth wrong try starts, in seconds; each next wrong try doubles it. */
+export const WAIT_FIRST_SECONDS = 30;
+/** The longest wait, in seconds: 15 minutes. */
+export const WAIT_MAX_SECONDS = 900;
+
+/** The seconds a name waits after its `wrong`th wrong try in a row: none to the fifth, then 30
+ * seconds doubling, at most 15 minutes. */
+export function waitAfter(wrong: number): number {
+  if (wrong <= WAIT_FREE_TRIES) return 0;
+  return Math.min(WAIT_FIRST_SECONDS * 2 ** (wrong - WAIT_FREE_TRIES - 1), WAIT_MAX_SECONDS);
+}
+
+/** The back end's 429: a name that must wait, and the seconds left. */
+export const waitReplySchema = z.strictObject({
+  error: z.literal('Wait'),
+  waitSeconds: z.number().int().positive(),
+});
+export type WaitReply = z.infer<typeof waitReplySchema>;
+
+/** How a wait is told: seconds under a minute, whole minutes rounded up from one. */
+export function waitShown(seconds: number): { unit: 'second' | 'minute'; count: number } {
+  return seconds < 60
+    ? { unit: 'second', count: Math.max(1, Math.ceil(seconds)) }
+    : { unit: 'minute', count: Math.ceil(seconds / 60) };
+}
