@@ -159,12 +159,17 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`. Each
 once on its own assertion, then put back. Sizes come from the runs log's last rows of the same
 shape.
 
-- [ ] **1. The helpers and the nine.** The list and the two helpers in `ops/lib.sh`. One call in
+- [x] **1. The helpers and the nine.** The list and the two helpers in `ops/lib.sh`. One call in
   each script's first step: `refuse_real` in the drill and in the three that refuse, with their
   words kept; `real_ok` with its reason in the other five. The section in `ops/test.sh` for cases
   1 to 6. Any of the other lanes' scripts already on `pre-merge` get their line here too.
   *Done when:* both gates exit 0, and cases 1 to 6 are each red once, the static one by a call
   removed from one script and then a second call added. 👤 Point 1 follows from here.
+  *Done:* the list and both helpers are in `ops/lib.sh`, one call in each of the nine scripts, the section
+  at the end of `ops/test.sh`. Shellcheck and `bash ops/test.sh` each exit 0. Cases 1, 2, 4 and 6 were each
+  red once on a mutation (a call removed, then a second added; a second home for the list; a changed
+  word; the switch check removed), 3 and 5 on a no-op helper, and put back. None of the other lanes'
+  scripts was on `pre-merge`, so none got a line. The check's reason reads true of today's check.
   *Size:* 14 (the tree guard's build, a `lib.sh` check all the scripts share, with its rows: 14).
 - [ ] **2. The check that only reads.** The mode set from `REAL` or `--reads-only`, and line 2's
   usage. Steps 4 and 7 branch on the mode. The Bruno version check moves under step 4. `edge_reads`
