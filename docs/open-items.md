@@ -1430,3 +1430,21 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 ## 242. The log count's pin has small gaps in how a red reads — the machine; `[DEFERRED]` (the dead log citations' review reread, 2026-11-11, Info)
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
+
+## 301. A revert of what production runs waits for `pre-merge`'s whole check, which runs at most every two hours — the machine, by the conventions kind; *parked* until the production plan's rehearsal reads the way back's minutes (the production plan, 2026-11-12)
+
+The way back from a bad release is a revert that travels the whole path: the piece's branch,
+`pre-merge`, the whole check, `main`, the human's push, ridge's deploy, then the production lane
+([the plan](plans/2026-11-12-production.md#hazards-no-gate-catches)). `docs/conventions/qa.md`'s
+"The whole check on `pre-merge`" runs that check at most once every two hours, so a revert landing
+soon after a run waits up to two hours before `main` may move. Fix: one line in that section, that a
+revert of the commit production runs starts the whole check at once, outside the two-hour cadence.
+*Trigger:* the rehearsal's minutes, or the first real revert of a production release.
+
+## 302. The production lane's read job holds ridge's whole deploy role to read one commit — the machine; *parked* until a second reader of ridge's commit or a review asks for it (the production plan, 2026-11-12)
+
+The lane's first job takes ridge's deploy role, which can also release to ridge, only to read what
+ridge runs and that its run was green ([the plan](plans/2026-11-12-production.md#decided-the-machines),
+decision 2). The seed workflow takes the same role for its own reading. A read-only role for ridge's
+commit would narrow it, at one more role in `ops/env.yml` and one more secret. *Trigger:* a second
+workflow that only reads ridge, or a review finding on the read job's rights.
