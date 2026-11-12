@@ -788,7 +788,7 @@ check "a key in the log: the run fails" 1 "$rc"
 check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
 check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
-echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
+echo "== the workflow's deploy job (a push to main or a press of ci on main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
 WORKFLOW=$REPO_DIR/.github/workflows/ci.yml
 deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
   awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
@@ -801,7 +801,7 @@ deploy_guards() {
   block=$(deploy_block "$1")
   [ -n "$block" ] || die "no deploy job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  need "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
+  need "    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'"
   need "    needs: [check, e2e, ops, app]"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
@@ -857,6 +857,10 @@ check "the workflow caps vitest's workers, so parallel jobs (act's four on one M
 passes "the deploy job holds every condition" deploy_guards "$WORKFLOW"
 sed "s/ && github.ref == 'refs\/heads\/main'//" "$WORKFLOW" >"$WORK/wf-branch.yml"
 refuses "a deploy job that also runs on a branch is refused" "github.ref == 'refs/heads/main'" deploy_guards "$WORK/wf-branch.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/ || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request')/" "$WORKFLOW" >"$WORK/wf-pr.yml"
+refuses "a deploy job that admits a pull request is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-pr.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/)/" "$WORKFLOW" >"$WORK/wf-nopress.yml"
+refuses "a deploy job that lets no press through is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-nopress.yml"
 awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$WORKFLOW" >"$WORK/wf-act.yml"
 refuses "a deploy step that would run under act is refused" "!env.ACT" deploy_guards "$WORK/wf-act.yml"
 sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$WORKFLOW" >"$WORK/wf-mask.yml"
@@ -1063,6 +1067,13 @@ echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
 check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
   "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
+# The press: ci.yml holds one workflow_dispatch trigger, beside push and pull_request and outside
+# the push's paths.
+check "the real ci.yml holds a workflow_dispatch trigger, once, at the top level of on:" 1 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$CI_YML" | wc -l | tr -d ' ')"
+sed '/^  workflow_dispatch:$/d' "$CI_YML" >"$WORK/ci-nopress.yml"
+check "a ci.yml without the trigger reads as none" 0 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$WORK/ci-nopress.yml" | wc -l | tr -d ' ')"
 # push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
 push_variant() {
   awk -v from="$2" -v to="$3" '/^  push:$/ {p = 1} /^  pull_request:$/ {p = 0} p && $0 == "      - \"" from "\"" && !d {d = 1; print to; next} 1' "$CI_YML" >"$WORK/ci-$1.yml"
