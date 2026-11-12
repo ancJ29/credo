@@ -3,7 +3,7 @@
 The products credo has, in five groups, read from `main` at `f6f5043`. A row's state reads in
 `main`, on a branch, not started, or data on ridge.
 
-Ridge runs what `main` held at its last push. None runs in production: no client has a stack of
+Ridge was rebuilt from `main` by commands and runs what `main` held at its last release; a push to `main` that touches code deploys onto it. None runs in production: no client has a stack of
 its own yet. Ridge is the shared pre-production environment.
 
 The page stays true at each piece's recap: the recap's commit adds or changes the piece's row here
@@ -70,7 +70,7 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | `pnpm demo` | The same stack plus a demo copy per partner, filled as of four days ago and run forward; each copy's link and root password print once. | local | in `main` | `pnpm demo` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md) |
 | `pnpm demo-files` | Eight Excel files (10 rows each, one code already there, one refused) for the presenter's import step, written outside git. | local | in `main` | `pnpm demo-files` | [`recaps/2026-10-31-customers-products.md`](recaps/2026-10-31-customers-products.md) |
 | The seed, on demand (`seed.yml`, `ops/seed.sh`) | Brings every demo copy on ridge up to yesterday, at most 2 days a copy a run, when somebody runs it (no schedule since 2026-11-08, so ridge's data is as fresh as the last run, and a run asked once a week cannot keep up: it takes off two days while seven go by); a closed driver day is skipped. | ridge | in `main` | `seed.yml` (or `ops/seed.sh ridge` by hand) | [`recaps/2026-11-02-seed-demo-safe.md`](recaps/2026-11-02-seed-demo-safe.md), [`recaps/2026-11-08-seed-timeout.md`](recaps/2026-11-08-seed-timeout.md) |
-| Ridge's demo copies | Two invented companies (S1 building materials, S2 drinks) with three copies each; the `-1` copy is `p1`'s, the `-2` copy is `p2`'s, the `-3` copy the human's. | ridge | data on ridge | the copy's link; root password by `ops/root-password.sh ridge <code>` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md) |
+| Ridge's demo copies | Two invented companies (S1 building materials, S2 drinks) with three copies each; the `-1` copy is `p1`'s, the `-2` copy is `p2`'s, the `-3` copy the human's. | ridge | gone with the old ridge's disk; the next ridge milestone makes them by script | the copy's link; root password by `ops/root-password.sh ridge <code>` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md) |
 
 ## 5. The machinery around them
 
