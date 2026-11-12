@@ -219,7 +219,7 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
   each log's last lines read off the scripts' own lines (the destroy's verdict comes before its closing, then
   `== exit 0`; the remake ends `== green`), and the address lane's two settings named as not yet in `main`. Item 314
   is rewritten to its workflow half.
-- [ ] **5. A second model's read**, then one fix pass with its own gate (QA rule 5). *Done when:*
+- [x] **5. A second model's read**, then one fix pass with its own gate (QA rule 5). *Done when:*
   each finding is tagged fixed, rejected or deferred, and `shellcheck -x ops/*.sh` and
   `bash ops/test.sh` exit 0 after the fix pass. **About 20 min.**
   *Done 11-12 (the review, then the fix pass, 12 min):* the second model's read held one Medium and seven Lows,
@@ -234,8 +234,12 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
   its own mutation, each reverted and compared equal. `shellcheck -x ops/*.sh` and then `bash ops/test.sh`
   whole, run under the lock on the tree committed here with only this tick added after, exited 0. The "Done
   reads" paragraph now matches the scripts' endings.
-- [ ] **6. The recap**, with the row in `docs/products.md`. Then the landing on `pre-merge`. *Done
+- [x] **6. The recap**, with the row in `docs/products.md`. Then the landing on `pre-merge`. *Done
   when:* committed, with the citation test green. **About 5 min.**
+  *Done 11-12:* the recap, the products row (and the client-delete row, now proven on ridge), and items 369 to 371
+  (the reread's three Lows) are in one commit. `pre-merge` was taken in first; ShellCheck over `ops/*.sh` and the whole
+  `bash ops/test.sh` exited 0 on the merged tree, and the citation test exited 0. The rehearsal's outcome stays open
+  in the recap.
 - [ ] **7. 👤 Your rehearsal on ridge** (below). 🤖 reads the logs whole: the destroy's, the
   remake's and its four children's. *Done when:* they read as "what done reads" below. **About 5
   min of the machine's**, about 25 of your terminal's.
