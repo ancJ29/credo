@@ -17,6 +17,8 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
+| ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
+| ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -61,6 +63,8 @@ name its stack `ridge`.
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |
 | `ops/root-password.sh` | refuses | a client's own stack is the console's; a terminal path to a client's root password does not exist (open item 132) |
+| `ops/destroy.sh` | refuses | it deletes by name in an account that holds other stacks, a client's among them; it destroys ridge alone |
+| `ops/remake.sh` | refuses | it makes the stack, ships and turns workflows on for ridge alone |
 
 `ops/walks-preview.sh` and `ops/pages-preview.sh` are not credo's environment: they send a folder to
 Cloudflare Pages and refuse that service's own production branch. `ops/legacy-capture.sh` writes
@@ -235,6 +239,53 @@ GitHub's job and without a terminal.
 2. The link opens at the app's address, which a passkey is bound to for good: CloudFront's own name.
    The address is in the local log of `ops/stack.sh env ridge` (never in a committed file or a
    public log).
+
+## Ridge down and back
+
+Two commands, each from the worktree at `main` (its `ops/` must match `origin/main`), in a terminal signed
+in to AWS with `gh` logged in. Both refuse every environment but ridge, and a stack that is not ridge's
+by its tags and parameters. The destroy asks for a typed name and cannot run from GitHub: the deploy role
+can only read its stack, so there is no timer either. Each log is the newest `<stamp>-<script>-ridge.log`
+in the credo root's `logs/`.
+
+1. Down, about 5 minutes. It reads the account, prints what will go, asks you to type `ridge`, switches
+   off the workflows that name `environment: ridge` (`ci.yml` and `seed.yml`, never `walks.yml`), then
+   deletes the box, its disk, the bucket's files, the stack and the two log groups, each read back as gone.
+   `RIDGE_KEEP_DISK_SNAPSHOT=1` keeps one snapshot of the disk.
+
+   ```
+   cd <the worktree at main> && bash ops/destroy.sh ridge
+   ```
+
+2. Up, about 15 minutes. It runs `ops/stack.sh env ridge`, `ops/release.sh ridge`, `ops/app.sh ridge` and
+   `ops/check.sh ridge` in that order, then turns the two workflows on and reads them back active. A red
+   stops it at that step with the workflows still off; run it again.
+
+   ```
+   cd <the worktree at main> && bash ops/remake.sh ridge
+   ```
+
+3. The operator, whose one-time link you open at the new address to make your passkey (see
+   [the operator](#the-operator)).
+
+   ```
+   cd <the worktree at main> && bash ops/operator.sh ridge
+   ```
+
+What each log's last lines read:
+
+- The destroy's log has `== verdict: ridge is destroyed, ci.yml and seed.yml are off`, then
+  `== CLOSING, in plain words:` with the two commands above, and ends `== exit 0`. With no stack and no box
+  it reads `== verdict: ridge's stack and box were already gone, so nothing was destroyed by this run, and no workflow was changed`.
+- The remake's log ends `== ridge is remade from main and checked. It is empty: it holds no operator and no demo copy.`,
+  the operator's command, a line that the address may be new, then `== green` and `== exit 0`. A stop reads
+  `== stopped at step <n>/<total>, ops/<script> (exit <code>). No later step ran and the workflows stay off.`
+
+Ridge is empty after the remake. This command does not re-make the demo copies, and the records are gone with
+the disk. The app's address may be new, and a DNS record that points at the old one is repointed by hand.
+The address lane's two settings, `CREDO_DOMAIN` and `CREDO_CERTIFICATE_ARN`, are not in `main` yet: once the
+address lane lands, the remake's stack step takes them from your environment, passed through unchanged,
+and the certificate, outside the stack, survives.
 
 ## The demo copies' root password
 

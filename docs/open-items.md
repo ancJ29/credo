@@ -216,15 +216,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
 
-## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
-
-`ops/app.sh` writes the BFF function's description (the commit `ops/seed.sh` compares with
-`/health`) before it writes the function's code. A deploy that stops between the two leaves a
-description naming the new commit on the old code, so the seed's check passes and it runs against a
-BFF that is a commit behind. It needs a deploy that is already red to bite, and the next one is
-red anyway. Fix: write the description after the code, in `ops/app.sh`, and a stand-in `aws` test in
-`ops/test.sh` that stops the code's write and reads the description unchanged.
-
 ## 30. Adding a passkey in Safari may be refused — the machine, with the human's 3 minutes; *parked* until the console is used in Safari (the operator console plan, step 8, 2026-10-30)
 
 One click on "Add a passkey" (`ui/src/pages/operator/PasskeysPage.tsx`) runs two WebAuthn ceremonies: the touch of a
@@ -1393,6 +1384,23 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
 
+## 301. A revert of what production runs waits for `pre-merge`'s whole check, which runs at most every two hours — the machine, by the conventions kind; *parked* until the production plan's rehearsal reads the way back's minutes (the production plan, 2026-11-12)
+
+The way back from a bad release is a revert that travels the whole path: the piece's branch,
+`pre-merge`, the whole check, `main`, the human's push, ridge's deploy, then the production lane
+([the plan](plans/2026-11-12-production.md#hazards-no-gate-catches)). `docs/conventions/qa.md`'s
+"The whole check on `pre-merge`" runs that check at most once every two hours, so a revert landing
+soon after a run waits up to two hours before `main` may move. Fix: one line in that section, that a
+revert of the commit production runs starts the whole check at once, outside the two-hour cadence.
+*Trigger:* the rehearsal's minutes, or the first real revert of a production release.
+
+## 302. The production lane's read job holds ridge's whole deploy role to read one commit — the machine; *parked* until a second reader of ridge's commit or a review asks for it (the production plan, 2026-11-12)
+
+The lane's first job takes ridge's deploy role, which can also release to ridge, only to read what
+ridge runs and that its run was green ([the plan](plans/2026-11-12-production.md#decided-the-machines),
+decision 2). The seed workflow takes the same role for its own reading. A read-only role for ridge's
+commit would narrow it, at one more role in `ops/env.yml` and one more secret. *Trigger:* a second
+workflow that only reads ridge, or a review finding on the read job's rights.
 ## 283. The company's client throws synchronously from methods typed to return a Promise — the machine; `[DEFERRED]` (the storage client that serves one company's review, 2026-11-12, Low)
 
 `bff/src/records/records.ts`'s `tenantStorage` refuses a foreign key by throwing before it sends, from four methods typed to return a Promise, and `bff/src/records/records.test.ts` pins that shape (`expect(() => ...).toThrow`). Every caller today is an `await` inside an async function, so the throw becomes that function's rejection and answers 500. The one place a synchronous throw would escape is a `.map` inside `Promise.all` in `bff/src/records/clients.ts`, where removes already sent would be left with no handler; that site sweeps keys c-storage listed under the company's own prefix, so the throw cannot happen there today. No change is required. *Fix, if taken:* make the four methods `async`, keeping `within` first so nothing is sent, and change the tests to `await expect(client.getRecord(key)).rejects.toThrow(...)`. *Trigger:* a new caller that calls one of the four methods outside an `await`.
@@ -1409,9 +1417,9 @@ Both refuse a commit `main` lacks and one older than what the environment runs (
 
 Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L294-L296`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
 
-## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+## 314. Ridge's teardown has a terminal script, and still no workflow to press it — the machine; *parked* until the human brings the workflow back (ridge cycle, 2026-11-12)
 
-The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
+`ops/destroy.sh ridge` and `ops/remake.sh ridge` now take ridge down and back up from a terminal ([the runbook](../ops/README.md#ridge-down-and-back)). What stays parked is the workflow half. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)". The deploy role can only read its stack, so a press needs a role that may delete, and the destroy's typed name needs a gate that is not a terminal. *Trigger:* the human asks for the workflow.
 
 ## 322. The stance test reads only calls at column 0, so a new script that calls `main_synced` indented is skipped without a word — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
 
@@ -1462,3 +1470,15 @@ Gap 4 and the passage near it say what the wait leaves: one guesser trying many 
 ## 342. `scripts/src/running/claim.ts`'s draft cleanup is pinned by no case, so deleting it stays green — the machine; `[DEFERRED]` (the root-proof tests' review, 2026-11-12)
 
 `claim.ts`'s `rmSync` of the draft after a failed write is run by every failing case but asserted by none: each fails at the folder's creation, before any draft exists. The case it guards, a written draft whose rename then fails, cannot be staged as root without a mock (a directory standing at the claim's name throws earlier, at the existence check). *Fix:* pin the draft's removal on a failed rename with a mocked `renameSync`, or drop the line as unreachable. *Trigger:* the next change to `claim.ts`.
+
+## 369. The destroy's stop line names every workflow as off, though only the ones this run switched off are — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh`, the stop line near `#L87` with the disable at `#L346-L362`: `WF_OFF=1` is set once the first workflow is off, and the line then says "the workflows (ci.yml and seed.yml) were switched off, and they are still off". If `seed.yml`'s disable fails under `set -e`, or its read-back finds it still `active` (`#L362`), the line is false for `seed.yml`; in the second case the line above it says so. *Fix:* make `WF_OFF` the list of workflows this run switched off or found off, added to as each disable returns; at `#L362` take the one that read back active out of the list before the `fail`, and have the line name the list. *Trigger:* the next change to the destroy's stop line, or before the rehearsal on ridge.
+
+## 370. After the box is terminated, the destroy's stop line tells the reader to run the remake, which a half-deleted stack cannot take — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh`, the same line near `#L87`, from the terminate at `#L406` until the stack reads back gone at `#L456`: it says to bring ridge back with `ops/remake.sh`. On that stretch the stack still stands with its box gone; the remake's first step updates that stack and waits for a box that does not come (`stack.sh#L285`), and a stack in `DELETE_FAILED` (`#L454`) refuses any update. Not run: no test runs a remake on a half-deleted stack. *Fix:* set a flag just before `#L406`; once set, the line says part of ridge is already deleted, to run `ops/destroy.sh ridge` again until it ends on its verdict, then `ops/remake.sh ridge`. *Trigger:* the same as item 369, or the first real stop in that stretch.
+
+## 371. The rerun the stop line advises cannot see the disk, and ends saying the disk is gone — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh#L226-L240`: the disk outlives the box (`DeleteOnTermination: false`, `env.yml#L128`). After a stop between the box's termination and the disk reading back gone (`#L419`, `#L422`, `#L423`, `#L427`), a rerun finds the box terminated and clears `BOX`, never reads `VOL`, skips step 6d and the last read at `#L485`, deletes the stack, and ends on "Gone: the box and its disk" (`#L518`). The disk is still there, holding the records and still billed. This is the original code; the stop line now sends people to it. *Fix:* on a stop in that stretch, the line names the disk `$VOL` and says a rerun cannot see it, so it is kept or deleted by hand; or, when the box is already terminated, the stack path lists the unattached volumes, as the no-stack path does at `#L320-L324`. *Trigger:* the same as item 369.
