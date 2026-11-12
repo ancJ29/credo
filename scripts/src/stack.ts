@@ -232,9 +232,10 @@ export async function startStack(
     const { port: seedPort } = await listening(seeding, options.ports?.seedDoor);
 
     // A passkey is bound to a name and no IP address has one: the operator opens `localhost`, on the
-    // front's port, which the BFF checks every ceremony against. The front binds first, so the port
-    // is held from the moment it is chosen and nothing else can take it before the front is up; it
-    // answers 502 until the BFF is.
+    // front's port, which the BFF checks every ceremony against. The front binds first, so a port
+    // the stack picks (none given) is held from the pick; a port given was picked by the caller, and
+    // the bind fails at once if it is taken. The front's API answers 502 until the BFF is up; its
+    // pages are served from the start.
     const bffPort = options.ports?.bff ?? (await freePort());
     const bffUrl = `http://127.0.0.1:${bffPort}`;
     const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
