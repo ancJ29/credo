@@ -215,14 +215,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
-## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
-
-Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
-one's own password route answer every try, and each wrong one costs the guesser one hashing. On ridge the stage's throttle
-(10 a second) is the only brake. The review accepted that for ridge. A client's own stack has no such stage. The fix is one piece
-for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
-after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
-the first client's own stack.
 
 ## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
 
@@ -1462,3 +1454,15 @@ One wrong try sent as each wait ends (four requests an hour at 15 minutes) resta
 ## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
 
 `ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
+
+## 338. `docs/client-readiness.md` lists what the wait leaves without the endless hold of item 319 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+Gap 4 and the passage near it say what the wait leaves: one guesser trying many names meets only the stage's throttle, and each invented name leaves a small record (item 256). Neither names that a guesser can also keep a known name waiting with no end (item 319). *Fix:* add that to both places, or point both at item 319. *Trigger:* the human's answer on item 319.
+
+## 339. The memo, the plan, item 256 and `sign-in-wait.ts`'s comment name the box's root-only file as the only other holder of the service key — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`ops/app.sh` also puts `SERVICE_ACCESS_KEY` into the function's environment (its `update-function-configuration`), so whoever can read that configuration holds the key too. The four places say "the box's root-only environment file" as if it were the one other copy. *Fix:* name both in the four places. *Trigger:* the next change to the wait's pages.
+
+## 340. A unit test title says a wait's key ends in the name's SHA-256, and case 14 would stay green if the key came from the service key's SHA-256 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`shared/src/records.test.ts`'s title near line 97 ("A sign-in wait's key ends in the name's SHA-256") is out of date: the BFF now keys the hash. Case 14 (`bff/src/sign-in-wait.route.test.ts`, near line 223) asserts the key is not the name's bare SHA-256 and differs between two service keys, which a key derived from the service key's own SHA-256 would also satisfy. *Fix:* reword the title to "a hash", and give case 14 an expected value computed by the intended derivation. *Trigger:* the next change to the wait's key.

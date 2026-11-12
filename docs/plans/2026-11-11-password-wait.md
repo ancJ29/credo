@@ -228,7 +228,7 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   that pass's own checks the re-check, and the reviewer's reread of the fixed lines. About 23
   minutes: 11, 9 and 3, the last rows of each. *Done when:* every finding is tagged in the recap
   and the fix pass's packages' checks end `== exit 0`.
-- [ ] **7. The recap.** About 5 minutes, the last recaps' median: half a page, open item 28
+- [x] **7. The recap.** About 5 minutes, the last recaps' median: half a page, open item 28
   deleted, and `docs/products.md`'s row for the sign-in. *Done when:* after `git merge
   pre-merge`, the citation test exits 0; the landing on `pre-merge` is the orchestrator's.
 
