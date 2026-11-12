@@ -188,12 +188,12 @@ ridge with the human's next push like any merged work.
   no line. The back end's check ended green, the citation test exited 0, and the search for local
   paths finds only this step's own quoted command. *Size:* 10 minutes, the last step that rewrote a memo and two guidelines to a
   new shape (the shared record page's step 10, 10 minutes).
-- [ ] **4. Reviewed.** A model other than the author's reads the code, its tests and this table,
+- [x] **4. Reviewed.** A model other than the author's reads the code, its tests and this table,
   asking of each test whether breaking its case would turn it red; one fix pass, its own gate the
   re-check. *Done when:* every finding is tagged in the recap and the fix pass's gate ends
-  `== exit 0`. *Size:* 14 minutes, the cross-company tests' review, fix and reread (6, 6 and 2).
-- [ ] **5. Recap.** Half a page, with the picture of point 1 drawn from the committed code. *Done
-  when:* committed, the citation test at exit 0. *Size:* 3 minutes, the cross-company tests' recap.
+  `== exit 0`. *Done, 2026-11-12:* read on another model; two Medium findings fixed (the memo's limit sentence and item 227's reason; the company's client named `storage` again) and one Low filed as item 283; the fix pass's check ended green and the fixed lines were reread true, one Info filed as item 284. *Size:* 14 minutes, the cross-company tests' review, fix and reread (6, 6 and 2).
+- [x] **5. Recap.** Half a page, with the picture of point 1 drawn from the committed code. *Done
+  when:* committed, the citation test at exit 0. *Done, 2026-11-12:* `docs/recaps/2026-11-12-store-one-company.md`, the look left open; `docs/products.md` changes no row. *Size:* 3 minutes, the cross-company tests' recap.
 
 ## The case table
 
