@@ -1426,3 +1426,15 @@ Both refuse a commit `main` lacks and one older than what the environment runs (
 ## 297. `ops/stack.sh` rewrites an environment's GitHub environment on every run, and whether production's protection rules survive it is unread — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Low)
 
 Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L294-L296`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
+
+## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+
+The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
+
+## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
+
+Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
+
+## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
+
+`ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
