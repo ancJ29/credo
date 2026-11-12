@@ -3,7 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself ([the deploy job](#the-deploy-job)).
+A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -13,7 +13,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | GitHub's provider, once | `ops/stack.sh github` | about a minute |
 | an environment's box and deploy role | `ops/stack.sh env <name>` | about 5 minutes |
 | to see a change before it happens | add `--plan` to any of the above | about a minute |
-| a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
+| a release | push to `main`, or a press of `ci` on `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
@@ -24,7 +24,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
 | a copy of the app on this Mac that stays up between commands | [the quick start](../docs/quick-start.md), which holds the five commands, what each prints and which two print a password | the build, then seconds |
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
-| to check an environment | `ops/check.sh <env>` | about 3 minutes |
+| to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
@@ -37,6 +37,39 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
      disabled.
 3. Have `jq`, `ssh`, and `gh` logged in with rights on the repository (`stack.sh env` needs them).
    - `check.sh` also needs Bruno CLI 4.2.0: `npm install -g --ignore-scripts @usebruno/cli@4.2.0`.
+
+## On production
+
+Production is every environment not listed in `INVENTED_ENVS` in `ops/lib.sh`, today `ridge` alone:
+a script knows an environment only by its name, so any other name (a taiga, a crest, the production
+stack, whatever its plan calls it) may hold a real company's records. The network and GitHub stacks
+sit under every environment, production's included. Each script that reaches an environment says its
+answer first, in its first step: `refuse_real` stops it with the script's own words, `real_ok` prints
+one `ok   <env> may hold real data; this script is safe there: <why>` line. `ops/test.sh` holds that
+every such script calls exactly one of the two (the section "every script that reaches an environment
+says what it does on production"), so a new script meets the same rule. The production plan must never
+name its stack `ridge`.
+
+| Script | On production | Why |
+| --- | --- | --- |
+| `ops/stack.sh` | works | a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment |
+| `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
+| `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
+| `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
+| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, layer four's reads and the six reads that need no client stay |
+| `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
+| `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
+| `ops/seed.sh` | refuses | a client's stack must never receive demo data |
+| `ops/root-password.sh` | refuses | a client's own stack is the console's; a terminal path to a client's root password does not exist (open item 132) |
+
+`ops/walks-preview.sh` and `ops/pages-preview.sh` are not credo's environment: they send a folder to
+Cloudflare Pages and refuse that service's own production branch. `ops/legacy-capture.sh` writes
+nothing. On a real environment `real_ok` also refuses `RIDGE_SCRIPTS_DIR` and `OPS_TEST_NO_TTY`, the
+tests' two switches, so the code run there is the reviewed tree's.
+
+`ops/check.sh <env> --reads-only` gives ridge the production run, which is the way to rehearse it
+there; the flag can only narrow, and the deploy job's check on ridge passes none. A save is proved
+by ridge's full check, on the same commit, before a production check reads.
 
 ## Bootstrap, once, in this order
 
@@ -131,7 +164,7 @@ old loopback listener does not answer: the log then finds no running commit, and
 ## The deploy job
 
 The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
-`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, once `check`, `e2e`,
+`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
 `AWS_ROLE_ARN`), then runs `ops/release.sh ridge`, `ops/app.sh ridge` and `ops/check.sh ridge` over the
@@ -145,7 +178,7 @@ put that back (the BFF then answers 503 until the next deploy).
      commit's own deploy shipped them. ridge never moves backwards.
    - **skipped: ridge's stack holds no layer four yet:** `app.sh` and the check's new reads wait for
      the human's change set (`ops/stack.sh env ridge`, plan step 15); the job is green without them.
-   - **shown cancelled:** a newer push to `main` took its place in the queue; that push's own
+   - **shown cancelled:** a newer push to `main`, or a newer press of `ci` on `main`, took its place in the queue; that push's own
      deploy carries it.
    - **red:** a defect, never a run to repeat. Fix forward and push, or revert the bad commit on
      `main` and push: the deploy that follows ships the reverted tree. Re-running an older run
@@ -349,7 +382,7 @@ the other four still show. It does not cover c-storage: that gate is `make check
 
 ## The check
 
-1. `ops/check.sh ridge`; it ends `== green`, or names each red. Once the stack holds layer four it also
+1. `ops/check.sh ridge` (or `ops/check.sh <env> --reads-only`, [on production](#on-production)); it ends `== green`, or names each red. Once the stack holds layer four it also
    reads the BFF's group, the function (its subnet, group and the names of its variables, never the
    values), the UI's bucket and the one commit in `/health`, the function and `index.html`, then makes a
    fresh client `check-<time>` through the tunnel and signs it in through the app's address, as a

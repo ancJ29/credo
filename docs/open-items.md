@@ -215,14 +215,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
-## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
-
-Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
-one's own password route answer every try, and each wrong one costs the guesser one hashing. On ridge the stage's throttle
-(10 a second) is the only brake. The review accepted that for ridge. A client's own stack has no such stage. The fix is one piece
-for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
-after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
-the first client's own stack.
 
 ## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
 
@@ -476,6 +468,8 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 `ops/lib.sh#L121`, `#L126`, `#L164`, `#L497-L498`, `#L702-L703`: the keys the end-of-run search looks for are on grep's argument list, and a here-string is written to a temp file by bash 3.2 (the Mac's). *Fix:* one lib.sh change: split without here-strings and `grep -f /dev/stdin` on a pipe, as `search_extra` in `ops/root-password.sh` does.
 
+*Narrowed 2026-11-12 (the safe scripts' fix pass):* the deploy check no longer reads the BFF's function settings whole, whose variables hold its two access keys and went through here-strings on every environment, production's included; it reads only the names and two non-secret values (`BFF_FN_QUERY` in `ops/lib.sh`), and a case holds that the stand-in refuses a read without that query. What stays is the box's key files read through here-strings (`read_keys`, `bff_env_read`) and the search's argument list.
+
 *Trigger:* the next lib.sh change.
 
 ## 51. The leak advice "nothing to replace" is wrong for a password — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I3)
@@ -502,9 +496,9 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 *Trigger:* the next change to the script.
 
-## 55. `OPS_TEST_NO_TTY` or `RIDGE_SCRIPTS_DIR` in the environment bypass two checks — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I7)
+## 55. `OPS_TEST_NO_TTY` or `RIDGE_SCRIPTS_DIR` in the environment bypass two checks on ridge — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I7; narrowed 2026-11-12)
 
-`ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
+`ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Narrowed:* on an environment not listed in `INVENTED_ENVS`, `real_ok` refuses both unless the tests' marker is set, so `operator.sh` is safe on production; `root-password.sh` refuses it outright. Only ridge keeps the switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
 
 *Trigger:* the next change to either script.
 
@@ -838,49 +832,9 @@ About 119.4 s summed over 47 tests, as long as the whole package. It met the pla
 `scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
 
 
-## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; `[FIXED]` (tree guard, `138571c4`, 2026-11-07, High; was *parked*, the client-readiness read)
+## 132. A client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07, narrowed 2026-11-12)
 
-*Fixed in the tree guard (`687d8161` to `138571c4`, recap `docs/recaps/2026-11-07-tree-guard.md`):* `ops_match_main` now compares every path `ci.yml`'s push trigger deploys on, read from the base's own `ci.yml`, plus `.gitignore`, so the first fix below was taken and the second rejected (it leaves four scripts uncovered and passes a committed edit). As filed: `ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
-session is always a reviewed one" — and it compares `ops/` and nothing else. But `ridge_cli` runs
-`scripts/src/ridge-main.ts` out of the working copy (`ops/lib.sh#L612-L618`), and that package holds the
-client-delete command. In `main` the command is safe: `untenant` refuses any code that is not the deploy
-check's own (`scripts/src/ridge.ts#L126-L134`), saying in its comment that it has none of the console's gates.
-Nothing proves the `scripts/` on disk is that `main`. `ops/seed.sh#L41` and `ops/root-password.sh#L89` close it
-for themselves with `git diff --quiet HEAD` ("the write would run code /health cannot name");
-`ops/check.sh`, `ops/app.sh` and `ops/operator.sh` do not, and `check.sh` calls `untenant` from
-`cleanup_extra` on every exit path including a refusal (`ops/check.sh#L36-L47` through `ops/lib.sh#L106`).
-So an uncommitted edit, or a worktree on a branch, runs against whatever environment the script is given with
-the box's keys. *Fix:* either `ops_match_main` covers `scripts/` as well, or the three scripts gain the
-clean-tree check the other two already have. *Severity:* High against a client's stack; on ridge it risks demo
-data alone. *Trigger:* before any environment but ridge exists.
-
-## 131. `ops/check.sh` puts the box's internal and super-admin keys on an operator's machine, for any environment — the machine; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
-
-`ops/tunnel.sh#L35-L36` refuses every environment but ridge, in its own words, because "another stack's admin
-keys would land on this disk, and the collection would write test records into it". `ops/check.sh` does both and
-refuses no environment: it opens its own connection to the box (`#L80`), reads the keys (`#L114`) and writes the
-internal access key and the super-admin key into a Bruno environment file on the machine running it (`#L120`,
-through `ops/lib.sh#L530-L552`). The file is 0600, git-ignored and removed by `on_exit` (`ops/lib.sh#L107`), and
-the deploy job runs this script, so the same would be true of a client's stack's keys on a runner. It also makes
-a client and signs in through the edge each run (`#L165-L171`), and each Bruno run leaves a service row behind
-(`#L164`). *Fix:* `check.sh` takes ridge alone until the guard `tunnel.sh` names exists, or gets a client-stack
-mode that skips the collection and the client it makes. *Trigger:* before a client's own stack.
-
-## 132. Six of the nine `ops/` scripts take any environment name, and a client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07)
-
-Three scripts refuse any environment but ridge and each says why: `ops/tunnel.sh#L35-L36` (another stack's admin
-keys on this disk), `ops/root-password.sh#L79` ("a client's own stack is the console's, never this") and
-`ops/seed.sh#L36` ("a client's stack must never receive demo data"). `ops/stack.sh`, `ops/release.sh`,
-`ops/app.sh`, `ops/check.sh`, `ops/drill.sh` and `ops/operator.sh` carry no such test. On a client's stack today a
-person could therefore make and change the stack, release c-storage, ship the BFF and the UI, run the deploy
-check (item 131), run the crash drill — which kills c-storage and reboots the box, `ops/drill.sh#L4-L7` — and make
-the operator with a one-time join link, `--replace` being the way back from lost passkeys
-(`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
-that client's root password from a terminal**: the only path is the console's route, which needs a live operator
-session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
-*Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
-the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
-*Trigger:* a client's own stack.
+*Narrowed:* the guards this item first asked for are in `ops/lib.sh` (`refuse_real`, `real_ok`), and every script's answer on production is read on one page, [`ops/README.md`](../ops/README.md#on-production). What is left is a missing capability. `ops/root-password.sh` refuses every environment but ridge ("a client's own stack is the console's, never this"), and the console's route needs a live operator session and a fresh passkey touch (`bff/src/routes/root-password.ts`), so a client whose BFF is broken has no way to set one. *Fix:* decide whether a terminal path is wanted for a client's root, and under what proof of the person. *Trigger:* a client's own stack.
 
 ## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
 
@@ -993,9 +947,9 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 `ridge_cli` runs `node --import tsx src/ridge-main.ts` out of `scripts/` (`ops/lib.sh#L635`), and node loads the packages in `scripts/node_modules/` as well as the source. The tree guard (`ops_match_main`, `ops/lib.sh#L180-L218`) compares the tracked and untracked files git does not ignore under the paths `ci.yml` deploys on, plus `.gitignore`; `node_modules/` is ignored (`.gitignore#L41`), so a changed file there is not compared, and nothing verifies the install against `pnpm-lock.yaml`. The deploy job installs with a frozen lock on a fresh checkout, so the hole is the by-hand run on a machine whose install was altered. Its message says only what is compared. *Fix:* a check by hand that the install matches the lock (`pnpm install --offline --frozen-lockfile` leaving nothing changed, or a stamp of the lock's hash written at install and read by the guard). *Trigger:* before a second person runs the ops scripts by hand, or a client's own stack.
 
-## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low)
+## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree on ridge — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low; narrowed 2026-11-12)
 
-`ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh#L635`), so with the variable set the code executed is not the tree the guard compared. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch (`ops/seed.sh#L43`, `ops/root-password.sh#L91`), so it cannot simply go (they test it as a presence check, not as the guard). The guard's message now names what it compares rather than claiming the code run. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`). *Trigger:* the same as item 142.
+`ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh`), so with the variable set the code executed is not the tree the guard compared. *Narrowed:* on an environment not listed in `INVENTED_ENVS`, `real_ok` refuses the variable unless the tests' own marker is set, so only ridge keeps this. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch, so it cannot simply go. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`), on ridge too. *Trigger:* the same as item 142.
 
 ## 144. `ops_match_main`'s `mktemp` is not checked, so a failed one reports a misleading cause — the machine; `[DEFERRED]` (tree guard, the recap's own read, 2026-11-07, Low)
 
@@ -1415,6 +1369,10 @@ documentation.md says an item is numbered and never renumbered, which holds for 
 
 `bff/src/routes/cross-tenant.route.test.ts` puts two companies in one service and has the second try the first's records; it reaches 14 of the 31 handlers in `bff/src/routes/orders.ts`, `bff/src/routes/staff.ts` and `bff/src/routes/reconciliations.ts` (the review's count before the fix pass, which added the photo, the drivers list, the password set and the lists). Still without such a case: the QR issue and the other sign-in routes of a person in staff.ts, a code change, a photo save and the import there, the pricing and the driver lookup inside order create, confirm and send, a driver's own list and delivering, and the rest of those three files. Deferred: a handler is added to the file when its route is next changed. A key under another company's prefix now meets the company's client's refusal (`bff/src/records/records.ts`'s `tenantStorage`) in every handler of those files, since `request.storage` is the only client they can reach, so a missing case leaves only an untested wiring line; what the refusal does not catch is a client made for the wrong company, whose own keys pass, and `resolveTenant` alone decides that. *Trigger:* the first change to a handler in those three files, or the pooling of tenants on one box.
 
+## 256. A guess over many names leaves one small record a name, which nothing but the company's delete removes — the machine; *parked* until the watch reads a box's free disk (the wrong-password wait's plan, 2026-11-11)
+
+The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts a name nobody holds as it counts a real one, so the wait says nothing about who exists, and only a right password clears a count. A guessing run over many invented names therefore leaves one record a name under the company's prefix, a few dozen bytes each, at most as many a second as the door's throttle lets through; a company's delete sweeps them with the rest. Nothing else does. *Limit of the keyed hash:* a wait's key is the name's HMAC under a key derived from the service key, so a copy of the store's data cannot be run against a dictionary for the passwords mistyped into the name box; whoever holds the service key as well (the box's root-only environment file) can, and a changed service key orphans every record (their counts start again, the records stay until the company's delete). *Fix, if it shows:* a sweep of waits whose time ended long ago, or a cap on a company's waits. *Trigger:* the watch's free-disk reading, or a company's wait records passing ten thousand.
+
 ## 230. The open-items log is outside the citation check's living set — the machine; `[DEFERRED]` (the architecture page's fixes, 2026-11-11, Low)
 
 `LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
@@ -1442,3 +1400,69 @@ A row cited twice in one document is the one shape where two branches each remov
 ## 284. The memo's "only `resolveTenant` decides that" leaves out the operator's three acts — the machine; `[DEFERRED]` (the storage client that serves one company's review, reread 2026-11-12, Info)
 
 `docs/memo/bff.md`'s sentence on a client made for the wrong company says only `resolveTenant` in `bff/src/app.ts` decides which company a client serves. The operator's three acts also decide it, each for the client it makes from an id it has just read or minted: the root password route in `bff/src/routes/root-password.ts`, and `createClient` and `deleteClient` in `bff/src/records/clients.ts`. The memo's route tests cover them ("reaches one client only" in the delete and root password route tests), so nothing is unguarded; the sentence is short by three callers. *Fix:* "`resolveTenant`, and the operator's three acts for the client they make". *Trigger:* the next change to that memo section, or a fourth place that calls `tenantStorage`.
+
+## 296. By hand, `ops/release.sh` and `ops/app.sh` ship any commit of `main` to production, one ridge never ran included — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Medium)
+
+Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L47`, `#L91`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
+
+## 297. `ops/stack.sh` rewrites an environment's GitHub environment on every run, and whether production's protection rules survive it is unread — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Low)
+
+Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L294-L296`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
+
+## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+
+The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
+
+## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
+
+Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
+
+## 322. The stance test reads only calls at column 0, so a new script that calls `main_synced` indented is skipped without a word — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh`, the stance section: `grep -qE '^main_synced( |$)' "$f" || continue` selects the scripts it checks, and the awk keys on `^log_start `, `^(refuse_real|real_ok) ` and `^main_synced` too. A tenth script whose `main_synced` sits inside an `if` or a function, or after `step "…";` on one line, is never counted, and the control row (`stance_n -ge 9`) stays green with the nine. Today all nine call it at column 0. *Fix:* select every file outside `lib.sh` that calls `main_synced` at any indentation, and fail one whose call is not at column 0; the README's "every such script" then reads true. *Trigger:* the next script that reaches an environment, or the three later lanes' scripts.
+
+## 323. Two rows of the check's case 7 cannot go red — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh`, case 7: "no Bruno file is written" counts `bruno_files`, which is 0 after every run in any mode, because `ops/check.sh` deletes the file in line and `on_exit`'s `bruno_env_remove` deletes it on every exit; only the `skipped:` half of the row and the `bru.calls` row hold the claim. "The log holds neither key" is 0 in ridge's full run too, since the keys are masked there: it checks that the log is clean, not which mode ran. *Fix:* make the stand-in clone's `bruno/environments` unwritable for the two reads-only runs, so a write would die and turn the run red; or drop that half of the row and label the key row as the log check it is. *Trigger:* the next change to the check's reads-only mode.
+
+## 324. Ridge's full check run pins no read, so the composition in `ops/check.sh` that picks `edge_reads` is held by nothing in the run — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh` (the check's full run, the row asserting calls) and `ops/check.sh`'s last step: changing `edge_reads` to `edge_reads_client` there would drop the six reads from ridge's deploy check and every row would stay green; the function-level rows call `edge_reads` directly, not `check.sh`. *Fix, cheap half:* `$(six_reads "$S/out")` = 6 joins the row (`edge_reads_client`'s reds are `expect` lines, not `die`s). *Fix, verdict half:* the stand-in edge answers `check-t` alone while `check.sh` mints `check-<stamp>`; a mode in `edge.py` that accepts any `check-<digits>t<digits>z` code, named `Check <code>`, lets the row assert `== green`. *Trigger:* the next change to `edge_reads` or to the check's last step.
+
+## 319. A guesser can keep a known name waiting with no end, and only the company's delete clears it — the human's choice; *open* (the wrong-password wait's review, 2026-11-12, Medium)
+
+One wrong try sent as each wait ends (four requests an hour at 15 minutes) restarts the wait, and the person's own window is a few milliseconds. A new password given by the root or the operator does not clear a wait; only a right password with no wait running does, or the company's delete. The root's name is `root` in every company and staff codes are numbered, so one guesser can hold out every name in a company. A person already signed in keeps their session (a week) but cannot change their password during a wait. `docs/memo/bff.md` and the plan's decision 6 now say so. *Remedy, the human's to choose:* (a) an operator act that clears one name's wait; (b) a right password let through during a wait when it comes from a device that already holds a session for that name; or (c) leave it as priced, until a client's risk says otherwise. The machine has not chosen and built nothing. *Trigger:* the human's answer.
+
+*Parked by the human, 2026-11-12 12:05:* the remedy, by device or any lock as a whole, is parked and everything stays as it is, the cloud firewall doing its part. Whether the wait itself lands with this hold left in is asked of the human, not decided.
+
+## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
+
+`ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
+
+## 332. `release.sh`'s and `app.sh`'s reasons claim more than the code holds on a real environment — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+"It ships main's commits alone" (the `real_ok` line of `ops/release.sh` and of `ops/app.sh`): set by hand outside the job, `RELEASE_BINARY` or `APP_BUNDLE` and `APP_UI_DIR` ship any file; only HEAD must be on main, the release does not check the file at all, and the app's ship checks only that the bundle carries HEAD's sha. `real_ok` refuses the tests' two switches so the code run there is the reviewed tree's, but not these two job switches: a larger form of item 143's hole, the shipped code itself. And "changes nothing else" in `ops/app.sh`: on a box without them it makes the BFF's service and `bff.env`, and it rewrites the function's environment at every run. *Fix:* on a real environment refuse those variables unless `GITHUB_ACTIONS` is `true`, or name them in item 296; word app.sh's reason as what it does. *Trigger:* the production lane's plan (item 296).
+
+## 333. Two sentences say a save is proved on ridge first, which no code holds — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/README.md`, "On production" ("A save is proved by ridge's full check, on the same commit, before a production check reads") and `docs/client-readiness.md`'s "Only reads" bullet say it as fact. Nothing orders the two checks, and item 296 says the by-hand path can ship a commit ridge never ran. *Fix:* word both as the production lane's rule ("must be proved first; item 296"). *Trigger:* the production lane's plan (item 296).
+
+## 338. `docs/client-readiness.md` lists what the wait leaves without the endless hold of item 319 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+Gap 4 and the passage near it say what the wait leaves: one guesser trying many names meets only the stage's throttle, and each invented name leaves a small record (item 256). Neither names that a guesser can also keep a known name waiting with no end (item 319). *Fix:* add that to both places, or point both at item 319. *Trigger:* the human's answer on item 319.
+
+## 339. The memo, the plan, item 256 and `sign-in-wait.ts`'s comment name the box's root-only file as the only other holder of the service key — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`ops/app.sh` also puts `SERVICE_ACCESS_KEY` into the function's environment (its `update-function-configuration`), so whoever can read that configuration holds the key too. The four places say "the box's root-only environment file" as if it were the one other copy. *Fix:* name both in the four places. *Trigger:* the next change to the wait's pages.
+
+## 340. A unit test title says a wait's key ends in the name's SHA-256, and case 14 would stay green if the key came from the service key's SHA-256 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`shared/src/records.test.ts`'s title near line 97 ("A sign-in wait's key ends in the name's SHA-256") is out of date: the BFF now keys the hash. Case 14 (`bff/src/sign-in-wait.route.test.ts`, near line 223) asserts the key is not the name's bare SHA-256 and differs between two service keys, which a key derived from the service key's own SHA-256 would also satisfy. *Fix:* reword the title to "a hash", and give case 14 an expected value computed by the intended derivation. *Trigger:* the next change to the wait's key.
+
+## 341. Nothing catches the read-only check's function query drifting to take in the environment again, so the BFF's two keys could reach the shell with every test green — the machine; `[DEFERRED]` (the reread of the safe scripts' fix pass, 2026-11-12)
+
+`ops/lib.sh`, `BFF_FN_QUERY`, is the one query the check reads the function with, and it returns names and two non-secret values only. If it drifts to return `Environment` again, the text check and the stand-in in `ops/test.sh` match it loosely and stay green, while `INTERNAL_ACCESS_KEY` and `SERVICE_ACCESS_KEY` reach the shell and, through bash 3.2's here-strings, a temp file. *Fix:* pin the query's exact string in the test. *Trigger:* the next change to `BFF_FN_QUERY` or to a reader of it.
+
+## 342. `scripts/src/running/claim.ts`'s draft cleanup is pinned by no case, so deleting it stays green — the machine; `[DEFERRED]` (the root-proof tests' review, 2026-11-12)
+
+`claim.ts`'s `rmSync` of the draft after a failed write is run by every failing case but asserted by none: each fails at the folder's creation, before any draft exists. The case it guards, a written draft whose rename then fails, cannot be staged as root without a mock (a directory standing at the claim's name throws earlier, at the existence check). *Fix:* pin the draft's removal on a failed rename with a mocked `renameSync`, or drop the line as unreachable. *Trigger:* the next change to `claim.ts`.
