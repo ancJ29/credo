@@ -790,7 +790,8 @@ echo "== the check reads the copy (row 15) and the restore writes a new file and
 cp_now=$(jq -n '"2026-11-12T10:10:00Z" | fromdateiso8601')
 cp_status() { printf '{"freeBytes": %s, "lastWriteAt": %s}' "$1" "$2"; } # <free bytes> <quoted time or null>
 cp_listing() { # <newest copy's time> <newest full copy's time>
-  printf '[{"Key":"%sltx/0/0000000000000001-0000000000000002.ltx","LastModified":"%s"},{"Key":"%s0000000000000001-0000000000000001.ltx","LastModified":"%s"}]' "$COPY_PATH/" "$1" "$COPY_FULL_PREFIX" "$2"
+  # the S3 client's own layout, written out here and not read from the constant: <path>/<four hex digits of the level>/<name>
+  printf '[{"Key":"Box/records/0000/0000000000000001-0000000000000002.ltx","LastModified":"%s"},{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"%s"}]' "$1" "$2"
 }
 # copy_eval <lib.sh> <status> <listing>: the faults that file's own copy_problems names (the constants stay this tree's)
 copy_eval() {
@@ -812,6 +813,13 @@ check "  an empty bucket is red for no copy and no full copy; a file not yet wri
   "$(copy_eval "$OPS_DIR/lib.sh" "$(cp_status 5000000000 null)" null | paste -sd'|' -)"
 check "  a copy with no full copy is red, and a write time in S3's own form (+00:00) is read" "the bucket holds no full copy" \
   "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | jq -c --arg p "$COPY_FULL_PREFIX" 'map(select(.Key | startswith($p) | not))')")"
+check "  the full copies' prefix is the S3 client's <path>/0009/, declared once" "Box/records/0009/" "$COPY_FULL_PREFIX"
+check "  a bucket laid out as the file replica's ltx/9/ holds no full copy for the check (the layout is S3's, not a folder's)" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | sed 's#Box/records/0009/#Box/records/ltx/9/#; s#Box/records/0000/#Box/records/ltx/0/#')")"
+# the newest full copy is the largest key, not the latest LastModified: the older name is the one touched today
+cp_keyorder='[{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"2026-11-12T00:00:00+00:00"},{"Key":"Box/records/0009/0000000000000001-0000000000000009.ltx","LastModified":"2026-11-05T00:00:00+00:00"},{"Key":"Box/records/0000/0000000000000009-0000000000000009.ltx","LastModified":"2026-11-12T10:00:00+00:00"}]'
+check "  the newest full copy is the one with the largest name, not the latest LastModified" "the newest full copy is 7 days old, over 6 days" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_keyorder")"
 # row 16: the restore's box script and the script that calls it, read as text
 # shellcheck disable=SC2016 # the file's source text is searched, not expanded
 restore_guard() { # <lib.sh> <restore.sh>
@@ -2449,7 +2457,7 @@ out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
 check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
 # the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
 check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
-  "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ltx/' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
+  "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ --query' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
 printf '{"freeBytes": 1000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
 cp_listing 2026-01-01T00:00:00+00:00 2026-01-01T00:00:00+00:00 >"$CHK/listing.json"
 chk_run copyred check.sh ridge --reads-only

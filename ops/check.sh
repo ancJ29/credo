@@ -131,7 +131,7 @@ if [ -z "$copy_bucket" ]; then
   echo "skipped: $ENVNAME's stack holds no copy bucket yet"
 else
   copy_state=$(copy_status) || die "c-storage's /api/status did not answer on the box"
-  copy_listing=$(aws s3api list-objects-v2 --bucket "$copy_bucket" --prefix "$COPY_PATH/ltx/" \
+  copy_listing=$(aws s3api list-objects-v2 --bucket "$copy_bucket" --prefix "$COPY_PATH/" \
     --query 'Contents[].{Key: Key, LastModified: LastModified}' --output json)
   copy_faults=$(copy_problems "$copy_state" "$copy_listing" "$(date +%s)")
   if [ -z "$copy_faults" ]; then

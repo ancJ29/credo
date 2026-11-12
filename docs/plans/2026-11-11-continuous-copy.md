@@ -127,6 +127,8 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
 | 12 | 👤 The release, by your push to `main` or `ops/release.sh ridge`, then `ops/check.sh ridge` | the release's log names the disk mounted and the memory with Litestream running; the check's log reads `== green` with the copy fresh | 5 to read |
 | 13 | 👤 The drill: `ops/drill.sh ridge`, your second point | its log reads row 17 both ways and `== green`; `ops/check.sh ridge` after it green again | 5 to read |
 
+Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/9/`, was the file replica's (the folder rehearsal of step 1 showed it); Litestream 0.5.18's S3 client keys level 9 as `<path>/0009/<min>-<max>.ltx`, and the check and its fixtures now read that, the newest full copy picked by its largest name; the evidence is `orch/worktrees/research/2026-11-12-litestream-layout.md`, "The source at v0.5.18".
+
 - [x] **Step 1, ticked 2026-11-11.** Litestream 0.5.18 (macOS arm64) copied c-storage's scratch file to a
   folder with `replicate -exec`; a code registered answered 201 and 409 again; a restore to a new path
   carried the code, so a second c-storage on it answered 409, and a restore to a moment before the
@@ -177,8 +179,8 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   no admin key). The seven-routes count in c-storage's `CLAUDE.md` and `README.md` follows.
 - [x] **Step 5, ticked 2026-11-12.** `ops/check.sh` gains a step that reads the copy: c-storage's `/api/status`
   read on the box (`copy_status` in `ops/lib.sh`; the internal key goes from its file into curl's config on stdin and never
-  leaves the box, so it runs on a real environment too) and the bucket's objects under `Box/records/ltx/`; `copy_problems`
-  names a red for a copy more than 300 s behind the last write, a newest full copy (the `ltx/9/` level) over six days old,
+  leaves the box, so it runs on a real environment too) and the bucket's objects under `Box/records/`; `copy_problems`
+  names a red for a copy more than 300 s behind the last write, a newest full copy (the `0009/` level) over six days old,
   none at all, or the records disk under 1 GiB free. The new `ops/restore.sh <env> [--at <time>] [--onto-live]` runs
   `box_restore` (in `ops/lib.sh`) on the box: by default a new file `restored-<stamp>.db` on the records disk, nothing live
   touched; `--onto-live` stops c-storage, moves the live file, its wal, shm and Litestream's state folder to `.aside-<stamp>`
@@ -192,7 +194,7 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   comparison reversed (every sound case red); the first batch hid the other two behind the floor, so lag and full were rerun
   together. Row 16 was seen red by the restore's target changed to the live path (the guard, "does not write to the new
   file") and the script's default flipped to the live path (the guard and the whole run's "writes a new file" cases). Unproven
-  here: the bucket's key layout (`ltx/9/` for full copies) is Litestream's as read, not seen against S3, and a full listing of
+  here: the bucket's key layout (`0009/` for full copies, from Litestream's S3 client source, which corrected the first build's `ltx/9/`) is not yet seen against S3, and a full listing of
   the prefix grows with the writes (seven days at most); both are for the check on ridge. Row 17 and the blank-disk restore
   are the drill's and your runs'.
 
