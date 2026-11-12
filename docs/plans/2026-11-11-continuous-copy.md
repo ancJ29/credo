@@ -230,7 +230,11 @@ Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/
   file and a name, one left that is pinned to a commit and so stays right (7); the
   500 tests skip routes by path (8). Deferred as items 378 to 382. On the merged tree `bash ops/test.sh` exit 0 with no
   FAIL line, `shellcheck -x` as the gate runs it exit 0, `cfn-lint` on the three templates exit 0 (none was touched), the
-  citation test exit 0, prettier over the pages touched exit 0, and c-storage's server package tests exit 0.
+  citation test exit 0, prettier over the pages touched exit 0, and c-storage's server package tests exit 0. The reviewer's reread then found two more, fixed the
+  same day: the blank-disk restore now falls back to the release's sent files on a box no release has finished on, and both
+  scripts replace a stale fstab line for a new disk; the default restore's free-space sum no longer stops when c-storage is
+  stopped and has no write-ahead file. Each has a row, seen red against the first build's form; the whole `bash ops/test.sh`
+  ran again at exit 0 with no FAIL line, then the citation test exit 0. Two reread notes went into item 382.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.

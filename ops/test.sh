@@ -978,8 +978,8 @@ refuses "  a release that lets a hand-formatted disk through to c-storage is ref
 # the restore reads the address from the same file the unit does (the region is in it), onto a new file, the live path, or a blank disk
 # shellcheck disable=SC2016 # the file's source text is searched, not expanded
 restore_address_guard() { # <lib.sh>
-  [ "$(grep -c '^/opt/c-storage/litestream restore .* "\$COPY_URL"$' "$1")" = 2 ] || die "a restore does not read the address the release wrote"
-  [ "$(grep -c '^. /etc/c-storage/copy.env$' "$1")" = 2 ] || die "a restore does not read the unit's copy.env"
+  [ "$(grep -cE '^("[$]bin"|/opt/c-storage/litestream) restore .* "[$]COPY_URL"$' "$1")" = 2 ] || die "a restore does not read the address the release wrote"
+  [ "$(grep -cE '^(\. |envf=)/etc/c-storage/copy.env$' "$1")" = 2 ] || die "a restore does not read the unit's copy.env"
 }
 passes "  and the restore, onto a new file, the live path or a blank disk, restores from the address the release wrote (the unit's file)" restore_address_guard "$OPS_DIR/lib.sh"
 # shellcheck disable=SC2016 # sed programs, in single quotes
@@ -1062,15 +1062,55 @@ blank_restore_guard() { # <lib.sh>
   [ -s "$b" ] || die "lib.sh has no box_restore_blank"
   need "$b" 'systemctl is-active --quiet c-storage' "the blank-disk restore does not refuse a running c-storage"
   need "$b" '^\[ ! -e "\$mount/c-storage.db" \] \|\| \{ echo "the records disk already holds c-storage.db' "the blank-disk restore does not refuse a disk that holds a c-storage.db"
-  first_before "$b" 'mkfs[.]xfs' '^/opt/c-storage/litestream restore' "the disk is not formatted before the restore"
-  first_before "$b" '^ *mount "\$mount"$' '^/opt/c-storage/litestream restore' "the restore runs before the disk is mounted"
+  first_before "$b" 'mkfs[.]xfs' '^"\$bin" restore' "the disk is not formatted before the restore"
+  first_before "$b" '^ *mount "\$mount"$' '^"\$bin" restore' "the restore runs before the disk is mounted"
   first_before "$b" 'systemctl is-active --quiet c-storage' 'mkfs[.]xfs' "a running c-storage is looked for after the disk is formatted"
   need "$b" '^args=\(-o "\$mount/c-storage.db"\)$' "the blank-disk restore does not write onto the records path"
   need "$b" '\[ -z "\$type" \] \|\| \[ "\$type" = xfs \]' "the blank-disk restore formats or mounts a filesystem that is not XFS"
+  need "$b" '^if \[ ! -e "\$envf" \]; then envf=/opt/c-storage/copy.env.new; fi$' "the blank-disk restore does not fall back to the release's copy.env.new on a box no release has finished on"
+  need "$b" '^if \[ ! -x "\$bin" \]; then bin=/opt/c-storage/litestream.new; chmod 0755 "\$bin"; fi$' "the blank-disk restore does not fall back to the release's litestream.new on a box no release has finished on"
   [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the blank-disk restore deletes a file"
 }
 passes "the blank-disk restore looks for a running c-storage first, formats only a disk with no filesystem, mounts, and restores onto the records path, refusing a disk that holds a c-storage.db" \
   blank_restore_guard "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that needs the installed copy.env on a replacement box (only the .new files are there) is refused" "copy.env.new" \
+  blank_restore_guard "$(mutated lib-blank-new.sh '/^if \[ ! -e "$envf" \]; then envf=/d' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  and one that needs the installed binary is refused" "litestream.new" \
+  blank_restore_guard "$(mutated lib-blank-bin.sh '/^if \[ ! -x "$bin" \]; then bin=/d' "$OPS_DIR/lib.sh")"
+# The fstab line, run on a copy of fstab: a disk whose UUID is not the one fstab holds for the mount (a new disk on
+# the same box) gets its own line in place of the old, other lines kept, and a repeat changes nothing
+fstab_probe() { # <script holding the line> → dies unless the line leaves exactly the new disk's line for the mount
+  local line f=$WORK/fstab-probe
+  line=$(grep -m1 'etc/fstab' "$1" | sed "s#/etc/fstab#$f#g")
+  printf 'UUID=oldold /var/lib/private/c-storage xfs defaults,nofail 0 2\nUUID=keep / xfs defaults 0 0\n' >"$f"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed on a repeat"
+  if [ "$(grep -c 'c-storage' "$f")" != 1 ] || ! grep -q '^UUID=newnew /var/lib/private/c-storage ' "$f" || ! grep -q '^UUID=keep ' "$f"; then
+    die "a new disk is mounted by the old disk's fstab line: $(tr '\n' '|' <"$f")"
+  fi
+}
+fstab_both() { fstab_probe "$OPS_DIR/lib.sh" && fstab_probe "$OPS_DIR/release.sh"; }
+passes "a new disk on the same box replaces the old disk's fstab line, keeps the others, and a repeat adds none (records step and blank restore)" \
+  fstab_both
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a fstab line that keeps the old disk's UUID is refused" "old disk's fstab line" \
+  fstab_probe "$(mutated lib-fstab.sh 's#^  grep -q "^UUID=$uuid $mount " /etc/fstab .*#  grep -q " $mount " /etc/fstab || echo "UUID=$uuid $mount xfs defaults,nofail 0 2" >>/etc/fstab#' "$OPS_DIR/lib.sh")"
+# the free-space sum with c-storage stopped (no -wal beside the file), under the box script's own options
+used_probe() { # <lib.sh> → dies unless the sum is the file's size when there is no -wal
+  local d=$WORK/used-probe snippet
+  mkdir -p "$d"
+  head -c 4096 /dev/zero >"$d/c-storage.db"
+  rm -f "$d/c-storage.db-wal"
+  snippet=$(sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" | awk '/^used=/ {f = 1} /^free=/ {f = 0} f')
+  [ -n "$snippet" ] || die "lib.sh has no free-space sum"
+  [ "$(bash -c "set -euo pipefail; db=$d/c-storage.db; $snippet; echo \$used")" = 4 ] || die "the free-space sum stops the restore when c-storage is stopped (no -wal beside the file)"
+}
+passes "the default restore's free-space sum does not stop the script when c-storage is stopped and there is no -wal" used_probe "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  the one-line sum over both names (the first build) is refused" "no -wal beside" \
+  used_probe "$(awk '/^used=0$/ {print "used=$(du -sk \"$db\" \"$db-wal\" 2>/dev/null | awk '"'"'{s+=$1} END{print s+0}'"'"')"; skip = 3; next} skip > 0 {skip--; next} {print}' "$OPS_DIR/lib.sh" >"$WORK/lib-du.sh"; echo "$WORK/lib-du.sh")"
 # shellcheck disable=SC2016 # sed programs, in single quotes
 refuses "  a restore that does not look for a running c-storage is refused" "running c-storage" \
   blank_restore_guard "$(mutated lib-blank-run.sh 's#systemctl is-active --quiet c-storage#false#' "$OPS_DIR/lib.sh")"

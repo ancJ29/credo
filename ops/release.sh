@@ -169,7 +169,7 @@ if [ -z "$(blkid -o value -s TYPE "$dev" || true)" ]; then
   echo "records disk: formatted"
 fi
 uuid=$(blkid -o value -s UUID "$dev")
-grep -q " $mnt " /etc/fstab || echo "UUID=$uuid $mnt xfs defaults,nofail 0 2" >>/etc/fstab
+grep -q "^UUID=$uuid $mnt " /etc/fstab || { { grep -v " $mnt " /etc/fstab || true; echo "UUID=$uuid $mnt xfs defaults,nofail 0 2"; } >/etc/fstab.new && mv /etc/fstab.new /etc/fstab; }
 systemctl daemon-reload
 old=$mnt/c-storage.db
 tmp=/run/records-new

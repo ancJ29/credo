@@ -693,18 +693,25 @@ if ! mountpoint -q "$mount"; then
   [ -z "$type" ] || [ "$type" = xfs ] || { echo "the records disk holds a $type filesystem, not the XFS this restore makes or mounts" >&2; exit 1; }
   if [ -z "$type" ]; then mkfs.xfs -q "$dev"; echo "records disk: formatted"; fi
   uuid=$(blkid -o value -s UUID "$dev")
-  grep -q " $mount " /etc/fstab || echo "UUID=$uuid $mount xfs defaults,nofail 0 2" >>/etc/fstab
+  grep -q "^UUID=$uuid $mount " /etc/fstab || { { grep -v " $mount " /etc/fstab || true; echo "UUID=$uuid $mount xfs defaults,nofail 0 2"; } >/etc/fstab.new && mv /etc/fstab.new /etc/fstab; }
   systemctl daemon-reload
   mount "$mount"
 fi
 mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
 [ ! -e "$mount/c-storage.db" ] || { echo "the records disk already holds c-storage.db: this restore is for a disk without one" >&2; exit 1; }
+# On a replacement box no release has finished, so the address and the binary are still the release's .new files
+# (it sends them, then stops at the records step that refuses): fall back to them.
+envf=/etc/c-storage/copy.env
+bin=/opt/c-storage/litestream
+if [ ! -e "$envf" ]; then envf=/opt/c-storage/copy.env.new; fi
+if [ ! -x "$bin" ]; then bin=/opt/c-storage/litestream.new; chmod 0755 "$bin"; fi
+[ -e "$envf" ] && [ -x "$bin" ] || { echo "no copy address or Litestream on this box, installed or sent: run a release first (it stops at the records disk, after sending them)" >&2; exit 1; }
 set -a
-. /etc/c-storage/copy.env
+. "$envf"
 set +a
 args=(-o "$mount/c-storage.db")
 if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
-/opt/c-storage/litestream restore "${args[@]}" "$COPY_URL"
+"$bin" restore "${args[@]}" "$COPY_URL"
 [ -s "$mount/c-storage.db" ] || { echo "the restore wrote no file" >&2; exit 1; }
 chmod 600 "$mount/c-storage.db"
 echo "restored=$mount/c-storage.db"
@@ -724,7 +731,10 @@ new=$mount/restored-$stamp.db
 mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
 # The restore writes a second whole file onto the disk the live c-storage writes to: it must leave room, or the
 # live saves fail. Under twice the live file (and its companions) free, nothing is written.
-used=$(du -sk "$db" "$db-wal" 2>/dev/null | awk '{s+=$1} END{print s+0}')
+used=0
+for f in "$db" "$db-wal"; do
+  if [ -e "$f" ]; then used=$((used + $(du -sk "$f" | cut -f1))); fi
+done
 free=$(df -Pk "$mount" | awk 'NR==2{print $4}')
 if [ "$free" -lt $((used * 2)) ]; then
   echo "the records disk has $((free / 1024)) MiB free, under twice the live file's $((used / 1024)) MiB: nothing was written" >&2
