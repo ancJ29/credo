@@ -2,7 +2,7 @@
 # scripts) or ops, on a branch or in a pull request. A red here is a defect to fix, never a run to
 # repeat. On a push to main, or a press of this workflow on main, once the gates are green, the `deploy` job releases c-storage, ships
 # the BFF and the UI, and checks ridge: it never moves ridge backwards (an older commit arriving
-# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main.
+# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main or a newer press.
 name: ci
 
 on:
@@ -207,7 +207,7 @@ jobs:
         run: bash ops/test.sh
 
   # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main, or
-  # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
+  # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions for the push, docs/plans/2026-11-12-ridge-by-script.md for the press).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
   # ops/test.sh fails when a step lacks it. Releases only: a template change stays the human's change set.

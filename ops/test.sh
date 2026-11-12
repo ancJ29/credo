@@ -788,7 +788,7 @@ check "a key in the log: the run fails" 1 "$rc"
 check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
 check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
-echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
+echo "== the workflow's deploy job (a push to main or a press of ci on main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
 WORKFLOW=$REPO_DIR/.github/workflows/ci.yml
 deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
   awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
