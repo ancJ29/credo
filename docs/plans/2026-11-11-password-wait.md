@@ -203,13 +203,21 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   red with the loop one try short. Six wrong tries need no real waiting, since the wait starts on
   the sixth answer. Not yet run: the full walk, which is point 2, the human's; its six pictures are
   committed after it.
-- [ ] **5. The pages the piece makes true.** About 10 minutes, as the last step that brought a memo
+- [x] **5. The pages the piece makes true.** About 10 minutes, as the last step that brought a memo
   and a guideline in line with the code. `docs/memo/bff.md` gains a section titled as its claim,
   "Six wrong passwords make a name wait, and a right one is refused during the wait", with its
   price and the hazard of item 256; `docs/client-readiness.md`'s lines that say nothing slows a
   guess (`#L156`, `#L168`, `#L289`, `#L546`) and `docs/products.md#L92`'s say what holds now.
   *Done when:* the citation test exits 0 and `git grep -n -i -e "nothing slows a" -e "only brake on
   a guess" -e "limit on wrong" docs ':!docs/open-items.md' ':!docs/plans' ':!docs/recaps'` counts 0.
+  *Done, 2026-11-12:* `docs/memo/bff.md` has the section titled as its claim, with its numbers, the
+  two routes counted together, the right password refused during a wait, the price (anyone who knows
+  a name can make it wait) and the hazard of item 256, and a row in its table. `docs/client-readiness.md`
+  (the heading, the guess paragraph, the log sentence, the fourth gap and the product-reader
+  paragraph) and `docs/products.md`'s first known gap now say the wait holds and what it leaves.
+  The grep counts 0 and the citation test ended `== exit 0`. Each sentence was read against
+  `bff/src/records/sign-in-wait.ts`, the two routes in `bff/src/app.ts`, `shared/src/signins.ts` and
+  `scripts/src/demo/apply.ts`. Item 28 stays for the recap to delete.
 - [ ] **6. The review**, on opus, the code being sonnet's (QA rule 5): one review, one fix pass,
   that pass's own checks the re-check, and the reviewer's reread of the fixed lines. About 23
   minutes: 11, 9 and 3, the last rows of each. *Done when:* every finding is tagged in the recap

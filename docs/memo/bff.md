@@ -43,6 +43,7 @@ Drawn from [`app.ts`](../../bff/src/app.ts), [`errors.ts`](../../bff/src/errors.
 | The company is read first, and reading it authenticates nobody | a caller taking a resolved company for a signed-in person | [the company](#the-company-is-resolved-first-and-that-authenticates-nobody) |
 | A session lasts a week; an operator's ends an hour unused, twelve from issue | a console left open all day | [the session](#a-session-lasts-a-week-and-an-operators-an-hour-unused) |
 | A 401 means the session is over; a 403 means only this act is refused | an outage signing everyone out | [401 against 403](#a-401-ends-the-session-a-403-ends-only-the-act) |
+| Six wrong passwords make a name wait, and a right one is refused during the wait | a password guessed by trying | [the wait](#six-wrong-passwords-make-a-name-wait-and-a-right-one-is-refused-during-the-wait) |
 | Permissions are resolved on **every** call, in three layers | a right taken away still working | [the layers](#the-permission-layers-are-read-on-every-call) |
 | A refusal carries a status, a short message, and nothing of its cause | a caller learning why from an error body | [the wire](#a-refusal-says-its-status-and-nothing-of-its-cause) |
 | A c-storage that cannot answer is 503, never 401 | an outage read as a lapsed session | [503](#a-c-storage-that-cannot-answer-is-a-503-never-a-401) |
@@ -210,6 +211,41 @@ key. A call that times out, is refused or returns an answer in no known shape th
 - *Hazard no gate catches:* a write whose **answer** was lost is indistinguishable from a write
   that never landed. Only a route that re-reads can tell, and that is per route
   ([the identity compare](#a-record-that-already-holds-what-was-asked-counts-as-our-own-write)).
+
+## Six wrong passwords make a name wait, and a right one is refused during the wait
+
+`bff/src/records/sign-in-wait.ts`'s `countTry` counts every try at a password before the password is
+checked, and `shared/src/signins.ts`'s `waitAfter` says what the count costs: wrong tries one to
+five wait nothing, the sixth starts **30 seconds**, each next doubles it, and from the eleventh it is
+**15 minutes** (`WAIT_MAX_SECONDS`). Both routes that check a password, the sign-in in `bff/src/app.ts`
+(by a code or an email, `accountOf` turning the email into the code) and one's own password in the
+same file, count under the one name the sign-in record is kept under, so neither is the way round
+the other. The count is one record a name, `tenant.<id>.signin-wait.<SHA-256 of the name>`
+(`recordKeys.tenant(id).signInWait`), holding the wrong tries and when the wait ends; it survives a
+restart and every copy of the function sees it. The key holds a hash because a name nobody holds is
+often a password typed into the wrong box. A right password removes the record (`clearWait`).
+
+- *The surprise for a caller:* **a right password is refused while the name waits.** The try is
+  answered **429** `{ error: 'Wait', waitSeconds }` before the password is read, so the person who
+  typed it right sees what a guesser sees. A try during a wait is no wrong try and does not
+  lengthen it, so the wait ends by itself. The sixth wrong try itself is also a 429, the first five
+  wrong stay a 401 at the sign-in and a 403 on one's own password. A new password given by the root
+  or the operator does not clear a wait.
+- *Rejected:* a count per company, which lets one guesser shut a whole company out; a count per
+  address, which the back end cannot read (Fastify is built with no `trustProxy`) and which one
+  office often shares; a count in memory, which a restart and a second copy of the function would
+  not share.
+- *Price of the choice:* anyone who knows a name can make that person wait by typing six wrong
+  passwords, up to 15 minutes at a time, and no password of the person's own gets past it. A name
+  nobody holds is counted and waits like a real one, so the wait says nothing about who exists, and
+  the sign-in's one answer for every refusal (the section above) stays true. There is no decay with
+  time: only a right password clears a count.
+- *Hazard no gate catches:* **a guess over many invented names leaves one small record a name**,
+  which nothing but the company's delete sweeps, at most as many a second as the door's throttle
+  lets through (open item 256). *Trigger:* the watch reading a box's free disk, or a company's wait
+  records passing ten thousand.
+- *How the count is written:* a try writes before it checks, over the record's tag, and reads again
+  on a moved one, `ATTEMPTS` times, then a 503 with no password checked, as `rewriteSignIn` does.
 
 ## A write over a moved record is tried three times
 
