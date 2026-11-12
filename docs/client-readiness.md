@@ -59,11 +59,11 @@ A deployment's data is one SQLite file on one box
 copy and its restore are designed and deferred to a signed client, on the stated reasoning that
 ridge holds no real records ([open item 6](open-items.md)). That is a documented deferral, not
 something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
-simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role").
+simply do not exist yet ([`ops/env.yml#L116`](../ops/env.yml#L116) says "no instance role").
 
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
-[`ops/env.yml#L122-L128`](../ops/env.yml#L122)). So anything that terminated or replaced the instance took every
+[`ops/env.yml#L145-L151`](../ops/env.yml#L145)). So anything that terminated or replaced the instance took every
 record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
 advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `0f7d69c1`),
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
@@ -130,8 +130,8 @@ client's stack, whatever it is called, meets the rules below.
 The API in front of the BFF answers anyone, which the template states in its own words: one
 catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
 answers anyone; the throttle bounds what that costs"
-([`ops/env.yml#L251`](../ops/env.yml#L251), the stage at
-[`#L275-L286`](../ops/env.yml#L275)). That the address is reachable is recorded, with its history,
+(the comment above `ops/env.yml`'s `Api`, the stage at
+`ApiStage` in the same file). That the address is reachable is recorded, with its history,
 as [open item 121](open-items.md): nobody decided it, it followed from the Region not offering
 Lambda function URLs, and it is parked until a client signs. Read "answers anyone" as *reachable*,
 not *unauthenticated* — a call arriving that way still meets the client header, the session and the
@@ -148,7 +148,7 @@ still the only brake on one guesser trying many names, and each invented name le
 *The older one has been there all along:* the function writes a line per request to
 `/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
 `options` to an empty object and hands it on (`#L12`), so `bff/src/server.ts`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
-`LoggingConfig` names that group ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). An earlier
+`LoggingConfig` names that group (`ops/env.yml`'s `Bff`). An earlier
 version of this page said a guessing run would leave no trace at all; that was wrong when it was
 written. What this page has not verified is what a Fastify request line holds (read as: a method,
 a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
@@ -156,14 +156,14 @@ all; that would need a run. What is settled, in the direction of no: Fastify is 
 `trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
 from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and on ridge:* the stage's access log, one
 JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
-`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
-[`#L284-L286`](../ops/env.yml#L284)). **Measured, 2026-11-08 18:11 on ridge: for a call through the
+`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs` and `ApiStage`'s `AccessLogSettings`, both in
+`ops/env.yml`). **Measured, 2026-11-08 18:11 on ridge: for a call through the
 distribution the line recorded one public address, outside AWS's published ranges (the
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
-connection and the template makes the API a CloudFront origin (`ops/env.yml#L388`); that was
-reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing watching the
-server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
+connection and the template makes the API a CloudFront origin (`ops/env.yml#L411`); that was
+reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing yet telling anyone when the
+server stops ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
 Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
 so they leave nothing in the function's log and appear only in the stage's log, which is what this
@@ -218,7 +218,7 @@ Masking itself is thorough: every run remembers each secret and searches its own
 end ([`ops/lib.sh#L118-L139`](../ops/lib.sh#L118)). Two known weaknesses in *how* it searches are
 already recorded as [open item 50](open-items.md) — the keys reach `grep`'s argument list
 ([`#L122`](../ops/lib.sh#L122)) and the here-strings that read the box's key files
-([`#L497-L498`](../ops/lib.sh#L497), [`#L702-L703`](../ops/lib.sh#L702)) are written to a temp file
+(`read_keys` and `bff_env_read` in [`ops/lib.sh`](../ops/lib.sh)) are written to a temp file
 by the Mac's bash 3.2.
 
 ### The deploy, and the only route back
@@ -238,7 +238,7 @@ between the two leaves the old commit's name on the function, so the seed's own 
 (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)) never passes against a BFF whose code did not arrive. The UI is safer
 than it looks — assets go first and `index.html` last
 (the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
-([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
+(`ops/env.yml`'s `DeployRole`, its `PutUiFiles` statement) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
 gate that is known to go red under load with nothing broken**: items 27, 56, 112, 113 and 114 are
