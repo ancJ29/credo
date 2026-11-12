@@ -108,8 +108,8 @@ export function buildApp({
   const app = Fastify({ logger });
   if (onRoute) app.addHook('onRoute', onRoute);
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
-  const sessionsOf = (store: TenantStorage) =>
-    createSessions({ storage: store, now, keyOf: recordKeys.tenant(store.tenantId).session });
+  const sessionsOf = (storage: TenantStorage) =>
+    createSessions({ storage, now, keyOf: recordKeys.tenant(storage.tenantId).session });
   app.decorateRequest('tenantId', '');
   // Null until `resolveTenant` sets it; every route that reads it runs after that hook.
   app.decorateRequest('storage', null as unknown as TenantStorage);
@@ -187,7 +187,7 @@ export function buildApp({
    * next step; one that cannot be read throws and answers 503, never a partial set. The setup read
    * for them is handed on, so a route does not read it again: a staff call reads five records. */
   async function viewOf(
-    store: TenantStorage,
+    storage: TenantStorage,
     name: string,
     user: StoredUser,
     handed: { person?: ReadEmployee | null; setup?: SetupRead } = {},
@@ -200,10 +200,10 @@ export function buildApp({
       handed.person && handed.person.employee.id === user.employeeId
         ? handed.person
         : user.employeeId
-          ? await readEmployee(store, store.tenantId, user.employeeId)
+          ? await readEmployee(storage, storage.tenantId, user.employeeId)
           : null;
     if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
-    const read = handed.setup ?? (await readSetup(store, store.tenantId));
+    const read = handed.setup ?? (await readSetup(storage, storage.tenantId));
     return {
       name: person.employee.name,
       root: false,
@@ -262,8 +262,8 @@ export function buildApp({
     if (!who.root && !who.permissions[id]) throw forbidden();
   };
 
-  async function readConfig(store: TenantStorage): Promise<ConfigDoc | null> {
-    const found = await store.getRecord(recordKeys.tenant(store.tenantId).config);
+  async function readConfig(storage: TenantStorage): Promise<ConfigDoc | null> {
+    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).config);
     // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
     return found ? { config: tenantConfigSchema.parse(found.data), version: found.tag } : null;
   }
@@ -312,20 +312,22 @@ export function buildApp({
    * of the person the email names. An email names no one unless that person's record holds it and
    * the company has the email sign-in on (the setup is read first and handed on). No mail is ever
    * sent to it, so it proves nothing but that the root gave it. */
-  async function accountOf(store: TenantStorage, typed: string) {
+  async function accountOf(storage: TenantStorage, typed: string) {
     if (!typed.includes('@')) {
-      return { name: typed, found: await readSignIn(store, store.tenantId, typed), handed: {} };
+      return { name: typed, found: await readSignIn(storage, storage.tenantId, typed), handed: {} };
     }
-    const setup = await readSetup(store, store.tenantId);
+    const setup = await readSetup(storage, storage.tenantId);
     const none = { name: typed, found: null, handed: { setup } };
     if (!staffConfig(setup.setup).fields.email) return none;
-    const claim = await readEmailClaim(store, store.tenantId, typed);
-    const person = claim ? await readEmployee(store, store.tenantId, claim.claim.employeeId) : null;
+    const claim = await readEmailClaim(storage, storage.tenantId, typed);
+    const person = claim
+      ? await readEmployee(storage, storage.tenantId, claim.claim.employeeId)
+      : null;
     if (!person || person.employee.email !== typed) return none;
     const name = normaliseSignInName(person.employee.code);
     return {
       name,
-      found: await readSignIn(store, store.tenantId, name),
+      found: await readSignIn(storage, storage.tenantId, name),
       handed: { setup, person },
     };
   }
@@ -364,10 +366,10 @@ export function buildApp({
     async (request): Promise<SessionReplyBody> => {
       const device = deviceOf(request);
       const body = parse(signInQrRequestSchema, request.body);
-      const { tenantId, storage: store } = request;
-      const held = await readQr(store, store.tenantId, body.id);
+      const { tenantId, storage } = request;
+      const held = await readQr(storage, storage.tenantId, body.id);
       const opened = held ? await sha256Hex(body.secret) : '';
-      const person = held ? await readEmployee(store, store.tenantId, body.id) : null;
+      const person = held ? await readEmployee(storage, storage.tenantId, body.id) : null;
       if (
         !held ||
         !person ||
@@ -377,16 +379,16 @@ export function buildApp({
         throw unauthorized();
       }
       // The person and the setup are read once and handed on to the view.
-      const setup = await readSetup(store, store.tenantId);
+      const setup = await readSetup(storage, storage.tenantId);
       if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
       const name = normaliseSignInName(person.employee.code);
-      const found = await readSignIn(store, store.tenantId, name);
-      const view = found ? await viewOf(store, name, found.user, { person, setup }) : null;
+      const found = await readSignIn(storage, storage.tenantId, name);
+      const view = found ? await viewOf(storage, name, found.user, { person, setup }) : null;
       // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
       // one, now another's.
       if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
       if (
-        (await store.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
+        (await storage.removeRecord(recordKeys.tenant(tenantId).signInQr(body.id), held.tag)) ===
         'moved'
       ) {
         throw unauthorized();

@@ -107,9 +107,9 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
   >(kind: ListKind<Record, Save>) {
     /** Every record of the list. Never a short list that looks whole: more than c-storage returns,
      * or a record that does not parse, is a 500 that names the kind and not the key. */
-    async function everyone(store: TenantStorage) {
-      const listed = await recordTools(store).every(
-        kind.prefix(store.tenantId),
+    async function everyone(storage: TenantStorage) {
+      const listed = await recordTools(storage).every(
+        kind.prefix(storage.tenantId),
         kind.record,
         kind.name,
       );
@@ -118,13 +118,13 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
 
     /** One record written once under its fresh id. The write may have landed while its answer was
      * lost: the record is there, or the failure stands. */
-    async function write(store: TenantStorage, record: Record) {
-      const key = kind.key(store.tenantId, record.id);
+    async function write(storage: TenantStorage, record: Record) {
+      const key = kind.key(storage.tenantId, record.id);
       let written: 'saved' | 'moved';
       try {
-        written = await store.putRecord(key, record, null);
+        written = await storage.putRecord(key, record, null);
       } catch (error) {
-        if (!(await store.getRecord(key))) throw error;
+        if (!(await storage.getRecord(key))) throw error;
         written = 'saved';
       }
       if (written === 'moved') {
@@ -145,7 +145,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * not answer for (503) is `busy`; any other failure is thrown. The code joins `codes` once
      * written, or once a write failed 503, for it may have landed with its read-back failed. */
     async function addOne(
-      store: TenantStorage,
+      storage: TenantStorage,
       raw: unknown,
       codes: Set<string>,
     ): Promise<Result<Record>> {
@@ -155,7 +155,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       if (codes.has(code)) return { kind: 'refused', reason: 'taken' };
       const record = kind.record.parse({ ...row.data, id: randomUUID(), code });
       try {
-        await write(store, record);
+        await write(storage, record);
       } catch (error) {
         if (replyFor(error).status !== 503) throw error;
         codes.add(code);
@@ -205,8 +205,8 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
 
     /** The record as stored now with its tag, answered as the kind's doc (`{ customer, version }`
      * or `{ product, version }`); none if the company holds none by that id. */
-    async function readOne(store: TenantStorage, id: string) {
-      const found = await store.getRecord(kind.key(store.tenantId, id));
+    async function readOne(storage: TenantStorage, id: string) {
+      const found = await storage.getRecord(kind.key(storage.tenantId, id));
       if (!found) return null;
       const parsed = kind.record.safeParse(found.data);
       if (!parsed.success) throw new Error(`a ${kind.name} record does not parse`);
@@ -218,8 +218,8 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
     });
 
     /** The record as stored now; a 404 when there is none. */
-    async function mustRead(store: TenantStorage, id: string) {
-      const one = await readOne(store, id);
+    async function mustRead(storage: TenantStorage, id: string) {
+      const one = await readOne(storage, id);
       if (!one) throw new HttpError(404, 'Not found');
       return one;
     }

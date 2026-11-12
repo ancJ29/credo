@@ -291,9 +291,10 @@ leaves it.**
   `bff/src/routes/operator-root-password.route.test.ts`).
 - *What still does not stop one:* `buildApp` in `bff/src/app.ts` still holds the whole client, for the
   code's index, each deletion's mark, the operator's records and `/health`, so a handler written
-  there could reach it and nothing but review would say so. A key built with another company's id
-  from a wrong id (not the request's) is not caught: the guard checks the company the client was
-  made for, not that the route meant it. The terminal scripts reach a company's records with the
+  there could reach it and nothing but review would say so. A client made for the wrong company
+  passes every key of that company: the guard checks a key against the company its client was made
+  for, never that this is the company the caller's code names, and only `resolveTenant` in
+  `bff/src/app.ts` decides that, held by the route tests above. The terminal scripts reach a company's records with the
   whole store (open item 246).
 - *Price of the choice:* one SQLite file holds every company's records, so one company's write rate
   is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)). In the pooled
