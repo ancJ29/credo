@@ -849,9 +849,9 @@ seen stopping part way, or the first deletion of real records.
 
 c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
 never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L598-L601`). The
-BFF's own service code and access key are made once the same way (`ops/app.sh#L99-L114`, "present, left as it is").
+BFF's own service code and access key are made once the same way (`ops/app.sh#L100-L115`, "present, left as it is").
 Nothing in `ops/` rotates any of the four: there is no script, and no order written down. The two the BFF needs sit
-in the function's environment as plain variables (`ops/app.sh#L131-L137`), so anyone in the account who can read a
+in the function's environment as plain variables (`ops/app.sh#L134-L140`), so anyone in the account who can read a
 function's configuration reads them, which `ops/check.sh#L140` notes while taking care not to print them. Rotating
 by hand means editing the box's file, re-pushing the function's environment and re-registering the service, in that
 order. *Fix:* one script that does the three in order and reads back, or the order written into `ops/README.md` as
@@ -1416,7 +1416,7 @@ workflow that only reads ridge, or a review finding on the read job's rights.
 
 ## 296. By hand, `ops/release.sh` and `ops/app.sh` ship any commit of `main` to production, one ridge never ran included — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Medium)
 
-Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L47`, `#L91`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
+Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L48`, `#L92`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
 
 ## 297. `ops/stack.sh` rewrites an environment's GitHub environment on every run, and whether production's protection rules survive it is unread — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Low)
 

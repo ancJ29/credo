@@ -191,8 +191,12 @@ log read 1 to 2. 👤 is your act.
   (item 366). The Info items are filed (item 368). `bash ops/test.sh` ended at exit 0 over the committed
   tree, `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` at 0, the citation test at 0
   (32 passed), prettier at 0 over the six pages.
-- [ ] **8. The recap**, before the piece lands on `pre-merge`, with rows 12 to 15 marked not yet
+- [x] **8. The recap**, before the piece lands on `pre-merge`, with rows 12 to 15 marked not yet
   known. *Done when:* committed, the citation test at exit 0. **3.**
+  *Done, 2026-11-12:* `docs/recaps/2026-11-12-slack-alarm.md` with its row in `docs/products.md`, rows 12
+  to 15 each a marker. `pre-merge` taken in clean; its moved lines in `ops/app.sh` re-pointed in
+  `docs/open-items.md` (three lines, five citations). `shellcheck -x ops/*.sh walk/*.sh
+  services/c-storage/scripts/*.sh`, the citation test and the whole `bash ops/test.sh` over the merged tree each ended at exit 0.
 
 **Your acts, after the piece is in `main`.** Each is read by the machine from its log, a read of 1
 to 2 minutes.
