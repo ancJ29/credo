@@ -130,8 +130,8 @@ client's stack, whatever it is called, meets the rules below.
 The API in front of the BFF answers anyone, which the template states in its own words: one
 catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
 answers anyone; the throttle bounds what that costs"
-([`ops/env.yml#L274`](../ops/env.yml#L274), the stage at
-[`#L298-L309`](../ops/env.yml#L298)). That the address is reachable is recorded, with its history,
+(the comment above `ops/env.yml`'s `Api`, the stage at
+`ApiStage` in the same file). That the address is reachable is recorded, with its history,
 as [open item 121](open-items.md): nobody decided it, it followed from the Region not offering
 Lambda function URLs, and it is parked until a client signs. Read "answers anyone" as *reachable*,
 not *unauthenticated* — a call arriving that way still meets the client header, the session and the
@@ -148,7 +148,7 @@ still the only brake on one guesser trying many names, and each invented name le
 *The older one has been there all along:* the function writes a line per request to
 `/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
 `options` to an empty object and hands it on (`#L12`), so `bff/src/server.ts`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
-`LoggingConfig` names that group ([`ops/env.yml#L255-L256`](../ops/env.yml#L255)). An earlier
+`LoggingConfig` names that group (`ops/env.yml`'s `Bff`). An earlier
 version of this page said a guessing run would leave no trace at all; that was wrong when it was
 written. What this page has not verified is what a Fastify request line holds (read as: a method,
 a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
@@ -156,8 +156,8 @@ all; that would need a run. What is settled, in the direction of no: Fastify is 
 `trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
 from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and on ridge:* the stage's access log, one
 JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
-`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L199-L204`](../ops/env.yml#L199),
-[`#L307-L309`](../ops/env.yml#L307)). **Measured, 2026-11-08 18:11 on ridge: for a call through the
+`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs` and `ApiStage`'s `AccessLogSettings`, both in
+`ops/env.yml`). **Measured, 2026-11-08 18:11 on ridge: for a call through the
 distribution the line recorded one public address, outside AWS's published ranges (the
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
@@ -218,7 +218,7 @@ Masking itself is thorough: every run remembers each secret and searches its own
 end ([`ops/lib.sh#L118-L139`](../ops/lib.sh#L118)). Two known weaknesses in *how* it searches are
 already recorded as [open item 50](open-items.md) — the keys reach `grep`'s argument list
 ([`#L122`](../ops/lib.sh#L122)) and the here-strings that read the box's key files
-([`#L602-L603`](../ops/lib.sh#L602), [`#L807-L808`](../ops/lib.sh#L807)) are written to a temp file
+(`read_keys` and `bff_env_read` in [`ops/lib.sh`](../ops/lib.sh)) are written to a temp file
 by the Mac's bash 3.2.
 
 ### The deploy, and the only route back
@@ -238,7 +238,7 @@ between the two leaves the new commit's name on old code, and the seed's own pre
 passes against a BFF a commit behind (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)). The UI is safer
 than it looks — assets go first and `index.html` last
 (the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
-([`ops/env.yml#L448-L451`](../ops/env.yml#L448)) — so a stop leaves the old app whole.
+(`ops/env.yml`'s `DeployRole`, its `PutUiFiles` statement) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
 gate that is known to go red under load with nothing broken**: items 27, 56, 112, 113 and 114 are
