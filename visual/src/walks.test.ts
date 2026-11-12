@@ -161,17 +161,12 @@ describe('the walks', () => {
   });
 
   it('names every screen of every walk as the walk specs do, which makes their base images', () => {
-    // Screen 12 is on the walks page before its spec line exists; the walk step that adds the
-    // line empties this list.
-    const NOT_YET_IN_SPECS = ['12-sign-in-wait'];
     const inSpecs = specFiles().flatMap((name) =>
       [...read(`specs/${name}`).matchAll(/await at\('([^']+)'/g)].map((m) => m[1]),
     );
 
     expect(inSpecs.sort()).toEqual(
-      WALKS.flatMap((walk) => walk.screens.map((screen) => screen.id))
-        .filter((id) => !NOT_YET_IN_SPECS.includes(id))
-        .sort(),
+      WALKS.flatMap((walk) => walk.screens.map((screen) => screen.id)).sort(),
     );
   });
 

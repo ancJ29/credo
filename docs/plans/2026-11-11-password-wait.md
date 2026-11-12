@@ -186,7 +186,7 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   `sign-ins.route.test.ts` disarmed on the wait's own write, and the in-memory store of
   `scripts/src/dashboard-list.test.ts` removed nothing, so the generator's sign-ins left waits and
   the second of one person answered 429 (seen red first).
-- [ ] **4. The walk's screen 12, appended.** About 8 minutes, as the last step that added a look's
+- [x] **4. The walk's screen 12, appended.** About 8 minutes, as the last step that added a look's
   screen, plus 5 to read your run's log and commit its pictures, a first run of that shape. In
   `walk/specs/piece-1.spec.ts`, right after screen 2 (`#L91-L96`), while the settings are still as
   the stack made them: a name nobody holds, one for each language and width, since a pass's six
@@ -195,6 +195,14 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   twelve screens, 72 pictures. *Done when:* the check of `walk` ends `== exit 0`; then **your run**
   (point 2) ends "== verdict: green" with no screen named as moved; the machine reads its log whole
   and commits the six new pictures.
+  *Done, 2026-11-12:* the walk's screen 12 is in `walk/specs/piece-1.spec.ts` after screen 2, the
+  header at twelve screens and 72 pictures, and the walks test's exemption for screen 12 is gone.
+  The checks of `walk`, `visual` and `ui` each ended `== exit 0` on the committed tree. The step
+  is replayed in jsdom on the fake with the real router (`ui/src/pages/SignInWaitWalk.test.tsx`, both
+  languages): five refusals, the sixth the wait of 30 seconds, and the root's name typed back; seen
+  red with the loop one try short. Six wrong tries need no real waiting, since the wait starts on
+  the sixth answer. Not yet run: the full walk, which is point 2, the human's; its six pictures are
+  committed after it.
 - [ ] **5. The pages the piece makes true.** About 10 minutes, as the last step that brought a memo
   and a guideline in line with the code. `docs/memo/bff.md` gains a section titled as its claim,
   "Six wrong passwords make a name wait, and a right one is refused during the wait", with its
