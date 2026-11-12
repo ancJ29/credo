@@ -165,6 +165,27 @@ refuses "an update on a stack holding another prefix is refused, and appends not
   add_subject_param repo:bob@333/demo@444
 STACK_JSON=''
 
+echo "== the Slack alarm's two IDs go together, and an update keeps the stack's"
+described_slack() { # <workspace> <channel>, or nothing
+  jq -nc --arg w "${1:-}" --arg c "${2:-}" '{Stacks: [{StackName: "ridge", Parameters: (if $w == "" then [] else [{ParameterKey: "SlackWorkspaceId", ParameterValue: $w}, {ParameterKey: "SlackChannelId", ParameterValue: $c}] end)}]}'
+}
+slack_plan() { CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" slack_param_plan; }
+slack_add() { PARAMS='[]'; CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" add_slack_params; echo "$PARAMS"; }
+STACK_JSON=$(described_slack)
+refuses "a workspace ID without a channel ID is refused" "go together" slack_plan T01ABCDEF ''
+refuses "a channel ID without a workspace ID is refused" "go together" slack_plan '' C01ABCDEF
+check "neither ID on a stack that holds none adds nothing (the template's none)" default "$(slack_plan '' '')"
+check "  and appends no parameter" '[]' "$(slack_add '' '')"
+check "both IDs are set" set "$(slack_plan T01ABCDEF C01ABCDEF)"
+check "  and appended as given" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+check "none and none on a stack that holds none is set" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"none"},{"ParameterKey":"SlackChannelId","ParameterValue":"none"}]' "$(slack_add none none)"
+STACK_JSON=$(described_slack T09OLDOLD C09OLDOLD)
+check "an update with no IDs keeps the stack's" previous "$(slack_plan '' '')"
+check "  as previous values" '[{"ParameterKey":"SlackWorkspaceId","UsePreviousValue":true},{"ParameterKey":"SlackChannelId","UsePreviousValue":true}]' "$(slack_add '' '')"
+check "an update with both IDs takes the new ones" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+refuses "an update with one ID is refused too" "go together" slack_add T01ABCDEF ''
+STACK_JSON=''
+
 # trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
 # shellcheck disable=SC2016 # the template's literal text
 trust_guard() {

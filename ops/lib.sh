@@ -283,7 +283,7 @@ stack_load() {
 
 # OUTPUTS_PRINTED: the outputs that carry no secret and are read in the human's log. Any other
 # output (a new one included) prints "(not printed)" until it is named here.
-OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress"]'
+OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress","Watch"]'
 
 # outputs_print: the stack's outputs from STACK_JSON, one line each. An output prints its value only
 # when it is named in OUTPUTS_PRINTED and holds no masked line (SECRETS); the secrets go to jq in its
@@ -440,6 +440,39 @@ add_subject_param() {
   else
     add_param SubjectPrefix "$1"
   fi
+}
+
+# slack_param_plan → how the two Slack IDs (CREDO_SLACK_WORKSPACE_ID, CREDO_SLACK_CHANNEL_ID, from the
+# environment) reach the stack: "set" when both are given (new values, "none" included), "previous" when
+# neither is and the stack holds them (kept), "default" when neither is and the stack holds none (the
+# template's "none"). One without the other is refused: a lone channel ID makes no channel, silently.
+slack_param_plan() {
+  local w="${CREDO_SLACK_WORKSPACE_ID:-}" c="${CREDO_SLACK_CHANNEL_ID:-}"
+  if [ -n "$w" ] && [ -n "$c" ]; then
+    echo set
+  elif [ -n "$w" ] || [ -n "$c" ]; then
+    die "CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID go together: one without the other makes no channel (give both, or neither to keep the stack's values; none and none turns the channel off)"
+  elif [ -n "$(stack_param SlackWorkspaceId)" ]; then
+    echo previous
+  else
+    echo default
+  fi
+}
+
+# add_slack_params: appends the two Slack IDs to PARAMS as slack_param_plan says
+add_slack_params() {
+  local plan
+  plan=$(slack_param_plan) || exit 1
+  case "$plan" in
+    set)
+      add_param SlackWorkspaceId "$CREDO_SLACK_WORKSPACE_ID"
+      add_param SlackChannelId "$CREDO_SLACK_CHANNEL_ID"
+      ;;
+    previous)
+      add_param SlackWorkspaceId
+      add_param SlackChannelId
+      ;;
+  esac
 }
 
 # out <OutputKey> → its value in STACK_JSON, empty if none

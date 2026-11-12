@@ -126,12 +126,21 @@ log read 1 to 2. 👤 is your act.
   pattern, a real-looking default) turned `watch_guard` red naming that guard each time.
   **Carried to step 3:** a lone channel id makes no channel silently, so step 3's script refuses
   one id without the other.
-- [ ] **3. The two IDs in `ops/stack.sh`**: one function in `ops/lib.sh` copied from
+- [x] **3. The two IDs in `ops/stack.sh`**: one function in `ops/lib.sh` copied from
   `subject_param_plan`'s shape (`ops/lib.sh#L374-L380`), reading `CREDO_SLACK_WORKSPACE_ID` and
   `CREDO_SLACK_CHANNEL_ID` from the environment, refusing one without the other, keeping the stack's
   values on an update; called from the `env` branch on both paths (`ops/stack.sh#L162-L196`), and
   `Watch` named in `OUTPUTS_PRINTED` (`ops/lib.sh#L246`). *Done when:* `bash ops/test.sh` at exit 0,
   rows 8 and 9 each red once; shellcheck as in step 2. **5.**
+  *Done, 2026-11-12:* `slack_param_plan` and `add_slack_params` in `ops/lib.sh` (the plan's "set",
+  "previous" or "default"), called once in `stack.sh`'s `env` branch before the create/update split, so
+  both paths; `Watch` added to `OUTPUTS_PRINTED`. 10 new cases. `ops/test.sh` at exit 0 (`all checks
+  passed`, log last line `== exit 0`); `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh`
+  at 0. Row 8 seen red by making the lone-ID branch echo `default` instead of dying (3 cases red: either
+  ID alone, and the update with one ID); row 9 seen red by making the keep branch echo `default` (2 cases
+  red: the plan and the previous-value parameters); both put back, `git diff` holds no mutation. A lone
+  `none` counts as given, so `none` with an ID is refused as one without the other; the template's
+  patterns still check the shape.
 - [ ] **4. The runbook and the prose it makes false**: `ops/README.md` gains "The watch" and its row
   in the table at its top: your Slack steps below, word for word; the stack run; the forced alarm; a
   workspace ID changed later replaces the channel's configuration, so that run takes `--take
