@@ -691,6 +691,24 @@ describe('a stack that is started and stopped on its own', () => {
     }
   });
 
+  it('fails at once, naming the port, when the front’s port is taken, and takes down what it had started', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-start-'));
+    const taken = createServer();
+    const { port: front } = await listening(taken);
+    const cStorage = await freePort();
+    const began = Date.now();
+    try {
+      await expect(startStack(artifacts, { dataDir, ports: { cStorage, front } })).rejects.toThrow(
+        'EADDRINUSE',
+      );
+      expect(Date.now() - began).toBeLessThan(30_000);
+      await expect(fetch(`http://127.0.0.1:${cStorage}/health`)).rejects.toThrow();
+    } finally {
+      await new Promise((resolve) => taken.close(resolve));
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('starts again on the data and keys a stopped stack left, and the root’s password still signs in', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-resume-'));
     const ports = {
