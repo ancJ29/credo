@@ -1686,16 +1686,19 @@ case "$*" in
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
   *"send-ssh-public-key"*) echo True ;;
   *"lambda update-function-code"*)
+    [ -z "${FAKE_CODE_FAIL:-}" ] || { echo "stand-in aws: update-function-code failed" >&2; exit 254; }
     cp "$(arg_after --zip-file | sed 's#^fileb://##')" "$S/code.zip"
     openssl dgst -sha256 -binary "$S/code.zip" | base64 >"$S/code.sha"
     echo 1 >"$S/inprogress"
     echo Successful ;;
   *"lambda update-function-configuration"*)
     envfile=$(arg_after --environment | sed 's#^file://##')
-    echo "$envfile" >"$S/envfile.path"
-    python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
-    cp "$envfile" "$S/envfile.seen"
-    arg_after --description >"$S/description"
+    if [ -n "$envfile" ]; then
+      echo "$envfile" >"$S/envfile.path"
+      python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
+      cp "$envfile" "$S/envfile.seen"
+    fi
+    if [[ "$*" == *" --description "* ]]; then arg_after --description >"$S/description"; fi
     arg_after --vpc-config >"$S/vpc"
     echo Successful ;;
   *"lambda get-function-configuration"*)
@@ -2313,13 +2316,22 @@ e2e_fresh app-job
 GITHUB_ACTIONS=true e2e_run app.sh ridge
 check "app.sh ships the BFF and the UI: exit 0, and the commit shipped" "0 1" "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true)"
 check "  the service is made sure of through the tunnel with the product's own function" 1 "$(grep -c '^service registered$' "$S/out" || true)"
-check "  the settings go first, then the code, then the UI's files with index.html last" yes \
-  "$([ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 'lambda update-function-code')" ] &&
-    [ "$(line_of 'lambda update-function-code')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
+check "  the environment goes first, then the code, then the description, then the UI's files with index.html last" yes \
+  "$([ "$(line_of 'lambda update-function-configuration .*--environment')" -lt "$(line_of 'lambda update-function-code')" ] &&
+    [ "$(line_of 'lambda update-function-code')" -lt "$(line_of 'lambda update-function-configuration .*--description')" ] &&
+    [ "$(line_of 'lambda update-function-configuration .*--description')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
     [ "$(line_of 's3 cp .*--exclude index.html')" -lt "$(line_of 's3 cp .*index.html --cache-control no-cache')" ] && echo yes || echo no)"
 check "  the zip holds the bundle as index.js, and its checksum was compared" "$(cksum <"$E2E/index.js")" "$(unzip -p "$S/code.zip" index.js | cksum)"
 check "  the settings carry the commit as the description, and ridge's subnet and the BFF's group" "$app_sha subnet-test sg-0bff" \
   "$(cat "$S/description") $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
+check "  case 1: the first settings call carries the environment and the VPC settings, no description, and goes before the code" "1 1 0 yes" \
+  "$(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--environment file://' || true) $(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--vpc-config SubnetIds=subnet-test,SecurityGroupIds=sg-0bff' || true) $(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--description' || true) \
+$([ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 'lambda update-function-code')" ] && echo yes || echo no)"
+check "  case 2: the description, the commit, goes in one later call, after the code's checksum was read and before the UI's files, with ridge's subnet and the BFF's group" "1 yes subnet-test sg-0bff" \
+  "$(grep -c "lambda update-function-configuration.*--description $app_sha .*--vpc-config SubnetIds=subnet-test,SecurityGroupIds=sg-0bff" "$S/aws.calls" || true) \
+$([ "$(line_of 'get-function-configuration .*CodeSha256')" -lt "$(line_of 'lambda update-function-configuration .*--description')" ] &&
+    [ "$(line_of 'lambda update-function-configuration .*--description')" -lt "$(line_of 's3 cp')" ] && echo yes || echo no) \
+$(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
 check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
@@ -2349,6 +2361,14 @@ FAKE_BAD_SHA=1 e2e_run app.sh ridge
 check "a function whose CodeSha256 is not the upload's stops the deploy before the UI's files" "1 1" \
   "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true)"
 check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
+check "  case 4: and the description is left as it was: no call names one" "gone 0" \
+  "$(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true)"
+
+# the code write fails: the description is never written (the production plan's case 3)
+e2e_fresh app-codefail
+FAKE_CODE_FAIL=1 e2e_run app.sh ridge
+check "case 3: a code write that fails stops the run there, leaves the description as it was and sends no UI file" "failed 1 gone 0 0" \
+  "$([ "$RC" != 0 ] && echo failed || echo "exit $RC") $(grep -c 'stand-in aws: update-function-code failed' "$S/out" || true) $(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
 
 # a bundle or a UI built without the commit is refused before anything is sent (row 39)
 e2e_fresh app-unstamped-bundle

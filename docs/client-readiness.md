@@ -232,10 +232,10 @@ A half-finished deploy leaves a client on a mixed version and **nothing rolls ba
 is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first
 and only its renames are atomic (the one `box` command that follows that comment), so a failure before them
 leaves the box running what it ran and a failure after leaves the new binary installed. The BFF's
-description and environment are written *before* its code
-(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)), which is [open item 29](open-items.md): a stop
-between the two leaves the new commit's name on old code, and the seed's own precondition then
-passes against a BFF a commit behind (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)). The UI is safer
+environment is written before its code and its description after it
+(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)): a stop
+between the two leaves the old commit's name on the function, so the seed's own precondition
+(`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)) never passes against a BFF whose code did not arrive. The UI is safer
 than it looks — assets go first and `index.html` last
 (the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
 (`ops/env.yml`'s `DeployRole`, its `PutUiFiles` statement) — so a stop leaves the old app whole.
