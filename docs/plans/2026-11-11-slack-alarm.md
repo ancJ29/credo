@@ -107,13 +107,25 @@ log read 1 to 2. 👤 is your act.
   comment beside its alarm. `cfn-lint ops/network.yml ops/github.yml ops/env.yml` ended at exit 0, and
   the Region run ended at exit 0 written `cfn-lint ops/env.yml --regions ap-southeast-5` (with the
   flag first it swallows the file name and exits 32, a parse fault, not the template).
-- [ ] **2. The guards**, `ops/test.sh`, beside the template's other guards (`must` and `mut`,
+- [x] **2. The guards**, `ops/test.sh`, beside the template's other guards (`must` and `mut`,
   `ops/test.sh#L240-L247`): rows 1 to 7 and 10, each seen red once on a template broken one way; and
   row 11: `adds_and_one_modify` (`ops/test.sh#L508-L524`) reads every resource the template gains as
   layer four's, so this piece pins layer four's own list there if it lands first, and if another lane
   landed that change first it adds nothing. *Done when:* `bash ops/test.sh` at exit 0 with each new
   `refuses` line printed, and `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` at
   exit 0. **8.**
+  *Done, 2026-11-12:* `ops/test.sh` at exit 0 on the committed tree (`all checks passed`; a first run
+  launched with a shell `&` went red on the two INT cases only, as that launch ignores SIGINT, and
+  the rerun by the tool's background option was green). `shellcheck -x ops/*.sh walk/*.sh
+  services/c-storage/scripts/*.sh` at 0 (local shellcheck, not the CI's pinned 0.11.0), and
+  `cfn-lint ops/network.yml ops/github.yml ops/env.yml` at 0. The 21 new `refuses` lines and the
+  row 11 pin of `adds_and_one_modify`'s own list make the 22 guards: each of the 21 printed `ok`
+  with its refusal naming its own text; the row 11 pin seen red by deleting the `old=` line (the
+  change set then names 'the template gained'); the template mutated four ways in a scratch copy
+  (box alarm reading missing data as normal, channel without its condition, a loose channel-ID
+  pattern, a real-looking default) turned `watch_guard` red naming that guard each time.
+  **Carried to step 3:** a lone channel id makes no channel silently, so step 3's script refuses
+  one id without the other.
 - [ ] **3. The two IDs in `ops/stack.sh`**: one function in `ops/lib.sh` copied from
   `subject_param_plan`'s shape (`ops/lib.sh#L374-L380`), reading `CREDO_SLACK_WORKSPACE_ID` and
   `CREDO_SLACK_CHANNEL_ID` from the environment, refusing one without the other, keeping the stack's
