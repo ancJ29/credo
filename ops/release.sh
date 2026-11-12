@@ -26,6 +26,7 @@ STEPS=7
 
 log_start release "$ENVNAME"
 mkwork
+real_ok "$ENVNAME" "it ships main's commits alone, never backwards, above the box's floor"
 
 cleanup_extra() {
   git -C "$REPO_DIR" worktree remove --force "$WORK/src" >/dev/null 2>&1 || true

@@ -92,66 +92,38 @@ backup-policy change set on ridge, which it was built to do; passing it took `--
 ([the memo](plans/2026-11-08-backup-policy-conditional-memo.md) has the reasoning), and behind the guard there is only the
 fence's kept box.
 
-### The tree guard: `ops/` alone is compared
+### The tree guard: every deployed path is compared
 
-Every script that acts under an AWS session first refuses unless `ops/` here is as reviewed —
-equal to `origin/main`'s by hand, or to the checked-out commit in the deploy job
-([`ops/lib.sh#L185-L198`](../ops/lib.sh#L185)). The comment above it says why: "so a script that
-acts under the human's AWS session is always a reviewed one."
+Every script that acts under an AWS session first refuses unless the tree here is as reviewed:
+`main_synced` in [`ops/lib.sh`](../ops/lib.sh) calls `ops_match_main`, which compares every path
+`ci.yml`'s push trigger deploys on, read from the base's own `ci.yml`, plus the root `.gitignore`,
+with `origin/main` by hand or with the checked-out commit in the deploy job. That covers
+`scripts/`, which `ridge_cli` runs, so an uncommitted edit there is refused before any act. This
+was open item 130, fixed in the tree guard ([its recap](recaps/2026-11-07-tree-guard.md)); the
+first read of this page found the guard comparing `ops/` alone.
 
-**It compares `ops/` and nothing else.** But several of those scripts run the product's own code
-from the working copy: `ridge_cli` runs `scripts/src/ridge-main.ts` out of `scripts/`
-([`ops/lib.sh#L612-L618`](../ops/lib.sh#L612)), and that package holds the client-delete command.
-In `main` the command is safe — `untenant` refuses any code that is not the deploy check's own,
-`check-<date>t<time>z` ([`scripts/src/ridge.ts#L126-L134`](../scripts/src/ridge.ts#L126)), and says
-in its own comment that it has none of the console's gates. The gap is that nothing proves the
-`scripts/` on disk is that `main`.
+What the guard does not cover is the environment a script is given, which the next section does.
 
-Two scripts close it for themselves, with a clean-tree check beside the `ops/` one:
-[`ops/seed.sh#L41`](../ops/seed.sh#L41) and
-[`ops/root-password.sh#L89`](../ops/root-password.sh#L89) both refuse a tree that differs from
-`HEAD`, because "the write would run code /health cannot name". **Three do not:**
-[`ops/check.sh`](../ops/check.sh) (which calls `untenant` from its cleanup, on every exit path
-including a refusal — `#L36-L47` through [`ops/lib.sh#L106`](../ops/lib.sh#L106)),
-[`ops/app.sh`](../ops/app.sh) and [`ops/operator.sh`](../ops/operator.sh). So an uncommitted edit
-under `scripts/`, or a worktree sitting on a branch, runs against whatever environment the script
-is given, with the box's keys, and nothing refuses it. Open item 130.
+### A client's stack is operable, with its limits
 
-### A client's stack is deployable, not operable
+Each script that reaches an environment says its answer first, by `refuse_real` or `real_ok` in
+[`ops/lib.sh`](../ops/lib.sh), and the list is one page, [`ops/README.md`](../ops/README.md#on-production).
+Production is every environment not listed in `INVENTED_ENVS` there (today `ridge` alone), so a
+client's stack, whatever it is called, meets the rules below.
 
-Two scripts refuse any environment but ridge and both say plainly that the refusal stands in for a
-guard that does not exist yet. [`ops/tunnel.sh#L35-L36`](../ops/tunnel.sh#L35): "tunnel.sh holds
-ridge alone for now: another stack's admin keys would land on this disk, and the collection would
-write test records into it." [`ops/root-password.sh#L79`](../ops/root-password.sh#L79): "a client's
-own stack is the console's, never this." A third refuses for a different reason —
-[`ops/seed.sh#L36`](../ops/seed.sh#L36), "a client's stack must never receive demo data."
-
-**The other six take any environment name.** `stack.sh`, `release.sh`, `app.sh`, `check.sh`,
-`drill.sh` and `operator.sh` carry no such test. What that means today, on a client's stack:
-
-- **Could be done.** The stack made and changed by change set ([`ops/stack.sh`](../ops/stack.sh)),
-  c-storage released ([`ops/release.sh`](../ops/release.sh)), the BFF and the UI shipped
-  ([`ops/app.sh`](../ops/app.sh)), the deploy check run ([`ops/check.sh`](../ops/check.sh)), the
-  crash drill run — which kills c-storage and reboots the box
-  ([`ops/drill.sh#L4-L7`](../ops/drill.sh#L4)) — and the operator made with a one-time join link,
-  `--replace` being the documented way back from lost passkeys
-  ([`ops/operator.sh#L6-L7`](../ops/operator.sh#L6)).
-- **Could not be done.** A tunnel opened to look at the data with Bruno or curl, and demo data
-  seeded, both refused by name. And **a client's root password cannot be set from a terminal at
-  all**: the only path is the console's own route, which needs a live operator session and a fresh
-  passkey touch ([`bff/src/routes/root-password.ts#L41-L48`](../bff/src/routes/root-password.ts#L41)). If that
-  client's BFF is broken, there is no way to set one.
-
-And `tunnel.sh`'s refusal is defeated by a script the deploy job itself runs. `ops/check.sh` opens
-its own connection to the box on any environment ([`#L80`](../ops/check.sh#L80)), reads the box's
-keys ([`#L114`](../ops/check.sh#L114)) and writes **the internal access key and the super-admin
-key** into a file on the operator's own machine ([`#L120`](../ops/check.sh#L120) through
-[`ops/lib.sh#L530-L552`](../ops/lib.sh#L530)) — exactly the two things `tunnel.sh#L36` refuses to do
-for a client's stack. The file is 0600, git-ignored and removed at the run's end
-([`ops/lib.sh#L107`](../ops/lib.sh#L107)), which is careful, and it is still the admin key of a
-client's store on a laptop. The same script makes a client and signs in through the edge on every
-run ([`#L174-L180`](../ops/check.sh#L174)), and each Bruno run leaves a service row behind
-([`#L173`](../ops/check.sh#L173)). Open items 131 and 132.
+- **Works as it is:** `stack.sh` (a change set shown first, a removal or replacement refused
+  unless named), `release.sh` and `app.sh` (main's commits alone, never backwards) and
+  `operator.sh` (production's first operator comes from it).
+- **Only reads:** `check.sh`. On a client's stack it copies no key off the box, writes no Bruno
+  file, runs no collection and makes no test client; it keeps every AWS read, the box's facts,
+  `/health`, layer four's reads and the six reads through the app's address that need no client.
+  A save is proved by ridge's full check on the same commit first. This closed open item 131.
+- **Refuse:** `drill.sh` (it kills the store and reboots the box; ridge's drill proves the same
+  template and unit), `tunnel.sh`, `seed.sh` and `root-password.sh`, each in its own words.
+- **Not done:** **a client's root password still cannot be set from a terminal.** The only path
+  is the console's own route, which needs a live operator session and a fresh passkey touch
+  (`bff/src/routes/root-password.ts`). If that client's BFF is broken, there is no way to set
+  one. Open item 132 keeps this alone: it is a missing tool, not a missing guard.
 
 ### Two logs record a call, both on ridge, and six wrong passwords make a name wait
 
@@ -231,15 +203,15 @@ true of the door and not necessarily of the data. Open item 133.
 
 The keys are made well. c-storage's internal key and super-admin key are 32 bytes from the kernel,
 written root-only, and **a release never rewrites the file** — a release that found them changed
-refuses ([`ops/release.sh#L91-L109`](../ops/release.sh#L91),
-[`ops/lib.sh#L487-L490`](../ops/lib.sh#L487)). The BFF's own service code and access key are made
-once the same way ([`ops/app.sh#L99-L114`](../ops/app.sh#L99)): "present, left as it is."
+refuses (the step "the keys, made once" in [`ops/release.sh`](../ops/release.sh) and
+`keys_unchanged` in [`ops/lib.sh`](../ops/lib.sh)). The BFF's own service code and access key are made
+once the same way (the `bff.env` step of [`ops/app.sh`](../ops/app.sh)): "present, left as it is."
 
 The consequence is that **nothing in `ops/` rotates any of the four.** There is no script, and the
 two the BFF needs sit in the function's environment as plain variables
-([`ops/app.sh#L131-L137`](../ops/app.sh#L131)), so anyone in the account who can read a function's
-configuration reads them — `ops/check.sh#L140` says so in its own comment while taking care not to
-print them. Rotating by hand means editing the box's file, re-pushing the function's environment,
+(`ops/app.sh` writes them through its `bff-env.json`), so anyone in the account who can read a function's
+configuration reads them — the comment above `fn=$(aws lambda get-function-configuration` in `ops/check.sh`
+says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/lib.sh`), never the keys. Rotating by hand means editing the box's file, re-pushing the function's environment,
 and re-registering the service; the order is not written down anywhere. Open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
@@ -257,15 +229,15 @@ skipped two deploys, and its comment now says so: "25, not 15 … The cap was sk
 catching a hang" (`.github/workflows/ci.yml`'s `app` job, the comment above its `timeout-minutes`).
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
-is a revert pushed to main ([`ops/release.sh#L116`](../ops/release.sh#L116)). c-storage ships first
-and only its renames are atomic ([`#L117-L121`](../ops/release.sh#L117)), so a failure before them
+is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first
+and only its renames are atomic (the one `box` command that follows that comment), so a failure before them
 leaves the box running what it ran and a failure after leaves the new binary installed. The BFF's
 description and environment are written *before* its code
-([`ops/app.sh#L135-L143`](../ops/app.sh#L135)), which is [open item 29](open-items.md): a stop
+(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)), which is [open item 29](open-items.md): a stop
 between the two leaves the new commit's name on old code, and the seed's own precondition then
-passes against a BFF a commit behind ([`ops/seed.sh#L75-L76`](../ops/seed.sh#L75)). The UI is safer
+passes against a BFF a commit behind (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)). The UI is safer
 than it looks — assets go first and `index.html` last
-([`ops/app.sh#L152-L155`](../ops/app.sh#L152)) and the deploy role cannot delete from the bucket
+(the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
 ([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
@@ -283,12 +255,11 @@ its steps.
    be recovered from. It is a network template change, an environment template change, a timer on
    the box and a restore script with its guards, and it ends in a human-run change set: a day's
    piece, not an afternoon.
-2. **The tree guard widened.** Either `ops_match_main` covers `scripts/` as well, or `check.sh`,
-   `app.sh` and `operator.sh` gain the clean-tree check `seed.sh` and `root-password.sh` already
-   have: hours, and it is the only thing between an uncommitted edit and a real client's records.
-3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`, and a terminal path to a
-   client's root password.** Hours each. Without them a client's stack is deployable but not
-   operable, and one deploy check puts its admin key on a laptop.
+2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
+   included (open item 130, fixed).
+3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads
+   there and the drill refuses (open item 131, closed). What remains is a terminal path to a
+   client's root password (open item 132): hours, and a missing tool.
 4. **The sign-in wait is built** (the wait after wrong passwords, in `main` once this piece lands).
    What it leaves: one guesser trying many names meets only the stage's throttle, and each
    invented name leaves a small record (item 256). *The access log that used to share this entry is split
@@ -498,10 +469,10 @@ care.**
   [`scripts/src/fake.test.ts#L42-L58`](../scripts/src/fake.test.ts#L42) builds *both* bundles in one
   test and asserts the served one holds none of `fake.session`, `Minh Phát`, `fake-credential` or
   `demo-join-link` — the fake's own handle, the invented company's name, the fake authenticator's
-  credential and the invited operator's link. [`ops/app.sh#L68`](../ops/app.sh#L68) uploads
-  `dist/app`; the fake builds to `dist/fake`, a folder of its own.
+  credential and the invited operator's link. [`ops/app.sh`](../ops/app.sh) uploads
+  `dist/app` (its `ui=` assignments); the fake builds to `dist/fake`, a folder of its own.
 - **The demo seed cannot run anywhere but ridge, and the refusal carries its reason.**
-  [`ops/seed.sh#L36`](../ops/seed.sh#L36) — "seed.sh seeds ridge alone: a client's stack must never
+  [`ops/seed.sh`](../ops/seed.sh)'s `refuse_real` — "seed.sh seeds ridge alone: a client's stack must never
   receive demo data". It also makes no client and no password, which its header says in its own
   words.
 - **No seeded root password exists anywhere.** A new client's root gets a freshly minted random
@@ -515,11 +486,11 @@ care.**
 
 So **a real client's stack would carry no demo clients, no demo orders and no seeded password.** One
 thing does reach a deployment, and the other half of this page files it: the deploy check makes a
-real client in the stack it checks and deletes it on the way out
-([`ops/check.sh#L174-L180`](../ops/check.sh#L174), [open items 131 and 159](open-items.md)), so on a
-client's own stack a throwaway client would be written into the client's own records on every
-deploy, and a failed delete leaves it listed behind a `WARN` nothing reads (the next deploy's
-sweep clears it once it is two hours old).
+real client in the stack it checks and deletes it on the way out, but only on ridge: on a
+client's own stack the check makes no client (`ops/check.sh` takes its reads-only branch there, the
+step "through the app's address, as a partner reaches it"), so nothing is written into the client's
+records. On ridge a failed delete leaves the client listed behind a `WARN` nothing reads (the next
+deploy's sweep clears it once it is two hours old; [open item 159](open-items.md)).
 
 ### What must be true before a real client's data goes in
 
