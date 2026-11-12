@@ -30,7 +30,7 @@ Every client-facing route runs `resolveTenant` before the body is read and befor
 client's code comes from a header, the one index record gives the minted id, and a code that is
 malformed or unknown stops the call at a 400 or a 404 ([`bff/src/app.ts#L100-L107`](../bff/src/app.ts#L100)).
 Every key is then built from that id through the layout's one home,
-[`shared/src/records.ts#L25-L72`](../shared/src/records.ts#L25), and a tenant's sessions are its own
+[`shared/src/records.ts`'s `recordKeys`](../shared/src/records.ts), and a tenant's sessions are its own
 records, so a handle minted under one id names no session under another
 ([`app.ts#L88-L89`](../bff/src/app.ts#L88)). A search of the whole product for a record key built
 by hand outside `records.ts` finds none — only test files assert the strings.

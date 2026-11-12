@@ -1,4 +1,4 @@
-import { normaliseSignInName, waitReplySchema } from '@credo/shared';
+import { normaliseSignInName, sha256Hex, waitReplySchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { buildApp } from './app';
@@ -218,6 +218,23 @@ describe('C: Wrong passwords make a name wait, through the real back end', () =>
     expect(saved).toBe(2);
     expect(answers.filter((answer) => answer.status === 401)).toHaveLength(1);
     expect(answers.filter((answer) => answer.status === 429)).toHaveLength(9);
+  });
+
+  it('C: A wait’s key is keyed by a secret the store lacks: not the name’s bare SHA-256, and another service key makes another key', async () => {
+    const typed = 'a password typed in the name box';
+    const waitKeys = async (t: Tenant) =>
+      (await t.client.listRecords(`tenant.${t.id}.signin-wait.`)).records.map(({ key }) => key);
+    const a = await tenantWithRoot(cs);
+    const b = await tenantWithRoot(cs);
+
+    await tried(a, typed, WRONG);
+    await tried(b, typed, WRONG);
+
+    const [keyA, keyB] = [await waitKeys(a), await waitKeys(b)];
+    expect(keyA).toHaveLength(1);
+    expect(keyA[0]).toMatch(/^tenant\.[^.]+\.signin-wait\.[0-9a-f]{64}$/);
+    expect(keyA[0]).not.toBe(a.keys.signInWait(await sha256Hex(typed)));
+    expect(keyB[0].split('.').pop()).not.toBe(keyA[0].split('.').pop());
   });
 
   it('C: A second back end over the same store refuses during the wait the first one started', async () => {

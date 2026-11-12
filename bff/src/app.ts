@@ -37,7 +37,7 @@ import {
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import { createClient, listClients, ROOT_NAME } from './records/clients';
 import { type TenantStorage, tenantStorage } from './records/records';
-import { clearWait, countTry } from './records/sign-in-wait';
+import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
 import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
@@ -108,6 +108,8 @@ export function buildApp({
   onRoute,
 }: AppDeps) {
   const app = Fastify({ logger });
+  /** The key a sign-in wait's name is hashed under, derived once from the service key. */
+  const waitKey = waitKeyFrom(serviceKey);
   if (onRoute) app.addHook('onRoute', onRoute);
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
   const sessionsOf = (storage: TenantStorage) =>
@@ -345,7 +347,7 @@ export function buildApp({
       const body = parse(signInRequestSchema, request.body);
       const typed = normaliseSignInName(body.name);
       const { name, found, handed } = await accountOf(request.storage, typed);
-      const counted = await countTry(request.storage, name, now);
+      const counted = await countTry(request.storage, waitKey, name, now);
       if ('refused' in counted) throw waitError(counted.refused);
       // A person the root has not given a password yet has no sign-in to check against.
       const account = found?.user.passwordHash
@@ -359,7 +361,7 @@ export function buildApp({
         const seconds = waitAfter(counted.wrong);
         throw seconds > 0 ? waitError(seconds) : new HttpError(401, 'Wrong name or password');
       }
-      await clearWait(request.storage, name);
+      await clearWait(request.storage, waitKey, name);
       const sessions = sessionsOf(request.storage);
       await endKept(request, sessions);
       const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
@@ -433,13 +435,13 @@ export function buildApp({
       const entry = declare(request, personOf(who));
       const device = deviceOf(request);
       const body = parse(changeOwnPasswordRequestSchema, request.body);
-      const counted = await countTry(request.storage, who.signInName, now);
+      const counted = await countTry(request.storage, waitKey, who.signInName, now);
       if ('refused' in counted) throw waitError(counted.refused);
       if (!(await holdsPassword(who.signIn.user, body.current))) {
         const seconds = waitAfter(counted.wrong);
         throw seconds > 0 ? waitError(seconds) : forbidden();
       }
-      await clearWait(request.storage, who.signInName);
+      await clearWait(request.storage, waitKey, who.signInName);
       const changed: StoredUser = {
         ...who.signIn.user,
         passwordHash: await hashPassword(body.password),

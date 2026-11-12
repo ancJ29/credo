@@ -220,15 +220,21 @@ five wait nothing, the sixth starts **30 seconds**, each next doubles it, and fr
 **15 minutes** (`WAIT_MAX_SECONDS`). Both routes that check a password, the sign-in in `bff/src/app.ts`
 (by a code or an email, `accountOf` turning the email into the code) and one's own password in the
 same file, count under the one name the sign-in record is kept under, so neither is the way round
-the other. The count is one record a name, `tenant.<id>.signin-wait.<SHA-256 of the name>`
+the other. The count is one record a name, `tenant.<id>.signin-wait.<HMAC-SHA-256 of the name>`
 (`recordKeys.tenant(id).signInWait`), holding the wrong tries and when the wait ends; it survives a
-restart and every copy of the function sees it. The key holds a hash because a name nobody holds is
-often a password typed into the wrong box. A right password removes the record (`clearWait`).
+restart and every copy of the function sees it. The key holds a keyed hash because a name nobody
+holds is often a password typed into the wrong box: the hash is keyed under a key the BFF derives
+from its service key with a purpose of its own (`waitKeyFrom`), and c-storage keeps that service key
+only as a SHA-256, so a copy of the store's data cannot be run against a dictionary to give the
+mistyped passwords back. Whoever also holds the service key (the box's root-only environment file)
+can, so the keyed hash protects a copy of the store, not the box itself. A right password removes the record (`clearWait`).
 
 - *The surprise for a caller:* **a right password is refused while the name waits.** The try is
   answered **429** `{ error: 'Wait', waitSeconds }` before the password is read, so the person who
   typed it right sees what a guesser sees. A try during a wait is no wrong try and does not
-  lengthen it, so the wait ends by itself. The sixth wrong try itself is also a 429, the first five
+  lengthen it. The wait ends by itself only if nobody tries again: a guesser who sends one wrong try
+  as each wait ends starts it again, and nothing but a right password clears it (see the price
+  line). The sixth wrong try itself is also a 429, the first five
   wrong stay a 401 at the sign-in and a 403 on one's own password. A new password given by the root
   or the operator does not clear a wait.
 - *Rejected:* a count per company, which lets one guesser shut a whole company out; a count per
@@ -236,7 +242,15 @@ often a password typed into the wrong box. A right password removes the record (
   office often shares; a count in memory, which a restart and a second copy of the function would
   not share.
 - *Price of the choice:* anyone who knows a name can make that person wait by typing six wrong
-  passwords, up to 15 minutes at a time, and no password of the person's own gets past it. A name
+  passwords, and no password of the person's own gets past it. Each wait lasts up to 15 minutes, but
+  a guesser who sends one wrong try as each wait ends starts the next, four requests an hour, and
+  holds the name out for as long as they keep going; the person's window to get in first is a few
+  milliseconds. Nothing clears it: a new password given by the root or the operator does not, and
+  only the company's delete does. The root's name is `root` in every company, and staff codes are
+  numbered under a prefix, so one guesser who knows the pattern can hold out every name in a company
+  (the harm a count per company was rejected for). Someone signed in already keeps their session
+  but cannot change their password during a wait. The remedy is the human's open choice (open item
+  319). A name
   nobody holds is counted and waits like a real one, so the wait says nothing about who exists, and
   the sign-in's one answer for every refusal (the section above) stays true. There is no decay with
   time: only a right password clears a count.

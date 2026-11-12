@@ -61,11 +61,14 @@ stack"; the human's numbers replace the count in a window it proposed.
 2. **A name nobody holds is counted and waits like any other**, so the wait says nothing about who
    exists, and the sign-in's one answer for every refusal (`docs/memo/bff.md`'s "A 401 ends the
    session; a 403 ends only the act", its price line) stays true.
-3. **The count lives in the store, one record a name**, `tenant.<id>.signin-wait.<SHA-256 of the
+3. **The count lives in the store, one record a name**, `tenant.<id>.signin-wait.<HMAC-SHA-256 of the
    name>`, beside `signInEmail` (`shared/src/records.ts#L69`), holding the wrong tries and when the
    wait ends. So it survives a restart and every copy of the function sees it, which memory would
-   not. The key holds a hash because a name nobody holds is often a password typed into the wrong
-   box. It sits under the company's prefix (`#L27`), so a company's delete sweeps it
+   not. The key holds a keyed hash, under a key the back end derives from its service key
+   (`bff/src/calling/challenge.ts` derives its own the same way), because a name nobody holds is
+   often a password typed into the wrong box and a bare hash of one is reversed by a dictionary run;
+   c-storage keeps the service key only as a SHA-256, so a copy of the store's data cannot do it.
+   Whoever also holds the service key, the box's environment file, can. It sits under the company's prefix (`#L27`), so a company's delete sweeps it
    (`bff/src/records/clients.ts#L163`).
 4. **Each try is counted before its password is checked**, and the record removed on a right one.
    Counted after, a burst of tries sent at once would all be checked before any count landed. The
@@ -76,8 +79,11 @@ stack"; the human's numbers replace the count in a window it proposed.
    import: wrong tries one to five wait nothing; the sixth starts 30 seconds, each next doubles, and
    from the eleventh it is 15 minutes (30 seconds × 2⁵ would be 16).
 6. **A try during a wait is refused unread and does not lengthen it**: nothing was checked, so it
-   is no wrong try. A new password given by the root or the operator does not clear a wait, which
-   ends by itself within 15 minutes.
+   is no wrong try. A new password given by the root or the operator does not clear a wait. A wait
+   ends by itself within 15 minutes only if nobody tries again: a guesser who sends one wrong try as
+   each wait ends holds the name out for as long as they keep going, and nothing but a right password
+   clears it, or the company's delete. The root's name is the same in every company and staff codes
+   are numbered, so one guesser can hold out every name in a company. The remedy is open item 319.
 7. **The answer is a 429, `{ error: 'Wait', waitSeconds }`**, for a wrong try that starts a wait
    and for every try during one; the first five wrong stay today's 401, or 403 on one's own
    password. The card says "Too many wrong tries. Try again in 30 seconds." — seconds under a
@@ -117,7 +123,7 @@ password walk tries one old password then the new one (`walk/specs/operator-root
 | 11 | Of ten tries sent at once on a name at four wrong, at most two have their password checked | BFF route, the real c-storage |
 | 12 | A count's record that moved on every attempt answers 503 with no password checked | BFF route, a client that moves the record |
 | 13 | A second back end over the same store refuses during the wait the first one started | BFF route, two apps on one c-storage |
-| 14 | The store holds no typed name: a wait's key ends in the name's SHA-256 | unit, `shared/src/records.test.ts` |
+| 14 | The store holds no typed name: a wait's key ends in a keyed hash, neither the name nor its bare SHA-256, and another service key makes another key | BFF route, `bff/src/sign-in-wait.route.test.ts` |
 | 15 | A wait's key starts with its company's prefix, so the company's delete takes it | unit, `shared/src/records.test.ts` |
 | 16 | The sign-in card draws a wait as "Try again in 30 seconds", and in whole minutes from one minute up, in both languages | UI, `ui/src/pages/SignIn.test.tsx` |
 | 17 | A 429 not in the back end's shape still reads as the service unavailable | UI, the api's test |
