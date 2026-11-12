@@ -185,7 +185,19 @@ seed presses' one-off among them, are now step 5)
   `docs/products.md` now say the copies are made by that command, not by hand at the console. The `git grep` counts 0
   (8 lines were found, not 7); `bash ops/test.sh` ended at exit 0 (the comments and one message line were the only
   non-`.md` changes) and the citation test at exit 0.
-- [ ] **7. Review and fix.** As step 2. **About 13 min**, plus 6.
+- [x] **7. Review and fix.** As step 2. **About 13 min**, plus 6.
+  *Done 2026-11-12:* the review (opus) found two Mediums and five Lows. M1: `seed --round` now refuses, before any
+  day, a copy missing or made without its first fill, naming it; the script's closing line prints only when the last
+  round counted none missing; the README splits the advice (a stop in the remake means the same run again, in the
+  fill `--go-on`). M2: a stop while a round opens its tunnel after the copies are made names `--go-on`, the false
+  "the run goes on" is gone, and the wait notice says the AWS session must hold until its clock time. F3: the
+  password search indexes the array, and the typing function drops any export flag. F4 (refusal to stderr) and F5
+  (a dropped round's lines reach the log) fixed; F6's nil uuid is one constant; the rest of F6, F7 and two Infos are
+  filed as items 384 to 387. Seen red once each: the new `ridge-remake.test.ts` case with its pre-check removed,
+  and in `ops/test.sh` the notice, the dropped round's lines, the tunnel-open stop, the missing-copy closing line,
+  the password in a child's environment and the false text, each by its own mutation, reverted by `cmp`.
+  `pnpm --filter @credo/scripts check` ended at exit 0, ShellCheck as the CI job runs it at exit 0, and
+  `bash ops/test.sh` at exit 0 (882 ok lines).
 - [ ] **8. The push.** The piece lands on `pre-merge`, `main` takes it, and 👤 you push `main`. The
   push deploys by itself, since `scripts/**` is a deploy path (`ci.yml#L16`). *Done when:* 🤖 reads
   `ci`'s run on that tip whole, green. **About 2 min.**

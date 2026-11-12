@@ -329,8 +329,15 @@ Once, from a terminal; it takes about 2.6 hours (up to 4) plus your typing, and 
    ```
 
 3. Read the log: it ends green, with each copy's sign-in read back. A line `== refused: <why>` (exit 2) means
-   nothing was touched. A red after the first delete (exit 1) means run `ops/demo-remake.sh ridge --go-on`,
-   which runs the rounds left from the ledger, asks nothing and deletes nothing.
+   nothing was touched. A red after the first delete (exit 1) depends on the step it stopped in, which the
+   log's last `[n/6]` line names:
+   - in "the remake" (the deletes and the makes): run the same command again, whole; it asks the passwords
+     again, finishes a deletion left half done and makes the copies again. `--go-on` is not a way on there: it
+     fills a copy that never got its partner's password, and the round now refuses it, naming the copy.
+   - in "the fill, in rounds" (a dropped tunnel, an AWS session that ended, a round that failed): run
+     `ops/demo-remake.sh ridge --go-on`, which runs the rounds left from the ledger, asks nothing and deletes
+     nothing. Unless the lines above say a copy is not remade: then the same command again, whole.
+   The fill waits about 160 minutes, and AWS must stay signed in until the clock time the log gives.
 4. Send each partner their link and password by your own channel. `/operator` is where you sign in
    to see the copies, not where they are made.
 

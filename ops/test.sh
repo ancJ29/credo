@@ -1696,7 +1696,9 @@ case "$*" in
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
     fi
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
-  *"send-ssh-public-key"*) echo True ;;
+  *"send-ssh-public-key"*)
+    [ ! -e "$S/send-fails" ] || { echo "stand-in aws: send-ssh-public-key failed (the session ended)" >&2; exit 254; }
+    echo True ;;
   *"lambda update-function-code"*)
     [ -z "${FAKE_CODE_FAIL:-}" ] || { echo "stand-in aws: update-function-code failed" >&2; exit 254; }
     cp "$(arg_after --zip-file | sed 's#^fileb://##')" "$S/code.zip"
@@ -2821,7 +2823,7 @@ unset SEED_LOCAL_PORT
 echo "== ops/demo-remake.sh run whole (rows 12 to 14: ridge's demo copies alone, a terminal, never a job; nothing deleted without the typed words; the wait named and kept alive; a dropped round finished by --go-on)"
 # The node half is a stand-in under RIDGE_SCRIPTS_DIR: it answers the three commands with a line, counts the
 # rounds in the state folder, holds a round FAKE_ROUND_MS and, in round FAKE_DROP_ROUND, ends the tunnel's master
-# and hangs. The real mapping and the real tsx are used, so no 21-day fill runs here (the node half's own tests hold it).
+# and hangs (FAKE_OPEN_FAILS_AFTER: the aws stand-in refuses the next key; FAKE_MISSING: the last summary counts a missing copy). The real mapping and the real tsx are used, so no 21-day fill runs here (the node half's own tests hold it).
 HALF=$WORK/half
 mkdir -p "$HALF/src/demo"
 cp "$REPO_DIR/scripts/src/demo/mapping.ts" "$HALF/src/demo/mapping.ts"
@@ -2841,7 +2843,9 @@ async function main() {
     const file = `${state}/rounds`;
     const n = (existsSync(file) ? Number(readFileSync(file, 'utf8')) : 0) + 1;
     writeFileSync(file, String(n));
+    console.log(`stand-in: round ${n} begins`);
     await sleep(Number(process.env.FAKE_ROUND_MS ?? 0));
+    if (process.env.FAKE_OPEN_FAILS_AFTER === String(n)) writeFileSync(`${state}/send-fails`, '');
     if (process.env.FAKE_DROP_ROUND === String(n)) {
       process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
       await sleep(30000);
@@ -2849,7 +2853,9 @@ async function main() {
     console.log(
       n < Number(process.env.FAKE_ROUNDS ?? 3)
         ? 'seed: STILL BEHIND, 1 copies have days left (x 5); stand-in'
-        : 'seed: 6 copies mapped, 6 up to date, 0 not on this service, 5 days applied',
+        : process.env.FAKE_MISSING
+          ? 'seed: 6 copies mapped, 5 up to date, 1 not on this service, 5 days applied'
+          : 'seed: 6 copies mapped, 6 up to date, 0 not on this service, 5 days applied',
     );
   } else {
     console.error(`stand-in half: unknown ${command}`);
@@ -2866,7 +2872,7 @@ DRTYPED="$DRPW1"$'\n'"$DRPW1"$'\n'"$DRPW2"$'\n'"$DRPW2"$'\n'"$DRPW3"$'\n'"$DRPW3
 dr_run() { # <typed text> <args…>: demo-remake.sh whole in the clone, typed to over a pipe (DR_TTY=0: no test switch); log folder DR_LOGS
   export OPS_LOG_DIR=$E2E/logs-dr-${DR_LOGS:?}
   printf '%s\n' "$1" >"$S/typed"
-  (cd "$E2E/repo" && exec env RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY="${DR_TTY:-1}" DEMO_REMAKE_TICK="${DR_TICK:-1}" DEMO_REMAKE_LOCAL_PORT="$drport" \
+  (cd "$E2E/repo" && exec env PATH="${DR_PATH:-$PATH}" RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY="${DR_TTY:-1}" DEMO_REMAKE_TICK="${DR_TICK:-1}" DEMO_REMAKE_LOCAL_PORT="$drport" \
     bash ops/demo-remake.sh "${@:2}") >"$S/out" 2>&1 <"$S/typed" &
   LPID=$!
   e2e_reap 120
@@ -2904,7 +2910,7 @@ exits_before=$(grep -c -e '-O exit' "$S/ssh.calls" || true)
 DR_LOGS=run1 FAKE_ROUNDS=3 FAKE_ROUND_MS=3000 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
 check "14: the run ends 0 and its log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
 check "  the notice names the minutes and a clock time, before the first round" "1 yes" \
-  "$(dr_lines '^the fill may wait about [0-9][0-9]* minutes, until about [0-9][0-9]:[0-9][0-9]; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the fill may wait/ {n = NR} /^round 1$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
+  "$(dr_lines '^the fill may wait about [0-9][0-9]* minutes, until about [0-9][0-9]:[0-9][0-9], and the AWS session must hold until then; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the fill may wait/ {n = NR} /^round 1$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
 check "  the remake ran once, after its check, and three rounds followed it" "1 1 3" \
   "$(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -c '^seed --round$' "$S/half.calls")"
 check "  a line while each round runs (rounds of 3 s, a line a second)" "yes" "$([ "$(dr_lines '^   the round runs, [0-9]*s, the tunnel is up')" -ge 3 ] && echo yes || echo no)"
@@ -2921,10 +2927,39 @@ DR_LOGS=run2 FAKE_ROUNDS=3 FAKE_ROUND_MS=1000 FAKE_DROP_ROUND=2 dr_run "$DRTYPED
 if [ "$RC" != 1 ]; then echo "  (the run's last lines:)"; tail -n 8 "$S/out"; fi
 check "  a tunnel that drops in round 2 ends the run red, naming --go-on, with the exit 1" "1 1 1" \
   "$RC $(dr_lines '^error: the tunnel dropped') $(dr_lines 'ops/demo-remake.sh ridge --go-on')"
+check "  the dropped round's own lines reach the log, so it says where the round stood" 1 "$(dr_lines '^stand-in: round 2 begins$')"
 DR_LOGS=run3 FAKE_ROUNDS=3 dr_run '' ridge --go-on
 check "  --go-on finishes the fill: exit 0, a third round, no new remake, no new question" "0 3 1 1 yes" \
   "$RC $(grep -c '^seed --round$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
 check "  and --go-on needs no terminal and no typing" "yes" "$(grep -q 'refused' "$S/out" && echo no || echo yes)"
+
+# A stop while a round opens its tunnel, once the copies are made (an AWS session that ended): it names --go-on.
+e2e_fresh dr-open
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run4 FAKE_ROUNDS=3 FAKE_OPEN_FAILS_AFTER=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a tunnel that cannot open for round 2 ends red (exit 1) and names --go-on, the copies being made" "1 1 1" \
+  "$RC $(dr_lines '^error: the box does not answer') $(dr_lines '^the copies are made: fix that, then run ops/demo-remake.sh ridge --go-on$')"
+check "  and no line says the run goes on after it has ended" 0 "$(grep -c 'the run goes on' "$OPS_DIR/demo-remake.sh" || true)"
+# A last summary that counts a copy missing: no closing line, and the run ends red.
+e2e_fresh dr-missing
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run5 FAKE_ROUNDS=1 FAKE_MISSING=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a last round that counts a copy not on the service ends red, with no closing line" "1 1 0" \
+  "$RC $(dr_lines '^error: the last round did not find every copy on the service') $(dr_lines '^the 6 demo copies on ridge are remade')"
+# A password in a variable the caller exported under the name the script's locals use: bash 3.2 keeps the export flag
+# of a local, so a child started while the script holds the password would receive it. The grep stand-in records
+# the environment it is started with.
+e2e_fresh dr-env
+mkdir -p "$E2E/grepbin"
+REALGREP=$(PATH=$BASE_PATH command -v grep)
+# shellcheck disable=SC2016 # the stand-in's source text is written, not expanded
+printf '#!/bin/bash\necho "$*" >>"${FAKE_STATE:?}/grep.calls"\n/usr/bin/env | %s -e "^pw=" -e "^again=" >>"${FAKE_STATE:?}/grep.env" || true\nexec %s "$@"\n' "$REALGREP" "$REALGREP" >"$E2E/grepbin/grep"
+chmod +x "$E2E/grepbin/grep"
+export pw=exported-by-the-caller again=exported-by-the-caller
+DR_PATH="$E2E/grepbin:$PATH" DR_LOGS=env dr_run "$DRTYPED"$'\n'"yes please" ridge
+unset pw again
+check "  no password is in the environment of a process the script starts, the caller exporting pw and again (one search a password)" "0 3" \
+  "$(cat "$S/grep.env" 2>/dev/null | grep -vc '=exported-by-the-caller$' || true) $(grep -c -e '-f /dev/stdin' "$S/grep.calls" || true)"
 
 echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
 # A clone whose origin is named as GitHub's are, so the script reads the repository from it; the stack

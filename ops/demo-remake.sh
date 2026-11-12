@@ -53,7 +53,8 @@ die() {
     echo "error: $*" >&2
     exit 1
   fi
-  echo "== refused: $*"
+  # on stderr, as lib.sh's die writes: a refusal inside a command substitution is then shown, not captured
+  echo "== refused: $*" >&2
   exit 2
 }
 
@@ -63,6 +64,8 @@ PARTNERS=()
 COPIES=()
 PWS=()
 ROUND_PID=''
+# NEXT: what to run when the run stops while a round opens its tunnel (empty outside that), printed as the run ends
+NEXT=''
 
 # mapping_read: PARTNERS (each label once) and COPIES ("<label> <code>"), from the mapping.
 mapping_read() {
@@ -86,6 +89,8 @@ mapping_read() {
 # to the terminal past the log (fd 3); the password goes nowhere but PWS.
 type_password() {
   local pw again
+  # bash 3.2 keeps the export flag of a caller's variable of the same name on a local: drop it here
+  declare +x pw again
   printf 'Password for %s (not shown): ' "$1" >&3
   IFS= read -rs pw || die "no password was typed"
   printf '\n' >&3
@@ -107,13 +112,14 @@ passwords_pipe() {
 # search_extra: the end-of-run search for each password. The rule: the builtin printf on a pipe, grep -f
 # reading the pattern from it; never argv, a here-string or a file.
 search_extra() {
-  local pw
-  for pw in ${PWS[@]+"${PWS[@]}"}; do
-    [ -n "$pw" ] || continue
-    if printf '%s\n' "$pw" | grep -qF -f /dev/stdin -- "$LOG"; then
+  local i=0
+  # indexed, so no variable holding a password is ever a loop variable another shell exported (bash 3.2)
+  while [ "$i" -lt "${#PWS[@]}" ]; do
+    if [ -n "${PWS[$i]}" ] && printf '%s\n' "${PWS[$i]}" | grep -qF -f /dev/stdin -- "$LOG"; then
       final "RED  a password is in this log: redact it in this log, and run again with other passwords"
       return 1
     fi
+    i=$((i + 1))
   done
 }
 
@@ -127,6 +133,7 @@ kill_tree() {
 # cleanup_extra: a round still running when the run ends is ended with it
 cleanup_extra() {
   if [ -n "$ROUND_PID" ]; then kill_tree "$ROUND_PID"; fi
+  if [ -n "$NEXT" ]; then echo "$NEXT" >&2; fi
 }
 
 # clock_after <minutes> → HH:MM that many minutes from now, read by date here
@@ -160,7 +167,7 @@ open_tunnel() {
       git -C "$REPO_DIR" diff --quiet "$running" "$sha" -- "${deploy_paths[@]}"; then
       held=yes
     fi
-    [ "$held" = yes ] || die "/health names $running, not $sha; the run goes on when ridge runs this commit, or an earlier one that differs from it in no path ci.yml deploys on"
+    [ "$held" = yes ] || die "/health names $running, not $sha; ridge must run this commit, or an earlier one that differs from it in no path ci.yml deploys on"
   fi
   fn_commit=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query Description --output text)
   [ "$fn_commit" = "$running" ] || die "the BFF's function names ${fn_commit:-no commit}, /health $running; the deploy did not finish"
@@ -186,6 +193,8 @@ round_run() {
       if ! tunnel_up; then
         cleanup_extra
         ROUND_PID=''
+        # what the round printed before the drop, so the log says which day it stood at
+        cat "$WORK/round.out"
         die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network) $sec seconds into the round: the copies are made, run ops/demo-remake.sh $ENVNAME --go-on to finish the fill"
       fi
       echo "   the round runs, ${sec}s, the tunnel is up ($(clock_after 0))"
@@ -194,7 +203,7 @@ round_run() {
   wait "$ROUND_PID" || rc=$?
   ROUND_PID=''
   cat "$WORK/round.out"
-  [ "$rc" = 0 ] || die "a round of the fill stopped (the lines above): run ops/demo-remake.sh $ENVNAME --go-on to finish it"
+  [ "$rc" = 0 ] || die "a round of the fill stopped (the lines above): run ops/demo-remake.sh $ENVNAME --go-on to finish it, unless they say a copy is not remade: then run ops/demo-remake.sh $ENVNAME again whole, without --go-on"
 }
 
 log_start demo-remake "$ENVNAME"
@@ -249,15 +258,22 @@ fi
 
 step "the fill, in rounds"
 WRITTEN=1
-echo "the fill may wait about $WAIT_MIN minutes, until about $(clock_after "$WAIT_MIN"); a line every ${TICK} seconds shows it is alive"
+echo "the fill may wait about $WAIT_MIN minutes, until about $(clock_after "$WAIT_MIN"), and the AWS session must hold until then; a line every ${TICK} seconds shows it is alive"
 round=0
 while :; do
   round=$((round + 1))
   [ "$round" -le "$MAX_ROUNDS" ] || die "$MAX_ROUNDS rounds and the copies are still behind: read the lines above"
   echo "round $round"
   # The first tunnel is the remake's; --go-on has made none since, so its first round uses the one opened above.
-  if [ "$round" -gt 1 ] || [ "$GO_ON" = 0 ]; then open_tunnel; fi
+  if [ "$round" -gt 1 ] || [ "$GO_ON" = 0 ]; then
+    NEXT="the copies are made: fix that, then run ops/demo-remake.sh $ENVNAME --go-on"
+    open_tunnel
+    NEXT=''
+  fi
   round_run
   grep -q '^seed: STILL BEHIND' "$WORK/round.out" || break
 done
+# The closing line only when the last round found every copy on the service (the round itself refuses a copy
+# not remade; this is the second look, on the summary it printed).
+grep -q '^seed: .*, 0 not on this service, ' "$WORK/round.out" || die "the last round did not find every copy on the service (the lines above): run ops/demo-remake.sh $ENVNAME again whole, without --go-on"
 echo "the ${#COPIES[@]} demo copies on $ENVNAME are remade, each with its partner's password, 21 days filled up to yesterday"

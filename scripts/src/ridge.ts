@@ -14,6 +14,7 @@ import {
 import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
+import { readLedger } from './demo/ledger';
 import { allCopies, type MappedCopy } from './demo/mapping';
 import { ensureService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
@@ -59,6 +60,9 @@ function checkMadeAt(code: string): number | null {
     : null;
 }
 
+/** The schema wants an operator's uuid for a deletion's `by`; the terminal has none, so the nil one. */
+const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+
 /** Deletes the check client `code` whole, as the console's delete does but with the nil uuid for
  * `by` (the terminal has no operator); the line to print, or an Error saying what was left. */
 async function removeCheckClient(
@@ -72,8 +76,7 @@ async function removeCheckClient(
   const done = await deleteClient(storage, {
     code,
     index,
-    // the schema wants an operator's uuid; the terminal has none, so the nil one
-    by: '00000000-0000-0000-0000-000000000000',
+    by: NIL_UUID,
     now,
   });
   if (done === 'unknown') return `no client ${code} to delete`;
@@ -130,7 +133,7 @@ async function deleteCopy(storage: CStorageClient, code: string, now: () => numb
     const done = await deleteClient(storage, {
       code,
       index,
-      by: '00000000-0000-0000-0000-000000000000',
+      by: NIL_UUID,
       now,
     });
     if (done === 'unknown') return;
@@ -163,6 +166,21 @@ async function remakeCopy(
   await setRootPasswords(storage, [copy.code], password, io);
   const report = await applyCopy(storage, copy, vietnamToday(io.now()), io.out, 0);
   if (report.status !== 'ok') throw new Error(`${copy.code}: ${report.note}`);
+}
+
+/** The mapped copies a round cannot go on with: not on the service, or with no ledger (a remake that
+ * stopped between the create and the first fill). A round would first-fill the second under the
+ * random password the create minted, so it is left as it is and named. */
+async function copiesNotRemade(storage: CStorageClient): Promise<string[]> {
+  const found = await Promise.all(
+    allCopies().map(async (copy) => {
+      const held = await storage.getRecord(recordKeys.client(copy.code));
+      if (!held) return copy.code;
+      const ledger = await readLedger(storage, storedClientSchema.parse(held.data).id);
+      return ledger ? null : copy.code;
+    }),
+  );
+  return found.filter((code) => code !== null);
 }
 
 const USAGE =
@@ -315,6 +333,15 @@ export async function runRidge(
 
     if (command === 'seed') {
       const limit = rest[0] === '--round' ? DAYS_PER_ROUND : MAX_DAYS_PER_RUN;
+      if (rest[0] === '--round') {
+        // The rounds follow a remake: a copy it did not finish is its to finish, by the same run again.
+        const notRemade = await copiesNotRemade(client());
+        if (notRemade.length > 0) {
+          throw new Error(
+            `no round was run: not remade (missing, or made without its first fill): ${notRemade.join(', ')}; run ops/demo-remake.sh ridge again whole, not with --go-on`,
+          );
+        }
+      }
       const reports = await applyAll(
         client(),
         vietnamToday((io.now ?? Date.now)()),

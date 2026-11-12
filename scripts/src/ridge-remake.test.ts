@@ -347,6 +347,42 @@ describe('ridge_cli remake', () => {
     }
   }, 900_000);
 
+  it('row 10: a round runs no day while a copy is missing or made without its first fill: it names the copy and ends 1, never first-filling it under the create’s password', async () => {
+    const { storage, run } = await ridge();
+    const [first, ...others] = copies;
+    for (const copy of others) {
+      const made = await createClient(storage, { code: copy.code, name: copy.company, madeAt: 1 });
+      if (made === 'taken') throw new Error('taken');
+      expect((await applyCopy(storage, copy, TODAY, undefined, 0)).status).toBe('ok');
+    }
+
+    const missing = await run(['seed', '--round'], null);
+
+    expect(missing.status).toBe(1);
+    expect(missing.out).toEqual([]);
+    expect(missing.err).toHaveLength(1);
+    expect(missing.err[0]).toContain(
+      `not remade (missing, or made without its first fill): ${first.code};`,
+    );
+    expect(missing.err[0]).toContain('again whole, not with --go-on');
+
+    const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
+    if (made === 'taken') throw new Error('taken');
+
+    const unfilled = await run(['seed', '--round'], null);
+
+    expect(unfilled.status).toBe(1);
+    expect(unfilled.err[0]).toContain(`${first.code};`);
+    expect(unfilled.out).toEqual([]);
+    expect(await readLedger(storage, made.id)).toBeNull();
+
+    expect((await applyCopy(storage, first, TODAY, undefined, 0)).status).toBe('ok');
+    const round = await run(['seed', '--round'], null);
+
+    expect(round.status).toBe(0);
+    expect(round.out.some((line) => line.startsWith('seed: STILL BEHIND'))).toBe(true);
+  }, 600_000);
+
   it('row 11: no line holds a typed password, a first password or a hash', async () => {
     const { storage, run } = await ridge();
     const first = copies[0];
