@@ -75,8 +75,12 @@ export type RunningStack = {
 
 /** Listens on loopback alone, on a free port or the one given, and answers where it is bound. */
 export const listening = (server: Server, port = 0) =>
-  new Promise<AddressInfo>((resolve) => {
-    server.listen(port, '127.0.0.1', () => resolve(server.address() as AddressInfo));
+  new Promise<AddressInfo>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve(server.address() as AddressInfo);
+    });
   });
 
 const key = () => randomBytes(24).toString('hex');
@@ -228,12 +232,16 @@ export async function startStack(
     const { port: seedPort } = await listening(seeding, options.ports?.seedDoor);
 
     // A passkey is bound to a name and no IP address has one: the operator opens `localhost`, on the
-    // front's port, which is picked before the BFF starts since the BFF checks every ceremony
-    // against it.
-    const frontPort = options.ports?.front ?? (await freePort());
-    const appOrigin = `http://localhost:${frontPort}`;
+    // front's port, which the BFF checks every ceremony against. The front binds first, so a port
+    // the stack picks (none given) is held from the pick; a port given was picked by the caller, and
+    // the bind fails at once if it is taken. The front's API answers 502 until the BFF is up; its
+    // pages are served from the start.
     const bffPort = options.ports?.bff ?? (await freePort());
     const bffUrl = `http://127.0.0.1:${bffPort}`;
+    const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
+    stops.unshift(() => new Promise((resolve) => front.close(resolve)));
+    const { port: frontPort } = await listening(front, options.ports?.front);
+    const appOrigin = `http://localhost:${frontPort}`;
     const bff = await startProcess(
       process.execPath,
       ['--import', import.meta.resolve('tsx'), join(ROOT, 'bff/src/main.ts')],
@@ -253,10 +261,6 @@ export async function startStack(
     await waitUntilUp(`${bffUrl}/api/config`, bff, 'the BFF', undefined, {
       'x-client-code': DEMO_CODE,
     });
-
-    const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
-    stops.unshift(() => new Promise((resolve) => front.close(resolve)));
-    await listening(front, frontPort);
 
     const facts: StackFacts = {
       ports: { cStorage: csPort, front: frontPort, bff: bffPort, seedDoor: seedPort },
