@@ -18,7 +18,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
-import { recordTools } from '../records/records';
+import { parsed, recordTools, type TenantStorage } from '../records/records';
 import { readEmployee } from '../records/staff-records';
 import type { Deps } from './staff';
 
@@ -32,12 +32,11 @@ const notFound = () => new HttpError(404, 'Not found');
  * request's own cancel writes them, then the closed day is written once; a stop between leaves the
  * day open with those requests cancelled, and the next close goes on. */
 export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
-  const { storage, now, forClient, signedIn, mustCan } = deps;
-  const { parsed, every } = recordTools(storage);
+  const { now, forClient, signedIn, mustCan } = deps;
 
   /** The closed day written once under its key. The write may have landed while its answer was
    * lost: the record is there as written, or another close sits under it. */
-  async function writeClosed(key: string, record: Reconciliation) {
+  async function writeClosed(storage: TenantStorage, key: string, record: Reconciliation) {
     try {
       return await storage.putRecord(key, record, null);
     } catch (error) {
@@ -50,7 +49,7 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
   app.get(ROUTES.reconciliations, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canView');
     const query = parse(z.strictObject({ day: daySchema }), request.query);
-    const listed = await every(
+    const listed = await recordTools(request.storage).every(
       recordKeys.tenant(request.tenantId).reconciliationDayPrefix(query.day),
       reconciliationSchema,
       'closed day',
@@ -78,7 +77,7 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
         throw notFound();
       }
       const keys = recordKeys.tenant(request.tenantId);
-      const listed = await every(
+      const listed = await recordTools(request.storage).every(
         keys.deliveryDayPrefix(day),
         deliveryRequestSchema,
         'delivery request',
@@ -90,7 +89,7 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
         driverId,
       );
       const key = keys.reconciliation(day, driverId);
-      const held = await storage.getRecord(key);
+      const held = await request.storage.getRecord(key);
       const asItIs = (record: unknown) => ({
         delivered: figures.delivered.map((one) => one.id),
         waiting: figures.waiting.map((one) => one.id),
@@ -119,22 +118,25 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
       // closes nothing (the root alone has no record), so the day is never signed with the root's
       // shape and another's name.
       const person = who.employeeId
-        ? await readEmployee(storage, request.tenantId, who.employeeId)
+        ? await readEmployee(request.storage, request.tenantId, who.employeeId)
         : null;
       if (who.employeeId && !person) throw new HttpError(401, 'Unauthorized');
       for (const waiting of figures.waiting) {
         const tag = listed.find((one) => one.record.id === waiting.id)!.tag;
         const cancelled = { ...waiting, state: 'cancelled' };
-        if ((await storage.putRecord(keys.delivery(day, waiting.id), cancelled, tag)) === 'moved') {
+        if (
+          (await request.storage.putRecord(keys.delivery(day, waiting.id), cancelled, tag)) ===
+          'moved'
+        ) {
           throw conflict(asItIs(null));
         }
         // The order is then freed to send again; one that moved meanwhile is left as it is.
         const named = waiting.order;
         // A request's order is never deleted.
-        const stored = (await storage.getRecord(keys.order(named.day, named.id)))!;
+        const stored = (await request.storage.getRecord(keys.order(named.day, named.id)))!;
         const ordered = parsed(orderSchema, 'an order', stored);
         if (ordered.request?.id === waiting.id) {
-          await storage.putRecord(
+          await request.storage.putRecord(
             keys.order(named.day, named.id),
             { ...ordered, request: null },
             stored.tag,
@@ -153,7 +155,8 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
           : { id: null, code: null, name: who.name },
         closedAt: now(),
       };
-      if ((await writeClosed(key, closed)) === 'moved') throw conflict(asItIs(null));
+      if ((await writeClosed(request.storage, key, closed)) === 'moved')
+        throw conflict(asItIs(null));
       // The cancelled waiting requests ride in the memo, each with its state before and after: the
       // close cancels them and frees their orders, and no other entry names them.
       const cancelled = (state: string) => figures.waiting.map(({ id }) => ({ id, state }));
