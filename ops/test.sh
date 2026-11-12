@@ -170,7 +170,8 @@ STACK_JSON=''
 trust_guard() {
   grep -qxF -- '                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:${Env}' "$1" ||
     die "the trust's sub is not \${SubjectPrefix}:environment:\${Env}"
-  ! grep -qF 'StringLike' "$1" || die "the trust uses StringLike, which takes wildcards"
+  # BoxRole is left out: its list is held to its box's path by a StringLike prefix condition, which is no trust
+  ! sed '/^  BoxRole:/,/^  BoxProfile:/d' "$1" | grep -qF 'StringLike' || die "the trust uses StringLike, which takes wildcards"
   ! grep -qF 'repo:${Repository}' "$1" || die "the trust still builds the subject from Repository"
   grep -qxF -- '                token.actions.githubusercontent.com:aud: sts.amazonaws.com' "$1" || die "the trust lost its audience condition"
 }
@@ -314,12 +315,14 @@ bucket_guard() {
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
+  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
   must "$1" "an s3 action reaches a bucket other than UiBucket" \
-    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | .Resource | tostring] | all(contains("UiBucket"))'
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | select(.Action != "s3:ListBucket") | .Resource | tostring] | all(contains("UiBucket"))'
+  must "$1" "the deploy role's list reaches a bucket other than CopyBucket, or lists more than it" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket")] | length == 1 and .[0].Resource == {"Fn::GetAtt":["CopyBucket","Arn"]} and .[0].Effect == "Allow" and (.[0] | has("Condition") | not)'
   must "$1" "UpdateFunctionConfiguration is not held to ridge's subnet and the BFF's group" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and (.[0].Condition | has("ForAllValues:StringEquals")) and .[0].Condition["ForAllValues:StringEquals"] == {"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
   must "$1" "UpdateFunctionConfiguration passes a request whose subnet and group lists are absent or empty (no Null condition requiring both keys)" \
@@ -471,7 +474,15 @@ volume_guard() {
     "[$inst | (.Properties.BlockDeviceMappings // []) as \$m | (\$m | length > 0) and all(\$m[]; .Ebs.DeleteOnTermination == false)] | all"
   must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
     '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
-  # Not held yet (second slice, item 6's backup half): an AWS::EC2::Volume added later with no policy passes this guard.
+  # Any volume resource carries both policies (a volume can snapshot; Retain is legal too), so one added with none is refused.
+  must "$1" "a volume resource has no DeletionPolicy and UpdateReplacePolicy of Retain or Snapshot" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::Volume") | .value | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")] | all'
+  must "$1" "RecordsVolume is not gp3, encrypted, in the box's zone, at RecordsVolumeSize" \
+    '.Resources.RecordsVolume.Properties | .VolumeType == "gp3" and .Encrypted == true and .Size == {"Ref":"RecordsVolumeSize"} and .AvailabilityZone == {"Fn::GetAtt":["Subnet","AvailabilityZone"]}'
+  must "$1" "RecordsVolume is not kept on a stack delete and a replacement" \
+    '.Resources.RecordsVolume | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")'
+  must "$1" "RecordsAttachment does not attach RecordsVolume to Box" \
+    '.Resources.RecordsAttachment.Properties | .InstanceId == {"Ref":"Box"} and .VolumeId == {"Ref":"RecordsVolume"}'
 }
 
 passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
@@ -494,6 +505,18 @@ refuses "  a Delete DeletionPolicy is refused" "Box has no DeletionPolicy of Ret
   volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Delete"')"
 refuses "  an UpdateReplacePolicy of RetainExceptOnCreate (a DeletionPolicy value only) is refused" "Box has no UpdateReplacePolicy of Retain" \
   volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "RetainExceptOnCreate"')"
+refuses "  a volume added with no policy is refused (row 5)" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.Volume2 = {"Type":"AWS::EC2::Volume","Properties":{}}')"
+refuses "  a records disk with its policies removed is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut 'del(.Resources.RecordsVolume.DeletionPolicy)')"
+refuses "  a records disk that is not encrypted is refused (row 4)" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Encrypted = false')"
+refuses "  a records disk of another type is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.VolumeType = "gp2"')"
+refuses "  a records disk at a fixed size, not its parameter, is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Size = 8')"
+refuses "  a records disk deleted with its stack is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.RecordsVolume.DeletionPolicy = "Delete"')"
 refuses "  a second instance with both attributes but a disk deleted on termination is refused" "an instance resource has a disk that does not keep itself" \
   volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","DeletionPolicy":"Retain","UpdateReplacePolicy":"Retain","Properties":{"BlockDeviceMappings":[{"DeviceName":"/dev/xvda","Ebs":{"DeleteOnTermination":true}}]}}')"
 
@@ -511,7 +534,7 @@ echo "== the update on ridge adds layer four and modifies the deploy role in pla
 # adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
 # Add, the one Modify is DeployRole, in place, and the guard names nothing
 adds_and_one_modify() {
-  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes'
+  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes CopyBucket BoxRole BoxProfile RecordsVolume RecordsAttachment' # layer four's, and the copy's five, which the next update (changeset-copy.json) adds
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
   gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
   [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
@@ -525,6 +548,109 @@ refuses "  a template resource the change set lacks is refused" "the template ga
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut '.Resources.Extra = {"Type":"AWS::SNS::Topic"}')"
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
+
+echo "== the records' copy: the S3 door, the bucket, the box's role, and the box kept in place (rows 1 to 4 of docs/plans/2026-11-11-continuous-copy.md)"
+tojson "$OPS_DIR/network.yml" >"$WORK/network.json"
+# nmut <jq program> → a copy of the network's JSON with the program applied
+nmut() {
+  jq -c "$1" "$WORK/network.json" >"$WORK/network-mut.json"
+  echo "$WORK/network-mut.json"
+}
+# row 1: S3's gateway door on the one route table; still no internet gateway, no NAT, no address to put on one
+# shellcheck disable=SC2016 # jq programs, in single quotes
+network_guard() {
+  must "$1" "the network has no S3 gateway door on its route table" \
+    '.Resources.S3Door | .Type == "AWS::EC2::VPCEndpoint" and .Properties.VpcEndpointType == "Gateway" and .Properties.ServiceName == {"Fn::Sub":"com.amazonaws.${AWS::Region}.s3"} and .Properties.RouteTableIds == [{"Ref":"Routes"}] and .Properties.VpcId == {"Ref":"Vpc"}'
+  must "$1" "the network has a way out other than the door (an internet gateway, a NAT, an elastic address, a route, or an interface endpoint)" \
+    '([.Resources[] | .Type] | all(. != "AWS::EC2::InternetGateway" and . != "AWS::EC2::NatGateway" and . != "AWS::EC2::EIP" and . != "AWS::EC2::Route" and . != "AWS::EC2::VPCGatewayAttachment")) and ([.Resources[] | select(.Type == "AWS::EC2::VPCEndpoint") | .Properties.VpcEndpointType] | all(. == "Gateway"))'
+}
+passes "the network gains an S3 gateway door on its route table, and has no internet gateway and no NAT (row 1)" network_guard "$WORK/network.json"
+refuses "  a network with no door is refused" "no S3 gateway door" network_guard "$(nmut 'del(.Resources.S3Door)')"
+refuses "  an interface endpoint in place of the gateway is refused" "no S3 gateway door" \
+  network_guard "$(nmut '.Resources.S3Door.Properties.VpcEndpointType = "Interface"')"
+refuses "  an internet gateway is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Igw = {"Type":"AWS::EC2::InternetGateway"}')"
+refuses "  a NAT is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Nat = {"Type":"AWS::EC2::NatGateway","Properties":{}}')"
+
+# row 2: the copy's bucket
+copy_bucket_guard() {
+  must "$1" "CopyBucket does not block all public access" \
+    '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration == {"BlockPublicAcls":true,"BlockPublicPolicy":true,"IgnorePublicAcls":true,"RestrictPublicBuckets":true}'
+  must "$1" "CopyBucket is not encrypted" '.Resources.CopyBucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration | length == 1'
+  must "$1" "CopyBucket is not kept on a stack delete and a replacement" \
+    '.Resources.CopyBucket | .DeletionPolicy == "Retain" and .UpdateReplacePolicy == "Retain"'
+  must "$1" "CopyBucket does not expire copies after seven days" \
+    '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules | length == 1 and .[0].Status == "Enabled" and .[0].ExpirationInDays == 7'
+  must "$1" "CopyBucket is a website, or has a policy of its own" \
+    '([.Resources | to_entries[] | select(.value.Type == "AWS::S3::BucketPolicy" and (.value.Properties.Bucket | tostring | contains("CopyBucket")))] | length == 0) and (.Resources.CopyBucket.Properties | has("WebsiteConfiguration") | not)'
+}
+# row 3: the box's role
+# shellcheck disable=SC2016 # jq programs, in single quotes
+box_role_guard() {
+  must "$1" "the box's role holds an action other than put and get under its own path, and list" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end] | sort == ["s3:GetObject","s3:ListBucket","s3:PutObject"]'
+  must "$1" "the box's role reaches a resource other than CopyBucket, or put and get beyond its own box path" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action != "s3:ListBucket") | .Resource] == [{"Fn::Sub":"${CopyBucket.Arn}/Box/*"}] and ([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket") | .Resource] == [{"Fn::GetAtt":["CopyBucket","Arn"]}])'
+  must "$1" "the box's role has a statement that is not an Allow, or a managed policy" \
+    '([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Effect] | all(. == "Allow")) and (.Resources.BoxRole.Properties | has("ManagedPolicyArns") | not)'
+  must "$1" "the box's role is assumed by something other than EC2" \
+    '.Resources.BoxRole.Properties.AssumeRolePolicyDocument.Statement | length == 1 and .[0].Principal == {"Service":"ec2.amazonaws.com"}'
+  must "$1" "the box does not take BoxProfile, or BoxProfile does not hold BoxRole alone" \
+    '.Resources.Box.Properties.IamInstanceProfile == {"Ref":"BoxProfile"} and .Resources.BoxProfile.Properties.Roles == [{"Ref":"BoxRole"}]'
+}
+# The hazard: an update that changes a create-only property of the box replaces it, and the records stay on the old one.
+# The box gains IamInstanceProfile (in place) and nothing else: its property names are pinned, no inline Volumes, and the
+# first-boot script is pinned by its hash (UserData is create-only in effect). A deliberate change here moves the pin.
+box_in_place_guard() {
+  must "$1" "the box's properties are not the pinned set (a new property may replace the box)" \
+    '.Resources.Box.Properties | keys == ["BlockDeviceMappings","CreditSpecification","IamInstanceProfile","ImageId","InstanceType","MetadataOptions","NetworkInterfaces","Tags","UserData"]'
+  [ "$(jq -j '.Resources.Box.Properties.UserData["Fn::Base64"]' "$1" | shasum -a 256 | cut -d' ' -f1)" = 9c594c9c06ed30a3c6204546fc8195e13eb9d72ab207b52bf30ca595e53f50fc ] ||
+    die "the box's first-boot script changed: UserData replaces the box (mount the records disk in the release, not here)"
+}
+passes "the copy's bucket blocks public access, is encrypted, is kept, and expires copies after seven days (row 2)" copy_bucket_guard "$WORK/env.json"
+refuses "  a bucket that allows public policy is refused" "block all public access" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy = false')"
+refuses "  a bucket with no encryption is refused" "not encrypted" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.Properties.BucketEncryption)')"
+refuses "  a bucket deleted with its stack is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.DeletionPolicy)')"
+refuses "  a bucket deleted on a replacement is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.UpdateReplacePolicy)')"
+refuses "  a bucket that expires copies after a day is refused" "seven days" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules[0].ExpirationInDays = 1')"
+passes "the box's role may put, get and list its own path in its own bucket, and holds no delete (row 3)" box_role_guard "$WORK/env.json"
+refuses "  a role that may delete is refused" "an action other than" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Action += ["s3:DeleteObject"]')"
+refuses "  a role over every bucket is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = "*"')"
+# shellcheck disable=SC2016 # jq's program, in single quotes
+refuses "  a role over the whole bucket, not its box path, is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = {"Fn::Sub":"${CopyBucket.Arn}/*"}')"
+refuses "  a role with a managed policy is refused" "managed policy" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a box with no profile is refused" "does not take BoxProfile" box_role_guard "$(mut 'del(.Resources.Box.Properties.IamInstanceProfile)')"
+passes "the box gains its profile and keeps every create-only property: its names and first-boot script are pinned" box_in_place_guard "$WORK/env.json"
+refuses "  a property added to the box is refused" "not the pinned set" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.Volumes = [{"Device":"/dev/sdf","VolumeId":"vol-1"}]')"
+refuses "  a changed first-boot script is refused" "first-boot script changed" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.UserData["Fn::Base64"] += "echo mount\n"')"
+
+# copy_update <change set>: dies unless the update is the copy's five additions and a Modify of the box and of the
+# deploy role, both in place, and the guard names nothing
+copy_update() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  [ "$seen" = "BoxProfile BoxRole CopyBucket RecordsAttachment RecordsVolume" ] || die "the change set adds '$seen'"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | sort | join(",")' "$1")
+  [ "$seen" = "Modify Box False,Modify DeployRole False" ] || die "the change set's other changes are not a Modify of Box and DeployRole in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the update on ridge, as CloudFormation shows it, adds the copy's five and modifies Box in place; the guard passes" \
+  copy_update "$OPS_DIR/testdata/changeset-copy.json"
+refuses "  a box shown as replaced is not that update, and the guard names it" "not a Modify of Box and DeployRole in place" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced.json"; echo "$WORK/cs-copy-replaced.json")"
+check "  and stack.sh's guard refuses that box, naming it" "Box (AWS::EC2::Instance): Modify, replacement True" \
+  "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced2.json"; jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$WORK/cs-copy-replaced2.json")"
+refuses "  a box shown as Conditional is not that update either" "not a Modify of Box" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
 
 echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }

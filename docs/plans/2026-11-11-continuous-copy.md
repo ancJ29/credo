@@ -137,6 +137,16 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   and an idle file got no new full copy in 35 seconds past a 20-second snapshot interval, so the hazard
   below is real and row 15's six-day limit is its only guard. The configuration is `ops/litestream.yml`.
   A rehearsal on this machine, not a gate row; no gate ran, as no guarded file changed.
+- [x] **Step 2, ticked 2026-11-12.** The S3 gateway door, the copy's bucket, the box's role and profile, the
+  records disk and its attachment, and the deploy role's list are in `ops/network.yml` and `ops/env.yml`, with
+  their guards and `ops/testdata/changeset-copy.json` in `ops/test.sh`, on top of `pre-merge` at `95855e30`.
+  `bash ops/test.sh` exit 0 (log `2026-11-12-130506-cc-step2-green1.log`), `shellcheck -x` and `cfn-lint` exit 0.
+  Each of rows 1 to 6 was seen red by one named mutation of the real template, then put back: row 1 the door's
+  `VpcEndpointType` to `Interface`; row 2 `ExpirationInDays` to 1; row 3 `s3:PutObject` to `s3:DeleteObject` in the
+  box's role; row 4 the records disk to `gp2`; row 5 the records disk's two policies deleted; row 6 the deploy
+  role's `ListCopyBucket` pointed at the UI bucket. The old whole-template `StringLike` guard now leaves `BoxRole`
+  out (its list is held to the box's path by a `StringLike` prefix); its own case, a trust with `StringLike`,
+  still refuses in the green run. The mutations were batched, four then two to a run, each in a different guard.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.
