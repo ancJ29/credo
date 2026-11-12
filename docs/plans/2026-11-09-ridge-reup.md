@@ -81,7 +81,7 @@ whole. Each hand-off reaches you as one command in its own block, every path abs
 `main`'s worktree. Sizes are the ledger's for the same shape: a one-off script 1 to 7 minutes
 (median 2), a log read 1 to 2, a recap about 3.
 
-- [ ] **1. The stack, in two hand-offs** — no script: both are single `ops/` commands. 👤 First, if
+- [x] **1. The stack, in two hand-offs** — no script: both are single `ops/` commands. 👤 First, if
   `origin/main` lags `main`, your push of `main`: every `ops/` script refuses a worktree whose
   deployed paths differ from `origin/main`'s (`main_synced`, `ops/lib.sh#L175-L178`), and with all
   three workflows still off the push runs nothing on GitHub. 👤 Then `ops/stack.sh env ridge
@@ -92,25 +92,30 @@ whole. Each hand-off reaches you as one command in its own block, every path abs
   lists 21 `Add` lines with nothing removed or replaced; and the create's log, read whole, reads
   row 2. **About 4 min** of the machine's; the create is about 5 of AWS's (`#L9`), longer if the
   distribution or the endpoint is slow.
-- [ ] **2. The release hand-off** — one script, `<stamp>-ridge-release.sh`, calling `ops/release.sh
+  *Ticked:* the `--plan` run read `origin/main`'s code, found the region enabled, listed 21 additions with no removal and no replacement, and ended 0; the create then ran to complete in 4 min 49 s of AWS's, set GitHub's environment to admit `main` alone, read its secret back (`AWS_ROLE_ARN`), ended green with no key in its log, and left the box at 286 MiB available of 412.
+- [x] **2. The release hand-off** — one script, `<stamp>-ridge-release.sh`, calling `ops/release.sh
   ridge` then `ops/app.sh ridge` with the environment they need, each tee'd. It calls the `ops/`
   scripts with parameters and copies no line of them. 👤 You run it. *Done when:* 🤖 `bash -n` and
   `shellcheck` clean; the log ends on its verdict with both scripts green; and the release's
   `box: memory … MiB available` line (`ops/lib.sh#L495`) is kept for the recap as the memory with
   `c-storage` alone. **About 3 min.**
-- [ ] **3. The environment check, its own hand-off** — 👤 `ops/check.sh ridge`, alone, because it
+  *Ticked:* the first run refused at once, changing nothing: it asked for the stack with no region and was told it was not found. With the region set, the rerun found the stack complete, the release was sent and its checksum matched, the app's function carried the code sent, no key was in any log, and both scripts ended green. The box showed 287 MiB available, 2459 MiB of swap and 4392 MiB of disk free, with `c-storage` alone.
+- [x] **3. The environment check, its own hand-off** — 👤 `ops/check.sh ridge`, alone, because it
   reads what step 2 left behind. *Done when:* 🤖 the log, read whole, reads rows 4 and 5.
   **About 2 min.**
-- [ ] **4. The workflows-on hand-off** — one script, `<stamp>-ridge-workflows-on.sh`: the three
+  *Ticked:* `ops/check.sh ridge` ran all seven steps and ended green. Step 7, through the app's address, ran and was not skipped. The sweep of stranded check clients reported 0 deleted and 0 failed, an `ok` line, as the plan expected on a fresh ridge. Sign-in, sign-out and the refusals answered as written, and no key was in the log.
+- [x] **4. The workflows-on hand-off** — one script, `<stamp>-ridge-workflows-on.sh`: the three
   `gh workflow enable` calls the teardown's log recorded, then its own read-back of all three
   states. It writes on GitHub only and touches no AWS resource and no workflow file. 👤 You run it.
   *Done when:* 🤖 `bash -n` and `shellcheck` clean, and the log reads row 1. **About 3 min.**
-- [ ] **5. The live reading** — one script, `<stamp>-ridge-live-read.sh`: the box, its fence and the
+  *Ticked:* the three workflows were enabled (each had been manually disabled), then read back with `gh workflow list --all`: `ci.yml`, `seed.yml` and `walks.yml` each active, 3 of 3, and the script ended 0.
+- [x] **5. The live reading** — one script, `<stamp>-ridge-live-read.sh`: the box, its fence and the
   unattached volumes, the live stack's two template policies, then a call to the existing
   access-log one-off **by path, unmodified**, so that reading is re-run and not re-written. Reads
   only; it changes nothing on AWS. 👤 You run it. *Done when:* 🤖 `bash -n` and `shellcheck` clean,
   and its log reads rows 3 and 6. **About 4 min.**
-- [ ] **6. The recap** — `docs/recaps/<date>-ridge-reup.md`, carrying the six readings as its
+  *Ticked:* the live reading found one running box, its root disk's `DeleteOnTermination` false, no unattached volume, and the live stack's Box policies `RetainExceptOnCreate` and `Retain` (the stack's answer, not the instance's). The access-log one-off, re-run unchanged, made three requests through `/api/` and read three lines back from the gateway's log group, each with all ten fields, with the secret-shape search at 0 lines. It ended 0.
+- [x] **6. The recap** — `docs/recaps/<date>-ridge-reup.md`, carrying the six readings as its
   evidence, the memory with `c-storage` alone, the new address's consequences, and the deploy job's
   first run as not yet known if no code push has come; and keeping `docs/products.md` true, whose
   "Ridge runs what `main` held at its last push" (`docs/products.md#L6`) is false while ridge is
@@ -118,6 +123,7 @@ whole. Each hand-off reaches you as one command in its own block, every path abs
   run src/citations.test.ts`, the whole check for a change to documents only); `git grep -nE
   '/Users/|~/'` finds nothing in the commit. The piece then lands on `pre-merge` and counts as
   merged when `main` holds it. **About 3 min.**
+  *Ticked:* the recap is `docs/recaps/2026-11-12-ridge-reup.md`, `docs/products.md` is true again for ridge, and the citation test and the path grep passed before the commit. The deploy job's first run is not yet known (no code push has come); it is marked in the recap.
 
 ## Why the workflows go on fourth, and where the other seams fall
 
