@@ -23,9 +23,6 @@ TUNNEL_PORT=3192
 KEYS_FILE=$REPO_DIR/services/c-storage/bruno/environments/$ENVNAME-tunnel.yml
 CHECK_EVERY=5
 
-# clock <epoch seconds> → HH:MM local time (GNU date, then BSD's)
-clock() { date -d "@$1" +%H:%M 2>/dev/null || date -r "$1" +%H:%M; }
-
 log_start tunnel "$ENVNAME"
 
 # Ridge alone until the guard that refuses a client's stack exists (ridge's plan, "Left behind"): a

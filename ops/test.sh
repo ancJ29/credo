@@ -1207,6 +1207,18 @@ mkdir -p "$WORK/seed-days/scripts/src/demo"
 sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
 seed_guards_days() { REPO_DIR="$WORK/seed-days" seed_guards "$SEED_WORKFLOW"; }
 refuses "three days a run in an 18-minute Seed step is refused" "hold 3 days at 7.5 minutes a day" seed_guards_days
+# The demo copies' fill goes in rounds, each on a tunnel that lasts the endpoint's hour: days a round x 7.5 minutes x 1.2
+# must fit 50 minutes, the hour less ten (docs/plans/2026-11-12-ridge-by-script.md, case 15).
+round_budget() { # <tree>: its DAYS_PER_ROUND fits the tunnel
+  local d
+  d=$(sed -n 's/^export const DAYS_PER_ROUND = \([0-9][0-9]*\);$/\1/p' "$1/scripts/src/demo/apply.ts")
+  [ -n "$d" ] || die "DAYS_PER_ROUND is not readable"
+  [ $((d * 90)) -le 500 ] || die "a round of $d days at 7.5 minutes a day with a fifth over does not fit the tunnel's 50 minutes"
+}
+passes "a round of DAYS_PER_ROUND days fits the tunnel's 50 minutes at 7.5 minutes a day with a fifth over" round_budget "$REPO_DIR"
+mkdir -p "$WORK/round-days/scripts/src/demo"
+sed 's/^export const DAYS_PER_ROUND = 5;$/export const DAYS_PER_ROUND = 7;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/round-days/scripts/src/demo/apply.ts"
+refuses "seven days a round, which outlives the tunnel's hour, is refused" "a round of 7 days at 7.5 minutes a day" round_budget "$WORK/round-days"
 awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
 refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
 awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
@@ -2806,6 +2818,114 @@ check "a seed that stops (the BFF's key refused) ends red, naming that it stoppe
   "$RC $(seed_lines '^error: the seed stopped') $(seed_lines '^seeded')"
 unset SEED_LOCAL_PORT
 
+echo "== ops/demo-remake.sh run whole (rows 12 to 14: ridge's demo copies alone, a terminal, never a job; nothing deleted without the typed words; the wait named and kept alive; a dropped round finished by --go-on)"
+# The node half is a stand-in under RIDGE_SCRIPTS_DIR: it answers the three commands with a line, counts the
+# rounds in the state folder, holds a round FAKE_ROUND_MS and, in round FAKE_DROP_ROUND, ends the tunnel's master
+# and hangs. The real mapping and the real tsx are used, so no 21-day fill runs here (the node half's own tests hold it).
+HALF=$WORK/half
+mkdir -p "$HALF/src/demo"
+cp "$REPO_DIR/scripts/src/demo/mapping.ts" "$HALF/src/demo/mapping.ts"
+ln -s "$REPO_DIR/scripts/node_modules" "$HALF/node_modules"
+cat >"$HALF/src/ridge-main.ts" <<'HALFTS'
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+
+const state = process.env.FAKE_STATE!;
+const [command, ...rest] = process.argv.slice(2);
+appendFileSync(`${state}/half.calls`, `${command} ${rest.join(' ')}\n`);
+const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+async function main() {
+  if (command === 'remake') {
+    readFileSync(0, 'utf8');
+    console.log(rest[0] === '--check' ? 'checked: stand-in' : 'remake: stand-in');
+  } else if (command === 'seed') {
+    const file = `${state}/rounds`;
+    const n = (existsSync(file) ? Number(readFileSync(file, 'utf8')) : 0) + 1;
+    writeFileSync(file, String(n));
+    await sleep(Number(process.env.FAKE_ROUND_MS ?? 0));
+    if (process.env.FAKE_DROP_ROUND === String(n)) {
+      process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
+      await sleep(30000);
+    }
+    console.log(
+      n < Number(process.env.FAKE_ROUNDS ?? 3)
+        ? 'seed: STILL BEHIND, 1 copies have days left (x 5); stand-in'
+        : 'seed: 6 copies mapped, 6 up to date, 0 not on this service, 5 days applied',
+    );
+  } else {
+    console.error(`stand-in half: unknown ${command}`);
+    process.exit(1);
+  }
+}
+void main();
+HALFTS
+drport=$(free_port)
+DRPW1='Invented-One1!'
+DRPW2='Invented-Two2@'
+DRPW3='Invented-Three3#'
+DRTYPED="$DRPW1"$'\n'"$DRPW1"$'\n'"$DRPW2"$'\n'"$DRPW2"$'\n'"$DRPW3"$'\n'"$DRPW3"
+dr_run() { # <typed text> <args…>: demo-remake.sh whole in the clone, typed to over a pipe (DR_TTY=0: no test switch); log folder DR_LOGS
+  export OPS_LOG_DIR=$E2E/logs-dr-${DR_LOGS:?}
+  printf '%s\n' "$1" >"$S/typed"
+  (cd "$E2E/repo" && exec env RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY="${DR_TTY:-1}" DEMO_REMAKE_TICK="${DR_TICK:-1}" DEMO_REMAKE_LOCAL_PORT="$drport" \
+    bash ops/demo-remake.sh "${@:2}") >"$S/out" 2>&1 <"$S/typed" &
+  LPID=$!
+  e2e_reap 120
+}
+dr_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+dr_seen() { cat "$OPS_LOG_DIR"/*.log "$S/out" "$S/aws.calls" "$S/ssh.calls" "$S/half.calls" 2>/dev/null | grep -cF -e "$1" || true; }
+dr_deletes() { if [ -f "$S/half.calls" ]; then grep -c '^remake $' "$S/half.calls" || true; else echo 0; fi; }
+dr_refused() { # <name> <text the refusal names>: RC 2, the line, no aws or ssh call, no delete
+  check "$1" "2 1 gone gone 0" \
+    "$RC $(dr_lines "^== refused: .*$2") $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls") $(dr_deletes)"
+}
+e2e_fresh dr-refuse
+DR_LOGS=other dr_run "$DRTYPED" other
+dr_refused "12: another environment than ridge is refused before any aws call, naming why" "demo-remake.sh holds ridge's demo copies alone"
+DR_LOGS=job GITHUB_ACTIONS=true dr_run "$DRTYPED" ridge
+dr_refused "  in GitHub's job it refuses before anything is asked" "never in a job"
+DR_LOGS=pipe DR_TTY=0 dr_run "$DRTYPED" ridge
+dr_refused "  without a terminal it refuses before anything is asked" "needs a terminal to type the passwords on"
+rc=0
+out=$(bash "$E2E/repo/ops/demo-remake.sh" ridge --nonsense 2>&1) || rc=$?
+check "  an unknown argument prints the usage and exits 2" "2 usage: ops/demo-remake.sh ridge [--go-on]" "$rc $out"
+DR_LOGS=differ dr_run "$DRPW1"$'\n'"$DRPW2" ridge
+dr_refused "  two typings that differ are refused before any call" "the two typings of p1 differ"
+check "  the log holds neither typing" "0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2")"
+DR_LOGS=reply dr_run "$DRTYPED"$'\n'"yes please" ridge
+dr_refused "13: a reply other than \"remake ridge\" refuses before any call, nothing deleted" 'the reply was not "remake ridge"'
+check "  and the six copies were listed before it was asked" 6 "$(dr_lines '^   p[0-9] ')"
+check "  the passwords reached node on a pipe only, none in the log or a call" "0 0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2") $(dr_seen "$DRPW3")"
+
+e2e_fresh dr-whole
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the box, for the demo copies' run" 0 "$RC"
+sends_before=$(grep -c 'send-ssh-public-key' "$S/aws.calls" || true)
+exits_before=$(grep -c -e '-O exit' "$S/ssh.calls" || true)
+DR_LOGS=run1 FAKE_ROUNDS=3 FAKE_ROUND_MS=3000 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "14: the run ends 0 and its log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  the notice names the minutes and a clock time, before the first round" "1 yes" \
+  "$(dr_lines '^the fill may wait about [0-9][0-9]* minutes, until about [0-9][0-9]:[0-9][0-9]; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the fill may wait/ {n = NR} /^round 1$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
+check "  the remake ran once, after its check, and three rounds followed it" "1 1 3" \
+  "$(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -c '^seed --round$' "$S/half.calls")"
+check "  a line while each round runs (rounds of 3 s, a line a second)" "yes" "$([ "$(dr_lines '^   the round runs, [0-9]*s, the tunnel is up')" -ge 3 ] && echo yes || echo no)"
+check "  each round on a new tunnel: four opens, four closes" "4 4" \
+  "$(($(grep -c 'send-ssh-public-key' "$S/aws.calls") - sends_before)) $(($(grep -c -e '-O exit' "$S/ssh.calls") - exits_before))"
+check "  the six copies and the 21 days said at the end" "1" "$(dr_lines '^the 6 demo copies on ridge are remade, each with its partner.s password, 21 days filled up to yesterday$')"
+check "  no password in the log, the terminal, a call of aws, ssh or the node half" "0 0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2") $(dr_seen "$DRPW3")"
+# shellcheck disable=SC2016 # the script's source text is searched, not expanded
+check "  the default between lines is 30 seconds" 1 "$(grep -c '^TICK=\${DEMO_REMAKE_TICK:-30}$' "$OPS_DIR/demo-remake.sh" || true)"
+
+e2e_fresh dr-drop
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run2 FAKE_ROUNDS=3 FAKE_ROUND_MS=1000 FAKE_DROP_ROUND=2 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+if [ "$RC" != 1 ]; then echo "  (the run's last lines:)"; tail -n 8 "$S/out"; fi
+check "  a tunnel that drops in round 2 ends the run red, naming --go-on, with the exit 1" "1 1 1" \
+  "$RC $(dr_lines '^error: the tunnel dropped') $(dr_lines 'ops/demo-remake.sh ridge --go-on')"
+DR_LOGS=run3 FAKE_ROUNDS=3 dr_run '' ridge --go-on
+check "  --go-on finishes the fill: exit 0, a third round, no new remake, no new question" "0 3 1 1 yes" \
+  "$RC $(grep -c '^seed --round$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
+check "  and --go-on needs no terminal and no typing" "yes" "$(grep -q 'refused' "$S/out" && echo no || echo yes)"
+
 echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
 # A clone whose origin is named as GitHub's are, so the script reads the repository from it; the stack
 # is described with the box's address and the deploy role's ARN, and its change set holds no change.
@@ -3374,7 +3494,7 @@ for f in "$OPS_DIR"/*.sh; do
   [ "$r" = ok ] || stance_bad="$stance_bad $(basename "$f") ($r)"
 done
 check "1: every ops script that calls main_synced calls exactly one of refuse_real and real_ok, after log_start and before main_synced" "" "$stance_bad"
-check "  and the glob finds scripts at all" 1 "$([ "$stance_n" -ge 9 ] && echo 1 || echo 0)"
+check "  and the glob finds scripts at all" 1 "$([ "$stance_n" -ge 10 ] && echo 1 || echo 0)"
 check "2: the list of invented environments has one home" 1 "$(cat "$OPS_DIR"/*.sh | grep -c '^INVENTED_ENVS=' || true)"
 check "  and it names ridge alone" 'INVENTED_ENVS="ridge"' "$(grep '^INVENTED_ENVS=' "$OPS_DIR/lib.sh")"
 # stance_sub <marker value> [VAR=value…] -- <function> <args…>: in a subshell with the tests' marker and switches as the case sets them

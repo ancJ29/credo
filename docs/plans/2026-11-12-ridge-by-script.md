@@ -150,7 +150,7 @@ fix pass 6 to 8, a one-off 3 to 7, a log read 1 to 2, a recap 3 to 8.
 **Second landing: the demo copies by one command** (re-cut 2026-11-12: the three copy steps, the
 seed presses' one-off among them, are now step 5)
 
-- [ ] **5. The remake, one build in two parts**, each the ledger's code-shape step (8 minutes, the
+- [x] **5. The remake, one build in two parts**, each the ledger's code-shape step (8 minutes, the
   median of its last three). **The node half, end to end first:** `remake`, `remake --check` and
   `seed --round` in `scripts/src/ridge.ts`; `HISTORY_DAYS` and `DAYS_PER_ROUND` in `apply.ts`;
   `ops/test.sh#L2563-L2565`'s words to 21 days and 19 left. Case 5 first, on the test's real
@@ -163,7 +163,17 @@ seed presses' one-off among them, are now step 5)
   history is 21 days and a round 5, and the seed words in `ops/test.sh` say 21 days and 19 left; cases 5 to
   11 are in `scripts/src/ridge-remake.test.ts`, each seen red once by a mutation. The scripts check and
   `bash ops/test.sh` both ended at exit 0. The older demo tests moved to a first fill of 21 days (their
-  dates, never their assertions). The terminal half is still to build.
+  dates, never their assertions).
+  *Terminal half done 2026-11-12:* `ops/demo-remake.sh ridge [--go-on]` is built in the shape of
+  `ops/root-password.sh`, `clock` moved into `ops/lib.sh`, and the stance floor is 10. Cases 12 to 14 run
+  whole in `ops/test.sh` on a stand-in node half under `RIDGE_SCRIPTS_DIR` (the real mapping and tsx, no
+  21-day fill), case 15 is a check beside the seed workflow's guards with a scratch copy at 7 days, case 16
+  is the stance check. `bash ops/test.sh` ended at exit 0 (876 ok lines) and the `shellcheck` line at exit 0;
+  `@credo/scripts` was not touched since the node half, so its check was not rerun. Seen red once each:
+  the job's check removed reddened case 12's job line, the reply's check removed reddened case 13, the
+  ticker removed reddened case 14's line-while-it-runs, the dropped-round and the `--go-on` lines,
+  `DAYS_PER_ROUND` at 7 is case 15's own scratch copy, and `refuse_real` removed reddened the stance
+  check and case 12's other-environment line. Not yet walked in a terminal: the run on the real ridge is step 10.
 - [ ] **6. The words that send you to `/operator`.** `ops/README.md`'s seed section (`#L262`) and a
   remake section beside the root password's (`#L239`); `seed.yml#L4`'s comment; `ops/seed.sh#L6`;
   `scripts/src/demo/mapping.ts#L6`; `docs/products.md#L72`, `#L73` and `#L84`. *Done when:* the citation
