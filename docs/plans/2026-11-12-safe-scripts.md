@@ -211,10 +211,12 @@ shape.
   ridge half. The citation test passes (32 cases) and the added lines name no machine path.
   *Size:* 5 planned, 4 taken.
 
-- [ ] **4. Reviewed, fixed, recapped.** A model other than the author's reads the code, the tests
+- [x] **4. Reviewed, fixed, recapped.** A model other than the author's reads the code, the tests
   and this table (QA's rule 5). One fix pass, each finding tagged in the recap. *Done when:* the fix
   pass's gates exit 0 and the recap is committed. *Size:* 7, 6 and 3 (the stranded check clients'
   review 7 and fix 6; a recap 3). Then the landing on `pre-merge`.
+  *Done:* reviewed on another model (two Medium, eight Low), the fix pass and its reread passed, and the recap is
+  committed at `0ad00784`.
 - [ ] **5. Ridge, stage 4.** 👤 With the landing in `main`, your push. Its deploy runs the full
   check on ridge, unchanged. Then, in your terminal:
 
