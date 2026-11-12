@@ -194,9 +194,25 @@ case "$KIND" in
       add_param SubnetCidr
       add_param ImageId
     fi
+    # The domain and its certificate (CREDO_DOMAIN, CREDO_CERTIFICATE_ARN): both on the run that sets them,
+    # kept as the stack holds them on every other run, never one without the other. They are never in git
+    # and the parameters' print hides them (the certificate's ARN holds the account's id); both default to empty in the template, which is today's distribution.
+    domain=${CREDO_DOMAIN:-}
+    cert=${CREDO_CERTIFICATE_ARN:-}
+    if [ -n "$domain" ] || [ -n "$cert" ]; then
+      [ -n "$domain" ] && [ -n "$cert" ] || die "CREDO_DOMAIN and CREDO_CERTIFICATE_ARN are set together or not at all"
+      [[ "$domain" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$ ]] || die "CREDO_DOMAIN is not a domain of two parts or more (lower case, a-z, 0-9, -)"
+      [[ "$cert" =~ ^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9a-f-]{36}$ ]] ||
+        die "CREDO_CERTIFICATE_ARN is not a certificate in us-east-1, the only Region CloudFront takes certificates from"
+      add_param Domain "$domain"
+      add_param CertificateArn "$cert"
+    elif [ -n "$(stack_param Domain)" ]; then
+      add_param Domain
+      add_param CertificateArn
+    fi
     ;;
 esac
-echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(.ParameterValue // "(previous)")"'
+echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=" + (if (.ParameterKey | IN("Domain", "CertificateArn")) and .ParameterValue then "(set, not printed)" else "\(.ParameterValue // "(previous)")" end)'
 
 step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"

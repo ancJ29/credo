@@ -128,7 +128,7 @@ step "the BFF: settings, then code"
 # sent each time: the role may change settings only when it names the subnet and group.
 (
   umask 077
-  # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
+  # APP_ORIGIN is the app's own address, which every passkey is checked against: the stack's AppAddress, the operator's name under a domain and CloudFront's name without one. Moving it moves the passkeys.
   INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} \
     jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
     >"$WORK/bff-env.json"

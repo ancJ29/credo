@@ -507,6 +507,64 @@ passes "stack.sh passes BoxPort from the unit's port, on a creation and on an up
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
 
+echo "== each company's own address: the distribution's names and certificate, under a Domain (cases 1 to 3 of docs/plans/2026-11-12-company-address.md)"
+# resolved <json> <true|false> → the template with every Fn::If on HasDomain taken one way: what CloudFormation makes of it
+resolved() {
+  jq -c --argjson has "$2" 'walk(if type == "object" and has("Fn::If") then (if $has then .["Fn::If"][1] else .["Fn::If"][2] end) else . end)' "$1"
+}
+# domain_guard <json>: dies unless the Domain and the certificate are two settings empty by default, set together, and the
+# distribution's names and certificate and the app's address follow from them as the plan says
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+domain_guard() {
+  local off on
+  off=$(resolved "$1" false)
+  on=$(resolved "$1" true)
+  must "$1" "Domain and CertificateArn are not two strings, empty by default" \
+    '.Parameters | (.Domain.Type == "String" and .Domain.Default == "" and .CertificateArn.Type == "String" and .CertificateArn.Default == "")'
+  must "$1" "a certificate outside us-east-1 is not refused by the template" \
+    '.Parameters.CertificateArn.AllowedPattern | contains("arn:aws:acm:us-east-1:")'
+  must "$1" "HasDomain is not 'Domain is not empty'" '.Conditions == {"HasDomain":{"Fn::Not":[{"Fn::Equals":[{"Ref":"Domain"},""]}]}}'
+  must "$1" "a Domain without its certificate, or a certificate without its Domain, is not refused by a rule" \
+    '.Rules | length == 1 and ([.. | strings] | contains(["Domain", "CertificateArn"]))'
+  jq -e '.Resources.Distribution.Properties.DistributionConfig | .ViewerCertificate == {"CloudFrontDefaultCertificate":true} and .Aliases == {"Ref":"AWS::NoValue"}' <<<"$off" >/dev/null ||
+    die "with no domain the distribution does not keep CloudFront's own name and certificate alone"
+  jq -e '.Resources.Distribution.Properties.DistributionConfig | .Aliases == [{"Fn::Sub":"*.${Domain}"}] and .ViewerCertificate == {"AcmCertificateArn":{"Ref":"CertificateArn"},"SslSupportMethod":"sni-only","MinimumProtocolVersion":"TLSv1.2_2021"}' <<<"$on" >/dev/null ||
+    die "with a domain the distribution does not answer *.<Domain> under the given certificate, SNI only, at TLS 1.2 of 2021"
+  jq -e '.Outputs.AppAddress.Value == {"Fn::Sub":"https://${Distribution.DomainName}"}' <<<"$off" >/dev/null ||
+    die "with no domain the app's address is not CloudFront's name"
+  jq -e '.Outputs.AppAddress.Value == {"Fn::Sub":"https://operator.${Domain}"}' <<<"$on" >/dev/null ||
+    die "with a domain the app's address is not https://operator.<Domain>"
+  must "$1" "the outputs do not give the domain (only where one is set) and CloudFront's own name" \
+    '.Outputs | (.Domain == {"Condition":"HasDomain","Value":{"Ref":"Domain"}}) and .DistributionName.Value == {"Fn::GetAtt":["Distribution","DomainName"]}'
+  grep -q '^  APP_ADDRESS=\$(out AppAddress)$' "$OPS_DIR/lib.sh" || die "app_load does not read the template's AppAddress"
+}
+passes "the distribution answers *.<Domain> under the certificate with a domain, and keeps CloudFront's name without (cases 1 to 3)" domain_guard "$WORK/env.json"
+refuses "  a distribution with a domain and no names is refused" "does not answer" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Aliases["Fn::If"][1] = []')"
+refuses "  a certificate by IP address (vip) is refused" "SNI only" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.ViewerCertificate["Fn::If"][1].SslSupportMethod = "vip"')"
+refuses "  a looser TLS floor is refused" "TLS 1.2 of 2021" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.ViewerCertificate["Fn::If"][1].MinimumProtocolVersion = "TLSv1"')"
+refuses "  CloudFront's own certificate under a domain is refused" "does not answer" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.ViewerCertificate = {"CloudFrontDefaultCertificate":true}')"
+refuses "  a certificate kept under no domain is refused" "keep CloudFront's own name" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.ViewerCertificate["Fn::If"][2] = {"AcmCertificateArn":{"Ref":"CertificateArn"},"SslSupportMethod":"sni-only"}')"
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+refuses "  a name kept under no domain is refused" "keep CloudFront's own name" \
+  domain_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Aliases["Fn::If"][2] = [{"Fn::Sub":"*.${Domain}"}]')"
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+refuses "  an app address that stays CloudFront's under a domain is refused" "operator.<Domain>" \
+  domain_guard "$(mut '.Outputs.AppAddress.Value["Fn::If"][1] = {"Fn::Sub":"https://${Distribution.DomainName}"}')"
+# shellcheck disable=SC2016 # jq programs and the template's text, in single quotes
+refuses "  an app address that is not CloudFront's name without a domain is refused" "not CloudFront's name" \
+  domain_guard "$(mut '.Outputs.AppAddress.Value["Fn::If"][2] = {"Fn::Sub":"https://operator.${Domain}"}')"
+refuses "  a domain that has a default is refused" "empty by default" \
+  domain_guard "$(mut '.Parameters.Domain.Default = "x.example.test"')"
+refuses "  a certificate parameter that takes any Region is refused" "us-east-1" \
+  domain_guard "$(mut '.Parameters.CertificateArn.AllowedPattern = "^.*$"')"
+refuses "  the rule that sets the two together, removed, is refused" "by a rule" \
+  domain_guard "$(mut 'del(.Rules)')"
+
 echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
 # adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
 # Add, the one Modify is DeployRole, in place, and the guard names nothing
@@ -2632,7 +2690,7 @@ case "$*" in
   *get-region-opt-status*) echo ENABLED ;;
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}'"${FAKE_STACK_EXTRA:-}"'],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
   *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
   *create-change-set* | *delete-change-set*) : ;;
@@ -2699,6 +2757,50 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+# The domain and its certificate (case 4 of docs/plans/2026-11-12-company-address.md): taken together from the
+# two variables, kept as the stack holds them, never one alone, never a certificate outside us-east-1, and never
+# printed. The change set's parameters are read from the stand-in's log of the call.
+DOM=ridge.example.test
+CERT=arn:aws:acm:us-east-1:123456789012:certificate/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+cs_domain_params() { # <state>: the Domain and CertificateArn entries of the change set's parameters, as JSON
+  sed -n 's/.*--parameters \(\[.*\]\) --capabilities.*/\1/p' "$1/aws.calls" | jq -c '[.[] | select(.ParameterKey == "Domain" or .ParameterKey == "CertificateArn")]'
+}
+stack_run stack-domain-none --plan
+check "a run that sets no domain, on a stack that holds none, sends neither parameter" "0 []" "$RC $(cs_domain_params "$S")"
+CREDO_DOMAIN=$DOM CREDO_CERTIFICATE_ARN=$CERT stack_run stack-domain-set --plan
+check "a run that sets both sends both values" "0 [{\"ParameterKey\":\"Domain\",\"ParameterValue\":\"$DOM\"},{\"ParameterKey\":\"CertificateArn\",\"ParameterValue\":\"$CERT\"}]" \
+  "$RC $(cs_domain_params "$S")"
+check "  and the terminal shows neither the domain nor the certificate" "0 1" \
+  "$(grep -cF -e "$DOM" -e 123456789012 "$S/out" || true) $(grep -c '^  Domain=(set, not printed)$' "$S/out" || true)"
+FAKE_STACK_EXTRA=",{\"ParameterKey\":\"Domain\",\"ParameterValue\":\"$DOM\"},{\"ParameterKey\":\"CertificateArn\",\"ParameterValue\":\"$CERT\"}" stack_run stack-domain-kept --plan
+check "a run that sets none, on a stack that holds both, keeps both as they are" "0 [{\"ParameterKey\":\"Domain\",\"UsePreviousValue\":true},{\"ParameterKey\":\"CertificateArn\",\"UsePreviousValue\":true}]" \
+  "$RC $(cs_domain_params "$S")"
+CREDO_DOMAIN=$DOM stack_run stack-domain-alone --plan
+check "a domain without its certificate is refused, and no change set is made" "1 1 0" \
+  "$RC $(grep -c 'are set together or not at all' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true)"
+CREDO_CERTIFICATE_ARN=$CERT stack_run stack-cert-alone --plan
+check "  a certificate without its domain, the same" "1 1 0" \
+  "$RC $(grep -c 'are set together or not at all' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true)"
+CREDO_DOMAIN=$DOM CREDO_CERTIFICATE_ARN=${CERT/us-east-1/ap-southeast-5} stack_run stack-cert-region --plan
+check "  a certificate outside us-east-1, the same, saying why" "1 1 0" \
+  "$RC $(grep -c 'not a certificate in us-east-1' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true)"
+CREDO_DOMAIN='Ridge_Example' CREDO_CERTIFICATE_ARN=$CERT stack_run stack-domain-shape --plan
+check "  a domain that is not a name of two parts or more, the same" "1 1 0" \
+  "$RC $(grep -c 'CREDO_DOMAIN is not a domain' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true)"
+
+echo "== the domain is masked wherever the stack's outputs are read (case 5)"
+# app_load on a stack that names a domain: the bare domain and CloudFront's own name join the masked lines, so the
+# printing of the outputs holds them back; a stack that names none masks neither.
+dom_outs='{"Stacks":[{"Outputs":[{"OutputKey":"BffName","OutputValue":"b"},{"OutputKey":"BffGroupId","OutputValue":"sg-1"},{"OutputKey":"SubnetId","OutputValue":"subnet-1"},{"OutputKey":"UiBucketName","OutputValue":"u"},{"OutputKey":"AppAddress","OutputValue":"https://operator.ridge.example.test"},{"OutputKey":"ApiAddress","OutputValue":"https://api.example.test"},{"OutputKey":"Domain","OutputValue":"ridge.example.test"},{"OutputKey":"DistributionName","OutputValue":"d111111abcdef8.cloudfront.net"}]}]}'
+loaded_secrets() { (STACK_JSON=$1; app_load && printf '%s' "$SECRETS"); }
+loaded_printed() { (STACK_JSON=$1; app_load && outputs_print); }
+check "app_load masks the domain and CloudFront's own name" "1 1" \
+  "$(grep -cxF ridge.example.test <<<"$(loaded_secrets "$dom_outs")" || true) $(grep -cxF d111111abcdef8.cloudfront.net <<<"$(loaded_secrets "$dom_outs")" || true)"
+check "  and then no output prints the domain, its own or the app's" "0 1 1" \
+  "$(loaded_printed "$dom_outs" | grep -cF ridge.example.test || true) $(loaded_printed "$dom_outs" | grep -cF '  Domain = (not printed)' || true) $(loaded_printed "$dom_outs" | grep -cF '  AppAddress = (not printed)' || true)"
+check "  a stack that names no domain masks neither (it has no Domain output)" 0 \
+  "$(loaded_secrets "${dom_outs/'{"OutputKey":"Domain","OutputValue":"ridge.example.test"},'/}" | grep -cxF ridge.example.test || true)"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
