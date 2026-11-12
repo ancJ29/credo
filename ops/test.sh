@@ -3224,5 +3224,149 @@ check "5: a script that works prints its reason on an unlisted environment" 1 "$
 stack_other stack-ridge-stance ridge --plan
 check "  and nothing new on ridge" 0 "$(grep -c 'may hold real data' "$S/out" || true)"
 
+echo "== workflows_of names the workflows that reach an environment (the destroy and the remake switch those, never walks.yml)"
+check "15: workflows_of ridge names ci.yml and seed.yml" "ci.yml seed.yml" "$(workflows_of ridge | tr '\n' ' ' | sed 's/ $//')"
+check "  and an environment no workflow names gets nothing" "" "$(workflows_of nowhere)"
+
+echo "== ops/destroy.sh and ops/remake.sh, run whole once on stand-ins for aws, gh, bru and the four children (rows 8 and 18)"
+# A clone whose origin is named as GitHub's are, holding this tree's ops/ and workflows, except that the
+# four scripts the remake calls are stand-ins: each logs as the real one does, records its call and
+# ends green, or red when FAKE_RED names it. The fixtures are parsed alone before any run.
+CYC=$E2E/cycle
+mkdir -p "$CYC/bin" "$CYC/fx" "$E2E/github.com/test-owner"
+git init -q --bare "$E2E/github.com/test-owner/cycle-repo.git"
+mkdir -p "$CYC/repo/.github"
+cp -R "$OPS_DIR" "$CYC/repo/ops"
+cp -R "$REPO_DIR/.github/workflows" "$CYC/repo/.github/workflows"
+for child in stack release app check; do
+  cat >"$CYC/repo/ops/$child.sh" <<'CHILD'
+#!/usr/bin/env bash
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+name=$(basename "$0" .sh)
+env=$1
+[ "$name" != stack ] || env=$2
+log_start "$name" "$env"
+echo "$name.sh $*" >>"${FAKE_STATE:?}/children.calls"
+[ "${FAKE_RED:-}" != "$name" ] || die "stand-in $name goes red"
+echo "== green"
+CHILD
+done
+git -C "$CYC/repo" init -q
+git -C "$CYC/repo" remote add origin "$E2E/github.com/test-owner/cycle-repo.git"
+git -C "$CYC/repo" add -A
+git -C "$CYC/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$CYC/repo" push -q origin HEAD:refs/heads/main
+FX=$CYC/fx
+ACCT=123456789012
+jq -nc '{StackSummaries: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX/stacks.json"
+jq -nc '{Stacks: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE", EnableTerminationProtection: false, Parameters: [{ParameterKey: "Env", ParameterValue: "ridge"}, {ParameterKey: "Network", ParameterValue: "credo-network"}, {ParameterKey: "Repository", ParameterValue: "test-owner/cycle-repo"}], Outputs: [{OutputKey: "BoxId", OutputValue: "i-0box"}]}]}' >"$FX/desc.json"
+jq -nc --arg acct "$ACCT" '{StackResourceSummaries: [
+  {ResourceType: "AWS::EC2::Subnet", LogicalResourceId: "Subnet", PhysicalResourceId: "subnet-0aaa", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::Instance", LogicalResourceId: "Box", PhysicalResourceId: "i-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BoxGroup", PhysicalResourceId: "sg-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BffGroup", PhysicalResourceId: "sg-0bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "BffLogs", PhysicalResourceId: "/aws/lambda/credo-ridge-bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "ApiLogs", PhysicalResourceId: "/aws/apigateway/credo-ridge", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::S3::Bucket", LogicalResourceId: "UiBucket", PhysicalResourceId: "ridge-uibucket-abc", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "BffRole", PhysicalResourceId: "ridge-BffRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "DeployRole", PhysicalResourceId: "ridge-DeployRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Lambda::Function", LogicalResourceId: "Bff", PhysicalResourceId: ("arn:aws:lambda:ap-southeast-5:" + $acct + ":function:credo-ridge-bff"), ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::ApiGatewayV2::Api", LogicalResourceId: "Api", PhysicalResourceId: "api0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::OriginAccessControl", LogicalResourceId: "UiAccess", PhysicalResourceId: "oac0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Function", LogicalResourceId: "UiRewrite", PhysicalResourceId: "credo-ridge-rewrite", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Distribution", LogicalResourceId: "Distribution", PhysicalResourceId: "E0DIST", ResourceStatus: "CREATE_COMPLETE"}]}' >"$FX/res.json"
+jq -nc '["AWS::EC2::Subnet", "AWS::EC2::Instance", "AWS::EC2::SecurityGroup", "AWS::Logs::LogGroup", "AWS::S3::Bucket", "AWS::IAM::Role", "AWS::Lambda::Function", "AWS::ApiGatewayV2::Api", "AWS::CloudFront::OriginAccessControl", "AWS::CloudFront::Function", "AWS::CloudFront::Distribution"]' >"$FX/types.json"
+jq -nc '{State: {Name: "running"}, InstanceType: "t4g.nano", SubnetId: "subnet-0aaa", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge"}], BlockDeviceMappings: [{DeviceName: "/dev/xvda", Ebs: {VolumeId: "vol-0root", DeleteOnTermination: false}}]} | {Reservations: [{Instances: [.]}]}' >"$FX/box.json"
+jq -nc '[{id: "eni-1", d: "box interface", i: "i-0box"}, {id: "eni-2", d: "AWS Lambda VPC ENI-credo-ridge-bff", i: null}]' >"$FX/enis.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0root", State: "available", Attachments: []}]}' >"$FX/vol.json"
+fx_bad=''
+for f in "$FX"/*.json; do jq -e . "$f" >/dev/null 2>&1 || fx_bad="$fx_bad $(basename "$f")"; done
+check "the stand-ins' fixtures all parse as JSON" "" "$fx_bad"
+cat >"$CYC/bin/aws" <<'STANDIN'
+#!/bin/bash
+echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+FX=${FAKE_FX:?}
+gone() { echo "An error occurred (NotFound) when calling the operation: 404 not found" >&2; exit 254; }
+case "$*" in
+  *"sts get-caller-identity"*) echo 123456789012 ;;
+  *"cloudformation list-stacks"*) cat "$FX/stacks.json" ;;
+  *"cloudformation describe-stacks"*"--query"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone; echo UPDATE_COMPLETE ;;
+  *"cloudformation describe-stacks"*) [ ! -e "$FAKE_STATE/stack.gone" ] || { echo "An error occurred (ValidationError): Stack with id ridge does not exist" >&2; exit 254; }; cat "$FX/desc.json" ;;
+  *"list-stack-resources"*) cat "$FX/res.json" ;;
+  *"get-template-summary"*) cat "$FX/types.json" ;;
+  *"ec2 describe-instances"*"--filters"*) [ -e "$FAKE_STATE/box.gone" ] || echo i-0box ;;
+  *"describe-instances --instance-ids"*"Tags[?Key"*) printf 'ridge\tsubnet-0aaa\n' ;;
+  *"describe-instances --instance-ids"*"State.Name"*) if [ -e "$FAKE_STATE/box.gone" ]; then echo terminated; else echo running; fi ;;
+  *"describe-instances --instance-ids"*) cat "$FX/box.json" ;;
+  *"describe-snapshots"*) echo 0 ;;
+  *"describe-network-interfaces"*) cat "$FX/enis.json" ;;
+  *"s3api head-bucket"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone ;;
+  *"get-bucket-tagging"*) echo '{"TagSet":[{"Key":"Env","Value":"ridge"}]}' ;;
+  *"get-bucket-versioning"*) echo None ;;
+  *"s3api list-objects-v2"*)
+    if [ -e "$FAKE_STATE/rm.done" ]; then
+      [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "An error occurred (AccessDenied) when calling the ListObjectsV2 operation: denied for arn:aws:iam::123456789012:role/x" >&2; exit 255; }
+      echo 0
+    else echo 3; fi ;;
+  *"s3 rm"*) touch "$FAKE_STATE/rm.done"; printf 'delete: s3://ridge-uibucket-abc/f%s\n' 1 2; [ -n "${FAKE_RM_SHORT:-}" ] || echo 'delete: s3://ridge-uibucket-abc/f3' ;;
+  *"logs describe-log-groups"*"length(@)"*) if [ -e "$FAKE_STATE/stack.gone" ]; then echo 0; else echo 1; fi ;;
+  *"logs describe-log-groups"*"/aws/lambda/credo-ridge"*) echo /aws/lambda/credo-ridge-bff ;;
+  *"logs describe-log-groups"*) echo /aws/apigateway/credo-ridge ;;
+  *"ec2 terminate-instances"*) : ;;
+  *"wait instance-terminated"*) touch "$FAKE_STATE/box.gone" ;;
+  *"ec2 describe-volumes --volume-ids"*) if [ -e "$FAKE_STATE/vol.gone" ]; then echo "An error occurred (InvalidVolume.NotFound)" >&2; exit 254; fi; cat "$FX/vol.json" ;;
+  *"wait volume-available"*) : ;;
+  *"ec2 delete-volume"*) touch "$FAKE_STATE/vol.gone" ;;
+  *"cloudformation delete-stack"*) : ;;
+  *"wait stack-delete-complete"*) touch "$FAKE_STATE/stack.gone" ;;
+  *"cloudfront get-distribution"* | *"lambda get-function"* | *"apigatewayv2 get-api"* | *"get-origin-access-control"* | *"cloudfront describe-function"* | *"iam get-role"* | *"describe-security-groups"* | *"describe-subnets"*) gone ;;
+  *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$CYC/bin/gh" <<'STANDIN'
+#!/bin/bash
+echo "gh $*" >>"${FAKE_STATE:?}/gh.calls"
+case "$*" in
+  "auth status"*) exit 0 ;;
+  "workflow list"*)
+    for f in "$FAKE_STATE"/wf.*; do printf '%s %s\n' "${f##*/wf.}" "$(cat "$f")"; done |
+      jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ")) | map({name: .[0], path: (".github/workflows/" + .[0]), state: .[1]})' ;;
+  "workflow disable "*) echo disabled_manually >"$FAKE_STATE/wf.$3" ;;
+  "workflow enable "*) echo active >"$FAKE_STATE/wf.$3" ;;
+  "run list"*) if [ -n "${FAKE_RUN:-}" ] && [[ "$*" == *in_progress* ]]; then echo '[{"databaseId":1,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/1"}]'; else echo '[]'; fi ;;
+  *) echo "stand-in gh: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+printf '#!/bin/sh\necho 4.2.0\n' >"$CYC/bin/bru"
+chmod +x "$CYC/bin/aws" "$CYC/bin/gh" "$CYC/bin/bru"
+cycle_run() { # <state name> <initial workflow state> <typed text> <script> <args…>: the script whole in the clone; terminal output in $S/out
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=$FX
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  RC=0
+  (cd "$CYC/repo" && PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 bash "ops/$1" "${@:2}") <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
+cycle_run destroy-whole active ridge destroy.sh ridge
+check "8: the destroy on a whole ridge: exit 0, its verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c '^== verdict: ridge is destroyed, ci.yml and seed.yml are off$' "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it deleted in the one-off's order: the box, its disk, the bucket's files, the stack" "wait instance-terminated,ec2 delete-volume,s3 rm,cloudformation delete-stack," \
+  "$(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
+check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is deleted" "disabled_manually disabled_manually active 3" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml") $(find "$CYC/repo/.github/workflows" -type f | wc -l | tr -d ' ')"
+check "  the account id is in neither the log nor the terminal" 0 "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+check "  the bucket's three deletes were counted against the three files" 1 "$(grep -c '^   AWS reported 3 delete(s); 3 file(s) were counted before$' "$OPS_LOG_DIR"/*.log || true)"
+cycle_run remake-whole disabled_manually '' remake.sh ridge
+check "18: the remake on a stack that is down: exit 0, ending == green then == exit 0" "0 == green == exit 0" \
+  "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | tr '\n' ' ' | sed 's/ $//')"
+check "  it ran the stack, the release, the app and the check, in that order" "stack.sh env ridge,release.sh ridge,app.sh ridge,check.sh ridge," \
+  "$(tr '\n' ',' <"$S/children.calls")"
+check "  and turned the two workflows on, read back active, walks.yml untouched" "active active disabled_manually" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"
+check "  its log holds its own lines only: four steps named with their logs, one == green, no child's line" "4 1 0" \
+  "$(grep -c '^-- step [1-4]/5: ops/.* ended with exit 0; its log: .*-ridge.log$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c '^== green$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c 'stand-in' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

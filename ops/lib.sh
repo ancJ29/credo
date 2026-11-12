@@ -962,3 +962,14 @@ edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
 }
+
+# workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name
+# `environment: <env>`, the only ones that reach that environment. Read from the files here.
+workflows_of() {
+  local dir=$REPO_DIR/.github/workflows f
+  [ -d "$dir" ] || return 0
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    if grep -qE "^[[:space:]]*environment:[[:space:]]*$1[[:space:]]*\$" "$f"; then basename "$f"; fi
+  done | sort
+}
