@@ -201,11 +201,17 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
   early `gh workflow enable` (a workflow on); 20, the operator line dropped, and separately "It is empty: it
   holds no operator and no demo copy." reworded. Row 18 stays green from step 1. Beyond the rows: row 20 reads
   the row 18 run's log, so its two checks sit right after row 18.
-- [ ] **4. The runbook.** In `ops/README.md`: two "At a glance" rows, two rows in "On production"
+- [x] **4. The runbook.** In `ops/README.md`: two "At a glance" rows, two rows in "On production"
   (both scripts refuse), and a section "Ridge down and back". It holds the two commands, the
   operator after, what each run's last lines read, and the address lane's two settings. Item 314
   is rewritten to its workflow half. *Done when:* the citation test exits 0, and
   `git grep -nE '/Users/|~/'` finds nothing new. **About 5 min.**
+  *Done 11-12, 2 min:* `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts` run alone exited 0 (32
+  passed), and the diff adds no `/Users/` or `~/` match. `ops/README.md` gained two "At a glance" rows after the
+  operator's, two "On production" rows (both refuse), and a section "Ridge down and back" with the three commands,
+  each log's last lines read off the scripts' own lines (the destroy's verdict comes before its closing, then
+  `== exit 0`; the remake ends `== green`), and the address lane's two settings named as not yet in `main`. Item 314
+  is rewritten to its workflow half.
 - [ ] **5. A second model's read**, then one fix pass with its own gate (QA rule 5). *Done when:*
   each finding is tagged fixed, rejected or deferred, and `shellcheck -x ops/*.sh` and
   `bash ops/test.sh` exit 0 after the fix pass. **About 20 min.**

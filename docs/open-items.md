@@ -1409,9 +1409,9 @@ Both refuse a commit `main` lacks and one older than what the environment runs (
 
 Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L294-L296`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
 
-## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+## 314. Ridge's teardown has a terminal script, and still no workflow to press it — the machine; *parked* until the human brings the workflow back (ridge cycle, 2026-11-12)
 
-The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
+`ops/destroy.sh ridge` and `ops/remake.sh ridge` now take ridge down and back up from a terminal ([the runbook](../ops/README.md#ridge-down-and-back)). What stays parked is the workflow half. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)". The deploy role can only read its stack, so a press needs a role that may delete, and the destroy's typed name needs a gate that is not a terminal. *Trigger:* the human asks for the workflow.
 
 ## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
 
