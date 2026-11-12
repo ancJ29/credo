@@ -177,6 +177,43 @@ main_synced() {
   ops_match_main
 }
 
+# INVENTED_ENVS: the environments that hold invented data alone, space-separated, this list's one home.
+# Every other name may hold a real company's records and is treated as production
+# (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
+# never be named like one of these.
+INVENTED_ENVS="ridge"
+
+# is_invented <env>: succeeds when the environment is listed in INVENTED_ENVS.
+is_invented() {
+  case " $INVENTED_ENVS " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# refuse_real <env> <why>: dies with <why> (the script's own words) unless the environment is listed as
+# invented. A script that must never act on a real company's records calls it after log_start, so the
+# refusal lands in the log, and before main_synced, so it comes before any AWS call.
+refuse_real() {
+  is_invented "$1" || die "$2"
+}
+
+# real_ok <env> <why>: for a script that is safe on an environment that may hold real data. On an unlisted
+# environment it prints one ok line saying why, sets REAL=1 for a script that branches on it, and refuses
+# the two switches the tests set in the environment (RIDGE_SCRIPTS_DIR, OPS_TEST_NO_TTY) unless the tests'
+# own marker OPS_TESTS_RUNNING is set beside them, so the code that runs there is the reviewed tree's.
+# On a listed environment it prints and refuses nothing. Called after log_start and before main_synced.
+real_ok() {
+  is_invented "$1" && return 0
+  if [ -z "${OPS_TESTS_RUNNING:-}" ]; then
+    [ -z "${RIDGE_SCRIPTS_DIR:-}" ] || die "RIDGE_SCRIPTS_DIR is set, and $1 may hold real data: that switch is the tests' alone, so the code run there is the reviewed tree's"
+    [ -z "${OPS_TEST_NO_TTY:-}" ] || die "OPS_TEST_NO_TTY is set, and $1 may hold real data: that switch is the tests' alone"
+  fi
+  # shellcheck disable=SC2034 # read by the script that sources this file
+  REAL=1
+  echo "ok   $1 may hold real data; this script is safe there: $2"
+}
+
 # ops_match_main: dies unless the tracked and untracked files git does not ignore, under every path
 #   ci.yml's push trigger deploys on, and the root .gitignore (one local line there would hide a new
 #   file under any of them), are as reviewed. Ignored files (node_modules, dist) are not compared.

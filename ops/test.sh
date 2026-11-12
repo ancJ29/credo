@@ -16,6 +16,9 @@
 # workflow's guards.
 # Expected length: about a minute with a cold Go cache, about 40 seconds with a warm one.
 set -euo pipefail
+# The tests' own marker: lib.sh's real_ok refuses the tests' two switches on an environment that may hold
+# real data unless this is set beside them.
+export OPS_TESTS_RUNNING=1
 
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -3029,6 +3032,59 @@ GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
 check "M3: once the full run's lock goes the gate runs and is green" 0 "$GRC"
 check "  having waited first" 1 "$(seenre '^waiting: a full run holds' "$GLOG")"
 check "  and having taken and freed its own lock" 1 "$(grep -c 'lock free at the end: yes' "$GLOG" || true)"
+
+# ---- the scripts' answer on an environment that may hold real data (docs/plans/2026-11-12-safe-scripts.md, cases 1 to 6)
+echo "== every script that reaches an environment says what it does on production (INVENTED_ENVS, refuse_real, real_ok)"
+# stance_of <script> → "ok", or what is wrong: exactly one call of refuse_real or real_ok, after log_start and before main_synced
+stance_of() {
+  awk '/^log_start /{ if (!l) l = NR } /^(refuse_real|real_ok) /{ c++; k = NR } /^main_synced( |$)/{ if (!m) m = NR }
+    END { if (c == 1 && l && m && l < k && k < m) print "ok"; else print "calls " c + 0 ", log_start " l + 0 ", call " k + 0 ", main_synced " m + 0 }' "$1"
+}
+stance_bad=''
+stance_n=0
+for f in "$OPS_DIR"/*.sh; do
+  grep -qE '^main_synced( |$)' "$f" || continue
+  stance_n=$((stance_n + 1))
+  r=$(stance_of "$f")
+  [ "$r" = ok ] || stance_bad="$stance_bad $(basename "$f") ($r)"
+done
+check "1: every ops script that calls main_synced calls exactly one of refuse_real and real_ok, after log_start and before main_synced" "" "$stance_bad"
+check "  and the glob finds scripts at all" 1 "$([ "$stance_n" -ge 9 ] && echo 1 || echo 0)"
+check "2: the list of invented environments has one home" 1 "$(cat "$OPS_DIR"/*.sh | grep -c '^INVENTED_ENVS=' || true)"
+check "  and it names ridge alone" 'INVENTED_ENVS="ridge"' "$(grep '^INVENTED_ENVS=' "$OPS_DIR/lib.sh")"
+# stance_sub <marker value> [VAR=value…] -- <function> <args…>: in a subshell with the tests' marker and switches as the case sets them
+stance_sub() {
+  local marker=$1
+  shift
+  local sw=()
+  while [ "$1" != -- ]; do sw+=("$1"); shift; done
+  shift
+  ( [ -n "$marker" ] || unset OPS_TESTS_RUNNING; unset RIDGE_SCRIPTS_DIR OPS_TEST_NO_TTY; for kv in ${sw[@]+"${sw[@]}"}; do export "${kv?}"; done; "$@" ) 2>&1
+}
+check "6: on an unlisted environment RIDGE_SCRIPTS_DIR is refused without the tests' marker" 1 "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x -- real_ok crest why | grep -c 'RIDGE_SCRIPTS_DIR is set, and crest may hold real data' || true)"
+check "  and so is OPS_TEST_NO_TTY" 1 "$(stance_sub '' OPS_TEST_NO_TTY=1 -- real_ok crest why | grep -c 'OPS_TEST_NO_TTY is set, and crest may hold real data' || true)"
+check "  and with the marker set both pass" "ok   crest may hold real data; this script is safe there: why" "$(stance_sub 1 RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok crest why)"
+check "  and on ridge they are not looked at, and nothing is printed" "" "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok ridge why)"
+check "  refuse_real passes ridge and dies on another name, in the script's words" "|error: my words" "$(stance_sub 1 -- refuse_real ridge 'my words' || true)|$(stance_sub 1 -- refuse_real crest 'my words' || true)"
+# the whole runs, in the scratch clone the tunnel's section made: the clone's ops/ is this tree's
+e2e_fresh drill-other
+e2e_run drill.sh crest
+check "3: the drill on an unlisted environment refuses, naming why" "1 1" "$RC $(grep -c '^error: drill.sh holds the environments that keep invented data alone (ridge)' "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws or box call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+check "4: the tunnel, the seed and the root password keep their words, now through refuse_real (their whole runs are the cases above)" "1 1 1" \
+  "$(grep -c 'refuse_real "\$ENVNAME" "tunnel.sh holds ridge alone for now: another stack' "$OPS_DIR/tunnel.sh" || true) $(grep -c 'refuse_real "\$ENVNAME" "seed.sh seeds ridge alone: a client' "$OPS_DIR/seed.sh" || true) $(grep -c "refuse_real \"\\\$ENVNAME\" \"root-password.sh holds ridge's demo copies alone" "$OPS_DIR/root-password.sh" || true)"
+stack_other() { # <state name> <env> <args…>: stack.sh env <env> in the stack clone, its terminal output in the state's out file
+  e2e_fresh "$1"
+  local env=$2
+  shift 2
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/stackbin:$PATH" bash ops/stack.sh env "$env" "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+stack_other stack-crest crest --plan
+check "5: a script that works prints its reason on an unlisted environment" 1 "$(grep -c '^ok   crest may hold real data; this script is safe there: a change set is shown first' "$S/out" || true)"
+stack_other stack-ridge-stance ridge --plan
+check "  and nothing new on ridge" 0 "$(grep -c 'may hold real data' "$S/out" || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

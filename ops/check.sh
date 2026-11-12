@@ -28,6 +28,7 @@ WANT_BRUNO=4.2.0
 
 log_start check "$ENVNAME"
 mkwork
+real_ok "$ENVNAME" "it checks the stack and the box, and removes what it made"
 
 # The client the check makes (set before it is made) is deleted here, which runs on every end of the
 # run, green, red or died, while the tunnel is still open. A failed delete is reported and does not
