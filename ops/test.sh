@@ -2197,11 +2197,11 @@ check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
 check "  case 4: and the description is left as it was: no call names one" "gone 0" \
   "$(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true)"
 
-# the code write fails (item 29's test)
+# the code write fails: the description is never written (the production plan's case 3)
 e2e_fresh app-codefail
 FAKE_CODE_FAIL=1 e2e_run app.sh ridge
-check "case 3: a code write that fails stops the run, leaves the description as it was and sends no UI file" "failed gone 0 0" \
-  "$([ "$RC" != 0 ] && echo failed || echo "exit $RC") $(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+check "case 3: a code write that fails stops the run there, leaves the description as it was and sends no UI file" "failed 1 gone 0 0" \
+  "$([ "$RC" != 0 ] && echo failed || echo "exit $RC") $(grep -c 'stand-in aws: update-function-code failed' "$S/out" || true) $(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
 
 # a bundle or a UI built without the commit is refused before anything is sent (row 39)
 e2e_fresh app-unstamped-bundle
