@@ -68,6 +68,8 @@ export const deliveryRoutes = {
   cancel: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/cancel`,
   deliver: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/deliver`,
   photo: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/photo`,
+  /** Asking where the delivery's photo may be sent. */
+  photoAddress: (day: string, id: string) => `${ROUTES.deliveries}/${day}/${id}/photo-address`,
   /** The driver's own requests of a day. */
   mine: (day: string) => `${ROUTES.myDeliveries}?day=${day}`,
 };

@@ -818,6 +818,7 @@ export const en = {
     cancelFailed: 'Nothing was cancelled. Try again.',
     proofTitle: 'Proof of delivery',
     proofAlt: 'The goods as the driver delivered them',
+    proofMissing: 'The photo did not arrive.',
   },
   myDeliveries: {
     forDay: 'Requests sent to you for {{day}}.',

@@ -37,6 +37,31 @@ export type DeliverRequest = z.infer<typeof deliverRequestSchema>;
 export const deliveryPhotoReplySchema = z.strictObject({ photo: proofSchema });
 export type DeliveryPhotoReply = z.infer<typeof deliveryPhotoReplySchema>;
 
+/** The picture types a delivery's photo may be sent as; the back end takes the JPEG alone. */
+const PROOF_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
+/** Asking where one delivery's photo may be sent: the picture's type and exact length in bytes. */
+export const photoAddressRequestSchema = z.strictObject({
+  type: z.enum(PROOF_TYPES),
+  bytes: z.int().min(1).max(MAX_PROOF_BYTES),
+});
+export type PhotoAddressRequest = z.infer<typeof photoAddressRequestSchema>;
+
+/** The ask of a photo `proofIsValid` holds: its type and the length it will be sent at. */
+export function photoAddressRequestOf(photo: string): PhotoAddressRequest {
+  const image = imageDataUrl(photo)!;
+  return { type: `image/${image.type}` as PhotoAddressRequest['type'], bytes: image.bytes };
+}
+
+/** An address for one picture, to send it to or to read it from: it lives five minutes. It is an
+ * address, never the picture. */
+export const photoAddressReplySchema = z.strictObject({ url: z.url() });
+export type PhotoAddressReply = z.infer<typeof photoAddressReplySchema>;
+
+/** Marking a request delivered once its photo was sent: the version read, no picture. */
+export const deliverSentRequestSchema = z.strictObject({ version: tagSchema });
+export type DeliverSentRequest = z.infer<typeof deliverSentRequestSchema>;
+
 const photoSchema = z.string().refine(photoIsValid, 'an image of at most 50 KB');
 
 /** A person's photo and the version it was read at; none yet is `null` and `''`. */
