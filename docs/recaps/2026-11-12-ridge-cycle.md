@@ -15,9 +15,7 @@ A second model found one Medium: a terminal in another account could destroy a s
 
 ## What the rehearsal showed
 
-The first run, after the first push, stopped before any change on a red CI run, two causes. The ops guards used `sed -i ''`, which the runner's GNU sed reads as the script; the guard now uses the form both read, and a case fails on the BSD form. A stack test picked the front's port free and bound it later, with no error handler, so a taken port hung it 120 s; the port is now held from the pick and the listener rejects on error. A second model's read: may land, three Lows; one taken, one worded down, one filed as item 383.
-
-`act` ran clean on the fixes and ended green. The second run still stopped on a red: one ui test counted a load at once, after a heading drawn before the load started, which `act` and the Mac had passed. Its fix waits for the count (on this branch, not yet in `main`); a second such count is item 388; the ui gate ended green. The failed GitHub job, rerun without that fix, passed, which fits a timing race.
+The first two runs stopped before any change, on red CI runs. Cause one: `sed -i ''` in the ops guards, which the runner's GNU sed misreads; fixed with the form both read and a guard against the BSD form. Cause two: a stack test's front port was picked free and bound later, with no error handler; the port is now held from the pick and the listener rejects. `act` then ran green. The second red was a ui test counting a load before it started; its fix waits for the count (on this branch, not yet in `main`), and the failed job, rerun without it, passed. The diagnoses and the review carry the rest.
 
 The third run changed ridge. Destroy took about 5.5 minutes, remake about 7.5, the operator 13 seconds; each ended 0. The destroy read each resource back as gone and ended "ridge is destroyed, ci.yml and seed.yml are off". The remake's five steps each ended 0, both workflows read back active, and it closed "ridge is remade from main and checked. It is empty". The operator's link was shown on the terminal only; no key reached its log.
 
@@ -33,8 +31,7 @@ Nothing; the weekly cycle is only an idea, and the scripts stand without it.
 
 ## Evidence
 
-- Base `80b5c1f0`; steps `ec867872`, `f17b60f4`, `d6e2811b`, `047b6830`; fix pass `a7019ad5`.
+- Steps `ec867872`, `f17b60f4`, `d6e2811b`, `047b6830`; fix pass `a7019ad5`; fixes after the first landing `f14253cf`, `5c4360a5`, `29024472`.
 - `ops/test.sh` and ShellCheck over `ops/*.sh` ended green per step, after the fix pass and after taking `pre-merge` in.
 - The stand-in cases made no AWS call; the rehearsal's third run is the first real one.
-- Fixes after the first landing: `f14253cf`, `5c4360a5` (ci), `29024472` (ui).
 - `docs/products.md`: a row for the two commands; the client-delete row now says ridge.
