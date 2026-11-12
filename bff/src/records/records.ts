@@ -28,9 +28,9 @@ export function tenantStorage(store: RecordStore, tenantId: string): TenantStora
       within(key, 'GET a record');
       return store.getRecord(key);
     },
-    listRecords(prefix) {
+    listRecords(prefix, after) {
       within(prefix, 'GET a list');
-      return store.listRecords(prefix);
+      return store.listRecords(prefix, after);
     },
     putRecord(key, data, ifTag) {
       within(key, 'POST a record');
@@ -55,11 +55,22 @@ export function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: un
  * inline again.
  * `every` is the one place a list under a prefix is read: never short, each record parsed. */
 export function recordTools(storage: RecordStore) {
-  /** Every record under a prefix, never short. */
+  /** Every record under a prefix, never short: page after page until c-storage says no more. A
+   * page that does not move past the last key read (an empty one with more left, or a c-storage
+   * that ignores `after`) is a fault, never a loop. */
   async function every<T>(prefix: string, schema: z.ZodType<T>, kind: string) {
-    const listed = await storage.listRecords(prefix);
-    if (listed.more) throw new Error(`the ${kind} list is longer than c-storage returns`);
-    return listed.records.map((stored) => ({
+    const all: Awaited<ReturnType<RecordStore['listRecords']>>['records'] = [];
+    let after: string | undefined;
+    for (;;) {
+      const page = await storage.listRecords(prefix, after);
+      const first = page.records.at(0);
+      if (page.more && (!first || (after !== undefined && first.key <= after)))
+        throw new Error(`the ${kind} list is longer than c-storage returns`);
+      all.push(...page.records);
+      if (!page.more) break;
+      after = all[all.length - 1].key;
+    }
+    return all.map((stored) => ({
       key: stored.key,
       record: parsed(schema, `${/^[aeiou]/.test(kind) ? 'an' : 'a'} ${kind}`, stored),
       tag: stored.tag,

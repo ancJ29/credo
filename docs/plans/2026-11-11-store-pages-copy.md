@@ -147,14 +147,14 @@ gate, its log read whole. 3: point 1, the recap's picture. 4: ridge, by your run
 the copy is a new command reaching the box and a second c-storage on it; the paging adds no
 resource, hop or key, so stage 2 stands for it and it reaches ridge with your next push.
 
-- [ ] **1. The slice at its thinnest.** `after` in `List` and its handler, with a server test;
+- [x] **1. The slice at its thinnest.** `after` in `List` and its handler, with a server test;
   `listRecords(prefix, after?)` in `shared/src/c-storage.ts` and `RecordStore`; `every` reading
   pages, with a BFF route test of 2,500 customers coming back whole, in code order; and a bare
   `copyCompany`, no bound and no tag yet, copying that company to a second real c-storage in one
   test. *Done when:* `make check` exits 0 at 100 %; the `shared` and `bff` gates end `== exit 0`;
   cases 1, 2 and 8 red once, 1 and 8 with one page read. *Size:* 20: c-storage's part and the bare
   copy, first runs of their shapes, 5 each; one mechanism wired with its test, 10 (the activity
-  log's step 3).
+  log's step 3). *Done 2026-11-12:* c-storage's `make check` ended 0; the `shared` and `bff` gates ended 0 on the committed tree (bff 657 tests, 100 % coverage); the citation test ended 0; cases 1, 2 and 8 each seen red once on a mutation and put back.
 - [ ] **2. The page hardened in c-storage.** The byte bound; `after` outside its prefix refused; two
   requests in `bruno/02-records/` (a second page, the refusal); the memo's "A list reads one prefix"
   rewritten, its rejection of paging and its 8 MB hazard replaced. *Done when:* `make check` exits 0

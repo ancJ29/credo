@@ -156,6 +156,14 @@ describe('listing records', () => {
     expect((await connect(call).listRecords('p')).more).toBe(true);
   });
 
+  it('asks for the page after a key by one encoded query value, and sends none for no key', async () => {
+    const { calls, call } = fake(listed(true), listed(false));
+    await connect(call).listRecords('p.', 'p.a b&c');
+    await connect(call).listRecords('p.');
+    expect(calls[0]?.url).toBe('http://cs.test/api/records/svc%20a?prefix=p.&after=p.a%20b%26c');
+    expect(calls[1]?.url).toBe('http://cs.test/api/records/svc%20a?prefix=p.');
+  });
+
   it('refuses any other status, a list in no known shape and a call that gets no answer', async () => {
     for (const answer of [
       new Response('{}', { status: 404 }),

@@ -116,7 +116,7 @@ func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
 				want = append(want, key)
 			}
 		}
-		listed, more, err := s.List(ctx, "svc", prefix)
+		listed, more, err := s.List(ctx, "svc", prefix, "")
 		if err != nil || more {
 			t.Fatalf("list %q: more %v, %v", prefix, more, err)
 		}
@@ -136,7 +136,7 @@ func TestAListThatFailsIsAnError(t *testing.T) {
 	ctx := context.Background()
 	gone, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, _, err := s.List(gone, "svc", "k"); err == nil {
+	if _, _, err := s.List(gone, "svc", "k", ""); err == nil {
 		t.Fatal("a list under a cancelled context succeeded")
 	}
 }

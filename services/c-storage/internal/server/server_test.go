@@ -363,10 +363,14 @@ type listAnswer struct {
 	More bool
 }
 
-func list(t *testing.T, s *Server, prefix string, want int) listAnswer {
+func list(t *testing.T, s *Server, prefix string, want int, after ...string) listAnswer {
 	t.Helper()
 	var got listAnswer
-	body := call(t, s, "GET", "/api/records/svc?prefix="+url.QueryEscape(prefix), "", want)
+	query := "?prefix=" + url.QueryEscape(prefix)
+	if len(after) == 1 && after[0] != "" {
+		query += "&after=" + url.QueryEscape(after[0])
+	}
+	body := call(t, s, "GET", "/api/records/svc"+query, "", want)
 	if want == http.StatusOK {
 		if err := json.Unmarshal([]byte(body), &got); err != nil {
 			t.Fatalf("a list answers %s: %v", body, err)
@@ -430,6 +434,51 @@ func TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore(t *testing.T) {
 	got := list(t, s, "n.", http.StatusOK)
 	if len(got.Records) != 1000 || !got.More || got.Records[999].Key != "n.0999" {
 		t.Errorf("1,001 records: %d listed, more %v, last %q; want 1000, true and n.0999", len(got.Records), got.More, got.Records[999].Key)
+	}
+}
+
+// A page holds the prefix's keys after `after`, in key order and at most 1,000, and says if more
+// are left: reading page after page, each after the last key read, gives every key once.
+func TestAListAfterAKeyHoldsTheKeysPastItInKeyOrder(t *testing.T) {
+	s, db := build(t)
+	var keys []string
+	for i := range 2500 {
+		keys = append(keys, fmt.Sprintf("n.%04d", i))
+	}
+	seed(t, db, "svc", keys...)
+	seed(t, db, "svc", "m.9999", "o.0000")
+	var read []string
+	after, pages := "", 0
+	for {
+		got := list(t, s, "n.", http.StatusOK, after)
+		pages++
+		read = append(read, keysOf(got)...)
+		if !got.More {
+			break
+		}
+		if len(got.Records) != 1000 {
+			t.Fatalf("page %d holds %d records with more left, want 1000", pages, len(got.Records))
+		}
+		after = got.Records[len(got.Records)-1].Key
+	}
+	if pages != 3 || !slices.Equal(read, keys) {
+		t.Errorf("read in %d pages, %d keys (first %q); want 3 pages and the %d keys in order", pages, len(read), read[0], len(keys))
+	}
+	// An after below the prefix narrows nothing past the prefix, and one past its last key is empty.
+	if got := list(t, s, "n.", http.StatusOK, "a"); len(got.Records) != 1000 || got.Records[0].Key != "n.0000" {
+		t.Errorf("an after below the prefix: %d records from %q, want 1000 from n.0000", len(got.Records), got.Records[0].Key)
+	}
+	if got := list(t, s, "n.", http.StatusOK, "n.9999"); len(got.Records) != 0 || got.More {
+		t.Errorf("an after past the last key: %d records, more %v; want none", len(got.Records), got.More)
+	}
+}
+
+// An after that is not one text is refused, as a prefix is.
+func TestAListAfterNeedsOneText(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "a")
+	for _, query := range []string{"?prefix=a&after=a&after=b", "?prefix=a&after=%ff"} {
+		call(t, s, "GET", "/api/records/svc"+query, "", http.StatusBadRequest)
 	}
 }
 

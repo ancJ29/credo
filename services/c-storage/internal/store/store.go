@@ -157,11 +157,15 @@ func prefixEnd(prefix string) string {
 	return ""
 }
 
-// List returns the records whose key starts with prefix, in key order, at most MaxList of them,
-// and whether more are left. A prefix is a literal: no character in it is a pattern. On an error
-// the records are not to be read.
-func (s *Store) List(ctx context.Context, code, prefix string) (records []Listed, more bool, err error) {
+// List returns the records whose key starts with prefix and is greater than after (no bound when
+// after is empty), in key order, at most MaxList of them, and whether more are left: the next page
+// is the same list with the last key read as its after. A prefix is a literal: no character in it
+// is a pattern. On an error the records are not to be read.
+func (s *Store) List(ctx context.Context, code, prefix, after string) (records []Listed, more bool, err error) {
 	query, args := `SELECT key, data FROM records WHERE service_code = ? AND key >= ?`, []any{code, prefix}
+	if after != "" {
+		query, args = query+` AND key > ?`, append(args, after)
+	}
 	if end := prefixEnd(prefix); end != "" {
 		query, args = query+` AND key < ?`, append(args, end)
 	}
