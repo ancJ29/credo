@@ -182,6 +182,14 @@ main_synced() {
 # (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
 # never be named like one of these.
 INVENTED_ENVS="ridge"
+# DESTROY_BY_HAND: the logical ids in env.yml that a stack delete keeps (a Retain or Snapshot policy) or
+# cannot empty (a bucket), this list's one home. ops/destroy.sh deletes each by hand, and stops before its
+# prompt on an id none of its steps deletes; ops/test.sh row 14 compares the list with env.yml.
+# shellcheck disable=SC2034 # read by destroy.sh and test.sh
+DESTROY_BY_HAND="Box UiBucket"
+# WANT_BRUNO: the Bruno CLI version ops/check.sh runs and ops/remake.sh refuses to start without, one home.
+# shellcheck disable=SC2034 # read by check.sh and remake.sh
+WANT_BRUNO=4.2.0
 # REAL: 1 once real_ok has run on an unlisted environment. Set to 0 here, before any environment is read
 # by a script, so a stray REAL=1 in a shell or a workflow's env cannot narrow ridge's check.
 REAL=0
@@ -961,4 +969,23 @@ edge_reads_client() {
 edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
+}
+
+# workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name
+# `environment: <env>`, the only ones that reach that environment. Read from the files here.
+workflows_of() {
+  local dir=$REPO_DIR/.github/workflows f odd
+  [ -d "$dir" ] || return 0
+  # Fails closed, as push_paths does: only the plain line `environment: <name>` is read. GitHub also takes a
+  # mapping (`environment:` then `name:`), a quoted name and a trailing comment, and a workflow in one of
+  # those shapes would be missed and stay on through a destroy, so any other `environment:` line stops here.
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    odd=$(grep -nE '^[[:space:]]*environment:' "$f" | grep -vE '^[0-9]+:[[:space:]]*environment:[[:space:]]+[A-Za-z0-9_-]+[[:space:]]*$' | head -n 1 || true)
+    [ -z "$odd" ] || die "$(basename "$f") has an environment: line that is not the plain form 'environment: <name>' (line $odd), so which environment the workflow reaches is not known and it might stay on through a destroy: nothing was changed"
+  done
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    if grep -qE "^[[:space:]]*environment:[[:space:]]*$1[[:space:]]*\$" "$f"; then basename "$f"; fi
+  done | sort
 }
