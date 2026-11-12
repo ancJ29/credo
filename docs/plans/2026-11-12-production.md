@@ -86,11 +86,23 @@ Sizes are the ledger's for the same kind and shape (`worktrees/runs.tsv`, by `gl
 step's gate is `bash ops/test.sh` and `shellcheck -x ops/*.sh`, plus the citation test. 👤 is your
 act, handed as one script.
 
-- [ ] **1. The description written last.** Item 29's fix in `ops/app.sh` (decision 1), the stand-in's
+- [x] **1. The description written last.** Item 29's fix in `ops/app.sh` (decision 1), the stand-in's
   switch and settings branch (decision 2), cases 1 to 5; the header, the step's two comments and
   `docs/client-readiness.md`'s passage rewritten. *Done when:* cases 1 to 4 red before and green
   after, and the mutation's receipt; `bash ops/test.sh`, `shellcheck -x ops/*.sh` and the citation
   test at exit 0; item 29 deleted. **8.**
+  *Done:* `ops/app.sh` now sets the environment and the VPC settings in the first settings call, sends
+  the code, reads the checksum, and only then sets the description in a second call that names the same
+  subnet and group (the deploy role's condition in `ops/env.yml` asks for both, confirmed). The stand-in
+  `aws` gained a switch that fails the code write, and its settings branch records the environment file
+  only when a call names one and the description only when a call carries one. Cases 1 to 4 were each
+  red on the old `app.sh` (case 1: the first call carried the description; case 2: the description
+  came before the code's checksum; cases 3 and 4: the description was set after a failed code write and
+  after a wrong checksum) and are green after. The mutation, the description put back into the first
+  call, turned the four cases and the order row red together, and was reverted. Case 5 holds: of the
+  existing rows only the order row changed, to environment, code, description, UI, beside the stand-in's
+  own two edits. `shellcheck -x ops/*.sh`, `bash ops/test.sh` and the citation test passed; item 29 is
+  deleted, and the header, the step's comments and `docs/client-readiness.md` are rewritten.
 - [ ] **1r. Reviewed, fixed, landed.** A model other than the author's reads one script's order and
   its rows; `pre-merge` taken in first; landed there; `main` moves at the whole check. **5**, and **10**
   more if the review asks for a fix pass.

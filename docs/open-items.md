@@ -216,15 +216,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
 
-## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
-
-`ops/app.sh` writes the BFF function's description (the commit `ops/seed.sh` compares with
-`/health`) before it writes the function's code. A deploy that stops between the two leaves a
-description naming the new commit on the old code, so the seed's check passes and it runs against a
-BFF that is a commit behind. It needs a deploy that is already red to bite, and the next one is
-red anyway. Fix: write the description after the code, in `ops/app.sh`, and a stand-in `aws` test in
-`ops/test.sh` that stops the code's write and reads the description unchanged.
-
 ## 30. Adding a passkey in Safari may be refused — the machine, with the human's 3 minutes; *parked* until the console is used in Safari (the operator console plan, step 8, 2026-10-30)
 
 One click on "Add a passkey" (`ui/src/pages/operator/PasskeysPage.tsx`) runs two WebAuthn ceremonies: the touch of a
