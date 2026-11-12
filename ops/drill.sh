@@ -4,7 +4,8 @@
 #   row 13: c-storage is killed (SIGKILL) and must answer again within 10 s, as a new process; the unit's
 #   main process is Litestream, c-storage its child, so both must come back new;
 #   row 14: a code is registered, the box is rebooted cleanly, and c-storage must be back by itself
-#   on the same build, the code answering 409 (the data outlived the reboot).
+#   on the same build, the code answering 409 (the data outlived the reboot);
+#   row 17: the copy in the bucket holds that code, and a restore to a moment before it does not.
 # It breaks the known state a green deploy left, so run ops/check.sh <env> after it.
 # Needs /health's buildVersion (the plan's step 6) and keys on the box (a release made them).
 # Expected length: about 5 minutes (the reboot and the tunnel's return take most of it).
@@ -18,7 +19,7 @@ set -euo pipefail
   exit 2
 }
 ENVNAME=$1
-STEPS=7
+STEPS=8
 
 log_start drill "$ENVNAME"
 mkwork
@@ -73,6 +74,9 @@ expect "row 13: c-storage answers again, as a new process under a new Litestream
 
 step "register a code"
 code="drill-$(date -u +%Y%m%dT%H%M%SZ)"
+# The moment before the code, by the box's clock (the copy's times are the box's), two seconds clear of it.
+before=$(box date -u +%Y-%m-%dT%H:%M:%SZ)
+sleep 2
 expect "registering $code" 201 "$(register "$code")"
 boot_before=$(box cat /proc/sys/kernel/random/boot_id)
 
@@ -97,6 +101,17 @@ expect "the box rebooted (its boot id changed)" yes "$([ "$(box cat /proc/sys/ke
 wait_build "$build" 60 health || red "row 14: c-storage did not come back on the same build $build"
 expect "row 14: the code registered before the reboot answers 409" 409 "$(register "$code")"
 read_keys
+
+step "row 17: the copy holds the code, and a restore to a moment before it does not"
+# Litestream copies each second; the code was registered before the reboot, so the copy had long to take it.
+latest=$(box_restore - 0 "d$(date -u +%Y%m%dT%H%M%SZ)" | sed -n 's/^restored=//p')
+[ -n "$latest" ] || die "the restore of the newest copy named no file"
+expect "row 17: a restore of the newest copy holds the code $code" yes "$(box sudo grep -qaF "$code" "$latest" && echo yes || echo no)"
+earlier=$(box_restore "$before" 0 "e$(date -u +%Y%m%dT%H%M%SZ)" | sed -n 's/^restored=//p')
+[ -n "$earlier" ] || die "the restore to $before named no file"
+expect "row 17: a restore to $before, before the code, does not" no "$(box sudo grep -qaF "$code" "$earlier" && echo yes || echo no)"
+# The drill's own two files, made by it and read by it alone; the live file and the copy are not touched.
+box sudo rm -f "$latest" "$earlier"
 echo "next: ops/check.sh $ENVNAME"
 
 verdict

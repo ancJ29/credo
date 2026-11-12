@@ -785,6 +785,62 @@ refuses "  a release that formats first is refused" "formatted before the bucket
 refuses "  a release whose check never stops it is refused" "does not stop the release" \
   blank_guard "$(mutated release-nostop.sh 's#"\$have" != 0 \]; then#"$have" = x ]; then#' "$OPS_DIR/release.sh")"
 
+echo "== the check reads the copy (row 15) and the restore writes a new file and moves nothing live aside for good (row 16) (docs/plans/2026-11-11-continuous-copy.md)"
+# row 15: copy_problems on written input. Now is 10:10:00 on the 12th.
+cp_now=$(jq -n '"2026-11-12T10:10:00Z" | fromdateiso8601')
+cp_status() { printf '{"freeBytes": %s, "lastWriteAt": %s}' "$1" "$2"; } # <free bytes> <quoted time or null>
+cp_listing() { # <newest copy's time> <newest full copy's time>
+  printf '[{"Key":"%sltx/0/0000000000000001-0000000000000002.ltx","LastModified":"%s"},{"Key":"%s0000000000000001-0000000000000001.ltx","LastModified":"%s"}]' "$COPY_PATH/" "$1" "$COPY_FULL_PREFIX" "$2"
+}
+# copy_eval <lib.sh> <status> <listing>: the faults that file's own copy_problems names (the constants stay this tree's)
+copy_eval() {
+  ( eval "$(sed -n '/^copy_problems() {/,/^}/p' "$1")"; copy_problems "$2" "$3" "$cp_now" )
+}
+cp_ok_status=$(cp_status 5000000000 '"2026-11-12T10:00:00.123456789Z"')
+cp_ok_list=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00)
+check "row 15: the limits are five minutes, six days and 1 GiB" "300 518400 1024" "$COPY_LAG_S $COPY_FULL_MAX_S $FLOOR_RECORDS_MB"
+check "row 15: a copy as new as the last write, a full copy of today and a roomy disk are sound" "" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_ok_list")"
+check "  a copy exactly five minutes behind the last write is still sound" "" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T09:55:00+00:00 2026-11-12T00:00:00+00:00)")"
+cp_lag=$(cp_listing 2026-11-12T09:50:00+00:00 2026-11-12T00:00:00+00:00)
+cp_old=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-05T00:00:00+00:00)
+cp_low=$(cp_status 1000000 '"2026-11-12T10:00:00Z"')
+check "  a copy over five minutes behind the last write is red, and only that" "the newest copy lags the last write by 600 s, over 300 s" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_lag")"
+check "  a newest full copy over six days old is red, and only that" "the newest full copy is 7 days old, over 6 days" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_old")"
+check "  a records disk below its floor is red, and only that" "the records disk has 0 MiB free, below the floor of 1024 MiB" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_low" "$cp_ok_list")"
+check "  an empty bucket is red for no copy and no full copy; a file not yet written is not a lag" "the bucket holds no copy of the records|the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$(cp_status 5000000000 null)" null | paste -sd'|' -)"
+check "  a copy with no full copy is red, and a write time in S3's own form (+00:00) is read" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | jq -c --arg p "$COPY_FULL_PREFIX" 'map(select(.Key | startswith($p) | not))')")"
+# row 16: the restore's box script and the script that calls it, read as text
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+restore_guard() { # <lib.sh> <restore.sh>
+  local b=$WORK/restore-block.sh
+  sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_restore"
+  need "$b" '^new=\$mount/restored-\$stamp[.]db$' "the restore does not name a new file by default"
+  need "$b" '^args=\(-o "\$new"\)$' "the restore does not write to the new file"
+  [ "$(grep -c -- '-o "\$db"' "$b")" = 0 ] || die "the restore writes to the live path"
+  first_before "$b" '^if \[ "\$live" = 1 \]; then$' 'systemctl stop c-storage' "c-storage is stopped outside the live branch"
+  first_before "$b" 'systemctl stop c-storage' 'mv "\$f" "\$f[.]aside-\$stamp"' "the live file is moved aside before c-storage is stopped"
+  first_before "$b" 'mv "\$f" "\$f[.]aside-\$stamp"' 'mv "\$new" "\$db"' "the restored file takes the live path before the live file is set aside"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the restore deletes a file"
+  need "$2" '^ONTO_LIVE=0$' "the restore does not default to a new file"
+  need "$2" 'box_restore "\$AT" "\$ONTO_LIVE"' "the restore script does not pass the flag on"
+  need "$2" '"\$REAL" = 1 \] && \[ "\$ONTO_LIVE" = 1 \]' "the restore does not refuse the live path on an environment that may hold real data"
+}
+passes "the restore writes a new file by default, writes the live path only when named, and moves the live file aside, never deleting it (row 16)" \
+  restore_guard "$OPS_DIR/lib.sh" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that writes to the live path is refused" "does not write to the new file" \
+  restore_guard "$(mutated lib-live.sh 's#^args=(-o "\$new")$#args=(-o "$db")#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that deletes the live file instead of moving it aside is refused" "deletes a file" \
+  restore_guard "$(mutated lib-rm.sh 's#mv "\$f" "\$f.aside-\$stamp"#rm -f "$f"; mv "$f" "$f.aside-$stamp"#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore script that puts the live path first is refused" "does not default to a new file" \
+  restore_guard "$OPS_DIR/lib.sh" "$(mutated restore-live.sh 's#^ONTO_LIVE=0$#ONTO_LIVE=1#' "$OPS_DIR/restore.sh")"
+
 echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
 # A scratch repository of the paths a script can run or deploy, and one (docs/) it cannot. Its ci.yml
@@ -2277,13 +2333,17 @@ jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGrou
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
   '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
+# the copy: a status and a bucket listing that are sound by the stand-ins' clock (a run that wants them red rewrites them)
+chk_stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
 policy_of "[$statement]" >"$CHK/policy.json"
 # aws: layer four's reads and the box's group on files; the stack gains the two outputs the base lacks; the rest is the base stand-in's
 cat >"$CHK/bin/aws" <<'STANDIN'
 #!/bin/bash
 C=${CHK_DIR:?}
 case "$*" in
-  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}]' ;;
+  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}, {OutputKey: "CopyBucketName", OutputValue: "credo-test-copy"}]' ;;
   *"ec2 describe-instances"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo None ;;
   *"describe-internet-gateways"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo 0 ;;
   *"describe-instance-connect-endpoints"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo '["sg-ep"]' ;;
@@ -2294,6 +2354,7 @@ case "$*" in
   *"lambda get-function-configuration"*"--output json"*) echo "stand-in aws: the function's whole configuration is never read: $*" >&2; exit 1 ;;
   *"s3api get-public-access-block"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/pab.json" ;;
   *"s3api get-bucket-policy"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/policy.json" ;;
+  *"s3api list-objects-v2"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/listing.json" ;;
   *) exec "$CHK_BASE/aws" "$@" ;;
 esac
 STANDIN
@@ -2301,6 +2362,18 @@ STANDIN
 cat >"$CHK/bin/ssh" <<'STANDIN'
 #!/bin/bash
 case "$*" in
+  *"sudo bash -s -- status "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    cat "${CHK_DIR:?}/status.json" ;;
+  *"sudo bash -s -- /var/lib/private/c-storage "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/restore.calls"
+    cat >/dev/null
+    all="$*"
+    words=${all##*-- }
+    set -- $words
+    if [ "$3" = 1 ]; then printf 'answering=yes\naside=%s\n' "$4"; else printf 'restored=/var/lib/private/c-storage/restored-%s.db\n' "$4"; fi ;;
   *"sudo bash -s -- "*)
     echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
     cat >/dev/null
@@ -2374,6 +2447,37 @@ check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
 check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+# the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
+check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
+  "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ltx/' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
+printf '{"freeBytes": 1000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing 2026-01-01T00:00:00+00:00 2026-01-01T00:00:00+00:00 >"$CHK/listing.json"
+chk_run copyred check.sh ridge --reads-only
+check "row 15: the whole check is red on a disk below its floor, a lagging copy and an old full copy, naming each" "1 1 1 1 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has '^RED  the records disk has 0 MiB free' "$S/out") $(chk_has '^RED  the newest copy lags the last write' "$S/out") $(chk_has '^RED  the newest full copy is' "$S/out") $(chk_has '^== red' "$S/out")"
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
+
+# the restore, whole: a new file by default, the live path only when named, never on an environment that may hold real data
+restore_calls() { sed -n 's/.*bash -s -- \/var\/lib\/private\/c-storage //p' "$S/restore.calls" 2>/dev/null | head -n 1; }
+chk_run rdef restore.sh ridge
+check "row 16: the restore on ridge writes a new file and passes the box 'no moment, not onto the live file'" "0 1 1" \
+  "$RC $(chk_has '^restored=/var/lib/private/c-storage/restored-' "$S/out") $(restore_calls | grep -c '^- 0 [0-9]\{8\}T[0-9]\{6\}Z ' || true)"
+check "  and says the live file is untouched" 1 "$(chk_has '^the live file is untouched' "$S/out")"
+chk_run rat restore.sh ridge --at 2026-11-12T10:00:00Z
+check "  a moment is passed on whole" "0 1" "$RC $(restore_calls | grep -c '^2026-11-12T10:00:00Z 0 ' || true)"
+chk_run rlive restore.sh ridge --onto-live
+check "  --onto-live on ridge is passed to the box, and /health is read after the swap" "0 1 1" \
+  "$RC $(restore_calls | grep -c '^- 1 ' || true) $(chk_has '^ok   c-storage answers /health after the swap' "$S/out")"
+chk_run rtaiga restore.sh taiga
+check "  on an environment that may hold real data the default runs, saying why" "0 1 1" \
+  "$RC $(chk_has '^ok   taiga may hold real data; this script is safe there: by default it writes a new file' "$S/out") $(restore_calls | grep -c '^- 0 ' || true)"
+chk_run rtaigalive restore.sh taiga --onto-live
+check "  --onto-live there is refused, before any aws or box call" "1 1 gone gone" \
+  "$RC $(grep -c '^error: --onto-live is refused on taiga' "$S/out" || true) $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
+check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live]" "$rc $out"
 kill "$chk_edge" 2>/dev/null || true
 unset FAKE_LAYER4 FAKE_APP FAKE_API
 

@@ -26,6 +26,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
+| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live]` ([restoring the records](#restoring-the-records)) | about a minute |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
 ## Before any step
@@ -56,7 +57,8 @@ name its stack `ridge`.
 | `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
 | `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
-| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, layer four's reads and the six reads that need no client stay |
+| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, the copy's status (read on the box; its key stays there) and the bucket's listing, layer four's reads and the six reads that need no client stay |
+| `ops/restore.sh` | works, to a new file | by default it writes a new file beside the live one and touches nothing live; `--onto-live` is refused there |
 | `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |
@@ -509,9 +511,26 @@ status `available`.
 Once on a new box, and again when the unit, the templates or the box change. It breaks the known
 state, so release first.
 
-1. `ops/drill.sh ridge`; rows 13 and 14 of the plan's checks read green.
+1. `ops/drill.sh ridge`; rows 13, 14 and 17 of the plan's checks read green (row 17: the copy holds a code registered seconds before, and a restore to a moment before it does not).
    - **the box did not come back:** wait, then run `ops/check.sh ridge`; the reboot may be slow.
 2. `ops/check.sh ridge` reads green again.
+
+## Restoring the records
+
+The records are copied to the bucket a second at a time ([the plan](../docs/plans/2026-11-11-continuous-copy.md)).
+`ops/check.sh` reads the copy: red when the newest copy lags the last write by over five minutes, when the
+newest full copy is over six days old, or when the records disk is under 1 GiB free.
+
+1. `ops/restore.sh <env>` writes the newest copy to a new file, `restored-<stamp>.db`, on the records disk, and
+   touches nothing live. `--at <time>` (such as `2026-11-12T10:00:00Z`) restores the records as of that moment.
+2. To put a restore in place, `ops/restore.sh <env> [--at <time>] --onto-live`: c-storage stops, the live file and
+   its companions are moved aside (`c-storage.db.aside-<stamp>`, never deleted), the restored file takes the live
+   path and c-storage starts again. Refused on an environment that may hold real data ([on production](#on-production)):
+   restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
+   - **a release refuses a blank records disk and names this restore:** the restore needs the disk mounted at the
+     records path, which the refused release leaves unmounted; mount it by hand as the release's records step does
+     (without formatting), restore with `--onto-live`, then release again. Not yet walked on a real blank disk.
+   - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
 
 ## The ops job
 

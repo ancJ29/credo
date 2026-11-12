@@ -175,6 +175,26 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   Two old tests touched, named: `TestAStoreFailureIsAGeneric500`'s last loop takes the first five routes (the status
   reads no services table), and `TestEveryServiceRouteRefusesAMissingOrWrongAdminKey` skips the status path (it takes
   no admin key). The seven-routes count in c-storage's `CLAUDE.md` and `README.md` follows.
+- [x] **Step 5, ticked 2026-11-12.** `ops/check.sh` gains a step that reads the copy: c-storage's `/api/status`
+  read on the box (`copy_status` in `ops/lib.sh`; the internal key goes from its file into curl's config on stdin and never
+  leaves the box, so it runs on a real environment too) and the bucket's objects under `Box/records/ltx/`; `copy_problems`
+  names a red for a copy more than 300 s behind the last write, a newest full copy (the `ltx/9/` level) over six days old,
+  none at all, or the records disk under 1 GiB free. The new `ops/restore.sh <env> [--at <time>] [--onto-live]` runs
+  `box_restore` (in `ops/lib.sh`) on the box: by default a new file `restored-<stamp>.db` on the records disk, nothing live
+  touched; `--onto-live` stops c-storage, moves the live file, its wal, shm and Litestream's state folder to `.aside-<stamp>`
+  (never deleted), puts the restore on the live path and starts c-storage; `--onto-live` is refused on an environment that
+  may hold real data, where the default alone runs. `ops/drill.sh` gains row 17 (a restore of the newest copy holds the code
+  registered before the reboot, a restore to the box's clock from before it does not; the drill removes its own two files);
+  it is not run here. The runbook gains "Restoring the records" and its row in the at-a-glance table and the production table.
+  `bash ops/test.sh` exit 0 ("all checks passed", 803 ok lines before the final run) and `shellcheck -x ops/*.sh walk/*.sh
+  services/c-storage/scripts/*.sh` exit 0. Row 15 was seen red by three mutations of `copy_problems`, each put back (backup
+  first, compared equal after): the lag limit made huge (lag case), the full-copy limit made huge (old-full case), the floor
+  comparison reversed (every sound case red); the first batch hid the other two behind the floor, so lag and full were rerun
+  together. Row 16 was seen red by the restore's target changed to the live path (the guard, "does not write to the new
+  file") and the script's default flipped to the live path (the guard and the whole run's "writes a new file" cases). Unproven
+  here: the bucket's key layout (`ltx/9/` for full copies) is Litestream's as read, not seen against S3, and a full listing of
+  the prefix grows with the writes (seven days at most); both are for the check on ridge. Row 17 and the blank-disk restore
+  are the drill's and your runs'.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.

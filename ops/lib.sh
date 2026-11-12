@@ -17,6 +17,15 @@ BOX_USER=ec2-user
 FLOOR_DISK_MB=1024
 FLOOR_MEM_MB=96
 FLOOR_SWAP_MB=1024
+# The check reds below this much free on the records disk (MiB), and when the newest copy lags the last
+# write by more than COPY_LAG_S, or the newest full copy is older than COPY_FULL_MAX_S (six days: Litestream
+# makes no full copy on an idle file, so this is the only guard on one).
+FLOOR_RECORDS_MB=1024
+COPY_LAG_S=300
+COPY_FULL_MAX_S=518400
+# The box's path in the copy's bucket (the release writes it into COPY_URL), and where Litestream keeps full copies under it
+COPY_PATH=Box/records
+COPY_FULL_PREFIX=$COPY_PATH/ltx/9/
 
 LOG=''
 WORK=''
@@ -574,6 +583,74 @@ litestream_binary() {
   tar -xzf "$archive" -C "$WORK/litestream" litestream
   [ -f "$WORK/litestream/litestream" ] || die "the pinned archive holds no litestream binary"
   cp "$WORK/litestream/litestream" "$1"
+}
+
+# copy_status → c-storage's GET /api/status, read on the box: the internal key goes from its file into curl's
+# config on stdin and never leaves the box. The first word tells the stand-ins apart.
+copy_status() {
+  box sudo bash -s -- status "$BOX_PORT" "$BOX_LISTEN_ADDR" <<'REMOTE'
+set -euo pipefail
+. /etc/c-storage/keys.env
+printf 'header = "X-Internal-Access-Key: %s"\n' "$INTERNAL_ACCESS_KEY" |
+  curl -fsS -m 5 -K - "http://$3:$2/api/status"
+REMOTE
+}
+
+# copy_problems <status json> <listing json: [{Key, LastModified}] or null> <now, epoch seconds> → one line for
+# each fault of the copy, nothing when it is sound: the records disk below its floor, no copy at all, the newest
+# copy behind the last write by over COPY_LAG_S, no full copy, the newest full copy older than COPY_FULL_MAX_S
+copy_problems() {
+  jq -nr --argjson st "$1" --argjson ls "$2" --argjson now "$3" --argjson lag "$COPY_LAG_S" \
+    --argjson fullmax "$COPY_FULL_MAX_S" --argjson floor "$((FLOOR_RECORDS_MB * 1048576))" --arg full "$COPY_FULL_PREFIX" '
+    def epoch: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
+    ($ls // []) as $objs
+    | ($objs | map(.LastModified | epoch) | max) as $newest
+    | ($objs | map(select(.Key | startswith($full)) | .LastModified | epoch) | max) as $fullest
+    | ($st.lastWriteAt | if . == null then null else epoch end) as $write
+    | (if $st.freeBytes < $floor then "the records disk has \($st.freeBytes / 1048576 | floor) MiB free, below the floor of \($floor / 1048576) MiB" else empty end),
+      (if $newest == null then "the bucket holds no copy of the records" else empty end),
+      (if $write != null and $newest != null and ($write - $newest) > $lag then "the newest copy lags the last write by \($write - $newest) s, over \($lag) s" else empty end),
+      (if $fullest == null then "the bucket holds no full copy" else empty end),
+      (if $fullest != null and ($now - $fullest) > $fullmax then "the newest full copy is \(($now - $fullest) / 86400 | floor) days old, over \($fullmax / 86400) days" else empty end)
+  '
+}
+
+# box_restore <time or -> <1 to put it onto the live file, else 0> <stamp> → restores the records from the copy
+# on the box, with its role's credentials. By default to a new file beside the live one and nothing live touched;
+# onto the live file, c-storage is stopped, the live file and its companions are moved aside (never deleted) and
+# the restored one takes the live path. Prints restored=<the new file> or, onto the live file, aside=<stamp>.
+box_restore() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" "$BOX_LISTEN_ADDR" "$BOX_PORT" <<'REMOTE'
+set -euo pipefail
+mount=$1 at=$2 live=$3 stamp=$4 addr=$5 port=$6
+db=$mount/c-storage.db
+new=$mount/restored-$stamp.db
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+set -a
+. /etc/c-storage/copy.env
+set +a
+args=(-o "$new")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+/opt/c-storage/litestream restore "${args[@]}" "$COPY_URL"
+[ -s "$new" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$new"
+if [ -e "$db" ]; then chown --reference="$db" "$new"; fi
+if [ "$live" = 1 ]; then
+  systemctl stop c-storage
+  for f in "$db" "$db-wal" "$db-shm" "$mount/.c-storage.db-litestream"; do
+    if [ -e "$f" ]; then mv "$f" "$f.aside-$stamp"; fi
+  done
+  mv "$new" "$db"
+  systemctl start c-storage
+  for _ in $(seq 1 30); do
+    if curl -fsS -m 2 -o /dev/null "http://$addr:$port/health"; then echo "answering=yes"; break; fi
+    sleep 1
+  done
+  echo "aside=$stamp"
+else
+  echo "restored=$new"
+fi
+REMOTE
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release
