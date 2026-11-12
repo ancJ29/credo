@@ -235,6 +235,7 @@ Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/
   scripts replace a stale fstab line for a new disk; the default restore's free-space sum no longer stops when c-storage is
   stopped and has no write-ahead file. Each has a row, seen red against the first build's form; the whole `bash ops/test.sh`
   ran again at exit 0 with no FAIL line, then the citation test exit 0. Two reread notes went into item 382.
+- [x] **Step 9, ticked 2026-11-12.** The recap is `docs/recaps/2026-11-12-continuous-copy.md`, with the stack runs, the first release, the drill's restore and the look marked not yet known; `docs/products.md` gains the copy's row and its second known gap now says the copy is written and not yet run. `pre-merge` was taken in at `3ef04cd2`; the two conflicts (a destroy line and a test line, each side kept) were resolved by hand. The whole `ops/test.sh` and the citation test run on the final tree before the commit.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.
