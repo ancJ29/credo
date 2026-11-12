@@ -2,12 +2,12 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import {
   ATTEMPTS,
   CStorageError,
-  type CStorageClient,
   deviceIdSchema,
   sha256Hex,
   type StoredSession,
   storedSessionSchema,
 } from '@credo/shared';
+import type { RecordStore } from '../records/records';
 import { constantTimeEqual } from './constant-time';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -43,7 +43,7 @@ export function createSessions({
   keyOf,
   sliding,
 }: {
-  storage: CStorageClient;
+  storage: RecordStore;
   now: () => number;
   keyOf: (sessionId: string) => string;
   /** Present for a realm whose session ends after a time unused and at a cap from its issue;

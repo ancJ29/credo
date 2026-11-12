@@ -22,7 +22,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { declare, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
-import { recordTools } from '../records/records';
+import { recordTools, type TenantStorage } from '../records/records';
 import type { Deps } from './staff';
 
 /** What one list is to the routes: where its records sit, how a row is read, how a record is
@@ -99,8 +99,7 @@ type Result<Record> =
  * root alone imports into it, checked on the server. A list is read in code order, never short; an import adds each row as
  * one add, one after another, and answers one result for each row. */
 export function registerListRoutes(app: FastifyInstance, deps: Deps) {
-  const { storage, forClient, signedIn, mustBeRoot, mustCan } = deps;
-  const { every } = recordTools(storage);
+  const { forClient, signedIn, mustBeRoot, mustCan } = deps;
 
   function registerList<
     Record extends { id: string; code: string },
@@ -108,15 +107,19 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
   >(kind: ListKind<Record, Save>) {
     /** Every record of the list. Never a short list that looks whole: more than c-storage returns,
      * or a record that does not parse, is a 500 that names the kind and not the key. */
-    async function everyone(tenantId: string) {
-      const listed = await every(kind.prefix(tenantId), kind.record, kind.name);
+    async function everyone(storage: TenantStorage) {
+      const listed = await recordTools(storage).every(
+        kind.prefix(storage.tenantId),
+        kind.record,
+        kind.name,
+      );
       return listed.map(({ record }) => record);
     }
 
     /** One record written once under its fresh id. The write may have landed while its answer was
      * lost: the record is there, or the failure stands. */
-    async function write(tenantId: string, record: Record) {
-      const key = kind.key(tenantId, record.id);
+    async function write(storage: TenantStorage, record: Record) {
+      const key = kind.key(storage.tenantId, record.id);
       let written: 'saved' | 'moved';
       try {
         written = await storage.putRecord(key, record, null);
@@ -131,7 +134,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
 
     app.get(kind.route, forClient, async (request) => {
       mustCan(await signedIn(request), 'orders.canView');
-      const records = await everyone(request.tenantId);
+      const records = await everyone(request.storage);
       records.sort(byCode);
       return { [kind.field]: records };
     });
@@ -142,7 +145,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
      * not answer for (503) is `busy`; any other failure is thrown. The code joins `codes` once
      * written, or once a write failed 503, for it may have landed with its read-back failed. */
     async function addOne(
-      tenantId: string,
+      storage: TenantStorage,
       raw: unknown,
       codes: Set<string>,
     ): Promise<Result<Record>> {
@@ -152,7 +155,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       if (codes.has(code)) return { kind: 'refused', reason: 'taken' };
       const record = kind.record.parse({ ...row.data, id: randomUUID(), code });
       try {
-        await write(tenantId, record);
+        await write(storage, record);
       } catch (error) {
         if (replyFor(error).status !== 503) throw error;
         codes.add(code);
@@ -175,12 +178,12 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         mustBeRoot(who);
         const call = parse(importCallSchema, request.body);
         // The list is read once a call, and each code written joins it.
-        const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
+        const codes = new Set((await everyone(request.storage)).map((one) => one.code));
         const results: Result<Record>[] = [];
         const added = () => results.flatMap((one) => (one.kind === 'added' ? [one.record] : []));
         try {
           for (const raw of call.rows) {
-            results.push(await addOne(request.tenantId, raw, codes));
+            results.push(await addOne(request.storage, raw, codes));
           }
         } catch (error) {
           // A fault ends the call and the rows before it stay: each is entered, the call's own
@@ -202,8 +205,8 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
 
     /** The record as stored now with its tag, answered as the kind's doc (`{ customer, version }`
      * or `{ product, version }`); none if the company holds none by that id. */
-    async function readOne(tenantId: string, id: string) {
-      const found = await storage.getRecord(kind.key(tenantId, id));
+    async function readOne(storage: TenantStorage, id: string) {
+      const found = await storage.getRecord(kind.key(storage.tenantId, id));
       if (!found) return null;
       const parsed = kind.record.safeParse(found.data);
       if (!parsed.success) throw new Error(`a ${kind.name} record does not parse`);
@@ -215,8 +218,8 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
     });
 
     /** The record as stored now; a 404 when there is none. */
-    async function mustRead(tenantId: string, id: string) {
-      const one = await readOne(tenantId, id);
+    async function mustRead(storage: TenantStorage, id: string) {
+      const one = await readOne(storage, id);
       if (!one) throw new HttpError(404, 'Not found');
       return one;
     }
@@ -232,12 +235,12 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         const who = await signedIn(request);
         const entry = declare(request, personOf(who));
         mustCan(who, 'orders.canEdit');
-        const codes = new Set((await everyone(request.tenantId)).map((one) => one.code));
-        const result = await addOne(request.tenantId, request.body, codes);
+        const codes = new Set((await everyone(request.storage)).map((one) => one.code));
+        const result = await addOne(request.storage, request.body, codes);
         if (result.kind === 'added') {
           entry.target(result.record.id);
           entry.saved(null, result.record);
-          return docOf(await mustRead(request.tenantId, result.record.id));
+          return docOf(await mustRead(request.storage, result.record.id));
         }
         if (result.reason === 'taken') throw new HttpError(409, 'Conflict');
         if (result.reason === 'busy') throw new HttpError(503, 'Service unavailable');
@@ -247,7 +250,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
 
     app.get(kind.one(':id'), forClient, async (request) => {
       mustCan(await signedIn(request), 'orders.canView');
-      return docOf(await mustRead(request.tenantId, idOf(request)));
+      return docOf(await mustRead(request.storage, idOf(request)));
     });
 
     /** A save over the version read: the values the kind's `apply` takes from the body, the id and
@@ -264,16 +267,20 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         mustCan(who, 'orders.canEdit');
         const id = idOf(request);
         const body = parse(kind.save, request.body);
-        const found = await mustRead(request.tenantId, id);
+        const found = await mustRead(request.storage, id);
         const updated = kind.apply(found.record, body);
         /** Marked at each way the save stands, so the entry reads as a change that landed. */
         const stands = () => entry.saved(found.record, updated);
         let outcome: 'saved' | 'moved';
         try {
-          outcome = await storage.putRecord(kind.key(request.tenantId, id), updated, body.version);
+          outcome = await request.storage.putRecord(
+            kind.key(request.tenantId, id),
+            updated,
+            body.version,
+          );
         } catch (error) {
           // The write may have landed with its answer lost: the record is as asked, or the failure stands.
-          const now = await readOne(request.tenantId, id).catch(() => null);
+          const now = await readOne(request.storage, id).catch(() => null);
           // This compare and the `moved` one below hold only while a record's code and id never
           // change: `updated` spreads `found.record`, read now, perhaps after another writer, and
           // overwrites every other field with the body's, so only `id` and `code` come from the read.
@@ -288,9 +295,9 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
         }
         if (outcome === 'saved') {
           stands();
-          return docOf(await mustRead(request.tenantId, id));
+          return docOf(await mustRead(request.storage, id));
         }
-        const now = await readOne(request.tenantId, id);
+        const now = await readOne(request.storage, id);
         if (now && isDeepStrictEqual(now.record, updated)) {
           stands();
           return docOf(now);
