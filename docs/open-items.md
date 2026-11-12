@@ -1462,3 +1462,7 @@ Gap 4 and the passage near it say what the wait leaves: one guesser trying many 
 ## 341. Nothing catches the read-only check's function query drifting to take in the environment again, so the BFF's two keys could reach the shell with every test green — the machine; `[DEFERRED]` (the reread of the safe scripts' fix pass, 2026-11-12)
 
 `ops/lib.sh`, `BFF_FN_QUERY`, is the one query the check reads the function with, and it returns names and two non-secret values only. If it drifts to return `Environment` again, the text check and the stand-in in `ops/test.sh` match it loosely and stay green, while `INTERNAL_ACCESS_KEY` and `SERVICE_ACCESS_KEY` reach the shell and, through bash 3.2's here-strings, a temp file. *Fix:* pin the query's exact string in the test. *Trigger:* the next change to `BFF_FN_QUERY` or to a reader of it.
+
+## 342. `scripts/src/running/claim.ts`'s draft cleanup is pinned by no case, so deleting it stays green — the machine; `[DEFERRED]` (the root-proof tests' review, 2026-11-12)
+
+`claim.ts`'s `rmSync` of the draft after a failed write is run by every failing case but asserted by none: each fails at the folder's creation, before any draft exists. The case it guards, a written draft whose rename then fails, cannot be staged as root without a mock (a directory standing at the claim's name throws earlier, at the existence check). *Fix:* pin the draft's removal on a failed rename with a mocked `renameSync`, or drop the line as unreachable. *Trigger:* the next change to `claim.ts`.
