@@ -502,9 +502,9 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 *Trigger:* the next change to the script.
 
-## 55. `OPS_TEST_NO_TTY` or `RIDGE_SCRIPTS_DIR` in the environment bypass two checks — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I7)
+## 55. `OPS_TEST_NO_TTY` or `RIDGE_SCRIPTS_DIR` in the environment bypass two checks on ridge — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I7; narrowed 2026-11-12)
 
-`ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
+`ops/root-password.sh` (and `ops/operator.sh`, the same pattern) takes both from the environment, the test's own switches. *Narrowed:* on an environment not listed in `INVENTED_ENVS`, `real_ok` refuses both unless the tests' marker is set, so `operator.sh` is safe on production; `root-password.sh` refuses it outright. Only ridge keeps the switches. *Fix:* read them only under a test marker, or drop the switches for a test-only wrapper.
 
 *Trigger:* the next change to either script.
 
@@ -854,33 +854,9 @@ the box's keys. *Fix:* either `ops_match_main` covers `scripts/` as well, or the
 clean-tree check the other two already have. *Severity:* High against a client's stack; on ridge it risks demo
 data alone. *Trigger:* before any environment but ridge exists.
 
-## 131. `ops/check.sh` puts the box's internal and super-admin keys on an operator's machine, for any environment — the machine; *parked* until before a client's own stack (the client-readiness read, 2026-11-07)
+## 132. A client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07, narrowed 2026-11-12)
 
-`ops/tunnel.sh#L35-L36` refuses every environment but ridge, in its own words, because "another stack's admin
-keys would land on this disk, and the collection would write test records into it". `ops/check.sh` does both and
-refuses no environment: it opens its own connection to the box (`#L80`), reads the keys (`#L114`) and writes the
-internal access key and the super-admin key into a Bruno environment file on the machine running it (`#L120`,
-through `ops/lib.sh#L530-L552`). The file is 0600, git-ignored and removed by `on_exit` (`ops/lib.sh#L107`), and
-the deploy job runs this script, so the same would be true of a client's stack's keys on a runner. It also makes
-a client and signs in through the edge each run (`#L165-L171`), and each Bruno run leaves a service row behind
-(`#L164`). *Fix:* `check.sh` takes ridge alone until the guard `tunnel.sh` names exists, or gets a client-stack
-mode that skips the collection and the client it makes. *Trigger:* before a client's own stack.
-
-## 132. Six of the nine `ops/` scripts take any environment name, and a client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07)
-
-Three scripts refuse any environment but ridge and each says why: `ops/tunnel.sh#L35-L36` (another stack's admin
-keys on this disk), `ops/root-password.sh#L79` ("a client's own stack is the console's, never this") and
-`ops/seed.sh#L36` ("a client's stack must never receive demo data"). `ops/stack.sh`, `ops/release.sh`,
-`ops/app.sh`, `ops/check.sh`, `ops/drill.sh` and `ops/operator.sh` carry no such test. On a client's stack today a
-person could therefore make and change the stack, release c-storage, ship the BFF and the UI, run the deploy
-check (item 131), run the crash drill — which kills c-storage and reboots the box, `ops/drill.sh#L4-L7` — and make
-the operator with a one-time join link, `--replace` being the way back from lost passkeys
-(`ops/operator.sh#L6-L7`). They could not open a tunnel to read the data, could not seed it, and **could not set
-that client's root password from a terminal**: the only path is the console's route, which needs a live operator
-session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`), so a client whose BFF is broken has none.
-*Fix:* decide per script what a client's stack may receive, and give each the refusal or the mode that follows;
-the terminal path to a root password is the one gap that is a missing capability rather than a missing guard.
-*Trigger:* a client's own stack.
+*Narrowed:* the guards this item first asked for are in `ops/lib.sh` (`refuse_real`, `real_ok`), and every script's answer on production is read on one page, [`ops/README.md`](../ops/README.md#on-production). What is left is a missing capability. `ops/root-password.sh` refuses every environment but ridge ("a client's own stack is the console's, never this"), and the console's route needs a live operator session and a fresh passkey touch (`bff/src/routes/root-password.ts`), so a client whose BFF is broken has no way to set one. *Fix:* decide whether a terminal path is wanted for a client's root, and under what proof of the person. *Trigger:* a client's own stack.
 
 ## 133. An unfinished client deletion is readable by nothing, so "deleted whole" is true of the door and not of the data — the machine; *parked* until a client's deletion is seen stopping part way (the client-readiness read, 2026-11-07)
 
@@ -993,9 +969,9 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 `ridge_cli` runs `node --import tsx src/ridge-main.ts` out of `scripts/` (`ops/lib.sh#L635`), and node loads the packages in `scripts/node_modules/` as well as the source. The tree guard (`ops_match_main`, `ops/lib.sh#L180-L218`) compares the tracked and untracked files git does not ignore under the paths `ci.yml` deploys on, plus `.gitignore`; `node_modules/` is ignored (`.gitignore#L41`), so a changed file there is not compared, and nothing verifies the install against `pnpm-lock.yaml`. The deploy job installs with a frozen lock on a fresh checkout, so the hole is the by-hand run on a machine whose install was altered. Its message says only what is compared. *Fix:* a check by hand that the install matches the lock (`pnpm install --offline --frozen-lockfile` leaving nothing changed, or a stamp of the lock's hash written at install and read by the guard). *Trigger:* before a second person runs the ops scripts by hand, or a client's own stack.
 
-## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low)
+## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree on ridge — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low; narrowed 2026-11-12)
 
-`ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh#L635`), so with the variable set the code executed is not the tree the guard compared. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch (`ops/seed.sh#L43`, `ops/root-password.sh#L91`), so it cannot simply go (they test it as a presence check, not as the guard). The guard's message now names what it compares rather than claiming the code run. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`). *Trigger:* the same as item 142.
+`ridge_cli` runs `${RIDGE_SCRIPTS_DIR:-$REPO_DIR/scripts}` (`ops/lib.sh`), so with the variable set the code executed is not the tree the guard compared. *Narrowed:* on an environment not listed in `INVENTED_ENVS`, `real_ok` refuses the variable unless the tests' own marker is set, so only ridge keeps this. It is read by the suite's own harness (`ops/test.sh`, the `RIDGE_SCRIPTS_DIR` stand-ins), and `seed.sh` and `root-password.sh` test it as a switch, so it cannot simply go. *Fix:* refuse the variable when `GITHUB_ACTIONS` is true or when set outside a test (`OPS_TEST_*`), on ridge too. *Trigger:* the same as item 142.
 
 ## 144. `ops_match_main`'s `mktemp` is not checked, so a failed one reports a misleading cause — the machine; `[DEFERRED]` (tree guard, the recap's own read, 2026-11-07, Low)
 

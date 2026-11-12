@@ -195,7 +195,7 @@ shape.
   calls, not the verdict.
   *Size:* 19 (about 12 planned: the stand-ins' first whole run past the first step cost three reds
   of the stand-in's own, an edge port, a missing port in the box's facts, and a `$*` pattern).
-- [ ] **3. The runbook and the prose it makes false.** `ops/README.md` gains "On production", the
+- [x] **3. The runbook and the prose it makes false.** `ops/README.md` gains "On production", the
   list above as each script's line. Its table gains `--reads-only`. `ops/CLAUDE.md` gains OP9 (the
   stance call and its test) and its count. In `docs/client-readiness.md`, the sections on the tree
   guard (item 130's fix had not reached it), "deployable, not operable" and the list's items 2 and
@@ -203,6 +203,14 @@ shape.
   143 and 55 keep only their ridge half. *Done when:* the citation test exits 0 and
   `git grep -nE '/Users/|~/'` finds nothing new. 👤 Point 3 follows from here. *Size:* 5 (the
   lighter check's rules written into four documents with four items, 5).
+  *Done:* `ops/README.md` has "On production", one line a script read from the code on disk (four
+  work as they are, the check only reads, four refuse, each with its reason), the check's row and
+  section take `--reads-only`, and `ops/CLAUDE.md` has OP9. In `docs/client-readiness.md` the tree
+  guard section, "deployable, not operable" (now "operable, with its limits") and list items 2 and
+  3 say what is true. Item 131 is deleted; 132 keeps the root password alone; 143 and 55 keep their
+  ridge half. The citation test passes (32 cases) and the added lines name no machine path.
+  *Size:* 5 planned, 4 taken.
+
 - [ ] **4. Reviewed, fixed, recapped.** A model other than the author's reads the code, the tests
   and this table (QA's rule 5). One fix pass, each finding tagged in the recap. *Done when:* the fix
   pass's gates exit 0 and the recap is committed. *Size:* 7, 6 and 3 (the stranded check clients'
