@@ -168,11 +168,24 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   client (`request.storage`) and `now`; two older tests that watch for removals now ignore the
   sign-in's own clear of its wait; and case 12 (the 503 on a moved record) was added here, since
   the module's coverage needed its line, so step 3 keeps cases 6, 9 to 11, 13 and 20.
-- [ ] **3. Hardened: one's own password, tries at once, a second back end, the seed.** About 25
+- [x] **3. Hardened: one's own password, tries at once, a second back end, the seed.** About 25
   minutes: 20, as the last step that held every route of one behaviour by its own test, and 5 for
   the seed's check, a first run of its shape. Cases 6, 9 to 13 and 20, each seen red once by
   breaking its line and putting it back; coverage at 100 %. *Done when:* the checks of `bff` and
   `scripts` end `== exit 0`, and the recap's evidence names each case's red.
+  *Done, 2026-11-12:* the wait holds on one's own password, for tries at once, over a second back end
+  and in the demo seed's freshness check. The checks of `bff` and `scripts` each ended `== exit 0` on
+  the committed tree, `bff` with coverage at 100 %; the citation test exited 0. Cases 6, 9, 10, 11,
+  13 and 20 were each seen red on a one-line break and put back: case 6 with the refused try
+  writing a count (it reddened 11 too), 9 with the own-password route not counting, 10 with its
+  clear removed, 11 with the write's moved answer ignored, 13 with the count keyed by the app
+  instance, 20 with the seed not accepting a wait's key. Differed from the step as written: the
+  own-password route did not count at all yet (step 2 wired the sign-in only), so this step wired it
+  there, counting on the signed-in name; case 6 already held in the code from step 2 and is now
+  pinned by a test; two older tests were wrong for the new write, one interfering hook of
+  `sign-ins.route.test.ts` disarmed on the wait's own write, and the in-memory store of
+  `scripts/src/dashboard-list.test.ts` removed nothing, so the generator's sign-ins left waits and
+  the second of one person answered 429 (seen red first).
 - [ ] **4. The walk's screen 12, appended.** About 8 minutes, as the last step that added a look's
   screen, plus 5 to read your run's log and commit its pictures, a first run of that shape. In
   `walk/specs/piece-1.spec.ts`, right after screen 2 (`#L91-L96`), while the settings are still as

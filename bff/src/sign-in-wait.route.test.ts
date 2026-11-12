@@ -1,4 +1,4 @@
-import { type CStorageClient, normaliseSignInName, waitReplySchema } from '@credo/shared';
+import { normaliseSignInName, waitReplySchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { buildApp } from './app';
@@ -213,9 +213,7 @@ describe('C: Wrong passwords make a name wait, through the real back end', () =>
     await wrongTries(t, ROOT.name, 4);
     saved = 0;
 
-    const answers = await Promise.all(
-      Array.from({ length: 10 }, () => tried(t, ROOT.name, WRONG)),
-    );
+    const answers = await Promise.all(Array.from({ length: 10 }, () => tried(t, ROOT.name, WRONG)));
 
     expect(saved).toBe(2);
     expect(answers.filter((answer) => answer.status === 401)).toHaveLength(1);
@@ -226,14 +224,13 @@ describe('C: Wrong passwords make a name wait, through the real back end', () =>
     const t = await tenantWithRoot(cs);
     const second = scoped(
       buildApp({
-        storage: t.client as CStorageClient,
+        storage: t.client,
         now: t.time.now,
         origin: ORIGIN,
         serviceKey: t.accessKey,
         logger: false,
       }),
       CODE,
-  DEVICE,
     );
     await wrongTries(t, ROOT.name, 6);
     t.time.advance(10 * SECOND);

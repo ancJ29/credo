@@ -987,8 +987,8 @@ describe('C: One’s own password', () => {
     const key = t.keys.user('emp-0001');
     const held = (await signIn(t.app, { name: 'emp-0001', password: lan.password })).body.authId;
     hook.current = async (written, client) => {
-      hook.current = null;
       if (written !== key) return;
+      hook.current = null;
       const found = await client.getRecord(key);
       await client.removeRecord(key, found!.tag);
     };
