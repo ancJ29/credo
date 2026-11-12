@@ -15,13 +15,13 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from '../calling/password';
-import { recordTools } from './records';
+import { type RecordStore, recordTools, tenantStorage } from './records';
 
 export const ROOT_NAME = 'root';
 
 /** A write that must find nothing there. The id is fresh, so a record already under it is a fault
  * of the store and not a caller's to settle: it surfaces as an unavailable store. */
-export async function createRecord(storage: CStorageClient, key: string, data: unknown) {
+export async function createRecord(storage: RecordStore, key: string, data: unknown) {
   if ((await storage.putRecord(key, data, null)) === 'moved') {
     throw new CStorageError(412, 'a record already sat under a fresh id');
   }
@@ -68,6 +68,7 @@ export async function createClient(
   if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
+  const company = tenantStorage(storage, id);
   const password = newPassword();
   const config = startingConfig(name, settings);
   const root: StoredUser = {
@@ -77,8 +78,8 @@ export async function createClient(
     passwordAt: 0,
     generation: '',
   };
-  await createRecord(storage, keys.config, config);
-  await createRecord(storage, keys.user(ROOT_NAME), root);
+  await createRecord(company, keys.config, config);
+  await createRecord(company, keys.user(ROOT_NAME), root);
   const index: StoredClient = { id, name, madeAt };
   const saved = await storage.putRecord(recordKeys.client(code), index, null);
   return saved === 'saved' ? { id, password } : 'taken';
@@ -160,15 +161,16 @@ export async function deleteClient(
     if (!held) return 'unknown';
     deletion = storedClientDeletionSchema.parse(held.data);
   }
+  const company = tenantStorage(storage, deletion.id);
   const prefix = recordKeys.tenant(deletion.id).all;
-  const listed = await storage.listRecords(prefix);
+  const listed = await company.listRecords(prefix);
   const batch = listed.records.slice(0, DELETE_BOUND);
   for (let from = 0; from < batch.length; from += DELETE_AT_ONCE) {
     await Promise.all(
-      batch.slice(from, from + DELETE_AT_ONCE).map((record) => storage.removeRecord(record.key)),
+      batch.slice(from, from + DELETE_AT_ONCE).map((record) => company.removeRecord(record.key)),
     );
   }
-  const rest = await storage.listRecords(prefix);
+  const rest = await company.listRecords(prefix);
   if (rest.records.length === 0 && !rest.more) {
     await storage.removeRecord(key);
     return { left: 0 };

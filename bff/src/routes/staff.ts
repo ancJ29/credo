@@ -9,7 +9,6 @@ import {
   CLIENT_HEADER,
   CStorageError,
   byCode,
-  type CStorageClient,
   type Employee,
   type EmployeeDoc,
   employeeRoutes,
@@ -47,7 +46,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { declare, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
-import { recordTools } from '../records/records';
+import { recordTools, type TenantStorage } from '../records/records';
 import { hashPassword, madePassword } from '../calling/password';
 import {
   namesBack,
@@ -86,7 +85,6 @@ type Who = {
 };
 
 export type Deps = {
-  storage: CStorageClient;
   now: () => number;
   forClient: { onRequest: (request: FastifyRequest) => Promise<void> };
   signedIn: (request: FastifyRequest) => Promise<Who>;
@@ -106,15 +104,18 @@ function idOf(request: FastifyRequest) {
 /** The staff routes: each checks who may call it on the server, with the permissions the app
  * resolved from the layers, and the root-only ones by the root flag alone. */
 export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
-  const { storage, now, forClient, signedIn, mustBeRoot, mustCan } = deps;
-  const { every } = recordTools(storage);
+  const { now, forClient, signedIn, mustBeRoot, mustCan } = deps;
 
-  const setupDoc = (tenantId: string) => readSetup(storage, tenantId);
+  const setupDoc = (storage: TenantStorage) => readSetup(storage, storage.tenantId);
 
   /** A person with how they sign in: ready once the root has given a password to the record that
    * names them. */
-  async function docOf(tenantId: string, found: { employee: Employee; tag: string }) {
-    const signIn = await readSignIn(storage, tenantId, normaliseSignInName(found.employee.code));
+  async function docOf(storage: TenantStorage, found: { employee: Employee; tag: string }) {
+    const signIn = await readSignIn(
+      storage,
+      storage.tenantId,
+      normaliseSignInName(found.employee.code),
+    );
     const ready = signIn?.user.employeeId === found.employee.id && !!signIn.user.passwordHash;
     const doc: EmployeeDoc = {
       employee: found.employee,
@@ -124,8 +125,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     return doc;
   }
 
-  async function mustFind(tenantId: string, id: string) {
-    const found = await readEmployee(storage, tenantId, id);
+  async function mustFind(storage: TenantStorage, id: string) {
+    const found = await readEmployee(storage, storage.tenantId, id);
     if (!found) throw new HttpError(404, 'Not found');
     return found;
   }
@@ -141,7 +142,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   app.get(ROUTES.staffSetup, forClient, async (request) => {
     const who = await signedIn(request);
     mustCan(who, 'staff.canView');
-    return who.setup ?? (await setupDoc(request.tenantId));
+    return who.setup ?? (await setupDoc(request.storage));
   });
 
   app.put(
@@ -152,7 +153,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const entry = declare(request, personOf(who), 'setup');
       mustBeRoot(who);
       const body = parse(saveStaffSetupRequestSchema, request.body);
-      const current = await setupDoc(request.tenantId);
+      const current = await setupDoc(request.storage);
       if (current.version !== body.version) throw conflict(current);
       /** An id sent must be one this list already holds: the BFF mints, a caller never chooses. */
       const mint = (units: typeof body.setup.departments, held: StaffSetup['departments']) => {
@@ -173,22 +174,22 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         extra: body.setup.extra,
       };
       const key = recordKeys.tenant(request.tenantId).staffSetup;
-      const saved = await storage.putRecord(
+      const saved = await request.storage.putRecord(
         key,
         setup,
         body.version === NO_SETUP_VERSION ? null : body.version,
       );
-      if (saved === 'moved') throw conflict(await setupDoc(request.tenantId));
+      if (saved === 'moved') throw conflict(await setupDoc(request.storage));
       entry.saved(current.setup, setup);
-      return await setupDoc(request.tenantId);
+      return await setupDoc(request.storage);
     },
   );
 
   /** Every person, those who left too. Never a short list that looks whole: more than c-storage
    * returns, or a record that does not parse, is a 500 that names the kind and not the key. */
-  async function everyone(tenantId: string) {
-    const listed = await every(
-      recordKeys.tenant(tenantId).employeePrefix,
+  async function everyone(storage: TenantStorage) {
+    const listed = await recordTools(storage).every(
+      recordKeys.tenant(storage.tenantId).employeePrefix,
       employeeSchema,
       'employee',
     );
@@ -197,31 +198,31 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(ROUTES.employees, forClient, async (request) => {
     mustCan(await signedIn(request), 'staff.canView');
-    const employees = await everyone(request.tenantId);
+    const employees = await everyone(request.storage);
     employees.sort(byCode);
     return { employees };
   });
 
   app.get(employeeRoutes.one(':id'), forClient, async (request) => {
     mustCan(await signedIn(request), 'staff.canView');
-    return await docOf(request.tenantId, await mustFind(request.tenantId, idOf(request)));
+    return await docOf(request.storage, await mustFind(request.storage, idOf(request)));
   });
 
   /** Claims the sign-in name for a person, before the person is written. A record already under
    * the name that its person names back is a taken code. One its person does not name back is
    * answered 503 while its claim time, `passwordAt`, is younger than the longest an add runs (it may
    * be a running add's), and is a failed add's after that, taken over with the tag it was read at. */
-  async function claimSignIn(tenantId: string, name: string, record: StoredUser) {
-    const key = recordKeys.tenant(tenantId).user(name);
+  async function claimSignIn(storage: TenantStorage, name: string, record: StoredUser) {
+    const key = recordKeys.tenant(storage.tenantId).user(name);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       if ((await storage.putRecord(key, record, null)) === 'saved') return;
-      const found = await readSignIn(storage, tenantId, name);
+      const found = await readSignIn(storage, storage.tenantId, name);
       const raw = found ? null : await storage.getRecord(key);
       if (raw) throw new HttpError(409, 'That code is taken');
       if (found) {
         // The root's record names no person and is never a failed add's; nor is a person's who is
         // there.
-        if (found.user.root || (await namesBack(storage, tenantId, name, found.user))) {
+        if (found.user.root || (await namesBack(storage, storage.tenantId, name, found.user))) {
           throw new HttpError(409, 'That code is taken');
         }
         // A claim no one is named by yet, inside the longest an add runs, may be an add still
@@ -237,8 +238,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   /** The last number given under a prefix, with the tag of the record that holds it. */
-  async function numberingOf(tenantId: string) {
-    const found = await storage.getRecord(recordKeys.tenant(tenantId).staffNumbering);
+  async function numberingOf(storage: TenantStorage) {
+    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).staffNumbering);
     if (!found) return { given: {} as Record<string, number>, tag: null };
     const parsed = storedNumberingSchema.safeParse(found.data);
     if (!parsed.success) throw new Error('the numbering record does not parse');
@@ -247,13 +248,13 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
 
   /** Raises the last number given under `prefix` to at least `number`, over the tag it was read at,
    * read again when it moved, a few times at most. A code the code route frees counts as given. */
-  async function raiseGiven(tenantId: string, prefix: string, number: number) {
+  async function raiseGiven(storage: TenantStorage, prefix: string, number: number) {
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const held = await numberingOf(tenantId);
+      const held = await numberingOf(storage);
       if ((held.given[prefix] ?? 0) >= number) return;
       const given = { ...held.given, [prefix]: number };
       const saved = await storage.putRecord(
-        recordKeys.tenant(tenantId).staffNumbering,
+        recordKeys.tenant(storage.tenantId).staffNumbering,
         { given },
         held.tag,
       );
@@ -266,27 +267,27 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
    * rest of a call, to which each person written is added. */
   type Listed = { codes: string[] | null };
 
-  const codesOf = async (tenantId: string) =>
-    (await everyone(tenantId)).map((person) => person.code);
+  const codesOf = async (storage: TenantStorage) =>
+    (await everyone(storage)).map((person) => person.code);
 
   /** The code after every code ever given, claimed as a sign-in name. A number is raised in the
    * numbering record, over the tag it was read at, before it is claimed: a number freed by a code
    * change, or lost to a claim that is taken or may be a running add's, is never given again. A
    * record that moved is read again; after `ATTEMPTS` tries the save fails (503). */
   async function claimNumbered(
-    tenantId: string,
+    storage: TenantStorage,
     numbering: Numbering,
     record: StoredUser,
     personWith: (code: string) => Employee,
     listed: Listed | null,
   ) {
-    const key = recordKeys.tenant(tenantId).staffNumbering;
+    const key = recordKeys.tenant(storage.tenantId).staffNumbering;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const held = await numberingOf(tenantId);
+      const held = await numberingOf(storage);
       const last = held.given[numbering.prefix] ?? 0;
       // An add by hand lists the people at every try. An import's call lists them once, at its first
       // numbered row: the numbering record is what keeps a number from being given twice.
-      const known = listed ? (listed.codes ??= await codesOf(tenantId)) : await codesOf(tenantId);
+      const known = listed ? (listed.codes ??= await codesOf(storage)) : await codesOf(storage);
       const code = nextCode(numbering, [...known, `${numbering.prefix}${last}`]);
       personWith(code);
       const given = {
@@ -295,7 +296,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       };
       if ((await storage.putRecord(key, { given }, held.tag)) === 'moved') continue;
       try {
-        await claimSignIn(tenantId, normaliseSignInName(code), record);
+        await claimSignIn(storage, normaliseSignInName(code), record);
         return code;
       } catch (error) {
         // Taken (409) or maybe a running add's (503): the next number may be free.
@@ -312,7 +313,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
    * sign-in gets a first password, shown once; without, the person comes with none. A refusal is
    * an `HttpError`: 400 for a unit or a code that is no good, 409 for a code taken. */
   async function addPerson(
-    tenantId: string,
+    storage: TenantStorage,
     read: { setup: StaffSetup },
     who: Who,
     body: AddEmployeeRequest,
@@ -354,7 +355,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     let person: Employee;
     if (body.code === undefined) {
       const code = await claimNumbered(
-        tenantId,
+        storage,
         staffConfig(read.setup).numbering,
         claim,
         personWith,
@@ -364,17 +365,21 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     } else {
       const code = normaliseEmployeeCode(body.code);
       person = personWith(code);
-      await claimSignIn(tenantId, normaliseSignInName(code), claim);
+      await claimSignIn(storage, normaliseSignInName(code), claim);
     }
     // The person is written last: the list finds them as soon as they are there.
     let written: 'saved' | 'moved';
     try {
-      written = await storage.putRecord(recordKeys.tenant(tenantId).employee(id), person, null);
+      written = await storage.putRecord(
+        recordKeys.tenant(storage.tenantId).employee(id),
+        person,
+        null,
+      );
     } catch (error) {
       // The write may have landed while its answer was lost: the person is there, or the failure
       // stands. A write that lands after this read leaves the row failed with the person there, and
       // a retry of a row without a code then adds a second person: that window is accepted.
-      if (!(await readEmployee(storage, tenantId, id))) throw error;
+      if (!(await readEmployee(storage, storage.tenantId, id))) throw error;
       written = 'saved';
     }
     if (written === 'moved') {
@@ -392,11 +397,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const entry = declare(request, personOf(who));
       mustCan(who, 'staff.canCreate');
       const body = parse(addEmployeeRequestSchema, request.body);
-      const read = who.setup ?? (await setupDoc(request.tenantId));
-      const { person, password } = await addPerson(request.tenantId, read, who, body, who.root);
+      const read = who.setup ?? (await setupDoc(request.storage));
+      const { person, password } = await addPerson(request.storage, read, who, body, who.root);
       entry.target(person.id);
       entry.saved(null, person);
-      const employee = await docOf(request.tenantId, await mustFind(request.tenantId, person.id));
+      const employee = await docOf(request.storage, await mustFind(request.storage, person.id));
       return reply.status(201).send({ employee, password });
     },
   );
@@ -414,7 +419,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const entry = declare(request, personOf(who));
       mustBeRoot(who);
       const call = parse(importCallSchema, request.body);
-      const read = await setupDoc(request.tenantId);
+      const read = await setupDoc(request.storage);
       const results: ImportResult[] = [];
       const listed: Listed = { codes: null };
       const added = () => results.flatMap((one) => (one.kind === 'added' ? [one.employee] : []));
@@ -426,14 +431,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
             continue;
           }
           try {
-            const { person } = await addPerson(
-              request.tenantId,
-              read,
-              who,
-              row.data,
-              false,
-              listed,
-            );
+            const { person } = await addPerson(request.storage, read, who, row.data, false, listed);
             results.push({ kind: 'added', employee: person });
           } catch (error) {
             const { status } = replyFor(error);
@@ -460,7 +458,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustCan(who, 'staff.canEdit');
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(saveEmployeeRequestSchema, request.body);
       const current = found.employee;
       // Whoever is not the root changes a person's name and `extra` alone: any other change is a 403
@@ -476,7 +474,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       ) {
         throw new HttpError(403, 'Forbidden');
       }
-      const { setup } = who.root ? await setupDoc(request.tenantId) : { setup: null };
+      const { setup } = who.root ? await setupDoc(request.storage) : { setup: null };
       /** A link left as it is keeps the name it was saved with, whether or not its unit remains. */
       const link = (
         kept: Employee['department'],
@@ -496,18 +494,18 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
         permissions: who.root && body.permissions ? body.permissions : current.permissions,
       };
       const key = recordKeys.tenant(request.tenantId).employee(current.id);
-      if ((await storage.putRecord(key, updated, body.version)) === 'moved') {
-        throw conflict(await newest(request.tenantId, current.id));
+      if ((await request.storage.putRecord(key, updated, body.version)) === 'moved') {
+        throw conflict(await newest(request.storage, current.id));
       }
       entry.saved(current, updated);
-      return await newest(request.tenantId, current.id);
+      return await newest(request.storage, current.id);
     },
   );
 
   /** The person as stored now, for an answer; none if they are gone. */
-  async function newest(tenantId: string, id: string) {
-    const found = await readEmployee(storage, tenantId, id);
-    return found ? await docOf(tenantId, found) : null;
+  async function newest(storage: TenantStorage, id: string) {
+    const found = await readEmployee(storage, storage.tenantId, id);
+    return found ? await docOf(storage, found) : null;
   }
 
   app.post(
@@ -517,25 +515,28 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustCan(who, 'staff.canDelete');
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(archiveEmployeeRequestSchema, request.body);
       const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
       if (
-        (await storage.putRecord(key, { ...found.employee, archived: true }, body.version)) ===
-        'moved'
+        (await request.storage.putRecord(
+          key,
+          { ...found.employee, archived: true },
+          body.version,
+        )) === 'moved'
       ) {
-        throw conflict(await newest(request.tenantId, found.employee.id));
+        throw conflict(await newest(request.storage, found.employee.id));
       }
       entry.saved(found.employee, { ...found.employee, archived: true });
       // A fresh generation on their sign-in record, so a session from before cannot wake when they
       // are switched back on; the password stays. None to write for someone with no sign-in record.
       await endSessions(
-        storage,
+        request.storage,
         request.tenantId,
         normaliseSignInName(found.employee.code),
         (user) => user.employeeId === found.employee.id,
       );
-      return await newest(request.tenantId, found.employee.id);
+      return await newest(request.storage, found.employee.id);
     },
   );
 
@@ -548,25 +549,28 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustCan(who, 'staff.canDelete');
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(archiveEmployeeRequestSchema, request.body);
       const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
       if (
-        (await storage.putRecord(key, { ...found.employee, archived: false }, body.version)) ===
-        'moved'
+        (await request.storage.putRecord(
+          key,
+          { ...found.employee, archived: false },
+          body.version,
+        )) === 'moved'
       ) {
-        throw conflict(await newest(request.tenantId, found.employee.id));
+        throw conflict(await newest(request.storage, found.employee.id));
       }
       entry.saved(found.employee, { ...found.employee, archived: false });
       // The switch off may have written the flag and failed to end the sessions: ended again here, so
       // no handle from before wakes whatever it managed. A person who left holds no live session.
       await endSessions(
-        storage,
+        request.storage,
         request.tenantId,
         normaliseSignInName(found.employee.code),
         (user) => user.employeeId === found.employee.id,
       );
-      return await newest(request.tenantId, found.employee.id);
+      return await newest(request.storage, found.employee.id);
     },
   );
 
@@ -577,13 +581,13 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustBeRoot(who);
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(setPasswordRequestSchema, request.body);
       const password = body.password ?? madePassword();
       const passwordHash = await hashPassword(password);
       const name = normaliseSignInName(found.employee.code);
       const set = await setSignInPassword(
-        storage,
+        request.storage,
         request.tenantId,
         name,
         (user) => user.employeeId === found.employee.id,
@@ -610,45 +614,45 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustBeRoot(who);
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(changeCodeRequestSchema, request.body);
       // A person who left keeps their code taken, so it is never freed by a change.
       if (body.version !== found.tag || found.employee.archived) {
-        throw conflict(await docOf(request.tenantId, found));
+        throw conflict(await docOf(request.storage, found));
       }
       const code = normaliseEmployeeCode(body.code);
       if (code === found.employee.code) {
         request.audit = []; // nothing changed, so nothing is entered
-        return await docOf(request.tenantId, found);
+        return await docOf(request.storage, found);
       }
       const keys = recordKeys.tenant(request.tenantId);
       const oldName = normaliseSignInName(found.employee.code);
-      const old = await readSignIn(storage, request.tenantId, oldName);
+      const old = await readSignIn(request.storage, request.tenantId, oldName);
       if (!old || old.user.employeeId !== found.employee.id) throw new HttpError(409, 'Conflict');
       // The code about to be freed counts as given, so a numbered add never gives its number again,
       // whether it was typed or numbered: raised first, since a number burned is harmless.
-      const { prefix } = staffConfig((await setupDoc(request.tenantId)).setup).numbering;
+      const { prefix } = staffConfig((await setupDoc(request.storage)).setup).numbering;
       const freed = new RegExp(`^${prefix}(\\d+)$`).exec(found.employee.code);
-      if (freed) await raiseGiven(request.tenantId, prefix, Number(freed[1]));
+      if (freed) await raiseGiven(request.storage, prefix, Number(freed[1]));
       const name = normaliseSignInName(code);
-      await claimSignIn(request.tenantId, name, {
+      await claimSignIn(request.storage, name, {
         passwordHash: old.user.passwordHash,
         root: false,
         employeeId: found.employee.id,
         passwordAt: now(),
         generation: randomUUID(),
       });
-      const saved = await storage.putRecord(
+      const saved = await request.storage.putRecord(
         keys.employee(found.employee.id),
         { ...found.employee, code },
         found.tag,
       );
       if (saved === 'moved') {
-        const mine = await readSignIn(storage, request.tenantId, name);
+        const mine = await readSignIn(request.storage, request.tenantId, name);
         if (mine?.user.employeeId === found.employee.id) {
-          await storage.removeRecord(keys.user(name), mine.tag);
+          await request.storage.removeRecord(keys.user(name), mine.tag);
         }
-        throw conflict(await newest(request.tenantId, found.employee.id));
+        throw conflict(await newest(request.storage, found.employee.id));
       }
       entry.saved(found.employee, { ...found.employee, code });
       // The old record is removed over the tag it was read at. If it moved, a password may have been
@@ -656,27 +660,26 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       // removal again over the tag just read, a few times at most.
       let seen = old;
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-        if ((await storage.removeRecord(keys.user(oldName), seen.tag)) === 'removed') {
-          return await newest(request.tenantId, found.employee.id);
+        if ((await request.storage.removeRecord(keys.user(oldName), seen.tag)) === 'removed') {
+          return await newest(request.storage, found.employee.id);
         }
-        const again = await readSignIn(storage, request.tenantId, oldName);
+        const again = await readSignIn(request.storage, request.tenantId, oldName);
         // Gone, or taken over by another person: nothing of this person's is left to free.
         if (!again || again.user.employeeId !== found.employee.id) {
-          return await newest(request.tenantId, found.employee.id);
+          return await newest(request.storage, found.employee.id);
         }
         // A person who no longer holds the new code has changed again, perhaps back to this old one,
         // whose record is then the claim of that change and not this change's to remove.
-        const current = await mustFind(request.tenantId, found.employee.id);
-        if (current.employee.code !== code)
-          return await newest(request.tenantId, found.employee.id);
-        const mine = await readSignIn(storage, request.tenantId, name);
+        const current = await mustFind(request.storage, found.employee.id);
+        if (current.employee.code !== code) return await newest(request.storage, found.employee.id);
+        const mine = await readSignIn(request.storage, request.tenantId, name);
         if (mine?.user.employeeId === found.employee.id) {
           // A claim copies the hash, and a password given writes a fresh salted one: a record that
           // holds this change's hash is a change back's claim, which is not this change's to remove.
           if (again.user.passwordHash === mine.user.passwordHash) {
-            return await newest(request.tenantId, found.employee.id);
+            return await newest(request.storage, found.employee.id);
           }
-          await storage.putRecord(
+          await request.storage.putRecord(
             keys.user(name),
             {
               ...mine.user,
@@ -695,8 +698,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
 
   /** A person's photo as stored, with the version it is at; none yet is `null` and `''`. A record
    * that does not parse is a fault, a 500 naming its kind and never its key. */
-  async function photoOf(tenantId: string, id: string): Promise<PhotoReply> {
-    const found = await storage.getRecord(recordKeys.tenant(tenantId).employeePhoto(id));
+  async function photoOf(storage: TenantStorage, id: string): Promise<PhotoReply> {
+    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).employeePhoto(id));
     if (!found) return { photo: null, version: '' };
     const parsed = storedPhotoSchema.safeParse(found.data);
     if (!parsed.success) throw new Error('a photo record does not parse');
@@ -705,8 +708,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get(employeeRoutes.photo(':id'), forClient, async (request) => {
     mustCan(await signedIn(request), 'staff.canView');
-    const found = await mustFind(request.tenantId, idOf(request));
-    return await photoOf(request.tenantId, found.employee.id);
+    const found = await mustFind(request.storage, idOf(request));
+    return await photoOf(request.storage, found.employee.id);
   });
 
   app.put(
@@ -716,15 +719,19 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustCan(who, 'staff.canEdit');
-      const found = await mustFind(request.tenantId, idOf(request));
+      const found = await mustFind(request.storage, idOf(request));
       const body = parse(savePhotoRequestSchema, request.body);
       const key = recordKeys.tenant(request.tenantId).employeePhoto(found.employee.id);
       const stored: StoredPhoto = { photo: body.photo };
-      const saved = await storage.putRecord(key, stored, body.version === '' ? null : body.version);
-      if (saved === 'moved') throw conflict(await photoOf(request.tenantId, found.employee.id));
+      const saved = await request.storage.putRecord(
+        key,
+        stored,
+        body.version === '' ? null : body.version,
+      );
+      if (saved === 'moved') throw conflict(await photoOf(request.storage, found.employee.id));
       // The act alone: the photo's bytes are never in the memo.
       entry.saved(null, null);
-      return await photoOf(request.tenantId, found.employee.id);
+      return await photoOf(request.storage, found.employee.id);
     },
   );
 
@@ -732,14 +739,14 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
    * whose person holds it is a taken email (409, with no `current`). One whose person does not hold
    * it is a failed set's, or a running set's while its claim is younger than the longest a call runs
    * (503, as a sign-in claim's), and is taken over with the tag it was read at after that. */
-  async function claimEmail(tenantId: string, email: string, employeeId: string) {
-    const key = recordKeys.tenant(tenantId).signInEmail(email);
+  async function claimEmail(storage: TenantStorage, email: string, employeeId: string) {
+    const key = recordKeys.tenant(storage.tenantId).signInEmail(email);
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const record = { employeeId, at: now() };
       if ((await storage.putRecord(key, record, null)) === 'saved') return;
-      const held = await readEmailClaim(storage, tenantId, email);
+      const held = await readEmailClaim(storage, storage.tenantId, email);
       if (!held) continue;
-      const holder = await readEmployee(storage, tenantId, held.claim.employeeId);
+      const holder = await readEmployee(storage, storage.tenantId, held.claim.employeeId);
       if (holder?.employee.email === email) throw new HttpError(409, 'That email is taken');
       if (now() - held.claim.at <= ADD_MAX_MS) throw new HttpError(503, 'Service unavailable');
       if ((await storage.putRecord(key, record, held.tag)) === 'saved') return;
@@ -751,13 +758,13 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
    * A `moved` is a new claim of the same email (only a claim writes that record), which is the
    * person's now or another's: it is left alone, never read again and removed. */
   async function dropEmail(
-    tenantId: string,
+    storage: TenantStorage,
     email: string,
     held: Awaited<ReturnType<typeof readEmailClaim>>,
     employeeId: string,
   ) {
     if (held?.claim.employeeId === employeeId) {
-      await storage.removeRecord(recordKeys.tenant(tenantId).signInEmail(email), held.tag);
+      await storage.removeRecord(recordKeys.tenant(storage.tenantId).signInEmail(email), held.tag);
     }
   }
 
@@ -773,34 +780,35 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustBeRoot(who);
-      const found = await mustFind(request.tenantId, idOf(request));
-      if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.email) {
+      const found = await mustFind(request.storage, idOf(request));
+      if (!staffConfig((await setupDoc(request.storage)).setup).fields.email) {
         throw new HttpError(403, 'Forbidden');
       }
       const body = parse(setEmailRequestSchema, request.body);
-      if (body.version !== found.tag) throw conflict(await docOf(request.tenantId, found));
+      if (body.version !== found.tag) throw conflict(await docOf(request.storage, found));
       const before = found.employee.email ?? null;
       if (body.email === before) {
         request.audit = []; // nothing changed, so nothing is entered
-        return await docOf(request.tenantId, found);
+        return await docOf(request.storage, found);
       }
       // The old email's record, read before the new one is claimed: it is removed over this tag
       // alone, so a claim of the same email made since (a change back) is never removed.
-      const old = before === null ? null : await readEmailClaim(storage, request.tenantId, before);
+      const old =
+        before === null ? null : await readEmailClaim(request.storage, request.tenantId, before);
       const { email: _kept, ...without } = found.employee;
       const updated: Employee = body.email === null ? without : { ...without, email: body.email };
-      if (body.email !== null) await claimEmail(request.tenantId, body.email, found.employee.id);
+      if (body.email !== null) await claimEmail(request.storage, body.email, found.employee.id);
       const key = recordKeys.tenant(request.tenantId).employee(found.employee.id);
-      if ((await storage.putRecord(key, updated, found.tag)) === 'moved') {
+      if ((await request.storage.putRecord(key, updated, found.tag)) === 'moved') {
         if (body.email !== null) {
-          const mine = await readEmailClaim(storage, request.tenantId, body.email);
-          await dropEmail(request.tenantId, body.email, mine, found.employee.id);
+          const mine = await readEmailClaim(request.storage, request.tenantId, body.email);
+          await dropEmail(request.storage, body.email, mine, found.employee.id);
         }
-        throw conflict(await newest(request.tenantId, found.employee.id));
+        throw conflict(await newest(request.storage, found.employee.id));
       }
       entry.saved(found.employee, updated);
-      if (before !== null) await dropEmail(request.tenantId, before, old, found.employee.id);
-      return await newest(request.tenantId, found.employee.id);
+      if (before !== null) await dropEmail(request.storage, before, old, found.employee.id);
+      return await newest(request.storage, found.employee.id);
     },
   );
 
@@ -814,8 +822,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const who = await signedIn(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
       mustBeRoot(who);
-      const found = await mustFind(request.tenantId, idOf(request));
-      if (!staffConfig((await setupDoc(request.tenantId)).setup).fields.qr) {
+      const found = await mustFind(request.storage, idOf(request));
+      if (!staffConfig((await setupDoc(request.storage)).setup).fields.qr) {
         throw new HttpError(403, 'Forbidden');
       }
       const id = found.employee.id;
@@ -824,8 +832,8 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const expiresAt = now() + QR_MINUTES * 60_000;
       const record = { hash: await sha256Hex(secret), expiresAt };
       for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-        const last = await readQr(storage, request.tenantId, id);
-        if ((await storage.putRecord(key, record, last ? last.tag : null)) === 'saved') {
+        const last = await readQr(request.storage, request.tenantId, id);
+        if ((await request.storage.putRecord(key, record, last ? last.tag : null)) === 'saved') {
           // The act alone: neither the secret nor its hash is in the memo.
           entry.saved(null, null);
           const code = clientCodeSchema.parse(request.headers[CLIENT_HEADER]);

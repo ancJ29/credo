@@ -13,9 +13,9 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: eleven screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: twelve screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (11 × 2 × 3 = 66). The stack
+ * screenshot check against its committed base image (12 × 2 × 3 = 72). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -94,6 +94,22 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('button', { name: words.auth.submit }).click();
   await expect(page.getByRole('alert')).toHaveText(words.auth.refused);
   await at('2-sign-in-refused');
+
+  // 12. Sign-in after six wrong passwords: a name nobody holds, one for each language and width
+  // (a pass's six tests share one stack, and the wait is kept per name), six wrong passwords, the
+  // sixth answered with the wait. Taken here while the settings are as the stack made them; the
+  // root's name goes back in, since screen 3 types only the password.
+  await page.getByLabel(words.auth.username, { exact: true }).fill(`nobody-${language}-${width}`);
+  for (let wrong = 1; wrong <= 5; wrong++) {
+    await page.getByLabel(words.auth.password, { exact: true }).fill(`not the password ${wrong}`);
+    await page.getByRole('button', { name: words.auth.submit }).click();
+    await expect(page.getByRole('alert')).toHaveText(words.auth.refused);
+  }
+  await page.getByLabel(words.auth.password, { exact: true }).fill('not the password 6');
+  await page.getByRole('button', { name: words.auth.submit }).click();
+  await expect(page.getByRole('alert')).toHaveText(words.wait.seconds.replace('{{count}}', '30'));
+  await at('12-sign-in-wait');
+  await page.getByLabel(words.auth.username, { exact: true }).fill(ROOT.name);
 
   // 3. Settings: name, logo, colour, languages.
   await page.getByLabel(words.auth.password, { exact: true }).fill(ROOT.password);

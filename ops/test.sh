@@ -16,6 +16,9 @@
 # workflow's guards.
 # Expected length: about a minute with a cold Go cache, about 40 seconds with a warm one.
 set -euo pipefail
+# The tests' own marker: lib.sh's real_ok refuses the tests' two switches on an environment that may hold
+# real data unless this is set beside them.
+export OPS_TESTS_RUNNING=1
 
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -788,7 +791,7 @@ check "a key in the log: the run fails" 1 "$rc"
 check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
 check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
-echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
+echo "== the workflow's deploy job (a push to main or a press of ci on main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
 WORKFLOW=$REPO_DIR/.github/workflows/ci.yml
 deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
   awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
@@ -801,7 +804,7 @@ deploy_guards() {
   block=$(deploy_block "$1")
   [ -n "$block" ] || die "no deploy job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  need "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
+  need "    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'"
   need "    needs: [check, e2e, ops, app]"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
@@ -829,6 +832,8 @@ Check|after" ] || missing="${missing}[the steps end Release, then the ship and t
   rel=$(grep -nF 'run: bash ops/release.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
   app=$(grep -nF 'run: bash ops/app.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
   chk=$(grep -nF 'run: bash ops/check.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  # Case 10: the deploy's check on ridge is the full one, which saves; only a by-hand run narrows it.
+  grep -qxF -- '        run: bash ops/check.sh ridge' <<<"$block" || missing="${missing}[the check step runs bash ops/check.sh ridge with no flag] "
   [ -n "$rel" ] && [ -n "$app" ] && [ -n "$chk" ] && [ "$rel" -lt "$app" ] && [ "$app" -lt "$chk" ] || missing="${missing}[release.sh, then app.sh, then check.sh] "
   # The builds (third-party code) run before the role is taken.
   role=$(grep -nF 'uses: aws-actions/configure-aws-credentials' <<<"$block" | head -n 1 | cut -d: -f1)
@@ -857,6 +862,10 @@ check "the workflow caps vitest's workers, so parallel jobs (act's four on one M
 passes "the deploy job holds every condition" deploy_guards "$WORKFLOW"
 sed "s/ && github.ref == 'refs\/heads\/main'//" "$WORKFLOW" >"$WORK/wf-branch.yml"
 refuses "a deploy job that also runs on a branch is refused" "github.ref == 'refs/heads/main'" deploy_guards "$WORK/wf-branch.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/ || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request')/" "$WORKFLOW" >"$WORK/wf-pr.yml"
+refuses "a deploy job that admits a pull request is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-pr.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/)/" "$WORKFLOW" >"$WORK/wf-nopress.yml"
+refuses "a deploy job that lets no press through is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-nopress.yml"
 awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$WORKFLOW" >"$WORK/wf-act.yml"
 refuses "a deploy step that would run under act is refused" "!env.ACT" deploy_guards "$WORK/wf-act.yml"
 sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$WORKFLOW" >"$WORK/wf-mask.yml"
@@ -884,6 +893,8 @@ refuses "  a ship and a check that go on after a superseded release are refused 
 # the ship's step moved before the release: swap the two run lines
 sed -e 's#run: bash ops/release.sh ridge#run: bash ops/TMP.sh ridge#' -e 's#run: bash ops/app.sh ridge#run: bash ops/release.sh ridge#' -e 's#run: bash ops/TMP.sh ridge#run: bash ops/app.sh ridge#' "$WORKFLOW" >"$WORK/wf-order.yml"
 refuses "  an app.sh that runs before the release is refused (row 28)" "release.sh, then app.sh, then check.sh" deploy_guards "$WORK/wf-order.yml"
+sed 's#^        run: bash ops/check.sh ridge$#        run: bash ops/check.sh ridge --reads-only#' "$WORKFLOW" >"$WORK/wf-readsonly.yml"
+refuses "  a deploy whose check passes --reads-only, so no save is proved on ridge, is refused (case 10)" "with no flag" deploy_guards "$WORK/wf-readsonly.yml"
 sed 's#^        id: release$#        id: released#' "$WORKFLOW" >"$WORK/wf-id.yml"
 refuses "  a release step the later steps cannot read is refused" "id: release" deploy_guards "$WORK/wf-id.yml"
 awk '/Build the BFF.s bundle and the UI/ {skip = 1} skip && /^      # The arm64 binary/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nobuild.yml"
@@ -1063,6 +1074,13 @@ echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
 check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
   "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
+# The press: ci.yml holds one workflow_dispatch trigger, beside push and pull_request and outside
+# the push's paths.
+check "the real ci.yml holds a workflow_dispatch trigger, once, at the top level of on:" 1 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$CI_YML" | wc -l | tr -d ' ')"
+sed '/^  workflow_dispatch:$/d' "$CI_YML" >"$WORK/ci-nopress.yml"
+check "a ci.yml without the trigger reads as none" 0 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$WORK/ci-nopress.yml" | wc -l | tr -d ' ')"
 # push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
 push_variant() {
   awk -v from="$2" -v to="$3" '/^  push:$/ {p = 1} /^  pull_request:$/ {p = 0} p && $0 == "      - \"" from "\"" && !d {d = 1; print to; next} 1' "$CI_YML" >"$WORK/ci-$1.yml"
@@ -1818,19 +1836,22 @@ check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules
 check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a","APP_ORIGIN":"https://app.example.test"}}}'
+# The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'
+check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
+check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
 check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
 check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
-  "$(function_env_names "$(jq -c '.Environment.Variables.X_SUPER_ADMIN_KEY = "z"' <<<"$fn")")"
+  "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
   "$(function_origin_verdict "$fn" https://app.example.test) $(function_origin_verdict "$fn" https://app.example.test/)"
 check "  another address, an origin with a path, and no origin at all are refused" "no no no no" \
-  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.Environment.Variables.APP_ORIGIN)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
+  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.AppOrigin)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
 
 pab='{"PublicAccessBlockConfiguration":{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}}'
 statement='{"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::b/*","Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::123:distribution/E1ABC"}}}'
@@ -1860,9 +1881,10 @@ signed_out = [False]
 PAGE = b'<!doctype html><html><body><div id="root"></div></body></html>'
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
-    def reply(self, status, body=b'', ctype='application/json', cached=False):
+    def reply(self, status, body=b'', ctype='application/json', cached=False, extra=None):
         self.send_response(status)
         self.send_header('content-type', ctype)
+        for k, v in (extra or {}).items(): self.send_header(k, v)
         self.send_header('content-length', str(len(body)))
         self.send_header('x-cache', 'Hit from cloudfront' if cached else 'Miss from cloudfront')
         self.end_headers()
@@ -1874,6 +1896,8 @@ class H(BaseHTTPRequestHandler):
         return self.headers.get('x-client-code') == CODE
     def do_GET(self):
         path = self.path.split('?')[0]
+        if path == '/index.html' and os.environ.get('FAKE_EDGE_COMMIT'):
+            return self.reply(200, PAGE, 'text/html', extra={'x-amz-meta-commit': os.environ['FAKE_EDGE_COMMIT']})
         if path == '/login': return self.reply(200, PAGE, 'text/html')
         if path == '/health':
             if MODE == 'health-leak': return self.reply(200, b'{"status":"OK","buildVersion":"abc"}')
@@ -1907,6 +1931,9 @@ class H(BaseHTTPRequestHandler):
             rp = 'attacker.example' if MODE == 'rp-from-request' else '127.0.0.1'
             return self.reply(200, json.dumps({'options': {'rpId': rp, 'challenge': 'c'}, 'token': 't'}).encode())
         self.reply(404, b'{}')
+if os.environ.get('FAKE_EDGE_LIFE'):
+    import threading
+    threading.Timer(float(os.environ['FAKE_EDGE_LIFE']), lambda: os._exit(0)).start()
 HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
 PY
 export FAKE_EDGE_PASS=pa55word-test FAKE_EDGE_NAME="Check check-t" FAKE_EDGE_CODE=check-t
@@ -1976,6 +2003,120 @@ check "the BFF's bundle is built with the commit" "--filter @credo/bff bundle | 
 check "the UI is built with the commit" "--filter @credo/ui build | 0123456789abcdef0123456789abcdef01234567" \
   "$(grep 'ui build' "$STAMP_LOG")"
 check "the install is not stamped, and runs from the lockfile" "install --frozen-lockfile | unset" "$(grep install "$STAMP_LOG")"
+
+echo "== ops/check.sh only reads on an environment that may hold real data, and with --reads-only on ridge (cases 7 to 9), run whole on stand-ins"
+# On top of the stand-ins above: the aws that answers layer four's reads and the box's group, the ssh that
+# answers the box's facts, the bru and node that log what they were asked, and the stand-in edge, which
+# carries the commit index.html's metadata names. Each run's state folder holds the calls.
+CHK=$E2E/chk
+mkdir -p "$CHK/bin"
+chk_port=$(free_port)
+chk_sha=$e2e_sha
+export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://api-test-host.invalid:9 FAKE_LAYER4=1
+rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
+jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
+jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
+  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
+echo "$pab" >"$CHK/pab.json"
+policy_of "[$statement]" >"$CHK/policy.json"
+# aws: layer four's reads and the box's group on files; the stack gains the two outputs the base lacks; the rest is the base stand-in's
+cat >"$CHK/bin/aws" <<'STANDIN'
+#!/bin/bash
+C=${CHK_DIR:?}
+case "$*" in
+  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}]' ;;
+  *"ec2 describe-instances"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo None ;;
+  *"describe-internet-gateways"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo 0 ;;
+  *"describe-instance-connect-endpoints"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo '["sg-ep"]' ;;
+  *"describe-security-groups --group-ids sg-0bff"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/bff-sg.json" ;;
+  *"describe-security-groups"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/box-rules.json" ;;
+  *"lambda get-function-configuration"*"--query {VpcConfig: VpcConfig,"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/fn.json" ;;
+  # the whole configuration holds the BFF's two keys: a read without the check's --query is refused here
+  *"lambda get-function-configuration"*"--output json"*) echo "stand-in aws: the function's whole configuration is never read: $*" >&2; exit 1 ;;
+  *"s3api get-public-access-block"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/pab.json" ;;
+  *"s3api get-bucket-policy"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/policy.json" ;;
+  *) exec "$CHK_BASE/aws" "$@" ;;
+esac
+STANDIN
+# ssh: the box's facts (the heredoc script the check sends), the rest is the base stand-in's
+cat >"$CHK/bin/ssh" <<'STANDIN'
+#!/bin/bash
+case "$*" in
+  *"sudo bash -s -- "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    all="$*"
+    port=${all##* } # the check passes c-storage's port last
+    printf 'unit=active\nlisten=10.20.30.40:%s \nkeys=600 root\noom=0\ndbdir=700\ndbfiles=600 \narch=aarch64\nmemory=2048 MiB available of 4096 MiB\nswap=0 of 0 MiB used\ndisk=8192 MiB free of 16384 MiB\n' "$port" ;;
+  *) exec "$CHK_BASE/ssh" "$@" ;;
+esac
+STANDIN
+# bru logs its calls; node logs the product's own commands (the client's make, sweep and delete) and answers them
+cat >"$CHK/bin/bru" <<'STANDIN'
+#!/bin/sh
+echo "bru $*" >>"${FAKE_STATE:?}/bru.calls"
+if [ "${1:-}" = --version ]; then echo 4.2.0; fi
+STANDIN
+cat >"$CHK/bin/node" <<'STANDIN'
+#!/bin/sh
+if [ "${1:-}" = --import ] && [ "${3:-}" = src/ridge-main.ts ]; then
+  echo "$4" >>"${FAKE_STATE:?}/ridge.calls"
+  case $4 in
+    tenant) echo pa55word-test ;;
+    untenant) echo "client $5 removed" ;;
+    clear-checks) echo "swept 0 stranded clients" ;;
+  esac
+  exit 0
+fi
+exec "$CHK_BASE/node" "$@"
+STANDIN
+chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
+FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
+chk_edge=$!
+for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
+chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
+  local name=$1
+  shift
+  e2e_fresh "chk-$name"
+  CHK_DIR=$CHK CHK_BASE=$E2E/fakebin PATH="$CHK/bin:$PATH" e2e_run "$@"
+}
+chk_has() { grep -c -- "$1" "$2" 2>/dev/null || true; }
+six_reads() { # the log of a run → how many of the six reads that need no client are green in it
+  grep -cE "^ok   (/health is the app's page|a code we do not know is the BFF's 404|a missing code is a 400|the operator's door without a session|the sign-in options' relying party|/api/health is the BFF's 404)" "$1" || true
+}
+bruno_files() { find "$E2E/repo/services/c-storage/bruno/environments" -name '*.yml' | wc -l | tr -d ' '; }
+NOCLIENT="the root signs in through the edge"
+
+chk_run real check.sh taiga
+check "case 7: the check on an environment not listed ends green, saying it is safe there" "0 1 1" \
+  "$RC $(chk_has '^== green' "$S/out") $(chk_has '^ok   taiga may hold real data; this script is safe there: it only reads' "$S/out")"
+check "  no key is read off the box (the ssh calls hold neither keys file)" "0 0" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has 'c-storage/bff.env' "$S/ssh.calls")"
+check "  no collection runs and Bruno is not asked for its version" "gone" "$(file_state "$S/bru.calls")"
+check "  no Bruno file is written, and the run says the collection is skipped" "0 1" "$(bruno_files) $(chk_has '^skipped: reads only, so no key is read off the box' "$S/out")"
+check "  and the log holds neither key" 0 "$(keys_seen)"
+check "case 8: the check on an environment not listed makes no client and sweeps none" "gone 0" "$(file_state "$S/ridge.calls") $(chk_has "$NOCLIENT" "$S/out")"
+check "  and still runs the six reads that need no client, each green" 6 "$(six_reads "$S/out")"
+check "  and layer four's reads and the commit agreement are made" "1 1" \
+  "$(chk_has '^ok   /health, the function.s description and index.html.s metadata name one commit: yes' "$S/out") $(chk_has '^ok   the UI.s bucket blocks all public access' "$S/out")"
+
+chk_run flag check.sh ridge --reads-only
+check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
+  "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"
+check "  and prints no 'safe there' line, which ridge never had" 0 "$(chk_has 'may hold real data' "$S/out")"
+
+chk_run full check.sh ridge
+check "  without the flag ridge's check is today's: the keys are read, the collection runs, a client is made, swept and deleted" "1 1 1 clear-checks,tenant,untenant" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(chk_has '^ok   bru run exits: 0' "$S/out") $(paste -sd, "$S/ridge.calls")"
+check "  and prints nothing about real data" 0 "$(chk_has 'may hold real data' "$S/out")"
+REAL=1 chk_run strayreal check.sh ridge
+check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys are read, a client is made and deleted" "1 1 clear-checks,tenant,untenant" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
+rc=0
+out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
+check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+kill "$chk_edge" 2>/dev/null || true
+unset FAKE_LAYER4 FAKE_APP FAKE_API
 
 echo "== ops/app.sh run whole, on stand-ins for aws and ssh (rows 27, 28, 30, 31)"
 FAKE_APP_PORT=$(free_port)
@@ -3029,6 +3170,59 @@ GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
 check "M3: once the full run's lock goes the gate runs and is green" 0 "$GRC"
 check "  having waited first" 1 "$(seenre '^waiting: a full run holds' "$GLOG")"
 check "  and having taken and freed its own lock" 1 "$(grep -c 'lock free at the end: yes' "$GLOG" || true)"
+
+# ---- the scripts' answer on an environment that may hold real data (docs/plans/2026-11-12-safe-scripts.md, cases 1 to 6)
+echo "== every script that reaches an environment says what it does on production (INVENTED_ENVS, refuse_real, real_ok)"
+# stance_of <script> → "ok", or what is wrong: exactly one call of refuse_real or real_ok, after log_start and before main_synced
+stance_of() {
+  awk '/^log_start /{ if (!l) l = NR } /^(refuse_real|real_ok) /{ c++; k = NR } /^main_synced( |$)/{ if (!m) m = NR }
+    END { if (c == 1 && l && m && l < k && k < m) print "ok"; else print "calls " c + 0 ", log_start " l + 0 ", call " k + 0 ", main_synced " m + 0 }' "$1"
+}
+stance_bad=''
+stance_n=0
+for f in "$OPS_DIR"/*.sh; do
+  grep -qE '^main_synced( |$)' "$f" || continue
+  stance_n=$((stance_n + 1))
+  r=$(stance_of "$f")
+  [ "$r" = ok ] || stance_bad="$stance_bad $(basename "$f") ($r)"
+done
+check "1: every ops script that calls main_synced calls exactly one of refuse_real and real_ok, after log_start and before main_synced" "" "$stance_bad"
+check "  and the glob finds scripts at all" 1 "$([ "$stance_n" -ge 9 ] && echo 1 || echo 0)"
+check "2: the list of invented environments has one home" 1 "$(cat "$OPS_DIR"/*.sh | grep -c '^INVENTED_ENVS=' || true)"
+check "  and it names ridge alone" 'INVENTED_ENVS="ridge"' "$(grep '^INVENTED_ENVS=' "$OPS_DIR/lib.sh")"
+# stance_sub <marker value> [VAR=value…] -- <function> <args…>: in a subshell with the tests' marker and switches as the case sets them
+stance_sub() {
+  local marker=$1
+  shift
+  local sw=()
+  while [ "$1" != -- ]; do sw+=("$1"); shift; done
+  shift
+  ( [ -n "$marker" ] || unset OPS_TESTS_RUNNING; unset RIDGE_SCRIPTS_DIR OPS_TEST_NO_TTY; for kv in ${sw[@]+"${sw[@]}"}; do export "${kv?}"; done; "$@" ) 2>&1
+}
+check "6: on an unlisted environment RIDGE_SCRIPTS_DIR is refused without the tests' marker" 1 "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x -- real_ok crest why | grep -c 'RIDGE_SCRIPTS_DIR is set, and crest may hold real data' || true)"
+check "  and so is OPS_TEST_NO_TTY" 1 "$(stance_sub '' OPS_TEST_NO_TTY=1 -- real_ok crest why | grep -c 'OPS_TEST_NO_TTY is set, and crest may hold real data' || true)"
+check "  and with the marker set both pass" "ok   crest may hold real data; this script is safe there: why" "$(stance_sub 1 RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok crest why)"
+check "  and on ridge they are not looked at, and nothing is printed" "" "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok ridge why)"
+check "  refuse_real passes ridge and dies on another name, in the script's words" "|error: my words" "$(stance_sub 1 -- refuse_real ridge 'my words' || true)|$(stance_sub 1 -- refuse_real crest 'my words' || true)"
+# the whole runs, in the scratch clone the tunnel's section made: the clone's ops/ is this tree's
+e2e_fresh drill-other
+e2e_run drill.sh crest
+check "3: the drill on an unlisted environment refuses, naming why" "1 1" "$RC $(grep -c '^error: drill.sh holds the environments that keep invented data alone (ridge)' "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws or box call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+check "4: the tunnel, the seed and the root password keep their words, now through refuse_real (their whole runs are the cases above)" "1 1 1" \
+  "$(grep -c 'refuse_real "\$ENVNAME" "tunnel.sh holds ridge alone for now: another stack' "$OPS_DIR/tunnel.sh" || true) $(grep -c 'refuse_real "\$ENVNAME" "seed.sh seeds ridge alone: a client' "$OPS_DIR/seed.sh" || true) $(grep -c "refuse_real \"\\\$ENVNAME\" \"root-password.sh holds ridge's demo copies alone" "$OPS_DIR/root-password.sh" || true)"
+stack_other() { # <state name> <env> <args…>: stack.sh env <env> in the stack clone, its terminal output in the state's out file
+  e2e_fresh "$1"
+  local env=$2
+  shift 2
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/stackbin:$PATH" bash ops/stack.sh env "$env" "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+stack_other stack-crest crest --plan
+check "5: a script that works prints its reason on an unlisted environment" 1 "$(grep -c '^ok   crest may hold real data; this script is safe there: a change set is shown first' "$S/out" || true)"
+stack_other stack-ridge-stance ridge --plan
+check "  and nothing new on ridge" 0 "$(grep -c 'may hold real data' "$S/out" || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"
