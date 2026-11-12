@@ -20,7 +20,7 @@
 
 **The answer is no, and the gap is not in the product.** The product's isolation holds. What is
 missing is that a client's own stack cannot be operated or recovered, and the one copy of a
-client's data can be destroyed by an ordinary change with nothing to restore from.
+client's data can be destroyed by an ordinary change; the copy that answers it is built and has not yet been run.
 
 ### The isolation holds, and it is enforced
 
@@ -54,12 +54,14 @@ reasonable position for the product and a reason to keep the review habit, not a
 
 This is the risk that cannot be recovered from, and it is larger than the item that records it.
 
-A deployment's data is one SQLite file on one box
-([`ops/c-storage.service#L20`](../ops/c-storage.service#L20)), and there is no backup: the nightly
-copy and its restore are designed and deferred to a signed client, on the stated reasoning that
-ridge holds no real records ([open item 6](open-items.md)). That is a documented deferral, not
-something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
-simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role").
+A deployment's data is one SQLite file on one box (`ops/c-storage.service`'s `DB_PATH`), and the
+continuous-copy piece has built its copy: Litestream, started by that unit with c-storage as its child,
+copies each save to the environment's own bucket through a free private door, and the file sits on a disk
+of its own (`ops/env.yml`'s `RecordsVolume`). **It is built and guarded on written input, and has not yet
+run on an environment**: the human's changes, the release and the drill are still to come, so until
+`ops/drill.sh ridge` has read a restored file, nobody knows the copy is readable ([open item 6](open-items.md)).
+`ops/check.sh` says whether a copy is fresh, and `ops/restore.sh` brings it back
+([the runbook](../ops/README.md#restoring-the-records)).
 
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
@@ -75,8 +77,7 @@ delete and a replacement would leave the box and a termination would leave the d
 the template and of ridge, where it was applied on 2026-11-08 at 17:10 and read off the running box
 afterwards (the same instance, launched 2026-10-28, its root device `Keep: false`, no unattached
 volume; the project's logs folder, `logs/20261108-1715-ridge-box-fence-receipt.log`), and a
-client's stack made from `main` takes it at creation. Nothing else changed: there is still no copy of any client's
-records, and no one has read a kept disk ([open item 6](open-items.md)). The change set
+client's stack made from `main` takes it at creation. That change alone added no copy; the copy is the paragraph above's, and no one has read a kept disk ([open item 6](open-items.md)). The change set
 was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it
 (`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md)); it was then re-run with `--take Box`
@@ -251,10 +252,10 @@ waiting.
 In order of risk, with rough sizes. Nothing here is a plan — each is the shape of the piece, not
 its steps.
 
-1. **A backup and a restore, and a deletion policy on the box's volume.** The one thing that cannot
-   be recovered from. It is a network template change, an environment template change, a timer on
-   the box and a restore script with its guards, and it ends in a human-run change set: a day's
-   piece, not an afternoon.
+1. **A backup and a restore, and a deletion policy on the box's volume: built, not yet run.** The one
+   thing that cannot be recovered from. The deletion policy is live on ridge; the continuous copy, its
+   check and its restore are written and guarded, and what remains is the human's: the two template
+   changes, the release and the drill that reads a restored file ([open item 6](open-items.md)).
 2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
    included (open item 130, fixed).
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads

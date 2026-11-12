@@ -51,25 +51,47 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The nightly backup and its restore, with no copy of the records yet — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The continuous copy of the records, its check and its restore — built, not yet run on an environment; the machine wrote it, the human runs the changes and the drill (the continuous-copy plan, 2026-11-11)
 
-**There is no copy of any client's records. This item's backup half is open, and nothing below it is
-built.** The fence half is the backup-policy piece's (below).
+**The backup half is built and not yet run anywhere.** Litestream copies each save of the records file to
+the environment's own bucket under the box's path, and the scripts that check and restore it are written
+and guarded on written input ([the plan](plans/2026-11-11-continuous-copy.md)). Nothing in the bucket has
+been read yet: the bucket's key layout comes from Litestream's source and has not been seen against S3,
+and no restore has been read back. **What stays open is the human's runs** (the network change, ridge's
+change, the release, the drill), and the item closes when `ops/drill.sh ridge` has read a restored file
+holding a save made before it. The fence half is the backup-policy piece's (below).
 
-The box's role may only put, so it cannot restore itself: the restore runs from the human's
-terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
-Instance Connect tunnel.
+How it is built, each line read off the scripts:
 
-The backup's copy goes through SQLite's own backup (`VACUUM INTO`, or the shell's `.backup`), or
-is taken with the service stopped: a plain tarball taken mid-write can miss saves or hold a torn
-file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
+- **The copy:** `ops/c-storage.service` starts Litestream with c-storage as its child
+  (`litestream replicate -exec`), and waits on the records disk's mount (`RequiresMountsFor`). Its
+  configuration, `ops/litestream.yml`, syncs once a second, takes a full copy every 24 hours while the file
+  is written, and deletes nothing itself (`retention.enabled: false`); the bucket's own rule expires copies
+  after seven days. The records live on a disk of their own, which `ops/release.sh` mounts, formats when
+  blank, and moves the old file onto once (the old one kept as `c-storage.db.moved`).
+- **The box's role** may put, get and list under its own path in its own bucket, and holds no delete. So
+  the box restores itself, under its own role: `ops/restore.sh` runs on the box, not from the human's
+  terminal with a copy of Litestream on the Mac.
+- **The check:** `ops/check.sh` reads c-storage's `GET /api/status` on the box and the bucket's objects
+  under the box's path (`copy_status` and `copy_problems` in `ops/lib.sh`). It is red when the newest copy
+  lags the last write by over 300 seconds (`COPY_LAG_S`), when the newest full copy is over six days old
+  (`COPY_FULL_MAX_S`), when the bucket holds no copy or no full copy, or when the records disk has under
+  1 GiB free.
+- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live]` (`box_restore` in `ops/lib.sh`). By
+  default it writes a new file, `restored-<stamp>.db`, on the records disk and touches nothing live.
+  `--onto-live` stops c-storage, moves the live file and its companions aside (never deleted), puts the
+  restore on the live path and starts c-storage; it is refused on an environment that may hold real data
+  ([the runbook](../ops/README.md#restoring-the-records)).
+- **A blank records disk whose path in the bucket holds a copy is a restore, never a fresh start:** the
+  release refuses it and names the restore, since an empty file would otherwise be copied over the real one.
+- **The drill:** `ops/drill.sh` gains a row that restores the newest copy and a copy to the box's clock
+  from before a registration, and reads the registration in the first and not the second. It is the human's
+  run on ridge.
 
-ridge, the first box, holds no real data, so the backup still waits for a signed client
-([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint (`ops/network.yml`
-holds none) and the box's put-only role (`ops/env.yml#L93`: "no instance role") come with it. Still
-to do, as one piece: the copy, a restore script run from the human's terminal, and a drill that
-reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a restored file, nobody
-knows a copy would be readable.
+Two things stay unproven until the human's runs: that full copies sit under `<path>/0009/` in S3 (from
+Litestream 0.5.18's own source, where the S3 client builds `<path>/0009/<name>`), and that a restore from
+an empty-disk release works on a real blank disk. Litestream makes no full copy of a file that has not been
+written, so a file idle for six days reads red on the check by design: the check is what notices it.
 
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
 in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
@@ -92,7 +114,7 @@ survivable; nothing else changes.** A termination, a torn file, a bad write or a
 the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
 `--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
-`--take Box`), is not a backup: no copy exists and no restore has been run.
+`--take Box`), is not a copy: the copy above is the backup half, and it has not been run yet.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 

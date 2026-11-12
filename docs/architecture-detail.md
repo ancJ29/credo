@@ -23,7 +23,7 @@ needs before touching any of it, is on
 | `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
-| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
+| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy not yet run on an environment |
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; not yet on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
@@ -357,21 +357,15 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   ridge is built and deploys on every push to `main`. What is still unbuilt is production: in the
   pooled shape one more environment's stack holding many tenants, not a stack for each client.
 
-**Not in that list: the nightly backup.** The plan's diagram shows a nightly copy to S3 through an
-S3 gateway endpoint, under a put-only role on the box (`#L28`, `#L76`, `#L97`), and none of those
-three resources exists — but that is a **deliberate deferral the project recorded the same day**,
-not something lost. [Open item 6](open-items.md) gates the backup and its restore on a signed
-client, on the reasoning that ridge, the first box, holds no real data, and it says plainly that
-"the S3 gateway endpoint and the box's put-only role come with it". So the right reading is: the
-backup is designed and postponed, and until a client signs, **the one SQLite file is the only copy
-of a deployment's data** — which is a known, accepted position for an environment holding only demo
-data, and the thing to build first for one that does not.
-
-One inconsistency inside that to be aware of when it *is* built: item 6's own first line says "the
-box's role may only put, so it cannot restore itself", in the present tense, while
-[`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role". The item describes the design; the
-template describes the machine. When the backup is built, item 6's description of the role is what
-has to be built — not a description of what is already there.
+**Not in that list: the nightly backup, which became a continuous copy.** The first plan's diagram showed a
+nightly copy to S3 under a put-only role on the box, none of it built, deferred to a signed client
+([open item 6](open-items.md)). The continuous-copy piece replaced it: Litestream copies each save to the
+environment's own bucket through an S3 gateway door, the box's role may put, get and list under its own
+path and holds no delete, and the records sit on a disk of their own (`ops/env.yml`'s `CopyBucket`,
+`BoxRole` and `RecordsVolume`). **It is built and guarded on written input, and no environment has run it
+yet**, so until the human's changes and the drill have run, a deployment's one SQLite file is still the only
+copy that has been proved readable. The restore runs on the box under its own role, which is why the role
+reads; the first plan's "may only put" was dropped for that reason.
 
 ## Where these pages' facts came from
 

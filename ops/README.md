@@ -121,7 +121,7 @@ working copy.
 3. Run it again without `--plan`.
    - **REFUSED:** the change set removes or replaces something and nothing changed. If the plan's
      step names that change on purpose, run again with `--take <LogicalId>`; otherwise change the
-     template. `--take Box` leaves the old box running with the only copy of the records while the
+     template. `--take Box` leaves the old box running with the records' live file while the
      new box comes up empty: read [Reading what the fence kept](#reading-what-the-fence-kept) first.
    - **no changes:** the stack already matches the template.
 
@@ -468,7 +468,7 @@ outside any stack.
    If the group is gone, the box has no way in, and the way to read it is to stop the instance, detach its disk and follow the left-behind volume below.
 3. On the box, stop the service so the file is whole (`sudo systemctl stop c-storage`): the memo
    says a copy taken while it runs can miss commits held in the `-wal` file
-   ([the memo](../docs/memo/c-storage.md#the-file-is-the-only-copy)). Then
+   ([the memo](../docs/memo/c-storage.md#a-second-copy-follows-the-file-within-a-second)). Then
    `sudo ls -la /var/lib/c-storage/` and expect the `.db` file with no `-wal` beside it. *Untested:*
    that a clean stop leaves it so; if a `-wal` is there, copy the whole folder and keep all three files.
 4. Copy it out over the same connection, the way `ops/release.sh` sends files the other way:

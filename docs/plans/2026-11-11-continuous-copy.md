@@ -142,7 +142,7 @@ Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/
 - [x] **Step 2, ticked 2026-11-12.** The S3 gateway door, the copy's bucket, the box's role and profile, the
   records disk and its attachment, and the deploy role's list are in `ops/network.yml` and `ops/env.yml`, with
   their guards and `ops/testdata/changeset-copy.json` in `ops/test.sh`, on top of `pre-merge` at `95855e30`.
-  `bash ops/test.sh` exit 0 (log `2026-11-12-130506-cc-step2-green1.log`), `shellcheck -x` and `cfn-lint` exit 0.
+  `bash ops/test.sh` exit 0, `shellcheck -x` and `cfn-lint` exit 0.
   Each of rows 1 to 6 was seen red by one named mutation of the real template, then put back: row 1 the door's
   `VpcEndpointType` to `Interface`; row 2 `ExpirationInDays` to 1; row 3 `s3:PutObject` to `s3:DeleteObject` in the
   box's role; row 4 the records disk to `gp2`; row 5 the records disk's two policies deleted; row 6 the deploy
@@ -197,6 +197,16 @@ Step 5, corrected 2026-11-12: the bucket layout in its first build, `<path>/ltx/
   here: the bucket's key layout (`0009/` for full copies, from Litestream's S3 client source, which corrected the first build's `ltx/9/`) is not yet seen against S3, and a full listing of
   the prefix grows with the writes (seven days at most); both are for the check on ridge. Row 17 and the blank-disk restore
   are the drill's and your runs'.
+- [x] **Step 6, ticked 2026-11-12.** The prose that the copy made false now says what the scripts do, and that
+  nothing has run on an environment yet: `docs/open-items.md` item 6 (its backup half rewritten, the put-only line
+  replaced by "may put, get and list, never delete" and the restore on the box), `docs/client-readiness.md` (the
+  one-copy section and the first item of the before-a-real-client list), `docs/memo/c-storage.md` (the section on the
+  only copy is now "A second copy follows the file within a second", its anchor re-pointed in `ops/README.md` and
+  `services/c-storage/CLAUDE.md`), `docs/architecture.md` (the records box in the diagram), and
+  `docs/architecture-detail.md` (the nightly-backup finding and the store's table row). The citation test exit 0 and
+  prettier over the pages touched exit 0; the branch's added lines hold no local path. One fix outside the row: step
+  2's tick above named a gate log by file name, which the citation test refused, so its words now say only that the
+  run ended at exit 0. The merge of `pre-merge` came in with no conflict; `bash ops/test.sh` on the merged tree exit 0.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.
