@@ -3,7 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself ([the deploy job](#the-deploy-job)).
+A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -13,7 +13,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | GitHub's provider, once | `ops/stack.sh github` | about a minute |
 | an environment's box and deploy role | `ops/stack.sh env <name>` | about 5 minutes |
 | to see a change before it happens | add `--plan` to any of the above | about a minute |
-| a release | push to `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
+| a release | push to `main`, or a press of `ci` on `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
@@ -131,7 +131,7 @@ old loopback listener does not answer: the log then finds no running commit, and
 ## The deploy job
 
 The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
-`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, once `check`, `e2e`,
+`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever the push touched, once `check`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
 `AWS_ROLE_ARN`), then runs `ops/release.sh ridge`, `ops/app.sh ridge` and `ops/check.sh ridge` over the

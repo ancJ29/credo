@@ -111,13 +111,16 @@ fix pass 6 to 8, a one-off 3 to 7, a log read 1 to 2, a recap 3 to 8.
 
 **First landing: the pressed deploy**
 
-- [ ] **1. The trigger, the condition and their guard.** `ci.yml`'s `on:` and `#L217` as above;
+- [x] **1. The trigger, the condition and their guard.** `ci.yml`'s `on:` and `#L217` as above;
   `ops/test.sh#L804`'s pin to the new line; cases 1, 3 and 4. The words that say only a push
   deploys: `ops/README.md#L6`, the table row `#L16` and "The deploy job" (`#L131-L135`);
   `CLAUDE.md#L2`'s Ship; `docs/architecture-detail.md#L251`. *Done when:* `bash ops/test.sh` and
   `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` exit 0; cases 1, 3 and 4 seen
   red once each (the old `if`, an `if` admitting `pull_request`, the trigger removed); `actionlint`
   read by hand (`ops/CLAUDE.md`'s OP3); the citation test green. **About 7 min.**
+  *Done 2026-11-12:* `bash ops/test.sh` and the `shellcheck` line ended at exit 0; the old `if` and an `if`
+  admitting `pull_request` each reddened the pinned-condition check, and the trigger removed reddened the
+  new trigger check, each put back; `actionlint` on `ci.yml` printed nothing; the citation test passed (32 tests).
 - [ ] **2. Review and fix.** Another model reads the change (QA rule 5). *Done when:* each finding
   is tagged and the fix pass's own gate is green. **About 8 min**, plus 6 if anything is fixed.
 - [ ] **3. The press, read.** The piece lands on `pre-merge` and `main` takes it. 👤 Your push of

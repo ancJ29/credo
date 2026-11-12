@@ -248,7 +248,7 @@ Terraform anywhere.
 check jobs that run on every push and pull request — `check` (`make check` in c-storage, `#L56`),
 `e2e` (its Bruno collection against the built binary, `#L73`), `app` (`pnpm check`, `#L115`) and
 `ops` (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates, `#L153`) — and then,
-on a push to `main` only, `deploy` (`#L215`) in the `ridge` GitHub environment. That job ships **code, never stack
+on a push to `main` or a press of `ci` on `main` only, `deploy` (`#L215`) in the `ridge` GitHub environment. That job ships **code, never stack
 shape** (`#L212`): c-storage's arm64 binary to the box over an Instance Connect tunnel
 ([`ops/release.sh`](../ops/release.sh)), the BFF bundle to the one Lambda and the UI files to the one
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
