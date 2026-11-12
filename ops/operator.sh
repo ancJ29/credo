@@ -29,6 +29,7 @@ LOCAL_PORT=${OPERATOR_LOCAL_PORT:-3194}
 
 log_start operator "$ENVNAME"
 mkwork
+real_ok "$ENVNAME" "production's first operator comes from it, and it refuses GitHub's job"
 
 step "main, and the terminal"
 main_synced

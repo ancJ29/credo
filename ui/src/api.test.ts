@@ -776,6 +776,30 @@ describe('the API client', () => {
       expect(calls[2]?.init.body).toBe(JSON.stringify({ id, secret: 'a'.repeat(32) }));
     });
 
+    it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
+      const wait = { error: 'Wait', waitSeconds: 45 };
+      const { api } = fake(
+        json(wait, 429),
+        new Response('Too Many Requests', { status: 429 }),
+        json(wait, 429),
+        json({}, 429),
+      );
+
+      await expect(api.signIn('root', 'x')).rejects.toMatchObject({ status: 429, waitSeconds: 45 });
+      await expect(api.signIn('root', 'x')).rejects.toMatchObject({
+        status: 429,
+        waitSeconds: null,
+      });
+      expect(await api.changePassword('Old-1!', 'New-password-2@')).toEqual({
+        kind: 'wait',
+        seconds: 45,
+      });
+      await expect(api.changePassword('Old-1!', 'New-password-2@')).rejects.toMatchObject({
+        status: 429,
+        waitSeconds: null,
+      });
+    });
+
     it('C: changes one’s own password giving the current one, a 403 being a current password that is wrong and any other failure an error', async () => {
       const session = {
         authId: 'device-0001.fresh',
