@@ -32,7 +32,6 @@ STEPS=8
 # Never the local stack's port (3181): a c-storage on this machine must not answer for the box.
 LOCAL_PORT=${CHECK_LOCAL_PORT:-3191}
 BRUNO_DIR=$REPO_DIR/services/c-storage/bruno
-WANT_BRUNO=4.2.0
 
 log_start check "$ENVNAME"
 mkwork

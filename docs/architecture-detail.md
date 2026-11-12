@@ -254,14 +254,14 @@ shape** (`ci.yml`'s comment "Releases only: a template change stays the human's 
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
 third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "The app's builds and installs run third-party code"), and the role itself is narrow
 to the point of naming the one function and the one instance
-([`ops/env.yml#L444`](../ops/env.yml#L444)). Two other workflows:
+(`ops/env.yml`'s `DeployRole`). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
 Access — the only deploy target that is not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
-([`ops/env.yml#L218`](../ops/env.yml#L218), [`ops/README.md`](../ops/README.md)).
+(`ops/env.yml`'s `Bff`, [`ops/README.md`](../ops/README.md)).
 
 ## How it is checked
 
@@ -315,12 +315,12 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"CloudFront → the BFF's function URL, signed by origin access control", and the API client
   hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`, the body hash at `#L133`).
   CloudFront reaches an API
-  Gateway HTTP API ([`ops/env.yml#L388`](../ops/env.yml#L388)); function URLs are not offered in the
+  Gateway HTTP API ([`ops/env.yml#L411`](../ops/env.yml#L411)); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L250-L252`](../ops/env.yml#L250)). Read "answers anyone" as *reachable*, not as
+  (`ops/env.yml`'s `ApiStage`). Read "answers anyone" as *reachable*, not as
   *unauthenticated*: a call arriving that way still meets the BFF's own checks — the client header,
   the session, the permission — so what was lost is the network wall in front of them, not the
   wall itself. It is the one property of the day-one design that
@@ -331,8 +331,8 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   the same age. The function has written a line per request to its own group all along: nothing in
   `bff/src/lambda-main.ts#L3` turns the logger off, so `server.ts#L9`'s default stands
   (`app.ts#L86`), and the function's `LoggingConfig` names that group
-  ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). The stage's own access log, `ApiLogs`
-  ([`#L176-L181`](../ops/env.yml#L176), [`#L284-L286`](../ops/env.yml#L284)), is in the template
+  (`ops/env.yml`'s `Bff`). The stage's own access log, `ApiLogs` and `ApiStage`'s `AccessLogSettings`
+  (both in `ops/env.yml`), is in the template
   and runs on a stack only once the change set for it has been applied. Neither names the client
   whose records were read ([open item 152](open-items.md)).
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**.

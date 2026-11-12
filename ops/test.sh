@@ -165,6 +165,34 @@ refuses "an update on a stack holding another prefix is refused, and appends not
   add_subject_param repo:bob@333/demo@444
 STACK_JSON=''
 
+echo "== the Slack alarm's two IDs go together, and an update keeps the stack's"
+described_slack() { # <workspace> <channel>, or nothing
+  jq -nc --arg w "${1:-}" --arg c "${2:-}" '{Stacks: [{StackName: "ridge", Parameters: (if $w == "" then [] else [{ParameterKey: "SlackWorkspaceId", ParameterValue: $w}, {ParameterKey: "SlackChannelId", ParameterValue: $c}] end)}]}'
+}
+slack_plan() { CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" slack_param_plan; }
+slack_add() { PARAMS='[]'; CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" add_slack_params; echo "$PARAMS"; }
+STACK_JSON=$(described_slack)
+refuses "a workspace ID without a channel ID is refused" "go together" slack_plan T01ABCDEF ''
+refuses "a channel ID without a workspace ID is refused" "go together" slack_plan '' C01ABCDEF
+check "neither ID on a stack that holds none adds nothing (the template's none)" default "$(slack_plan '' '')"
+check "  and appends no parameter" '[]' "$(slack_add '' '')"
+check "both IDs are set" set "$(slack_plan T01ABCDEF C01ABCDEF)"
+check "  and appended as given" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+check "none and none on a stack that holds none is set" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"none"},{"ParameterKey":"SlackChannelId","ParameterValue":"none"}]' "$(slack_add none none)"
+STACK_JSON=$(described_slack T09OLDOLD C09OLDOLD)
+check "an update with no IDs keeps the stack's" previous "$(slack_plan '' '')"
+check "  as previous values" '[{"ParameterKey":"SlackWorkspaceId","UsePreviousValue":true},{"ParameterKey":"SlackChannelId","UsePreviousValue":true}]' "$(slack_add '' '')"
+check "an update with both IDs takes the new ones" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+refuses "an update with one ID is refused too" "go together" slack_add T01ABCDEF ''
+refuses "none for the workspace and a real channel ID is refused (no channel, silently)" "is none and the other is an ID" slack_plan none C01ABCDEF
+refuses "a real workspace ID and none for the channel is refused" "is none and the other is an ID" slack_plan T01ABCDEF none
+refuses "  and on an update, through the function that appends" "is none and the other is an ID" slack_add none C01ABCDEF
+check "none and none on a stack that holds a channel is set (the removal, which the guard then asks to take)" set "$(slack_plan none none)"
+slack_plan_creation() { CS_TYPE=CREATE slack_plan "$1" "$2"; }
+check "a creation takes no previous value, though a REVIEW_IN_PROGRESS stack lists the IDs" default "$(slack_plan_creation '' '')"
+check "  and an update does" previous "$(CS_TYPE=UPDATE slack_plan '' '')"
+STACK_JSON=''
+
 # trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
 # shellcheck disable=SC2016 # the template's literal text
 trust_guard() {
@@ -527,25 +555,164 @@ box_port_guard() {
   grep -B2 '^ *add_param BoxPort' "$1" | grep -q '^ *add_param Env ' || die "BoxPort is not passed beside Env, on both paths"
 }
 passes "stack.sh passes BoxPort from the unit's port, on a creation and on an update" box_port_guard "$OPS_DIR/stack.sh"
+# slack_params_guard <stack.sh>: dies unless the env branch calls add_slack_params once, beside the BoxPort line and before the creation/update split
+# shellcheck disable=SC2016 # grep patterns, in single quotes
+slack_params_guard() {
+  [ "$(grep -c '^ *add_slack_params$' "$1" || true)" = 1 ] || die "stack.sh does not call add_slack_params once"
+  grep -B3 '^ *add_slack_params$' "$1" | grep -q '^ *add_param BoxPort ' || die "add_slack_params is not called beside BoxPort, before the creation and update paths split"
+}
+passes "stack.sh appends the Slack IDs once, before the creation and update paths split" slack_params_guard "$OPS_DIR/stack.sh"
+grep -v '^ *add_slack_params$' "$OPS_DIR/stack.sh" >"$WORK/stack-noslack.sh"
+refuses "  a stack.sh that forgets the Slack IDs is refused" "does not call add_slack_params once" slack_params_guard "$WORK/stack-noslack.sh"
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
 
+echo "== the watch (plan 2026-11-11-slack-alarm, step 2): four alarms to one topic, the channel behind two IDs and a deny-all guardrail"
+# watch_guard <template json>: dies naming what is wrong. Read from the parsed template, never grepped.
+# Each case below names the one mutation that must turn it red.
+# shellcheck disable=SC2016 # jq programs and the template's ${Env}, in single quotes
+watch_guard() {
+  local alarm
+  # row 1: each alarm sends its alarm and its return to normal to Alerts, and nowhere else
+  for alarm in AlarmCalls AlarmErrors AlarmRefusals AlarmBox; do
+    must "$1" "$alarm does not send its alarm to Alerts alone" \
+      ".Resources.$alarm.Properties.AlarmActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm does not send its return to normal to Alerts alone" \
+      ".Resources.$alarm.Properties.OKActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm sends something on missing data besides its own rule" \
+      ".Resources.$alarm.Properties.InsufficientDataActions == null"
+    must "$1" "$alarm is not an alarm on the watch's own topic and a condition-free resource" \
+      ".Resources.$alarm | .Type == \"AWS::CloudWatch::Alarm\" and .Condition == null"
+  done
+  # every alarm's whole rule, pinned: operator, threshold, period, evaluation periods, statistic, switched on, every datapoint counted
+  must "$1" "AlarmCalls, AlarmErrors or AlarmRefusals is not Sum, 300 s, one period, threshold 1, at or above, switched on, every datapoint counted" \
+    '[.Resources.AlarmCalls, .Resources.AlarmErrors, .Resources.AlarmRefusals] | all(.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods)'
+  must "$1" "AlarmBox is not Maximum, 60 s, three periods, threshold 1, at or above, switched on, every datapoint counted" \
+    '.Resources.AlarmBox.Properties | .Statistic == "Maximum" and .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods'
+  must "$1" "a resource other than the four alarms and the channel acts on Alerts" \
+    '[.Resources | to_entries[] | select(.value.Properties | tostring | test("\"Ref\":\"Alerts\"")) | .key] | sort == ["AlarmBox","AlarmCalls","AlarmErrors","AlarmRefusals","AlertsChannel"]'
+  # row 2: the calls alarm reads this stack's own API and stage; a 5xx in five minutes; no calls is no failure
+  must "$1" "AlarmCalls does not read this stack's API and stage 5xx" \
+    '.Resources.AlarmCalls.Properties | .Namespace == "AWS/ApiGateway" and .MetricName == "5xx" and .Dimensions == [{"Name":"ApiId","Value":{"Ref":"Api"}},{"Name":"Stage","Value":{"Ref":"ApiStage"}}]'
+  must "$1" "AlarmCalls is not one 5xx in five minutes, with no calls counting as no failure" \
+    '.Resources.AlarmCalls.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and .TreatMissingData == "notBreaching"'
+  # row 3: the errors and the refusals alarms read this stack's own function
+  must "$1" "AlarmErrors does not read this stack's function Errors" \
+    '.Resources.AlarmErrors.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Errors" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  must "$1" "AlarmRefusals does not read this stack's function Throttles" \
+    '.Resources.AlarmRefusals.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Throttles" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  # row 4: the box alarm reads this stack's own box, and a box reporting nothing for three minutes is down
+  must "$1" "AlarmBox does not read this stack's box StatusCheckFailed" \
+    '.Resources.AlarmBox.Properties | .Namespace == "AWS/EC2" and .MetricName == "StatusCheckFailed" and .Dimensions == [{"Name":"InstanceId","Value":{"Ref":"Box"}}]'
+  must "$1" "AlarmBox does not count three minutes of failed or missing reports as down" \
+    '.Resources.AlarmBox.Properties | .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .TreatMissingData == "breaching"'
+  # row 5: with no Slack IDs the topic and the four alarms stay, the channel and its role go
+  must "$1" "HasSlack is not both IDs given" \
+    '.Conditions.HasSlack == {"Fn::And":[{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackWorkspaceId"},"none"]}]},{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}]}'
+  must "$1" "the topic is not made with no Slack IDs" '.Resources.Alerts | .Type == "AWS::SNS::Topic" and .Condition == null'
+  must "$1" "the channel and its role are not both held to HasSlack" \
+    '.Resources | (.AlertsChannel.Condition == "HasSlack") and (.AlertsChannelRole.Condition == "HasSlack") and ([.[] | select(.Condition == "HasSlack")] | length) == 2'
+  # row 6: the channel's role grants nothing, and the guardrail is the managed deny-all, not AWS's default
+  must "$1" "the channel's role holds a policy" \
+    '.Resources.AlertsChannelRole.Properties | .Policies == null and .ManagedPolicyArns == null'
+  must "$1" "the channel's guardrail is not AWS's deny-all alone (unset is AdministratorAccess)" \
+    '.Resources.AlertsChannel.Properties.GuardrailPolicies == [{"Fn::Sub":"arn:${AWS::Partition}:iam::aws:policy/AWSDenyAll"}]'
+  must "$1" "the channel logs errors" '.Resources.AlertsChannel.Properties.LoggingLevel == "ERROR"'
+  must "$1" "the channel's role is not the channel's own, or the channel does not read the topic" \
+    '.Resources.AlertsChannel.Properties | .IamRoleArn == {"Fn::GetAtt":["AlertsChannelRole","Arn"]} and .SnsTopicArns == [{"Ref":"Alerts"}]'
+  # row 7: both IDs are parameters defaulting to none; the channel reads them by Ref; a typed name fails the pattern
+  must "$1" "a Slack ID does not default to none" \
+    '.Parameters | .SlackWorkspaceId.Default == "none" and .SlackChannelId.Default == "none"'
+  must "$1" "the channel does not read both IDs from the parameters" \
+    '.Resources.AlertsChannel.Properties | .SlackWorkspaceId == {"Ref":"SlackWorkspaceId"} and .SlackChannelId == {"Ref":"SlackChannelId"}'
+  must "$1" "an ID's pattern admits a channel's typed name, or refuses an ID or none" \
+    '.Parameters as $p | ($p.SlackChannelId.AllowedPattern as $c | ($p.SlackWorkspaceId.AllowedPattern) as $w | ("alerts-ridge" | test($c) | not) and ("C01ABCDEF" | test($c)) and ("none" | test($c)) and ("my-workspace" | test($w) | not) and ("T01ABCDEF" | test($w)) and ("none" | test($w)))'
+  # row 10: each alarm's description says in plain words which environment and what failed
+  must "$1" "an alarm's description does not name the environment and what failed" \
+    '[.Resources | to_entries[] | select(.key | startswith("Alarm")) | {k: .key, d: (.value.Properties.AlarmDescription["Fn::Sub"] // "")}] | map(select(.d | contains("${Env}"))) | map({(.k): .d}) | add | (.AlarmCalls | contains("calls are failing")) and (.AlarmErrors | contains("back end is failing")) and (.AlarmRefusals | contains("refusing work")) and (.AlarmBox | contains("box is down"))'
+}
+passes "the watch: four alarms to one topic, the channel behind two IDs, nothing granted" watch_guard "$WORK/env.json"
+refuses "  an alarm that sends to a second topic is refused (row 1)" "AlarmErrors does not send its alarm to Alerts alone" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.AlarmActions += [{"Ref":"Other"}]')"
+refuses "  an alarm with no return to normal is refused (row 1)" "AlarmBox does not send its return to normal" \
+  watch_guard "$(mut 'del(.Resources.AlarmBox.Properties.OKActions)')"
+refuses "  a fifth resource acting on the topic is refused (row 1)" "a resource other than the four alarms and the channel acts on Alerts" \
+  watch_guard "$(mut '.Resources.Extra = {"Type":"AWS::CloudWatch::Alarm","Properties":{"AlarmActions":[{"Ref":"Alerts"}]}}')"
+refuses "  a calls alarm on another stage is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.Dimensions[1].Value = "prod"')"
+refuses "  a calls alarm on the 4xx metric is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.MetricName = "4xx"')"
+refuses "  a calls alarm that counts no calls as a failure is refused (row 2)" "AlarmCalls is not one 5xx in five minutes" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.TreatMissingData = "breaching"')"
+refuses "  an errors alarm on another function is refused (row 3)" "AlarmErrors does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Dimensions[0].Value = "other-function"')"
+refuses "  a refusals alarm on the wrong metric is refused (row 3)" "AlarmRefusals does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.MetricName = "Errors"')"
+refuses "  a box alarm on another instance is refused (row 4)" "AlarmBox does not read this stack's box" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.Dimensions[0].Value = "i-0123456789abcdef0"')"
+refuses "  a box alarm that reads missing data as normal is refused (row 4)" "AlarmBox does not count three minutes" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.TreatMissingData = "notBreaching"')"
+refuses "  a channel made with no Slack IDs is refused (row 5)" "the channel and its role are not both held to HasSlack" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Condition)')"
+refuses "  a topic that waits for the IDs is refused (row 5)" "the topic is not made with no Slack IDs" \
+  watch_guard "$(mut '.Resources.Alerts.Condition = "HasSlack"')"
+refuses "  a condition that wants one ID only is refused (row 5)" "HasSlack is not both IDs given" \
+  watch_guard "$(mut '.Conditions.HasSlack = {"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}')"
+refuses "  a channel role with a policy is refused (row 6)" "the channel's role holds a policy" \
+  watch_guard "$(mut '.Resources.AlertsChannelRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]')"
+refuses "  a channel with no guardrail (AWS then applies AdministratorAccess) is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Properties.GuardrailPolicies)')"
+refuses "  AdministratorAccess as the guardrail is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.GuardrailPolicies = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a Slack ID with a real-looking default is refused (row 7)" "a Slack ID does not default to none" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.Default = "C01ABCDEF"')"
+refuses "  a channel with its ID written in is refused (row 7)" "the channel does not read both IDs from the parameters" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.SlackChannelId = "C01ABCDEF"')"
+refuses "  a channel ID pattern that admits a typed name is refused (row 7)" "admits a channel's typed name" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.AllowedPattern = "^(none|[A-Za-z0-9-]+)$"')"
+refuses "  an alarm description that names no environment is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.AlarmDescription = {"Fn::Sub":"the app'"'"'s calls are failing."}')"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+refuses "  an alarm description that says nothing of what failed is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.AlarmDescription = {"Fn::Sub":"${Env}: an alarm."}')"
+
+refuses "  an alarm with its actions switched off is refused (all four)" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.ActionsEnabled = false')"
+refuses "  a box alarm that a failed check never fires (above, not at or above, 1) is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ComparisonOperator = "GreaterThanThreshold"')"
+refuses "  an errors alarm with a threshold of 1000 is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Threshold = 1000')"
+refuses "  an errors alarm over a day is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Period = 86400')"
+refuses "  a refusals alarm that fires below its threshold is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.ComparisonOperator = "LessThanThreshold"')"
+refuses "  a calls alarm that wants five datapoints is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.DatapointsToAlarm = 5')"
+refuses "  a box alarm with its actions switched off is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ActionsEnabled = false')"
+
 echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
-# adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
-# Add, the one Modify is DeployRole, in place, and the guard names nothing
+# adds_and_one_modify <change set> <template json>: dies unless the recorded change set adds exactly layer
+# four's own resources (pinned below by name, so a later piece's resources in the template leave it alone),
+# the template holds each of them, the one Modify is DeployRole, in place, and the guard names nothing
 adds_and_one_modify() {
-  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes CopyBucket BoxRole BoxProfile RecordsVolume RecordsAttachment' # layer four's, and the copy's five, which the next update (changeset-copy.json) adds
+  local seen lost layer4='Api ApiIntegration ApiInvoke ApiLogs ApiRoute ApiStage Bff BffGroup BffLogs BffRole BoxFromBff Distribution UiAccess UiBucket UiBucketPolicy UiRewrite'
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
-  gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
-  [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
+  [ "$seen" = "$layer4" ] || die "the change set adds '$seen', not layer four's own '$layer4'"
+  lost=$(jq -r --arg l "$layer4" '.Resources as $r | [($l | split(" "))[] | select($r[.] == null)] | join(" ")' "$2")
+  [ -z "$lost" ] || die "the template lacks layer four's '$lost'"
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | join(",")' "$1")
   [ "$seen" = "Modify DeployRole False" ] || die "the change set's other changes are not a Modify of DeployRole in place: $seen"
   [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
 }
 passes "layer four's change set is adds and a Modify of DeployRole in place, and the guard passes" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$WORK/env.json"
-refuses "  a template resource the change set lacks is refused" "the template gained" \
+passes "  a later piece's resource in the template leaves it alone (the watch's topic, any other)" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut '.Resources.Extra = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a layer-four resource the template lost is refused" "the template lacks layer four's 'UiRewrite'" \
+  adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut 'del(.Resources.UiRewrite)')"
+refuses "  a change set that adds a resource beyond layer four's is refused" "not layer four's own" \
+  adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"Alerts","ResourceType":"AWS::SNS::Topic","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-alerts.json"; echo "$WORK/cs-alerts.json")" "$WORK/env.json"
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
 
@@ -3614,6 +3781,327 @@ stack_other stack-crest crest --plan
 check "5: a script that works prints its reason on an unlisted environment" 1 "$(grep -c '^ok   crest may hold real data; this script is safe there: a change set is shown first' "$S/out" || true)"
 stack_other stack-ridge-stance ridge --plan
 check "  and nothing new on ridge" 0 "$(grep -c 'may hold real data' "$S/out" || true)"
+
+echo "== workflows_of names the workflows that reach an environment (the destroy and the remake switch those, never walks.yml)"
+check "15: workflows_of ridge names ci.yml and seed.yml" "ci.yml seed.yml" "$(workflows_of ridge | tr '\n' ' ' | sed 's/ $//')"
+check "  and an environment no workflow names gets nothing" "" "$(workflows_of nowhere)"
+wf_odd_shape() { # <file body>: workflows_of ridge over a folder holding that one workflow file, "<exit> <the error names the file and the line>"
+  local d=$WORK/wfodd rc=0 out
+  rm -rf "$d"
+  mkdir -p "$d/.github/workflows"
+  printf '%b' "$1" >"$d/.github/workflows/odd.yml"
+  out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?
+  echo "$rc $(grep -c "^error: odd.yml has an environment: line that is not the plain form.*(line 3:" <<<"$out" || true)"
+}
+check "25: a workflow naming its environment as a mapping stops workflows_of, naming the file and the line" "1 1" \
+  "$(wf_odd_shape 'jobs:\n  d:\n    environment:\n      name: ridge\n')"
+check "  a quoted name stops it the same way" "1 1" "$(wf_odd_shape 'jobs:\n  d:\n    environment: "ridge"\n')"
+check "  a trailing comment stops it the same way" "1 1" "$(wf_odd_shape 'jobs:\n  d:\n    environment: ridge # the stage\n')"
+check "  and the plain line, with comment lines about environments around it, is read" "0 odd.yml" \
+  "$(d=$WORK/wfodd; rm -rf "$d"; mkdir -p "$d/.github/workflows"; printf 'jobs:\n  d:\n    # the environment: here is plain\n    environment: ridge\n' >"$d/.github/workflows/odd.yml"; rc=0; out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?; echo "$rc $out")"
+
+echo "== ops/destroy.sh and ops/remake.sh, run whole once on stand-ins for aws, gh, bru and the four children (rows 8 and 18)"
+# A clone whose origin is named as GitHub's are, holding this tree's ops/ and workflows, except that the
+# four scripts the remake calls are stand-ins: each logs as the real one does, records its call and
+# ends green, or red when FAKE_RED names it. The fixtures are parsed alone before any run.
+CYC=$E2E/cycle
+mkdir -p "$CYC/bin" "$CYC/fx" "$E2E/github.com/test-owner"
+git init -q --bare "$E2E/github.com/test-owner/cycle-repo.git"
+mkdir -p "$CYC/repo/.github"
+cp -R "$OPS_DIR" "$CYC/repo/ops"
+cp -R "$REPO_DIR/.github/workflows" "$CYC/repo/.github/workflows"
+for child in stack release app check; do
+  cat >"$CYC/repo/ops/$child.sh" <<'CHILD'
+#!/usr/bin/env bash
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+name=$(basename "$0" .sh)
+env=$1
+[ "$name" != stack ] || env=$2
+log_start "$name" "$env"
+echo "$name.sh $*" >>"${FAKE_STATE:?}/children.calls"
+[ "${FAKE_RED:-}" != "$name" ] || die "stand-in $name goes red"
+echo "== green"
+CHILD
+done
+git -C "$CYC/repo" init -q
+git -C "$CYC/repo" remote add origin "$E2E/github.com/test-owner/cycle-repo.git"
+git -C "$CYC/repo" add -A
+git -C "$CYC/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$CYC/repo" push -q origin HEAD:refs/heads/main
+# A second clone, with its own origin, whose lib.sh lists one more id a stack delete keeps, to show that an id
+# no step of destroy.sh deletes stops it (row 22).
+git init -q --bare "$E2E/github.com/test-owner/cycle-repo2.git"
+cp -R "$CYC/repo" "$CYC/repo2"
+rm -rf "$CYC/repo2/.git"
+sed -i '' 's/^DESTROY_BY_HAND="Box UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket"/' "$CYC/repo2/ops/lib.sh"
+git -C "$CYC/repo2" init -q
+git -C "$CYC/repo2" remote add origin "$E2E/github.com/test-owner/cycle-repo2.git"
+git -C "$CYC/repo2" add -A
+git -C "$CYC/repo2" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$CYC/repo2" push -q origin HEAD:refs/heads/main
+FX=$CYC/fx
+ACCT=123456789012
+jq -nc '{StackSummaries: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX/stacks.json"
+jq -nc '{Stacks: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE", EnableTerminationProtection: false, Parameters: [{ParameterKey: "Env", ParameterValue: "ridge"}, {ParameterKey: "Network", ParameterValue: "credo-network"}, {ParameterKey: "Repository", ParameterValue: "test-owner/cycle-repo"}], Outputs: [{OutputKey: "BoxId", OutputValue: "i-0box"}]}]}' >"$FX/desc.json"
+jq -nc --arg acct "$ACCT" '{StackResourceSummaries: [
+  {ResourceType: "AWS::EC2::Subnet", LogicalResourceId: "Subnet", PhysicalResourceId: "subnet-0aaa", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::Instance", LogicalResourceId: "Box", PhysicalResourceId: "i-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BoxGroup", PhysicalResourceId: "sg-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BffGroup", PhysicalResourceId: "sg-0bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "BffLogs", PhysicalResourceId: "/aws/lambda/credo-ridge-bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "ApiLogs", PhysicalResourceId: "/aws/apigateway/credo-ridge", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::S3::Bucket", LogicalResourceId: "UiBucket", PhysicalResourceId: "ridge-uibucket-abc", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "BffRole", PhysicalResourceId: "ridge-BffRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "DeployRole", PhysicalResourceId: "ridge-DeployRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Lambda::Function", LogicalResourceId: "Bff", PhysicalResourceId: ("arn:aws:lambda:ap-southeast-5:" + $acct + ":function:credo-ridge-bff"), ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::ApiGatewayV2::Api", LogicalResourceId: "Api", PhysicalResourceId: "api0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::OriginAccessControl", LogicalResourceId: "UiAccess", PhysicalResourceId: "oac0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Function", LogicalResourceId: "UiRewrite", PhysicalResourceId: "credo-ridge-rewrite", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Distribution", LogicalResourceId: "Distribution", PhysicalResourceId: "E0DIST", ResourceStatus: "CREATE_COMPLETE"}]}' >"$FX/res.json"
+jq -nc '["AWS::EC2::Subnet", "AWS::EC2::Instance", "AWS::EC2::SecurityGroup", "AWS::Logs::LogGroup", "AWS::S3::Bucket", "AWS::IAM::Role", "AWS::Lambda::Function", "AWS::ApiGatewayV2::Api", "AWS::CloudFront::OriginAccessControl", "AWS::CloudFront::Function", "AWS::CloudFront::Distribution"]' >"$FX/types.json"
+jq -nc '{State: {Name: "running"}, InstanceType: "t4g.nano", SubnetId: "subnet-0aaa", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge"}], BlockDeviceMappings: [{DeviceName: "/dev/xvda", Ebs: {VolumeId: "vol-0root", DeleteOnTermination: false}}]} | {Reservations: [{Instances: [.]}]}' >"$FX/box.json"
+jq -nc '[{id: "eni-1", d: "box interface", i: "i-0box"}, {id: "eni-2", d: "AWS Lambda VPC ENI-credo-ridge-bff", i: null}]' >"$FX/enis.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0root", State: "available", Attachments: []}]}' >"$FX/vol.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0orph", Size: 8, VolumeType: "gp3", Encrypted: true, CreateTime: "2026-11-08T00:00:00Z"}]}' >"$FX/orphans.json"
+fx_bad=''
+for f in "$FX"/*.json; do jq -e . "$f" >/dev/null 2>&1 || fx_bad="$fx_bad $(basename "$f")"; done
+check "the stand-ins' fixtures all parse as JSON" "" "$fx_bad"
+cat >"$CYC/bin/aws" <<'STANDIN'
+#!/bin/bash
+echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+FX=${FAKE_FX:?}
+gone() { echo "An error occurred (NotFound) when calling the operation: 404 not found" >&2; exit 254; }
+case "$*" in
+  *"sts get-caller-identity"*) echo 123456789012 ;;
+  *"cloudformation list-stacks"*) cat "$FX/stacks.json" ;;
+  *"cloudformation describe-stacks"*"--query"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone; echo UPDATE_COMPLETE ;;
+  *"cloudformation describe-stacks"*) [ ! -e "$FAKE_STATE/stack.gone" ] || { echo "An error occurred (ValidationError): Stack with id ridge does not exist" >&2; exit 254; }; cat "$FX/desc.json" ;;
+  *"list-stack-resources"*) cat "$FX/res.json" ;;
+  *"get-template-summary"*) cat "$FX/types.json" ;;
+  *"ec2 describe-instances"*"--filters"*) [ -e "$FAKE_STATE/box.gone" ] || echo i-0box ;;
+  *"describe-instances --instance-ids"*"Tags[?Key"*) printf 'ridge\tsubnet-0aaa\n' ;;
+  *"describe-instances --instance-ids"*"State.Name"*) if [ -e "$FAKE_STATE/box.gone" ]; then echo terminated; else echo running; fi ;;
+  *"describe-instances --instance-ids"*) cat "$FX/box.json" ;;
+  *"ec2 create-snapshot"*) echo snap-0keep ;;
+  *"wait snapshot-completed"*) : ;;
+  *"describe-snapshots --snapshot-ids"*) echo completed ;;
+  *"ec2 describe-volumes --filters"*) cat "$FX/orphans.json" ;;
+  *"describe-snapshots"*) echo 0 ;;
+  *"describe-network-interfaces"*) cat "$FX/enis.json" ;;
+  *"s3api head-bucket"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone ;;
+  *"get-bucket-tagging"*) echo '{"TagSet":[{"Key":"Env","Value":"ridge"}]}' ;;
+  *"get-bucket-versioning"*) echo None ;;
+  *"s3api list-objects-v2"*)
+    if [ -e "$FAKE_STATE/rm.done" ]; then
+      [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "An error occurred (AccessDenied) when calling the ListObjectsV2 operation: denied for arn:aws:iam::123456789012:role/x" >&2; exit 255; }
+      echo 0
+    else echo 3; fi ;;
+  *"s3 rm"*) touch "$FAKE_STATE/rm.done"; printf 'delete: s3://ridge-uibucket-abc/f%s\n' 1 2; [ -n "${FAKE_RM_SHORT:-}" ] || echo 'delete: s3://ridge-uibucket-abc/f3' ;;
+  *"logs describe-log-groups"*"length(@)"*) if [ -e "$FAKE_STATE/stack.gone" ]; then echo 0; else echo 1; fi ;;
+  *"logs describe-log-groups"*"/aws/lambda/credo-ridge"*) echo /aws/lambda/credo-ridge-bff ;;
+  *"logs describe-log-groups"*) echo /aws/apigateway/credo-ridge ;;
+  *"ec2 terminate-instances"*) : ;;
+  *"wait instance-terminated"*) touch "$FAKE_STATE/box.gone" ;;
+  *"ec2 describe-volumes --volume-ids"*) if [ -e "$FAKE_STATE/vol.gone" ]; then echo "An error occurred (InvalidVolume.NotFound)" >&2; exit 254; fi; cat "$FX/vol.json" ;;
+  *"wait volume-available"*) : ;;
+  *"ec2 delete-volume"*) touch "$FAKE_STATE/vol.gone" ;;
+  *"cloudformation delete-stack"*)
+    [ -z "${FAKE_DELETE_DENIED:-}" ] || { echo "An error occurred (AccessDenied) when calling the DeleteStack operation: User: arn:aws:sts::123456789012:assumed-role/admin/me is not authorized to perform: cloudformation:DeleteStack" >&2; exit 254; } ;;
+  *"wait stack-delete-complete"*) touch "$FAKE_STATE/stack.gone" ;;
+  *"cloudfront get-distribution"* | *"lambda get-function"* | *"apigatewayv2 get-api"* | *"get-origin-access-control"* | *"cloudfront describe-function"* | *"iam get-role"* | *"describe-security-groups"* | *"describe-subnets"*) gone ;;
+  *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$CYC/bin/gh" <<'STANDIN'
+#!/bin/bash
+echo "gh $*" >>"${FAKE_STATE:?}/gh.calls"
+case "$*" in
+  "auth status"*) [ -z "${FAKE_GH_OUT:-}" ] || exit 1; exit 0 ;;
+  "workflow list"*)
+    for f in "$FAKE_STATE"/wf.*; do printf '%s %s\n' "${f##*/wf.}" "$(cat "$f")"; done |
+      jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ")) | map({name: .[0], path: (".github/workflows/" + .[0]), state: .[1]})' ;;
+  "workflow disable "*) echo disabled_manually >"$FAKE_STATE/wf.$3" ;;
+  "workflow enable "*) [ "${FAKE_ENABLE_FAIL:-}" != "$3" ] || { echo "HTTP 502: Bad gateway" >&2; exit 1; }; echo active >"$FAKE_STATE/wf.$3" ;;
+  "run list"*) if [ -n "${FAKE_RUN:-}" ] && [[ "$*" == *in_progress* ]]; then echo '[{"databaseId":1,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/1"}]'; elif [ -n "${FAKE_RUN_QUEUED:-}" ] && [[ "$*" == *queued* ]]; then echo '[{"databaseId":2,"workflowName":"seed","status":"queued","url":"https://example.test/run/2"}]'; elif [ -n "${FAKE_RUN_LATE:-}" ] && [[ "$*" == *in_progress* ]] && grep -q disabled_manually "$FAKE_STATE/wf.ci.yml"; then echo '[{"databaseId":3,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/3"}]'; else echo '[]'; fi ;;
+  *) echo "stand-in gh: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$CYC/bin/bru" <<'STANDIN'
+#!/bin/sh
+echo "${FAKE_BRU:-4.2.0}"
+STANDIN
+chmod +x "$CYC/bin/aws" "$CYC/bin/gh" "$CYC/bin/bru"
+cycle_run() { # <state name> <initial workflow state> <typed text> <script> <args…>: the script whole in the clone; terminal output in $S/out
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=$FX
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  RC=0
+  (cd "$CYC/repo" && PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 bash "ops/$1" "${@:2}") <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
+cycle_case() { # <state name> <initial workflow state> <typed text> <script> <args…>: as cycle_run, with CASE_FX (fixtures), CASE_SETUP (run in the state folder first), CASE_ENV (KEY=VALUE words) and CASE_NOTTY (set: no test switch)
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=${CASE_FX:-$FX}
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  if [ -n "${CASE_SETUP:-}" ]; then (cd "$S" && eval "$CASE_SETUP"); fi
+  RC=0
+  (
+    cd "$CYC/${CASE_REPO:-repo}"
+    export PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x
+    unset OPS_TEST_NO_TTY
+    [ -n "${CASE_NOTTY:-}" ] || export OPS_TEST_NO_TTY=1
+    for kv in ${CASE_ENV:-}; do export "${kv?}"; done
+    bash "ops/$1" "${@:2}"
+  ) <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
+cycle_run destroy-whole active ridge destroy.sh ridge
+check "8: the destroy on a whole ridge: exit 0, its verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c '^== verdict: ridge is destroyed, ci.yml and seed.yml are off$' "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it deleted in the one-off's order: the box, its disk, the bucket's files, the stack" "wait instance-terminated,ec2 delete-volume,s3 rm,cloudformation delete-stack," \
+  "$(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
+check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is deleted" "disabled_manually disabled_manually active 3" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml") $(find "$CYC/repo/.github/workflows" -type f | wc -l | tr -d ' ')"
+check "  the account id is in neither the log nor the terminal" 0 "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+check "  the bucket's three deletes were counted against the three files" 1 "$(grep -c '^   AWS reported 3 delete(s); 3 file(s) were counted before$' "$OPS_LOG_DIR"/*.log || true)"
+echo "== the destroy's guards, each on its own case (rows 1 to 7 and 9 to 14)"
+destroy_calls() { cat "$S/aws.calls" "$S/gh.calls" 2>/dev/null | grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack|delete-log-group|workflow disable|create-snapshot' || true; }
+wf_states() { echo "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"; }
+# rows 4, 9 and 13 read the whole run above (the state folder and logs of destroy-whole are still the current ones)
+check "4: it disabled ci.yml and seed.yml, in that order, and nothing else" "gh workflow disable ci.yml,gh workflow disable seed.yml," \
+  "$(grep '^gh workflow disable' "$S/gh.calls" | sed 's/ --repo.*//' | tr '\n' ',')"
+check "  after the typed name, never before" "after" \
+  "$(awk '/^   typed: /{t=NR} /^   disabling /{if(!d)d=NR} END{print (t&&d&&t<d)?"after":"not after"}' "$OPS_LOG_DIR"/*.log)"
+check "  and it deleted no workflow file" 0 "$(grep -cE 'workflow delete|api .*DELETE|workflows/' "$S/gh.calls" || true)"
+check "9: the account id is in neither the log nor the terminal, and the listing's twelve digits were hidden" "0 0 yes" \
+  "$(grep -cF "$ACCT" "$OPS_LOG_DIR"/*.log || true) $(grep -cF "$ACCT" "$S/out" || true) $([ "$(grep -c '<12 digits>' "$OPS_LOG_DIR"/*.log || true)" -ge 1 ] && echo yes || echo no)"
+check "13: without the switch no snapshot is taken" 0 "$(grep -c 'create-snapshot' "$S/aws.calls" || true)"
+
+# walks is the one other environment a workflow names (walks.yml), so only the refusal itself, never the
+# missing workflow file, can stop it before the first call
+cycle_case destroy-walks active ridge destroy.sh walks
+check "1: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: destroy.sh destroys ridge alone' "$S/out" || true)"
+check "  before any aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_NOTTY=1 cycle_case destroy-notty active ridge destroy.sh ridge
+check "2: without a terminal it refuses, saying so" "1 1" "$RC $(grep -c '^error: no terminal on the input' "$S/out" || true)"
+check "  and made no aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+cycle_case destroy-wrong active nope destroy.sh ridge
+check "3: a typed word other than ridge ends it, saying nothing was changed" "1 1" "$RC $(grep -c "^== STOPPED: the typed name was not 'ridge'" "$S/out" || true)"
+check "  with no workflow disabled" "active active active" "$(wf_states)"
+check "  and nothing deleted" 0 "$(destroy_calls)"
+CASE_ENV=FAKE_RUN=1 cycle_case destroy-running active ridge destroy.sh ridge
+check "5: a run in progress stops it before the name is asked" "1 1 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true)"
+check "  with no workflow disabled and nothing deleted" "active active active 0" "$(wf_states) $(destroy_calls)"
+CASE_ENV=FAKE_RUN_QUEUED=1 cycle_case destroy-queued active ridge destroy.sh ridge
+check "  a queued run stops it the same way" "1 1 active active active 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(destroy_calls)"
+FX6=$CYC/fx-strange
+cp -R "$FX" "$FX6"
+jq -c '.StackResourceSummaries += [{ResourceType: "AWS::SNS::Topic", LogicalResourceId: "Odd", PhysicalResourceId: "odd", ResourceStatus: "CREATE_COMPLETE"}]' "$FX/res.json" >"$FX6/res.json"
+CASE_FX=$FX6 cycle_case destroy-strange active ridge destroy.sh ridge
+check "6: a type origin/main's env.yml does not declare is refused, naming it" "1 1" "$RC $(grep -c '^== STOPPED: the stack holds resources of a type env.yml does not declare: AWS::SNS::Topic Odd' "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+FX7=$CYC/fx-env
+cp -R "$FX" "$FX7"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Env" then .ParameterValue = "crest" else . end)' "$FX/desc.json" >"$FX7/desc.json"
+CASE_FX=$FX7 cycle_case destroy-env active ridge destroy.sh ridge
+check "7: a stack whose Env parameter is not ridge is refused" "1 1" "$RC $(grep -c "^== STOPPED: stack ridge has parameter Env='crest', not 'ridge'" "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+CASE_ENV=FAKE_LIST_FAIL=1 cycle_case destroy-listfail active ridge destroy.sh ridge
+check "10: a failed read of the bucket after emptying stops before the stack delete" "1 0" "$RC $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+check "  and AWS's own words are in the log, the account id not" "1 0" "$(grep -c 'AccessDenied' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+CASE_ENV=FAKE_RM_SHORT=1 cycle_case destroy-short active ridge destroy.sh ridge
+check "11: two deletes against three files counted stops before the stack delete, saying so" "1 1 0" \
+  "$RC $(grep -c '^== STOPPED: bucket ridge-uibucket-abc: 2 delete(s) reported against 3 file(s) counted before' "$S/out" || true) $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+FX12=$CYC/fx-nostack
+cp -R "$FX" "$FX12"
+jq -nc '{StackSummaries: [{StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX12/stacks.json"
+CASE_FX=$FX12 CASE_SETUP='touch box.gone' cycle_case destroy-nostack active ridge destroy.sh ridge
+check "12: with no stack and no ridge box it ends 0 on its own verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c "^== verdict: ridge's stack and box were already gone" "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it lists the unattached disk, asks no name and changes no workflow" "1 0 active active active" \
+  "$(grep -c 'vol-0orph' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(wf_states)"
+check "  and deletes nothing" 0 "$(destroy_calls)"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=1 cycle_case destroy-keep active ridge destroy.sh ridge
+check "13: RIDGE_KEEP_DISK_SNAPSHOT=1 takes one snapshot, before the box goes, and the run ends 0" "0 create-snapshot,terminate-instances," \
+  "$RC $(grep -oE -e 'create-snapshot|terminate-instances' "$S/aws.calls" | tr '\n' ',')"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=2 cycle_case destroy-keep2 active ridge destroy.sh ridge
+check "  a value but 0 or 1 is refused before any call" "1 1 gone" "$RC $(grep -c '^error: RIDGE_KEEP_DISK_SNAPSHOT must be 0 or 1' "$S/out" || true) $(file_state "$S/aws.calls")"
+FX21=$CYC/fx-repo
+cp -R "$FX" "$FX21"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Repository" then .ParameterValue = "someone-else/other-repo" else . end)' "$FX/desc.json" >"$FX21/desc.json"
+CASE_FX=$FX21 cycle_case destroy-repo active ridge destroy.sh ridge
+check "21: a stack whose Repository parameter is another repository's is refused before the name is asked, saying nothing was destroyed" "1 1 0" \
+  "$RC $(grep -c "^== STOPPED: stack ridge has Repository parameter 'someone-else/other-repo', but this clone's origin is 'test-owner/cycle-repo'.* Nothing was destroyed\.$" "$S/out" || true) $(grep -c '^   > ' "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+FX21B=$CYC/fx-repo-empty
+cp -R "$FX" "$FX21B"
+jq -c '.Stacks[0].Parameters |= map(select(.ParameterKey != "Repository"))' "$FX/desc.json" >"$FX21B/desc.json"
+CASE_FX=$FX21B cycle_case destroy-repo-empty active ridge destroy.sh ridge
+check "  a stack with no Repository parameter is refused the same way" "1 1 0" "$RC $(grep -c "^== STOPPED: stack ridge has Repository parameter 'empty'" "$S/out" || true) $(destroy_calls)"
+FX22=$CYC/fx-repo2
+cp -R "$FX" "$FX22"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Repository" then .ParameterValue = "test-owner/cycle-repo2" else . end)' "$FX/desc.json" >"$FX22/desc.json"
+CASE_FX=$FX22 CASE_REPO=repo2 cycle_case destroy-byhand active ridge destroy.sh ridge
+check "22: an id the list names that no step deletes stops it before the name is asked, naming the id" "1 1 0 0" \
+  "$RC $(grep -c '^== STOPPED: DESTROY_BY_HAND (ops/lib.sh) lists CopyBucket, and no step of this script deletes it\. Nothing was destroyed' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(destroy_calls)"
+CASE_ENV=FAKE_RUN_LATE=1 cycle_case destroy-late active ridge destroy.sh ridge
+check "23: a run that starts after the workflows go off stops it before any delete, and the stop says the two are off and how to turn them on" "1 1 disabled_manually disabled_manually active 0 1" \
+  "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack' "$S/aws.calls" || true) $(grep -c '^-- This run stopped after the workflows (ci.yml and seed.yml) were switched off, and they are still off\..*ops/remake.sh ridge\.$' "$OPS_LOG_DIR"/*.log || true)"
+CASE_ENV=FAKE_DELETE_DENIED=1 cycle_case destroy-denied active ridge destroy.sh ridge
+check "  a command failing under set -e after the disable says so too, and AWS's words are kept" "nonzero 1 1" \
+  "$([ "$RC" != 0 ] && echo nonzero || echo "$RC") $(grep -c 'AccessDenied' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^-- This run stopped after the workflows (ci.yml and seed.yml) were switched off' "$OPS_LOG_DIR"/*.log || true)"
+check "24: and the account id AWS quoted in that error is in neither the log nor the terminal" "0 0" \
+  "$(grep -cF "$ACCT" "$OPS_LOG_DIR"/*.log || true) $(grep -cF "$ACCT" "$S/out" || true)"
+check "  and a run that finished says nothing of the kind" 0 "$(cat "$E2E"/logs-destroy-whole/*.log | grep -c 'This run stopped after the workflows' || true)"
+# unlisted_keepers <template json> <the destroy's list>: every resource a stack delete keeps, and every bucket, that the list lacks
+unlisted_keepers() {
+  jq -r --arg list "$2" '.Resources | to_entries[]
+    | select((.value.DeletionPolicy // "" | IN("Retain", "RetainExceptOnCreate", "Snapshot")) or .value.Type == "AWS::S3::Bucket")
+    | .key | select(. as $k | ($list | split(" ") | index($k)) == null)' "$1" | tr '\n' ' ' | sed 's/ $//'
+}
+BY_HAND_LIST=$DESTROY_BY_HAND
+check "14: the template's keepers read as JSON are the box and the UI bucket (so the list below is read from something)" "Box UiBucket" "$(unlisted_keepers "$WORK/env.json" "")"
+check "  every env.yml resource a stack delete keeps, and every bucket, is in the destroy's list" "" "$(unlisted_keepers "$WORK/env.json" "$BY_HAND_LIST")"
+jq '.Resources.CopyBucket = {Type: "AWS::S3::Bucket", DeletionPolicy: "Retain"} | .Resources.RecordsVolume = {Type: "AWS::EC2::Volume", DeletionPolicy: "Snapshot"}' "$WORK/env.json" >"$WORK/env-copy.json"
+check "  and a template with a retained bucket and a snapshotted volume added names both" "CopyBucket RecordsVolume" "$(unlisted_keepers "$WORK/env-copy.json" "$BY_HAND_LIST")"
+
+cycle_run remake-whole disabled_manually '' remake.sh ridge
+check "18: the remake on a stack that is down: exit 0, ending == green then == exit 0" "0 == green == exit 0" \
+  "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | tr '\n' ' ' | sed 's/ $//')"
+check "  it ran the stack, the release, the app and the check, in that order" "stack.sh env ridge,release.sh ridge,app.sh ridge,check.sh ridge," \
+  "$(tr '\n' ',' <"$S/children.calls")"
+check "  and turned the two workflows on, read back active, walks.yml untouched" "active active disabled_manually" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"
+check "  its log holds its own lines only: four steps named with their logs, one == green, no child's line" "4 1 0" \
+  "$(grep -c '^-- step [1-4]/5: ops/.* ended with exit 0; its log: .*-ridge.log$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c '^== green$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c 'stand-in' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+
+check "20: its closing says ridge holds no operator and no demo copy, and gives the operator's command as the next step" "1 1" \
+  "$(grep -c '^== ridge is remade from main and checked. It is empty: it holds no operator and no demo copy.$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -cE '^ +cd .* && bash .*/ops/operator.sh ridge$' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+echo "== the remake's guards, each on its own case (rows 16, 17 and 19)"
+remake_calls() { cat "$S/aws.calls" "$S/gh.calls" "$S/children.calls" 2>/dev/null | grep -cE 'stack.sh|release.sh|app.sh|check.sh|workflow enable|cloudformation|get-caller' || true; }
+cycle_case remake-crest disabled_manually '' remake.sh crest
+check "16: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: remake.sh remakes ridge alone' "$S/out" || true)"
+check "  before any call, a child's or gh's or aws's" "0 gone gone" "$(remake_calls) $(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_ENV=FAKE_GH_OUT=1 cycle_case remake-nogh disabled_manually '' remake.sh ridge
+check "17: gh not logged in is refused, saying so, before the first step" "1 1 0" "$RC $(grep -c '^error: gh is not logged in' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_BRU=3.0.0 cycle_case remake-nobru disabled_manually '' remake.sh ridge
+check "  a Bruno CLI of another version is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs Bruno CLI 4.2.0, found 3.0.0' "$S/out" || true) $(remake_calls)"
+CASE_ENV=RIDGE_SCRIPTS_DIR= cycle_case remake-nopnpm disabled_manually '' remake.sh ridge
+check "  pnpm install not done is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs pnpm install done' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_RED=release cycle_case remake-red disabled_manually '' remake.sh ridge
+check "19: a red at the release stops it there: the app and the check never ran" "1 stack.sh env ridge,release.sh ridge," "$RC $(tr '\n' ',' <"$S/children.calls")"
+check "  the workflows stay off and none was enabled" "disabled_manually disabled_manually disabled_manually 0" "$(wf_states) $(cat "$S/gh.calls" 2>/dev/null | grep -c 'workflow enable' || true)"
+check "  and the log's last two lines name the step, then the exit" "1 == exit 1" \
+  "$(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | grep -c '^== stopped at step 2/5, ops/release.sh (exit 1)' || true) $(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
+CASE_ENV=FAKE_ENABLE_FAIL=seed.yml cycle_case remake-enablefail disabled_manually '' remake.sh ridge
+check "26: a gh enable that fails on seed.yml after ci.yml ends it on the stop line naming step 5 and the workflows, with ci.yml on and seed.yml off" "1 1 active disabled_manually" \
+  "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | grep -c '^== stopped at step 5/5, the workflows: seed.yml: gh could not enable it' || true) $(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml")"
+check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
+check "27: the Bruno version is declared once, in lib.sh, and neither check.sh nor remake.sh sets its own" "1 0" \
+  "$(grep -c '^WANT_BRUNO=' "$OPS_DIR/lib.sh") $(cat "$OPS_DIR/check.sh" "$OPS_DIR/remake.sh" | grep -c '^[[:space:]]*WANT_BRUNO=' || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

@@ -193,6 +193,14 @@ main_synced() {
 # (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
 # never be named like one of these.
 INVENTED_ENVS="ridge"
+# DESTROY_BY_HAND: the logical ids in env.yml that a stack delete keeps (a Retain or Snapshot policy) or
+# cannot empty (a bucket), this list's one home. ops/destroy.sh deletes each by hand, and stops before its
+# prompt on an id none of its steps deletes; ops/test.sh row 14 compares the list with env.yml.
+# shellcheck disable=SC2034 # read by destroy.sh and test.sh
+DESTROY_BY_HAND="Box UiBucket"
+# WANT_BRUNO: the Bruno CLI version ops/check.sh runs and ops/remake.sh refuses to start without, one home.
+# shellcheck disable=SC2034 # read by check.sh and remake.sh
+WANT_BRUNO=4.2.0
 # REAL: 1 once real_ok has run on an unlisted environment. Set to 0 here, before any environment is read
 # by a script, so a stray REAL=1 in a shell or a workflow's env cannot narrow ridge's check.
 REAL=0
@@ -294,7 +302,7 @@ stack_load() {
 
 # OUTPUTS_PRINTED: the outputs that carry no secret and are read in the human's log. Any other
 # output (a new one included) prints "(not printed)" until it is named here.
-OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress"]'
+OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress","Watch"]'
 
 # outputs_print: the stack's outputs from STACK_JSON, one line each. An output prints its value only
 # when it is named in OUTPUTS_PRINTED and holds no masked line (SECRETS); the secrets go to jq in its
@@ -451,6 +459,46 @@ add_subject_param() {
   else
     add_param SubjectPrefix "$1"
   fi
+}
+
+# slack_param_plan → how the two Slack IDs (CREDO_SLACK_WORKSPACE_ID, CREDO_SLACK_CHANNEL_ID, from the
+# environment) reach the stack: "set" when both are given (new values, "none" included), "previous" when
+# neither is and the stack holds them (kept), "default" when neither is and the stack holds none (the
+# template's "none"; also on a creation, whatever a stack left in REVIEW_IN_PROGRESS lists, since a
+# creation has no previous value to use). One without the other is refused: a lone channel ID makes no channel, silently.
+# So is "none" for one and a real ID for the other: the template's condition then makes no channel and
+# the run still exits 0. Turning the channel off is "none" for both, and on a stack that holds a channel
+# that is a removal: the run takes --take AlertsChannel --take AlertsChannelRole.
+slack_param_plan() {
+  local w="${CREDO_SLACK_WORKSPACE_ID:-}" c="${CREDO_SLACK_CHANNEL_ID:-}"
+  if [ -n "$w" ] && [ -n "$c" ]; then
+    if [ "$w" = none ] || [ "$c" = none ]; then
+      [ "$w" = "$c" ] || die "one of CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID is none and the other is an ID: that makes no channel, silently (give two IDs, or none for both)"
+    fi
+    echo set
+  elif [ -n "$w" ] || [ -n "$c" ]; then
+    die "CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID go together: one without the other makes no channel (give both, or neither to keep the stack's values; none for both turns the channel off, and on a stack that holds a channel that run takes --take AlertsChannel --take AlertsChannelRole)"
+  elif [ "${CS_TYPE:-}" != CREATE ] && [ -n "$(stack_param SlackWorkspaceId)" ]; then
+    echo previous
+  else
+    echo default
+  fi
+}
+
+# add_slack_params: appends the two Slack IDs to PARAMS as slack_param_plan says
+add_slack_params() {
+  local plan
+  plan=$(slack_param_plan) || exit 1
+  case "$plan" in
+    set)
+      add_param SlackWorkspaceId "$CREDO_SLACK_WORKSPACE_ID"
+      add_param SlackChannelId "$CREDO_SLACK_CHANNEL_ID"
+      ;;
+    previous)
+      add_param SlackWorkspaceId
+      add_param SlackChannelId
+      ;;
+  esac
 }
 
 # out <OutputKey> → its value in STACK_JSON, empty if none
@@ -1083,4 +1131,23 @@ edge_reads_client() {
 edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
+}
+
+# workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name
+# `environment: <env>`, the only ones that reach that environment. Read from the files here.
+workflows_of() {
+  local dir=$REPO_DIR/.github/workflows f odd
+  [ -d "$dir" ] || return 0
+  # Fails closed, as push_paths does: only the plain line `environment: <name>` is read. GitHub also takes a
+  # mapping (`environment:` then `name:`), a quoted name and a trailing comment, and a workflow in one of
+  # those shapes would be missed and stay on through a destroy, so any other `environment:` line stops here.
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    odd=$(grep -nE '^[[:space:]]*environment:' "$f" | grep -vE '^[0-9]+:[[:space:]]*environment:[[:space:]]+[A-Za-z0-9_-]+[[:space:]]*$' | head -n 1 || true)
+    [ -z "$odd" ] || die "$(basename "$f") has an environment: line that is not the plain form 'environment: <name>' (line $odd), so which environment the workflow reaches is not known and it might stay on through a destroy: nothing was changed"
+  done
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    if grep -qE "^[[:space:]]*environment:[[:space:]]*$1[[:space:]]*\$" "$f"; then basename "$f"; fi
+  done | sort
 }
