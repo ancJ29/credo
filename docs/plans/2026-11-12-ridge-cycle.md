@@ -156,12 +156,19 @@ The sizes come from `runs.tsv`: an `ops/` step with its test rows each seen red 
 minutes (pieces 131, 119, 122, 124), the code shape's median is 11, and a review about 20. That is
 more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤 yours.
 
-- [ ] **1. The cheap build, end to end.** `ops/destroy.sh` is the one-off with the mechanical
+- [x] **1. The cheap build, end to end.** `ops/destroy.sh` is the one-off with the mechanical
   changes only (the log, the stance, `$REPO_DIR`, `repository`). `ops/remake.sh` is its five calls.
   `workflows_of` goes in `lib.sh`. Two sections in `ops/test.sh` run each script whole once, on
   stand-ins for `aws` and `gh` and stand-in scripts, in the style of the `stack.sh` section
   (`#L2622`). *Done when:* `shellcheck -x ops/*.sh` and `bash ops/test.sh` each exit 0, with rows 8
   and 18 green, and the stance check names neither script. **About 15 min.**
+  *Done 11-12, commit `ec867872`, 14 min:* ShellCheck 0.11 over `ops/*.sh` exited 0, and `bash ops/test.sh`
+  whole exited 0 with row 8 (the destroy on a whole ridge, ending on its verdict) and row 18 (the
+  remake, ending `== green`) green, row 15 too; the stance check passed with both scripts counted.
+  Beyond the row: the destroy reads the typed name from its input when `OPS_TEST_NO_TTY=1`, the tests'
+  switch as `operator.sh` has it; with no stack it asks for no name and changes no workflow (change 1
+  follows); the count of the bucket's files is read before the name is asked, and the run stops when it
+  fails. Rows 1 to 7 and 9 to 14 are not yet seen red.
 - [ ] **2. The destroy's cases, each seen red.** Rows 1 to 7 and 9 to 15, each broken once by a
   mutation in its own line, and each mutation put back. If the copy has landed, `CopyBucket` and
   `RecordsVolume` are handled here (row 14 says so). *Done when:* `bash ops/test.sh` exits 0, the tick
