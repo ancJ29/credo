@@ -507,11 +507,117 @@ passes "stack.sh passes BoxPort from the unit's port, on a creation and on an up
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
 
+echo "== the watch (plan 2026-11-11-slack-alarm, step 2): four alarms to one topic, the channel behind two IDs and a deny-all guardrail"
+# watch_guard <template json>: dies naming what is wrong. Read from the parsed template, never grepped.
+# Each case below names the one mutation that must turn it red.
+# shellcheck disable=SC2016 # jq programs and the template's ${Env}, in single quotes
+watch_guard() {
+  local alarm
+  # row 1: each alarm sends its alarm and its return to normal to Alerts, and nowhere else
+  for alarm in AlarmCalls AlarmErrors AlarmRefusals AlarmBox; do
+    must "$1" "$alarm does not send its alarm to Alerts alone" \
+      ".Resources.$alarm.Properties.AlarmActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm does not send its return to normal to Alerts alone" \
+      ".Resources.$alarm.Properties.OKActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm sends something on missing data besides its own rule" \
+      ".Resources.$alarm.Properties.InsufficientDataActions == null"
+    must "$1" "$alarm is not an alarm on the watch's own topic and a condition-free resource" \
+      ".Resources.$alarm | .Type == \"AWS::CloudWatch::Alarm\" and .Condition == null"
+  done
+  must "$1" "a resource other than the four alarms and the channel acts on Alerts" \
+    '[.Resources | to_entries[] | select(.value.Properties | tostring | test("\"Ref\":\"Alerts\"")) | .key] | sort == ["AlarmBox","AlarmCalls","AlarmErrors","AlarmRefusals","AlertsChannel"]'
+  # row 2: the calls alarm reads this stack's own API and stage; a 5xx in five minutes; no calls is no failure
+  must "$1" "AlarmCalls does not read this stack's API and stage 5xx" \
+    '.Resources.AlarmCalls.Properties | .Namespace == "AWS/ApiGateway" and .MetricName == "5xx" and .Dimensions == [{"Name":"ApiId","Value":{"Ref":"Api"}},{"Name":"Stage","Value":{"Ref":"ApiStage"}}]'
+  must "$1" "AlarmCalls is not one 5xx in five minutes, with no calls counting as no failure" \
+    '.Resources.AlarmCalls.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and .TreatMissingData == "notBreaching"'
+  # row 3: the errors and the refusals alarms read this stack's own function
+  must "$1" "AlarmErrors does not read this stack's function Errors" \
+    '.Resources.AlarmErrors.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Errors" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  must "$1" "AlarmRefusals does not read this stack's function Throttles" \
+    '.Resources.AlarmRefusals.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Throttles" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  # row 4: the box alarm reads this stack's own box, and a box reporting nothing for three minutes is down
+  must "$1" "AlarmBox does not read this stack's box StatusCheckFailed" \
+    '.Resources.AlarmBox.Properties | .Namespace == "AWS/EC2" and .MetricName == "StatusCheckFailed" and .Dimensions == [{"Name":"InstanceId","Value":{"Ref":"Box"}}]'
+  must "$1" "AlarmBox does not count three minutes of failed or missing reports as down" \
+    '.Resources.AlarmBox.Properties | .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .TreatMissingData == "breaching"'
+  # row 5: with no Slack IDs the topic and the four alarms stay, the channel and its role go
+  must "$1" "HasSlack is not both IDs given" \
+    '.Conditions.HasSlack == {"Fn::And":[{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackWorkspaceId"},"none"]}]},{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}]}'
+  must "$1" "the topic is not made with no Slack IDs" '.Resources.Alerts | .Type == "AWS::SNS::Topic" and .Condition == null'
+  must "$1" "the channel and its role are not both held to HasSlack" \
+    '.Resources | (.AlertsChannel.Condition == "HasSlack") and (.AlertsChannelRole.Condition == "HasSlack") and ([.[] | select(.Condition == "HasSlack")] | length) == 2'
+  # row 6: the channel's role grants nothing, and the guardrail is the managed deny-all, not AWS's default
+  must "$1" "the channel's role holds a policy" \
+    '.Resources.AlertsChannelRole.Properties | .Policies == null and .ManagedPolicyArns == null'
+  must "$1" "the channel's guardrail is not AWS's deny-all alone (unset is AdministratorAccess)" \
+    '.Resources.AlertsChannel.Properties.GuardrailPolicies == [{"Fn::Sub":"arn:${AWS::Partition}:iam::aws:policy/AWSDenyAll"}]'
+  must "$1" "the channel logs errors" '.Resources.AlertsChannel.Properties.LoggingLevel == "ERROR"'
+  must "$1" "the channel's role is not the channel's own, or the channel does not read the topic" \
+    '.Resources.AlertsChannel.Properties | .IamRoleArn == {"Fn::GetAtt":["AlertsChannelRole","Arn"]} and .SnsTopicArns == [{"Ref":"Alerts"}]'
+  # row 7: both IDs are parameters defaulting to none; the channel reads them by Ref; a typed name fails the pattern
+  must "$1" "a Slack ID does not default to none" \
+    '.Parameters | .SlackWorkspaceId.Default == "none" and .SlackChannelId.Default == "none"'
+  must "$1" "the channel does not read both IDs from the parameters" \
+    '.Resources.AlertsChannel.Properties | .SlackWorkspaceId == {"Ref":"SlackWorkspaceId"} and .SlackChannelId == {"Ref":"SlackChannelId"}'
+  must "$1" "an ID's pattern admits a channel's typed name, or refuses an ID or none" \
+    '.Parameters as $p | ($p.SlackChannelId.AllowedPattern as $c | ($p.SlackWorkspaceId.AllowedPattern) as $w | ("alerts-ridge" | test($c) | not) and ("C01ABCDEF" | test($c)) and ("none" | test($c)) and ("my-workspace" | test($w) | not) and ("T01ABCDEF" | test($w)) and ("none" | test($w)))'
+  # row 10: each alarm's description says in plain words which environment and what failed
+  must "$1" "an alarm's description does not name the environment and what failed" \
+    '[.Resources | to_entries[] | select(.key | startswith("Alarm")) | {k: .key, d: (.value.Properties.AlarmDescription["Fn::Sub"] // "")}] | map(select(.d | contains("${Env}"))) | map({(.k): .d}) | add | (.AlarmCalls | contains("calls are failing")) and (.AlarmErrors | contains("back end is failing")) and (.AlarmRefusals | contains("refusing work")) and (.AlarmBox | contains("box is down"))'
+}
+passes "the watch: four alarms to one topic, the channel behind two IDs, nothing granted" watch_guard "$WORK/env.json"
+refuses "  an alarm that sends to a second topic is refused (row 1)" "AlarmErrors does not send its alarm to Alerts alone" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.AlarmActions += [{"Ref":"Other"}]')"
+refuses "  an alarm with no return to normal is refused (row 1)" "AlarmBox does not send its return to normal" \
+  watch_guard "$(mut 'del(.Resources.AlarmBox.Properties.OKActions)')"
+refuses "  a fifth resource acting on the topic is refused (row 1)" "a resource other than the four alarms and the channel acts on Alerts" \
+  watch_guard "$(mut '.Resources.Extra = {"Type":"AWS::CloudWatch::Alarm","Properties":{"AlarmActions":[{"Ref":"Alerts"}]}}')"
+refuses "  a calls alarm on another stage is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.Dimensions[1].Value = "prod"')"
+refuses "  a calls alarm on the 4xx metric is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.MetricName = "4xx"')"
+refuses "  a calls alarm that counts no calls as a failure is refused (row 2)" "AlarmCalls is not one 5xx in five minutes" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.TreatMissingData = "breaching"')"
+refuses "  an errors alarm on another function is refused (row 3)" "AlarmErrors does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Dimensions[0].Value = "other-function"')"
+refuses "  a refusals alarm on the wrong metric is refused (row 3)" "AlarmRefusals does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.MetricName = "Errors"')"
+refuses "  a box alarm on another instance is refused (row 4)" "AlarmBox does not read this stack's box" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.Dimensions[0].Value = "i-0123456789abcdef0"')"
+refuses "  a box alarm that reads missing data as normal is refused (row 4)" "AlarmBox does not count three minutes" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.TreatMissingData = "notBreaching"')"
+refuses "  a channel made with no Slack IDs is refused (row 5)" "the channel and its role are not both held to HasSlack" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Condition)')"
+refuses "  a topic that waits for the IDs is refused (row 5)" "the topic is not made with no Slack IDs" \
+  watch_guard "$(mut '.Resources.Alerts.Condition = "HasSlack"')"
+refuses "  a condition that wants one ID only is refused (row 5)" "HasSlack is not both IDs given" \
+  watch_guard "$(mut '.Conditions.HasSlack = {"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}')"
+refuses "  a channel role with a policy is refused (row 6)" "the channel's role holds a policy" \
+  watch_guard "$(mut '.Resources.AlertsChannelRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]')"
+refuses "  a channel with no guardrail (AWS then applies AdministratorAccess) is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Properties.GuardrailPolicies)')"
+refuses "  AdministratorAccess as the guardrail is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.GuardrailPolicies = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a Slack ID with a real-looking default is refused (row 7)" "a Slack ID does not default to none" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.Default = "C01ABCDEF"')"
+refuses "  a channel with its ID written in is refused (row 7)" "the channel does not read both IDs from the parameters" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.SlackChannelId = "C01ABCDEF"')"
+refuses "  a channel ID pattern that admits a typed name is refused (row 7)" "admits a channel's typed name" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.AllowedPattern = "^(none|[A-Za-z0-9-]+)$"')"
+refuses "  an alarm description that names no environment is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.AlarmDescription = {"Fn::Sub":"the app'"'"'s calls are failing."}')"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+refuses "  an alarm description that says nothing of what failed is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.AlarmDescription = {"Fn::Sub":"${Env}: an alarm."}')"
+
 echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
 # adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
 # Add, the one Modify is DeployRole, in place, and the guard names nothing
 adds_and_one_modify() {
   local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes'
+  # the watch's resources (plan 2026-11-11-slack-alarm) are not layer four's: they come in their own update
+  old="$old Alerts AlarmBox AlarmCalls AlarmErrors AlarmRefusals AlertsChannel AlertsChannelRole"
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
   gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
   [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
