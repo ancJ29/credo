@@ -54,6 +54,9 @@ GITHUB_STACK=credo-github
 LOG_GROUP_BFF=/aws/lambda/credo-$ENVNAME-bff
 LOG_GROUP_API=/aws/apigateway/credo-$ENVNAME
 KEEP_SNAPSHOT=${RIDGE_KEEP_DISK_SNAPSHOT:-0}
+# The stack's logical ids that a stack delete keeps (a Retain policy) or cannot empty (a bucket): each is
+# handled by hand in step 6 below. ops/test.sh row 14 reads this line against ops/env.yml.
+BY_HAND="Box UiBucket"
 
 # Everything printed passes this: a run of twelve digits (an account id) is hidden, since AWS's
 # listings and errors quote ARNs. The account id itself is also masked and searched for at the end.
@@ -162,6 +165,7 @@ else
   STRANGE=$(jq -r --argjson ok "$ALLOWED" '.StackResourceSummaries[] | select(.ResourceType as $t | ($ok | index($t)) == null) | "\(.ResourceType) \(.LogicalResourceId)"' <<<"$STACK_RES")
   [ -z "$STRANGE" ] || fail "the stack holds resources of a type env.yml does not declare: $STRANGE. Not clearly ridge's. Nothing was destroyed."
   phys() { jq -r --arg id "$1" '.StackResourceSummaries[] | select(.LogicalResourceId == $id) | .PhysicalResourceId // empty' <<<"$STACK_RES"; }
+  say "-- the ids a stack delete keeps or cannot empty, each deleted by hand below: $BY_HAND"
 
   # the log groups: exactly these two names, or stop
   for lg in BffLogs ApiLogs; do

@@ -169,10 +169,26 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
   switch as `operator.sh` has it; with no stack it asks for no name and changes no workflow (change 1
   follows); the count of the bucket's files is read before the name is asked, and the run stops when it
   fails. Rows 1 to 7 and 9 to 14 are not yet seen red.
-- [ ] **2. The destroy's cases, each seen red.** Rows 1 to 7 and 9 to 15, each broken once by a
+- [x] **2. The destroy's cases, each seen red.** Rows 1 to 7 and 9 to 15, each broken once by a
   mutation in its own line, and each mutation put back. If the copy has landed, `CopyBucket` and
   `RecordsVolume` are handled here (row 14 says so). *Done when:* `bash ops/test.sh` exits 0, the tick
   names each row's red, and `git diff` holds no mutation. **About 17 min.**
+  *Done 11-12, 12 min:* ShellCheck over `ops/*.sh` exited 0 and `bash ops/test.sh` whole exited 0. Each
+  mutation was made in a scratch copy of `ops/` run through a trimmed copy of the destroy's section, and
+  the tree holds none. Seen red, each by its own mutation: row 1, `refuse_real` turned into `true`
+  (the refusal's words missing); 2, the no-terminal `die` turned into `true`; 3, the typed-name test
+  made always true (workflows disabled, six destroying calls); 4, `walks.yml` added to the disable loop;
+  5, the in-progress test made false, and separately the `queued` status dropped from the loop; 6 and 7,
+  their refusals turned into a print; 9, `scrub` turned into `cat` (the id reached log and terminal, and
+  the run ended 1 on its own search; `mask` alone is a backstop whose removal changes nothing seen);
+  10, the failed read made a print, and separately AWS's words dropped from the message; 11, the count
+  test made always true; 12, the orphan listing made never print; 13, the snapshot made never taken, and
+  separately the value check widened to 2; 14, `UiBucket` taken out of the new `BY_HAND` list in
+  `destroy.sh`; 15, `workflows_of` matching any `environment:` line. Beyond the rows: a new `BY_HAND`
+  line in `destroy.sh` is the list row 14 reads; row 2 is held with no test switch and really refuses;
+  row 12 asks no name and changes no workflow, as step 1 chose; row 1's "before any call" check was not
+  red alone, since the mutated run died earlier without an aws call. `CopyBucket` and `RecordsVolume`
+  are shown by a synthetic template, the copy not having landed.
 - [ ] **3. The remake's cases, each seen red.** Rows 16 to 20, the same way. *Done when:* as in
   step 2. **About 11 min.**
 - [ ] **4. The runbook.** In `ops/README.md`: two "At a glance" rows, two rows in "On production"

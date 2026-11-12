@@ -3280,6 +3280,7 @@ jq -nc '["AWS::EC2::Subnet", "AWS::EC2::Instance", "AWS::EC2::SecurityGroup", "A
 jq -nc '{State: {Name: "running"}, InstanceType: "t4g.nano", SubnetId: "subnet-0aaa", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge"}], BlockDeviceMappings: [{DeviceName: "/dev/xvda", Ebs: {VolumeId: "vol-0root", DeleteOnTermination: false}}]} | {Reservations: [{Instances: [.]}]}' >"$FX/box.json"
 jq -nc '[{id: "eni-1", d: "box interface", i: "i-0box"}, {id: "eni-2", d: "AWS Lambda VPC ENI-credo-ridge-bff", i: null}]' >"$FX/enis.json"
 jq -nc '{Volumes: [{VolumeId: "vol-0root", State: "available", Attachments: []}]}' >"$FX/vol.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0orph", Size: 8, VolumeType: "gp3", Encrypted: true, CreateTime: "2026-11-08T00:00:00Z"}]}' >"$FX/orphans.json"
 fx_bad=''
 for f in "$FX"/*.json; do jq -e . "$f" >/dev/null 2>&1 || fx_bad="$fx_bad $(basename "$f")"; done
 check "the stand-ins' fixtures all parse as JSON" "" "$fx_bad"
@@ -3299,6 +3300,10 @@ case "$*" in
   *"describe-instances --instance-ids"*"Tags[?Key"*) printf 'ridge\tsubnet-0aaa\n' ;;
   *"describe-instances --instance-ids"*"State.Name"*) if [ -e "$FAKE_STATE/box.gone" ]; then echo terminated; else echo running; fi ;;
   *"describe-instances --instance-ids"*) cat "$FX/box.json" ;;
+  *"ec2 create-snapshot"*) echo snap-0keep ;;
+  *"wait snapshot-completed"*) : ;;
+  *"describe-snapshots --snapshot-ids"*) echo completed ;;
+  *"ec2 describe-volumes --filters"*) cat "$FX/orphans.json" ;;
   *"describe-snapshots"*) echo 0 ;;
   *"describe-network-interfaces"*) cat "$FX/enis.json" ;;
   *"s3api head-bucket"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone ;;
@@ -3334,7 +3339,7 @@ case "$*" in
       jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ")) | map({name: .[0], path: (".github/workflows/" + .[0]), state: .[1]})' ;;
   "workflow disable "*) echo disabled_manually >"$FAKE_STATE/wf.$3" ;;
   "workflow enable "*) echo active >"$FAKE_STATE/wf.$3" ;;
-  "run list"*) if [ -n "${FAKE_RUN:-}" ] && [[ "$*" == *in_progress* ]]; then echo '[{"databaseId":1,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/1"}]'; else echo '[]'; fi ;;
+  "run list"*) if [ -n "${FAKE_RUN:-}" ] && [[ "$*" == *in_progress* ]]; then echo '[{"databaseId":1,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/1"}]'; elif [ -n "${FAKE_RUN_QUEUED:-}" ] && [[ "$*" == *queued* ]]; then echo '[{"databaseId":2,"workflowName":"seed","status":"queued","url":"https://example.test/run/2"}]'; else echo '[]'; fi ;;
   *) echo "stand-in gh: unknown: $*" >&2; exit 1 ;;
 esac
 STANDIN
@@ -3349,6 +3354,23 @@ cycle_run() { # <state name> <initial workflow state> <typed text> <script> <arg
   RC=0
   (cd "$CYC/repo" && PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 bash "ops/$1" "${@:2}") <<<"$typed" >"$S/out" 2>&1 || RC=$?
 }
+cycle_case() { # <state name> <initial workflow state> <typed text> <script> <args…>: as cycle_run, with CASE_FX (fixtures), CASE_SETUP (run in the state folder first), CASE_ENV (KEY=VALUE words) and CASE_NOTTY (set: no test switch)
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=${CASE_FX:-$FX}
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  if [ -n "${CASE_SETUP:-}" ]; then (cd "$S" && eval "$CASE_SETUP"); fi
+  RC=0
+  (
+    cd "$CYC/repo"
+    export PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x
+    unset OPS_TEST_NO_TTY
+    [ -n "${CASE_NOTTY:-}" ] || export OPS_TEST_NO_TTY=1
+    for kv in ${CASE_ENV:-}; do export "${kv?}"; done
+    bash "ops/$1" "${@:2}"
+  ) <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
 cycle_run destroy-whole active ridge destroy.sh ridge
 check "8: the destroy on a whole ridge: exit 0, its verdict, the log ending on its exit" "0 1 == exit 0" \
   "$RC $(grep -c '^== verdict: ridge is destroyed, ci.yml and seed.yml are off$' "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
@@ -3358,6 +3380,78 @@ check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is de
   "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml") $(find "$CYC/repo/.github/workflows" -type f | wc -l | tr -d ' ')"
 check "  the account id is in neither the log nor the terminal" 0 "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
 check "  the bucket's three deletes were counted against the three files" 1 "$(grep -c '^   AWS reported 3 delete(s); 3 file(s) were counted before$' "$OPS_LOG_DIR"/*.log || true)"
+echo "== the destroy's guards, each on its own case (rows 1 to 7 and 9 to 14)"
+destroy_calls() { cat "$S/aws.calls" "$S/gh.calls" 2>/dev/null | grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack|delete-log-group|workflow disable|create-snapshot' || true; }
+wf_states() { echo "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"; }
+# rows 4, 9 and 13 read the whole run above (the state folder and logs of destroy-whole are still the current ones)
+check "4: it disabled ci.yml and seed.yml, in that order, and nothing else" "gh workflow disable ci.yml,gh workflow disable seed.yml," \
+  "$(grep '^gh workflow disable' "$S/gh.calls" | sed 's/ --repo.*//' | tr '\n' ',')"
+check "  after the typed name, never before" "after" \
+  "$(awk '/^   typed: /{t=NR} /^   disabling /{if(!d)d=NR} END{print (t&&d&&t<d)?"after":"not after"}' "$OPS_LOG_DIR"/*.log)"
+check "  and it deleted no workflow file" 0 "$(grep -cE 'workflow delete|api .*DELETE|workflows/' "$S/gh.calls" || true)"
+check "9: the account id is in neither the log nor the terminal, and the listing's twelve digits were hidden" "0 0 yes" \
+  "$(grep -cF "$ACCT" "$OPS_LOG_DIR"/*.log || true) $(grep -cF "$ACCT" "$S/out" || true) $([ "$(grep -c '<12 digits>' "$OPS_LOG_DIR"/*.log || true)" -ge 1 ] && echo yes || echo no)"
+check "13: without the switch no snapshot is taken" 0 "$(grep -c 'create-snapshot' "$S/aws.calls" || true)"
+
+cycle_case destroy-crest active ridge destroy.sh crest
+check "1: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: destroy.sh destroys ridge alone' "$S/out" || true)"
+check "  before any aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_NOTTY=1 cycle_case destroy-notty active ridge destroy.sh ridge
+check "2: without a terminal it refuses, saying so" "1 1" "$RC $(grep -c '^error: no terminal on the input' "$S/out" || true)"
+check "  and made no aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+cycle_case destroy-wrong active nope destroy.sh ridge
+check "3: a typed word other than ridge ends it, saying nothing was changed" "1 1" "$RC $(grep -c "^== STOPPED: the typed name was not 'ridge'" "$S/out" || true)"
+check "  with no workflow disabled" "active active active" "$(wf_states)"
+check "  and nothing deleted" 0 "$(destroy_calls)"
+CASE_ENV=FAKE_RUN=1 cycle_case destroy-running active ridge destroy.sh ridge
+check "5: a run in progress stops it before the name is asked" "1 1 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true)"
+check "  with no workflow disabled and nothing deleted" "active active active 0" "$(wf_states) $(destroy_calls)"
+CASE_ENV=FAKE_RUN_QUEUED=1 cycle_case destroy-queued active ridge destroy.sh ridge
+check "  a queued run stops it the same way" "1 1 active active active 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(destroy_calls)"
+FX6=$CYC/fx-strange
+cp -R "$FX" "$FX6"
+jq -c '.StackResourceSummaries += [{ResourceType: "AWS::SNS::Topic", LogicalResourceId: "Odd", PhysicalResourceId: "odd", ResourceStatus: "CREATE_COMPLETE"}]' "$FX/res.json" >"$FX6/res.json"
+CASE_FX=$FX6 cycle_case destroy-strange active ridge destroy.sh ridge
+check "6: a type origin/main's env.yml does not declare is refused, naming it" "1 1" "$RC $(grep -c '^== STOPPED: the stack holds resources of a type env.yml does not declare: AWS::SNS::Topic Odd' "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+FX7=$CYC/fx-env
+cp -R "$FX" "$FX7"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Env" then .ParameterValue = "crest" else . end)' "$FX/desc.json" >"$FX7/desc.json"
+CASE_FX=$FX7 cycle_case destroy-env active ridge destroy.sh ridge
+check "7: a stack whose Env parameter is not ridge is refused" "1 1" "$RC $(grep -c "^== STOPPED: stack ridge has parameter Env='crest', not 'ridge'" "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+CASE_ENV=FAKE_LIST_FAIL=1 cycle_case destroy-listfail active ridge destroy.sh ridge
+check "10: a failed read of the bucket after emptying stops before the stack delete" "1 0" "$RC $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+check "  and AWS's own words are in the log, the account id not" "1 0" "$(grep -c 'AccessDenied' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+CASE_ENV=FAKE_RM_SHORT=1 cycle_case destroy-short active ridge destroy.sh ridge
+check "11: two deletes against three files counted stops before the stack delete, saying so" "1 1 0" \
+  "$RC $(grep -c '^== STOPPED: bucket ridge-uibucket-abc: 2 delete(s) reported against 3 file(s) counted before' "$S/out" || true) $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+FX12=$CYC/fx-nostack
+cp -R "$FX" "$FX12"
+jq -nc '{StackSummaries: [{StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX12/stacks.json"
+CASE_FX=$FX12 CASE_SETUP='touch box.gone' cycle_case destroy-nostack active ridge destroy.sh ridge
+check "12: with no stack and no ridge box it ends 0 on its own verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c "^== verdict: ridge's stack and box were already gone" "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it lists the unattached disk, asks no name and changes no workflow" "1 0 active active active" \
+  "$(grep -c 'vol-0orph' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(wf_states)"
+check "  and deletes nothing" 0 "$(destroy_calls)"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=1 cycle_case destroy-keep active ridge destroy.sh ridge
+check "13: RIDGE_KEEP_DISK_SNAPSHOT=1 takes one snapshot, before the box goes, and the run ends 0" "0 create-snapshot,terminate-instances," \
+  "$RC $(grep -oE -e 'create-snapshot|terminate-instances' "$S/aws.calls" | tr '\n' ',')"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=2 cycle_case destroy-keep2 active ridge destroy.sh ridge
+check "  a value but 0 or 1 is refused before any call" "1 1 gone" "$RC $(grep -c '^error: RIDGE_KEEP_DISK_SNAPSHOT must be 0 or 1' "$S/out" || true) $(file_state "$S/aws.calls")"
+# unlisted_keepers <template json> <the destroy's list>: every resource a stack delete keeps, and every bucket, that the list lacks
+unlisted_keepers() {
+  jq -r --arg list "$2" '.Resources | to_entries[]
+    | select((.value.DeletionPolicy // "" | IN("Retain", "RetainExceptOnCreate", "Snapshot")) or .value.Type == "AWS::S3::Bucket")
+    | .key | select(. as $k | ($list | split(" ") | index($k)) == null)' "$1" | tr '\n' ' ' | sed 's/ $//'
+}
+BY_HAND_LIST=$(sed -n 's/^BY_HAND="\(.*\)"$/\1/p' "$OPS_DIR/destroy.sh")
+check "14: the template's keepers read as JSON are the box and the UI bucket (so the list below is read from something)" "Box UiBucket" "$(unlisted_keepers "$WORK/env.json" "")"
+check "  every env.yml resource a stack delete keeps, and every bucket, is in the destroy's list" "" "$(unlisted_keepers "$WORK/env.json" "$BY_HAND_LIST")"
+jq '.Resources.CopyBucket = {Type: "AWS::S3::Bucket", DeletionPolicy: "Retain"} | .Resources.RecordsVolume = {Type: "AWS::EC2::Volume", DeletionPolicy: "Snapshot"}' "$WORK/env.json" >"$WORK/env-copy.json"
+check "  and a template with a retained bucket and a snapshotted volume added names both" "CopyBucket RecordsVolume" "$(unlisted_keepers "$WORK/env-copy.json" "$BY_HAND_LIST")"
+
 cycle_run remake-whole disabled_manually '' remake.sh ridge
 check "18: the remake on a stack that is down: exit 0, ending == green then == exit 0" "0 == green == exit 0" \
   "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | tr '\n' ' ' | sed 's/ $//')"
