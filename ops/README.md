@@ -56,7 +56,7 @@ name its stack `ridge`.
 | `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
 | `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
-| `ops/check.sh` | works, reads only | no key off the box, no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, layer four's reads and the six reads that need no client stay |
+| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, layer four's reads and the six reads that need no client stay |
 | `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |

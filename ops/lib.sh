@@ -182,6 +182,9 @@ main_synced() {
 # (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
 # never be named like one of these.
 INVENTED_ENVS="ridge"
+# REAL: 1 once real_ok has run on an unlisted environment. Set to 0 here, before any environment is read
+# by a script, so a stray REAL=1 in a shell or a workflow's env cannot narrow ridge's check.
+REAL=0
 
 # is_invented <env>: succeeds when the environment is listed in INVENTED_ENVS.
 is_invented() {
@@ -802,7 +805,14 @@ bff_rules_verdict() {
     then "yes" else "no" end' <<<"$1"
 }
 
-# function_network_verdict <get-function-configuration> <subnet> <group> → yes, or no: in ridge's
+# BFF_FN_QUERY: the only fields of the function's configuration the check reads, as --query. The
+# configuration's Environment.Variables hold the BFF's two access keys, so no read takes it whole: the
+# names come as a list and the two values the check compares are the non-secret ones (APP_ORIGIN,
+# C_STORAGE_URL). No key value reaches the shell, the here-strings below, or a temp file, on any environment.
+# shellcheck disable=SC2034,SC2016 # check.sh reads it; the backticks are JMESPath's literal, not a substitution
+BFF_FN_QUERY='{VpcConfig: VpcConfig, Description: Description, Names: keys(Environment.Variables || `{}`), AppOrigin: Environment.Variables.APP_ORIGIN, Url: Environment.Variables.C_STORAGE_URL}'
+
+# function_network_verdict <the function, read by BFF_FN_QUERY> <subnet> <group> → yes, or no: in ridge's
 # subnet, under the BFF's group alone
 function_network_verdict() {
   jq -r --arg s "$2" --arg g "$3" \
@@ -812,16 +822,21 @@ function_network_verdict() {
 # BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
-# function_env_names <get-function-configuration> → the names of its variables, sorted and comma-joined;
-# values are never read here
+# function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
+# comma-joined; no value is in what it reads
 function_env_names() {
-  jq -r '(.Environment.Variables // {}) | keys | join(",")' <<<"$1"
+  jq -r '(.Names // []) | sort | join(",")' <<<"$1"
 }
 
-# function_origin_verdict <get-function-configuration> <the app's address> → yes, or no: the function's
-# APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
+# function_origin_verdict <the function, read by BFF_FN_QUERY> <the app's address> → yes, or no: the
+# function's APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
 function_origin_verdict() {
-  jq -r --arg a "${2%/}" 'if (.Environment.Variables.APP_ORIGIN // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+  jq -r --arg a "${2%/}" 'if (.AppOrigin // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+}
+
+# function_url <the function, read by BFF_FN_QUERY> → its C_STORAGE_URL, empty when it holds none
+function_url() {
+  jq -r '.Url // empty' <<<"$1"
 }
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four

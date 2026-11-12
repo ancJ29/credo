@@ -155,13 +155,14 @@ else
   bff_sg=$(aws ec2 describe-security-groups --group-ids "$BFF_GROUP" --output json)
   expect "the BFF's group sends to c-storage's port on the box's group alone, and admits nothing" yes \
     "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT")"
-  # The function's whole configuration holds its keys: it stays in a variable and is read by jq, never printed.
-  fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --output json)
+  # The function's configuration holds its two access keys, so only the fields BFF_FN_QUERY names are
+  # read: no key value reaches this shell, on any environment (open item 50).
+  fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query "$BFF_FN_QUERY" --output json)
   expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
   expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
   expect "the function's APP_ORIGIN is the app's address, which its passkeys are bound to" yes "$(function_origin_verdict "$fn" "$APP_ADDRESS")"
   expect "the function reaches c-storage at the box's private address" yes \
-    "$([ "$(jq -r '.Environment.Variables.C_STORAGE_URL // empty' <<<"$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"
+    "$([ "$(function_url "$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"
   fn_commit=$(jq -r '.Description // empty' <<<"$fn")
   pab=$(aws s3api get-public-access-block --bucket "$UI_BUCKET" --output json)
   policy=$(aws s3api get-bucket-policy --bucket "$UI_BUCKET" --output json)

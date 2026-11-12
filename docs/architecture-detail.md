@@ -240,7 +240,7 @@ CloudFormation, and only through change sets — `create-change-set`, print ever
 `execute-change-set` (`#L204`, `#L242`) — run by a human from a terminal, never by CI (`#L8`). A
 change set that removes or replaces anything is **refused by default** and needs the human to name
 the logical id, because a replaced box deletes its disk and the database with it
-([`ops/unsafe-changes.jq#L5`](../ops/unsafe-changes.jq#L5), [`ops/stack.sh#L225`](../ops/stack.sh#L225)).
+([`ops/unsafe-changes.jq#L5`](../ops/unsafe-changes.jq#L5), the `unsafe=$(jq` line of [`ops/stack.sh`](../ops/stack.sh)).
 Templates are read from `origin/main`, not the working copy (`#L140`). There is no CDK, SAM or
 Terraform anywhere.
 

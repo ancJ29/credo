@@ -476,6 +476,8 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 `ops/lib.sh#L121`, `#L126`, `#L164`, `#L497-L498`, `#L702-L703`: the keys the end-of-run search looks for are on grep's argument list, and a here-string is written to a temp file by bash 3.2 (the Mac's). *Fix:* one lib.sh change: split without here-strings and `grep -f /dev/stdin` on a pipe, as `search_extra` in `ops/root-password.sh` does.
 
+*Narrowed 2026-11-12 (the safe scripts' fix pass):* the deploy check no longer reads the BFF's function settings whole, whose variables hold its two access keys and went through here-strings on every environment, production's included; it reads only the names and two non-secret values (`BFF_FN_QUERY` in `ops/lib.sh`), and a case holds that the stand-in refuses a read without that query. What stays is the box's key files read through here-strings (`read_keys`, `bff_env_read`) and the search's argument list.
+
 *Trigger:* the next lib.sh change.
 
 ## 51. The leak advice "nothing to replace" is wrong for a password — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I3)
@@ -837,22 +839,6 @@ About 119.4 s summed over 47 tests, as long as the whole package. It met the pla
 
 `scripts/src/demo/apply-support.ts#L25-L26` keeps the handle in two module-level `let`s, written at `#L31-L34` and read at `#L48`. Harmless today, and ruled out by the reviewer rather than assumed: `scripts/vitest.config.ts` sets no `isolate`, `pool` or `fileParallelism` and the script is a plain `vitest run --coverage`, so each of the ten files gets its own fork and module instance. The one break is a second `useCStorage()` in one file: the second `beforeAll` would overwrite the handle and the single `afterAll` would leak a c-storage process and a temp folder. *Fix if ever wanted:* return the handle instead of closing over it.
 
-
-## 130. `ops_match_main` compares `ops/` alone, so an uncommitted edit under `scripts/` can run against a client's live data — the machine; `[FIXED]` (tree guard, `138571c4`, 2026-11-07, High; was *parked*, the client-readiness read)
-
-*Fixed in the tree guard (`687d8161` to `138571c4`, recap `docs/recaps/2026-11-07-tree-guard.md`):* `ops_match_main` now compares every path `ci.yml`'s push trigger deploys on, read from the base's own `ci.yml`, plus `.gitignore`, so the first fix below was taken and the second rejected (it leaves four scripts uncovered and passes a committed edit). As filed: `ops/lib.sh#L185-L198` refuses unless `ops/` here is as reviewed, "so a script that acts under the human's AWS
-session is always a reviewed one" — and it compares `ops/` and nothing else. But `ridge_cli` runs
-`scripts/src/ridge-main.ts` out of the working copy (`ops/lib.sh#L612-L618`), and that package holds the
-client-delete command. In `main` the command is safe: `untenant` refuses any code that is not the deploy
-check's own (`scripts/src/ridge.ts#L126-L134`), saying in its comment that it has none of the console's gates.
-Nothing proves the `scripts/` on disk is that `main`. `ops/seed.sh#L41` and `ops/root-password.sh#L89` close it
-for themselves with `git diff --quiet HEAD` ("the write would run code /health cannot name");
-`ops/check.sh`, `ops/app.sh` and `ops/operator.sh` do not, and `check.sh` calls `untenant` from
-`cleanup_extra` on every exit path including a refusal (`ops/check.sh#L36-L47` through `ops/lib.sh#L106`).
-So an uncommitted edit, or a worktree on a branch, runs against whatever environment the script is given with
-the box's keys. *Fix:* either `ops_match_main` covers `scripts/` as well, or the three scripts gain the
-clean-tree check the other two already have. *Severity:* High against a client's stack; on ridge it risks demo
-data alone. *Trigger:* before any environment but ridge exists.
 
 ## 132. A client's root password cannot be set from a terminal at all — the machine proposes, the human decides what a client's stack may receive; *parked* until a client's own stack (the client-readiness read, 2026-11-07, narrowed 2026-11-12)
 
@@ -1435,6 +1421,26 @@ The one teardown, on 2026-11-08, was a one-off outside git, read by a second mod
 
 Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
 
+## 322. The stance test reads only calls at column 0, so a new script that calls `main_synced` indented is skipped without a word — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh`, the stance section: `grep -qE '^main_synced( |$)' "$f" || continue` selects the scripts it checks, and the awk keys on `^log_start `, `^(refuse_real|real_ok) ` and `^main_synced` too. A tenth script whose `main_synced` sits inside an `if` or a function, or after `step "…";` on one line, is never counted, and the control row (`stance_n -ge 9`) stays green with the nine. Today all nine call it at column 0. *Fix:* select every file outside `lib.sh` that calls `main_synced` at any indentation, and fail one whose call is not at column 0; the README's "every such script" then reads true. *Trigger:* the next script that reaches an environment, or the three later lanes' scripts.
+
+## 323. Two rows of the check's case 7 cannot go red — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh`, case 7: "no Bruno file is written" counts `bruno_files`, which is 0 after every run in any mode, because `ops/check.sh` deletes the file in line and `on_exit`'s `bruno_env_remove` deletes it on every exit; only the `skipped:` half of the row and the `bru.calls` row hold the claim. "The log holds neither key" is 0 in ridge's full run too, since the keys are masked there: it checks that the log is clean, not which mode ran. *Fix:* make the stand-in clone's `bruno/environments` unwritable for the two reads-only runs, so a write would die and turn the run red; or drop that half of the row and label the key row as the log check it is. *Trigger:* the next change to the check's reads-only mode.
+
+## 324. Ridge's full check run pins no read, so the composition in `ops/check.sh` that picks `edge_reads` is held by nothing in the run — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/test.sh` (the check's full run, the row asserting calls) and `ops/check.sh`'s last step: changing `edge_reads` to `edge_reads_client` there would drop the six reads from ridge's deploy check and every row would stay green; the function-level rows call `edge_reads` directly, not `check.sh`. *Fix, cheap half:* `$(six_reads "$S/out")` = 6 joins the row (`edge_reads_client`'s reds are `expect` lines, not `die`s). *Fix, verdict half:* the stand-in edge answers `check-t` alone while `check.sh` mints `check-<stamp>`; a mode in `edge.py` that accepts any `check-<digits>t<digits>z` code, named `Check <code>`, lets the row assert `== green`. *Trigger:* the next change to `edge_reads` or to the check's last step.
+
 ## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
 
 `ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
+
+## 332. `release.sh`'s and `app.sh`'s reasons claim more than the code holds on a real environment — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+"It ships main's commits alone" (the `real_ok` line of `ops/release.sh` and of `ops/app.sh`): set by hand outside the job, `RELEASE_BINARY` or `APP_BUNDLE` and `APP_UI_DIR` ship any file; only HEAD must be on main, the release does not check the file at all, and the app's ship checks only that the bundle carries HEAD's sha. `real_ok` refuses the tests' two switches so the code run there is the reviewed tree's, but not these two job switches: a larger form of item 143's hole, the shipped code itself. And "changes nothing else" in `ops/app.sh`: on a box without them it makes the BFF's service and `bff.env`, and it rewrites the function's environment at every run. *Fix:* on a real environment refuse those variables unless `GITHUB_ACTIONS` is `true`, or name them in item 296; word app.sh's reason as what it does. *Trigger:* the production lane's plan (item 296).
+
+## 333. Two sentences say a save is proved on ridge first, which no code holds — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
+
+`ops/README.md`, "On production" ("A save is proved by ridge's full check, on the same commit, before a production check reads") and `docs/client-readiness.md`'s "Only reads" bullet say it as fact. Nothing orders the two checks, and item 296 says the by-hand path can ship a commit ridge never ran. *Fix:* word both as the production lane's rule ("must be proved first; item 296"). *Trigger:* the production lane's plan (item 296).

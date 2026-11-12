@@ -1836,19 +1836,22 @@ check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules
 check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a","APP_ORIGIN":"https://app.example.test"}}}'
+# The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'
+check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
+check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
 check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
 check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
-  "$(function_env_names "$(jq -c '.Environment.Variables.X_SUPER_ADMIN_KEY = "z"' <<<"$fn")")"
+  "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
   "$(function_origin_verdict "$fn" https://app.example.test) $(function_origin_verdict "$fn" https://app.example.test/)"
 check "  another address, an origin with a path, and no origin at all are refused" "no no no no" \
-  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.Environment.Variables.APP_ORIGIN)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
+  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.AppOrigin)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
 
 pab='{"PublicAccessBlockConfiguration":{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}}'
 statement='{"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::b/*","Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::123:distribution/E1ABC"}}}'
@@ -2013,7 +2016,7 @@ export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://api-test-host.invalid
 rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
 jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
-  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .Environment.Variables.APP_ORIGIN = $app | .Environment.Variables.C_STORAGE_URL = $url' <<<"$fn" >"$CHK/fn.json"
+  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
 policy_of "[$statement]" >"$CHK/policy.json"
 # aws: layer four's reads and the box's group on files; the stack gains the two outputs the base lacks; the rest is the base stand-in's
@@ -2027,7 +2030,9 @@ case "$*" in
   *"describe-instance-connect-endpoints"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo '["sg-ep"]' ;;
   *"describe-security-groups --group-ids sg-0bff"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/bff-sg.json" ;;
   *"describe-security-groups"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/box-rules.json" ;;
-  *"lambda get-function-configuration"*"--output json"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/fn.json" ;;
+  *"lambda get-function-configuration"*"--query {VpcConfig: VpcConfig,"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/fn.json" ;;
+  # the whole configuration holds the BFF's two keys: a read without the check's --query is refused here
+  *"lambda get-function-configuration"*"--output json"*) echo "stand-in aws: the function's whole configuration is never read: $*" >&2; exit 1 ;;
   *"s3api get-public-access-block"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/pab.json" ;;
   *"s3api get-bucket-policy"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/policy.json" ;;
   *) exec "$CHK_BASE/aws" "$@" ;;
@@ -2104,6 +2109,9 @@ chk_run full check.sh ridge
 check "  without the flag ridge's check is today's: the keys are read, the collection runs, a client is made, swept and deleted" "1 1 1 clear-checks,tenant,untenant" \
   "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(chk_has '^ok   bru run exits: 0' "$S/out") $(paste -sd, "$S/ridge.calls")"
 check "  and prints nothing about real data" 0 "$(chk_has 'may hold real data' "$S/out")"
+REAL=1 chk_run strayreal check.sh ridge
+check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys are read, a client is made and deleted" "1 1 clear-checks,tenant,untenant" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
 check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"

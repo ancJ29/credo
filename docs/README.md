@@ -66,7 +66,7 @@ reach us" faster than reading anything.
   500 or more ([`bff/src/app.ts#L94`](../bff/src/app.ts#L94)). Both groups keep 14 days
   ([`#L184`](../ops/env.yml#L184), [`#L191`](../ops/env.yml#L191)).
 - **An ops script's refusal and its log.** A refusal states its own cause and its remedy
-  ([`ops/lib.sh#L289-L290`](../ops/lib.sh#L289) is the shape), and every script's log is in `logs/`
+  (`rolled_back_refusal` in [`ops/lib.sh`](../ops/lib.sh) is the shape), and every script's log is in `logs/`
   in the credo root, ending on `== exit <n>` ([`ops/README.md`](../ops/README.md)). The machine
   reads the log; nothing needs pasting.
 - **Nothing shows a trend.** CloudFront keeps no access log and neither template configures

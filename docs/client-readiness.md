@@ -199,15 +199,15 @@ true of the door and not necessarily of the data. Open item 133.
 
 The keys are made well. c-storage's internal key and super-admin key are 32 bytes from the kernel,
 written root-only, and **a release never rewrites the file** — a release that found them changed
-refuses ([`ops/release.sh#L91-L109`](../ops/release.sh#L91),
-[`ops/lib.sh#L487-L490`](../ops/lib.sh#L487)). The BFF's own service code and access key are made
-once the same way ([`ops/app.sh#L99-L114`](../ops/app.sh#L99)): "present, left as it is."
+refuses (the step "the keys, made once" in [`ops/release.sh`](../ops/release.sh) and
+`keys_unchanged` in [`ops/lib.sh`](../ops/lib.sh)). The BFF's own service code and access key are made
+once the same way (the `bff.env` step of [`ops/app.sh`](../ops/app.sh)): "present, left as it is."
 
 The consequence is that **nothing in `ops/` rotates any of the four.** There is no script, and the
 two the BFF needs sit in the function's environment as plain variables
-([`ops/app.sh#L131-L137`](../ops/app.sh#L131)), so anyone in the account who can read a function's
-configuration reads them — `ops/check.sh#L140` says so in its own comment while taking care not to
-print them. Rotating by hand means editing the box's file, re-pushing the function's environment,
+(`ops/app.sh` writes them through its `bff-env.json`), so anyone in the account who can read a function's
+configuration reads them — the comment above `fn=$(aws lambda get-function-configuration` in `ops/check.sh`
+says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/lib.sh`), never the keys. Rotating by hand means editing the box's file, re-pushing the function's environment,
 and re-registering the service; the order is not written down anywhere. Open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
@@ -225,15 +225,15 @@ skipped two deploys, and its comment now says so: "25, not 15 … The cap was sk
 catching a hang" (`.github/workflows/ci.yml`'s `app` job, the comment above its `timeout-minutes`).
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
-is a revert pushed to main ([`ops/release.sh#L116`](../ops/release.sh#L116)). c-storage ships first
-and only its renames are atomic ([`#L117-L121`](../ops/release.sh#L117)), so a failure before them
+is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first
+and only its renames are atomic (the one `box` command that follows that comment), so a failure before them
 leaves the box running what it ran and a failure after leaves the new binary installed. The BFF's
 description and environment are written *before* its code
-([`ops/app.sh#L135-L143`](../ops/app.sh#L135)), which is [open item 29](open-items.md): a stop
+(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)), which is [open item 29](open-items.md): a stop
 between the two leaves the new commit's name on old code, and the seed's own precondition then
-passes against a BFF a commit behind ([`ops/seed.sh#L75-L76`](../ops/seed.sh#L75)). The UI is safer
+passes against a BFF a commit behind (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)). The UI is safer
 than it looks — assets go first and `index.html` last
-([`ops/app.sh#L152-L155`](../ops/app.sh#L152)) and the deploy role cannot delete from the bucket
+(the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
 ([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
@@ -464,10 +464,10 @@ care.**
   [`scripts/src/fake.test.ts#L42-L58`](../scripts/src/fake.test.ts#L42) builds *both* bundles in one
   test and asserts the served one holds none of `fake.session`, `Minh Phát`, `fake-credential` or
   `demo-join-link` — the fake's own handle, the invented company's name, the fake authenticator's
-  credential and the invited operator's link. [`ops/app.sh#L68`](../ops/app.sh#L68) uploads
-  `dist/app`; the fake builds to `dist/fake`, a folder of its own.
+  credential and the invited operator's link. [`ops/app.sh`](../ops/app.sh) uploads
+  `dist/app` (its `ui=` assignments); the fake builds to `dist/fake`, a folder of its own.
 - **The demo seed cannot run anywhere but ridge, and the refusal carries its reason.**
-  [`ops/seed.sh#L36`](../ops/seed.sh#L36) — "seed.sh seeds ridge alone: a client's stack must never
+  [`ops/seed.sh`](../ops/seed.sh)'s `refuse_real` — "seed.sh seeds ridge alone: a client's stack must never
   receive demo data". It also makes no client and no password, which its header says in its own
   words.
 - **No seeded root password exists anywhere.** A new client's root gets a freshly minted random
@@ -481,11 +481,11 @@ care.**
 
 So **a real client's stack would carry no demo clients, no demo orders and no seeded password.** One
 thing does reach a deployment, and the other half of this page files it: the deploy check makes a
-real client in the stack it checks and deletes it on the way out
-([`ops/check.sh#L174-L180`](../ops/check.sh#L174), [open items 131 and 159](open-items.md)), so on a
-client's own stack a throwaway client would be written into the client's own records on every
-deploy, and a failed delete leaves it listed behind a `WARN` nothing reads (the next deploy's
-sweep clears it once it is two hours old).
+real client in the stack it checks and deletes it on the way out, but only on ridge: on a
+client's own stack the check makes no client (`ops/check.sh` takes its reads-only branch there, the
+step "through the app's address, as a partner reaches it"), so nothing is written into the client's
+records. On ridge a failed delete leaves the client listed behind a `WARN` nothing reads (the next
+deploy's sweep clears it once it is two hours old; [open item 159](open-items.md)).
 
 ### What must be true before a real client's data goes in
 
