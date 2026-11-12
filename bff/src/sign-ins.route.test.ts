@@ -500,9 +500,9 @@ describe('C: An email names the person by id in its own record', () => {
     reads.length = 0;
     expect(await status(t, 'lan@x.example', lan.password)).toBe(200);
 
-    expect(byCode).toHaveLength(4);
-    expect(reads).toHaveLength(5);
-    expect(new Set(reads).size).toBe(5);
+    expect(byCode).toHaveLength(5);
+    expect(reads).toHaveLength(6);
+    expect(new Set(reads).size).toBe(6);
   });
 
   it('C: An email whose person’s sign-in record names another person signs no one in', async () => {

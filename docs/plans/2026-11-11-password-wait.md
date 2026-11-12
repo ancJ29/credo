@@ -152,13 +152,22 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   specs test of `visual` named every screen against the spec lines, so it now exempts screen 12 by
   id until step 4 adds its line (step 4 empties that list); and the Vietnamese of screen 12's
   question went into `visual/site/questions-vi.json`, which the step did not name.
-- [ ] **2. The thinnest slice through the stack: the sign-in waits.** About 10 minutes, as the last
+- [x] **2. The thinnest slice through the stack: the sign-in waits.** About 10 minutes, as the last
   step that gave every route of one kind one behaviour. The record, its schema and its key in
   `shared/src/records.ts`; `bff/src/records/sign-in-wait.ts`, the count-first write and the clear,
   copying `rewriteSignIn`'s bounded loop; the sign-in route reading it after `accountOf` and before
   `checked` (`bff/src/app.ts#L326-L331`). Cases 1, 2, 3, 5, 7, 8, 14, 15. *Done when:* the checks
   of `shared` and `bff` end `== exit 0`, with the email test's counts raised to five and six, and
   the citation test exits 0.
+  *Done, 2026-11-12:* the sign-in waits through the real back end. The checks of `shared` and `bff`
+  each ended `== exit 0` on the committed tree, with the email test's counts at five and six and
+  coverage at 100 %; the citation test exited 0. Cases 1, 2, 3, 5, 7, 8, 14 and 15 were each seen
+  red on a one-line break (the refusal removed, the clear removed, the typed email counted in place
+  of the person's code, the wait read one try early, the key without its company's prefix, the key
+  without the hash) and put back. Differed from the step as written: the module takes the company's
+  client (`request.storage`) and `now`; two older tests that watch for removals now ignore the
+  sign-in's own clear of its wait; and case 12 (the 503 on a moved record) was added here, since
+  the module's coverage needed its line, so step 3 keeps cases 6, 9 to 11, 13 and 20.
 - [ ] **3. Hardened: one's own password, tries at once, a second back end, the seed.** About 25
   minutes: 20, as the last step that held every route of one behaviour by its own test, and 5 for
   the seed's check, a first run of its shape. Cases 6, 9 to 13 and 20, each seen red once by

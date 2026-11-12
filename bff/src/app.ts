@@ -32,10 +32,12 @@ import {
   type StoredUser,
   tenantConfigSchema,
   type UserView,
+  waitAfter,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import { createClient, listClients, ROOT_NAME } from './records/clients';
 import { type TenantStorage, tenantStorage } from './records/records';
+import { clearWait, countTry } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
 import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
@@ -332,6 +334,9 @@ export function buildApp({
     };
   }
 
+  /** The 429 of a name that must wait, in the shape `waitReplySchema` says. */
+  const waitError = (waitSeconds: number) => new HttpError(429, 'Wait', { waitSeconds });
+
   app.post(
     ROUTES.signIn,
     exempt('a sign-in changes no client’s data', forClient),
@@ -340,6 +345,8 @@ export function buildApp({
       const body = parse(signInRequestSchema, request.body);
       const typed = normaliseSignInName(body.name);
       const { name, found, handed } = await accountOf(request.storage, typed);
+      const counted = await countTry(request.storage, name, now);
+      if ('refused' in counted) throw waitError(counted.refused);
       // A person the root has not given a password yet has no sign-in to check against.
       const account = found?.user.passwordHash
         ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -348,7 +355,11 @@ export function buildApp({
       // One answer for an unknown name, a wrong password and a person who left: which part was
       // wrong is not said.
       const view = user ? await viewOf(request.storage, name, user, handed) : null;
-      if (!user || !view) throw new HttpError(401, 'Wrong name or password');
+      if (!user || !view) {
+        const seconds = waitAfter(counted.wrong);
+        throw seconds > 0 ? waitError(seconds) : new HttpError(401, 'Wrong name or password');
+      }
+      await clearWait(request.storage, name);
       const sessions = sessionsOf(request.storage);
       await endKept(request, sessions);
       const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
