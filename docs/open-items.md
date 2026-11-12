@@ -1442,3 +1442,15 @@ A row cited twice in one document is the one shape where two branches each remov
 ## 284. The memo's "only `resolveTenant` decides that" leaves out the operator's three acts — the machine; `[DEFERRED]` (the storage client that serves one company's review, reread 2026-11-12, Info)
 
 `docs/memo/bff.md`'s sentence on a client made for the wrong company says only `resolveTenant` in `bff/src/app.ts` decides which company a client serves. The operator's three acts also decide it, each for the client it makes from an id it has just read or minted: the root password route in `bff/src/routes/root-password.ts`, and `createClient` and `deleteClient` in `bff/src/records/clients.ts`. The memo's route tests cover them ("reaches one client only" in the delete and root password route tests), so nothing is unguarded; the sentence is short by three callers. *Fix:* "`resolveTenant`, and the operator's three acts for the client they make". *Trigger:* the next change to that memo section, or a fourth place that calls `tenantStorage`.
+
+## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+
+The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
+
+## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
+
+Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
+
+## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
+
+`ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.

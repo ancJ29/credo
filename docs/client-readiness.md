@@ -248,9 +248,9 @@ by the Mac's bash 3.2.
 ### The deploy, and the only route back
 
 The gate is four jobs and the deploy needs all four
-([`.github/workflows/ci.yml#L216`](../.github/workflows/ci.yml#L216)). The `app` job's cap was what
+(`.github/workflows/ci.yml`'s `deploy` job, its `needs`). The `app` job's cap was what
 skipped two deploys, and its comment now says so: "25, not 15 … The cap was skipping deploys, not
-catching a hang" ([`#L117-L119`](../.github/workflows/ci.yml#L117)).
+catching a hang" (`.github/workflows/ci.yml`'s `app` job, the comment above its `timeout-minutes`).
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
 is a revert pushed to main ([`ops/release.sh#L116`](../ops/release.sh#L116)). c-storage ships first
