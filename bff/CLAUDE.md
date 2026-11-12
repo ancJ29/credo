@@ -15,7 +15,9 @@ section per claim.
 - **A client's own difference is not coded here:** data a client owns goes in `extra`, which this
   package stores untouched ([the memo](../docs/memo/extra.md)).
 - **Storage is reached only through the client `bff/src/server.ts`'s `buildBff` makes;** there is
-  no `fetch` anywhere in `bff/src`, and a route never builds its own.
+  no `fetch` anywhere in `bff/src`, and a route never builds its own. A company's routes read and
+  write only through `request.storage`, the company's client `resolveTenant` makes with
+  `bff/src/records/records.ts`'s `tenantStorage`; a route module is handed no whole client.
 
 ## The directories of `bff/src`
 

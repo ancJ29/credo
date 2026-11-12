@@ -1,5 +1,5 @@
 # ops
-Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` runs `ops/gate.sh` from this folder and reads none of the rest · Ship: a push to `main` runs the release, the app's ship and the check in CI's job `deploy`
+Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` runs `ops/gate.sh` from this folder and reads none of the rest · Ship: a push to `main`, or a press of `ci` on `main`, runs the release, the app's ship and the check in CI's job `deploy`
 
 What a person or CI runs against ridge and the hosting account. Not product code.
 

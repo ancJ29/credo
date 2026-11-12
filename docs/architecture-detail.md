@@ -245,14 +245,14 @@ Templates are read from `origin/main`, not the working copy (`#L140`). There is 
 Terraform anywhere.
 
 **What CI does.** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) holds five jobs: four
-check jobs that run on every push and pull request — `check` (`make check` in c-storage, `#L56`),
-`e2e` (its Bruno collection against the built binary, `#L73`), `app` (`pnpm check`, `#L115`) and
-`ops` (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates, `#L153`) — and then,
-on a push to `main` only, `deploy` (`#L215`) in the `ridge` GitHub environment. That job ships **code, never stack
-shape** (`#L212`): c-storage's arm64 binary to the box over an Instance Connect tunnel
+check jobs that run on every push and pull request — `check` (`make check` in c-storage),
+`e2e` (its Bruno collection against the built binary), `app` (`pnpm check`) and
+`ops` (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates) — and then,
+on a push to `main` or a press of `ci` on `main` only, `deploy` in the `ridge` GitHub environment. That job ships **code, never stack
+shape** (`ci.yml`'s comment "Releases only: a template change stays the human's change set"): c-storage's arm64 binary to the box over an Instance Connect tunnel
 ([`ops/release.sh`](../ops/release.sh)), the BFF bundle to the one Lambda and the UI files to the one
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
-third-party code builds *before* the AWS role is assumed (`#L254`), and the role itself is narrow
+third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "The app's builds and installs run third-party code"), and the role itself is narrow
 to the point of naming the one function and the one instance
 ([`ops/env.yml#L444`](../ops/env.yml#L444)). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
