@@ -70,10 +70,10 @@ reach us" faster than reading anything.
   in the credo root, ending on `== exit <n>` ([`ops/README.md`](../ops/README.md)). The machine
   reads the log; nothing needs pasting.
 - **Nothing shows a trend.** CloudFront keeps no access log and neither template configures
-  tracing, an alarm, a metric filter or a dashboard — searched in
-  [`ops/env.yml`](../ops/env.yml) and [`ops/network.yml`](../ops/network.yml). A server that
-  stops therefore reaches no one, which is recorded and waiting on a signed client
-  ([open item 1](open-items.md)).
+  tracing, a metric filter or a dashboard — searched in
+  [`ops/env.yml`](../ops/env.yml) and [`ops/network.yml`](../ops/network.yml). The template does hold
+  four alarms to one topic and, given two Slack IDs, a channel for it; they reach no one until ridge's
+  stack is updated with the IDs ([the watch](../ops/README.md#the-watch), [open item 1](open-items.md)).
 
 ## The documents, and what each answers
 

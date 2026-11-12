@@ -84,6 +84,7 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | `ops/operator.sh`, `ops/root-password.sh` | Make the operator with a one-time join link; set a demo copy's root password, typed once and never shown. | ridge | in `main` | `ops/operator.sh ridge`; `ops/root-password.sh ridge <code>` | [`recaps/2026-11-02-ridge-root-password.md`](recaps/2026-11-02-ridge-root-password.md) |
 | `ops/legacy-capture.sh` | Signs in to the legacy app as its root and pictures the screens a file names, on a PC and a phone, opening only and never saving; for whoever compares the legacy with the new app. | the human's terminal only | on `legacy-capture`; run green 11-04 | `bash ops/legacy-capture.sh` (asks for the address, name and password) | [`recaps/2026-11-04-legacy-capture.md`](recaps/2026-11-04-legacy-capture.md) |
 | API access log | Every call to a client's API leaves one line in a 14-day log group (time, address, path, answer); a guard refuses a template that loses it. The address, measured once: three calls through the distribution on ridge (2026-11-08, 18:11) left three lines with one address, a public one outside AWS's published ranges and consistent with the caller's own, not an edge node; why is not established (item 157). Throttled calls (429) appear here only. | ridge (applied) | in `main` and live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`, exit 0), and three lines were read back from the log group at 18:12, each carrying all ten fields of the stage's format (the project's logs folder, `logs/20261108-1809-ridge-access-log-read.log`) | `/aws/apigateway/credo-ridge` | [`recaps/2026-11-08-access-log.md`](recaps/2026-11-08-access-log.md) |
+| The watch (four alarms, a topic, Slack) | Four alarms on an environment (the app's calls failing, the back end's errors, the back end refusing work, the box failing its check), each alarm and its return to normal sent to one topic, which AWS's Slack app carries into one channel when the stack is given the two Slack IDs; for the human. | ridge (not applied) | written in `ops/env.yml` and guarded in `ops/test.sh`, on `slack-alarm`; nothing forced yet | the Slack steps, then `ops/stack.sh env ridge` ([the watch](../ops/README.md#the-watch)) | [`plans/2026-11-11-slack-alarm.md`](plans/2026-11-11-slack-alarm.md) |
 
 ## Known gaps
 
@@ -93,8 +94,9 @@ The numbers are [open items](open-items.md).
    doubling to 15 minutes, and a right one is refused during the wait. It is counted per name, not
    per address, so one guesser trying many names meets only the door's throttle, and each invented
    name leaves a small record (open item 256).
-2. Nothing watches the server or sends an alert when it stops (open item 1), and the nightly backup
-   and its restore are not built (item 6); both wait for a signed client.
+2. Four alarms are written in `ops/env.yml` and reach no one until the Slack steps are done and ridge's
+   stack is updated with the two IDs ([the watch](../ops/README.md#the-watch), open item 1); the
+   nightly backup and its restore are not built (item 6), and wait for a signed client.
 3. A client's own production stack (item 4) and the public address in front of ridge's c-storage
    (item 13) are not built.
 4. The console's passkeys are tested in Chrome only, and adding one in Safari may be refused

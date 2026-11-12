@@ -162,8 +162,8 @@ distribution the line recorded one public address, outside AWS's published range
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
 connection and the template makes the API a CloudFront origin (`ops/env.yml#L388`); that was
-reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing watching the
-server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
+reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing yet telling anyone when the
+server stops ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
 Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
 so they leave nothing in the function's log and appear only in the stage's log, which is what this

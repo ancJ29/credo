@@ -12,9 +12,14 @@ such a trigger fires at that environment's stack, not at a stack for each client
 
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
 
-The old app counted each 5xx in its Lambda logs and posted it to a chat channel. Before the first
-client goes live, something must watch the BFF and the box; the machine proposes what watches,
-and where an alert lands is the human's (production).
+Written in `ops/env.yml`, guarded by `ops/test.sh` and not yet applied to ridge: four alarms (the
+API's `5xx`, the back end's `Errors` and `Throttles`, the box's `StatusCheckFailed`) send each alarm
+and its return to normal to one topic, and with a Slack workspace ID and a channel ID the stack makes
+AWS's Slack app carry the topic into one channel ([the runbook](../ops/README.md#the-watch), [the
+plan](plans/2026-11-11-slack-alarm.md)). Not built: the scheduled check that fails when the continuous
+copy lags or the disk is low, production's alarms (one more stack, the same four), and a spend alarm.
+Before the first client goes live the alarms must be applied and one forced; where an alert lands is
+the human's (production).
 
 ## 2. The plan's assumptions are unmeasured — *parked* until a review (the architecture plan, 2026-10-27)
 

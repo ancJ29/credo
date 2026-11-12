@@ -141,12 +141,20 @@ log read 1 to 2. 👤 is your act.
   red: the plan and the previous-value parameters); both put back, `git diff` holds no mutation. A lone
   `none` counts as given, so `none` with an ID is refused as one without the other; the template's
   patterns still check the shape.
-- [ ] **4. The runbook and the prose it makes false**: `ops/README.md` gains "The watch" and its row
+- [x] **4. The runbook and the prose it makes false**: `ops/README.md` gains "The watch" and its row
   in the table at its top: your Slack steps below, word for word; the stack run; the forced alarm; a
   workspace ID changed later replaces the channel's configuration, so that run takes `--take
   AlertsChannel`, which holds nothing to lose. `docs/products.md#L94` and open item 1
   (`docs/open-items.md#L13-L17`), whose "the old app counted each 5xx in its Lambda logs" matches
   neither tree, rewritten from what is built. *Done when:* the citation test at exit 0. **5.**
+  *Done, 2026-11-12:* `ops/README.md` gains "The watch" (your five Slack steps word for word, the
+  stack run with `--plan` first, the lone-ID refusal, `--take AlertsChannel` for a changed workspace ID,
+  the forced alarm) and its row in the table at the top; `docs/products.md` gains a row for the watch and
+  its known gap 2 now says the alarms are written and reach no one until the IDs are given; open item 1
+  is rewritten from the template's four alarms (the unfounded "Lambda logs" claim is gone), and the same
+  stale claim in `docs/README.md` and `docs/client-readiness.md` is corrected. The citation test ended at
+  exit 0 (32 tests passed, run alone), prettier at 0 over the five pages, and the added lines hold no
+  local path.
 - [ ] **5. Your two hand-offs**, one-offs in the credo root's `one-off/`, outside git, each tee'd to
   `logs/`. `<stamp>-watch-stack.sh [--plan]` asks for the two IDs at a prompt, checks their shape,
   and runs `ops/stack.sh env ridge` with them; it calls the script and copies none of it. `<stamp>-
