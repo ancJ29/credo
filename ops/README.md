@@ -28,6 +28,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
+| the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
 ## Before any step
@@ -93,7 +94,7 @@ working copy.
    - A stack that stays in `ROLLBACK_COMPLETE` (its creation did not complete and was rolled back, so
      it holds nothing) is deleted by hand in the console before the script is run again; the script
      stops and says so. A rolled-back creation's box is terminated, and `DeleteOnTermination: false`
-     (`ops/env.yml#L128`) leaves its empty root disk behind as an `available` volume, a few cents a
+     (`ops/env.yml#L151`) leaves its empty root disk behind as an `available` volume, a few cents a
      month: remove it. *Reasoned, not seen:* CloudFormation's deletion of the instance terminates it,
      so EC2's attribute governs (high confidence, never tried).
 
@@ -563,6 +564,49 @@ state, so release first.
 1. `ops/drill.sh ridge`; rows 13 and 14 of the plan's checks read green.
    - **the box did not come back:** wait, then run `ops/check.sh ridge`; the reboot may be slow.
 2. `ops/check.sh ridge` reads green again.
+
+## The watch
+
+Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),
+the back end's own errors, the back end refusing work under load (its function's `Errors` and
+`Throttles`), and the box failing its health check (`StatusCheckFailed`). Each alarm, and its return to
+normal, goes to the topic. With a Slack workspace ID and a channel ID the stack also makes AWS's Slack
+app's channel configuration, which carries the topic into your channel; with neither, the topic and the
+alarms exist and tell no one, and the output `Watch` says `alarms reach no one: no Slack channel`.
+Neither ID is a credential, and neither is written into any committed file.
+
+1. Your Slack steps, once (from AWS's page "Tutorial: Get started with Slack"):
+   1. In Slack, make a **private** channel: the alarms are yours, and the workspace may hold the
+      partners who post their answers there. Name it as you like.
+   2. In Slack's left pane choose **Automations** (or **More**, then **Automations**), **Browse Apps
+      Directory**, find **Amazon Q Developer in chat applications**, choose **Add**.
+   3. In the channel, type `/invite @Amazon Q`, then choose **Invite Them**.
+   4. In AWS's console, open **Amazon Q Developer in chat applications**; under **Configure a chat
+      client** choose **Slack**, then **Configure**. Slack's authorisation page opens: pick your
+      workspace at the top right, choose **Allow**. You will see the **Workspace details** page.
+   5. Copy the workspace ID from **Workspace details**, and the channel ID from Slack (right-click the
+      channel, **Copy Link**: the ID is the end of the link). Make no channel configuration in the
+      console; the stack makes it.
+2. The stack run, from a worktree at `main`, with both IDs in the environment of that one command
+   (`CREDO_SLACK_WORKSPACE_ID` and `CREDO_SLACK_CHANNEL_ID`): `ops/stack.sh env ridge --plan`, read
+   the change (a topic, four alarms, a channel and its role added, nothing changed or removed), then
+   the same without `--plan`. The log ends `== exit 0` and its outputs read `Watch = alarms reach
+   Slack`.
+   - **One ID without the other** is refused before any change set: a lone channel ID makes no channel.
+   - **`none` for one ID and a real ID for the other** is refused too: the template then makes no
+     channel and the run would still end 0.
+   - **Neither ID given on an update** keeps the stack's values. `none` and `none` turns the channel
+     off; on a stack that holds a channel that is a removal, which the guard refuses unless the run
+     takes `--take AlertsChannel --take AlertsChannelRole`.
+   - **A workspace ID changed later** is two runs, not one: the workspace ID and the configuration's
+     name are both fixed at creation, so a replacement would create the new configuration while the
+     old one still holds the name, and the update would fail and roll back. First `none` and `none`
+     with both `--take` flags above, then the new IDs.
+3. The forced alarm, once the app answers on the environment: the calls-failing alarm is put into its
+   alarm state by hand (`aws cloudwatch set-alarm-state`, in your own AWS session). Two messages
+   follow in the channel, the alarm and, at the next five-minute evaluation, its return to normal.
+   The alarm's history shows each action run. A forced alarm proves the path from alarm to channel,
+   not the metric under it.
 
 ## The ops job
 
