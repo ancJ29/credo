@@ -19,13 +19,13 @@ flowchart LR
 
 - **The wait is per name, not per address.** One guesser trying many names meets only the door's throttle, and each invented name leaves a small record (item 256).
 - **The record's key is a keyed hash of the name.** A copy of the store's data holds no name and no hash a dictionary can run against. Whoever also holds the service key can (item 339 asks the pages to name both places that hold it).
-- **Review, tagged.** Medium, item 319: a wrong try sent as each wait ends keeps a known name waiting with no end. Medium, fixed: the hash was plain. Low, fixed: a citation three lines short. Deferred, items 338, 339 and 340. *Rejected:* a key the box does not hold, since it needs a new setting and a deploy change.
+- **Review, tagged.** Medium, item 319, the remedy parked: a wrong try sent as each wait ends keeps a known name waiting with no end. Medium, fixed: the hash was plain. Low, fixed: a citation three lines short. Low, items 338, 339 and 340, deferred. *Rejected:* a key the box does not hold, since it needs a new setting and a deploy change.
 
 ## Still yours
 
-**Open: may a stranger keep a known name waiting with no end (item 319)?** You answered "lock by device"; the question put back is whether a device that signed in as that name before keeps its own count. Not decided.
+**Parked by you at 12:05: the remedy for item 319,** the endless hold of a known name, by device or any lock; it stays as it is. **Asked, not decided: does the wait itself land with that hold left in?**
 
-The look at screen 12 was answered yes at 09:46. The reviewer's reread of the fix pass: <!-- FILL: the reread's verdict; not on the review page yet -->
+The look at screen 12 was answered yes at 09:46. The reviewer's reread of the fix pass, on opus: may land. All three findings fixed; three Lows are items 338 to 340.
 
 ## Evidence
 
