@@ -1,5 +1,13 @@
+import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
-import { type CStorageClient, recordKeys, ROUTES, tenantConfigSchema } from '@credo/shared';
+import {
+  CLIENT_HEADER,
+  type CStorageClient,
+  DEVICE_HEADER,
+  recordKeys,
+  ROUTES,
+  tenantConfigSchema,
+} from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { applyAll, applyCopy } from './apply';
 import { companyConfig } from './company';
@@ -65,6 +73,32 @@ describe('which clients are touched', () => {
 
     expect((await applyCopy(storage, A1, TODAY)).status).toBe('ok');
     expect((await applyCopy(storage, A1, addDays(TODAY, 9))).status).toBe('ok');
+  });
+
+  it('row 8: a copy whose only extra record is a sign-in wait, left by a wrong name typed into it, is still filled', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    const app = buildApp({
+      storage,
+      now: () => Date.now(),
+      origin: 'http://localhost',
+      serviceKey: 'a-key',
+      logger: false,
+    });
+    const typed = await app.inject({
+      method: 'POST',
+      url: ROUTES.signIn,
+      headers: { [CLIENT_HEADER]: A1.code, [DEVICE_HEADER]: 'device-users-0001' },
+      payload: { name: 'nobody-here', password: 'not the password' },
+    });
+    expect(typed.statusCode).toBe(401);
+    const id = await tenantOf(storage, A1.code);
+    const waits = (await everything(storage, A1.code)).filter(({ key }) =>
+      key.startsWith(recordKeys.tenant(id).signInWait('')),
+    );
+    expect(waits).toHaveLength(1);
+
+    expect((await applyCopy(storage, A1, TODAY)).status).toBe('ok');
   });
 
   it('row 8: a copy whose name, logo, colour, languages or default language its users changed before the first fill is refused, never overwritten', async () => {

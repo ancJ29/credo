@@ -32,8 +32,7 @@ log_start tunnel "$ENVNAME"
 # client's stack reachable from the same AWS session would put its admin keys on this disk and point
 # the collection, which writes test records, at real data.
 step "main and the port"
-[ "$ENVNAME" = ridge ] ||
-  die "tunnel.sh holds ridge alone for now: another stack's admin keys would land on this disk, and the collection would write test records into it"
+refuse_real "$ENVNAME" "tunnel.sh holds ridge alone for now: another stack's admin keys would land on this disk, and the collection would write test records into it"
 refuse_taken_port "$TUNNEL_PORT" "an earlier tunnel is still open: ops/README.md, 'The tunnel', names how to end it"
 require_ignored "$KEYS_FILE"
 main_synced

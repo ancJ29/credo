@@ -119,6 +119,7 @@ import {
   type StaffSetupDoc,
   staffSetupDocSchema,
   type TenantConfig,
+  waitReplySchema,
 } from '@credo/shared';
 
 /** A call that did not give the answer its route promises. `status` is the HTTP status, or null
@@ -130,6 +131,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number | null,
     readonly bff = false,
+    /** The seconds a 429 in the back end's wait shape asks to wait; null for every other answer. */
+    readonly waitSeconds: number | null = null,
   ) {
     super(status === null ? 'no usable answer' : `answered ${status}`);
     this.name = 'ApiError';
@@ -173,7 +176,10 @@ export type SetEmailResult =
   { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
 
 /** One's own password changed, with the session that replaces every other; or the current one wrong. */
-export type ChangePasswordResult = { kind: 'changed'; session: SessionReply } | { kind: 'wrong' };
+export type ChangePasswordResult =
+  | { kind: 'changed'; session: SessionReply }
+  | { kind: 'wrong' }
+  | { kind: 'wait'; seconds: number };
 
 /** A photo saved, or the version moved. */
 /** A conflict carries the photo as it is now, when the answer held one the shared schema reads. */
@@ -264,6 +270,12 @@ export function createApi({
     return new ApiError(response.status, bffErrorSchema.safeParse(body).success);
   }
 
+  /** A 429 as the back end shapes it: the wait it asks, or null for any other answer. */
+  async function waitOf(response: Response) {
+    const parsed = waitReplySchema.safeParse(await response.json().catch(() => null));
+    return parsed.success ? parsed.data.waitSeconds : null;
+  }
+
   async function read<T>(response: Response, schema: Schema<T>) {
     const parsed = schema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ApiError(null);
@@ -296,6 +308,7 @@ export function createApi({
 
     async signIn(name: string, password: string): Promise<SessionReply> {
       const response = await send('POST', ROUTES.signIn, { name, password });
+      if (response.status === 429) throw new ApiError(429, false, await waitOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, sessionReplySchema);
     },
@@ -789,6 +802,11 @@ export function createApi({
     async changePassword(current: string, password: string): Promise<ChangePasswordResult> {
       const response = await send('PUT', signInRoutes.password, { current, password });
       if (response.status === 403) return { kind: 'wrong' };
+      if (response.status === 429) {
+        const seconds = await waitOf(response);
+        if (seconds === null) throw new ApiError(429);
+        return { kind: 'wait', seconds };
+      }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'changed', session: await read(response, sessionReplySchema) };
     },

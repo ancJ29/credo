@@ -32,9 +32,12 @@ import {
   type StoredUser,
   tenantConfigSchema,
   type UserView,
+  waitAfter,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import { createClient, listClients, ROOT_NAME } from './records/clients';
+import { type TenantStorage, tenantStorage } from './records/records';
+import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
 import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
@@ -62,6 +65,9 @@ declare module 'fastify' {
   interface FastifyRequest {
     /** The minted id of the tenant a client's call names, set before the route runs. */
     tenantId: string;
+    /** The storage client of that tenant alone, set beside `tenantId`: it refuses any key that is
+     * not the tenant's own. */
+    storage: TenantStorage;
     /** The entries the route declares for its change; the hook sends them before the reply. */
     audit: Declared[] | null;
   }
@@ -102,11 +108,15 @@ export function buildApp({
   onRoute,
 }: AppDeps) {
   const app = Fastify({ logger });
+  /** The key a sign-in wait's name is hashed under, derived once from the service key. */
+  const waitKey = waitKeyFrom(serviceKey);
   if (onRoute) app.addHook('onRoute', onRoute);
   /** A tenant's sessions: its own records, so a handle minted under another id names none. */
-  const sessionsOf = (tenantId: string) =>
-    createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
+  const sessionsOf = (storage: TenantStorage) =>
+    createSessions({ storage, now, keyOf: recordKeys.tenant(storage.tenantId).session });
   app.decorateRequest('tenantId', '');
+  // Null until `resolveTenant` sets it; every route that reads it runs after that hook.
+  app.decorateRequest('storage', null as unknown as TenantStorage);
   app.decorateRequest('audit', null);
 
   /** Sends the entry a route declared, before the reply and under the client's own bound. Whatever
@@ -162,7 +172,9 @@ export function buildApp({
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });
     const found = await storage.getRecord(recordKeys.client(code.data));
     if (!found) throw new HttpError(404, 'Unknown client');
-    request.tenantId = storedClientSchema.parse(found.data).id;
+    const { id } = storedClientSchema.parse(found.data);
+    request.tenantId = id;
+    request.storage = tenantStorage(storage, id);
   }
   const forClient = { onRequest: resolveTenant };
 
@@ -179,7 +191,7 @@ export function buildApp({
    * next step; one that cannot be read throws and answers 503, never a partial set. The setup read
    * for them is handed on, so a route does not read it again: a staff call reads five records. */
   async function viewOf(
-    tenantId: string,
+    storage: TenantStorage,
     name: string,
     user: StoredUser,
     handed: { person?: ReadEmployee | null; setup?: SetupRead } = {},
@@ -192,10 +204,10 @@ export function buildApp({
       handed.person && handed.person.employee.id === user.employeeId
         ? handed.person
         : user.employeeId
-          ? await readEmployee(storage, tenantId, user.employeeId)
+          ? await readEmployee(storage, storage.tenantId, user.employeeId)
           : null;
     if (!person || person.employee.archived || !namesPerson(name, person.employee)) return null;
-    const read = handed.setup ?? (await readSetup(storage, tenantId));
+    const read = handed.setup ?? (await readSetup(storage, storage.tenantId));
     return {
       name: person.employee.name,
       root: false,
@@ -217,10 +229,12 @@ export function buildApp({
   async function signedIn(request: FastifyRequest) {
     const handle = request.headers[AUTH_HEADER];
     const session =
-      typeof handle === 'string' ? await sessionsOf(request.tenantId).resolve(handle) : null;
-    const found = session ? await readSignIn(storage, request.tenantId, session.user) : null;
+      typeof handle === 'string' ? await sessionsOf(request.storage).resolve(handle) : null;
+    const found = session
+      ? await readSignIn(request.storage, request.tenantId, session.user)
+      : null;
     if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
-    const view = await viewOf(request.tenantId, session.user, found.user);
+    const view = await viewOf(request.storage, session.user, found.user);
     if (!view) throw unauthorized();
     return { ...view, signInName: session.user, signIn: found };
   }
@@ -252,8 +266,8 @@ export function buildApp({
     if (!who.root && !who.permissions[id]) throw forbidden();
   };
 
-  async function readConfig(tenantId: string): Promise<ConfigDoc | null> {
-    const found = await storage.getRecord(recordKeys.tenant(tenantId).config);
+  async function readConfig(storage: TenantStorage): Promise<ConfigDoc | null> {
+    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).config);
     // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
     return found ? { config: tenantConfigSchema.parse(found.data), version: found.tag } : null;
   }
@@ -272,7 +286,7 @@ export function buildApp({
   }
 
   app.get(ROUTES.config, forClient, async (request) => {
-    const doc = await readConfig(request.tenantId);
+    const doc = await readConfig(request.storage);
     if (!doc) throw new HttpError(404, 'Not set up');
     return doc;
   });
@@ -286,15 +300,15 @@ export function buildApp({
       mustCan(who, 'settings.canEdit');
       const body = parse(saveConfigRequestSchema, request.body);
       const key = recordKeys.tenant(request.tenantId).config;
-      const before = await readConfig(request.tenantId);
-      const result = await storage.putRecord(key, body.config, body.version);
+      const before = await readConfig(request.storage);
+      const result = await request.storage.putRecord(key, body.config, body.version);
       if (result === 'moved') {
         return reply
           .status(409)
-          .send({ error: 'Conflict', current: await readConfig(request.tenantId) });
+          .send({ error: 'Conflict', current: await readConfig(request.storage) });
       }
       entry.saved(before, body.config);
-      return await readConfig(request.tenantId);
+      return await readConfig(request.storage);
     },
   );
 
@@ -302,19 +316,28 @@ export function buildApp({
    * of the person the email names. An email names no one unless that person's record holds it and
    * the company has the email sign-in on (the setup is read first and handed on). No mail is ever
    * sent to it, so it proves nothing but that the root gave it. */
-  async function accountOf(tenantId: string, typed: string) {
+  async function accountOf(storage: TenantStorage, typed: string) {
     if (!typed.includes('@')) {
-      return { name: typed, found: await readSignIn(storage, tenantId, typed), handed: {} };
+      return { name: typed, found: await readSignIn(storage, storage.tenantId, typed), handed: {} };
     }
-    const setup = await readSetup(storage, tenantId);
+    const setup = await readSetup(storage, storage.tenantId);
     const none = { name: typed, found: null, handed: { setup } };
     if (!staffConfig(setup.setup).fields.email) return none;
-    const claim = await readEmailClaim(storage, tenantId, typed);
-    const person = claim ? await readEmployee(storage, tenantId, claim.claim.employeeId) : null;
+    const claim = await readEmailClaim(storage, storage.tenantId, typed);
+    const person = claim
+      ? await readEmployee(storage, storage.tenantId, claim.claim.employeeId)
+      : null;
     if (!person || person.employee.email !== typed) return none;
     const name = normaliseSignInName(person.employee.code);
-    return { name, found: await readSignIn(storage, tenantId, name), handed: { setup, person } };
+    return {
+      name,
+      found: await readSignIn(storage, storage.tenantId, name),
+      handed: { setup, person },
+    };
   }
+
+  /** The 429 of a name that must wait, in the shape `waitReplySchema` says. */
+  const waitError = (waitSeconds: number) => new HttpError(429, 'Wait', { waitSeconds });
 
   app.post(
     ROUTES.signIn,
@@ -323,7 +346,9 @@ export function buildApp({
       const device = deviceOf(request);
       const body = parse(signInRequestSchema, request.body);
       const typed = normaliseSignInName(body.name);
-      const { name, found, handed } = await accountOf(request.tenantId, typed);
+      const { name, found, handed } = await accountOf(request.storage, typed);
+      const counted = await countTry(request.storage, waitKey, name, now);
+      if ('refused' in counted) throw waitError(counted.refused);
       // A person the root has not given a password yet has no sign-in to check against.
       const account = found?.user.passwordHash
         ? { ...found.user, passwordHash: found.user.passwordHash }
@@ -331,9 +356,13 @@ export function buildApp({
       const user = await checked(account, body.password);
       // One answer for an unknown name, a wrong password and a person who left: which part was
       // wrong is not said.
-      const view = user ? await viewOf(request.tenantId, name, user, handed) : null;
-      if (!user || !view) throw new HttpError(401, 'Wrong name or password');
-      const sessions = sessionsOf(request.tenantId);
+      const view = user ? await viewOf(request.storage, name, user, handed) : null;
+      if (!user || !view) {
+        const seconds = waitAfter(counted.wrong);
+        throw seconds > 0 ? waitError(seconds) : new HttpError(401, 'Wrong name or password');
+      }
+      await clearWait(request.storage, waitKey, name);
+      const sessions = sessionsOf(request.storage);
       await endKept(request, sessions);
       const { authId, expiresAt } = await sessions.issue(device, name, user.generation);
       return { authId, expiresAt, user: userViewOf(view) };
@@ -350,10 +379,10 @@ export function buildApp({
     async (request): Promise<SessionReplyBody> => {
       const device = deviceOf(request);
       const body = parse(signInQrRequestSchema, request.body);
-      const { tenantId } = request;
-      const held = await readQr(storage, tenantId, body.id);
+      const { tenantId, storage } = request;
+      const held = await readQr(storage, storage.tenantId, body.id);
       const opened = held ? await sha256Hex(body.secret) : '';
-      const person = held ? await readEmployee(storage, tenantId, body.id) : null;
+      const person = held ? await readEmployee(storage, storage.tenantId, body.id) : null;
       if (
         !held ||
         !person ||
@@ -363,11 +392,11 @@ export function buildApp({
         throw unauthorized();
       }
       // The person and the setup are read once and handed on to the view.
-      const setup = await readSetup(storage, tenantId);
+      const setup = await readSetup(storage, storage.tenantId);
       if (!staffConfig(setup.setup).fields.qr) throw unauthorized();
       const name = normaliseSignInName(person.employee.code);
-      const found = await readSignIn(storage, tenantId, name);
-      const view = found ? await viewOf(tenantId, name, found.user, { person, setup }) : null;
+      const found = await readSignIn(storage, storage.tenantId, name);
+      const view = found ? await viewOf(storage, name, found.user, { person, setup }) : null;
       // The record must name the person the code was made for: a code changed meanwhile may be Lan's old
       // one, now another's.
       if (!found || found.user.employeeId !== person.employee.id || !view) throw unauthorized();
@@ -377,7 +406,7 @@ export function buildApp({
       ) {
         throw unauthorized();
       }
-      const sessions = sessionsOf(tenantId);
+      const sessions = sessionsOf(request.storage);
       await endKept(request, sessions);
       const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
       return { authId, expiresAt, user: userViewOf(view) };
@@ -406,7 +435,13 @@ export function buildApp({
       const entry = declare(request, personOf(who));
       const device = deviceOf(request);
       const body = parse(changeOwnPasswordRequestSchema, request.body);
-      if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
+      const counted = await countTry(request.storage, waitKey, who.signInName, now);
+      if ('refused' in counted) throw waitError(counted.refused);
+      if (!(await holdsPassword(who.signIn.user, body.current))) {
+        const seconds = waitAfter(counted.wrong);
+        throw seconds > 0 ? waitError(seconds) : forbidden();
+      }
+      await clearWait(request.storage, waitKey, who.signInName);
       const changed: StoredUser = {
         ...who.signIn.user,
         passwordHash: await hashPassword(body.password),
@@ -414,9 +449,10 @@ export function buildApp({
         generation: randomUUID(),
       };
       const key = recordKeys.tenant(request.tenantId).user(who.signInName);
-      if ((await storage.putRecord(key, changed, who.signIn.tag)) === 'moved') throw unauthorized();
+      if ((await request.storage.putRecord(key, changed, who.signIn.tag)) === 'moved')
+        throw unauthorized();
       entry.saved(null, null);
-      const sessions = sessionsOf(request.tenantId);
+      const sessions = sessionsOf(request.storage);
       await endKept(request, sessions);
       const issued = await sessions.issue(device, who.signInName, changed.generation);
       return { ...issued, user: userViewOf(who) };
@@ -428,7 +464,7 @@ export function buildApp({
     exempt('a sign-out changes no client’s data', forClient),
     async (request, reply) => {
       const handle = request.headers[AUTH_HEADER];
-      if (typeof handle === 'string') await sessionsOf(request.tenantId).end(handle);
+      if (typeof handle === 'string') await sessionsOf(request.storage).end(handle);
       return reply.status(204).send();
     },
   );
@@ -483,10 +519,10 @@ export function buildApp({
     },
   );
 
-  registerStaffRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
-  registerListRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
-  registerOrderRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
-  registerReconciliationRoutes(app, { storage, now, forClient, signedIn, mustBeRoot, mustCan });
+  registerStaffRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
+  registerListRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
+  registerOrderRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
+  registerReconciliationRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
 
   return app;
 }

@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import {
   ATTEMPTS,
   CStorageError,
-  type CStorageClient,
   type Employee,
   employeeSchema,
   normaliseSignInName,
@@ -16,6 +15,7 @@ import {
   type StoredUser,
   storedUserSchema,
 } from '@credo/shared';
+import type { RecordStore } from './records';
 
 /** The staff records as the routes and the sign-in read them. A record that does not parse is a
  * fault, a 500 that names its kind and never its key: never a person skipped or defaulted. */
@@ -23,7 +23,7 @@ import {
 export type ReadEmployee = { employee: Employee; tag: string };
 
 export async function readEmployee(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   id: string,
 ): Promise<ReadEmployee | null> {
@@ -37,7 +37,7 @@ export async function readEmployee(
 /** `version` is `''` for a company that has never saved a setup: it reads as an empty one. */
 export const NO_SETUP_VERSION = '';
 
-export async function readSetup(storage: CStorageClient, tenantId: string) {
+export async function readSetup(storage: RecordStore, tenantId: string) {
   const found = await storage.getRecord(recordKeys.tenant(tenantId).staffSetup);
   if (!found) {
     const setup: StaffSetup = { departments: [], positions: [], extra: {} };
@@ -49,7 +49,7 @@ export async function readSetup(storage: CStorageClient, tenantId: string) {
 }
 
 /** A sign-in record that does not parse is no sign-in. */
-export async function readSignIn(storage: CStorageClient, tenantId: string, name: string) {
+export async function readSignIn(storage: RecordStore, tenantId: string, name: string) {
   const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
   const parsed = found ? storedUserSchema.safeParse(found.data) : null;
   return found && parsed?.success ? { user: parsed.data, tag: found.tag } : null;
@@ -65,7 +65,7 @@ export async function readSignIn(storage: CStorageClient, tenantId: string, name
  * over. The hash is made by the caller, once.
  */
 export async function setSignInPassword(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
@@ -86,7 +86,7 @@ export async function setSignInPassword(
  * same read, ownership check and retries as {@link setSignInPassword}.
  */
 export async function endSessions(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
@@ -98,7 +98,7 @@ export async function endSessions(
 }
 
 async function rewriteSignIn(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   name: string,
   owns: (user: StoredUser) => boolean,
@@ -116,7 +116,7 @@ async function rewriteSignIn(
 /** An email's record: who claimed it, and when. A record that does not parse is a fault, a 500
  * that names its kind and never its key. */
 export async function readEmailClaim(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   email: string,
 ): Promise<{ claim: StoredSignInEmail; tag: string } | null> {
@@ -129,7 +129,7 @@ export async function readEmailClaim(
 
 /** A person's QR code as kept. A record that does not parse is a fault, as an email's. */
 export async function readQr(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   employeeId: string,
 ): Promise<{ qr: StoredSignInQr; tag: string } | null> {
@@ -147,7 +147,7 @@ export const namesPerson = (name: string, person: Employee) =>
 /** A sign-in record is live only while its person names it back: by id, and by the code it is
  * keyed under. */
 export async function namesBack(
-  storage: CStorageClient,
+  storage: RecordStore,
   tenantId: string,
   name: string,
   user: StoredUser,

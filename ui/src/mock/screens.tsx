@@ -42,9 +42,18 @@ const settings = (
 );
 
 const signIn = (
-  status: 'idle' | 'busy' | 'refused',
+  status: 'idle' | 'busy' | 'refused' | 'wait',
   initial?: { username: string; password: string },
-) => <SignIn brand={FILLED} status={status} initial={initial} onSubmit={inert} />;
+  waitSeconds?: number,
+) => (
+  <SignIn
+    brand={FILLED}
+    status={status}
+    waitSeconds={waitSeconds}
+    initial={initial}
+    onSubmit={inert}
+  />
+);
 
 type MockState = {
   id: string;
@@ -215,6 +224,18 @@ export const SCREENS: MockScreen[] = [
         label: 'filled: a PC’s strip',
         colour: WHITE_ICONS.colour,
         screen: settings(WHITE_ICONS, { outcome: 'saved' }, { shown: false }),
+      },
+    ],
+  },
+  {
+    number: 12,
+    label: 'Sign-in after six wrong passwords',
+    states: [
+      {
+        id: 'failed',
+        label: 'failed: a wait of 30 seconds',
+        colour: FILLED.colour,
+        screen: signIn('wait', ROOT, 30),
       },
     ],
   },

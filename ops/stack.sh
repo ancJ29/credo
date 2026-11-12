@@ -75,6 +75,7 @@ esac
 
 log_start stack "${ENVNAME:-$KIND}"
 mkwork
+real_ok "${ENVNAME:-$KIND}" "a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment"
 main_synced
 
 CS=''

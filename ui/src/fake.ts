@@ -63,6 +63,7 @@ import {
   type StaffSetup,
   type TenantConfig,
   type UserView,
+  waitAfter,
 } from '@credo/shared';
 import {
   DEMO_CLIENTS,
@@ -583,13 +584,21 @@ export function createFakeApi({
     return held ? { photo: held.photo, version: `p${held.version}` } : { photo: null, version: '' };
   };
 
+  /** Each sign-in name's wrong tries in a row and when its wait ends, as the back end will keep. */
+  const waits = new Map<string, { wrong: number; until: number }>();
+
   const fake: Api = {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
     signIn: (name) =>
       call('signIn', () => {
         const entered = normaliseSignInName(name);
+        const waiting = waits.get(entered);
+        if (waiting && waiting.until > Date.now()) {
+          throw new ApiError(429, true, Math.ceil((waiting.until - Date.now()) / 1000));
+        }
         if (entered === DEMO_ROOT_NAME) {
+          waits.delete(entered);
           return { authId: 'fake.session', expiresAt: Date.now() + WEEK, user: ROOT };
         }
         const staff = [...people.values()].find(
@@ -599,7 +608,14 @@ export function createFakeApi({
             !candidate.archived &&
             ready.has(candidate.id),
         );
-        if (!staff) throw signedOut();
+        if (!staff) {
+          // Counted and waiting like any name, held or not, so a wait says nothing of who exists.
+          const wrong = (waiting?.wrong ?? 0) + 1;
+          const seconds = waitAfter(wrong);
+          waits.set(entered, { wrong, until: Date.now() + seconds * 1000 });
+          throw seconds > 0 ? new ApiError(429, true, seconds) : signedOut();
+        }
+        waits.delete(entered);
         return {
           authId: `${STAFF_HANDLE}${staff.id}`,
           expiresAt: Date.now() + WEEK,

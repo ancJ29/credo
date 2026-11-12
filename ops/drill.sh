@@ -21,6 +21,7 @@ STEPS=7
 
 log_start drill "$ENVNAME"
 mkwork
+refuse_real "$ENVNAME" "drill.sh holds the environments that keep invented data alone (ridge): it kills the store and reboots the box, and another environment may hold a real company's records"
 main_synced
 
 health() { box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; }

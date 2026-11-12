@@ -29,6 +29,7 @@ LOCAL_PORT=${APP_LOCAL_PORT:-3193}
 
 log_start app "$ENVNAME"
 mkwork
+real_ok "$ENVNAME" "it ships main's commits alone, never backwards, and changes nothing else"
 
 cleanup_extra() {
   rm -f "$WORK/bff-env.json"

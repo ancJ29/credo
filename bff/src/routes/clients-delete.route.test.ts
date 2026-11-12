@@ -428,6 +428,7 @@ describe('Deleting a client needs the operator, the client’s code and the fres
     const t = await setup();
     const root = await signIn(t.asRoot);
     const before = await t.tenantRecords();
+    t.calls.removed.length = 0;
     const payload = { confirm: await t.touch() };
 
     for (const headers of [{}, withAuth('not-a-handle'), withAuth(root.body.authId)]) {
