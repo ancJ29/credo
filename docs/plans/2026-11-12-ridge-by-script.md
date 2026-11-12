@@ -174,11 +174,17 @@ seed presses' one-off among them, are now step 5)
   ticker removed reddened case 14's line-while-it-runs, the dropped-round and the `--go-on` lines,
   `DAYS_PER_ROUND` at 7 is case 15's own scratch copy, and `refuse_real` removed reddened the stance
   check and case 12's other-environment line. Not yet walked in a terminal: the run on the real ridge is step 10.
-- [ ] **6. The words that send you to `/operator`.** `ops/README.md`'s seed section (`#L262`) and a
+- [x] **6. The words that send you to `/operator`.** `ops/README.md`'s seed section (`#L262`) and a
   remake section beside the root password's (`#L239`); `seed.yml#L4`'s comment; `ops/seed.sh#L6`;
   `scripts/src/demo/mapping.ts#L6`; `docs/products.md#L72`, `#L73` and `#L84`. *Done when:* the citation
   test is green, and `git grep -nE 'at .?/operator|Make it at$' ops/ .github/ docs/products.md
   scripts/src/` counts 0 (7 today). **About 3 min.**
+  *Done 2026-11-12:* the old words are replaced by the one command: `ops/README.md` has a new section "The demo copies"
+  (and a row in its table) with `ops/demo-remake.sh ridge`, its passwords, its refusal and `--go-on`; the seed section,
+  `seed.yml`'s comment, `ops/seed.sh`, `mapping.ts`'s comment, `ops/destroy.sh`'s closing line and three rows of
+  `docs/products.md` now say the copies are made by that command, not by hand at the console. The `git grep` counts 0
+  (8 lines were found, not 7); `bash ops/test.sh` ended at exit 0 (the comments and one message line were the only
+  non-`.md` changes) and the citation test at exit 0.
 - [ ] **7. Review and fix.** As step 2. **About 13 min**, plus 6.
 - [ ] **8. The push.** The piece lands on `pre-merge`, `main` takes it, and 👤 you push `main`. The
   push deploys by itself, since `scripts/**` is a deploy path (`ci.yml#L16`). *Done when:* 🤖 reads

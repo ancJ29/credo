@@ -19,6 +19,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
 | ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
+| the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 2.6 hours |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -308,24 +309,46 @@ client's own stack is the console's. The why is
      naming no commit of main.
    - **error: the run stopped:** the lines above name the roots set and the roots not reached; those
      keep their old password. Run it again for the same codes.
-   - **<code> is not on this service:** that copy was never made at `/operator`; nothing was written.
+   - **<code> is not on this service:** that copy was never made (`ops/demo-remake.sh ridge` makes all six); nothing was written.
    - **the new password is in this log:** redact the log; nothing to replace.
+
+## The demo copies
+
+The six demo copies on ridge (two invented companies, three copies each, the codes in
+`scripts/src/demo/mapping.ts`) are made by one command, never made by hand in the console. It deletes each copy
+to zero records, makes it again under its partner's password and fills it with 21 days ending yesterday.
+Once, from a terminal; it takes about 2.6 hours (up to 4) plus your typing, and it refuses GitHub's job.
+
+1. On a ridge with no operator yet, first `ops/operator.sh ridge` ([the operator](#the-operator)); the
+   remake itself needs no operator. Use a worktree at `main` with `pnpm install` done, not while the seed runs.
+2. Run it, then type one password for each partner (`p1`, `p2`, then yours), each twice, and `remake ridge` when
+   it lists the six copies. A password is never shown, logged or kept.
+
+   ```
+   cd <the worktree at main> && bash ops/demo-remake.sh ridge
+   ```
+
+3. Read the log: it ends green, with each copy's sign-in read back. A line `== refused: <why>` (exit 2) means
+   nothing was touched. A red after the first delete (exit 1) means run `ops/demo-remake.sh ridge --go-on`,
+   which runs the rounds left from the ledger, asks nothing and deletes nothing.
+4. Send each partner their link and password by your own channel. `/operator` is where you sign in
+   to see the copies, not where they are made.
 
 ## The seed
 
 The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
 somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
 runs `ops/seed.sh ridge` under the deploy role, at most 2 days a copy a run (about 15 minutes; the Seed step is limited to 18, inside the role's 20). The script makes no client and
-no password: the human makes each copy at `/operator` first, under its mapped code. The why is
+no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)). The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
 
-1. Make a copy at `/operator` under its code from the mapping (`scripts/src/demo/mapping.ts`), and
-   send its link and root password privately. Then run `ops/seed.sh ridge` by hand from a worktree at
-   `main` with `pnpm install` done, or run the workflow.
+1. Have the copies made first: `ops/demo-remake.sh ridge` makes the six in the mapping (`scripts/src/demo/mapping.ts`)
+   and fills them. Then run `ops/seed.sh ridge` by hand from a worktree at `main` with `pnpm install` done,
+   or run the workflow, to bring them up to yesterday.
 2. Read the log's lines: `seed: <n> copies mapped, <n> up to date, <n> not on this service, <n> days
    applied`, then `seeded <sha>`.
-   - **<code>: not on this service, left:** that mapped code has no client on ridge. Make it at
-     `/operator`; a mistyped code is not in the mapping, so it stays empty.
+   - **<code>: not on this service, left:** that mapped code has no client on ridge. Run
+     `ops/demo-remake.sh ridge` to make it; a mistyped code is not in the mapping, so it stays empty.
    - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
      stays as it is; make a new copy under a new code.
    - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
