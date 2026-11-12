@@ -95,6 +95,30 @@ cleanup_extra() {
   fi
 }
 
+# front_door_key_param: appends FrontDoorKey to PARAMS, the secret the distribution adds to every call
+# it passes to the API. Made here (32 random bytes, as the release makes the store's keys) on a creation
+# and once for a stack made before the parameter; kept on every other run; or, for a key run, taken from
+# the 0600 file FRONT_DOOR_KEY_FILE names. It is masked, so the end-of-run search reads the log for it, and
+# never printed: it reaches aws in a file in WORK (0700), not on a command line.
+front_door_key_param() {
+  local key f mode
+  f=${FRONT_DOOR_KEY_FILE:-}
+  if [ -n "$f" ]; then
+    [ -f "$f" ] || die "FRONT_DOOR_KEY_FILE names no file"
+    mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f")
+    [ "$mode" = 600 ] || die "the key file's mode is $mode: it must be 0600"
+    key=$(tr -d '\n' <"$f")
+    [[ "$key" =~ ^[0-9a-f]{64}$ ]] || die "the key file does not hold one key of 64 hex characters"
+  elif [ "$CS_TYPE" = CREATE ] || [ -z "$(stack_param FrontDoorKey)" ]; then
+    key=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  else
+    add_param FrontDoorKey
+    return 0
+  fi
+  mask "$key"
+  add_param FrontDoorKey "$key"
+}
+
 # stack_events: what failed, from the stack's events
 stack_events() {
   aws cloudformation describe-stack-events --stack-name "$STACK" --output json |
@@ -181,6 +205,7 @@ case "$KIND" in
       echo "subnet: $cidr; image: $image"
       add_param SubnetCidr "$cidr"
       add_param ImageId "$image"
+      front_door_key_param
     else
       # The deploy role trusts this repository: a fork's clone must not move it.
       repo=$(repository)
@@ -193,18 +218,20 @@ case "$KIND" in
       add_subject_param "$prefix"
       add_param SubnetCidr
       add_param ImageId
+      front_door_key_param
     fi
     ;;
 esac
-echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(.ParameterValue // "(previous)")"'
+echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(if .ParameterKey == "FrontDoorKey" then "(not printed)" else (.ParameterValue // "(previous)") end)"'
 
 step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"
 caps=()
 if [ -n "$CAPS" ]; then caps=(--capabilities "$CAPS"); fi
 CS_OPEN=1
+printf '%s\n' "$PARAMS" >"$WORK/params.json"
 aws cloudformation create-change-set --stack-name "$STACK" --change-set-name "$CS" --change-set-type "$CS_TYPE" \
-  --template-body "file://$WORK/template.yml" --parameters "$PARAMS" ${caps[@]+"${caps[@]}"} \
+  --template-body "file://$WORK/template.yml" --parameters "file://$WORK/params.json" ${caps[@]+"${caps[@]}"} \
   >/dev/null
 no_changes=0
 if ! aws cloudformation wait change-set-create-complete --stack-name "$STACK" --change-set-name "$CS" 2>/dev/null; then

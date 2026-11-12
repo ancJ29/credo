@@ -310,11 +310,11 @@ bucket_guard() {
     '.Resources.UiAccess.Properties.OriginAccessControlConfig | .OriginAccessControlOriginType == "s3" and .SigningBehavior == "always" and .SigningProtocol == "sigv4"'
 }
 # row 29: the deploy role holds exactly its actions, the function's code and settings held to
-# ridge's subnet and group, the bucket's put; no list, stack, IAM or CloudFront right
+# ridge's subnet and group, the bucket's put; no list, stack or IAM right, and on CloudFront the read of its own distribution alone
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
+  want='cloudformation:DescribeStacks cloudfront:GetDistributionConfig ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
@@ -2699,6 +2699,116 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
+# row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default
+# shellcheck disable=SC2016 # jq programs, in single quotes
+front_door_guard() {
+  must "$1" "FrontDoorKey is not a NoEcho string parameter with no default" \
+    '.Parameters.FrontDoorKey | .Type == "String" and .NoEcho == true and (has("Default") | not)'
+  must "$1" "the API's origin does not carry x-front-door-key from FrontDoorKey, and nothing else" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "api")) | length == 1 and .[0].OriginCustomHeaders == [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]'
+  must "$1" "the UI's origin carries a custom header" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "ui")) | length == 1 and (.[0] | has("OriginCustomHeaders") | not)'
+}
+# row 9: the deploy role reads its own distribution's configuration and writes nothing on CloudFront
+# shellcheck disable=SC2016 # jq programs, in single quotes
+distribution_read_guard() {
+  must "$1" "the deploy role does not read its own distribution's configuration, and only that" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("cloudfront:")) | {Action, Resource}] == [{"Action":"cloudfront:GetDistributionConfig","Resource":{"Fn::Sub":"arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"}}]'
+  must "$1" "a CloudFront action of the deploy role writes" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end | select(startswith("cloudfront:"))] | all(startswith("cloudfront:Get"))'
+}
+passes "the API's origin carries the door's key from a NoEcho parameter (row 8)" front_door_guard "$WORK/env.json"
+refuses "  a parameter that echoes is refused" "NoEcho string parameter" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.NoEcho = false')"
+refuses "  a parameter with a default is refused" "no default" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.Default = "0000000000000000000000000000000000000000000000000000000000000000"')"
+refuses "  an origin with no header is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut 'del(.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders)')"
+refuses "  a header with a literal value is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders[0].HeaderValue = "a-literal"')"
+refuses "  the header on the UI's origin is refused" "UI's origin carries" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[0].OriginCustomHeaders = [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]')"
+passes "the deploy role reads its own distribution and writes nothing on CloudFront (row 9)" distribution_read_guard "$WORK/env.json"
+refuses "  a read of every distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Resource) = "*"')"
+refuses "  an update of the distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Action) = ["cloudfront:GetDistributionConfig","cloudfront:UpdateDistribution"]')"
+refuses "  no read at all is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement |= map(select(.Action != "cloudfront:GetDistributionConfig"))')"
+
+# row 10: stack.sh makes the key on a creation and once for a stack without one, keeps it otherwise,
+# takes it from a 0600 file for a key run, and never prints it. The wrapper stands in front of the
+# stand-in aws above: it keeps the parameters file a change set was made from, and describes the stack
+# without the parameter (the default), with it as NoEcho shows it (FDK_HASKEY), or not at all (FDK_NOSTACK,
+# a creation). Every key here is made up.
+mkdir -p "$E2E/fdkbin"
+cat >"$E2E/fdkbin/aws" <<'STANDIN'
+#!/bin/bash
+a="$*"
+case "$a" in
+  *create-change-set*) p=${a##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json" ;;
+esac
+case "$a" in
+  *"describe-stacks --stack-name credo-network"*)
+    echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+    echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"},{"OutputKey":"VpcCidr","OutputValue":"10.0.0.0/16"}]}]}' ;;
+  *"describe-stacks"*)
+    if [ -n "${FDK_NOSTACK:-}" ]; then
+      echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+      echo "An error occurred (ValidationError) when calling the DescribeStacks operation: Stack with id ridge does not exist" >&2
+      exit 255
+    elif [ -n "${FDK_HASKEY:-}" ]; then
+      "${FDK_REAL:?}" "$@" | sed 's/"Parameters":\[/&{"ParameterKey":"FrontDoorKey","ParameterValue":"****"},/'
+    else
+      exec "${FDK_REAL:?}" "$@"
+    fi ;;
+  *describe-subnets*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls" ;;
+  *"ssm get-parameter"*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"; echo ami-test ;;
+  *) exec "${FDK_REAL:?}" "$@" ;;
+esac
+STANDIN
+chmod +x "$E2E/fdkbin/aws"
+fdk_run() { # <state name> <args...>: stack.sh env ridge --plan in the clone, through the wrapper
+  e2e_fresh "$1"
+  shift
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/fdkbin:$E2E/stackbin:$PATH" FDK_REAL="$E2E/stackbin/aws" bash ops/stack.sh env ridge --plan "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+fdk_sent() { jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue // "(previous)"' "$S/params.json"; }
+fdk_seen() { # <key>: how many places a run wrote hold it: the terminal, the log, the aws calls, the parameters shown
+  cat "$S/out" "$S/aws.calls" "$OPS_LOG_DIR"/*.log | grep -cF -- "$1" || true
+}
+fdk_run fdk-old
+fdk_key=$(fdk_sent)
+check "a stack made before the parameter: a key of 64 hex characters is made once and sent" "0 1" \
+  "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  it prints as (not printed), and no log, terminal line or aws call holds it" "1 0" \
+  "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+check "  and the end-of-run search of the log ran with the key remembered" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+FDK_NOSTACK=1 fdk_run fdk-create
+fdk_key=$(fdk_sent)
+check "a creation makes a key of its own and sends it" "0 1" "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  and never prints it" "1 0" "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+FDK_HASKEY=1 fdk_run fdk-kept
+check "a stack that holds the parameter keeps it: the previous value, none made" "0 (previous)" "$RC $(fdk_sent)"
+check "  and the terminal still says (not printed)" 1 "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true)"
+fdk_made=$(printf 'ab%.0s' $(seq 1 32))
+printf '%s\n' "$fdk_made" >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file
+check "a key run takes the key from the 0600 file it names, replacing the stack's" "0 $fdk_made" "$RC $(fdk_sent)"
+check "  and never prints it" 0 "$(fdk_seen "$fdk_made")"
+chmod 644 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-open
+check "a key file other than 0600 is refused before any change set, without its value" "1 1 0 0" \
+  "$RC $(grep -c 'must be 0600' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen "$fdk_made")"
+printf 'not-a-key\n' >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-short
+check "a key file that holds no 64 hex characters is refused, without its content" "1 1 0 0" \
+  "$RC $(grep -c '64 hex characters' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen not-a-key)"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
