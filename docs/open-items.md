@@ -1430,3 +1430,19 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 ## 242. The log count's pin has small gaps in how a red reads — the machine; `[DEFERRED]` (the dead log citations' review reread, 2026-11-11, Info)
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
+
+## 306. The confirm dialog is a base part with no caller yet — the machine; *parked* (the design system's plan, 2026-11-12, Low)
+
+The design skeleton the human judged draws five base parts, the legacy's confirm dialog among them, but no screen of the new app opens a confirm dialog: the deletes confirm on a page of their own, and the one dialog drawn is the session-ended prompt (`ui/src/parts/SessionEnded.tsx`'s `SessionEnded`). The design system's plan gives the dialog its look through the theme's dialog entry and builds no part nothing calls. *Fix:* the part, from the legacy's `ConfirmModal` (a message, then Cancel and a red Confirm, right-aligned), in the step of the first screen that needs one. *Trigger:* the first screen that asks before an act in a dialog.
+
+## 307. Dark mode is parked, light only by the human's answer — the human; *parked* (the design system's plan, 2026-11-12)
+
+The human answered on 2026-11-11 that the app stays light only for now, as the legacy is. The design system's plan forces light in `ui/src/frame/Providers.tsx`'s `Providers` and deletes the frame's dark rules, which stay in git at the plan's commit. *Fix:* a dark set of tokens beside the light one in `ui/src/design-system/`, the provider following the device again, and the walks taken in both schemes. *Trigger:* the human's word, or a partner's ask.
+
+## 308. The legacy draws a page title a level smaller on a phone — the machine; *parked* (the design system's plan, 2026-11-12, Low)
+
+The legacy's list page title is a level-3 heading on a computer and a level-4 one on a phone (the old repository's `workspace/uis/c-mngt/src/components/ListPageHeader.tsx`, its two `Title` branches), 22 against 18 pixels; the new app draws 22 at every width. The skeleton the human judged did not show it, so the plan leaves it out. *Fix:* the phone's size as a token and the heading rule at the phone width, then a picture run over every walk. *Trigger:* a look the human asks for, or the next change to the page title.
+
+## 309. Font weights written as numbers in screens are outside the literal check — the machine; *parked* (the design system's plan, 2026-11-12, Info)
+
+The design system's literal check refuses a colour written outside `ui/src/design-system/`, not a weight: `fw=` with a number stands 18 times in `ui/src`'s screens and parts (500, 600 and 700). Each is a type value written where it is used. *Fix:* named weights in the tokens and the screens reading them by name, with the check extended. *Trigger:* the next change to a weight in the tokens.
