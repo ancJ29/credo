@@ -50,26 +50,38 @@ export function parsed<T>(schema: z.ZodType<T>, kind: string, stored: { data: un
   return result.data;
 }
 
+type StoredEntry = Awaited<ReturnType<RecordStore['listRecords']>>['records'][number];
+
+/** The records under a prefix past `after`, page after page in key order until c-storage says no
+ * more. A page that does not move past the last key read (an empty one with more left, or a
+ * c-storage that ignores `after`) is a fault, never a loop. */
+export async function* pagesOf(
+  storage: RecordStore,
+  prefix: string,
+  after: string | undefined,
+  kind: string,
+) {
+  let cursor = after;
+  for (;;) {
+    const page = await storage.listRecords(prefix, cursor);
+    const first = page.records.at(0);
+    if (page.more && (!first || (cursor !== undefined && first.key <= cursor)))
+      throw new Error(`the ${kind} list is longer than c-storage returns`);
+    yield* page.records;
+    if (!page.more) return;
+    cursor = page.records[page.records.length - 1].key;
+  }
+}
+
 /** The reads and writes every record route shares, over one record store. Reader-held: a route
  * module is handed a company's client and no whole one, but nothing but review stops a list written
  * inline again.
  * `every` is the one place a list under a prefix is read: never short, each record parsed. */
 export function recordTools(storage: RecordStore) {
-  /** Every record under a prefix, never short: page after page until c-storage says no more. A
-   * page that does not move past the last key read (an empty one with more left, or a c-storage
-   * that ignores `after`) is a fault, never a loop. */
+  /** Every record under a prefix, never short: page after page until c-storage says no more. */
   async function every<T>(prefix: string, schema: z.ZodType<T>, kind: string) {
-    const all: Awaited<ReturnType<RecordStore['listRecords']>>['records'] = [];
-    let after: string | undefined;
-    for (;;) {
-      const page = await storage.listRecords(prefix, after);
-      const first = page.records.at(0);
-      if (page.more && (!first || (after !== undefined && first.key <= after)))
-        throw new Error(`the ${kind} list is longer than c-storage returns`);
-      all.push(...page.records);
-      if (!page.more) break;
-      after = all[all.length - 1].key;
-    }
+    const all: StoredEntry[] = [];
+    for await (const entry of pagesOf(storage, prefix, undefined, kind)) all.push(entry);
     return all.map((stored) => ({
       key: stored.key,
       record: parsed(schema, `${/^[aeiou]/.test(kind) ? 'an' : 'a'} ${kind}`, stored),
