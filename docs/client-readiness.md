@@ -30,7 +30,7 @@ Every client-facing route runs `resolveTenant` before the body is read and befor
 client's code comes from a header, the one index record gives the minted id, and a code that is
 malformed or unknown stops the call at a 400 or a 404 ([`bff/src/app.ts#L100-L107`](../bff/src/app.ts#L100)).
 Every key is then built from that id through the layout's one home,
-[`shared/src/records.ts#L25-L72`](../shared/src/records.ts#L25), and a tenant's sessions are its own
+[`shared/src/records.ts`'s `recordKeys`](../shared/src/records.ts), and a tenant's sessions are its own
 records, so a handle minted under one id names no session under another
 ([`app.ts#L88-L89`](../bff/src/app.ts#L88)). A search of the whole product for a record key built
 by hand outside `records.ts` finds none — only test files assert the strings.
@@ -125,7 +125,7 @@ client's stack, whatever it is called, meets the rules below.
   (`bff/src/routes/root-password.ts`). If that client's BFF is broken, there is no way to set
   one. Open item 132 keeps this alone: it is a missing tool, not a missing guard.
 
-### Two logs record a call, both on ridge, and nothing slows a guess
+### Two logs record a call, both on ridge, and six wrong passwords make a name wait
 
 The API in front of the BFF answers anyone, which the template states in its own words: one
 catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
@@ -137,10 +137,14 @@ Lambda function URLs, and it is parked until a client signs. Read "answers anyon
 not *unauthenticated* — a call arriving that way still meets the client header, the session and the
 permission check.
 
-What is worth adding to that item is the cost of the half of it nobody parked. Nothing slows a
-guess at a password: the sign-in routes and one's own password route answer every try, and on ridge
-the stage's throttle is the only brake ([open item 28](open-items.md), which the owner already
-placed before a client's own stack). **Two trails record a call, and they are not the same age.**
+What is worth adding to that item is what a guess at a password now meets. Six wrong passwords make
+a name wait: the sign-in and one's own password count a name's wrong tries together, the sixth
+starts a wait of 30 seconds, each next doubles it and from the eleventh it is 15 minutes, and a
+right password is refused during the wait (`bff/src/records/sign-in-wait.ts`'s `countTry`, the
+numbers in `shared/src/signins.ts`; the memo `memo/bff.md`'s section of that claim). The count is per
+name inside a company, not per address, which the back end cannot read, so the stage's throttle is
+still the only brake on one guesser trying many names, and each invented name leaves a small record
+([open item 256](open-items.md)). **Two trails record a call, and they are not the same age.**
 *The older one has been there all along:* the function writes a line per request to
 `/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
 `options` to an empty object and hands it on (`#L12`), so `bff/src/server.ts`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
@@ -164,7 +168,7 @@ in the function's log that someone could read afterwards, and nobody is told to 
 Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
 so they leave nothing in the function's log and appear only in the stage's log, which is what this
 piece adds and what is now on ridge.** The
-sign-in limit and the watching are each accepted on their own; together they mean the record
+sign-in wait and the watching are each built on their own; together they mean the record
 exists and a person has to think to look. Neither trail says whose records were read, since the
 client's code is in a header the stage's format cannot name ([open item 152](open-items.md)). The same is true of a read taken the other way: a person with the AWS
 session can reach the box and the file, and nothing but the box's own journal says they did.
@@ -256,8 +260,9 @@ its steps.
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads
    there and the drill refuses (open item 131, closed). What remains is a terminal path to a
    client's root password (open item 132): hours, and a missing tool.
-4. **The sign-in limit (item 28).** The owner's to place; a short piece. Without it the stage's
-   throttle is the only brake on a guess. *The access log that used to share this entry is split
+4. **The sign-in wait is built** (the wait after wrong passwords, in `main` once this piece lands).
+   What it leaves: one guesser trying many names meets only the stage's throttle, and each
+   invented name leaves a small record (item 256). *The access log that used to share this entry is split
    off:* it is the machine's, written into the template and awaiting the change set on ridge
    (`docs/plans/2026-11-08-access-log.md`), and it is the readable half of item 121. With the
    function's own request lines it is what turns "nothing bad has happened" into something a
@@ -514,9 +519,9 @@ shape of the piece, not its steps.
 
 Not on this list because they belong to the other half: a client's own stack, the backup, the API's
 open address, deploys and recovery. One of that half's items is worth naming here because a product
-reader will reach for it — the sign-in's missing limit on wrong passwords
-([item 28](open-items.md)) — and its own parking note says "before the first client's own stack",
-which is now.
+reader will reach for it — the sign-in's wait after wrong passwords, which is built: the name that
+is guessed waits, and what it leaves, one guesser trying many names and a small record for each
+invented one, is [item 256](open-items.md).
 
 ### What this half verified first-hand, and what it did not
 
