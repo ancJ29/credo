@@ -125,11 +125,21 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
 `docs/plans/2026-11-09-ridge-reup.md`, on ridge's branch), so that run does not try the new
 `stack.sh` path first; ridge's count of 21 resources holds, as this piece adds none.
 
-- [ ] **1. The door's half of the stack.** `ops/env.yml`: the parameter, the origin's header, the
+- [x] **1. The door's half of the stack.** `ops/env.yml`: the parameter, the origin's header, the
   role's read; `ops/stack.sh`: the key made, kept, taken from a
   0600 file for a key run, masked. Cases 8 to 10. *Done when:* the ops gate's three commands exit
   0, each new guard seen red once. Lands on `pre-merge` alone. **About 20 min**: the template and
   guards about 12, `stack.sh` about 7.
+  *Done 2026-11-12, `ac85857e`:* AWS's Service Authorization Reference (JSON form,
+  https://servicereference.us-east-1.amazonaws.com/v1/cloudfront/cloudfront.json) lists
+  `GetDistributionConfig` with `"Resources":[{"Name":"distribution"}]` and the `distribution`
+  resource as `"ARNFormats":["arn:${Partition}:cloudfront::${Account}:distribution/${DistributionId}"]`,
+  so the role's read on one distribution's ARN is allowed and matches the template's form. ShellCheck
+  (CI form), `cfn-lint ops/env.yml --regions ap-southeast-5` and `bash ops/test.sh` all exit 0 on the
+  committed tree. Seen red once each: row 8 with `NoEcho` set false ("FrontDoorKey is not a NoEcho
+  string parameter"), row 9 with the role's resource set to `*` ("does not read its own
+  distribution's configuration"), row 10 with `stack.sh` printing the key (the "prints as (not
+  printed)" cases wanted `1 0`, got `0 2`); each reverted, the files equal to their backups.
 - [ ] **2. The cheap end-to-end, on the local stack.** The check and its variable; the front, the
   stack's key and its wait. Cases 1 to 7. *Done when:* `pnpm --filter @credo/bff check` and `pnpm
   --filter @credo/scripts check` each end `== exit 0`, each case red once; one `pnpm stack --
