@@ -65,8 +65,18 @@ export const staffOf = async (storage: CStorageClient, code: string) => {
     .map((record) => employeeSchema.parse(record.data))
     .sort((a, b) => (a.code < b.code ? -1 : 1));
 };
-export const everything = async (storage: CStorageClient, code: string) =>
-  (await storage.listRecords(recordKeys.tenant(await tenantOf(storage, code)).all)).records;
+/** Every record of a company, page after page: c-storage answers a prefix in pages, and one page
+ * of a whole company is short once it holds more than a page. */
+export const everything = async (storage: CStorageClient, code: string) => {
+  const prefix = recordKeys.tenant(await tenantOf(storage, code)).all;
+  const all: Awaited<ReturnType<CStorageClient['listRecords']>>['records'] = [];
+  for (let more = true; more;) {
+    const page = await storage.listRecords(prefix, all.at(-1)?.key);
+    all.push(...page.records);
+    more = page.more && page.records.length > 0;
+  }
+  return all;
+};
 export const standing = (copy: MappedCopy, today: string) =>
   staffAsOf(copy.client, copy.scenario, today)
     .map((p) => [p.code, p.name, p.archived])

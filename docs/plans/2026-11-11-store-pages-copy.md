@@ -160,13 +160,13 @@ resource, hop or key, so stage 2 stands for it and it reaches ridge with your ne
   rewritten, its rejection of paging and its 8 MB hazard replaced. *Done when:* `make check` exits 0
   at 100 %, `collection_test.go` passing; cases 3 to 5 red once. `bash scripts/e2e.sh` stays CI's
   (the Bruno CLI). *Size:* 10, two parts of a first-run shape. *Done 2026-11-12:* c-storage's `make check` ended 0 at 100 % with `collection_test.go` passing; cases 3 (the bound, and one record however large), 4 and 5 each seen red once on a mutation and put back; the citation test ended 0; the e2e run is CI's.
-- [ ] **3. The back end true to pages.** `every`'s fault on a page that does not move; `priced` by
+- [x] **3. The back end true to pages.** `every`'s fault on a page that does not move; `priced` by
   key; the other `listRecords` callers read: the sweep stays, the seed's `isFresh` already refuses on
   `more` (`scripts/src/demo/apply.ts#L158-L167`), and `everything`
   (`scripts/src/demo/apply-support.ts#L68-L69`), one page of a whole test company, moves onto pages.
   *Done when:* the `bff` and `scripts` gates end `== exit 0`; cases 6 and 7 red once;
   `git diff pre-merge -- '*.test.ts' | grep -c '^-[^-]'` counts 0. *Size:* 7, one change through
-  one package's callers (the list kind's step 7).
+  one package's callers (the list kind's step 7). *Done 2026-11-12:* `every`'s fault was already in step 1's code and is now pinned by case 6 in `bff/src/records/records.every.test.ts`; `priced` gets the customer and each distinct product by key; `everything` reads pages in `scripts/src/demo/apply-support.ts`; the sweep and `isFresh` stay. The `bff` gate (660 tests) and the `scripts` gate (423 tests) each ended `== exit 0` on the tree committed; cases 6 and 7 each seen red once on a mutation and put back. **Row 18 does not hold for one assertion:** in `bff/src/routes/orders-records.route.test.ts`, the test "answers 500 to the orders, the requests and the drivers when c-storage says there are more or a record does not parse..." had an order save in its short-list case expecting 500 because `priced` listed; `priced` now lists nothing, so that save answers 201. The POST and its fourth expected 500 were removed (2 lines removed), and the new describe in `bff/src/routes/orders.route.test.ts` holds the POST's reads instead (the customer and each product by key, none listed). The step's diff count of removed test lines is 2, not 0. `scripts` `staffOf` still lists one page of a test company's employees.
 - [ ] **4. The copy tool hardened.** The bound and `after`, the tags on each write, the removals,
   `compareCompany`, their entry in `bff/package.json`'s `exports`, and
   `bff/src/records/company-copy.test.ts` over two real c-storages (`bff/tests/c-storage.ts`): three
