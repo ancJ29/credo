@@ -1,8 +1,18 @@
-import { waitReplySchema } from '@credo/shared';
+import { type CStorageClient, normaliseSignInName, waitReplySchema } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
+import { buildApp } from './app';
 import { personCalls, staffTenant } from '../tests/staff';
-import { ROOT, signIn, tenantWithRoot } from '../tests/tenant';
+import {
+  CODE,
+  DEVICE,
+  ORIGIN,
+  ROOT,
+  scoped,
+  signIn,
+  tenantWithRoot,
+  withAuth,
+} from '../tests/tenant';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -16,6 +26,7 @@ type Tenant = Awaited<ReturnType<typeof tenantWithRoot>>;
 
 const WRONG = 'not the password';
 const SECOND = 1000;
+const NEW = 'New-password-2@';
 
 /** One try at the sign-in: the status and the body it answered. */
 async function tried(t: Pick<Tenant, 'app'>, name: string, password: string) {
@@ -29,6 +40,15 @@ async function wrongTries(t: Pick<Tenant, 'app'>, name: string, count: number) {
   for (let i = 0; i < count; i++) answers.push(await tried(t, name, WRONG));
   return answers;
 }
+
+/** One's own password changed, from the device the session was issued to. */
+const ownPassword = (t: Pick<Tenant, 'app'>, authId: string, payload: object) =>
+  t.app.inject({
+    method: 'PUT',
+    url: '/api/auth/password',
+    headers: { ...withAuth(authId), 'x-device-id': DEVICE },
+    payload,
+  });
 
 const waitOf = (seconds: number) => ({
   status: 429,
@@ -125,5 +145,101 @@ describe('C: Wrong passwords make a name wait, through the real back end', () =>
     const answer = await tried(t, ROOT.name, ROOT.password);
 
     expect(answer).toEqual({ status: 503, body: { error: 'Service unavailable' } });
+  });
+
+  it('C: A try during a wait does not lengthen it', async () => {
+    const t = await tenantWithRoot(cs);
+    await wrongTries(t, ROOT.name, 6);
+    t.time.advance(10 * SECOND);
+    const during = await tried(t, ROOT.name, WRONG);
+    t.time.advance(20 * SECOND);
+
+    const after = await tried(t, ROOT.name, WRONG);
+
+    expect(during).toEqual(waitOf(20));
+    expect(after).toEqual(waitOf(60));
+  });
+
+  it('C: A wrong current password on one’s own password counts on the signed-in name, and during a wait it answers 429 unread', async () => {
+    const t = await staffTenant(cs);
+    const lan = await t.staff('EMP-0001');
+    const name = normaliseSignInName('EMP-0001');
+    const change = (current: string) => ownPassword(t, lan.authId, { current, password: NEW });
+
+    const bySignIn = await wrongTries(t, name, 3);
+    const byOwn = [];
+    for (let i = 0; i < 3; i++) byOwn.push(await change(WRONG));
+    t.time.advance(10 * SECOND);
+    const rightDuring = await change(lan.password as string);
+    t.time.advance(20 * SECOND);
+
+    expect(bySignIn.map((answer) => answer.status)).toEqual([401, 401, 401]);
+    expect(byOwn.map((answer) => answer.statusCode)).toEqual([403, 403, 429]);
+    expect(byOwn[2]?.json()).toEqual({ error: 'Wait', waitSeconds: 30 });
+    expect(rightDuring.statusCode).toBe(429);
+    expect(rightDuring.json()).toEqual({ error: 'Wait', waitSeconds: 20 });
+    expect((await tried(t, name, lan.password as string)).status).toBe(200);
+  });
+
+  it('C: A right current password clears the count the sign-in left', async () => {
+    const t = await staffTenant(cs);
+    const lan = await t.staff('EMP-0001');
+    const name = normaliseSignInName('EMP-0001');
+    await wrongTries(t, name, 3);
+    const changed = await ownPassword(t, lan.authId, { current: lan.password, password: NEW });
+    expect(changed.statusCode).toBe(200);
+    const held = changed.json<{ authId: string }>().authId;
+
+    const answers = [];
+    for (let i = 0; i < 6; i++) {
+      answers.push(await ownPassword(t, held, { current: WRONG, password: NEW }));
+    }
+
+    expect(answers.map((answer) => answer.statusCode)).toEqual([403, 403, 403, 403, 403, 429]);
+  });
+
+  it('C: Of ten tries sent at once on a name at four wrong, at most two have their password checked', async () => {
+    let saved = 0;
+    const t = await tenantWithRoot(cs, {
+      wrap: (client) => ({
+        ...client,
+        async putRecord(key, data, ifTag) {
+          const result = await client.putRecord(key, data, ifTag);
+          if (key.includes('.signin-wait.') && result === 'saved') saved++;
+          return result;
+        },
+      }),
+    });
+    await wrongTries(t, ROOT.name, 4);
+    saved = 0;
+
+    const answers = await Promise.all(
+      Array.from({ length: 10 }, () => tried(t, ROOT.name, WRONG)),
+    );
+
+    expect(saved).toBe(2);
+    expect(answers.filter((answer) => answer.status === 401)).toHaveLength(1);
+    expect(answers.filter((answer) => answer.status === 429)).toHaveLength(9);
+  });
+
+  it('C: A second back end over the same store refuses during the wait the first one started', async () => {
+    const t = await tenantWithRoot(cs);
+    const second = scoped(
+      buildApp({
+        storage: t.client as CStorageClient,
+        now: t.time.now,
+        origin: ORIGIN,
+        serviceKey: t.accessKey,
+        logger: false,
+      }),
+      CODE,
+  DEVICE,
+    );
+    await wrongTries(t, ROOT.name, 6);
+    t.time.advance(10 * SECOND);
+
+    const viaSecond = await tried({ app: second }, ROOT.name, ROOT.password);
+
+    expect(viaSecond).toEqual(waitOf(20));
   });
 });

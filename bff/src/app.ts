@@ -433,7 +433,13 @@ export function buildApp({
       const entry = declare(request, personOf(who));
       const device = deviceOf(request);
       const body = parse(changeOwnPasswordRequestSchema, request.body);
-      if (!(await holdsPassword(who.signIn.user, body.current))) throw forbidden();
+      const counted = await countTry(request.storage, who.signInName, now);
+      if ('refused' in counted) throw waitError(counted.refused);
+      if (!(await holdsPassword(who.signIn.user, body.current))) {
+        const seconds = waitAfter(counted.wrong);
+        throw seconds > 0 ? waitError(seconds) : forbidden();
+      }
+      await clearWait(request.storage, who.signInName);
       const changed: StoredUser = {
         ...who.signIn.user,
         passwordHash: await hashPassword(body.password),
