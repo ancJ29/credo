@@ -501,6 +501,12 @@ export const en = {
     qrOnce: 'It works once, for 15 minutes. Showing a new code cancels this one.',
     qrFailed: 'No code was made: try again.',
   },
+  wait: {
+    second: 'Too many wrong tries. Try again in {{count}} second.',
+    seconds: 'Too many wrong tries. Try again in {{count}} seconds.',
+    minute: 'Too many wrong tries. Try again in {{count}} minute.',
+    minutes: 'Too many wrong tries. Try again in {{count}} minutes.',
+  },
   ownPassword: {
     title: 'Change your password',
     text: 'Give the one you use now, then the new one. Every other device you are signed in on is signed out.',

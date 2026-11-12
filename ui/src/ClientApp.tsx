@@ -121,7 +121,8 @@ export function ClientApp({
   const [user, setUser] = useState<UserView | null>(null);
   const [chosen, setChosen] = useState<Language | null>(() => device.language());
   const [shown] = useState<Language | null>(() => device.shownLanguage());
-  const [signIn, setSignIn] = useState<'idle' | 'busy' | 'refused'>('idle');
+  const [signIn, setSignIn] = useState<'idle' | 'busy' | 'refused' | 'wait'>('idle');
+  const [waitSeconds, setWaitSeconds] = useState(0);
   /** What the address named when the app opened; the sign-in's own navigation does not change it. */
   const { search } = useLocation();
   const [linked] = useState(() => linkedCode(search));
@@ -204,7 +205,10 @@ export function ClientApp({
       setUser(session.user);
     } catch (error) {
       if (error instanceof ApiError && error.status === SIGNED_OUT) setSignIn('refused');
-      else {
+      else if (error instanceof ApiError && error.waitSeconds !== null) {
+        setWaitSeconds(error.waitSeconds);
+        setSignIn('wait');
+      } else {
         setDoc(null);
         setPhase('unavailable');
       }
@@ -429,6 +433,7 @@ export function ClientApp({
         <SignIn
           brand={config}
           status={signIn}
+          waitSeconds={waitSeconds}
           languages={config.languages}
           onLanguage={chooseLanguage}
           onSubmit={(n, p) => void submit(n, p)}

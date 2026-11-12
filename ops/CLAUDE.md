@@ -1,5 +1,5 @@
 # ops
-Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` runs `ops/gate.sh` from this folder and reads none of the rest · Ship: a push to `main` runs the release, the app's ship and the check in CI's job `deploy`
+Stack: bash 3.2 and Ubuntu's, plus hand-written CloudFormation YAML · Gate: rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) (ShellCheck, cfn-lint, `bash ops/test.sh`), which CI's job `ops` runs; `pnpm check` runs `ops/gate.sh` from this folder and reads none of the rest · Ship: a push to `main`, or a press of `ci` on `main`, runs the release, the app's ship and the check in CI's job `deploy`
 
 What a person or CI runs against ridge and the hosting account. Not product code.
 
@@ -24,6 +24,7 @@ An `ops/` change needs the three gate rows, as [the ops job](README.md#the-ops-j
 - **OP6. A stop before the first act is, in a `lib.sh` script, `die`: `error:` on stderr, exit 1 (8 of 9); in a hand-run script, `== refused: <why>` in the log, exit 2 (4 of 4).** `root-password.sh` redefines `die` to say both and misreads where the first write was (open item 47 in [`docs/open-items.md`](../docs/open-items.md)); the next file copies `seed.sh`.
 - **OP7. A run ends in a verdict.** A `lib.sh` script ends `== green` (`verdict`) or on a line naming what was done (`released <sha>`); a hand-run one ends `== verdict: green` or `red: <why>`, then `== done`. Two say `good`; the next file says `green`.
 - **OP8. A value that must not reach a log goes to `mask` as it is read;** the exit searches the log for it.
+- **OP9. A script that calls `main_synced` also says its answer on production, in one call between `log_start` and `main_synced` (9 of 9):** `refuse_real <env> <why>` to stop on an environment not listed in `INVENTED_ENVS`, or `real_ok <env> <why>` to go on with a reason (both in `ops/lib.sh`). `ops/test.sh`'s section on the stance holds it over the glob, so a script written later meets it; the answers are [on production](README.md#on-production).
 
 ## Non-obvious facts
 

@@ -177,6 +177,46 @@ main_synced() {
   ops_match_main
 }
 
+# INVENTED_ENVS: the environments that hold invented data alone, space-separated, this list's one home.
+# Every other name may hold a real company's records and is treated as production
+# (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
+# never be named like one of these.
+INVENTED_ENVS="ridge"
+# REAL: 1 once real_ok has run on an unlisted environment. Set to 0 here, before any environment is read
+# by a script, so a stray REAL=1 in a shell or a workflow's env cannot narrow ridge's check.
+REAL=0
+
+# is_invented <env>: succeeds when the environment is listed in INVENTED_ENVS.
+is_invented() {
+  case " $INVENTED_ENVS " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# refuse_real <env> <why>: dies with <why> (the script's own words) unless the environment is listed as
+# invented. A script that must never act on a real company's records calls it after log_start, so the
+# refusal lands in the log, and before main_synced, so it comes before any AWS call.
+refuse_real() {
+  is_invented "$1" || die "$2"
+}
+
+# real_ok <env> <why>: for a script that is safe on an environment that may hold real data. On an unlisted
+# environment it prints one ok line saying why, sets REAL=1 for a script that branches on it, and refuses
+# the two switches the tests set in the environment (RIDGE_SCRIPTS_DIR, OPS_TEST_NO_TTY) unless the tests'
+# own marker OPS_TESTS_RUNNING is set beside them, so the code that runs there is the reviewed tree's.
+# On a listed environment it prints and refuses nothing. Called after log_start and before main_synced.
+real_ok() {
+  is_invented "$1" && return 0
+  if [ -z "${OPS_TESTS_RUNNING:-}" ]; then
+    [ -z "${RIDGE_SCRIPTS_DIR:-}" ] || die "RIDGE_SCRIPTS_DIR is set, and $1 may hold real data: that switch is the tests' alone, so the code run there is the reviewed tree's"
+    [ -z "${OPS_TEST_NO_TTY:-}" ] || die "OPS_TEST_NO_TTY is set, and $1 may hold real data: that switch is the tests' alone"
+  fi
+  # shellcheck disable=SC2034 # read by the script that sources this file
+  REAL=1
+  echo "ok   $1 may hold real data; this script is safe there: $2"
+}
+
 # ops_match_main: dies unless the tracked and untracked files git does not ignore, under every path
 #   ci.yml's push trigger deploys on, and the root .gitignore (one local line there would hide a new
 #   file under any of them), are as reviewed. Ignored files (node_modules, dist) are not compared.
@@ -765,7 +805,14 @@ bff_rules_verdict() {
     then "yes" else "no" end' <<<"$1"
 }
 
-# function_network_verdict <get-function-configuration> <subnet> <group> → yes, or no: in ridge's
+# BFF_FN_QUERY: the only fields of the function's configuration the check reads, as --query. The
+# configuration's Environment.Variables hold the BFF's two access keys, so no read takes it whole: the
+# names come as a list and the two values the check compares are the non-secret ones (APP_ORIGIN,
+# C_STORAGE_URL). No key value reaches the shell, the here-strings below, or a temp file, on any environment.
+# shellcheck disable=SC2034,SC2016 # check.sh reads it; the backticks are JMESPath's literal, not a substitution
+BFF_FN_QUERY='{VpcConfig: VpcConfig, Description: Description, Names: keys(Environment.Variables || `{}`), AppOrigin: Environment.Variables.APP_ORIGIN, Url: Environment.Variables.C_STORAGE_URL}'
+
+# function_network_verdict <the function, read by BFF_FN_QUERY> <subnet> <group> → yes, or no: in ridge's
 # subnet, under the BFF's group alone
 function_network_verdict() {
   jq -r --arg s "$2" --arg g "$3" \
@@ -775,16 +822,21 @@ function_network_verdict() {
 # BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
-# function_env_names <get-function-configuration> → the names of its variables, sorted and comma-joined;
-# values are never read here
+# function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
+# comma-joined; no value is in what it reads
 function_env_names() {
-  jq -r '(.Environment.Variables // {}) | keys | join(",")' <<<"$1"
+  jq -r '(.Names // []) | sort | join(",")' <<<"$1"
 }
 
-# function_origin_verdict <get-function-configuration> <the app's address> → yes, or no: the function's
-# APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
+# function_origin_verdict <the function, read by BFF_FN_QUERY> <the app's address> → yes, or no: the
+# function's APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
 function_origin_verdict() {
-  jq -r --arg a "${2%/}" 'if (.Environment.Variables.APP_ORIGIN // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+  jq -r --arg a "${2%/}" 'if (.AppOrigin // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+}
+
+# function_url <the function, read by BFF_FN_QUERY> → its C_STORAGE_URL, empty when it holds none
+function_url() {
+  jq -r '.Url // empty' <<<"$1"
 }
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
@@ -852,18 +904,39 @@ edge() {
   EDGE_HEADERS=$(tr -d '\r' <"$WORK/edge.headers" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
 }
 
-# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
-# partner reaches it, each a red when it fails. The password goes to the BFF on curl's stdin, never
-# on a command line. The unknown code, the missing code and the operator's door without a session are
-# answered by the BFF behind /api/*; a cache would answer them from CloudFront.
-edge_reads() {
+# edge_reads_open <base address>: the six reads through the app's address that need no client and write
+# nothing, each a red when it fails: /health is the app's page, an unknown code and a missing one, the
+# operator's door without a session, the sign-in options' relying party and /api/health. None writes: the
+# options' challenge is signed, not stored. The BFF answers the five behind /api/*; a cache would answer
+# them from CloudFront.
+edge_reads_open() {
+  EDGE_BASE=$1
+  edge GET /health
+  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
+  edge GET /api/config
+  expect "a missing code is a 400" 400 "$EDGE_STATUS"
+  edge GET /api/operator/me
+  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
+  edge POST /api/operator/passkey/options
+  # yes or no, so the log never holds the app's host, which the deploy masks like a key
+  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
+    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$1")" ] && echo yes || echo no)"
+  edge GET /api/health
+  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+}
+
+# edge_reads_client <base address> <a client code> <its root's password> <the company's name>: the reads that
+# need a client of the check's own, which write (a sign-in is a session): the app's page at its link,
+# /api/config with no cache in front, the root signing in, being known, signing out and refused after. The
+# password goes to the BFF on curl's stdin, never on a command line.
+edge_reads_client() {
   local base=$1 code=$2 pass=$3 name=$4 device auth timed
   EDGE_BASE=$base
   device=check-$(random_hex)
   edge GET "/login?client-code=$code"
   expect "the app's page at the client's link" "200 yes" "$EDGE_STATUS $(grep -q '<div id="root">' <<<"$EDGE_BODY" && echo yes || echo no)"
-  edge GET /health
-  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
   edge GET /api/config -H "x-client-code: $code"
   expect "/api/config reaches the BFF, which reads c-storage for the client's name" "200 $name" "$EDGE_STATUS $(jq -r '.config.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
   expect "  with no cache in front of /api/*" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
@@ -881,16 +954,11 @@ edge_reads() {
   expect "  signs out" 204 "$EDGE_STATUS"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  and the handle is refused after" 401 "$EDGE_STATUS"
-  edge GET /api/config -H 'x-client-code: check-no-such-client'
-  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
-  edge GET /api/config
-  expect "a missing code is a 400" 400 "$EDGE_STATUS"
-  edge GET /api/operator/me
-  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
-  edge POST /api/operator/passkey/options
-  # yes or no, so the log never holds the app's host, which the deploy masks like a key
-  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
-    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" ] && echo yes || echo no)"
-  edge GET /api/health
-  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+}
+
+# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
+# partner reaches it: the reads that need the check's client, then the six that need none.
+edge_reads() {
+  edge_reads_client "$@"
+  edge_reads_open "$1"
 }

@@ -30,7 +30,11 @@ function memoryStorage(): CStorageClient {
       tags.set(key, createHash('sha256').update(String(writes++)).digest('hex'));
       return Promise.resolve('saved');
     },
-    removeRecord: () => Promise.resolve('removed'),
+    removeRecord: (key) => {
+      records.delete(key);
+      tags.delete(key);
+      return Promise.resolve('removed');
+    },
     health: () => Promise.resolve({ buildVersion: 'dev' }),
   };
 }

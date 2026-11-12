@@ -69,6 +69,11 @@ export const recordKeys = {
     signInEmail: (email: string) => `tenant.${id}.signin-email.${email}`,
     /** A person's one QR code, by their minted id: a new code replaces it, spending removes it. */
     signInQr: (employeeId: string) => `tenant.${id}.signin-qr.${employeeId}`,
+    /** A name's wrong tries and wait, by the name's HMAC-SHA-256 hex under a key the BFF derives from
+     * its service key (`bff/src/records/sign-in-wait.ts`'s `waitKeyFrom`): a name nobody holds is
+     * often a password typed into the wrong box, so the key never holds it, and a copy of the
+     * store's data without that key cannot reverse it by a dictionary run. */
+    signInWait: (nameHash: string) => `tenant.${id}.signin-wait.${nameHash}`,
   }),
 } as const;
 
@@ -181,6 +186,15 @@ export const storedUserSchema = z.strictObject({
   generation: z.string().default(''),
 });
 export type StoredUser = z.infer<typeof storedUserSchema>;
+
+/** A sign-in name's wrong tries in a row, and when its wait ends in milliseconds since the epoch
+ * (a time already past, or none yet, means no wait). A try is counted before its password is
+ * checked, and a right password removes the record. */
+export const storedSignInWaitSchema = z.strictObject({
+  wrong: z.number().int().positive(),
+  until: z.number(),
+});
+export type StoredSignInWait = z.infer<typeof storedSignInWaitSchema>;
 
 export const storedSessionSchema = z.strictObject({
   /** SHA-256 hex of the handle's secret; the secret itself is never stored. */

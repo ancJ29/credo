@@ -14,6 +14,7 @@ import { declare, operatorOf } from '../audit';
 import { ROOT_NAME } from '../records/clients';
 import { HttpError, parse } from '../errors';
 import { hashPassword, madePassword } from '../calling/password';
+import { tenantStorage } from '../records/records';
 import { setSignInPassword } from '../records/staff-records';
 
 type Deps = {
@@ -45,14 +46,14 @@ export function registerRootPasswordRoutes(
       if (!code.success) throw new HttpError(400, 'Bad request');
       const index = await storage.getRecord(recordKeys.client(code.data));
       if (!index) throw new HttpError(404, 'Unknown client');
-      const tenantId = storedClientSchema.parse(index.data).id;
-      const entry = declare(request, operatorOf(operator), tenantId, tenantId);
+      const id = storedClientSchema.parse(index.data).id;
+      const entry = declare(request, operatorOf(operator), id, id);
       const body = parse(setRootPasswordRequestSchema, request.body);
       await confirmed(operator, 'root-password', body.confirm);
       const password = body.password ?? madePassword();
       const set = await setSignInPassword(
-        storage,
-        tenantId,
+        tenantStorage(storage, id),
+        id,
         ROOT_NAME,
         (user) => user.root,
         await hashPassword(password),
