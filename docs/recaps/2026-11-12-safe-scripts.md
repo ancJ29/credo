@@ -17,9 +17,9 @@ A tag marking real data (it fails open) and refusing the check on production (it
 
 ## Still yours
 
-- Your look: the list of scripts and what each answers on production, in `ops/README.md`. <!-- FILL: the look's answer, yes or the script named -->
-- The `act` run and your push. <!-- FILL: GitHub's run on the landing push, in words -->
-- On ridge, `bash ops/check.sh ridge --reads-only` should end `== green`. <!-- FILL: that run read whole, in words -->
+- Your look: the list of scripts and what each answers on production, in `ops/README.md`. Answered yes.
+- The `act` run and your push. GitHub's runs on the landing push, the push and the button, both ended green with every job clean; each deploy's check ended green and deleted its own client. The whole check on the same commit had ended green before the push.
+- On ridge, `bash ops/check.sh ridge --reads-only` should end `== green`. Run and read whole: it ended green, with no failure, the collection and the client skipped as reads-only says, and no key in its log.
 - Production's check shows no save; item 333 words "proved on ridge first" as the production lane's rule.
 
 ## Evidence
