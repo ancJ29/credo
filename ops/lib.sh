@@ -889,18 +889,39 @@ edge() {
   EDGE_HEADERS=$(tr -d '\r' <"$WORK/edge.headers" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
 }
 
-# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
-# partner reaches it, each a red when it fails. The password goes to the BFF on curl's stdin, never
-# on a command line. The unknown code, the missing code and the operator's door without a session are
-# answered by the BFF behind /api/*; a cache would answer them from CloudFront.
-edge_reads() {
+# edge_reads_open <base address>: the six reads through the app's address that need no client and write
+# nothing, each a red when it fails: /health is the app's page, an unknown code and a missing one, the
+# operator's door without a session, the sign-in options' relying party and /api/health. None writes: the
+# options' challenge is signed, not stored. The BFF answers the five behind /api/*; a cache would answer
+# them from CloudFront.
+edge_reads_open() {
+  EDGE_BASE=$1
+  edge GET /health
+  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
+  edge GET /api/config
+  expect "a missing code is a 400" 400 "$EDGE_STATUS"
+  edge GET /api/operator/me
+  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
+  edge POST /api/operator/passkey/options
+  # yes or no, so the log never holds the app's host, which the deploy masks like a key
+  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
+    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$1")" ] && echo yes || echo no)"
+  edge GET /api/health
+  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+}
+
+# edge_reads_client <base address> <a client code> <its root's password> <the company's name>: the reads that
+# need a client of the check's own, which write (a sign-in is a session): the app's page at its link,
+# /api/config with no cache in front, the root signing in, being known, signing out and refused after. The
+# password goes to the BFF on curl's stdin, never on a command line.
+edge_reads_client() {
   local base=$1 code=$2 pass=$3 name=$4 device auth timed
   EDGE_BASE=$base
   device=check-$(random_hex)
   edge GET "/login?client-code=$code"
   expect "the app's page at the client's link" "200 yes" "$EDGE_STATUS $(grep -q '<div id="root">' <<<"$EDGE_BODY" && echo yes || echo no)"
-  edge GET /health
-  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
   edge GET /api/config -H "x-client-code: $code"
   expect "/api/config reaches the BFF, which reads c-storage for the client's name" "200 $name" "$EDGE_STATUS $(jq -r '.config.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
   expect "  with no cache in front of /api/*" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
@@ -918,16 +939,11 @@ edge_reads() {
   expect "  signs out" 204 "$EDGE_STATUS"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  and the handle is refused after" 401 "$EDGE_STATUS"
-  edge GET /api/config -H 'x-client-code: check-no-such-client'
-  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
-  edge GET /api/config
-  expect "a missing code is a 400" 400 "$EDGE_STATUS"
-  edge GET /api/operator/me
-  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
-  edge POST /api/operator/passkey/options
-  # yes or no, so the log never holds the app's host, which the deploy masks like a key
-  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
-    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" ] && echo yes || echo no)"
-  edge GET /api/health
-  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+}
+
+# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
+# partner reaches it: the reads that need the check's client, then the six that need none.
+edge_reads() {
+  edge_reads_client "$@"
+  edge_reads_open "$1"
 }

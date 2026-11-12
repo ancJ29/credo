@@ -171,12 +171,30 @@ shape.
   word; the switch check removed), 3 and 5 on a no-op helper, and put back. None of the other lanes'
   scripts was on `pre-merge`, so none got a line. The check's reason reads true of today's check.
   *Size:* 14 (the tree guard's build, a `lib.sh` check all the scripts share, with its rows: 14).
-- [ ] **2. The check that only reads.** The mode set from `REAL` or `--reads-only`, and line 2's
+- [x] **2. The check that only reads.** The mode set from `REAL` or `--reads-only`, and line 2's
   usage. Steps 4 and 7 branch on the mode. The Bruno version check moves under step 4. `edge_reads`
   splits in two. Cases 7 to 10, case 7 as a whole run on the stand-ins `ops/tunnel.sh`'s section
   already holds. *Done when:* both gates exit 0, each case red once. 👤 Point 2 follows from here.
   *Size:* 12 (the stranded check clients' change inside check.sh's tunnel, 7, plus about 5 for the
   first whole run of check.sh past its first step).
+  *Done:* `ops/check.sh <env> [--reads-only]` takes its mode from `REAL` (set by `real_ok` on an unlisted
+  environment) or the flag, and its reason now says it only reads there. In that mode it skips the
+  Bruno tools and version check, the box's keys and bff.env, the Bruno file, the collection, the sweep
+  and the check's client; it keeps the AWS reads, the box's facts, `/health`, layer four's reads and
+  the commit agreement. `edge_reads` is split in `edge_reads_open` (the six reads that need no client)
+  and `edge_reads_client`; ridge's full check runs both, as before, the client reads first. Shellcheck
+  and `bash ops/test.sh` each exit 0. The new section runs `check.sh` whole on stand-ins (aws, ssh,
+  bru, node, the edge): an unlisted environment and `ridge --reads-only` end green with no key read,
+  no `bru` call, no client call and the six reads green; plain ridge still reads the keys, runs the
+  collection and makes, sweeps and deletes a client; an unknown flag prints the usage, exit 2. Case 10
+  is a new deploy guard: the deploy's check line must be exactly `bash ops/check.sh ridge`. Each case was
+  red once on a mutation, put back: the real-environment mode removed (cases 7, 8 and the six-reads
+  rows), the flag ignored (case 9), the open reads dropped from the reads-only branch (case 8's six
+  reads, case 9), the flag put in `ci.yml`'s deploy line (case 10). The one stand-in not built: ridge's
+  full run is not green on the stand-in edge (the client it makes is not the edge's), so its rows count
+  calls, not the verdict.
+  *Size:* 19 (about 12 planned: the stand-ins' first whole run past the first step cost three reds
+  of the stand-in's own, an edge port, a missing port in the box's facts, and a `$*` pattern).
 - [ ] **3. The runbook and the prose it makes false.** `ops/README.md` gains "On production", the
   list above as each script's line. Its table gains `--reads-only`. `ops/CLAUDE.md` gains OP9 (the
   stance call and its test) and its count. In `docs/client-readiness.md`, the sections on the tree
