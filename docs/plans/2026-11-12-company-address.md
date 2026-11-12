@@ -135,12 +135,21 @@ and your acts start while steps 2 to 6 are built. Those land together after your
 deploy of their push sets the function's address to the operator's name and walks a company's own
 address in the same run.
 
-- [ ] **1. The stack's half.** `ops/env.yml`: the two settings, the condition, the distribution's
+- [x] **1. The stack's half.** `ops/env.yml`: the two settings, the condition, the distribution's
   names and certificate under it, `AppAddress` and the two outputs, the comment above
   `Distribution`; `ops/stack.sh`: the settings taken, kept, refused; `ops/lib.sh`'s `app_load`: the
   mask; `ops/app.sh#L130`'s comment ("CloudFront's name, kept for good") made true. Cases 1 to 5.
   *Done when:* the ops gate's three commands exit 0, each new guard seen red once. Lands on
   `pre-merge` alone. **About 20 min**: the template and guards about 13, `stack.sh` about 7.
+  *Done 2026-11-12 (commit 54194568):* `bash ops/test.sh` exit 0 on the final tree; ShellCheck (CI's form) exit 0;
+  `cfn-lint ops/network.yml ops/github.yml ops/env.yml` exit 0 and `cfn-lint ops/env.yml --regions ap-southeast-5` exit 0.
+  Each case seen red by one mutation, reverted, tree compared equal: 1 (a name kept under no domain), 2 (`vip` for
+  `sni-only`), 3 (the app's address left as CloudFront's under a domain), 4 (the together-refusal removed from
+  `stack.sh`), 5 (the domain's mask removed from `app_load`). Cases 2 and 3 were run alone, since one guard dies on
+  the first fault and hides the next. Case 4 runs locally on the stand-in `aws`; no stack was touched. One fix in the
+  writing pass: the stand-in's `describe-stacks` line lost a closing brace, which turned every stack run red (exit 5).
+  cfn-lint's W1030 is ignored on `Distribution` (`ops/env.yml`) because the empty default fails the certificate's
+  pattern, though the branch that reads it runs only when `Domain` is set and a Rule sets the two together.
 - [ ] **2. The screens read the address.** The rule and the link maker in `shared/src/wire.ts`;
   `App.tsx`'s property passed to `ClientApp.tsx`, whose `linkedCode` becomes address-first;
   `main.tsx` passes `location.hostname`; the two operator pages call the link maker, the add page
