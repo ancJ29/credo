@@ -132,7 +132,7 @@ Each size is the minutes the same shape took in its last runs (`worktrees/runs.t
 for a first run of its shape. Every gate is `pnpm --filter @credo/<pkg> check`, plus the citation
 test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
 
-- [ ] **1. The fake first: the rule, the words, the screen.** About 13 minutes: the rule in
+- [x] **1. The fake first: the rule, the words, the screen.** About 13 minutes: the rule in
   `shared/`, a first run of its shape, 5; the screen state on the fake, 8, as the last steps that
   added a state to a screen. The numbers, `waitAfter` and the wait's reply schema in
   `shared/src/signins.ts`; the thrown wait and `changePassword`'s kind in `ui/src/api.ts`; the
@@ -144,6 +144,14 @@ test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
   stays as it is. Cases 1, 3, 4 (unit), 16 to 19. *Done when:* the checks of `shared`, `ui` and
   `visual` each end `== exit 0`, the citation test exits 0, and `pnpm report` builds a page whose
   grep for screen 12's sentence counts 1. Your point 1 opens here, and the work goes on.
+  *Done, 2026-11-12:* the rule, the words and the screen are on the fake; the checks of `shared`, `ui`
+  and `visual` each ended `== exit 0` on the committed tree, the citation test exited 0, and the
+  built page's grep for screen 12's sentence counted 1. Cases 1, 3, 4 and 16 to 19 were each seen red
+  on a one-line break and put back; the cap of 15 minutes was seen red alone, and a doubling clamp
+  that no case could redden was removed. Two things differed from the step as written: the walk
+  specs test of `visual` named every screen against the spec lines, so it now exempts screen 12 by
+  id until step 4 adds its line (step 4 empties that list); and the Vietnamese of screen 12's
+  question went into `visual/site/questions-vi.json`, which the step did not name.
 - [ ] **2. The thinnest slice through the stack: the sign-in waits.** About 10 minutes, as the last
   step that gave every route of one kind one behaviour. The record, its schema and its key in
   `shared/src/records.ts`; `bff/src/records/sign-in-wait.ts`, the count-first write and the clear,

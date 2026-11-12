@@ -171,6 +171,24 @@ describe('the app', () => {
     );
   });
 
+  it('16: A sign-in made to wait says for how long, and a 429 of no wait’s shape says the service is unavailable', async () => {
+    const signIn = vi
+      .fn<Api['signIn']>()
+      .mockRejectedValueOnce(new ApiError(429, false, 30))
+      .mockRejectedValueOnce(new ApiError(429));
+    setup({ signIn });
+
+    await signInAs();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Too many wrong tries. Try again in 30 seconds.',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      DICTIONARIES.vi.common.unavailable,
+    );
+  });
+
   it('Signing out ends it on that device, whether or not the service heard', async () => {
     const { api, device } = setup({ signOut: () => Promise.reject(new ApiError(null)) }, signedIn);
 
