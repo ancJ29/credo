@@ -189,8 +189,18 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
   row 12 asks no name and changes no workflow, as step 1 chose; row 1's "before any call" check was not
   red alone, since the mutated run died earlier without an aws call. `CopyBucket` and `RecordsVolume`
   are shown by a synthetic template, the copy not having landed.
-- [ ] **3. The remake's cases, each seen red.** Rows 16 to 20, the same way. *Done when:* as in
+- [x] **3. The remake's cases, each seen red.** Rows 16 to 20, the same way. *Done when:* as in
   step 2. **About 11 min.**
+  *Done 11-12, 9 min:* ShellCheck over `ops/*.sh` exited 0 and `bash ops/test.sh` whole exited 0. Rows 16, 17,
+  19 and 20 had no cases yet, so they were written (the stand-ins gained `FAKE_BRU` and `FAKE_GH_OUT`), then
+  each was broken in a scratch copy of `ops/` run through a trimmed copy of the section; the tree holds none.
+  Seen red, each by its own mutation: row 16, `refuse_real` turned into `true` (the words missing, and `gh`
+  reached); 17, the `gh auth status` line, the Bruno version test and the `node_modules` test each turned into
+  `true`, each its own case red; 19, the exit test made false (app and check ran, workflows on), and
+  separately the step line's words changed (the log no longer names the step), the `exit 1` dropped, and an
+  early `gh workflow enable` (a workflow on); 20, the operator line dropped, and separately "It is empty: it
+  holds no operator and no demo copy." reworded. Row 18 stays green from step 1. Beyond the rows: row 20 reads
+  the row 18 run's log, so its two checks sit right after row 18.
 - [ ] **4. The runbook.** In `ops/README.md`: two "At a glance" rows, two rows in "On production"
   (both scripts refuse), and a section "Ridge down and back". It holds the two commands, the
   operator after, what each run's last lines read, and the address lane's two settings. Item 314

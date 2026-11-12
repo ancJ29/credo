@@ -3333,7 +3333,7 @@ cat >"$CYC/bin/gh" <<'STANDIN'
 #!/bin/bash
 echo "gh $*" >>"${FAKE_STATE:?}/gh.calls"
 case "$*" in
-  "auth status"*) exit 0 ;;
+  "auth status"*) [ -z "${FAKE_GH_OUT:-}" ] || exit 1; exit 0 ;;
   "workflow list"*)
     for f in "$FAKE_STATE"/wf.*; do printf '%s %s\n' "${f##*/wf.}" "$(cat "$f")"; done |
       jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ")) | map({name: .[0], path: (".github/workflows/" + .[0]), state: .[1]})' ;;
@@ -3343,7 +3343,10 @@ case "$*" in
   *) echo "stand-in gh: unknown: $*" >&2; exit 1 ;;
 esac
 STANDIN
-printf '#!/bin/sh\necho 4.2.0\n' >"$CYC/bin/bru"
+cat >"$CYC/bin/bru" <<'STANDIN'
+#!/bin/sh
+echo "${FAKE_BRU:-4.2.0}"
+STANDIN
 chmod +x "$CYC/bin/aws" "$CYC/bin/gh" "$CYC/bin/bru"
 cycle_run() { # <state name> <initial workflow state> <typed text> <script> <args…>: the script whole in the clone; terminal output in $S/out
   local name=$1 wf=$2 typed=$3 f
@@ -3461,6 +3464,25 @@ check "  and turned the two workflows on, read back active, walks.yml untouched"
   "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"
 check "  its log holds its own lines only: four steps named with their logs, one == green, no child's line" "4 1 0" \
   "$(grep -c '^-- step [1-4]/5: ops/.* ended with exit 0; its log: .*-ridge.log$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c '^== green$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c 'stand-in' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+
+check "20: its closing says ridge holds no operator and no demo copy, and gives the operator's command as the next step" "1 1" \
+  "$(grep -c '^== ridge is remade from main and checked. It is empty: it holds no operator and no demo copy.$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -cE '^ +cd .* && bash .*/ops/operator.sh ridge$' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+echo "== the remake's guards, each on its own case (rows 16, 17 and 19)"
+remake_calls() { cat "$S/aws.calls" "$S/gh.calls" "$S/children.calls" 2>/dev/null | grep -cE 'stack.sh|release.sh|app.sh|check.sh|workflow enable|cloudformation|get-caller' || true; }
+cycle_case remake-crest disabled_manually '' remake.sh crest
+check "16: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: remake.sh remakes ridge alone' "$S/out" || true)"
+check "  before any call, a child's or gh's or aws's" "0 gone gone" "$(remake_calls) $(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_ENV=FAKE_GH_OUT=1 cycle_case remake-nogh disabled_manually '' remake.sh ridge
+check "17: gh not logged in is refused, saying so, before the first step" "1 1 0" "$RC $(grep -c '^error: gh is not logged in' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_BRU=3.0.0 cycle_case remake-nobru disabled_manually '' remake.sh ridge
+check "  a Bruno CLI of another version is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs Bruno CLI 4.2.0, found 3.0.0' "$S/out" || true) $(remake_calls)"
+CASE_ENV=RIDGE_SCRIPTS_DIR= cycle_case remake-nopnpm disabled_manually '' remake.sh ridge
+check "  pnpm install not done is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs pnpm install done' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_RED=release cycle_case remake-red disabled_manually '' remake.sh ridge
+check "19: a red at the release stops it there: the app and the check never ran" "1 stack.sh env ridge,release.sh ridge," "$RC $(tr '\n' ',' <"$S/children.calls")"
+check "  the workflows stay off and none was enabled" "disabled_manually disabled_manually disabled_manually 0" "$(wf_states) $(cat "$S/gh.calls" 2>/dev/null | grep -c 'workflow enable' || true)"
+check "  and the log's last two lines name the step, then the exit" "1 == exit 1" \
+  "$(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | grep -c '^== stopped at step 2/5, ops/release.sh (exit 1)' || true) $(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"
