@@ -184,6 +184,13 @@ check "an update with no IDs keeps the stack's" previous "$(slack_plan '' '')"
 check "  as previous values" '[{"ParameterKey":"SlackWorkspaceId","UsePreviousValue":true},{"ParameterKey":"SlackChannelId","UsePreviousValue":true}]' "$(slack_add '' '')"
 check "an update with both IDs takes the new ones" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
 refuses "an update with one ID is refused too" "go together" slack_add T01ABCDEF ''
+refuses "none for the workspace and a real channel ID is refused (no channel, silently)" "is none and the other is an ID" slack_plan none C01ABCDEF
+refuses "a real workspace ID and none for the channel is refused" "is none and the other is an ID" slack_plan T01ABCDEF none
+refuses "  and on an update, through the function that appends" "is none and the other is an ID" slack_add none C01ABCDEF
+check "none and none on a stack that holds a channel is set (the removal, which the guard then asks to take)" set "$(slack_plan none none)"
+slack_plan_creation() { CS_TYPE=CREATE slack_plan "$1" "$2"; }
+check "a creation takes no previous value, though a REVIEW_IN_PROGRESS stack lists the IDs" default "$(slack_plan_creation '' '')"
+check "  and an update does" previous "$(CS_TYPE=UPDATE slack_plan '' '')"
 STACK_JSON=''
 
 # trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
@@ -525,6 +532,15 @@ box_port_guard() {
   grep -B2 '^ *add_param BoxPort' "$1" | grep -q '^ *add_param Env ' || die "BoxPort is not passed beside Env, on both paths"
 }
 passes "stack.sh passes BoxPort from the unit's port, on a creation and on an update" box_port_guard "$OPS_DIR/stack.sh"
+# slack_params_guard <stack.sh>: dies unless the env branch calls add_slack_params once, beside the BoxPort line and before the creation/update split
+# shellcheck disable=SC2016 # grep patterns, in single quotes
+slack_params_guard() {
+  [ "$(grep -c '^ *add_slack_params$' "$1" || true)" = 1 ] || die "stack.sh does not call add_slack_params once"
+  grep -B3 '^ *add_slack_params$' "$1" | grep -q '^ *add_param BoxPort ' || die "add_slack_params is not called beside BoxPort, before the creation and update paths split"
+}
+passes "stack.sh appends the Slack IDs once, before the creation and update paths split" slack_params_guard "$OPS_DIR/stack.sh"
+grep -v '^ *add_slack_params$' "$OPS_DIR/stack.sh" >"$WORK/stack-noslack.sh"
+refuses "  a stack.sh that forgets the Slack IDs is refused" "does not call add_slack_params once" slack_params_guard "$WORK/stack-noslack.sh"
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
 
@@ -545,6 +561,11 @@ watch_guard() {
     must "$1" "$alarm is not an alarm on the watch's own topic and a condition-free resource" \
       ".Resources.$alarm | .Type == \"AWS::CloudWatch::Alarm\" and .Condition == null"
   done
+  # every alarm's whole rule, pinned: operator, threshold, period, evaluation periods, statistic, switched on, every datapoint counted
+  must "$1" "AlarmCalls, AlarmErrors or AlarmRefusals is not Sum, 300 s, one period, threshold 1, at or above, switched on, every datapoint counted" \
+    '[.Resources.AlarmCalls, .Resources.AlarmErrors, .Resources.AlarmRefusals] | all(.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods)'
+  must "$1" "AlarmBox is not Maximum, 60 s, three periods, threshold 1, at or above, switched on, every datapoint counted" \
+    '.Resources.AlarmBox.Properties | .Statistic == "Maximum" and .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods'
   must "$1" "a resource other than the four alarms and the channel acts on Alerts" \
     '[.Resources | to_entries[] | select(.value.Properties | tostring | test("\"Ref\":\"Alerts\"")) | .key] | sort == ["AlarmBox","AlarmCalls","AlarmErrors","AlarmRefusals","AlertsChannel"]'
   # row 2: the calls alarm reads this stack's own API and stage; a 5xx in five minutes; no calls is no failure
@@ -632,24 +653,43 @@ refuses "  an alarm description that names no environment is refused (row 10)" "
 refuses "  an alarm description that says nothing of what failed is refused (row 10)" "an alarm's description does not name the environment" \
   watch_guard "$(mut '.Resources.AlarmBox.Properties.AlarmDescription = {"Fn::Sub":"${Env}: an alarm."}')"
 
+refuses "  an alarm with its actions switched off is refused (all four)" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.ActionsEnabled = false')"
+refuses "  a box alarm that a failed check never fires (above, not at or above, 1) is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ComparisonOperator = "GreaterThanThreshold"')"
+refuses "  an errors alarm with a threshold of 1000 is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Threshold = 1000')"
+refuses "  an errors alarm over a day is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Period = 86400')"
+refuses "  a refusals alarm that fires below its threshold is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.ComparisonOperator = "LessThanThreshold"')"
+refuses "  a calls alarm that wants five datapoints is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.DatapointsToAlarm = 5')"
+refuses "  a box alarm with its actions switched off is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ActionsEnabled = false')"
+
 echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
-# adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
-# Add, the one Modify is DeployRole, in place, and the guard names nothing
+# adds_and_one_modify <change set> <template json>: dies unless the recorded change set adds exactly layer
+# four's own resources (pinned below by name, so a later piece's resources in the template leave it alone),
+# the template holds each of them, the one Modify is DeployRole, in place, and the guard names nothing
 adds_and_one_modify() {
-  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes'
-  # the watch's resources (plan 2026-11-11-slack-alarm) are not layer four's: they come in their own update
-  old="$old Alerts AlarmBox AlarmCalls AlarmErrors AlarmRefusals AlertsChannel AlertsChannelRole"
+  local seen lost layer4='Api ApiIntegration ApiInvoke ApiLogs ApiRoute ApiStage Bff BffGroup BffLogs BffRole BoxFromBff Distribution UiAccess UiBucket UiBucketPolicy UiRewrite'
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
-  gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
-  [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
+  [ "$seen" = "$layer4" ] || die "the change set adds '$seen', not layer four's own '$layer4'"
+  lost=$(jq -r --arg l "$layer4" '.Resources as $r | [($l | split(" "))[] | select($r[.] == null)] | join(" ")' "$2")
+  [ -z "$lost" ] || die "the template lacks layer four's '$lost'"
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | join(",")' "$1")
   [ "$seen" = "Modify DeployRole False" ] || die "the change set's other changes are not a Modify of DeployRole in place: $seen"
   [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
 }
 passes "layer four's change set is adds and a Modify of DeployRole in place, and the guard passes" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$WORK/env.json"
-refuses "  a template resource the change set lacks is refused" "the template gained" \
+passes "  a later piece's resource in the template leaves it alone (the watch's topic, any other)" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut '.Resources.Extra = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a layer-four resource the template lost is refused" "the template lacks layer four's 'UiRewrite'" \
+  adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut 'del(.Resources.UiRewrite)')"
+refuses "  a change set that adds a resource beyond layer four's is refused" "not layer four's own" \
+  adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"Alerts","ResourceType":"AWS::SNS::Topic","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-alerts.json"; echo "$WORK/cs-alerts.json")" "$WORK/env.json"
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
 

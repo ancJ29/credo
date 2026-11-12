@@ -23,13 +23,13 @@ What **can** be established in the first minutes:
 
 | The question | Where |
 | --- | --- |
-| Which call touched which record, when, and whether it succeeded | the door's access log — its path names the record id on a detail route ([`ops/env.yml#L295-L297`](../ops/env.yml#L295); see [the logs](#where-the-system-answers-faster-than-any-file)) |
+| Which call touched which record, when, and whether it succeeded | the door's access log — its path names the record id on a detail route ([`ops/env.yml#L318-L320`](../ops/env.yml#L318); see [the logs](#where-the-system-answers-faster-than-any-file)) |
 | What the record holds now | the key it sits under, [`shared/src/records.ts#L7`](../shared/src/records.ts#L7) |
 | Whether the write was refused rather than applied | the status in the same log line; a refused save carries the field that failed, [`bff/src/errors.ts#L35-L41`](../bff/src/errors.ts#L35) |
 
 What cannot be established at all, and is the honest answer to the client: **which person made the
 change**, because the log's ten fields hold no identity and no body
-([`ops/env.yml#L297`](../ops/env.yml#L297)), and **what the value was before**. A correction can
+([`ops/env.yml#L320`](../ops/env.yml#L320)), and **what the value was before**. A correction can
 only be made forward, from what the client themselves knows it should be.
 
 The recorded part of this gap is [open item 6](open-items.md), the nightly backup and its restore,
@@ -52,19 +52,19 @@ reach us" faster than reading anything.
 | A save was refused and the form points at a field | the 400 carries `details`, naming the field and what failed — **the screen has already told you the cause** | [`bff/src/errors.ts#L35-L41`](../bff/src/errors.ts#L35) |
 | "The service is unavailable", or one page will not load | the app's own words say which: a failed boot offers a retry, and on the operator's console names the hop that failed; a single page's failed load is a different message | [`ui/src/frame/Boot.tsx`](../ui/src/frame/Boot.tsx)'s `Boot` with its hop words `HOP_WORDS`, decided by [`ui/src/ClientApp.tsx#L79`](../ui/src/ClientApp.tsx#L79) at [`#L99`](../ui/src/ClientApp.tsx#L99); one page's is [`ui/src/frame/Loaded.tsx`](../ui/src/frame/Loaded.tsx)'s `Loaded` |
 | A call answered 503 and said nothing more | on purpose: every c-storage failure becomes one blank `Service unavailable`, because only a 401 may sign anyone out | [`bff/src/errors.ts#L23-L24`](../bff/src/errors.ts#L23). The BFF's own log holds a line only from 500 up ([`bff/src/app.ts#L94`](../bff/src/app.ts#L94)), so **which** call it was comes from the door's log |
-| "It was slow", or a call hung then failed | the BFF waits 5 s for c-storage and the function is cut at 10 s; the door refuses over 10 calls a second, bursts of 50 | [`shared/src/c-storage.ts#L24`](../shared/src/c-storage.ts#L24), the signal at [`#L55`](../shared/src/c-storage.ts#L55); [`ops/env.yml#L241`](../ops/env.yml#L241) and [`#L293-L294`](../ops/env.yml#L293) |
+| "It was slow", or a call hung then failed | the BFF waits 5 s for c-storage and the function is cut at 10 s; the door refuses over 10 calls a second, bursts of 50 | [`shared/src/c-storage.ts#L24`](../shared/src/c-storage.ts#L24), the signal at [`#L55`](../shared/src/c-storage.ts#L55); [`ops/env.yml#L264`](../ops/env.yml#L264) and [`#L316-L317`](../ops/env.yml#L316) |
 | Nothing in the app explains it | the one file that decides each part of the system, by part | [the one file to open, by part](conventions/code.md#the-one-file-to-open-by-part) |
 
 ## Where the system answers faster than any file
 
 - **The door's access log**, `/aws/apigateway/credo-<env>`: one JSON line a call — path, route,
-  status, `latencyMs`, the integration error ([`ops/env.yml#L187-L191`](../ops/env.yml#L187), the
-  format at [`#L295-L297`](../ops/env.yml#L295)). It is the only record of a 400, a 401 or a 403,
+  status, `latencyMs`, the integration error ([`ops/env.yml#L210-L214`](../ops/env.yml#L210), the
+  format at [`#L318-L320`](../ops/env.yml#L318)). It is the only record of a 400, a 401 or a 403,
   and the only per-request latency kept anywhere.
 - **The BFF's own log**, `/aws/lambda/credo-<env>-bff`
-  ([`ops/env.yml#L180-L183`](../ops/env.yml#L180)), which holds a line only where the status was
+  ([`ops/env.yml#L203-L206`](../ops/env.yml#L203)), which holds a line only where the status was
   500 or more ([`bff/src/app.ts#L94`](../bff/src/app.ts#L94)). Both groups keep 14 days
-  ([`#L184`](../ops/env.yml#L184), [`#L191`](../ops/env.yml#L191)).
+  ([`#L207`](../ops/env.yml#L207), [`#L214`](../ops/env.yml#L214)).
 - **An ops script's refusal and its log.** A refusal states its own cause and its remedy
   (`rolled_back_refusal` in [`ops/lib.sh`](../ops/lib.sh) is the shape), and every script's log is in `logs/`
   in the credo root, ending on `== exit <n>` ([`ops/README.md`](../ops/README.md)). The machine

@@ -90,7 +90,7 @@ working copy.
    - A stack that stays in `ROLLBACK_COMPLETE` (its creation did not complete and was rolled back, so
      it holds nothing) is deleted by hand in the console before the script is run again; the script
      stops and says so. A rolled-back creation's box is terminated, and `DeleteOnTermination: false`
-     (`ops/env.yml#L128`) leaves its empty root disk behind as an `available` volume, a few cents a
+     (`ops/env.yml#L151`) leaves its empty root disk behind as an `available` volume, a few cents a
      month: remove it. *Reasoned, not seen:* CloudFormation's deletion of the instance terminates it,
      so EC2's attribute governs (high confidence, never tried).
 
@@ -542,10 +542,15 @@ Neither ID is a credential, and neither is written into any committed file.
    the same without `--plan`. The log ends `== exit 0` and its outputs read `Watch = alarms reach
    Slack`.
    - **One ID without the other** is refused before any change set: a lone channel ID makes no channel.
-   - **Neither ID given on an update** keeps the stack's values; `none` and `none` turns the channel
-     off.
-   - **A workspace ID changed later** replaces the channel's configuration, so that run takes
-     `--take AlertsChannel`, which holds nothing to lose.
+   - **`none` for one ID and a real ID for the other** is refused too: the template then makes no
+     channel and the run would still end 0.
+   - **Neither ID given on an update** keeps the stack's values. `none` and `none` turns the channel
+     off; on a stack that holds a channel that is a removal, which the guard refuses unless the run
+     takes `--take AlertsChannel --take AlertsChannelRole`.
+   - **A workspace ID changed later** is two runs, not one: the workspace ID and the configuration's
+     name are both fixed at creation, so a replacement would create the new configuration while the
+     old one still holds the name, and the update would fail and roll back. First `none` and `none`
+     with both `--take` flags above, then the new IDs.
 3. The forced alarm, once the app answers on the environment: the calls-failing alarm is put into its
    alarm state by hand (`aws cloudwatch set-alarm-state`, in your own AWS session). Two messages
    follow in the channel, the alarm and, at the next five-minute evaluation, its return to normal.

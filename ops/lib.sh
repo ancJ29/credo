@@ -445,14 +445,21 @@ add_subject_param() {
 # slack_param_plan → how the two Slack IDs (CREDO_SLACK_WORKSPACE_ID, CREDO_SLACK_CHANNEL_ID, from the
 # environment) reach the stack: "set" when both are given (new values, "none" included), "previous" when
 # neither is and the stack holds them (kept), "default" when neither is and the stack holds none (the
-# template's "none"). One without the other is refused: a lone channel ID makes no channel, silently.
+# template's "none"; also on a creation, whatever a stack left in REVIEW_IN_PROGRESS lists, since a
+# creation has no previous value to use). One without the other is refused: a lone channel ID makes no channel, silently.
+# So is "none" for one and a real ID for the other: the template's condition then makes no channel and
+# the run still exits 0. Turning the channel off is "none" for both, and on a stack that holds a channel
+# that is a removal: the run takes --take AlertsChannel --take AlertsChannelRole.
 slack_param_plan() {
   local w="${CREDO_SLACK_WORKSPACE_ID:-}" c="${CREDO_SLACK_CHANNEL_ID:-}"
   if [ -n "$w" ] && [ -n "$c" ]; then
+    if [ "$w" = none ] || [ "$c" = none ]; then
+      [ "$w" = "$c" ] || die "one of CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID is none and the other is an ID: that makes no channel, silently (give two IDs, or none for both)"
+    fi
     echo set
   elif [ -n "$w" ] || [ -n "$c" ]; then
-    die "CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID go together: one without the other makes no channel (give both, or neither to keep the stack's values; none and none turns the channel off)"
-  elif [ -n "$(stack_param SlackWorkspaceId)" ]; then
+    die "CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID go together: one without the other makes no channel (give both, or neither to keep the stack's values; none for both turns the channel off, and on a stack that holds a channel that run takes --take AlertsChannel --take AlertsChannelRole)"
+  elif [ "${CS_TYPE:-}" != CREATE ] && [ -n "$(stack_param SlackWorkspaceId)" ]; then
     echo previous
   else
     echo default

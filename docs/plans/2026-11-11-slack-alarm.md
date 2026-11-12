@@ -139,8 +139,9 @@ log read 1 to 2. 👤 is your act.
   at 0. Row 8 seen red by making the lone-ID branch echo `default` instead of dying (3 cases red: either
   ID alone, and the update with one ID); row 9 seen red by making the keep branch echo `default` (2 cases
   red: the plan and the previous-value parameters); both put back, `git diff` holds no mutation. A lone
-  `none` counts as given, so `none` with an ID is refused as one without the other; the template's
-  patterns still check the shape.
+  `none` counts as given, and the template's patterns still check the shape. *Corrected 2026-11-12, in
+  the fix pass:* this tick said `none` with an ID was refused; it was not (the plan said `set` and the
+  template then made no channel, silently), and no case held it. It is refused now, with two cases.
 - [x] **4. The runbook and the prose it makes false**: `ops/README.md` gains "The watch" and its row
   in the table at its top: your Slack steps below, word for word; the stack run; the forced alarm; a
   workspace ID changed later replaces the channel's configuration, so that run takes `--take
@@ -167,8 +168,29 @@ log read 1 to 2. 👤 is your act.
   2.**
 - [ ] **6. One review**, on a model other than the author's, of steps 1 to 5 with the case table.
   *Done when:* a verdict line, each finding with its line. **14.**
-- [ ] **7. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
+- [x] **7. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
   the checks of steps 1 to 3 again over the final tree, `pre-merge` taken in. **6.**
+  *Done, 2026-11-12:* `pre-merge` was already in. **Medium 1** fixed: every `ops/env.yml`, `ops/lib.sh`,
+  `ops/test.sh`, `ops/stack.sh` and `ops/README.md` line citation in the living documents moved by the
+  lines this piece added (23 in `env.yml` up to the watch's block, 180 past it, 33 in `lib.sh`), 37
+  lines across six documents, re-counted by the diff against `pre-merge` and read back at the new
+  line; five `lib.sh` citations (the two here-string pairs, the key check, `ridge_cli`) were already
+  stale before this piece and now point at the right lines. **Medium 2** fixed in the force script: a
+  metric not yet listed is a named note, not a failure (the refusals alarm's missing `Throttles` while
+  `Errors` exists is said to be expected), so the verdict reads row 14 true and row 13 not shown in full.
+  **Medium 3** fixed: only an action that succeeded is counted, the script refuses a stack with no
+  `AlertsChannel`, and it waits for two delivered notifications before it calls a run green; its
+  success filter rests on AWS's wording and is filed (item 367). Seen on a stand-in `aws` that the old
+  script ended green on a failed action, no channel and no deliveries, and the new one ends red or
+  refused on each. **Lows:** `none` with an ID is refused (step 3's tick corrected above); the runbook
+  names `--take AlertsChannel --take AlertsChannelRole` for the removal and two runs for a changed
+  workspace ID (item 365); the four alarms are pinned whole (operator, threshold, period, evaluation
+  periods, statistic, switched on, every datapoint), each of the review's five mutations seen red; a
+  guard on `stack.sh`'s `add_slack_params` call; the watch-stack header corrected; `adds_and_one_modify`
+  pins layer four's own sixteen names (item 261 fixed, three rows); a creation takes no previous value
+  (item 366). The Info items are filed (item 368). `bash ops/test.sh` ended at exit 0 over the committed
+  tree, `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` at 0, the citation test at 0
+  (32 passed), prettier at 0 over the six pages.
 - [ ] **8. The recap**, before the piece lands on `pre-merge`, with rows 12 to 15 marked not yet
   known. *Done when:* committed, the citation test at exit 0. **3.**
 
