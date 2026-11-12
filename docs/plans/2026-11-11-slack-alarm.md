@@ -92,7 +92,7 @@ Sizes are the same shape's rows in the runs log: a template-and-guard step 10 an
 of an `ops/` change 6 to 27 (median 14), a fix pass 2 to 23 (median 6), a recap 1 to 8 (median 3), a
 log read 1 to 2. 👤 is your act.
 
-- [ ] **1. The template**, `ops/env.yml`: the two parameters (default `none`, patterns from AWS's own
+- [x] **1. The template**, `ops/env.yml`: the two parameters (default `none`, patterns from AWS's own
   and stricter), the condition, the topic `Alerts`, the channel's role with no policy, the channel
   with its guardrail and error logging, the four alarms with plain descriptions, and one printed
   output `Watch` ("alarms reach Slack", or "alarms reach no one: no Slack channel"). AWS's own words
@@ -101,6 +101,12 @@ log read 1 to 2. 👤 is your act.
   guardrail's name; each cited in a comment beside its alarm. *Done when:* `cfn-lint ops/network.yml
   ops/github.yml ops/env.yml` and `cfn-lint --regions ap-southeast-5 ops/env.yml` each at exit 0.
   **10, plus 5 for the reads.**
+  *Done, 2026-11-12:* the AWS pages for the HTTP API's `5xx` with its `ApiId, Stage` dimensions, the
+  function's `Errors`, `Throttles` and `FunctionName`, the box's `StatusCheckFailed` and `InstanceId`,
+  the channel's `GuardrailPolicies` default and `AWSDenyAll` were read and hold, each quoted in a
+  comment beside its alarm. `cfn-lint ops/network.yml ops/github.yml ops/env.yml` ended at exit 0, and
+  the Region run ended at exit 0 written `cfn-lint ops/env.yml --regions ap-southeast-5` (with the
+  flag first it swallows the file name and exits 32, a parse fault, not the template).
 - [ ] **2. The guards**, `ops/test.sh`, beside the template's other guards (`must` and `mut`,
   `ops/test.sh#L240-L247`): rows 1 to 7 and 10, each seen red once on a template broken one way; and
   row 11: `adds_and_one_modify` (`ops/test.sh#L508-L524`) reads every resource the template gains as
