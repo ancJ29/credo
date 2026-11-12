@@ -46,8 +46,14 @@ import { closeOf } from './reconcile';
 import { MANAGER, SCENARIOS } from './scenarios';
 import { ANCHOR, dayEvents, type Person, staffAsOf, type StaffEvent } from './staff';
 
-/** A first fill holds the last week: this many days, the last of them yesterday. */
-export const HISTORY_DAYS = 7;
+/** A first fill holds the last three weeks: this many days, the last of them yesterday. */
+export const HISTORY_DAYS = 21;
+/**
+ * The days one round of a remake applies to a copy. A round has its own tunnel, and a tunnel lasts the
+ * endpoint's hour (ops/lib.sh): five days at about 7.5 minutes, with a fifth over, are about 45 minutes,
+ * the hour less a margin. ops/test.sh reads this number.
+ */
+export const DAYS_PER_ROUND = 5;
 /**
  * The days one run applies to a copy, the rest left for the next run somebody asks for, however far behind
  * the copy is: there is no backlog a copy is refused for, because a refusal nobody can clear would be a
