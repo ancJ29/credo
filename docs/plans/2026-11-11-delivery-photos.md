@@ -102,7 +102,7 @@ out of the network. The check the back end can make is that an address was asked
 Sizes are the minutes of the same shape's last rows in the runs log; a first shape is about five
 minutes a part.
 
-- [ ] **Step 1. The fake, end to end on the phone and the office's screen** (about 25 minutes: a fake
+- [x] **Step 1. The fake, end to end on the phone and the office's screen** (about 25 minutes: a fake
   UI build ran 8, 21 and 29, plus the whole check, since it crosses `shared` and `ui`). `shared` gains
   the address's reply and the new photo reply (an address, not the picture) beside the old ones, which
   step 3 removes. `ui/src/api.ts#L692-L707` gains the ask, the PUT (through the one API object, so the
@@ -112,6 +112,13 @@ minutes a part.
   `en.ts` and `vi.ts`; `ui/src/fake.ts` answers all three and holds one delivered request whose
   address leads nowhere (code.md's C16 list). *Done when:* `pnpm check` ends `== exit 0`, and cases 3
   and 5 were each seen red once.
+  *Done 2026-11-12:* the `shared` and `ui` gates each ended `== exit 0` on the committed tree; case 3 was seen
+  red (the PUT not awaited, so the request was marked delivered after a failed send) and case 5 was seen red
+  (the picture's error ignored, so no "did not arrive" line), each reverted and compared equal. `ui/tests/unused.ts`
+  gained the two new members `askPhotoAddress` and `putPhoto` for the dead-code check. One run of the `ui` gate
+  reddened on `fake.test.tsx` (the fake's address reply was parsed with its `kind` field, which the strict
+  schema refuses; the test now parses `{ url }`), and one run reddened once on the My deliveries landing test,
+  green alone three times and on the rerun: a timing flake under load, unfiled.
 - [ ] **Step 2. The platform's own words, then the signer** (about 15 minutes: a first shape, three
   parts). A `fetch` read, verbatim with its page, of R2's pages on signed addresses, the cross-origin
   rule, object lifecycles and the price, and of AWS's page holding the published example of a signed
