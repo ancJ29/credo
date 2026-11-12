@@ -464,12 +464,21 @@ func TestAListAfterAKeyHoldsTheKeysPastItInKeyOrder(t *testing.T) {
 	if pages != 3 || !slices.Equal(read, keys) {
 		t.Errorf("read in %d pages, %d keys (first %q); want 3 pages and the %d keys in order", pages, len(read), read[0], len(keys))
 	}
-	// An after below the prefix narrows nothing past the prefix, and one past its last key is empty.
-	if got := list(t, s, "n.", http.StatusOK, "a"); len(got.Records) != 1000 || got.Records[0].Key != "n.0000" {
-		t.Errorf("an after below the prefix: %d records from %q, want 1000 from n.0000", len(got.Records), got.Records[0].Key)
-	}
 	if got := list(t, s, "n.", http.StatusOK, "n.9999"); len(got.Records) != 0 || got.More {
 		t.Errorf("an after past the last key: %d records, more %v; want none", len(got.Records), got.More)
+	}
+}
+
+// An after outside the prefix is a cursor of another list: refused, whether it sorts below the
+// prefix, above it, or is the prefix cut short.
+func TestAListAfterOutsideThePrefixIsRefused(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "m.9999", "n.0001", "o.0000")
+	for _, after := range []string{"a", "m.9999", "n", "o.0000"} {
+		list(t, s, "n.", http.StatusBadRequest, after)
+	}
+	if got := list(t, s, "n.", http.StatusOK, "n."); len(got.Records) != 1 {
+		t.Errorf("an after that is the prefix itself: %d records, want 1", len(got.Records))
 	}
 }
 

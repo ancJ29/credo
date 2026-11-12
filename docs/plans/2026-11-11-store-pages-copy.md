@@ -155,11 +155,11 @@ resource, hop or key, so stage 2 stands for it and it reaches ridge with your ne
   cases 1, 2 and 8 red once, 1 and 8 with one page read. *Size:* 20: c-storage's part and the bare
   copy, first runs of their shapes, 5 each; one mechanism wired with its test, 10 (the activity
   log's step 3). *Done 2026-11-12:* c-storage's `make check` ended 0; the `shared` and `bff` gates ended 0 on the committed tree (bff 657 tests, 100 % coverage); the citation test ended 0; cases 1, 2 and 8 each seen red once on a mutation and put back.
-- [ ] **2. The page hardened in c-storage.** The byte bound; `after` outside its prefix refused; two
+- [x] **2. The page hardened in c-storage.** The byte bound; `after` outside its prefix refused; two
   requests in `bruno/02-records/` (a second page, the refusal); the memo's "A list reads one prefix"
   rewritten, its rejection of paging and its 8 MB hazard replaced. *Done when:* `make check` exits 0
   at 100 %, `collection_test.go` passing; cases 3 to 5 red once. `bash scripts/e2e.sh` stays CI's
-  (the Bruno CLI). *Size:* 10, two parts of a first-run shape.
+  (the Bruno CLI). *Size:* 10, two parts of a first-run shape. *Done 2026-11-12:* c-storage's `make check` ended 0 at 100 % with `collection_test.go` passing; cases 3 (the bound, and one record however large), 4 and 5 each seen red once on a mutation and put back; the citation test ended 0; the e2e run is CI's.
 - [ ] **3. The back end true to pages.** `every`'s fault on a page that does not move; `priced` by
   key; the other `listRecords` callers read: the sweep stays, the seed's `isFresh` already refuses on
   `more` (`scripts/src/demo/apply.ts#L158-L167`), and `everything`

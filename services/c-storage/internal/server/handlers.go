@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"credo/c-storage/internal/httpx"
@@ -104,6 +105,10 @@ func (s *Server) listRecords(w http.ResponseWriter, r *http.Request) {
 	after := ""
 	if len(afters) == 1 {
 		after = afters[0]
+	}
+	if !strings.HasPrefix(after, prefixes[0]) && after != "" {
+		httpx.BadRequest(w, "after is a key under the prefix")
+		return
 	}
 	found, more, err := s.store.List(r.Context(), r.PathValue("serviceCode"), prefixes[0], after)
 	if err != nil {
