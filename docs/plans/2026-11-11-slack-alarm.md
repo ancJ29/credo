@@ -156,7 +156,7 @@ log read 1 to 2. 👤 is your act.
   stale claim in `docs/README.md` and `docs/client-readiness.md` is corrected. The citation test ended at
   exit 0 (32 tests passed, run alone), prettier at 0 over the five pages, and the added lines hold no
   local path.
-- [ ] **5. Your two hand-offs**, one-offs in the credo root's `one-off/`, outside git, each tee'd to
+- [x] **5. Your two hand-offs**, one-offs in the credo root's `one-off/`, outside git, each tee'd to
   `logs/`. `<stamp>-watch-stack.sh [--plan]` asks for the two IDs at a prompt, checks their shape,
   and runs `ops/stack.sh env ridge` with them; it calls the script and copies none of it. `<stamp>-
   watch-force.sh` reads the four alarms and that each one's actions are the topic (compared, never
@@ -166,8 +166,15 @@ log read 1 to 2. 👤 is your act.
   waits how long and until what clock time, then a line every 30 seconds; it ends with the topic's
   delivered and failed counts. *Done when:* `bash -n` and `shellcheck` at exit 0 for both. **2 and
   2.**
-- [ ] **6. One review**, on a model other than the author's, of steps 1 to 5 with the case table.
+  *Done, 2026-11-12:* both one-offs written in the credo root's `one-off/` (`20261112-1612-watch-stack.sh`
+  and `20261112-1612-watch-force.sh`), `bash -n` and ShellCheck at exit 0 for both, the parsing and the
+  prompt's shape run on a fake `aws`. The review found one thing in them: a metric with no data yet turned the
+  force script's verdict to incomplete even when the alarm reached Slack (fixed in step 7).
+- [x] **6. One review**, on a model other than the author's, of steps 1 to 5 with the case table.
   *Done when:* a verdict line, each finding with its line. **14.**
+  *Done, 2026-11-12:* the review is `worktrees/reviews/2026-11-12-slack-alarm.md` in `orch`: verdict, may
+  merge with named changes (three Mediums, eight Lows). Its reread of the fix pass: may land with named
+  changes (the line citations in the living pages, finished and the rest filed as items 372 and 373).
 - [x] **7. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
   the checks of steps 1 to 3 again over the final tree, `pre-merge` taken in. **6.**
   *Done, 2026-11-12:* `pre-merge` was already in. **Medium 1** fixed: every `ops/env.yml`, `ops/lib.sh`,
