@@ -3549,6 +3549,13 @@ check "  a trailing comment stops it the same way" "1 1" "$(wf_odd_shape 'jobs:\
 check "  and the plain line, with comment lines about environments around it, is read" "0 odd.yml" \
   "$(d=$WORK/wfodd; rm -rf "$d"; mkdir -p "$d/.github/workflows"; printf 'jobs:\n  d:\n    # the environment: here is plain\n    environment: ridge\n' >"$d/.github/workflows/odd.yml"; rc=0; out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?; echo "$rc $out")"
 
+echo "== no file the ci workflow runs on its Ubuntu runner uses BSD sed's in-place form (GNU sed reads the empty suffix as the script)"
+# ci.yml runs ops/*.sh, walk/*.sh and services/c-storage/scripts/*.sh (ShellCheck, the guards, the deploy) and make check
+# in services/c-storage, on GNU sed: `-i` there takes its suffix attached, so a separate empty one is the script.
+# The pattern is written so that this line does not match itself.
+BSD_SED=$(grep -nE "sed( +-[A-Za-z]+)* +-[A-Za-z]*i +(''|\"\")" "$REPO_DIR"/ops/*.sh "$REPO_DIR"/walk/*.sh "$REPO_DIR"/services/c-storage/scripts/*.sh "$REPO_DIR"/services/c-storage/Makefile "$REPO_DIR"/.github/workflows/*.yml || true)
+check "no sed -i with a separate empty suffix in a file the runner runs" "" "$BSD_SED"
+
 echo "== ops/destroy.sh and ops/remake.sh, run whole once on stand-ins for aws, gh, bru and the four children (rows 8 and 18)"
 # A clone whose origin is named as GitHub's are, holding this tree's ops/ and workflows, except that the
 # four scripts the remake calls are stand-ins: each logs as the real one does, records its call and
@@ -3583,7 +3590,8 @@ git -C "$CYC/repo" push -q origin HEAD:refs/heads/main
 git init -q --bare "$E2E/github.com/test-owner/cycle-repo2.git"
 cp -R "$CYC/repo" "$CYC/repo2"
 rm -rf "$CYC/repo2/.git"
-sed -i '' 's/^DESTROY_BY_HAND="Box UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket"/' "$CYC/repo2/ops/lib.sh"
+sed -i.bak 's/^DESTROY_BY_HAND="Box UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket"/' "$CYC/repo2/ops/lib.sh"
+rm -f "$CYC/repo2/ops/lib.sh.bak"
 git -C "$CYC/repo2" init -q
 git -C "$CYC/repo2" remote add origin "$E2E/github.com/test-owner/cycle-repo2.git"
 git -C "$CYC/repo2" add -A
