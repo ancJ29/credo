@@ -17,6 +17,18 @@ BOX_USER=ec2-user
 FLOOR_DISK_MB=1024
 FLOOR_MEM_MB=96
 FLOOR_SWAP_MB=1024
+# The check reds below this much free on the records disk (MiB), and when the newest copy lags the last
+# write by more than COPY_LAG_S, or the newest full copy is older than COPY_FULL_MAX_S (six days: Litestream
+# makes no full copy on an idle file, so this is the only guard on one).
+FLOOR_RECORDS_MB=1024
+COPY_LAG_S=300
+COPY_FULL_MAX_S=518400
+# The box's path in the copy's bucket (the one home: the release builds COPY_URL, with the region, from it and
+# passes it to the box's records step, and the check lists it), and where Litestream's S3 client keeps full
+# copies under it: <path>/<level as four hex digits>/<min TXID>-<max TXID>.ltx, level 9 being the full copy
+# (the pinned release's s3/replica_client.go, lines 698 and 1571). The ltx/<level>/ layout is the file replica's, not S3's.
+COPY_PATH=Box/records
+COPY_FULL_PREFIX=$COPY_PATH/0009/
 
 LOG=''
 WORK=''
@@ -186,7 +198,7 @@ INVENTED_ENVS="ridge"
 # cannot empty (a bucket), this list's one home. ops/destroy.sh deletes each by hand, and stops before its
 # prompt on an id none of its steps deletes; ops/test.sh row 14 compares the list with env.yml.
 # shellcheck disable=SC2034 # read by destroy.sh and test.sh
-DESTROY_BY_HAND="Box UiBucket"
+DESTROY_BY_HAND="Box CopyBucket RecordsVolume UiBucket"
 # WANT_BRUNO: the Bruno CLI version ops/check.sh runs and ops/remake.sh refuses to start without, one home.
 # shellcheck disable=SC2034 # read by check.sh and remake.sh
 WANT_BRUNO=4.2.0
@@ -570,20 +582,192 @@ tunnel_hold() {
   die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network): run it again"
 }
 
-# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), logged
+# The records disk's mount on the box: the path c-storage's state directory resolves to (a dynamic
+# user's /var/lib/c-storage is a link to it), where ops/c-storage.service waits for the mount.
+RECORDS_MOUNT=/var/lib/private/c-storage
+
+# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), and RECORDS_MB (free on
+# the records disk beside it, -1 when that disk is not mounted), logged
 MEM_MB=0
 SWAP_MB=0
 DISK_MB=0
+RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s <<'REMOTE'
+    box bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
-df -Pm / | awk 'NR==2{print $4}'
+df -Pm / | awk 'NR==2{printf "%s ", $4}'
+if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi
 REMOTE
   )
-  read -r MEM_MB SWAP_MB DISK_MB <<<"$r"
-  echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free"
+  read -r MEM_MB SWAP_MB DISK_MB RECORDS_MB <<<"$r"
+  RECORDS_MB=${RECORDS_MB:--1}
+  if [ "$RECORDS_MB" = -1 ]; then
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, no records disk mounted"
+  else
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, records disk $RECORDS_MB MiB free"
+  fi
+}
+
+# litestream_pin → LITESTREAM_VERSION and LITESTREAM_ARM64_SHA256, from the pin's one home (the tests point
+# LITESTREAM_PIN at a pin of their own)
+litestream_pin() {
+  # shellcheck source=litestream.pin
+  . "${LITESTREAM_PIN:-$OPS_DIR/litestream.pin}"
+  [[ "${LITESTREAM_VERSION:-}" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || die "ops/litestream.pin names no version"
+  [[ "${LITESTREAM_ARM64_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || die "ops/litestream.pin holds no SHA-256 for the arm64 archive (a FILL marker is not a sum)"
+}
+
+# litestream_binary <out file> → Litestream's arm64 binary at <out file>, taken from the pinned archive
+# alone. LITESTREAM_ARCHIVE names an archive already fetched (the deploy job's); otherwise it is fetched
+# from the release. Either way its SHA-256 must be the pin's, or nothing is unpacked.
+litestream_binary() {
+  local archive=${LITESTREAM_ARCHIVE:-} got
+  litestream_pin
+  if [ -z "$archive" ]; then
+    archive=$WORK/litestream.tar.gz
+    curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz" ||
+      die "Litestream $LITESTREAM_VERSION could not be fetched"
+  fi
+  [ -f "$archive" ] || die "LITESTREAM_ARCHIVE $archive does not exist"
+  got=$(shasum -a 256 "$archive" | cut -d' ' -f1)
+  [ "$got" = "$LITESTREAM_ARM64_SHA256" ] || die "the Litestream archive is $got, the pin says $LITESTREAM_ARM64_SHA256: nothing unpacked"
+  mkdir -p "$WORK/litestream"
+  tar -xzf "$archive" -C "$WORK/litestream" litestream
+  [ -f "$WORK/litestream/litestream" ] || die "the pinned archive holds no litestream binary"
+  cp "$WORK/litestream/litestream" "$1"
+}
+
+# copy_status → c-storage's GET /api/status, read on the box: the internal key goes from its file into curl's
+# config on stdin and never leaves the box. The first word tells the stand-ins apart.
+copy_status() {
+  box sudo bash -s -- status "$BOX_PORT" "$BOX_LISTEN_ADDR" <<'REMOTE'
+set -euo pipefail
+. /etc/c-storage/keys.env
+printf 'header = "X-Internal-Access-Key: %s"\n' "$INTERNAL_ACCESS_KEY" |
+  curl -fsS -m 5 -K - "http://$3:$2/api/status"
+REMOTE
+}
+
+# copy_problems <status json> <listing json: [{Key, LastModified}] or null> <now, epoch seconds> → one line for
+# each fault of the copy, nothing when it is sound: the records disk below its floor, no copy at all, the newest
+# copy behind the last write by over COPY_LAG_S, no full copy, the newest full copy older than COPY_FULL_MAX_S. The newest full copy is the one with the largest
+# key (the largest <min>-<max> name, which is TXID order, as Litestream's own restore picks); its age is that object's
+# LastModified, S3's time of the upload of that snapshot, which is when the full copy was made.
+copy_problems() {
+  jq -nr --argjson st "$1" --argjson ls "$2" --argjson now "$3" --argjson lag "$COPY_LAG_S" \
+    --argjson fullmax "$COPY_FULL_MAX_S" --argjson floor "$((FLOOR_RECORDS_MB * 1048576))" --arg full "$COPY_FULL_PREFIX" '
+    def epoch: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
+    ($ls // []) as $objs
+    | ($objs | map(.LastModified | epoch) | max) as $newest
+    | ($objs | map(select(.Key | startswith($full))) | sort_by(.Key) | last | if . == null then null else .LastModified | epoch end) as $fullest
+    | ($st.lastWriteAt | if . == null then null else epoch end) as $write
+    | (if $st.freeBytes < $floor then "the records disk has \($st.freeBytes / 1048576 | floor) MiB free, below the floor of \($floor / 1048576) MiB" else empty end),
+      (if $newest == null then "the bucket holds no copy of the records" else empty end),
+      (if $write != null and $newest != null and ($write - $newest) > $lag then "the newest copy lags the last write by \($write - $newest) s, over \($lag) s" else empty end),
+      (if $fullest == null then "the bucket holds no full copy" else empty end),
+      (if $fullest != null and ($now - $fullest) > $fullmax then "the newest full copy is \(($now - $fullest) / 86400 | floor) days old, over \($fullmax / 86400) days" else empty end)
+  '
+}
+
+# copy_lag_read <status json> → yes when the status holds a time of the last write (so copy_problems can read the
+# lag), no when it is null: c-storage keeps that time in memory only, so after any restart there is none until
+# the next save, and the lag test then has nothing to compare. The check says so rather than call the copy current.
+copy_lag_read() {
+  jq -nr --argjson st "$1" 'if $st.lastWriteAt == null then "no" else "yes" end'
+}
+
+# box_restore_blank <time or -> <records disk id> → the one path onto a records disk that holds no c-storage.db:
+# on the box, a disk with no filesystem is formatted, the disk is mounted at the records path, and the newest
+# copy (or the copy as of <time>) is restored onto c-storage.db there, before c-storage ever starts. It refuses
+# when c-storage is running, when the disk holds a filesystem other than XFS, and when it already holds a
+# c-storage.db. Prints restored=<the file>.
+box_restore_blank() {
+  box sudo bash -s -- blank "$RECORDS_MOUNT" "$1" "$2" <<'REMOTE'
+set -euo pipefail
+mount=$2 at=$3 vol=${4//-/}
+dev=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$vol
+[ -e "$dev" ] || { echo "the records disk $vol is not attached to this box" >&2; exit 3; }
+if systemctl is-active --quiet c-storage; then echo "c-storage is running: a blank-disk restore runs before it starts" >&2; exit 1; fi
+install -d -m 0700 /var/lib/private "$mount"
+if ! mountpoint -q "$mount"; then
+  type=$(blkid -o value -s TYPE "$dev" || true)
+  [ -z "$type" ] || [ "$type" = xfs ] || { echo "the records disk holds a $type filesystem, not the XFS this restore makes or mounts" >&2; exit 1; }
+  if [ -z "$type" ]; then mkfs.xfs -q "$dev"; echo "records disk: formatted"; fi
+  uuid=$(blkid -o value -s UUID "$dev")
+  grep -q "^UUID=$uuid $mount " /etc/fstab || { { grep -v " $mount " /etc/fstab || true; echo "UUID=$uuid $mount xfs defaults,nofail 0 2"; } >/etc/fstab.new && mv /etc/fstab.new /etc/fstab; }
+  systemctl daemon-reload
+  mount "$mount"
+fi
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+[ ! -e "$mount/c-storage.db" ] || { echo "the records disk already holds c-storage.db: this restore is for a disk without one" >&2; exit 1; }
+# On a replacement box no release has finished, so the address and the binary are still the release's .new files
+# (it sends them, then stops at the records step that refuses): fall back to them.
+envf=/etc/c-storage/copy.env
+bin=/opt/c-storage/litestream
+if [ ! -e "$envf" ]; then envf=/opt/c-storage/copy.env.new; fi
+if [ ! -x "$bin" ]; then bin=/opt/c-storage/litestream.new; chmod 0755 "$bin"; fi
+[ -e "$envf" ] && [ -x "$bin" ] || { echo "no copy address or Litestream on this box, installed or sent: run a release first (it stops at the records disk, after sending them)" >&2; exit 1; }
+set -a
+. "$envf"
+set +a
+args=(-o "$mount/c-storage.db")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+"$bin" restore "${args[@]}" "$COPY_URL"
+[ -s "$mount/c-storage.db" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$mount/c-storage.db"
+echo "restored=$mount/c-storage.db"
+REMOTE
+}
+
+# box_restore <time or -> <1 to put it onto the live file, else 0> <stamp> → restores the records from the copy
+# on the box, with its role's credentials. By default to a new file beside the live one and nothing live touched;
+# onto the live file, c-storage is stopped, the live file and its companions are moved aside (never deleted) and
+# the restored one takes the live path. Prints restored=<the new file> or, onto the live file, aside=<stamp>.
+box_restore() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" "$BOX_LISTEN_ADDR" "$BOX_PORT" <<'REMOTE'
+set -euo pipefail
+mount=$1 at=$2 live=$3 stamp=$4 addr=$5 port=$6
+db=$mount/c-storage.db
+new=$mount/restored-$stamp.db
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+# The restore writes a second whole file onto the disk the live c-storage writes to: it must leave room, or the
+# live saves fail. Under twice the live file (and its companions) free, nothing is written.
+used=0
+for f in "$db" "$db-wal"; do
+  if [ -e "$f" ]; then used=$((used + $(du -sk "$f" | cut -f1))); fi
+done
+free=$(df -Pk "$mount" | awk 'NR==2{print $4}')
+if [ "$free" -lt $((used * 2)) ]; then
+  echo "the records disk has $((free / 1024)) MiB free, under twice the live file's $((used / 1024)) MiB: nothing was written" >&2
+  exit 1
+fi
+set -a
+. /etc/c-storage/copy.env
+set +a
+args=(-o "$new")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+/opt/c-storage/litestream restore "${args[@]}" "$COPY_URL"
+[ -s "$new" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$new"
+if [ -e "$db" ]; then chown --reference="$db" "$new"; fi
+if [ "$live" = 1 ]; then
+  systemctl stop c-storage
+  for f in "$db" "$db-wal" "$db-shm" "$mount/.c-storage.db-litestream"; do
+    if [ -e "$f" ]; then mv "$f" "$f.aside-$stamp"; fi
+  done
+  mv "$new" "$db"
+  systemctl start c-storage
+  for _ in $(seq 1 30); do
+    if curl -fsS -m 2 -o /dev/null "http://$addr:$port/health"; then echo "answering=yes"; break; fi
+    sleep 1
+  done
+  echo "aside=$stamp"
+else
+  echo "restored=$new"
+fi
+REMOTE
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release

@@ -53,9 +53,9 @@ Drawn from [`server.go`](../../services/c-storage/internal/server/server.go),
 | It listens on one address: loopback, or the box's private address when told | every interface answering, so a firewall is the only wall | [the listener](#the-listener-binds-one-address) |
 | ridge answers no public URL, for now | a stranger or a flood reaching it; it is reached through a tunnel from one Mac | [no public URL](#no-public-url-for-now) |
 
-**No test catches** a save that does not name what it read, which still overwrites, or a backup
-copied mid-write ([412](#a-write-on-a-moved-record-is-refused),
-[the only copy](#the-file-is-the-only-copy)).
+**No test catches** a save that does not name what it read, which still overwrites, or a copy
+taken by hand mid-write ([412](#a-write-on-a-moved-record-is-refused),
+[the second copy](#a-second-copy-follows-the-file-within-a-second)).
 
 ## The internal key gates every path
 
@@ -250,22 +250,29 @@ partner or a CI outside AWS included, reaches it. The plan stays as the record:
   needs to reach ridge's c-storage: partners sending requests themselves, or a CI or tool outside
   AWS.
 
-## The file is the only copy
+## A second copy follows the file within a second
 
-The database file (`DB_PATH`) holds the only copy of what was written since its last backup. The
-backup is not this service's: the human accepted losing up to a day
-([the architecture's call 2](../plans/2026-10-27-architecture.md#the-humans-calls)), and the
-restore is [open item 6](../open-items.md).
+The database file (`DB_PATH`) holds the records. Litestream, which the unit starts with this service as
+its child, copies each committed change to the environment's own bucket about once a second, so a lost disk
+costs about a second of saves where it once cost everything since the last backup. The copy is not this
+service's: it is `ops/c-storage.service`'s and `ops/litestream.yml`'s, and its check and restore are
+[the runbook's](../../ops/README.md#restoring-the-records). It is built and not yet run on an environment, so
+this section states what the scripts do, not what a drill has read back; the piece closes
+[open item 6](../open-items.md).
 
+- **The service reports two readings the copy's check needs**, behind the internal key: the free bytes of
+  the disk under the file and the time of the last committed write, empty until the first since the process
+  started (`GET /api/status`). *Hazard no gate catches:* the time is kept by the process, so a restart
+  empties it, and a check run just after one has no write time to compare and reads no lag at all.
 - **A commit is synced to disk at the WAL's checkpoints, not one by one** (`synchronous(NORMAL)`).
   *Rejected, for now:* `FULL`, a sync on every commit, held under the one write lock. Its price is
   small at this write rate, but what it buys, no write lost to a power cut, is more than the human
-  asked for: a lost disk already loses up to a day. *Price of the choice:* a power loss or a crash
+  asked for: the copy follows the file by about a second, so a lost disk loses that second already. *Price of the choice:* a power loss or a crash
   of the box, not of the process, can undo the last writes not yet on disk, each already answered
   201; the file stays whole. *Trigger to revisit:* a client that must never lose a write it was
   told was saved.
 - *Hazard no gate catches:* while the service runs, recent commits live in the `-wal` file beside
-  the database, so a plain copy of the files taken mid-write, a nightly tarball included, can miss
-  them or hold a torn database. *Trigger:* the nightly backup's script, when it is written: it
+  the database, so a plain copy of the files taken mid-write, a tarball included, can miss
+  them or hold a torn database. *Trigger:* any copy taken by hand, which is not Litestream's: it
   copies through SQLite's own backup (`VACUUM INTO`, or the `sqlite3` shell's `.backup`), or with
   the service stopped, when the database is one file.

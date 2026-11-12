@@ -56,25 +56,56 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The nightly backup and its restore, with no copy of the records yet — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The continuous copy of the records, its check and its restore — built, not yet run on an environment; the machine wrote it, the human runs the changes and the drill (the continuous-copy plan, 2026-11-11)
 
-**There is no copy of any client's records. This item's backup half is open, and nothing below it is
-built.** The fence half is the backup-policy piece's (below).
+**The backup half is built and not yet run anywhere.** Litestream copies each save of the records file to
+the environment's own bucket under the box's path, and the scripts that check and restore it are written
+and guarded on written input ([the plan](plans/2026-11-11-continuous-copy.md)). Nothing in the bucket has
+been read yet: the bucket's key layout comes from Litestream's source and has not been seen against S3,
+and no restore has been read back. **What stays open is the human's runs** (the network change, ridge's
+change, the release, the drill), and the item closes when `ops/drill.sh ridge` has read a restored file
+holding a save made before it. The fence half is the backup-policy piece's (below).
 
-The box's role may only put, so it cannot restore itself: the restore runs from the human's
-terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
-Instance Connect tunnel.
+How it is built, each line read off the scripts:
 
-The backup's copy goes through SQLite's own backup (`VACUUM INTO`, or the shell's `.backup`), or
-is taken with the service stopped: a plain tarball taken mid-write can miss saves or hold a torn
-file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
+- **The copy:** `ops/c-storage.service` starts Litestream with c-storage as its child
+  (`litestream replicate -exec`), and waits on the records disk's mount (`RequiresMountsFor`). Its
+  configuration, `ops/litestream.yml`, syncs once a second, takes a full copy every 24 hours while the file
+  is written, and deletes nothing itself (`retention.enabled: false`); the bucket's own rule expires copies
+  after seven days. The records live on a disk of their own, which `ops/release.sh` mounts, formats when
+  blank, and moves the old file onto once (the old one kept as `c-storage.db.moved`).
+- **The box's role** may put, get and list under its own path in its own bucket, and holds no delete. So
+  the box restores itself, under its own role: `ops/restore.sh` runs on the box, not from the human's
+  terminal with a copy of Litestream on the Mac.
+- **The check:** `ops/check.sh` reads c-storage's `GET /api/status` on the box and the bucket's objects
+  under the box's path (`copy_status` and `copy_problems` in `ops/lib.sh`). It is red when the newest copy
+  lags the last write by over 300 seconds (`COPY_LAG_S`), when the newest full copy is over six days old
+  (`COPY_FULL_MAX_S`), when the bucket holds no copy or no full copy, or when the records disk has under
+  1 GiB free. c-storage keeps the time of its last write in memory only, so after any restart the lag cannot
+  be read, and the check's green line then says so and does not claim the copy holds the last write (a
+  reading that survives a restart is item 378 below).
+- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
+  default it writes a new file, `restored-<stamp>.db`, on the records disk and touches nothing live.
+  `--onto-live` stops c-storage, moves the live file and its companions aside (never deleted), puts the
+  restore on the live path and starts c-storage; it is refused on an environment that may hold real data
+  ([the runbook](../ops/README.md#restoring-the-records)).
+- **A records disk with no `c-storage.db` whose path in the bucket holds a copy is a restore, never a fresh
+  start:** the release refuses it (blank, or formatted and mounted by hand) and names `ops/restore.sh <env>
+  --onto-blank`, the one scripted path (format if blank, mount, restore, all before c-storage starts), since
+  an empty file would otherwise be copied over the real one.
+- **The copy's address carries the bucket's region** (`s3://<bucket>/<path>?region=<region>`, the release's
+  `copy.env`): Litestream takes its region from that query or its own config, never from `AWS_REGION`, and
+  with none it asks `us-east-1` where the bucket is, which the box's role does not grant and the box cannot
+  reach. From Litestream 0.5.18's source; not yet seen against S3.
+- **The drill:** `ops/drill.sh` gains a row that restores the newest copy and a copy to the box's clock
+  from before a registration, and reads the registration in the first and not the second. It is the human's
+  run on ridge.
 
-ridge, the first box, holds no real data, so the backup still waits for a signed client
-([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint (`ops/network.yml`
-holds none) and the box's put-only role (`ops/env.yml#L116`: "no instance role") come with it. Still
-to do, as one piece: the copy, a restore script run from the human's terminal, and a drill that
-reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a restored file, nobody
-knows a copy would be readable.
+Three things stay unproven until the human's runs: that the region in the address is what lets Litestream start
+against the bucket, that full copies sit under `<path>/0009/` in S3 (from
+Litestream 0.5.18's own source, where the S3 client builds `<path>/0009/<name>`), and that a restore from
+an empty disk (`ops/restore.sh --onto-blank`) works on a real blank disk. Litestream makes no full copy of a file that has not been
+written, so a file idle for six days reads red on the check by design: the check is what notices it.
 
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
 in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
@@ -97,7 +128,7 @@ survivable; nothing else changes.** A termination, a torn file, a bad write or a
 the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
 `--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
-`--take Box`), is not a backup: no copy exists and no restore has been run.
+`--take Box`), is not a copy: the copy above is the backup half, and it has not been run yet.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
@@ -1515,6 +1546,26 @@ The guard in `ops/test.sh` counts the call once and asks for `add_param BoxPort`
 ## 373. The forced alarm reads a failed action as "not seen" after 14 minutes, not as failed — the machine; `[DEFERRED]` (the Slack alarm's reread of the fix pass, 2026-11-12, Low)
 
 The one-off `watch-force` counts only successful Action items, so a refused publish leaves the count at 0 and the run ends "not seen by" the deadline; the next reader hunts a lag instead of a failure. *Fix:* count the "Failed to execute action" items beside the successes and name them in the note. *Trigger:* the first run of the forced alarm (with item 367).
+
+## 378. The check cannot read the copy's lag after a restart, and the deploy job's check always runs just after one — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 2)
+
+c-storage keeps the time of its last write in memory only (`lastWriteAt` in `services/c-storage/internal/store/store.go`), so after any restart, and every release is one, the check has no write time to compare the newest copy with. The fix pass made the check say so (its green line reads "the lag was NOT read" and no longer claims the copy holds the last write); it did not make the reading. *Fix:* a reading that survives a restart, read on the box under `sudo` as `copy_status` already is: compare the newest local level-0 file name under `.c-storage.db-litestream/ltx/0/` with the bucket's largest `0000/` key (equal maximum transaction ids mean everything written is copied, with no clock), or take the mtime of the file and its `-wal` as the floor of the last write. *Trigger:* the drill on ridge, which reads the copy for real; until then Litestream stopping while saves go on is seen only by a check run after a save.
+
+## 379. The six-day red names no action — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Info)
+
+When the newest full copy is six days old, the check is red and nothing in the runbook says what to do. Without a write Litestream makes no new full copy, and the bucket's rule removes the only one on day seven. *Fix:* one line in the restoring section of `ops/README.md`: a write (or the drill) makes a new full copy, and a red at day six is to be answered before day seven. *Trigger:* the first six-day red, or the drill's close.
+
+## 380. Three sentences say c-storage "holds the only copy of the data", which stops being true at the drill — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Info)
+
+`services/c-storage/internal/config/config.go` (its first comment, there to justify fatal configuration errors, a reason that still holds), `ops/unsafe-changes.jq` (its opening comment) and a comment in `ops/test.sh` carry the sentence. *Fix:* reword each with the recap or at the drill's close, once a restore has been read back. `services/audit-backbone`'s same sentence stays true. *Trigger:* the drill's close.
+
+## 381. The blank-disk restore has not been walked, and the restored file's owner is left to systemd — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 3)
+
+`ops/restore.sh <env> --onto-blank` (`box_restore_blank` in `ops/lib.sh`) formats a disk with no filesystem, mounts it and restores onto it as root with mode 600, then the release starts c-storage as its dynamic user. It relies on systemd re-owning the state directory's contents when the unit starts (documented for `StateDirectory=` with `DynamicUser=`, never seen here), and it has run only on stand-ins and as text guards. *Fix:* none until seen; if c-storage cannot open the restored file, `chown` it to the directory's owner in the script. *Trigger:* the first replacement box, or the drill if it is made to walk a blank disk.
+
+## 382. The destroy's copy-bucket and records-disk steps have run only on stand-ins — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 1)
+
+`ops/destroy.sh` now empties and deletes the copy bucket and reads back the stack delete's snapshot of the records disk (`RecordsVolume` has `DeletionPolicy: Snapshot`, so the stack delete takes one and deletes the disk); it also accepts a box with the records disk attached. All of that is read from AWS's documented behaviour and exercised on `ops/test.sh`'s stand-in for `aws`; it has not run against a real stack. The snapshot the stack delete leaves stays until the human deletes it (a few cents a month). *Fix:* none until seen. *Trigger:* the next `ops/destroy.sh ridge` after ridge holds the copy. Two reread notes, deferred: (a) the destroy counts the copy bucket's files before the prompt, while the box still runs and Litestream still uploads, and compares that count with what `aws s3 rm` reports in 6e2 after the box is terminated; an upload in between makes them differ and the run stops with the box and its root disk already deleted (a rerun counts again and finishes). *Fix:* count again after 6c, or compare with the listing taken after the delete alone. (b) Not read: how the stack delete treats `RecordsAttachment` once 6c has terminated the box, which detaches the disk first; a `DELETE_FAILED` there would show at 6f's read-back.
 
 ## 383. The ci fix's new case tests the error handler, not the new order, and the child ports can still collide — the machine; `[DEFERRED]` (the review of the ci fix, 2026-11-12, Low)
 

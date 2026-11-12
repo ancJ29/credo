@@ -198,7 +198,11 @@ STACK_JSON=''
 trust_guard() {
   grep -qxF -- '                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:${Env}' "$1" ||
     die "the trust's sub is not \${SubjectPrefix}:environment:\${Env}"
-  ! grep -qF 'StringLike' "$1" || die "the trust uses StringLike, which takes wildcards"
+  # every role's trust document (the lines under each AssumeRolePolicyDocument: key), whatever the resources are
+  # named: a role's own policy may use StringLike (BoxRole's list is held to its box's path), a trust may not
+  # shellcheck disable=SC2016 # awk's program, in single quotes
+  ! awk '/^ *AssumeRolePolicyDocument:/ {match($0, /^ */); ind = RLENGTH; f = 1; next} f {match($0, /^ */); if (length($0) > 0 && RLENGTH <= ind) f = 0; else print}' "$1" | grep -qF 'StringLike' ||
+    die "the trust uses StringLike, which takes wildcards"
   ! grep -qF 'repo:${Repository}' "$1" || die "the trust still builds the subject from Repository"
   grep -qxF -- '                token.actions.githubusercontent.com:aud: sts.amazonaws.com' "$1" || die "the trust lost its audience condition"
 }
@@ -213,8 +217,12 @@ passes "the template's trust uses the prefix, and keeps its audience" trust_guar
 # shellcheck disable=SC2016 # the template's literal text
 sed 's/!Sub ${SubjectPrefix}:environment/!Sub repo:${Repository}:environment/' "$OPS_DIR/env.yml" >"$WORK/env-old-trust.yml"
 refuses "a trust built from Repository again is refused" "sub is not" trust_guard "$WORK/env-old-trust.yml"
-awk '!done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' "$OPS_DIR/env.yml" >"$WORK/env-like.yml"
+# the first StringEquals under an AssumeRolePolicyDocument: a trust (the file's first StringEquals is a bucket policy's)
+awk '/^ *AssumeRolePolicyDocument:/ {match($0, /^ */); ind = RLENGTH; f = 1; print; next} f {match($0, /^ */); if (length($0) > 0 && RLENGTH <= ind) f = 0} f && !done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' "$OPS_DIR/env.yml" >"$WORK/env-like.yml"
 refuses "a trust that matches with StringLike is refused" "StringLike" trust_guard "$WORK/env-like.yml"
+# the box's profile renamed leaves the role's cut with no end in the old guard: a StringLike in the deploy role's trust must still be seen
+sed 's/BoxProfile/BoxProfileRenamed/g' "$OPS_DIR/env.yml" | awk '/^  DeployRole:/ {d = 1} d && !done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' >"$WORK/env-like-renamed.yml"
+refuses "  and so is one in the deploy role's trust with the box's profile renamed" "StringLike" trust_guard "$WORK/env-like-renamed.yml"
 # shellcheck disable=SC2016 # the template's literal text
 sed 's/^\( *\)\(token.actions.githubusercontent.com:sub: !Sub \${SubjectPrefix}:environment:\${Env}\)$/\1\2\
 \1token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:environment:${Env}/' "$OPS_DIR/env.yml" >"$WORK/env-both.yml"
@@ -342,12 +350,14 @@ bucket_guard() {
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
+  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
   must "$1" "an s3 action reaches a bucket other than UiBucket" \
-    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | .Resource | tostring] | all(contains("UiBucket"))'
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | select(.Action != "s3:ListBucket") | .Resource | tostring] | all(contains("UiBucket"))'
+  must "$1" "the deploy role's list reaches a bucket other than CopyBucket, or lists more than it" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket")] | length == 1 and .[0].Resource == {"Fn::GetAtt":["CopyBucket","Arn"]} and .[0].Effect == "Allow" and (.[0] | has("Condition") | not)'
   must "$1" "UpdateFunctionConfiguration is not held to ridge's subnet and the BFF's group" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and (.[0].Condition | has("ForAllValues:StringEquals")) and .[0].Condition["ForAllValues:StringEquals"] == {"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
   must "$1" "UpdateFunctionConfiguration passes a request whose subnet and group lists are absent or empty (no Null condition requiring both keys)" \
@@ -499,7 +509,15 @@ volume_guard() {
     "[$inst | (.Properties.BlockDeviceMappings // []) as \$m | (\$m | length > 0) and all(\$m[]; .Ebs.DeleteOnTermination == false)] | all"
   must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
     '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
-  # Not held yet (second slice, item 6's backup half): an AWS::EC2::Volume added later with no policy passes this guard.
+  # Any volume resource carries both policies (a volume can snapshot; Retain is legal too), so one added with none is refused.
+  must "$1" "a volume resource has no DeletionPolicy and UpdateReplacePolicy of Retain or Snapshot" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::Volume") | .value | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")] | all'
+  must "$1" "RecordsVolume is not gp3, encrypted, in the box's zone, at RecordsVolumeSize" \
+    '.Resources.RecordsVolume.Properties | .VolumeType == "gp3" and .Encrypted == true and .Size == {"Ref":"RecordsVolumeSize"} and .AvailabilityZone == {"Fn::GetAtt":["Subnet","AvailabilityZone"]}'
+  must "$1" "RecordsVolume is not kept on a stack delete and a replacement" \
+    '.Resources.RecordsVolume | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")'
+  must "$1" "RecordsAttachment does not attach RecordsVolume to Box" \
+    '.Resources.RecordsAttachment.Properties | .InstanceId == {"Ref":"Box"} and .VolumeId == {"Ref":"RecordsVolume"}'
 }
 
 passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
@@ -522,6 +540,18 @@ refuses "  a Delete DeletionPolicy is refused" "Box has no DeletionPolicy of Ret
   volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Delete"')"
 refuses "  an UpdateReplacePolicy of RetainExceptOnCreate (a DeletionPolicy value only) is refused" "Box has no UpdateReplacePolicy of Retain" \
   volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "RetainExceptOnCreate"')"
+refuses "  a volume added with no policy is refused (row 5)" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.Volume2 = {"Type":"AWS::EC2::Volume","Properties":{}}')"
+refuses "  a records disk with its policies removed is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut 'del(.Resources.RecordsVolume.DeletionPolicy)')"
+refuses "  a records disk that is not encrypted is refused (row 4)" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Encrypted = false')"
+refuses "  a records disk of another type is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.VolumeType = "gp2"')"
+refuses "  a records disk at a fixed size, not its parameter, is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Size = 8')"
+refuses "  a records disk deleted with its stack is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.RecordsVolume.DeletionPolicy = "Delete"')"
 refuses "  a second instance with both attributes but a disk deleted on termination is refused" "an instance resource has a disk that does not keep itself" \
   volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","DeletionPolicy":"Retain","UpdateReplacePolicy":"Retain","Properties":{"BlockDeviceMappings":[{"DeviceName":"/dev/xvda","Ebs":{"DeleteOnTermination":true}}]}}')"
 
@@ -692,6 +722,405 @@ refuses "  a change set that adds a resource beyond layer four's is refused" "no
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"Alerts","ResourceType":"AWS::SNS::Topic","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-alerts.json"; echo "$WORK/cs-alerts.json")" "$WORK/env.json"
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
+
+echo "== the records' copy: the S3 door, the bucket, the box's role, and the box kept in place (rows 1 to 4 of docs/plans/2026-11-11-continuous-copy.md)"
+tojson "$OPS_DIR/network.yml" >"$WORK/network.json"
+# nmut <jq program> → a copy of the network's JSON with the program applied
+nmut() {
+  jq -c "$1" "$WORK/network.json" >"$WORK/network-mut.json"
+  echo "$WORK/network-mut.json"
+}
+# row 1: S3's gateway door on the one route table; still no internet gateway, no NAT, no address to put on one
+# shellcheck disable=SC2016 # jq programs, in single quotes
+network_guard() {
+  must "$1" "the network has no S3 gateway door on its route table" \
+    '.Resources.S3Door | .Type == "AWS::EC2::VPCEndpoint" and .Properties.VpcEndpointType == "Gateway" and .Properties.ServiceName == {"Fn::Sub":"com.amazonaws.${AWS::Region}.s3"} and .Properties.RouteTableIds == [{"Ref":"Routes"}] and .Properties.VpcId == {"Ref":"Vpc"}'
+  must "$1" "the network has a way out other than the door (an internet gateway, a NAT, an elastic address, a route, or an interface endpoint)" \
+    '([.Resources[] | .Type] | all(. != "AWS::EC2::InternetGateway" and . != "AWS::EC2::NatGateway" and . != "AWS::EC2::EIP" and . != "AWS::EC2::Route" and . != "AWS::EC2::VPCGatewayAttachment")) and ([.Resources[] | select(.Type == "AWS::EC2::VPCEndpoint") | .Properties.VpcEndpointType] | all(. == "Gateway"))'
+}
+passes "the network gains an S3 gateway door on its route table, and has no internet gateway and no NAT (row 1)" network_guard "$WORK/network.json"
+refuses "  a network with no door is refused" "no S3 gateway door" network_guard "$(nmut 'del(.Resources.S3Door)')"
+refuses "  an interface endpoint in place of the gateway is refused" "no S3 gateway door" \
+  network_guard "$(nmut '.Resources.S3Door.Properties.VpcEndpointType = "Interface"')"
+refuses "  an internet gateway is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Igw = {"Type":"AWS::EC2::InternetGateway"}')"
+refuses "  a NAT is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Nat = {"Type":"AWS::EC2::NatGateway","Properties":{}}')"
+
+# row 2: the copy's bucket
+copy_bucket_guard() {
+  must "$1" "CopyBucket does not block all public access" \
+    '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration == {"BlockPublicAcls":true,"BlockPublicPolicy":true,"IgnorePublicAcls":true,"RestrictPublicBuckets":true}'
+  must "$1" "CopyBucket is not encrypted" '.Resources.CopyBucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration | length == 1'
+  must "$1" "CopyBucket is not kept on a stack delete and a replacement" \
+    '.Resources.CopyBucket | .DeletionPolicy == "Retain" and .UpdateReplacePolicy == "Retain"'
+  must "$1" "CopyBucket does not expire copies after seven days" \
+    '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules | length == 1 and .[0].Status == "Enabled" and .[0].ExpirationInDays == 7'
+  must "$1" "CopyBucket is a website, or has a policy of its own" \
+    '([.Resources | to_entries[] | select(.value.Type == "AWS::S3::BucketPolicy" and (.value.Properties.Bucket | tostring | contains("CopyBucket")))] | length == 0) and (.Resources.CopyBucket.Properties | has("WebsiteConfiguration") | not)'
+}
+# row 3: the box's role
+# shellcheck disable=SC2016 # jq programs, in single quotes
+box_role_guard() {
+  must "$1" "the box's role holds an action other than put and get under its own path, and list" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end] | sort == ["s3:GetObject","s3:ListBucket","s3:PutObject"]'
+  must "$1" "the box's role reaches a resource other than CopyBucket, or put and get beyond its own box path" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action != "s3:ListBucket") | .Resource] == [{"Fn::Sub":"${CopyBucket.Arn}/Box/*"}] and ([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket") | .Resource] == [{"Fn::GetAtt":["CopyBucket","Arn"]}])'
+  must "$1" "the box's role has a statement that is not an Allow, or a managed policy" \
+    '([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Effect] | all(. == "Allow")) and (.Resources.BoxRole.Properties | has("ManagedPolicyArns") | not)'
+  must "$1" "the box's role lists beyond its own box path (the list's prefix condition is gone or wider)" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket") | .Condition] == [{"StringLike":{"s3:prefix":["Box/*"]}}]'
+  must "$1" "the box's role is assumed by something other than EC2" \
+    '.Resources.BoxRole.Properties.AssumeRolePolicyDocument.Statement | length == 1 and .[0].Principal == {"Service":"ec2.amazonaws.com"}'
+  must "$1" "the box does not take BoxProfile, or BoxProfile does not hold BoxRole alone" \
+    '.Resources.Box.Properties.IamInstanceProfile == {"Ref":"BoxProfile"} and .Resources.BoxProfile.Properties.Roles == [{"Ref":"BoxRole"}]'
+}
+# The hazard: an update that changes a create-only property of the box replaces it, and the records stay on the old one.
+# The box gains IamInstanceProfile (in place) and nothing else: its property names are pinned, no inline Volumes, and the
+# first-boot script is pinned by its hash (UserData is create-only in effect). A deliberate change here moves the pin.
+box_in_place_guard() {
+  must "$1" "the box's properties are not the pinned set (a new property may replace the box)" \
+    '.Resources.Box.Properties | keys == ["BlockDeviceMappings","CreditSpecification","IamInstanceProfile","ImageId","InstanceType","MetadataOptions","NetworkInterfaces","Tags","UserData"]'
+  [ "$(jq -j '.Resources.Box.Properties.UserData["Fn::Base64"]' "$1" | shasum -a 256 | cut -d' ' -f1)" = 9c594c9c06ed30a3c6204546fc8195e13eb9d72ab207b52bf30ca595e53f50fc ] ||
+    die "the box's first-boot script changed: UserData replaces the box (mount the records disk in the release, not here)"
+}
+passes "the copy's bucket blocks public access, is encrypted, is kept, and expires copies after seven days (row 2)" copy_bucket_guard "$WORK/env.json"
+refuses "  a bucket that allows public policy is refused" "block all public access" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy = false')"
+refuses "  a bucket with no encryption is refused" "not encrypted" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.Properties.BucketEncryption)')"
+refuses "  a bucket deleted with its stack is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.DeletionPolicy)')"
+refuses "  a bucket deleted on a replacement is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.UpdateReplacePolicy)')"
+refuses "  a bucket that expires copies after a day is refused" "seven days" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules[0].ExpirationInDays = 1')"
+passes "the box's role may put, get and list its own path in its own bucket, and holds no delete (row 3)" box_role_guard "$WORK/env.json"
+refuses "  a role that may delete is refused" "an action other than" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Action += ["s3:DeleteObject"]')"
+refuses "  a role over every bucket is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = "*"')"
+# shellcheck disable=SC2016 # jq's program, in single quotes
+refuses "  a role over the whole bucket, not its box path, is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = {"Fn::Sub":"${CopyBucket.Arn}/*"}')"
+refuses "  a role that lists the whole bucket, its prefix condition gone, is refused" "lists beyond its own box path" \
+  box_role_guard "$(mut 'del(.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[1].Condition)')"
+refuses "  a role with a managed policy is refused" "managed policy" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a box with no profile is refused" "does not take BoxProfile" box_role_guard "$(mut 'del(.Resources.Box.Properties.IamInstanceProfile)')"
+passes "the box gains its profile and keeps every create-only property: its names and first-boot script are pinned" box_in_place_guard "$WORK/env.json"
+refuses "  a property added to the box is refused" "not the pinned set" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.Volumes = [{"Device":"/dev/sdf","VolumeId":"vol-1"}]')"
+refuses "  a changed first-boot script is refused" "first-boot script changed" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.UserData["Fn::Base64"] += "echo mount\n"')"
+
+# copy_update <change set>: dies unless the update is the copy's five additions and a Modify of the box and of the
+# deploy role, both in place, and the guard names nothing
+copy_update() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  [ "$seen" = "BoxProfile BoxRole CopyBucket RecordsAttachment RecordsVolume" ] || die "the change set adds '$seen'"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | sort | join(",")' "$1")
+  [ "$seen" = "Modify Box False,Modify DeployRole False" ] || die "the change set's other changes are not a Modify of Box and DeployRole in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the update on ridge, as CloudFormation shows it, adds the copy's five and modifies Box in place; the guard passes" \
+  copy_update "$OPS_DIR/testdata/changeset-copy.json"
+refuses "  a box shown as replaced is not that update, and the guard names it" "not a Modify of Box and DeployRole in place" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced.json"; echo "$WORK/cs-copy-replaced.json")"
+check "  and stack.sh's guard refuses that box, naming it" "Box (AWS::EC2::Instance): Modify, replacement True" \
+  "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced2.json"; jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$WORK/cs-copy-replaced2.json")"
+refuses "  a box shown as Conditional is not that update either" "not a Modify of Box" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
+
+echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
+# need <file> <ERE> <what is missing>: dies unless a line of the file matches
+CI_YML=$REPO_DIR/.github/workflows/ci.yml
+# mutated <name> <sed expression> <file> → the path of a copy of the file with the expression applied
+mutated() {
+  sed "$2" "$3" >"$WORK/$1"
+  echo "$WORK/$1"
+}
+need() { grep -qE -- "$2" "$1" || die "$3"; }
+# first_before <file> <ERE first> <ERE second> <what is wrong>: dies unless the first match comes before the second, both present
+first_before() {
+  FB_A=$2 FB_B=$3 awk '$0 ~ ENVIRON["FB_A"] && !x {x=NR} $0 ~ ENVIRON["FB_B"] && !y {y=NR} END{exit !(x && y && x < y)}' "$1" || die "$4"
+}
+# records_block <release.sh> → the script the release runs on the box to mount the records disk
+records_block() { sed -n "/<<'REMOTE' || RECORDS_RC/,/^REMOTE\$/p" "$1"; }
+# row 7: the version and the sum have one home (the pin); the job and the release both compare the archive's sum before
+# unpacking it, and nothing else holds the sum or the version
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+pin_guard() { # <pin> <release.sh> <lib.sh> <ci.yml>
+  need "$1" '^LITESTREAM_VERSION=[0-9]+[.][0-9]+[.][0-9]+$' "the pin holds no version"
+  need "$1" '^LITESTREAM_ARM64_SHA256=[0-9a-f]{64}$' "the pin holds no SHA-256 for the arm64 archive"
+  local ver sum other
+  ver=$(sed -n 's/^LITESTREAM_VERSION=//p' "$1")
+  sum=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$1")
+  other=$(grep -cF -e "$sum" -e "$ver" "$2" "$3" "$4" | tr '\n' ' ')
+  case $other in *:[1-9]*) die "the version or the sum is written outside the pin ($other)" ;; esac
+  local step=$WORK/ci-litestream-step.txt
+  sed -n '/name: Litestream, the pinned archive/,/^      # No stored key/p' "$4" >"$step"
+  [ -s "$step" ] || die "the deploy job has no Litestream step"
+  need "$step" 'sha256sum -c -$' "the deploy job does not check the Litestream archive's sum"
+  first_before "$step" 'curl -fsSL' 'sha256sum -c -$' "the job checks the sum before it fetches"
+  first_before "$4" 'name: Litestream, the pinned archive' 'run: bash ops/release.sh ridge' "the job releases before it fetches the archive"
+  need "$4" 'LITESTREAM_ARCHIVE: ' "the job does not hand the archive to the release"
+  first_before "$3" 'LITESTREAM_ARM64_SHA256" ]' 'tar -xzf' "the release unpacks the archive before comparing its sum"
+  need "$3" 'die "the Litestream archive is' "the release has no refusal for an archive that is not the pin's"
+}
+# unpack_with <pin dir> <archive>: litestream_binary on a pin and an archive of the test's own, 
+unpack_with() {
+  local WORK=$1/work
+  mkdir -p "$WORK"
+  LITESTREAM_PIN=$1/litestream.pin LITESTREAM_ARCHIVE=$2 litestream_binary "$1/out"
+}
+lpin=$WORK/lpin
+mkdir -p "$lpin"
+printf 'a binary' >"$lpin/litestream"
+tar -czf "$lpin/real.tar.gz" -C "$lpin" litestream
+printf 'another' >"$lpin/litestream"
+tar -czf "$lpin/other.tar.gz" -C "$lpin" litestream
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=%s\n' "$(shasum -a 256 "$lpin/real.tar.gz" | cut -d' ' -f1)" >"$lpin/litestream.pin"
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=FILL\n' >"$WORK/fill.pin"
+passes "the pin, the job and the release: one home for the version and the sum, each checking the archive before it is unpacked (row 7)" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a sum written in the release too is refused" "outside the pin" \
+  pin_guard "$OPS_DIR/litestream.pin" "$(mutated release-sum.sh "s#^set -euo pipefail#LS_SUM=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$OPS_DIR/litestream.pin")#" "$OPS_DIR/release.sh")" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a pin that is a FILL marker is refused" "holds no SHA-256" \
+  pin_guard "$WORK/fill.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a deploy job that does not compare the archive's sum is refused" "does not check the Litestream archive's sum" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$(mutated wf-nosum.yml '/LITESTREAM_ARM64_SHA256  \$archive/d' "$CI_YML")"
+passes "  the release unpacks an archive whose sum is the pin's" unpack_with "$lpin" "$lpin/real.tar.gz"
+refuses "  and refuses one whose sum is not, unpacking nothing" "the pin says" unpack_with "$lpin" "$lpin/other.tar.gz"
+fill_pin() { LITESTREAM_PIN=$WORK/fill.pin litestream_pin; }
+refuses "  a pin with a FILL marker stops the release before anything is fetched" "holds no SHA-256" fill_pin
+# row 8: the copy's configuration
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+copy_config_guard() { # <litestream.yml> <release.sh>
+  need "$1" '^  enabled: false$' "the copy's own deleting is not off"
+  need "$1" '^  - path: /var/lib/c-storage/c-storage[.]db$' "the configuration does not name the records' file"
+  need "$1" '^      url: \$\{COPY_URL\}$' "the copy's address is not the box's path"
+  need "$1" '^      sync-interval: 1s$' "the copy does not sync every second"
+  need "$1" '^  interval: 24h$' "the copy does not take a full copy a day"
+  need "$2" "COPY_URL=s3://%s/%s[?]region=%s" "the release writes an address with no region (Litestream then asks us-east-1 where the bucket is, which the box cannot reach)"
+  need "$2" '"[$]COPY_BUCKET" "[$]COPY_PATH" "[$]CREDO_REGION"' "the release builds the address from something other than the bucket, COPY_PATH and the region"
+  ! grep -v '^ *#' "$2" | grep -qF 'Box/records' || die "the release writes the box's path in the bucket as a literal, not from COPY_PATH"
+}
+passes "the copy's configuration names the records' file, the box's path, a sync a second, a full copy a day and its own deleting off (row 8)" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$OPS_DIR/release.sh"
+refuses "  a configuration that deletes in the bucket is refused" "own deleting is not off" \
+  copy_config_guard "$(mutated ls-del.yml 's#^  enabled: false#  enabled: true#' "$OPS_DIR/litestream.yml")" "$OPS_DIR/release.sh"
+refuses "  an address with no region is refused" "writes an address with no region" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$(mutated release-noregion.sh 's#COPY_URL=s3://%s/%s?region=%s#COPY_URL=s3://%s/%s#' "$OPS_DIR/release.sh")"
+refuses "  and one whose path is written out in the release again" "as a literal" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$(mutated release-literal.sh 's#^RECORDS_VOLUME=#BOX_PATH=Box/records; RECORDS_VOLUME=#' "$OPS_DIR/release.sh")"
+# row 9: the unit
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+unit_guard() { # <c-storage.service> <lib.sh>
+  need "$1" '^ExecStart=/opt/c-storage/litestream replicate .*-exec /opt/c-storage/c-storage$' "the unit does not start Litestream with c-storage as its child"
+  need "$1" '^RequiresMountsFor=/var/lib/private/c-storage$' "the unit does not wait on the records disk's mount"
+  need "$1" '^EnvironmentFile=/etc/c-storage/copy.env$' "the unit does not read the copy's address"
+  need "$2" '^RECORDS_MOUNT=/var/lib/private/c-storage$' "the scripts and the unit name different mounts"
+}
+passes "c-storage's unit starts Litestream with c-storage as its child, and waits on the records disk's mount (row 9)" \
+  unit_guard "$OPS_DIR/c-storage.service" "$OPS_DIR/lib.sh"
+refuses "  a unit that starts c-storage alone is refused" "c-storage as its child" \
+  unit_guard "$(mutated unit-plain.service 's#^ExecStart=.*#ExecStart=/opt/c-storage/c-storage#' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+refuses "  a unit that does not wait on the mount is refused" "wait on the records disk" \
+  unit_guard "$(mutated unit-nomount.service '/^RequiresMountsFor=/d' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+# row 10: the release stops before the restart when the disk is not mounted
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+mount_refusal_guard() { # <release.sh>
+  need "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die "the records disk is not mounted' "the release does not refuse a records disk that is not mounted"
+  first_before "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die' 'systemctl restart c-storage' "the release restarts c-storage before it reads the mount"
+}
+passes "a release refuses to start c-storage when the records disk is not mounted (row 10)" mount_refusal_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release with no such refusal is refused" "does not refuse a records disk" \
+  mount_refusal_guard "$(mutated release-nomount.sh '/mountpoint -q \$RECORDS_MOUNT" || die/d' "$OPS_DIR/release.sh")"
+# row 11: a file on the system disk moves once, c-storage stopped, and the old one is kept
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+move_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  [ -s "$b" ] || die "the release has no records disk step"
+  first_before "$b" 'systemctl stop c-storage' 'cp -p "\$old" ' "the file is copied before c-storage is stopped"
+  first_before "$b" 'cp -p "\$old" ' 'mv "\$old" "\$old[.]moved"' "the old file is set aside before it is copied"
+  first_before "$b" '\[ -e "\$tmp/c-storage.db" \]' 'cp -p "\$old" ' "the file is moved without asking whether the disk holds one already"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the records disk step deletes a file"
+}
+passes "a file on the system disk is moved once onto a blank records disk with c-storage stopped, and the old one is kept (row 11)" move_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that deletes the old file is refused" "deletes a file" \
+  move_guard "$(mutated release-rm.sh 's#mv "\$old" "\$old.moved"#rm -f "$old"; mv "$old" "$old.moved"#' "$OPS_DIR/release.sh")"
+# row 12: a records disk with no c-storage.db and a copy waiting is a restore, never a fresh start: blank, hand-formatted
+# or hand-mounted alike, refused before anything is formatted or started, naming the one scripted path
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+blank_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  need "$b" 'list-objects-v2 --bucket "\$bucket" --prefix "\$cpath/"' "the release does not list the box's path in the bucket"
+  first_before "$b" '^  if copy_held; then refuse_held; fi' 'mkfs[.]xfs' "the disk is formatted before the bucket is read"
+  need "$b" '^  exit 4$' "a copy in the bucket does not end the step with exit 4"
+  [ "$(grep -c '^ *if \[ ! -e "\$mnt/c-storage.db" \] && copy_held; then refuse_held; fi' "$b")" = 2 ] ||
+    die "a disk with no c-storage.db, formatted or mounted by hand, is not refused when the bucket holds a copy (both the mounted case and the check after the mount)"
+  need "$1" '4\) die "the records disk holds no c-storage.db and the bucket holds a copy' "the release does not name the refusal"
+  need "$1" 'ops/restore.sh \$ENVNAME --onto-blank' "the release does not name the one scripted restore"
+}
+passes "a records disk with no c-storage.db whose box path in the bucket holds a copy refuses a fresh start, blank or mounted by hand, and names ops/restore.sh --onto-blank (row 12)" blank_guard "$OPS_DIR/release.sh"
+refuses "  a release that formats first is refused" "formatted before the bucket" \
+  blank_guard "$(awk '/^  if copy_held; then refuse_held; fi/ && !d {print "  mkfs.xfs -q \"$dev\""; d=1} {print}' "$OPS_DIR/release.sh" >"$WORK/release-mkfs.sh"; echo "$WORK/release-mkfs.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose refusal never stops it is refused" "does not end the step with exit 4" \
+  blank_guard "$(mutated release-nostop.sh 's#^  exit 4$#  exit 0#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that lets a hand-formatted disk through to c-storage is refused" "formatted or mounted by hand" \
+  blank_guard "$(mutated release-nohand.sh '/^mount "$mnt"$/,/records disk: mounted at/{/copy_held; then refuse_held/d;}' "$OPS_DIR/release.sh")"
+# the restore reads the address from the same file the unit does (the region is in it), onto a new file, the live path, or a blank disk
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+restore_address_guard() { # <lib.sh>
+  [ "$(grep -cE '^("[$]bin"|/opt/c-storage/litestream) restore .* "[$]COPY_URL"$' "$1")" = 2 ] || die "a restore does not read the address the release wrote"
+  [ "$(grep -cE '^(\. |envf=)/etc/c-storage/copy.env$' "$1")" = 2 ] || die "a restore does not read the unit's copy.env"
+}
+passes "  and the restore, onto a new file, the live path or a blank disk, restores from the address the release wrote (the unit's file)" restore_address_guard "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore from an address of its own is refused" "does not read the address" \
+  restore_address_guard "$(mutated lib-addr.sh '/litestream restore/s#"$COPY_URL"$#"s3://elsewhere/Box/records"#' "$OPS_DIR/lib.sh")"
+
+echo "== the check reads the copy (row 15) and the restore writes a new file and moves nothing live aside for good (row 16) (docs/plans/2026-11-11-continuous-copy.md)"
+# row 15: copy_problems on written input. Now is 10:10:00 on the 12th.
+cp_now=$(jq -n '"2026-11-12T10:10:00Z" | fromdateiso8601')
+cp_status() { printf '{"freeBytes": %s, "lastWriteAt": %s}' "$1" "$2"; } # <free bytes> <quoted time or null>
+cp_listing() { # <newest copy's time> <newest full copy's time>
+  # the S3 client's own layout, written out here and not read from the constant: <path>/<four hex digits of the level>/<name>
+  printf '[{"Key":"Box/records/0000/0000000000000001-0000000000000002.ltx","LastModified":"%s"},{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"%s"}]' "$1" "$2"
+}
+# copy_eval <lib.sh> <status> <listing>: the faults that file's own copy_problems names (the constants stay this tree's)
+copy_eval() {
+  ( eval "$(sed -n '/^copy_problems() {/,/^}/p' "$1")"; copy_problems "$2" "$3" "$cp_now" )
+}
+cp_ok_status=$(cp_status 5000000000 '"2026-11-12T10:00:00.123456789Z"')
+cp_ok_list=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00)
+check "row 15: the limits are five minutes, six days and 1 GiB" "300 518400 1024" "$COPY_LAG_S $COPY_FULL_MAX_S $FLOOR_RECORDS_MB"
+check "row 15: a copy as new as the last write, a full copy of today and a roomy disk are sound" "" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_ok_list")"
+check "  a copy exactly five minutes behind the last write is still sound" "" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T09:55:00+00:00 2026-11-12T00:00:00+00:00)")"
+cp_lag=$(cp_listing 2026-11-12T09:50:00+00:00 2026-11-12T00:00:00+00:00)
+cp_old=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-05T00:00:00+00:00)
+cp_low=$(cp_status 1000000 '"2026-11-12T10:00:00Z"')
+check "  a copy over five minutes behind the last write is red, and only that" "the newest copy lags the last write by 600 s, over 300 s" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_lag")"
+check "  a newest full copy over six days old is red, and only that" "the newest full copy is 7 days old, over 6 days" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_old")"
+check "  a records disk below its floor is red, and only that" "the records disk has 0 MiB free, below the floor of 1024 MiB" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_low" "$cp_ok_list")"
+check "  an empty bucket is red for no copy and no full copy; a file not yet written is not a lag" "the bucket holds no copy of the records|the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$(cp_status 5000000000 null)" null | paste -sd'|' -)"
+check "  a copy with no full copy is red, and a write time in S3's own form (+00:00) is read" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | jq -c --arg p "$COPY_FULL_PREFIX" 'map(select(.Key | startswith($p) | not))')")"
+check "  the full copies' prefix is the S3 client's <path>/0009/, declared once" "Box/records/0009/" "$COPY_FULL_PREFIX"
+check "  a bucket laid out as the file replica's ltx/9/ holds no full copy for the check (the layout is S3's, not a folder's)" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | sed 's#Box/records/0009/#Box/records/ltx/9/#; s#Box/records/0000/#Box/records/ltx/0/#')")"
+# the newest full copy is the largest key, not the latest LastModified: the older name is the one touched today
+cp_keyorder='[{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"2026-11-12T00:00:00+00:00"},{"Key":"Box/records/0009/0000000000000001-0000000000000009.ltx","LastModified":"2026-11-05T00:00:00+00:00"},{"Key":"Box/records/0000/0000000000000009-0000000000000009.ltx","LastModified":"2026-11-12T10:00:00+00:00"}]'
+check "  the newest full copy is the one with the largest name, not the latest LastModified" "the newest full copy is 7 days old, over 6 days" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_keyorder")"
+# row 16: the restore's box script and the script that calls it, read as text
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+restore_guard() { # <lib.sh> <restore.sh>
+  local b=$WORK/restore-block.sh
+  sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_restore"
+  need "$b" '^new=\$mount/restored-\$stamp[.]db$' "the restore does not name a new file by default"
+  need "$b" '^args=\(-o "\$new"\)$' "the restore does not write to the new file"
+  [ "$(grep -c -- '-o "\$db"' "$b")" = 0 ] || die "the restore writes to the live path"
+  first_before "$b" '^if \[ "\$live" = 1 \]; then$' 'systemctl stop c-storage' "c-storage is stopped outside the live branch"
+  first_before "$b" 'systemctl stop c-storage' 'mv "\$f" "\$f[.]aside-\$stamp"' "the live file is moved aside before c-storage is stopped"
+  first_before "$b" 'mv "\$f" "\$f[.]aside-\$stamp"' 'mv "\$new" "\$db"' "the restored file takes the live path before the live file is set aside"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the restore deletes a file"
+  need "$b" '^if \[ "\$free" -lt \$\(\(used \* 2\)\) \]; then$' "the restore does not look at the records disk's free space before it writes"
+  first_before "$b" '^if \[ "\$free" -lt ' '^/opt/c-storage/litestream restore' "the restore looks at the free space after it has written"
+  need "$2" '^ONTO_LIVE=0$' "the restore does not default to a new file"
+  need "$2" 'box_restore "\$AT" "\$ONTO_LIVE"' "the restore script does not pass the flag on"
+  need "$2" '"\$REAL" = 1 \] && \[ "\$ONTO_LIVE" = 1 \]' "the restore does not refuse the live path on an environment that may hold real data"
+}
+passes "the restore writes a new file by default, writes the live path only when named, and moves the live file aside, never deleting it (row 16)" \
+  restore_guard "$OPS_DIR/lib.sh" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that writes to the live path is refused" "does not write to the new file" \
+  restore_guard "$(mutated lib-live.sh 's#^args=(-o "\$new")$#args=(-o "$db")#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that deletes the live file instead of moving it aside is refused" "deletes a file" \
+  restore_guard "$(mutated lib-rm.sh 's#mv "\$f" "\$f.aside-\$stamp"#rm -f "$f"; mv "$f" "$f.aside-$stamp"#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that fills the live disk (no look at the free space first) is refused" "free space before it writes" \
+  restore_guard "$(mutated lib-nofree.sh 's#^if \[ "$free" -lt .*#if false; then#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore script that puts the live path first is refused" "does not default to a new file" \
+  restore_guard "$OPS_DIR/lib.sh" "$(mutated restore-live.sh 's#^ONTO_LIVE=0$#ONTO_LIVE=1#' "$OPS_DIR/restore.sh")"
+# the box's script, read as text: it formats only a disk with no filesystem, mounts, then restores onto the records path, refusing a running c-storage or a disk that holds a file
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+blank_restore_guard() { # <lib.sh>
+  local b=$WORK/blank-block.sh
+  sed -n '/^box_restore_blank() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_restore_blank"
+  need "$b" 'systemctl is-active --quiet c-storage' "the blank-disk restore does not refuse a running c-storage"
+  need "$b" '^\[ ! -e "\$mount/c-storage.db" \] \|\| \{ echo "the records disk already holds c-storage.db' "the blank-disk restore does not refuse a disk that holds a c-storage.db"
+  first_before "$b" 'mkfs[.]xfs' '^"\$bin" restore' "the disk is not formatted before the restore"
+  first_before "$b" '^ *mount "\$mount"$' '^"\$bin" restore' "the restore runs before the disk is mounted"
+  first_before "$b" 'systemctl is-active --quiet c-storage' 'mkfs[.]xfs' "a running c-storage is looked for after the disk is formatted"
+  need "$b" '^args=\(-o "\$mount/c-storage.db"\)$' "the blank-disk restore does not write onto the records path"
+  need "$b" '\[ -z "\$type" \] \|\| \[ "\$type" = xfs \]' "the blank-disk restore formats or mounts a filesystem that is not XFS"
+  need "$b" '^if \[ ! -e "\$envf" \]; then envf=/opt/c-storage/copy.env.new; fi$' "the blank-disk restore does not fall back to the release's copy.env.new on a box no release has finished on"
+  need "$b" '^if \[ ! -x "\$bin" \]; then bin=/opt/c-storage/litestream.new; chmod 0755 "\$bin"; fi$' "the blank-disk restore does not fall back to the release's litestream.new on a box no release has finished on"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the blank-disk restore deletes a file"
+}
+passes "the blank-disk restore looks for a running c-storage first, formats only a disk with no filesystem, mounts, and restores onto the records path, refusing a disk that holds a c-storage.db" \
+  blank_restore_guard "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that needs the installed copy.env on a replacement box (only the .new files are there) is refused" "copy.env.new" \
+  blank_restore_guard "$(mutated lib-blank-new.sh '/^if \[ ! -e "$envf" \]; then envf=/d' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  and one that needs the installed binary is refused" "litestream.new" \
+  blank_restore_guard "$(mutated lib-blank-bin.sh '/^if \[ ! -x "$bin" \]; then bin=/d' "$OPS_DIR/lib.sh")"
+# The fstab line, run on a copy of fstab: a disk whose UUID is not the one fstab holds for the mount (a new disk on
+# the same box) gets its own line in place of the old, other lines kept, and a repeat changes nothing
+fstab_probe() { # <script holding the line> → dies unless the line leaves exactly the new disk's line for the mount
+  local line f=$WORK/fstab-probe
+  line=$(grep -m1 'etc/fstab' "$1" | sed "s#/etc/fstab#$f#g")
+  printf 'UUID=oldold /var/lib/private/c-storage xfs defaults,nofail 0 2\nUUID=keep / xfs defaults 0 0\n' >"$f"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed on a repeat"
+  if [ "$(grep -c 'c-storage' "$f")" != 1 ] || ! grep -q '^UUID=newnew /var/lib/private/c-storage ' "$f" || ! grep -q '^UUID=keep ' "$f"; then
+    die "a new disk is mounted by the old disk's fstab line: $(tr '\n' '|' <"$f")"
+  fi
+}
+fstab_both() { fstab_probe "$OPS_DIR/lib.sh" && fstab_probe "$OPS_DIR/release.sh"; }
+passes "a new disk on the same box replaces the old disk's fstab line, keeps the others, and a repeat adds none (records step and blank restore)" \
+  fstab_both
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a fstab line that keeps the old disk's UUID is refused" "old disk's fstab line" \
+  fstab_probe "$(mutated lib-fstab.sh 's#^  grep -q "^UUID=$uuid $mount " /etc/fstab .*#  grep -q " $mount " /etc/fstab || echo "UUID=$uuid $mount xfs defaults,nofail 0 2" >>/etc/fstab#' "$OPS_DIR/lib.sh")"
+# the free-space sum with c-storage stopped (no -wal beside the file), under the box script's own options
+used_probe() { # <lib.sh> → dies unless the sum is the file's size when there is no -wal
+  local d=$WORK/used-probe snippet
+  mkdir -p "$d"
+  head -c 4096 /dev/zero >"$d/c-storage.db"
+  rm -f "$d/c-storage.db-wal"
+  snippet=$(sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" | awk '/^used=/ {f = 1} /^free=/ {f = 0} f')
+  [ -n "$snippet" ] || die "lib.sh has no free-space sum"
+  [ "$(bash -c "set -euo pipefail; db=$d/c-storage.db; $snippet; echo \$used")" = 4 ] || die "the free-space sum stops the restore when c-storage is stopped (no -wal beside the file)"
+}
+passes "the default restore's free-space sum does not stop the script when c-storage is stopped and there is no -wal" used_probe "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  the one-line sum over both names (the first build) is refused" "no -wal beside" \
+  used_probe "$(awk '/^used=0$/ {print "used=$(du -sk \"$db\" \"$db-wal\" 2>/dev/null | awk '"'"'{s+=$1} END{print s+0}'"'"')"; skip = 3; next} skip > 0 {skip--; next} {print}' "$OPS_DIR/lib.sh" >"$WORK/lib-du.sh"; echo "$WORK/lib-du.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that does not look for a running c-storage is refused" "running c-storage" \
+  blank_restore_guard "$(mutated lib-blank-run.sh 's#systemctl is-active --quiet c-storage#false#' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that formats any disk is refused" "not XFS" \
+  blank_restore_guard "$(mutated lib-blank-fs.sh 's#\[ -z "$type" \] || \[ "$type" = xfs \] || ##' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that goes ahead over a c-storage.db on the disk is refused" "holds a c-storage.db" \
+  blank_restore_guard "$(mutated lib-blank-file.sh '/^\[ ! -e "$mount\/c-storage.db" \] || /d' "$OPS_DIR/lib.sh")"
+
 
 echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
@@ -2202,13 +2631,17 @@ jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGrou
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
   '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
+# the copy: a status and a bucket listing that are sound by the stand-ins' clock (a run that wants them red rewrites them)
+chk_stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
 policy_of "[$statement]" >"$CHK/policy.json"
 # aws: layer four's reads and the box's group on files; the stack gains the two outputs the base lacks; the rest is the base stand-in's
 cat >"$CHK/bin/aws" <<'STANDIN'
 #!/bin/bash
 C=${CHK_DIR:?}
 case "$*" in
-  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}]' ;;
+  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}, {OutputKey: "CopyBucketName", OutputValue: "credo-test-copy"}, {OutputKey: "RecordsVolumeId", OutputValue: "vol-0rec"}]' ;;
   *"ec2 describe-instances"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo None ;;
   *"describe-internet-gateways"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo 0 ;;
   *"describe-instance-connect-endpoints"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo '["sg-ep"]' ;;
@@ -2219,6 +2652,7 @@ case "$*" in
   *"lambda get-function-configuration"*"--output json"*) echo "stand-in aws: the function's whole configuration is never read: $*" >&2; exit 1 ;;
   *"s3api get-public-access-block"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/pab.json" ;;
   *"s3api get-bucket-policy"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/policy.json" ;;
+  *"s3api list-objects-v2"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/listing.json" ;;
   *) exec "$CHK_BASE/aws" "$@" ;;
 esac
 STANDIN
@@ -2226,6 +2660,23 @@ STANDIN
 cat >"$CHK/bin/ssh" <<'STANDIN'
 #!/bin/bash
 case "$*" in
+  *"sudo bash -s -- status "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    cat "${CHK_DIR:?}/status.json" ;;
+  *"sudo bash -s -- blank /var/lib/private/c-storage "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/blank.calls"
+    cat >/dev/null
+    printf 'records disk: formatted\nrestored=/var/lib/private/c-storage/c-storage.db\n' ;;
+  *"sudo bash -s -- /var/lib/private/c-storage "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/restore.calls"
+    cat >/dev/null
+    all="$*"
+    words=${all##*-- }
+    set -- $words
+    if [ "$3" = 1 ]; then printf 'answering=yes\naside=%s\n' "$4"; else printf 'restored=/var/lib/private/c-storage/restored-%s.db\n' "$4"; fi ;;
   *"sudo bash -s -- "*)
     echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
     cat >/dev/null
@@ -2299,6 +2750,54 @@ check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
 check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+# the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
+check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
+  "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ --query' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
+# after a restart c-storage knows no write time: the check must not call the copy current, and says the lag was not read
+printf '{"freeBytes": 5000000000, "lastWriteAt": null}' >"$CHK/status.json"
+chk_run copynull check.sh ridge --reads-only
+check "row 15: with no write time known (after any restart) the check does not say the copy holds the last write, and says the lag was not read" "0 1 0 1" \
+  "$RC $(chk_has '^ok   .*the lag was NOT read' "$S/out") $(chk_has 'copy holds the last write within' "$S/out") $(chk_has '^== green' "$S/out")"
+check "  copy_lag_read says no on a null write time and yes on one" "no yes" \
+  "$(copy_lag_read '{"freeBytes": 1, "lastWriteAt": null}') $(copy_lag_read '{"freeBytes": 1, "lastWriteAt": "2026-11-12T10:00:00Z"}')"
+printf '{"freeBytes": 1000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing 2026-01-01T00:00:00+00:00 2026-01-01T00:00:00+00:00 >"$CHK/listing.json"
+chk_run copyred check.sh ridge --reads-only
+check "row 15: the whole check is red on a disk below its floor, a lagging copy and an old full copy, naming each" "1 1 1 1 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has '^RED  the records disk has 0 MiB free' "$S/out") $(chk_has '^RED  the newest copy lags the last write' "$S/out") $(chk_has '^RED  the newest full copy is' "$S/out") $(chk_has '^== red' "$S/out")"
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
+
+# the restore, whole: a new file by default, the live path only when named, never on an environment that may hold real data
+restore_calls() { sed -n 's/.*bash -s -- \/var\/lib\/private\/c-storage //p' "$S/restore.calls" 2>/dev/null | head -n 1; }
+chk_run rdef restore.sh ridge
+check "row 16: the restore on ridge writes a new file and passes the box 'no moment, not onto the live file'" "0 1 1" \
+  "$RC $(chk_has '^restored=/var/lib/private/c-storage/restored-' "$S/out") $(restore_calls | grep -c '^- 0 [0-9]\{8\}T[0-9]\{6\}Z ' || true)"
+check "  and says the live file is untouched" 1 "$(chk_has '^the live file is untouched' "$S/out")"
+chk_run rat restore.sh ridge --at 2026-11-12T10:00:00Z
+check "  a moment is passed on whole" "0 1" "$RC $(restore_calls | grep -c '^2026-11-12T10:00:00Z 0 ' || true)"
+chk_run rlive restore.sh ridge --onto-live
+check "  --onto-live on ridge is passed to the box, and /health is read after the swap" "0 1 1" \
+  "$RC $(restore_calls | grep -c '^- 1 ' || true) $(chk_has '^ok   c-storage answers /health after the swap' "$S/out")"
+chk_run rtaiga restore.sh taiga
+check "  on an environment that may hold real data the default runs, saying why" "0 1 1" \
+  "$RC $(chk_has '^ok   taiga may hold real data; this script is safe there: by default it writes a new file' "$S/out") $(restore_calls | grep -c '^- 0 ' || true)"
+chk_run rtaigalive restore.sh taiga --onto-live
+check "  --onto-live there is refused, before any aws or box call" "1 1 gone gone" \
+  "$RC $(grep -c '^error: --onto-live is refused on taiga' "$S/out" || true) $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+# the blank-disk restore (the one scripted path): the box gets the mount, the moment and the disk's id, c-storage is not started
+chk_run rblank restore.sh ridge --onto-blank
+check "the blank-disk restore on ridge calls the box once with the records disk's id and no moment, and says c-storage is not started" "0 1 1 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^- vol-0rec$' || true) $(chk_has '^ok   the restored file stands on the records disk: yes' "$S/out") $(chk_has '^c-storage is not started: release again' "$S/out")"
+chk_run rblankat restore.sh taiga --onto-blank --at 2026-11-12T10:00:00Z
+check "  it runs on an environment that may hold real data (nothing live exists on a blank disk), with the moment passed on whole" "0 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^2026-11-12T10:00:00Z vol-0rec$' || true)"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --onto-blank --onto-live 2>&1) || rc=$?
+check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
+check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
 kill "$chk_edge" 2>/dev/null || true
 unset FAKE_LAYER4 FAKE_APP FAKE_API
 
@@ -3625,7 +4124,7 @@ git -C "$CYC/repo" push -q origin HEAD:refs/heads/main
 git init -q --bare "$E2E/github.com/test-owner/cycle-repo2.git"
 cp -R "$CYC/repo" "$CYC/repo2"
 rm -rf "$CYC/repo2/.git"
-sed -i.bak 's/^DESTROY_BY_HAND="Box UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket"/' "$CYC/repo2/ops/lib.sh"
+sed -i.bak 's/^DESTROY_BY_HAND="Box CopyBucket RecordsVolume UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket RecordsVolume Archive"/' "$CYC/repo2/ops/lib.sh"
 rm -f "$CYC/repo2/ops/lib.sh.bak"
 git -C "$CYC/repo2" init -q
 git -C "$CYC/repo2" remote add origin "$E2E/github.com/test-owner/cycle-repo2.git"
@@ -3655,6 +4154,7 @@ jq -nc '["AWS::EC2::Subnet", "AWS::EC2::Instance", "AWS::EC2::SecurityGroup", "A
 jq -nc '{State: {Name: "running"}, InstanceType: "t4g.nano", SubnetId: "subnet-0aaa", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge"}], BlockDeviceMappings: [{DeviceName: "/dev/xvda", Ebs: {VolumeId: "vol-0root", DeleteOnTermination: false}}]} | {Reservations: [{Instances: [.]}]}' >"$FX/box.json"
 jq -nc '[{id: "eni-1", d: "box interface", i: "i-0box"}, {id: "eni-2", d: "AWS Lambda VPC ENI-credo-ridge-bff", i: null}]' >"$FX/enis.json"
 jq -nc '{Volumes: [{VolumeId: "vol-0root", State: "available", Attachments: []}]}' >"$FX/vol.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0rec", State: "in-use", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge-records"}], Attachments: []}]}' >"$FX/recvol.json"
 jq -nc '{Volumes: [{VolumeId: "vol-0orph", Size: 8, VolumeType: "gp3", Encrypted: true, CreateTime: "2026-11-08T00:00:00Z"}]}' >"$FX/orphans.json"
 fx_bad=''
 for f in "$FX"/*.json; do jq -e . "$f" >/dev/null 2>&1 || fx_bad="$fx_bad $(basename "$f")"; done
@@ -3666,6 +4166,13 @@ FX=${FAKE_FX:?}
 gone() { echo "An error occurred (NotFound) when calling the operation: 404 not found" >&2; exit 254; }
 case "$*" in
   *"sts get-caller-identity"*) echo 123456789012 ;;
+  *"describe-snapshots"*"volume-id,Values=vol-0rec"*"Snapshots[].SnapshotId"*) echo snap-0stack ;;
+  *"describe-snapshots"*"volume-id,Values=vol-0rec"*) echo 0 ;;
+  *"ec2 describe-volumes --volume-ids vol-0rec"*) if [ -e "$FAKE_STATE/stack.gone" ]; then echo "An error occurred (InvalidVolume.NotFound)" >&2; exit 254; fi; cat "$FX/recvol.json" ;;
+  *"s3api head-bucket"*"ridge-copybucket-xyz"*) [ ! -e "$FAKE_STATE/copy.gone" ] || gone ;;
+  *"s3api list-objects-v2"*"ridge-copybucket-xyz"*) if [ -e "$FAKE_STATE/copy.rm.done" ]; then echo 0; else echo 2; fi ;;
+  *"s3 rm"*"ridge-copybucket-xyz"*) touch "$FAKE_STATE/copy.rm.done"; printf 'delete: s3://ridge-copybucket-xyz/Box/records/%s\n' 1 2 ;;
+  *"s3api delete-bucket"*"ridge-copybucket-xyz"*) touch "$FAKE_STATE/copy.gone" ;;
   *"cloudformation list-stacks"*) cat "$FX/stacks.json" ;;
   *"cloudformation describe-stacks"*"--query"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone; echo UPDATE_COMPLETE ;;
   *"cloudformation describe-stacks"*) [ ! -e "$FAKE_STATE/stack.gone" ] || { echo "An error occurred (ValidationError): Stack with id ridge does not exist" >&2; exit 254; }; cat "$FX/desc.json" ;;
@@ -3838,7 +4345,7 @@ cp -R "$FX" "$FX22"
 jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Repository" then .ParameterValue = "test-owner/cycle-repo2" else . end)' "$FX/desc.json" >"$FX22/desc.json"
 CASE_FX=$FX22 CASE_REPO=repo2 cycle_case destroy-byhand active ridge destroy.sh ridge
 check "22: an id the list names that no step deletes stops it before the name is asked, naming the id" "1 1 0 0" \
-  "$RC $(grep -c '^== STOPPED: DESTROY_BY_HAND (ops/lib.sh) lists CopyBucket, and no step of this script deletes it\. Nothing was destroyed' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(destroy_calls)"
+  "$RC $(grep -c '^== STOPPED: DESTROY_BY_HAND (ops/lib.sh) lists Archive, and no step of this script deletes it\. Nothing was destroyed' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(destroy_calls)"
 CASE_ENV=FAKE_RUN_LATE=1 cycle_case destroy-late active ridge destroy.sh ridge
 check "23: a run that starts after the workflows go off stops it before any delete, and the stop says the two are off and how to turn them on" "1 1 disabled_manually disabled_manually active 0 1" \
   "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack' "$S/aws.calls" || true) $(grep -c '^-- This run stopped after the workflows (ci.yml and seed.yml) were switched off, and they are still off\..*ops/remake.sh ridge\.$' "$OPS_LOG_DIR"/*.log || true)"
@@ -3855,10 +4362,38 @@ unlisted_keepers() {
     | .key | select(. as $k | ($list | split(" ") | index($k)) == null)' "$1" | tr '\n' ' ' | sed 's/ $//'
 }
 BY_HAND_LIST=$DESTROY_BY_HAND
-check "14: the template's keepers read as JSON are the box and the UI bucket (so the list below is read from something)" "Box UiBucket" "$(unlisted_keepers "$WORK/env.json" "")"
+check "14: the template's keepers read as JSON are the box, the copy bucket, the records disk and the UI bucket (so the list below is read from something)" "Box CopyBucket RecordsVolume UiBucket" "$(unlisted_keepers "$WORK/env.json" "")"
 check "  every env.yml resource a stack delete keeps, and every bucket, is in the destroy's list" "" "$(unlisted_keepers "$WORK/env.json" "$BY_HAND_LIST")"
-jq '.Resources.CopyBucket = {Type: "AWS::S3::Bucket", DeletionPolicy: "Retain"} | .Resources.RecordsVolume = {Type: "AWS::EC2::Volume", DeletionPolicy: "Snapshot"}' "$WORK/env.json" >"$WORK/env-copy.json"
-check "  and a template with a retained bucket and a snapshotted volume added names both" "CopyBucket RecordsVolume" "$(unlisted_keepers "$WORK/env-copy.json" "$BY_HAND_LIST")"
+jq '.Resources.ArchiveBucket = {Type: "AWS::S3::Bucket", DeletionPolicy: "Retain"} | .Resources.ArchiveVolume = {Type: "AWS::EC2::Volume", DeletionPolicy: "Snapshot"}' "$WORK/env.json" >"$WORK/env-more.json"
+check "  and a template with one more retained bucket and one more snapshotted volume added names both" "ArchiveBucket ArchiveVolume" "$(unlisted_keepers "$WORK/env-more.json" "$BY_HAND_LIST")"
+
+# a ridge that holds the copy: the stack also lists the copy bucket and the records disk, which the box has attached
+FXC=$CYC/fx-copy
+cp -R "$FX" "$FXC"
+jq -c '.StackResourceSummaries += [{ResourceType: "AWS::S3::Bucket", LogicalResourceId: "CopyBucket", PhysicalResourceId: "ridge-copybucket-xyz", ResourceStatus: "CREATE_COMPLETE"}, {ResourceType: "AWS::EC2::Volume", LogicalResourceId: "RecordsVolume", PhysicalResourceId: "vol-0rec", ResourceStatus: "CREATE_COMPLETE"}]' "$FX/res.json" >"$FXC/res.json"
+jq -c '. += ["AWS::EC2::Volume"]' "$FX/types.json" >"$FXC/types.json"
+jq -c '.Reservations[0].Instances[0].BlockDeviceMappings += [{DeviceName: "/dev/sdf", Ebs: {VolumeId: "vol-0rec", DeleteOnTermination: false}}]' "$FX/box.json" >"$FXC/box.json"
+CASE_FX=$FXC cycle_case destroy-copy active ridge destroy.sh ridge
+check "8b: the destroy on a ridge that holds the copy: exit 0, then the order: the box, the root disk, the UI bucket's files, the copy bucket's files and the bucket, the stack" "0 wait instance-terminated,ec2 delete-volume,s3 rm,s3 rm,s3api delete-bucket,cloudformation delete-stack," \
+  "$RC $(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|s3api delete-bucket|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
+check "  the records disk is never deleted by hand: only the root disk is, and the stack delete's snapshot of it is read back" "1 0 1" \
+  "$(grep -c 'delete-volume --volume-id vol-0root' "$S/aws.calls" || true) $(grep -c 'delete-volume --volume-id vol-0rec' "$S/aws.calls" || true) $(grep -c '^   read back: the snapshot(s) of the records disk, kept until you delete them: snap-0stack$' "$S/out" || true)"
+check "  the copy bucket's two deletes were counted against its two files, and it is read back as gone (after its delete, and again at the last read)" "1 2" \
+  "$(grep -c '^   AWS reported 2 delete(s); 2 file(s) were counted before$' "$S/out" || true) $(grep -c '^   read back: bucket ridge-copybucket-xyz is gone$' "$S/out" || true)"
+check "  and the words no longer say the records are one file on the root disk with no copy" "0 0" \
+  "$(grep -c 'one SQLite file on the box.s root disk' "$S/out" || true) $(grep -c 'holds no backup and no copy job' "$S/out" || true)"
+FXD=$CYC/fx-disks
+cp -R "$FXC" "$FXD"
+jq -c '.Reservations[0].Instances[0].BlockDeviceMappings += [{DeviceName: "/dev/sdg", Ebs: {VolumeId: "vol-0stray", DeleteOnTermination: false}}]' "$FXC/box.json" >"$FXD/box.json"
+CASE_FX=$FXD cycle_case destroy-stray active ridge destroy.sh ridge
+check "  a box with a disk beyond its root and the records disk is refused before the name is asked, nothing destroyed" "1 1 0 0" \
+  "$RC $(grep -c '^== STOPPED: box i-0box has attached disks other than its root disk and the stack.s records disk (vol-0stray)' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-bucket|delete-stack' "$S/aws.calls" || true)"
+FXE=$CYC/fx-copyname
+cp -R "$FXC" "$FXE"
+jq -c '(.StackResourceSummaries[] | select(.LogicalResourceId == "CopyBucket") | .PhysicalResourceId) = "someone-elses-bucket"' "$FXC/res.json" >"$FXE/res.json"
+CASE_FX=$FXE cycle_case destroy-copyname active ridge destroy.sh ridge
+check "  a copy bucket not named as ridge's stack names it is refused before the name is asked, nothing destroyed" "1 1 0 0" \
+  "$RC $(grep -c "^== STOPPED: the copy bucket is named 'someone-elses-bucket', not ridge-copybucket-<random>" "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-bucket|delete-stack' "$S/aws.calls" || true)"
 
 cycle_run remake-whole disabled_manually '' remake.sh ridge
 check "18: the remake on a stack that is down: exit 0, ending == green then == exit 0" "0 == green == exit 0" \

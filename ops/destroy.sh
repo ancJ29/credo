@@ -5,12 +5,15 @@
 # switches off the GitHub workflows that reach ridge (never deleted). Ridge alone: any other name is
 # refused before any call. The way back is ops/remake.sh ridge, then ops/operator.sh ridge.
 #
-# IT CANNOT BE UNDONE. The records of ridge are one SQLite file on the box's root disk. The box and
-# that disk are deleted here, and nothing in ops/ keeps a copy. The only way to keep the disk is to
-# run with RIDGE_KEEP_DISK_SNAPSHOT=1 in front of the command, which takes one EBS snapshot of it
-# first (a few cents a month, kept until you delete it). Without it the disk is gone for good.
+# IT CANNOT BE UNDONE. The records of ridge are one SQLite file on the records disk (a disk of its own;
+# the box's root disk holds only the file as it stood before the copy began), copied to the copy bucket.
+# The box, both disks and the copy bucket with its files are deleted here. The stack delete takes one
+# snapshot of the records disk on its way out (the template's Snapshot policy), which stays until you
+# delete it; no script in ops/ restores a snapshot into a new box. RIDGE_KEEP_DISK_SNAPSHOT=1 in front of
+# the command takes one more snapshot of the records disk first (a few cents a month each).
 #
-# WHAT IT REMOVES: the box and its disk, the UI bucket and its files, the function, the API, the
+# WHAT IT REMOVES: the box and its root disk, the records disk (by the stack delete, leaving its
+#   snapshot), the copy bucket and its files, the UI bucket and its files, the function, the API, the
 #   distribution, both roles, the security groups, ridge's subnet and both log groups.
 # WHAT IT KEEPS: the network stack and GitHub's provider stack (shared by every environment),
 #   GitHub's environment ridge and its secret, and every workflow file.
@@ -26,8 +29,10 @@
 #   5. Switches off the workflows that name `environment: ridge` (ci.yml and seed.yml today, read
 #      from the files), reads each back, and looks again for a run in progress. Others stay on.
 #   6. Destroys, each step followed by a read-back that it is gone: the box (CloudFormation keeps
-#      it on a stack delete), its disk, the UI bucket's files, the stack (everything else in it),
-#      the two log groups if they are still there, then a final read of every name.
+#      it on a stack delete), its root disk, the UI bucket's files, the copy bucket's files and the
+#      bucket itself (both kept by a stack delete), the stack (everything else in it, the records disk
+#      among it, snapshotted), the two log groups if they are still there, then a final read of
+#      every name.
 # LOOK FOR: "== RE-UP" (the way back, in the log too), "== verdict", and the closing paragraph.
 # Length: about 4 minutes (the 11-08 rerun took 3 minutes 39; its first run took 6), nearly all in
 #   the stack delete. Safe to run again after a stop: it enumerates again and skips what is gone.
@@ -141,6 +146,11 @@ BOX=''
 VOL=''
 BUCKET=''
 NOBJ=''
+RECVOL=''
+NRSNAP=''
+COPYB=''
+NCOPY=''
+RSNAPS=''
 SUBNET=''
 STACK_RES=''
 LIVE_BOXES=$(aws ec2 describe-instances --filters "Name=tag:Env,Values=$ENVNAME" \
@@ -190,7 +200,7 @@ else
   # here, before the prompt, since the closing would say everything is gone.
   for id in $DESTROY_BY_HAND; do
     case "$id" in
-      Box | UiBucket) ;; # 6c and 6d the box and its disk, 6e the bucket's files
+      Box | UiBucket | CopyBucket | RecordsVolume) ;; # 6c and 6d the box and its root disk, 6e the UI bucket's files, 6e2 the copy bucket, 6f2 the records disk's snapshot
       *) fail "DESTROY_BY_HAND (ops/lib.sh) lists $id, and no step of this script deletes it. Nothing was destroyed. Tell the session." ;;
     esac
   done
@@ -228,10 +238,11 @@ else
       [ "$BSUB" = "$SUBNET" ] || fail "box $BOX sits in subnet '$BSUB', not the stack's subnet '$SUBNET'."
       VOL=$(jq -r '.BlockDeviceMappings[]? | select(.DeviceName == "/dev/xvda") | .Ebs.VolumeId' <<<"$BOXJ")
       VDOT=$(jq -r '.BlockDeviceMappings[]? | select(.DeviceName == "/dev/xvda") | .Ebs.DeleteOnTermination' <<<"$BOXJ")
-      NVOLS=$(jq -r '[.BlockDeviceMappings[]?] | length' <<<"$BOXJ")
-      [ "$NVOLS" = 1 ] && [ -n "$VOL" ] || fail "box $BOX has $NVOLS attached disks (wanted exactly one, the root disk). Not what the template says."
+      # the root disk, and the stack's records disk (RecordsAttachment) if it is attached: no other
+      OTHERVOLS=$(jq -r --arg r "$(phys RecordsVolume)" '[.BlockDeviceMappings[]? | select(.DeviceName != "/dev/xvda") | .Ebs.VolumeId | select(. != $r)] | join(" ")' <<<"$BOXJ")
+      [ -n "$VOL" ] && [ -z "$OTHERVOLS" ] || fail "box $BOX has attached disks other than its root disk and the stack's records disk (${OTHERVOLS:-no root disk found}). Not what the template says."
       say "-- the box: $BOX, state $BSTATE, type $(jq -r '.InstanceType' <<<"$BOXJ"), tags Env=$BENV Name=$BNAME"
-      say "-- its root disk: $VOL (delete-on-termination: $VDOT)"
+      say "-- its root disk: $VOL (delete-on-termination: $VDOT; since the records moved to a disk of their own it holds only the file as it stood before)"
       NSNAP=$(aws ec2 describe-snapshots --owner-ids self --filters "Name=volume-id,Values=$VOL" --query 'length(Snapshots)' --output text)
       say "-- snapshots of that disk that exist now: $NSNAP"
     else
@@ -276,6 +287,48 @@ else
     fi
   fi
 
+  # the records disk: the stack's RecordsVolume, snapshotted by the stack delete itself (DeletionPolicy Snapshot)
+  RECVOL=$(phys RecordsVolume)
+  if [ -n "$RECVOL" ]; then
+    if RVOUT=$(aws ec2 describe-volumes --volume-ids "$RECVOL" --output json 2>&1); then
+      RTAG=$(jq -r '[.Volumes[0].Tags[]? | select(.Key == "Env") | .Value] | first // ""' <<<"$RVOUT")
+      RNAME=$(jq -r '[.Volumes[0].Tags[]? | select(.Key == "Name") | .Value] | first // ""' <<<"$RVOUT")
+      [ "$RTAG" = "$ENVNAME" ] && [ "$RNAME" = "credo-$ENVNAME-records" ] || fail "disk $RECVOL is tagged Env='$RTAG' Name='$RNAME', not the records disk of $ENVNAME (Env=$ENVNAME, Name=credo-$ENVNAME-records). Nothing was destroyed."
+      NRSNAP=$(aws ec2 describe-snapshots --owner-ids self --filters "Name=volume-id,Values=$RECVOL" --query 'length(Snapshots)' --output text)
+      say "-- the records disk: $RECVOL, state $(jq -r '.Volumes[0].State' <<<"$RVOUT"), tagged Env=$RTAG Name=$RNAME. The stack delete snapshots it and deletes it; snapshots of it that exist now: $NRSNAP"
+    else
+      case "$RVOUT" in
+        *NotFound*)
+          say "-- the records disk $RECVOL is already gone"
+          RECVOL=''
+          ;;
+        *) fail "could not read the records disk $RECVOL: $RVOUT" ;;
+      esac
+    fi
+  fi
+
+  # the copy bucket: kept by a stack delete (Retain), so emptied and deleted here, by hand
+  COPYB=$(phys CopyBucket)
+  if [ -n "$COPYB" ]; then
+    case "$COPYB" in
+      ridge-copybucket-*) ;;
+      *) fail "the copy bucket is named '$COPYB', not ridge-copybucket-<random> (CloudFormation's name for stack ridge). Not clearly ridge's." ;;
+    esac
+    if aws s3api head-bucket --bucket "$COPYB" >/dev/null 2>&1; then
+      CTAG=$(aws s3api get-bucket-tagging --bucket "$COPYB" --output json 2>/dev/null | jq -r '[.TagSet[]? | select(.Key == "Env") | .Value] | first // ""' || true)
+      [ "$CTAG" = "$ENVNAME" ] || fail "bucket $COPYB is tagged Env='$CTAG', not $ENVNAME."
+      CVERS=$(aws s3api get-bucket-versioning --bucket "$COPYB" --query Status --output text 2>/dev/null || true)
+      case "$CVERS" in "" | None) ;; *) fail "bucket $COPYB has versioning '$CVERS'; the template has none. Emptying it would leave old versions behind. Tell the session." ;; esac
+      NCOPY=$(aws s3api list-objects-v2 --bucket "$COPYB" --query 'length(Contents || `[]`)' --output text 2>"$WORK/count.err") ||
+        fail "could not count the files in bucket $COPYB; AWS said: $(cat "$WORK/count.err"). Nothing was destroyed."
+      case "$NCOPY" in None | "") NCOPY=0 ;; esac
+      say "-- the copy bucket: $COPYB, tagged Env=$CTAG, versioning off, $NCOPY file(s) now: the continuous copy of the records. A stack delete keeps it; this script empties and deletes it, below"
+    else
+      say "-- the copy bucket $COPYB is already gone"
+      COPYB=''
+    fi
+  fi
+
   # the log groups as they are now (past lines are kept 14 days and are lost with the group)
   say "-- log groups:"
   for lgn in "$LOG_GROUP_BFF" "$LOG_GROUP_API"; do
@@ -305,7 +358,7 @@ say "      If the stack step ends with \"the box never answered through the endp
 say "   2. make the operator again, and open its link at the new address to make your passkey:"
 say "        cd $REPO_DIR && bash $OPS_DIR/operator.sh $ENVNAME"
 say "-- what nothing re-creates (read this before you type the confirmation):"
-say "   a. THE RECORDS. All of ridge's data is one SQLite file on the box's root disk. ops/ holds no backup and no copy job. After this run the file is gone, unless you set RIDGE_KEEP_DISK_SNAPSHOT=1 (then the snapshot holds the file, but no script in ops/ restores a snapshot into a new box). Snapshots of the disk existing right now: ${NSNAP:-unknown, not read}."
+say "   a. THE RECORDS. All of ridge's data is one SQLite file on the records disk, a disk of its own, copied second by second to the copy bucket. After this run the copy bucket and its files are gone, and the records disk is deleted by the stack delete after it takes one snapshot of it (the template's Snapshot policy); that snapshot stays until you delete it, and no script in ops/ restores a snapshot into a new box. The box's root disk holds only the file as it stood before the copy began and is deleted with the box. With RIDGE_KEEP_DISK_SNAPSHOT=1 one more snapshot of the records disk is taken first. Snapshots of the records disk existing right now: ${NRSNAP:-none to read (no records disk in the stack)}; of the root disk: ${NSNAP:-unknown, not read}."
 say "   b. THE COPIES AND THE OPERATOR. The demo copies are made by ops/demo-remake.sh, and the operator by ops/operator.sh. After the remake ridge holds no operator and no demo copy; ops/seed.sh only fills copies that already exist. Passkeys are bound to the address, so old ones stop working at the new one: ops/operator.sh makes the operator's one-time join link on the new ridge, and ops/root-password.sh gives each demo copy's root a new password."
 say "   c. THE ADDRESS. The app's address is a CloudFront domain CloudFront chooses, so a re-created ridge has a NEW address unless a custom domain is set; a DNS record that points at the old distribution is repointed by hand. Anything that holds the old address (links given to people, Bruno environment files, bookmarks, docs) must be updated."
 say "   d. THE KEYS ON THE BOX. ops/app.sh reads the BFF's keys from the box and copies them to the function; they live on the box's disk and are gone with it. A new box makes new ones."
@@ -326,8 +379,10 @@ else
   # ---- 4. the typed confirmation, before anything is changed
   say "== 4. confirmation"
   say "   This will, with no way back (except the disk snapshot if you set it, snapshot requested: $KEEP_SNAPSHOT):"
-  [ -z "$BOX" ] || say "     terminate box $BOX and delete its disk $VOL"
+  [ -z "$BOX" ] || say "     terminate box $BOX and delete its root disk $VOL"
   [ -z "$BUCKET" ] || say "     delete every file in bucket $BUCKET"
+  [ -z "$COPYB" ] || say "     delete every file in the copy bucket $COPYB, then the bucket"
+  [ -z "$RECVOL" ] || say "     delete the records disk $RECVOL with the stack, after the stack's own snapshot of it (which stays)"
   say "     delete stack $STACK and every resource listed above, and the two log groups"
   say "     switch off the workflows that reach $ENVNAME: $(printf '%s' "$WF_FILES" | tr '\n' ' ')"
   say "   Type the environment's name ($ENVNAME) and press Enter to go on. Anything else stops here, with nothing changed."
@@ -386,10 +441,11 @@ else
   ST2=$(aws cloudformation describe-stacks --stack-name "$STACK" --query 'Stacks[0].StackStatus' --output text)
   [ "$ST2" = "$ST" ] || fail "stack $STACK changed status from $ST to $ST2 while you were reading. Nothing was destroyed; run again."
 
-  # 6b. the disk snapshot, only on request
-  if [ "$KEEP_SNAPSHOT" = 1 ] && [ -n "$VOL" ]; then
-    say "-- 6b. snapshot of disk $VOL (requested)"
-    SNAP=$(aws ec2 create-snapshot --volume-id "$VOL" --description "ridge disk before teardown" \
+  # 6b. the disk snapshot, only on request: the records disk (the root disk when the stack has none)
+  SNAPVOL=${RECVOL:-$VOL}
+  if [ "$KEEP_SNAPSHOT" = 1 ] && [ -n "$SNAPVOL" ]; then
+    say "-- 6b. snapshot of disk $SNAPVOL (requested)"
+    SNAP=$(aws ec2 create-snapshot --volume-id "$SNAPVOL" --description "ridge disk before teardown" \
       --tag-specifications "ResourceType=snapshot,Tags=[{Key=Env,Value=$ENVNAME},{Key=Note,Value=before-teardown}]" --query SnapshotId --output text)
     say "   snapshot $SNAP started; waiting for it to complete"
     aws ec2 wait snapshot-completed --snapshot-ids "$SNAP"
@@ -412,7 +468,7 @@ else
 
   # 6d. the disk: it outlives the box when delete-on-termination is false
   if [ -n "$VOL" ]; then
-    say "-- 6d. delete disk $VOL"
+    say "-- 6d. delete the root disk $VOL"
     if VOUT=$(aws ec2 describe-volumes --volume-ids "$VOL" --output json 2>&1); then
       VST=$(jq -r '.Volumes[0].State' <<<"$VOUT")
       VATT=$(jq -r '.Volumes[0].Attachments | length' <<<"$VOUT")
@@ -444,6 +500,22 @@ else
     say "   read back: bucket $BUCKET holds 0 files"
   fi
 
+  # 6e2. the copy bucket: kept by a stack delete (Retain), so its files and then the bucket go here
+  if [ -n "$COPYB" ]; then
+    case "$COPYB" in ridge-copybucket-*) ;; *) fail "bucket name '$COPYB' lost its ridge prefix; not emptied." ;; esac
+    say "-- 6e2. empty and delete the copy bucket $COPYB"
+    CRMOUT=$(aws s3 rm "s3://$COPYB" --recursive 2>&1) || fail "emptying bucket $COPYB failed; AWS said: $CRMOUT"
+    CDELETED=$(printf '%s\n' "$CRMOUT" | grep -c '^delete: ' || true)
+    say "   AWS reported $CDELETED delete(s); $NCOPY file(s) were counted before"
+    [ "$CDELETED" = "$NCOPY" ] || fail "bucket $COPYB: $CDELETED delete(s) reported against $NCOPY file(s) counted before. The bucket was not deleted and the stack delete was not started."
+    CLEFT=$(aws s3api list-objects-v2 --bucket "$COPYB" --query 'length(Contents || `[]`)' --output text 2>"$WORK/left.err") ||
+      fail "could not read bucket $COPYB after emptying it, so I cannot say it is empty; AWS said: $(cat "$WORK/left.err"). The stack delete was not started."
+    case "$CLEFT" in None | "") CLEFT=0 ;; esac
+    [ "$CLEFT" = 0 ] || fail "bucket $COPYB still holds $CLEFT file(s) after the delete."
+    aws s3api delete-bucket --bucket "$COPYB"
+    gone "bucket $COPYB" aws s3api head-bucket --bucket "$COPYB"
+  fi
+
   # 6f. the stack: everything else in it
   say "-- 6f. delete stack $STACK (CloudFront and the function's interfaces are slow)"
   aws cloudformation delete-stack --stack-name "$STACK"
@@ -454,6 +526,15 @@ else
     fail "stack $STACK is not deleted (events above). The box, disk and files are already gone, and the workflows are off. A function's network interface can take a while to release: run this script again in 20 minutes, it will pick up from here."
   fi
   gone "stack $STACK" aws cloudformation describe-stacks --stack-name "$STACK"
+
+  # 6f2. the records disk: the stack delete took a snapshot of it and deleted it; read both back
+  if [ -n "$RECVOL" ]; then
+    say "-- 6f2. the records disk $RECVOL"
+    gone "records disk $RECVOL" aws ec2 describe-volumes --volume-ids "$RECVOL"
+    RSNAPS=$(aws ec2 describe-snapshots --owner-ids self --filters "Name=volume-id,Values=$RECVOL" --query 'Snapshots[].SnapshotId' --output text | tr '\t' ' ')
+    [ -n "$RSNAPS" ] || fail "the stack delete left no snapshot of the records disk $RECVOL, and the disk is gone: the records are in no place this script can name. Look in the account's snapshots before anything else."
+    say "   read back: the snapshot(s) of the records disk, kept until you delete them: $RSNAPS"
+  fi
 
   # 6g. the log groups, only if the stack delete left them
   for lgn in "$LOG_GROUP_BFF" "$LOG_GROUP_API"; do
@@ -484,6 +565,8 @@ else
   fi
   [ -z "$VOL" ] || gone "disk $VOL" aws ec2 describe-volumes --volume-ids "$VOL"
   [ -z "$BUCKET" ] || gone "bucket $BUCKET" aws s3api head-bucket --bucket "$BUCKET"
+  [ -z "$COPYB" ] || gone "bucket $COPYB" aws s3api head-bucket --bucket "$COPYB"
+  [ -z "$RECVOL" ] || gone "disk $RECVOL" aws ec2 describe-volumes --volume-ids "$RECVOL"
   for logical in Distribution Bff Api UiAccess UiRewrite BffRole DeployRole BoxGroup BffGroup Subnet; do
     id=$(phys "$logical")
     [ -n "$id" ] || continue
@@ -515,10 +598,15 @@ if [ "$HAVE_STACK" = 0 ]; then
 else
   say "== verdict: ridge is destroyed, $OFF_LIST are off"
   say "== CLOSING, in plain words:"
-  say "   Gone: the box and its disk, the UI bucket and its files, the function, the API, the CloudFront distribution, the deploy role and the function's role, the security groups, ridge's subnet, and the two log groups. Each was read back as gone above."
+  say "   Gone: the box and its root disk, the copy bucket and its files, the records disk (its snapshot stays: ${RSNAPS:-none, the stack had no records disk}), the UI bucket and its files, the function, the API, the CloudFront distribution, the deploy role and the function's role, the security groups, ridge's subnet, and the two log groups. Each was read back as gone above."
 fi
 say "   What remains in the account: the network stack $NETWORK_STACK and GitHub's provider stack $GITHUB_STACK (shared, not ridge's), and any other stack in the list near the top. If you set RIDGE_KEEP_DISK_SNAPSHOT=1, one snapshot of the old disk remains and costs a few cents a month${SNAP:+ (it is $SNAP)}. On GitHub: the environment $ENVNAME and its secret remain, and no workflow file was deleted."
-say "   Ridge is gone until it is re-created. Its records are gone with the disk${SNAP:+ unless you restore snapshot $SNAP, which no script here does}. The way back is the RE-UP section above (also in the log under '== RE-UP'). The command that remakes ridge and turns the workflows back on:"
+if [ -n "${RSNAPS:-}" ]; then
+  RECORDS_FATE="Its records live on only in the snapshot(s) of the records disk${SNAP:+ (one is $SNAP)}, which no script here restores into a new box."
+else
+  RECORDS_FATE="Its records are gone with the disk${SNAP:+ unless you restore snapshot $SNAP, which no script here does}."
+fi
+say "   Ridge is gone until it is re-created. $RECORDS_FATE The way back is the RE-UP section above (also in the log under '== RE-UP'). The command that remakes ridge and turns the workflows back on:"
 say "        cd $REPO_DIR && bash $OPS_DIR/remake.sh $ENVNAME"
 say "   Then the operator, whose link you open to make your passkey:"
 say "        cd $REPO_DIR && bash $OPS_DIR/operator.sh $ENVNAME"

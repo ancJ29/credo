@@ -7,7 +7,9 @@
 # On an environment that may hold real data (not listed in lib.sh's INVENTED_ENVS), and on any with
 # --reads-only, the check only reads: it copies no key off the box, writes no Bruno file, runs no
 # collection (so needs no Bruno) and makes and sweeps no client; it keeps every AWS read, the box's
-# facts, /health, layer four's reads and the six reads through the app's address that need no client.
+# facts, /health, the records' copy, layer four's reads and the six reads through the app's address that need no client.
+# The copy: c-storage's /api/status, read on the box (its key never leaves it), against the newest object the
+# bucket holds under the box's path (lib.sh's copy_problems names what is red).
 # Runs after each release in the deploy job, and by hand.
 # Needs services/c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
 # node, which reads its report, and /health's buildVersion (the plan's step 6). With layer four also
@@ -26,7 +28,7 @@ set -euo pipefail
 ENVNAME=$1
 READS_ONLY=0
 [ $# -eq 1 ] || READS_ONLY=1
-STEPS=7
+STEPS=8
 # Never the local stack's port (3181): a c-storage on this machine must not answer for the box.
 LOCAL_PORT=${CHECK_LOCAL_PORT:-3191}
 BRUNO_DIR=$REPO_DIR/services/c-storage/bruno
@@ -120,6 +122,26 @@ if [ -n "$HEALTH_PROBLEM" ]; then
   red "$HEALTH_PROBLEM"
 else
   ok "/health names $HEALTH_BUILD, a commit of main"
+fi
+
+step "the records' copy: the status on the box, and the bucket's newest copy"
+copy_bucket=$(out CopyBucketName)
+if [ -z "$copy_bucket" ]; then
+  echo "skipped: $ENVNAME's stack holds no copy bucket yet"
+else
+  copy_state=$(copy_status) || die "c-storage's /api/status did not answer on the box"
+  copy_listing=$(aws s3api list-objects-v2 --bucket "$copy_bucket" --prefix "$COPY_PATH/" \
+    --query 'Contents[].{Key: Key, LastModified: LastModified}' --output json)
+  copy_faults=$(copy_problems "$copy_state" "$copy_listing" "$(date +%s)")
+  if [ -z "$copy_faults" ] && [ "$(copy_lag_read "$copy_state")" = yes ]; then
+    ok "the copy holds the last write within ${COPY_LAG_S}s, a full copy under six days old, and the records disk is above its floor: $(jq -c . <<<"$copy_state")"
+  elif [ -z "$copy_faults" ]; then
+    # c-storage keeps the time of its last write in memory, so right after a restart (every release is one) there
+    # is none to compare with: the copy is not claimed current. The drill on ridge reads the copy for real.
+    ok "a copy and a full copy under six days old exist and the records disk is above its floor, but the lag was NOT read: c-storage has seen no write since it started, so this does not say the copy holds the last write: $(jq -c . <<<"$copy_state")"
+  else
+    while IFS= read -r fault; do red "$fault"; done <<<"$copy_faults"
+  fi
 fi
 
 step "Bruno's collection, through the tunnel"

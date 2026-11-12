@@ -20,7 +20,7 @@
 
 **The answer is no, and the gap is not in the product.** The product's isolation holds. What is
 missing is that a client's own stack cannot be operated or recovered, and the one copy of a
-client's data can be destroyed by an ordinary change with nothing to restore from.
+client's data can be destroyed by an ordinary change; the copy that answers it is built and has not yet been run.
 
 ### The isolation holds, and it is enforced
 
@@ -54,16 +54,18 @@ reasonable position for the product and a reason to keep the review habit, not a
 
 This is the risk that cannot be recovered from, and it is larger than the item that records it.
 
-A deployment's data is one SQLite file on one box
-([`ops/c-storage.service#L20`](../ops/c-storage.service#L20)), and there is no backup: the nightly
-copy and its restore are designed and deferred to a signed client, on the stated reasoning that
-ridge holds no real records ([open item 6](open-items.md)). That is a documented deferral, not
-something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
-simply do not exist yet ([`ops/env.yml#L116`](../ops/env.yml#L116) says "no instance role").
+A deployment's data is one SQLite file on one box (`ops/c-storage.service`'s `DB_PATH`), and the
+continuous-copy piece has built its copy: Litestream, started by that unit with c-storage as its child,
+copies each save to the environment's own bucket through a free private door, and the file sits on a disk
+of its own (`ops/env.yml`'s `RecordsVolume`). **It is built and guarded on written input, and has not yet
+run on an environment**: the human's changes, the release and the drill are still to come, so until
+`ops/drill.sh ridge` has read a restored file, nobody knows the copy is readable ([open item 6](open-items.md)).
+`ops/check.sh` says whether a copy is fresh, and `ops/restore.sh` brings it back
+([the runbook](../ops/README.md#restoring-the-records)).
 
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
-[`ops/env.yml#L145-L151`](../ops/env.yml#L145)). So anything that terminated or replaced the instance took every
+[`ops/env.yml`](../ops/env.yml), the `BlockDeviceMappings` of `Box`). So anything that terminated or replaced the instance took every
 record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
 advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `0f7d69c1`),
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
@@ -75,8 +77,7 @@ delete and a replacement would leave the box and a termination would leave the d
 the template and of ridge, where it was applied on 2026-11-08 at 17:10 and read off the running box
 afterwards (the same instance, launched 2026-10-28, its root device `Keep: false`, no unattached
 volume; the project's logs folder, `logs/20261108-1715-ridge-box-fence-receipt.log`), and a
-client's stack made from `main` takes it at creation. Nothing else changed: there is still no copy of any client's
-records, and no one has read a kept disk ([open item 6](open-items.md)). The change set
+client's stack made from `main` takes it at creation. That change alone added no copy; the copy is the paragraph above's, and no one has read a kept disk ([open item 6](open-items.md)). The change set
 was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it
 (`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md)); it was then re-run with `--take Box`
@@ -161,7 +162,7 @@ JSON line a call with the time, the address of whoever opened the connection, th
 distribution the line recorded one public address, outside AWS's published ranges (the
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
-connection and the template makes the API a CloudFront origin (`ops/env.yml#L411`); that was
+connection and the template makes the API a CloudFront origin (`ops/env.yml`, `Distribution`); that was
 reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing yet telling anyone when the
 server stops ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
@@ -215,9 +216,9 @@ says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/li
 and re-registering the service; the order is not written down anywhere. Open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
-end ([`ops/lib.sh#L118-L139`](../ops/lib.sh#L118)). Two known weaknesses in *how* it searches are
+end ([`ops/lib.sh`](../ops/lib.sh), `on_exit`'s search of the log for each secret). Two known weaknesses in *how* it searches are
 already recorded as [open item 50](open-items.md) — the keys reach `grep`'s argument list
-([`#L122`](../ops/lib.sh#L122)) and the here-strings that read the box's key files
+(`on_exit`'s `grep -qF`, in [`ops/lib.sh`](../ops/lib.sh)) and the here-strings that read the box's key files
 (`read_keys` and `bff_env_read` in [`ops/lib.sh`](../ops/lib.sh)) are written to a temp file
 by the Mac's bash 3.2.
 
@@ -251,10 +252,10 @@ waiting.
 In order of risk, with rough sizes. Nothing here is a plan — each is the shape of the piece, not
 its steps.
 
-1. **A backup and a restore, and a deletion policy on the box's volume.** The one thing that cannot
-   be recovered from. It is a network template change, an environment template change, a timer on
-   the box and a restore script with its guards, and it ends in a human-run change set: a day's
-   piece, not an afternoon.
+1. **A backup and a restore, and a deletion policy on the box's volume: built, not yet run.** The one
+   thing that cannot be recovered from. The deletion policy is live on ridge; the continuous copy, its
+   check and its restore are written and guarded, and what remains is the human's: the two template
+   changes, the release and the drill that reads a restored file ([open item 6](open-items.md)).
 2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
    included (open item 130, fixed).
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads
