@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sha256Hex } from './hash';
 import {
   clientCodeSchema,
   deviceIdSchema,
@@ -91,6 +92,20 @@ describe('the record keys', () => {
       expect(key.startsWith(tenant.employeePrefix)).toBe(false);
       expect(key.startsWith(`tenant.${id}.user.`)).toBe(false);
     }
+  });
+
+  it('C: A sign-in wait’s key ends in the name’s SHA-256, never the name, and starts with its company’s prefix', async () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+    const tenant = recordKeys.tenant(id);
+    const hash = await sha256Hex('emp-0001');
+
+    const key = tenant.signInWait(hash);
+
+    expect(key).toBe(`tenant.${id}.signin-wait.${hash}`);
+    expect(key.endsWith(hash)).toBe(true);
+    expect(key).not.toContain('emp-0001');
+    expect(key.startsWith(tenant.all)).toBe(true);
+    expect(key.startsWith(tenant.employeePrefix)).toBe(false);
   });
 
   it('keep the operator’s records apart from every tenant’s', () => {

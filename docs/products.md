@@ -89,8 +89,10 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 
 The numbers are [open items](open-items.md).
 
-1. No limit on wrong passwords at the sign-in or at one's own password (open item 28), parked until
-   before a client's own stack.
+1. Six wrong passwords at the sign-in or at one's own password make that name wait, 30 seconds
+   doubling to 15 minutes, and a right one is refused during the wait. It is counted per name, not
+   per address, so one guesser trying many names meets only the door's throttle, and each invented
+   name leaves a small record (open item 256).
 2. Nothing watches the server or sends an alert when it stops (open item 1), and the nightly backup
    and its restore are not built (item 6); both wait for a signed client.
 3. A client's own production stack (item 4) and the public address in front of ridge's c-storage

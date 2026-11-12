@@ -74,7 +74,7 @@ import {
 } from '@credo/shared/demo';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { drawApp } from '../tests/render';
 import { ApiError } from './api';
 import { App } from './App';
@@ -653,6 +653,27 @@ describe('the fake Api', () => {
       state: 'active',
       passkeys: 1,
     });
+  });
+
+  it('C: The fake answers a name’s sixth wrong try with a wait of 30 seconds, refuses a try within it with what is left, and doubles the next', async () => {
+    vi.useFakeTimers();
+    try {
+      const api = fake('', { client: 'fake.session' });
+      for (let tries = 1; tries <= 5; tries += 1) {
+        expect(await status(api.signIn('nobody', 'pw'))).toBe(401);
+      }
+      await expect(api.signIn('NOBODY', 'pw')).rejects.toMatchObject({
+        status: 429,
+        waitSeconds: 30,
+      });
+      vi.advanceTimersByTime(10_000);
+      await expect(api.signIn('nobody', 'pw')).rejects.toMatchObject({ waitSeconds: 20 });
+      vi.advanceTimersByTime(20_000);
+      await expect(api.signIn('nobody', 'pw')).rejects.toMatchObject({ waitSeconds: 60 });
+      expect((await api.signIn(DEMO_ROOT_NAME, 'pw')).user.root).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {
