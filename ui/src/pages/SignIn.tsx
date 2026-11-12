@@ -20,6 +20,7 @@ import type { Brand } from '../brand';
 import classes from '../frame/frame.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
 import { BRAND_GRADIENT } from '../theme';
+import { waitWords } from './waitWords';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
 const GROUND = 'light-dark(var(--mantine-color-neutral-1), var(--mantine-color-body))';
@@ -33,8 +34,10 @@ const SWITCH = {
 
 type Props = {
   brand: Brand;
-  /** Idle, waiting on the service, or the last attempt refused. */
-  status: 'idle' | 'busy' | 'refused';
+  /** Idle, waiting on the service, the last attempt refused, or the name made to wait. */
+  status: 'idle' | 'busy' | 'refused' | 'wait';
+  /** The seconds a 'wait' asks for. */
+  waitSeconds?: number;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
   onSubmit: (username: string, password: string) => void;
@@ -131,7 +134,15 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
 }
 
 /** The sign-in: a username and a password in the company's card. */
-export function SignIn({ brand, status, initial, onSubmit, languages, onLanguage }: Props) {
+export function SignIn({
+  brand,
+  status,
+  waitSeconds = 0,
+  initial,
+  onSubmit,
+  languages,
+  onLanguage,
+}: Props) {
   const { t } = useTranslation();
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
@@ -148,6 +159,11 @@ export function SignIn({ brand, status, initial, onSubmit, languages, onLanguage
       languages={languages}
       onLanguage={onLanguage}
     >
+      {status === 'wait' && (
+        <Alert color="red" role="alert" mb="md">
+          {waitWords(t, waitSeconds)}
+        </Alert>
+      )}
       {status === 'refused' && (
         <Alert color="red" role="alert" mb="md">
           {t('auth.refused')}

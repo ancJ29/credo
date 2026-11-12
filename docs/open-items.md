@@ -215,14 +215,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
-## 28. No limit on wrong passwords at the sign-in route or at one's own password — the human places it; *parked* until before the first client's own stack (the employee list plan, step 20, 2026-10-30)
-
-Nothing slows a guess at a password: the sign-in route (by code, by email, by operator name) and the current password asked by
-one's own password route answer every try, and each wrong one costs the guesser one hashing. On ridge the stage's throttle
-(10 a second) is the only brake. The review accepted that for ridge. A client's own stack has no such stage. The fix is one piece
-for both routes together: a per-name limit (a count of wrong tries in a window, kept as a record under the name, the same 401
-after it so that it names nothing), so a limit on one route does not leave the other as the way round. The human places it before
-the first client's own stack.
 
 ## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
 
@@ -1415,6 +1407,10 @@ documentation.md says an item is numbered and never renumbered, which holds for 
 
 `bff/src/routes/cross-tenant.route.test.ts` puts two companies in one service and has the second try the first's records; it reaches 14 of the 31 handlers in `bff/src/routes/orders.ts`, `bff/src/routes/staff.ts` and `bff/src/routes/reconciliations.ts` (the review's count before the fix pass, which added the photo, the drivers list, the password set and the lists). Still without such a case: the QR issue and the other sign-in routes of a person in staff.ts, a code change, a photo save and the import there, the pricing and the driver lookup inside order create, confirm and send, a driver's own list and delivering, and the rest of those three files. Deferred: a handler is added to the file when its route is next changed. A key under another company's prefix now meets the company's client's refusal (`bff/src/records/records.ts`'s `tenantStorage`) in every handler of those files, since `request.storage` is the only client they can reach, so a missing case leaves only an untested wiring line; what the refusal does not catch is a client made for the wrong company, whose own keys pass, and `resolveTenant` alone decides that. *Trigger:* the first change to a handler in those three files, or the pooling of tenants on one box.
 
+## 256. A guess over many names leaves one small record a name, which nothing but the company's delete removes — the machine; *parked* until the watch reads a box's free disk (the wrong-password wait's plan, 2026-11-11)
+
+The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts a name nobody holds as it counts a real one, so the wait says nothing about who exists, and only a right password clears a count. A guessing run over many invented names therefore leaves one record a name under the company's prefix, a few dozen bytes each, at most as many a second as the door's throttle lets through; a company's delete sweeps them with the rest. Nothing else does. *Limit of the keyed hash:* a wait's key is the name's HMAC under a key derived from the service key, so a copy of the store's data cannot be run against a dictionary for the passwords mistyped into the name box; whoever holds the service key as well (the box's root-only environment file) can, and a changed service key orphans every record (their counts start again, the records stay until the company's delete). *Fix, if it shows:* a sweep of waits whose time ended long ago, or a cap on a company's waits. *Trigger:* the watch's free-disk reading, or a company's wait records passing ten thousand.
+
 ## 230. The open-items log is outside the citation check's living set — the machine; `[DEFERRED]` (the architecture page's fixes, 2026-11-11, Low)
 
 `LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
@@ -1451,6 +1447,24 @@ The one teardown, on 2026-11-08, was a one-off outside git, read by a second mod
 
 Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
 
+## 319. A guesser can keep a known name waiting with no end, and only the company's delete clears it — the human's choice; *open* (the wrong-password wait's review, 2026-11-12, Medium)
+
+One wrong try sent as each wait ends (four requests an hour at 15 minutes) restarts the wait, and the person's own window is a few milliseconds. A new password given by the root or the operator does not clear a wait; only a right password with no wait running does, or the company's delete. The root's name is `root` in every company and staff codes are numbered, so one guesser can hold out every name in a company. A person already signed in keeps their session (a week) but cannot change their password during a wait. `docs/memo/bff.md` and the plan's decision 6 now say so. *Remedy, the human's to choose:* (a) an operator act that clears one name's wait; (b) a right password let through during a wait when it comes from a device that already holds a session for that name; or (c) leave it as priced, until a client's risk says otherwise. The machine has not chosen and built nothing. *Trigger:* the human's answer.
+
+*Parked by the human, 2026-11-12 12:05:* the remedy, by device or any lock as a whole, is parked and everything stays as it is, the cloud firewall doing its part. Whether the wait itself lands with this hold left in is asked of the human, not decided.
+
 ## 325. `ops/README.md`'s deploy passage says "that push's own deploy carries it" after naming a press as well — the machine; `[DEFERRED]` (ridge's pressed deploy, reread of the fix pass, 2026-11-12, Info)
 
 `ops/README.md`'s line on a deploy shown cancelled now names a newer push or a newer press of `ci` on `main` as the one that took its place, then ends "that push's own deploy carries it". "That run's own deploy" would fit both. Nothing turns on it: the sentence is read by a person at a cancelled run. *Trigger:* the next change to that passage.
+
+## 338. `docs/client-readiness.md` lists what the wait leaves without the endless hold of item 319 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+Gap 4 and the passage near it say what the wait leaves: one guesser trying many names meets only the stage's throttle, and each invented name leaves a small record (item 256). Neither names that a guesser can also keep a known name waiting with no end (item 319). *Fix:* add that to both places, or point both at item 319. *Trigger:* the human's answer on item 319.
+
+## 339. The memo, the plan, item 256 and `sign-in-wait.ts`'s comment name the box's root-only file as the only other holder of the service key — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`ops/app.sh` also puts `SERVICE_ACCESS_KEY` into the function's environment (its `update-function-configuration`), so whoever can read that configuration holds the key too. The four places say "the box's root-only environment file" as if it were the one other copy. *Fix:* name both in the four places. *Trigger:* the next change to the wait's pages.
+
+## 340. A unit test title says a wait's key ends in the name's SHA-256, and case 14 would stay green if the key came from the service key's SHA-256 — the machine; `[DEFERRED]` (the wrong-password wait's reread, 2026-11-12)
+
+`shared/src/records.test.ts`'s title near line 97 ("A sign-in wait's key ends in the name's SHA-256") is out of date: the BFF now keys the hash. Case 14 (`bff/src/sign-in-wait.route.test.ts`, near line 223) asserts the key is not the name's bare SHA-256 and differs between two service keys, which a key derived from the service key's own SHA-256 would also satisfy. *Fix:* reword the title to "a hash", and give case 14 an expected value computed by the intended derivation. *Trigger:* the next change to the wait's key.

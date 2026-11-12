@@ -452,6 +452,18 @@ export const WALKS: Walk[] = [
         },
         question: 'Would a person on a PC know which page each icon opens?',
       },
+      {
+        id: '12-sign-in-wait',
+        number: 12,
+        path: 'wrong',
+        mock: { screen: 12, state: 'failed' },
+        sentence: {
+          en: 'Sign-in after six wrong passwords',
+          vi: 'Đăng nhập sau sáu lần nhập sai mật khẩu',
+        },
+        question:
+          'Would someone who mistyped their password know from it how long to wait before trying again?',
+      },
     ],
   },
   {
