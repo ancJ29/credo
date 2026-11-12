@@ -147,6 +147,20 @@ a review with its whole check is about 20, a recap about 8 (`worktrees/runs.tsv`
   role's `ListCopyBucket` pointed at the UI bucket. The old whole-template `StringLike` guard now leaves `BoxRole`
   out (its list is held to the box's path by a `StringLike` prefix); its own case, a trust with `StringLike`,
   still refuses in the green run. The mutations were batched, four then two to a run, each in a different guard.
+- [x] **Step 3, ticked 2026-11-12.** The box's side is in `ops/litestream.pin` (the one home of the version and the
+  arm64 sum), `ops/c-storage.service` (Litestream with c-storage as its child, waiting on the mount), `ops/release.sh`
+  (the archive's sum, the mount, the one move, the refusals of rows 10 and 12), `ops/lib.sh`, `ops/drill.sh` and
+  `.github/workflows/ci.yml`'s deploy job, with rows 7 to 12 guarded in `ops/test.sh`, committed as `7f3ae4b3`.
+  `bash ops/test.sh` exit 0 on the final tree (log `2026-11-12 green2`, "all checks passed"), `shellcheck -x
+  ops/*.sh walk/*.sh services/c-storage/scripts/*.sh`, `cfn-lint ops/network.yml ops/github.yml ops/env.yml
+  --regions ap-southeast-5` and `actionlint` exit 0. Each of rows 7 to 12 was seen red by one mutation of the real
+  file, then put back (backup first, tree compared equal after): row 7 the deploy job's `sha256sum -c -` line
+  deleted ("does not check the Litestream archive's sum"); row 8 `enabled: false` to `true` in `ops/litestream.yml`
+  ("own deleting is not off"); row 9 `RequiresMountsFor` deleted ("does not wait on the records disk's mount"); row 10
+  the release's `mountpoint -q` refusal deleted ("does not refuse a records disk"); row 11 `rm -f` added before the
+  move ("deletes a file"); row 12 the bucket check's `!= 0` made unreachable ("does not stop the release"). Rows 8
+  to 12 shared one run, row 7 had its own (the first try deleted the ShellCheck step's line, not the Litestream
+  step's, and stayed green). Rows 9 to 11's second halves are read on ridge.
 
 About 93 machine minutes for steps 1 to 9 and 20 more to read your four logs. A stack change of
 yours ran in about a minute and a half on 2026-11-08; a release or a drill, about five each.
