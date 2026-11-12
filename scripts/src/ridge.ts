@@ -12,8 +12,9 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
-import { applyAll, MAX_DAYS_PER_RUN } from './demo/apply';
+import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
+import { allCopies, type MappedCopy } from './demo/mapping';
 import { ensureService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
@@ -90,8 +91,82 @@ async function removeCheckClient(
   return `client ${code} deleted`;
 }
 
+const REMAKE_USAGE =
+  'usage: remake [--check] (one line a partner on stdin: the partner’s label, a space, the password)';
+
+/** The passwords as typed, one line a partner of the mapping: the label, a space, the password whole.
+ * A partner missing, named twice or outside the mapping, or a password that breaks the rule, is
+ * refused before anything is written. The words name the partner and the rule, never a password. */
+function partnerPasswords(input: string) {
+  const partners = [...new Set(allCopies().map((copy) => copy.partner))];
+  const given = new Map<string, string>();
+  for (const line of input.split('\n').filter((one) => one !== '')) {
+    const partner = line.split(' ', 1)[0];
+    if (!partners.includes(partner))
+      throw new Refused(`${partner} is not a partner of the mapping`);
+    if (given.has(partner)) throw new Refused(`${partner} is named twice`);
+    given.set(partner, line.slice(partner.length + 1));
+  }
+  for (const partner of partners) {
+    if (!given.has(partner)) throw new Refused(`no password for ${partner}. ${REMAKE_USAGE}`);
+    const codes = allCopies()
+      .filter((copy) => copy.partner === partner)
+      .map((copy) => copy.code);
+    try {
+      checkRootPassword(codes, given.get(partner)!);
+    } catch (error) {
+      throw new Refused(`${partner}: ${(error as Error).message}`);
+    }
+  }
+  return given;
+}
+
+/** Deletes a copy whole, if it is on the service: with its index, then without while records are
+ * left, a press at a time; an earlier deletion left unfinished is finished the same way. */
+async function deleteCopy(storage: CStorageClient, code: string, now: () => number) {
+  const held = await storage.getRecord(recordKeys.client(code));
+  let index = held ? { ...storedClientSchema.parse(held.data), tag: held.tag } : null;
+  for (;;) {
+    const done = await deleteClient(storage, {
+      code,
+      index,
+      by: '00000000-0000-0000-0000-000000000000',
+      now,
+    });
+    if (done === 'unknown') return;
+    if (done === 'busy' || done === 'moved') {
+      throw new Error(
+        `${code}: nothing more was deleted, the deletion is held or the client moved`,
+      );
+    }
+    if (done.left === 0) return;
+    index = null;
+  }
+}
+
+/** One copy remade: deleted whole, made again by the operator's create (its first password dropped),
+ * given its partner's password, and filled for the first time with no day applied. */
+async function remakeCopy(
+  storage: CStorageClient,
+  copy: MappedCopy,
+  password: string,
+  io: { out: (line: string) => void; now: () => number },
+) {
+  await deleteCopy(storage, copy.code, io.now);
+  io.out(`${copy.code}: deleted`);
+  const made = await createClient(storage, {
+    code: copy.code,
+    name: copy.company,
+    madeAt: io.now(),
+  });
+  if (made === 'taken') throw new Error(`${copy.code}: the service still holds it`);
+  await setRootPasswords(storage, [copy.code], password, io);
+  const report = await applyCopy(storage, copy, vietnamToday(io.now()), io.out, 0);
+  if (report.status !== 'ok') throw new Error(`${copy.code}: ${report.note}`);
+}
+
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed | root-password [--check] <code>…';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>…';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
@@ -119,6 +194,11 @@ export async function runRidge(
       const password = passwordFrom((await io.stdin?.()) ?? '');
       const codes = checkRootPassword(rest.slice(1), password);
       io.out(`checked: the password follows the rule, ${codes.length} demo copies named`);
+      return 0;
+    }
+    if (command === 'remake' && rest[0] === '--check') {
+      partnerPasswords((await io.stdin?.()) ?? '');
+      io.out('checked: every partner has a password that follows the rule');
       return 0;
     }
     const storage = readStorageEnv(env);
@@ -216,13 +296,31 @@ export async function runRidge(
       return failed === 0 ? 0 : 1;
     }
 
+    if (command === 'remake') {
+      const passwords = partnerPasswords((await io.stdin?.()) ?? '');
+      const now = io.now ?? Date.now;
+      const copies = allCopies();
+      await Promise.all(
+        copies.map((copy) =>
+          remakeCopy(client(), copy, passwords.get(copy.partner)!, { out: io.out, now }).catch(
+            (error: unknown) => {
+              throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
+            },
+          ),
+        ),
+      );
+      io.out(`remake: ${copies.length} copies deleted, made again and given their passwords`);
+      return 0;
+    }
+
     if (command === 'seed') {
+      const limit = rest[0] === '--round' ? DAYS_PER_ROUND : MAX_DAYS_PER_RUN;
       const reports = await applyAll(
         client(),
         vietnamToday((io.now ?? Date.now)()),
         io.out,
         undefined,
-        MAX_DAYS_PER_RUN,
+        limit,
       );
       const count = (status: (typeof reports)[number]['status']) =>
         reports.filter((report) => report.status === status).length;
@@ -234,7 +332,7 @@ export async function runRidge(
       if (behind.length > 0) {
         const most = Math.max(...behind.map((report) => report.remaining));
         io.out(
-          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${MAX_DAYS_PER_RUN} days at most a copy, run it again to go on: ${Math.ceil(most / MAX_DAYS_PER_RUN)} more runs`,
+          `seed: STILL BEHIND, ${behind.length} copies have days left (${behind.map((r) => `${r.code} ${r.remaining}`).join(', ')}); this run applied ${limit} days at most a copy, run it again to go on: ${Math.ceil(most / limit)} more runs`,
         );
       }
       io.out(

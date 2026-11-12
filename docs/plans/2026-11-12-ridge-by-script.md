@@ -159,6 +159,11 @@ seed presses' one-off among them, are now step 5)
   and `clock` into `lib.sh`; cases 12 to 16. **About 8 min.** *Done when:* `pnpm --filter
   @credo/scripts check`, `bash ops/test.sh` and step 1's `shellcheck` line exit 0, coverage at
   100 %, each case seen red once.
+  *Node half done 2026-11-12:* `remake`, `remake --check` and `seed --round` are in `scripts/src/ridge.ts`, the
+  history is 21 days and a round 5, and the seed words in `ops/test.sh` say 21 days and 19 left; cases 5 to
+  11 are in `scripts/src/ridge-remake.test.ts`, each seen red once by a mutation. The scripts check and
+  `bash ops/test.sh` both ended at exit 0. The older demo tests moved to a first fill of 21 days (their
+  dates, never their assertions). The terminal half is still to build.
 - [ ] **6. The words that send you to `/operator`.** `ops/README.md`'s seed section (`#L262`) and a
   remake section beside the root password's (`#L239`); `seed.yml#L4`'s comment; `ops/seed.sh#L6`;
   `scripts/src/demo/mapping.ts#L6`; `docs/products.md#L72`, `#L73` and `#L84`. *Done when:* the citation

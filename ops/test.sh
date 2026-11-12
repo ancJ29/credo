@@ -2580,8 +2580,8 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and 2 of its 7 days applied, the 5 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 5); ') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 2 of its 21 days applied, the 19 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 19); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
