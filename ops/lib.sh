@@ -568,6 +568,9 @@ box_close() {
   fi
 }
 
+# clock <epoch seconds> → HH:MM local time (GNU date, then BSD's)
+clock() { date -d "@$1" +%H:%M 2>/dev/null || date -r "$1" +%H:%M; }
+
 # tunnel_hold <seconds>: asks the open connection every <seconds> whether it is still up, and dies
 # naming the drop when it is not. The sleep runs apart from the log's pipe and is waited on, so a
 # signal ends the wait at once and on_exit runs.
