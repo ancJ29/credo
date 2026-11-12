@@ -149,6 +149,13 @@ named in the destroy's list (`Box UiBucket` today). The template is read through
 | 18 | It runs the stack, the release, the app and the check, in that order, then turns the two workflows on and reads them back active | the same |
 | 19 | A red at any step stops it there: no later step runs, the workflows stay off, and its last line names the step | the same |
 | 20 | Its closing says ridge holds no operator and no demo copy, and gives `ops/operator.sh ridge` as your next step | the same |
+| 21 | A stack whose `Repository` parameter is not this clone's origin, or is missing, is refused before the name is asked, nothing destroyed (the review's M1) | `ops/test.sh`, the destroy's section |
+| 22 | An id in `DESTROY_BY_HAND` (`ops/lib.sh`) that no step of the destroy deletes stops it before the name is asked (the review's L1) | the same |
+| 23 | A stop after the workflows went off, by `fail` or by a command failing, says they are off and gives `ops/remake.sh ridge` (L4) | the same |
+| 24 | AWS's error text on a failing call is scrubbed: the account id it quotes is in neither the log nor the terminal (L2) | the same |
+| 25 | `workflows_of` stops on an `environment:` line that is not the plain form (L5) | `ops/test.sh` |
+| 26 | A failed `gh workflow enable` ends the remake on its stop line naming step 5 (L3) | the same |
+| 27 | The Bruno CLI version is declared once, in `ops/lib.sh` (L6) | the same |
 
 ## The steps
 
@@ -215,6 +222,18 @@ more than five a step, and the measured sizes stand. 🤖 is the machine's, 👤
 - [ ] **5. A second model's read**, then one fix pass with its own gate (QA rule 5). *Done when:*
   each finding is tagged fixed, rejected or deferred, and `shellcheck -x ops/*.sh` and
   `bash ops/test.sh` exit 0 after the fix pass. **About 20 min.**
+  *Done 11-12 (the review, then the fix pass, 12 min):* the second model's read held one Medium and seven Lows,
+  all fixed, none rejected or deferred, each checked on disk first. M1: the destroy refuses a stack whose
+  `Repository` parameter is not this clone's origin (a missing one too) before the name is asked (row 21).
+  L1: the list of ids a stack delete keeps is one line in `ops/lib.sh`, and an id no step deletes stops the run
+  before the prompt (row 22). L2: every `aws` call in the destroy passes its error text through the scrub
+  (row 24). L3: a failed `gh workflow enable` ends the remake on its step-5 stop line (row 26). L4: a stop after
+  the workflows went off says they are off and gives `ops/remake.sh ridge`, by `fail` and under `set -e` alike
+  (row 23). L5: `workflows_of` stops on any `environment:` line that is not the plain form (row 25). L6: the
+  Bruno version is one line in `ops/lib.sh` (row 27). L7: row 1 runs on `walks`. Each new row was seen red by
+  its own mutation, each reverted and compared equal. `shellcheck -x ops/*.sh` and then `bash ops/test.sh`
+  whole, run under the lock on the tree committed here with only this tick added after, exited 0. The "Done
+  reads" paragraph now matches the scripts' endings.
 - [ ] **6. The recap**, with the row in `docs/products.md`. Then the landing on `pre-merge`. *Done
   when:* committed, with the citation test green. **About 5 min.**
 - [ ] **7. 👤 Your rehearsal on ridge** (below). 🤖 reads the logs whole: the destroy's, the
@@ -236,8 +255,9 @@ ridge. Ridge holds no operator and no demo copy today, so the rehearsal loses no
    the check about 3.
 3. `bash ops/operator.sh ridge`, then open its link and make your passkey at the new address.
 
-**Done reads:** the destroy's log ends on `== verdict: ridge is destroyed, ci.yml and seed.yml are
-off`, then `== exit 0`. The remake's log ends `== green` and `== exit 0`, and so does each of its
+**Done reads:** the destroy's log holds `== verdict: ridge is destroyed, ci.yml and seed.yml are
+off`, then its closing paragraph (`== CLOSING, in plain words:` and the two commands), and ends on
+`ok   no key in this log` and `== exit 0`. The remake's log ends `== green` and `== exit 0`, and so does each of its
 four children's logs. The check's step 7 ran through the app's address and was not skipped. Both
 workflows read back `active`, and no log holds the account id. Each log is the newest
 `<stamp>-<script>-ridge.log` in the credo root's `logs/`.

@@ -27,7 +27,6 @@ set -euo pipefail
   exit 2
 }
 ENVNAME=$1
-WANT_BRUNO=4.2.0
 
 log_start remake "$ENVNAME"
 refuse_real "$ENVNAME" "remake.sh remakes ridge alone: any other environment may hold a real company's records"
@@ -75,7 +74,7 @@ run_step check.sh "$ENVNAME"
 N=$((N + 1))
 echo "-- step $N/$N_STEPS: the workflows that reach $ENVNAME go on"
 for base in $WF_FILES; do
-  gh workflow enable "$base" --repo "$REPO"
+  gh workflow enable "$base" --repo "$REPO" || red "$base: gh could not enable it"
 done
 STATES=$(gh workflow list --all --repo "$REPO" --limit 100 --json path,state)
 for base in $WF_FILES; do

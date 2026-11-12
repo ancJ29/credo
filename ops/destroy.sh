@@ -54,9 +54,6 @@ GITHUB_STACK=credo-github
 LOG_GROUP_BFF=/aws/lambda/credo-$ENVNAME-bff
 LOG_GROUP_API=/aws/apigateway/credo-$ENVNAME
 KEEP_SNAPSHOT=${RIDGE_KEEP_DISK_SNAPSHOT:-0}
-# The stack's logical ids that a stack delete keeps (a Retain policy) or cannot empty (a bucket): each is
-# handled by hand in step 6 below. ops/test.sh row 14 reads this line against ops/env.yml.
-BY_HAND="Box UiBucket"
 
 # Everything printed passes this: a run of twelve digits (an account id) is hidden, since AWS's
 # listings and errors quote ARNs. The account id itself is also masked and searched for at the end.
@@ -72,6 +69,24 @@ case "$KEEP_SNAPSHOT" in 0 | 1) ;; *) die "RIDGE_KEEP_DISK_SNAPSHOT must be 0 or
 for tool in aws gh jq git sed; do
   command -v "$tool" >/dev/null 2>&1 || die "$tool is not installed"
 done
+# Every aws call below goes through this: AWS's own error text (an AccessDenied quotes the caller's ARN, so
+# the account id) passes through scrub on the way out, on every path, the ones under set -e included. The
+# standard output is left alone: its readers parse it, and what is printed from it is scrubbed where printed.
+aws() {
+  local rc=0
+  command aws "$@" 2>"$WORK/aws.err" || rc=$?
+  if [ -s "$WORK/aws.err" ]; then scrub <"$WORK/aws.err" >&2; fi
+  return "$rc"
+}
+# Set once a workflow is off. A stop after that point says so (cleanup_extra, which lib.sh's on_exit runs on
+# every end of the run, a stop by fail, a command failing under set -e, or a signal), unless the run finished.
+WF_OFF=''
+FINISHED=''
+cleanup_extra() {
+  if [ -n "$WF_OFF" ] && [ -z "$FINISHED" ]; then
+    echo "-- This run stopped after the workflows ($(printf '%s' "$WF_FILES" | tr '\n' ' ' | sed 's/ $//; s/ / and /g')) were switched off, and they are still off. To finish the destroy run ops/destroy.sh $ENVNAME again; to bring ridge back and turn them on run ops/remake.sh $ENVNAME."
+  fi
+}
 # OPS_TEST_NO_TTY is ops/test.sh's alone, on a machine that cannot open a pseudo-terminal: the name is
 # then read from the input. ridge is the only environment this script acts on, so nothing else sees it.
 [ -t 0 ] || [ "${OPS_TEST_NO_TTY:-}" = 1 ] || die "no terminal on the input: the confirmation has to be typed by you"
@@ -148,7 +163,12 @@ else
   [ "$PENV" = "$ENVNAME" ] || fail "stack $STACK has parameter Env='$PENV', not '$ENVNAME': not clearly ridge's."
   PNET=$(jq -r '.Stacks[0].Parameters[]? | select(.ParameterKey == "Network") | .ParameterValue' <<<"$DESC")
   [ "$PNET" = "$NETWORK_STACK" ] || fail "stack $STACK reads network '$PNET', not '$NETWORK_STACK': unexpected."
-  say "-- stack $STACK: status $ST, Env=$PENV, network=$PNET, repository=$(jq -r '.Stacks[0].Parameters[]? | select(.ParameterKey == "Repository") | .ParameterValue' <<<"$DESC")"
+  PREPO=$(jq -r '.Stacks[0].Parameters[]? | select(.ParameterKey == "Repository") | .ParameterValue' <<<"$DESC")
+  say "-- stack $STACK: status $ST, Env=$PENV, network=$PNET, repository=$PREPO"
+  # The sibling of repository_matches_stack (stack.sh, on an update), stricter: a stack with no Repository
+  # is refused too, since a destroy has no later step to put it right. A terminal signed in to another
+  # account, or a fork's clone, must not destroy a ridge that is not this repository's.
+  [ "$PREPO" = "$REPO" ] || fail "stack $STACK has Repository parameter '${PREPO:-empty}', but this clone's origin is '$REPO': not this repository's ridge. Run from a clone of the stack's repository, in the right account. Nothing was destroyed."
   EXPORTED=$(jq -r '[.Stacks[0].Outputs[]? | select(.ExportName != null)] | length' <<<"$DESC")
   [ "$EXPORTED" = 0 ] || fail "stack $STACK exports values ($EXPORTED); another stack may import them. Not what the template says. Tell the session."
 
@@ -165,7 +185,16 @@ else
   STRANGE=$(jq -r --argjson ok "$ALLOWED" '.StackResourceSummaries[] | select(.ResourceType as $t | ($ok | index($t)) == null) | "\(.ResourceType) \(.LogicalResourceId)"' <<<"$STACK_RES")
   [ -z "$STRANGE" ] || fail "the stack holds resources of a type env.yml does not declare: $STRANGE. Not clearly ridge's. Nothing was destroyed."
   phys() { jq -r --arg id "$1" '.StackResourceSummaries[] | select(.LogicalResourceId == $id) | .PhysicalResourceId // empty' <<<"$STACK_RES"; }
-  say "-- the ids a stack delete keeps or cannot empty, each deleted by hand below: $BY_HAND"
+  # DESTROY_BY_HAND (lib.sh, read by ops/test.sh row 14 against ops/env.yml) lists the logical ids a stack
+  # delete keeps or cannot empty. Each needs a step of step 6 below; an id none of them deletes stops the run
+  # here, before the prompt, since the closing would say everything is gone.
+  for id in $DESTROY_BY_HAND; do
+    case "$id" in
+      Box | UiBucket) ;; # 6c and 6d the box and its disk, 6e the bucket's files
+      *) fail "DESTROY_BY_HAND (ops/lib.sh) lists $id, and no step of this script deletes it. Nothing was destroyed. Tell the session." ;;
+    esac
+  done
+  say "-- the ids a stack delete keeps or cannot empty, each deleted by hand below: $DESTROY_BY_HAND"
 
   # the log groups: exactly these two names, or stop
   for lg in BffLogs ApiLogs; do
@@ -324,6 +353,7 @@ else
     else
       say "   $base is already off (state: $st)"
     fi
+    WF_OFF=1
   done
   say "-- after (gh workflow list --all):"
   wf_table
@@ -474,6 +504,7 @@ else
 fi
 
 # ---- the closing
+FINISHED=1
 say ""
 OFF_LIST=$(printf '%s' "$WF_FILES" | tr '\n' ' ' | sed 's/ $//; s/ / and /g')
 if [ "$HAVE_STACK" = 0 ]; then
