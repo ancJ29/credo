@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -88,7 +89,8 @@ type listedRecord struct {
 }
 
 // listRecords answers the records under one prefix, never a short list that looks whole: more
-// than store.MaxList is `more`, and a missing or empty prefix is refused, since it would read the
+// than store.MaxList is `more`, the next page being the same request with `after` the last key
+// read, and a missing or empty prefix is refused, since it would read the
 // whole service.
 func (s *Server) listRecords(w http.ResponseWriter, r *http.Request) {
 	prefixes := r.URL.Query()["prefix"]
@@ -96,7 +98,20 @@ func (s *Server) listRecords(w http.ResponseWriter, r *http.Request) {
 		httpx.BadRequest(w, "prefix is one non-empty string")
 		return
 	}
-	found, more, err := s.store.List(r.Context(), r.PathValue("serviceCode"), prefixes[0])
+	afters := r.URL.Query()["after"]
+	if len(afters) > 1 || (len(afters) == 1 && !utf8.ValidString(afters[0])) {
+		httpx.BadRequest(w, "after is one string")
+		return
+	}
+	after := ""
+	if len(afters) == 1 {
+		after = afters[0]
+	}
+	if !strings.HasPrefix(after, prefixes[0]) && after != "" {
+		httpx.BadRequest(w, "after is a key under the prefix")
+		return
+	}
+	found, more, err := s.store.List(r.Context(), r.PathValue("serviceCode"), prefixes[0], after)
 	if err != nil {
 		httpx.Internal(w, err)
 		return

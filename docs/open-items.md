@@ -1408,6 +1408,14 @@ The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts
 
 `PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
 
+## 276. A list screen still takes its whole list in one answer — the machine; *parked* (the store's pages and copy plan, 2026-11-11, Low)
+
+After `docs/plans/2026-11-11-store-pages-copy.md` the store answers in pages and the back end's `every` (`bff/src/records/records.ts`) reads them all, so a customer, product or staff list past 1,000 comes back whole, in one answer, and the order page still loads both whole lists for its pickers (`ui/src/pages/client/OrderPage.tsx`'s `api.listCustomers()` and `api.listProducts()`). Nothing on screen asks for a part today, and the lists of the human's companies are far under any size a phone cannot draw. Fix: a list screen that asks for a page or a search, and pickers that search the back end. *Trigger:* the first company whose list a phone draws slowly, or whose answer nears the back end's answer limit, which that plan did not read.
+
+## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium)
+
+The copy tool of `docs/plans/2026-11-11-store-pages-copy.md` copies every record under a company's prefix in c-storage and nothing else. The activity log keeps each company's entries in its own service and file (`services/audit-backbone/internal/activity/store.go`'s `ByActor` and `ByTarget` take the company's id), so a company moved to another box would leave its history on the old one. A one-company restore is not touched by this: history records what happened, and stays. Fix: the move carries the company's entries too, or the back end reads a moved company's history where it was written. *Trigger:* the activity log's milestone, which ships it beside the store, and the shape's move, whichever plan comes second.
+
 ## 246. The terminal scripts reach a company's records with the whole store, so the pooled shape must route them too — the machine; `[OPEN]` (the one-company storage client's plan, 2026-11-11, Medium)
 
 The back end's calls for one company go through that company's client once the one-company storage client lands (`docs/plans/2026-11-11-store-one-company.md`), but the scripts build a company's keys and call the whole client themselves: `scripts/src/demo/apply.ts`, `scripts/src/demo/apply-support.ts`, `scripts/src/demo/ledger.ts` and `scripts/src/root-password.ts` (a search of `scripts/src` for `recordKeys.tenant(` and the record helpers). Today one service holds every company, so they reach the right records. In the pooled shape a company's records sit on the box its index names, and each of these must find that box first, or it writes to the wrong one. `scripts/src/ridge.ts` and `scripts/src/generator.ts` reach a company only through `@credo/bff/clients`' `createClient` and `deleteClient`, and follow the back end without a change. *Fix:* the pooled shape's plan routes each script through `tenantStorage` over the company's box. *Trigger:* that plan.
@@ -1592,6 +1600,47 @@ The old test asserted every run's status; with the 21-day fill the loop of seven
 The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, then a call count at once, while the load starts in a `useEffect`): one more case has it, found by reading every `expect(api.<member>).toHaveBeenCalled…` after an awaited find in `ui/src`. `ui/src/OperatorApp.test.tsx#L449` awaits the heading "Operators", reads the "Add an operator" link, then asserts `listOperators` was called once; `OperatorsPage.tsx` draws both before its load (`ui/src/pages/operator/OperatorsPage.tsx#L19-L25`). The others read were safe: they await text that only the loaded data draws (`pages/client/ListPage.test.tsx#L125`, `#L184`, `#L413`; `pages/client/Reconcile.test.tsx#L41`; `pages/client/OrdersPages.test.tsx#L71`; `pages/client/DeliveriesPages.test.tsx#L36`; `pages/operator/JoinPage.test.tsx#L21`; `pages/operator/OperatorsPage.test.tsx#L43`), or follow a call the app itself waits on (`App.test.tsx#L106`, `OperatorApp.test.tsx#L220`, `pages/client/Access.test.tsx#L97`). The fix is the same one line: the count inside `await waitFor(...)`.
 
 
+## 392. The stop of the second c-storage can signal a reused pid and races the process it stops — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`ops/lib.sh`'s `box_stop_restored` signals the pid in `/run/c-storage-restored.pid` as root, and nothing clears that file when `timeout` ends the process by itself, so a later stop can signal a reused pid. It removes the file without waiting for the process to exit, and a c-storage still running can recreate an empty file at that path (the unit's header says it makes a new, empty file wherever it is pointed). *Fix, if wanted:* read `/proc/<pid>/cmdline` before the kill, wait up to a few seconds for the process to end, then remove the files, and give `timeout -k`. *Trigger:* the first run on ridge that meets a leftover pid file, or the next edit of the helper.
+
+## 393. The second c-storage's health wait cannot tell it from another listener on 3182, and a failed start leaves no reason — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`ops/lib.sh`'s `box_serve_restored` sends the binary's output to `/dev/null` and waits for `/health` on the port. *Fix, if wanted:* check `kill -0 $!` along with the answer, and keep the first lines of the binary's stderr. *Trigger:* a run that stops at "the second c-storage did not start".
+
+## 394. The JavaScript key compare is not the store's key order for characters above U+FFFF — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`bff/src/records/records.ts` (`first.key <= cursor`) and `bff/src/records/company-copy.ts` (`s.key <= t.key`) compare keys in UTF-16 code units, while SQLite orders them by bytes (code-point order). They disagree for a character above U+FFFF set against one in U+E000 to U+FFFF; a sign-in name (`user(name)`) may carry either. At worst: a false "longer than c-storage returns" 500 on a list of more than one page, or a mispaired key in the copy, which shows as a false stop or a red compare; never another company's key and never a silent green. *Fix, if wanted:* one code-point comparator for both sites and one test with that pair of keys. *Trigger:* a key with such a character on a real list, or the next edit of either file.
+
 ## 395. The demo remake labels its steps one too high, and the runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
 
 `ops/demo-remake.sh` sets `STEPS=6` and calls `step` five times, so its lines read one to five of six; the ridge guide's `[n/6]` matches what prints. In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* set the count to five (or add the sixth step), and say "a run that prints". *Trigger:* the next edit of either script.
+
+## 400. `everything` reads pages without `pagesOf`'s check — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`scripts/src/demo/apply-support.ts`'s `everything` ends silently on a page that says `more` but holds no records, and loops for ever on a c-storage that ignores `after`: the fault `pagesOf` raises. Only tests call it today. *Fix, if wanted:* call `pagesOf` or copy its check. *Trigger:* the first non-test caller.
+
+## 401. The wrapper's smaller faults: the check order, the stop advice, the copy's rate — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+Three of the review's list that the fix pass left. (1) The check for node and `pnpm install` in `ops/company-restore.sh` comes after the first `ridge_cli`, so a missing install is reported as "<code> is refused". (2) The stop advice, "the same run again goes on from the compare", does not match a rerun, which restores a new newest copy and starts over. (3) No rate tells whether a demo copy's copy fits inside the second c-storage's 900 s. *Fix, if wanted:* move the two checks above the first `ridge_cli`; reword the advice; print the copy's seconds and records on a run and compare them with 900 after the first real run. *Trigger:* the first real run on ridge (the rate), the next edit of the script.
+
+## 402. Ctrl-C reaches the ssh proxy, so the cleanup's calls may find the connection gone — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low; needs a real run to be certain)
+
+`box_open`'s `ssh -f` daemonizes only itself; its ProxyCommand (`aws ec2-instance-connect open-tunnel`) was forked before that and stays in the terminal's foreground process group, so it gets the SIGINT and drops the connection before `on_exit` runs. The wrapper now says what it could not remove (a `WARN` line), but a Ctrl-C will still often leave the second c-storage to end by itself. *Fix, if wanted:* shield the proxy (`(trap '' INT; exec ssh -f ...)` in `box_open`); it changes every ops script, so it is a change of its own. *Trigger:* the first real Ctrl-C on a run, or the next change to `box_open`.
+
+## 403. `docs/client-readiness.md` holds 14 line citations to `bff/src/routes/orders.ts` that were already wrong — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Info, pre-existing)
+
+The page (a living document) cites `bff/src/routes/orders.ts#L218` to `#L483`; read at their targets at the merge base they were already wrong, and the piece's two added lines in `priced` move them by two more. *Fix, if wanted:* re-derive the 14 citations, as symbols where one exists. *Trigger:* the next change to that page.
+
+## 404. The stand-in's check of the live file looks at the link's target, not at the stand-in box's own path — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+`ops/test.sh` checks that the live file is there at `$S/db/c-storage.db`, the target of the box's symlink, so a wrapper that moved the link itself would not show. *Fix, if wanted:* check `$BOX/records/c-storage.db` too, as a link still pointing at that target. *Trigger:* the next edit of the stand-in section.
+
+## 405. The restored file's path is worked out in two places — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+`ops/company-restore.sh` builds `restored-c<stamp>.db` itself before the restore, and `box_restore` in `ops/lib.sh` builds the same name on the box. The wrapper checks the answer against its own, so a drift stops the run, but the name has two homes. *Fix, if wanted:* one helper in `ops/lib.sh` that both read. *Trigger:* the next change to the name.
+
+## 406. No test reaches the wrapper's 30-second line — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+The stand-in's copy ends in seconds, and the slow variants are stopped before 30 seconds, so the "still copying" line is read by no test. *Fix, if wanted:* a variant whose node waits past 30 seconds and a count of the line. *Trigger:* the first real run that shows the line wrong.
+

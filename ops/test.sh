@@ -2196,7 +2196,28 @@ alive() { [ -f "$S/master.pid" ] && kill -0 "$(cat "$S/master.pid")" 2>/dev/null
 case $op in
   check) alive && exit 0; echo "Control socket connect: No such file or directory" >&2; exit 255 ;;
   exit) if alive; then kill "$(cat "$S/master.pid")"; rm -f "$S/master.pid"; exit 0; fi; exit 255 ;;
+  forward) alive && exit 0; exit 255 ;;
 esac
+# A run that holds a stand-in box ($S/box.real, made by the company-restore case): the three scripts that one run
+# sends with `sudo bash -s -- <records folder> ...` run here, on scratch folders for /var/lib/private/c-storage,
+# /etc/c-storage, /opt/c-storage and /run, with shims for what macOS lacks. A dropped connection answers as ssh does.
+if [ -e "$S/box.real" ]; then
+  rest=()
+  seen=0
+  for a in "${args[@]}"; do if [ "$seen" = 1 ]; then rest+=("$a"); fi; case $a in ec2-user@*) seen=1 ;; esac; done
+  if [ "${rest[0]:-}" = sudo ] && [ "${rest[1]:-}" = bash ] && [ "${rest[3]:-}" = -- ]; then
+    alive || { echo "Control socket connect: No such file or directory" >&2; exit 255; }
+    box=$S/box
+    sub() { sed -e "s#/var/lib/private/c-storage#$box/records#g" -e "s#/etc/c-storage#$box/etc#g" -e "s#/opt/c-storage#$box/opt#g" -e "s#/run/#$box/run/#g"; }
+    sub >"$box/script.sh"
+    boxargs=()
+    for a in "${rest[@]:4}"; do boxargs+=("$(printf '%s' "$a" | sub)"); done
+    rc=0
+    PATH="$box/bin:$PATH" bash "$box/script.sh" "${boxargs[@]}" >"$box/script.out" || rc=$?
+    sed "s#$box/records#/var/lib/private/c-storage#g" "$box/script.out"
+    exit $rc
+  fi
+fi
 if [ -z "$fwd" ] && printf '%s\n' "${args[@]}" | grep -qx -- '-N'; then
   detach sleep 120 </dev/null >/dev/null 2>&1 &
   echo $! >"$S/master.pid"
@@ -3211,6 +3232,201 @@ PATH="$E2E/leakbin:$PATH" rp_run "$DIFFPW"$'\n'"$DIFFPW" ridge "$c3"
 check "a password that reached the log makes the run red, naming it, and the exit 1" "1 1" \
   "$RC $(rp_lines '^RED  the new password is in this log: redact it in this log, and run again with another password')"
 unset ROOT_PASSWORD_LOCAL_PORT
+
+echo "== ops/company-restore.sh (row 16: ridge's demo copies alone, every refusal before the box is touched; the second c-storage ends by itself and at the run's end; nothing live is written by the restore) (docs/plans/2026-11-11-store-pages-copy.md)"
+# The box's helpers and the script that calls them, read as text, as the restore's are.
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+serve_guard() { # <lib.sh> <company-restore.sh>
+  local b=$WORK/serve-block.sh
+  sed -n '/^box_serve_restored() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_serve_restored"
+  need "$b" 'setsid timeout "\$secs" /opt/c-storage/c-storage' "the second c-storage is not started under a timeout of its own"
+  need "$b" '^case \$file in "\$mount"/restored-\*\.db\) ;; \*\) echo' "the second c-storage serves a file that is not a restored one"
+  need "$b" 'DB_PATH=\$file' "the second c-storage is not pointed at the restored file"
+  need "$b" 'LISTEN_ADDR=127\.0\.0\.1' "the second c-storage does not bind the loopback"
+  [ "$(grep -cE 'systemctl|c-storage\.db|/var/lib/c-storage' "$b")" = 0 ] || die "the second c-storage's start touches the live c-storage or its file"
+  need "$2" '^  if \[ -n "\$RESTORED_FILE" \] && ! box_stop_restored "\$RESTORED_FILE"; then$' "the run does not end the second c-storage and remove the restored file whatever its end"
+  need "$2" '^cleanup_extra\(\) \{$' "the run has no cleanup at its end"
+}
+passes "the second c-storage starts under its own timeout, on a restored file, on the loopback, touching nothing live; the run ends it at its end (row 16)" \
+  serve_guard "$OPS_DIR/lib.sh" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage without a timeout of its own is refused" "under a timeout of its own" \
+  serve_guard "$(mutated lib-notimeout.sh 's#setsid timeout "$secs" /opt#setsid /opt#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on a file that is not a restored one is refused" "not a restored one" \
+  serve_guard "$(mutated lib-anyfile.sh 's#^case $file in "$mount"/restored-\*\.db) ;; \*) echo.*#true#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on the live file is refused" "pointed at the restored file" \
+  serve_guard "$(mutated lib-livedb.sh '/^box_serve_restored/,/^REMOTE$/s#DB_PATH=$file#DB_PATH=$mount/c-storage.db#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that does not end the second c-storage at its end is refused" "whatever its end" \
+  serve_guard "$OPS_DIR/lib.sh" "$(mutated cr-nocleanup.sh 's#! box_stop_restored "$RESTORED_FILE"#! true#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+restore_call_guard() { # <company-restore.sh>
+  need "$1" '^got=\$\(box_restore - 0 "c\$stamp"\)' "the run restores anything but the newest copy to a new file"
+  first_before "$1" '^refuse_real ' '^box_open ' "the box is opened before the environment is refused"
+  first_before "$1" '^checked=\$\(ridge_cli copy-company --check' '^box_open ' "the box is opened before the code is checked"
+  first_before "$1" '^box_restore|^got=\$\(box_restore' '^WRITTEN=1$' "a record is written before the restore"
+}
+passes "the run restores the newest copy to a new file, and refuses the environment and the code before it opens the box (row 16)" \
+  restore_call_guard "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that restores onto the live file is refused" "anything but the newest copy to a new file" \
+  restore_call_guard "$(mutated cr-live.sh 's#box_restore - 0 "c$stamp"#box_restore - 1 "c$stamp"#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that opens the box before refusing the environment is refused" "box is opened before the environment" \
+  restore_call_guard "$(mutated cr-order.sh '/^refuse_real /d' "$OPS_DIR/company-restore.sh")"
+
+cr_calls() { { cat "$S/aws.calls" "$S/ssh.calls" 2>/dev/null || true; } | wc -l | tr -d ' '; }
+cr_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+crun() { # <args...>: company-restore.sh whole in the clone, its transcript in the run's out file
+  e2e_run company-restore.sh "$@"
+}
+cr_refused() { # <name> <text the refusal names>: RC 2, the line, and no aws or ssh call made since cr_before
+  check "$1" "2 1 0 1" "$RC $(cr_lines "^== refused: .*$2") $(($(cr_calls) - cr_before)) $(cr_lines '^== exit 2$')"
+}
+e2e_fresh crestore
+cr_before=$(cr_calls)
+export OPS_LOG_DIR=$E2E/logs-cr-other-env
+crun other "$c1"
+cr_refused "another environment than ridge is refused before any aws call, naming why" "company-restore.sh holds ridge's demo copies alone"
+export OPS_LOG_DIR=$E2E/logs-cr-foreign
+crun ridge some-real-client
+cr_refused "a code outside the six demo copies is refused before the box is opened" "some-real-client is refused"
+check "  and the log names it" 1 "$(cr_lines 'some-real-client is not one of the demo copies')"
+export OPS_LOG_DIR=$E2E/logs-cr-ops
+printf '# touched\n' >>"$E2E/repo/ops/README.md"
+crun ridge "$c1"
+git -C "$E2E/repo" checkout -q -- ops/README.md
+cr_refused "an ops/ that is not origin/main's is refused before the box is opened" "differs from origin/main's"
+rc=0
+out=$(bash "$E2E/repo/ops/company-restore.sh" ridge 2>&1) || rc=$?
+check "a missing code prints the usage and exits 2" "2 usage: ops/company-restore.sh ridge <code>" "$rc $out"
+check "no refusal above touched the box" 0 "$(($(cr_calls) - cr_before))"
+
+echo "== ops/company-restore.sh run whole, on a stand-in box (row 16: the happy path offline, and what the cleanup says when the run is stopped)"
+# The stand-in ssh runs the three scripts the run sends with `sudo bash -s -- <records folder> ...` here, on scratch
+# folders for the box's paths: litestream restore is a sqlite3 backup of the live stand-in's file, setsid and timeout
+# (which macOS lacks) are shims, and the second c-storage is the real binary on the local forward's own port (the
+# forward is a no-op: COMPANY_RESTORE_BOX_PORT is that port). Two demo copies are made on the live stand-in first.
+e2e_fresh crestore-run
+export OPS_LOG_DIR=$E2E/logs-crr-app
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the stand-in box, for the two copies to be made with it" 0 "$RC"
+crr_pw=$(rp_make_copy "$c1")
+crr_pw=$crr_pw$(rp_make_copy "$c2")
+check "two demo copies exist on the live stand-in" 32 "${#crr_pw}"
+BOX=$S/box
+mkdir -p "$BOX/records" "$BOX/etc" "$BOX/opt" "$BOX/run" "$BOX/bin"
+ln -s "$S/db/c-storage.db" "$BOX/records/c-storage.db"
+ln -s "$FAKE_CS" "$BOX/opt/c-storage"
+echo 'COPY_URL=s3://stand-in/copy' >"$BOX/etc/copy.env"
+printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" >"$BOX/etc/keys.env"
+# shellcheck disable=SC2016 # the stand-ins' literal text
+printf '#!/bin/bash\nout=\nwhile [ $# -gt 0 ]; do case $1 in -o) out=$2; shift 2 ;; -timestamp) shift 2 ;; *) shift ;; esac; done\nexec sqlite3 "%s/db/c-storage.db" ".backup $out"\n' "$S" >"$BOX/opt/litestream"
+printf '#!/bin/sh\nexit 0\n' >"$BOX/bin/mountpoint"
+printf '#!/bin/sh\nexit 0\n' >"$BOX/bin/chown"
+printf '#!/bin/sh\nexec "$@"\n' >"$BOX/bin/setsid"
+# shellcheck disable=SC2016 # the stand-ins' literal text
+printf '#!/bin/bash\nsecs=$1\nshift\n"$@" &\npid=$!\ntrap '"'"'kill $pid 2>/dev/null; exit 143'"'"' TERM INT\n( for _ in $(seq 1 "$secs"); do sleep 1; kill -0 $pid 2>/dev/null || exit 0; done; kill $pid 2>/dev/null ) &\nwait $pid\n' >"$BOX/bin/timeout"
+chmod +x "$BOX/opt/litestream" "$BOX/bin/mountpoint" "$BOX/bin/chown" "$BOX/bin/setsid" "$BOX/bin/timeout"
+touch "$S/box.real"
+# A node that waits before the copy (not before its check), so that a signal can meet the copy.
+mkdir -p "$E2E/slowbin"
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\ncase "$*" in *--check*) ;; *copy-company*) sleep 20 ;; esac\nexec "%s" "$@"\n' "$REAL_NODE" >"$E2E/slowbin/node"
+chmod +x "$E2E/slowbin/node"
+crl=$(free_port)
+crr=$(free_port)
+export COMPANY_RESTORE_LIVE_PORT=$crl COMPANY_RESTORE_RESTORED_PORT=$crr COMPANY_RESTORE_BOX_PORT=$crr
+cr_has() { # <code> → yes or no: whether that copy holds the drill's record, read on this state's database once the run is over
+  local port pid out
+  port=$(free_port)
+  env -i PATH="$PATH" PORT="$port" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    "$FAKE_CS" >>"$S/server.log" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.1; done
+  out=$(INTERNAL_ACCESS_KEY=$FAKE_IKEY SERVICE_CODE=bff SERVICE_ACCESS_KEY=$FAKE_SKEY C_STORAGE_URL=http://127.0.0.1:$port ridge_cli drill-record has "$1" 2>&1) || true
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  echo "$out"
+}
+cr_log() { cat "$OPS_LOG_DIR"/*.log; }
+cr_n() { cr_log | grep -c "$@" || true; }
+cr_second() { if curl -fsS -m 2 -o /dev/null "http://127.0.0.1:$crr/health" 2>/dev/null; then echo there; else echo gone; fi; }
+cr_left() { { find "$BOX/records" -name 'restored-*' 2>/dev/null || true; } | wc -l | tr -d ' '; }
+
+# the run whole, the code typed in capitals as a person may (the copy takes it as the checks do)
+export OPS_LOG_DIR=$E2E/logs-crr-happy
+crr_upper=$(printf '%s' "$c1" | tr '[:lower:]' '[:upper:]')
+e2e_launch company-restore.sh ridge "$crr_upper"
+e2e_reap 170
+check "the whole run on a stand-in box ends 0, and the log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  eight steps, each with the time" 8 "$(cr_n -E '^\[[1-8]/8\] .* \([0-9]+m[0-9]{2}s\)$')"
+check "  the compare before shows the drill's record differing, and after shows none" "1 1" \
+  "$(cr_n "^$c1 before: the source holds [0-9]* records, 1 differ on the target$") $(cr_n "^$c1 after: the source holds [0-9]* records, 0 differ on the target$")"
+check "  the verdict is green: the named copy's record gone, the neighbour's kept and then removed" "1 1 1 1" \
+  "$(cr_n "^ok   the named copy's drill record is gone: no$") $(cr_n "^ok   the neighbour's drill record is kept: yes$") $(cr_n "^ok   the neighbour's drill record is removed: no$") $(cr_n '^== green$')"
+check "  the restored file, the pid file and the second c-storage are all gone" "0 gone gone" "$(cr_left) $(file_state "$BOX/run/c-storage-restored.pid") $(cr_second)"
+check "  no WARN line, and the live file was not moved or replaced" "0 there" "$(cr_n '^WARN') $(file_state "$S/db/c-storage.db")"
+check "  the log says how long the walks may take and until what clock time" 1 \
+  "$(cr_n -E "^the copy's three whole-company walks over the tunnel may take up to 15 minutes .*, until [0-9]{2}:[0-9]{2};")"
+check "  neither copy holds a drill record after it" "no no" "$(cr_has "$c1") $(cr_has "$c2")"
+
+# Ctrl-C during the copy, the connection alive: the cleanup takes everything out and says nothing is left
+export OPS_LOG_DIR=$E2E/logs-crr-int
+PATH="$E2E/slowbin:$PATH" e2e_launch company-restore.sh ridge "$c1"
+e2e_wait "a line follows every 30 seconds" 90 || true
+kill -s INT -- "-$LPID"
+e2e_reap 60
+check "INT during the copy: the run exits 130, the log ends on it, and the box is clean" "130 == exit 130 0 gone gone" \
+  "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log) $(cr_left) $(file_state "$BOX/run/c-storage-restored.pid") $(cr_second)"
+check "  both copies are free of the drill's record, with no WARN line" "no no 0" "$(cr_has "$c1") $(cr_has "$c2") $(cr_n '^WARN')"
+
+# the connection gone when the cleanup runs (the endpoint's hour, a drop): the cleanup says what it could not remove
+export OPS_LOG_DIR=$E2E/logs-crr-drop
+PATH="$E2E/slowbin:$PATH" e2e_launch company-restore.sh ridge "$c1"
+e2e_wait "a line follows every 30 seconds" 90 || true
+kill "$(cat "$S/master.pid")"
+rm -f "$S/master.pid"
+kill -s INT -- "-$LPID"
+e2e_reap 60
+check "a dropped connection and INT: the run exits 130 and names what was left" "130 1 1" \
+  "$RC $(cr_n -E "^WARN the restored file /var/lib/private/c-storage/restored-c[0-9]{8}T[0-9]{6}Z[.]db .* by itself by [0-9]{2}:[0-9]{2}\\)") $(cr_n "^WARN a drill record may be left in: $c1 $c2 ")"
+check "  and the restored file is indeed still on the box, as the line says" 1 "$(cr_left)"
+if [ -s "$BOX/run/c-storage-restored.pid" ]; then kill "$(cat "$BOX/run/c-storage-restored.pid")" 2>/dev/null || true; fi
+for _ in $(seq 1 50); do if [ "$(cr_second)" = gone ]; then break; fi; sleep 0.2; done
+rm -f "$BOX"/records/restored-* "$BOX/run/c-storage-restored.pid"
+unset COMPANY_RESTORE_LIVE_PORT COMPANY_RESTORE_RESTORED_PORT COMPANY_RESTORE_BOX_PORT
+
+# the box's guard against a name that climbs out of the records folder (a case pattern's * also matches a /)
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+climb_probe() { # <lib.sh>: the stop must keep the live file, the serve must refuse; the plain restored name is still removed
+  local d=$WORK/climb out rc=0
+  rm -rf "$d"
+  mkdir -p "$d/mnt/restored-x" "$d/run"
+  echo live >"$d/mnt/c-storage.db"
+  echo plain >"$d/mnt/restored-a.db"
+  sed -n '/^box_stop_restored() {/,/^REMOTE$/p' "$1" | sed -e '1,2d;$d' -e "s#/run/#$d/run/#g" >"$d/stop.sh"
+  sed -n '/^box_serve_restored() {/,/^REMOTE$/p' "$1" | sed -e '1,2d;$d' -e "s#/run/#$d/run/#g" -e "s#/etc/c-storage#$d/etc#g" >"$d/serve.sh"
+  [ -s "$d/stop.sh" ] && [ -s "$d/serve.sh" ] || die "lib.sh has no stop or serve helper"
+  bash "$d/stop.sh" "$d/mnt" "$d/mnt/restored-x/../c-storage.db"
+  [ -e "$d/mnt/c-storage.db" ] || die "the stop removed the live file through a climbing name"
+  bash "$d/stop.sh" "$d/mnt" "$d/mnt/restored-a.db"
+  [ ! -e "$d/mnt/restored-a.db" ] || die "the stop no longer removes a restored file"
+  out=$(bash "$d/serve.sh" "$d/mnt" "$d/mnt/restored-x/../c-storage.db" 1 1 2>&1) || rc=$?
+  if [ "$rc" != 1 ] || ! grep -qF 'not a restored file' <<<"$out"; then die "the serve took a climbing name: $out"; fi
+}
+passes "a name that climbs out of the records folder is neither removed nor served (the review's finding 3)" climb_probe "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  the stop that lets a climbing name through is refused" "removed the live file" \
+  climb_probe "$(mutated lib-climb-stop.sh 's#in \*/\*) ;; \*) rm -f#in NONE) ;; *) rm -f#' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  the serve that lets a climbing name through is refused" "took a climbing name" \
+  climb_probe "$(mutated lib-climb-serve.sh '/^box_serve_restored/,/^REMOTE$/{/^case ${file#/d;}' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+first_before "$OPS_DIR/company-restore.sh" '^RESTORED_FILE=\$RECORDS_MOUNT/restored-c\$stamp[.]db$' '^got=\$\(box_restore' "the restored file's name is not known before the restore writes it"
 
 echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"
 build "$WORK/server-newer" "$desc_newer"

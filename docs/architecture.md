@@ -136,9 +136,10 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 alike.
 
 **The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
-record whose meaning is the BFF's and not its own. A list is one prefix read of at most 1,000
-records, and past that bound it is an error and never a short list, which is why orders and
-deliveries are filed by day. Its promises are a store's: a save over a record
+record whose meaning is the BFF's and not its own. A list is a prefix read in pages, each
+ending at 1,000 records or about 4 MiB with the next starting after its last key, and the back end
+reads every page, so a list is never short; orders and deliveries are still filed by day, which
+keeps a day's list to a page. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
