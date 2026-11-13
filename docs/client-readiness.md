@@ -20,7 +20,7 @@
 
 **The answer is no, and the gap is not in the product.** The product's isolation holds. What is
 missing is that a client's own stack cannot be operated or recovered, and the one copy of a
-client's data can be destroyed by an ordinary change with nothing to restore from.
+client's data can be destroyed by an ordinary change; the copy that answers it is built and has not yet been run.
 
 ### The isolation holds, and it is enforced
 
@@ -54,16 +54,18 @@ reasonable position for the product and a reason to keep the review habit, not a
 
 This is the risk that cannot be recovered from, and it is larger than the item that records it.
 
-A deployment's data is one SQLite file on one box
-([`ops/c-storage.service#L20`](../ops/c-storage.service#L20)), and there is no backup: the nightly
-copy and its restore are designed and deferred to a signed client, on the stated reasoning that
-ridge holds no real records ([open item 6](open-items.md)). That is a documented deferral, not
-something lost — the S3 gateway endpoint and the box's put-only role were named the same day and
-simply do not exist yet ([`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role").
+A deployment's data is one SQLite file on one box (`ops/c-storage.service`'s `DB_PATH`), and the
+continuous-copy piece has built its copy: Litestream, started by that unit with c-storage as its child,
+copies each save to the environment's own bucket through a free private door, and the file sits on a disk
+of its own (`ops/env.yml`'s `RecordsVolume`). **It is built and guarded on written input, and has not yet
+run on an environment**: the human's changes, the release and the drill are still to come, so until
+`ops/drill.sh ridge` has read a restored file, nobody knows the copy is readable ([open item 6](open-items.md)).
+`ops/check.sh` says whether a copy is fresh, and `ops/restore.sh` brings it back
+([the runbook](../ops/README.md#restoring-the-records)).
 
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
-[`ops/env.yml#L122-L128`](../ops/env.yml#L122)). So anything that terminated or replaced the instance took every
+[`ops/env.yml`](../ops/env.yml), the `BlockDeviceMappings` of `Box`). So anything that terminated or replaced the instance took every
 record with it, permanently: a stack delete, or an image or instance-type change taken with `--take Box`. The
 advice printed on a stack left in `ROLLBACK_COMPLETE`, "delete the stack" (`ops/lib.sh#L294` at `0f7d69c1`),
 looked like a third way, but it never was one: that status exists only after a failed creation, so such a stack
@@ -75,8 +77,7 @@ delete and a replacement would leave the box and a termination would leave the d
 the template and of ridge, where it was applied on 2026-11-08 at 17:10 and read off the running box
 afterwards (the same instance, launched 2026-10-28, its root device `Keep: false`, no unattached
 volume; the project's logs folder, `logs/20261108-1715-ridge-box-fence-receipt.log`), and a
-client's stack made from `main` takes it at creation. Nothing else changed: there is still no copy of any client's
-records, and no one has read a kept disk ([open item 6](open-items.md)). The change set
+client's stack made from `main` takes it at creation. That change alone added no copy; the copy is the paragraph above's, and no one has read a kept disk ([open item 6](open-items.md)). The change set
 was run on ridge as `ops/stack.sh env ridge --plan` on 2026-11-08 at 16:44 and the guard refused it
 (`Modify Box` at `replacement=Conditional`, the property's class, not a verdict; the reason is in
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md)); it was then re-run with `--take Box`
@@ -130,8 +131,8 @@ client's stack, whatever it is called, meets the rules below.
 The API in front of the BFF answers anyone, which the template states in its own words: one
 catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
 answers anyone; the throttle bounds what that costs"
-([`ops/env.yml#L251`](../ops/env.yml#L251), the stage at
-[`#L275-L286`](../ops/env.yml#L275)). That the address is reachable is recorded, with its history,
+(the comment above `ops/env.yml`'s `Api`, the stage at
+`ApiStage` in the same file). That the address is reachable is recorded, with its history,
 as [open item 121](open-items.md): nobody decided it, it followed from the Region not offering
 Lambda function URLs, and it is parked until a client signs. Read "answers anyone" as *reachable*,
 not *unauthenticated* — a call arriving that way still meets the client header, the session and the
@@ -148,7 +149,7 @@ still the only brake on one guesser trying many names, and each invented name le
 *The older one has been there all along:* the function writes a line per request to
 `/aws/lambda/credo-${Env}-bff`, because `bff/src/lambda-main.ts#L3` passes only `process.env`, `bff/src/lambda.ts#L10` defaults
 `options` to an empty object and hands it on (`#L12`), so `bff/src/server.ts`'s `logger = true` stands and `app.ts#L86` builds Fastify with it, and the function's
-`LoggingConfig` names that group ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). An earlier
+`LoggingConfig` names that group (`ops/env.yml`'s `Bff`). An earlier
 version of this page said a guessing run would leave no trace at all; that was wrong when it was
 written. What this page has not verified is what a Fastify request line holds (read as: a method,
 a path and an answer, not checked here) or whether the adapter gives Fastify a remote address at
@@ -156,14 +157,14 @@ all; that would need a run. What is settled, in the direction of no: Fastify is 
 `trustProxy` (none in `bff/src`), so the function's trail cannot recover the end user's address
 from a forwarded header, and neither trail is known to hold it for a call through the distribution. *The newer one is in the template and on ridge:* the stage's access log, one
 JSON line a call with the time, the address of whoever opened the connection, the path and the answer, into
-`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs`, [`ops/env.yml#L176-L181`](../ops/env.yml#L176),
-[`#L284-L286`](../ops/env.yml#L284)). **Measured, 2026-11-08 18:11 on ridge: for a call through the
+`/aws/apigateway/credo-${Env}` for 14 days (`ApiLogs` and `ApiStage`'s `AccessLogSettings`, both in
+`ops/env.yml`). **Measured, 2026-11-08 18:11 on ridge: for a call through the
 distribution the line recorded one public address, outside AWS's published ranges (the
 orchestrating session's check of that date, not re-run) and consistent with the caller's own, not an
 edge node.** It was written here as CloudFront's, on the reading that the field is the immediate TCP
-connection and the template makes the API a CloudFront origin (`ops/env.yml#L388`); that was
-reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing watching the
-server ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
+connection and the template makes the API a CloudFront origin (`ops/env.yml`, `Distribution`); that was
+reasoning and the run disagrees with it. Why is not established (item 157). It is live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`), and three lines were read back from the log group at 18:12, each with all ten fields of the stage's format (`logs/20261108-1809-ridge-access-log-read.log`). With nothing yet telling anyone when the
+server stops ([open item 1](open-items.md)), **a guessing run against a real client would leave lines
 in the function's log that someone could read afterwards, and nobody is told to read them.
 Requests the stage's throttle refuses are answered 429 by API Gateway and never reach the function,
 so they leave nothing in the function's log and appear only in the stage's log, which is what this
@@ -215,10 +216,10 @@ says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/li
 and re-registering the service; the order is not written down anywhere. Open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
-end ([`ops/lib.sh#L118-L139`](../ops/lib.sh#L118)). Two known weaknesses in *how* it searches are
+end ([`ops/lib.sh`](../ops/lib.sh), `on_exit`'s search of the log for each secret). Two known weaknesses in *how* it searches are
 already recorded as [open item 50](open-items.md) — the keys reach `grep`'s argument list
-([`#L122`](../ops/lib.sh#L122)) and the here-strings that read the box's key files
-([`#L497-L498`](../ops/lib.sh#L497), [`#L702-L703`](../ops/lib.sh#L702)) are written to a temp file
+(`on_exit`'s `grep -qF`, in [`ops/lib.sh`](../ops/lib.sh)) and the here-strings that read the box's key files
+(`read_keys` and `bff_env_read` in [`ops/lib.sh`](../ops/lib.sh)) are written to a temp file
 by the Mac's bash 3.2.
 
 ### The deploy, and the only route back
@@ -232,13 +233,13 @@ A half-finished deploy leaves a client on a mixed version and **nothing rolls ba
 is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first
 and only its renames are atomic (the one `box` command that follows that comment), so a failure before them
 leaves the box running what it ran and a failure after leaves the new binary installed. The BFF's
-description and environment are written *before* its code
-(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)), which is [open item 29](open-items.md): a stop
-between the two leaves the new commit's name on old code, and the seed's own precondition then
-passes against a BFF a commit behind (`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)). The UI is safer
+environment is written before its code and its description after it
+(the `update-function-configuration` and `update-function-code` calls in [`ops/app.sh`](../ops/app.sh)): a stop
+between the two leaves the old commit's name on the function, so the seed's own precondition
+(`fn_commit` in [`ops/seed.sh`](../ops/seed.sh)) never passes against a BFF whose code did not arrive. The UI is safer
 than it looks — assets go first and `index.html` last
 (the step "the UI's files, index.html last" in [`ops/app.sh`](../ops/app.sh)) and the deploy role cannot delete from the bucket
-([`ops/env.yml#L425-L428`](../ops/env.yml#L425)) — so a stop leaves the old app whole.
+(`ops/env.yml`'s `DeployRole`, its `PutUiFiles` statement) — so a stop leaves the old app whole.
 
 The sharper point for a client is the other direction. **The only route to a fix runs through a
 gate that is known to go red under load with nothing broken**: items 27, 56, 112, 113 and 114 are
@@ -251,10 +252,10 @@ waiting.
 In order of risk, with rough sizes. Nothing here is a plan — each is the shape of the piece, not
 its steps.
 
-1. **A backup and a restore, and a deletion policy on the box's volume.** The one thing that cannot
-   be recovered from. It is a network template change, an environment template change, a timer on
-   the box and a restore script with its guards, and it ends in a human-run change set: a day's
-   piece, not an afternoon.
+1. **A backup and a restore, and a deletion policy on the box's volume: built, not yet run.** The one
+   thing that cannot be recovered from. The deletion policy is live on ridge; the continuous copy, its
+   check and its restore are written and guarded, and what remains is the human's: the two template
+   changes, the release and the drill that reads a restored file ([open item 6](open-items.md)).
 2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
    included (open item 130, fixed).
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads

@@ -17,6 +17,9 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
+| ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
+| ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
+| the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 2.6 hours |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -26,6 +29,8 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
+| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
+| the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
 ## Before any step
@@ -56,11 +61,14 @@ name its stack `ridge`.
 | `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
 | `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
-| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, layer four's reads and the six reads that need no client stay |
+| `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, the copy's status (read on the box; its key stays there) and the bucket's listing, layer four's reads and the six reads that need no client stay |
+| `ops/restore.sh` | works, to a new file | by default it writes a new file beside the live one and touches nothing live; `--onto-live` is refused there |
 | `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |
 | `ops/root-password.sh` | refuses | a client's own stack is the console's; a terminal path to a client's root password does not exist (open item 132) |
+| `ops/destroy.sh` | refuses | it deletes by name in an account that holds other stacks, a client's among them; it destroys ridge alone |
+| `ops/remake.sh` | refuses | it makes the stack, ships and turns workflows on for ridge alone |
 
 `ops/walks-preview.sh` and `ops/pages-preview.sh` are not credo's environment: they send a folder to
 Cloudflare Pages and refuse that service's own production branch. `ops/legacy-capture.sh` writes
@@ -89,7 +97,7 @@ working copy.
    - A stack that stays in `ROLLBACK_COMPLETE` (its creation did not complete and was rolled back, so
      it holds nothing) is deleted by hand in the console before the script is run again; the script
      stops and says so. A rolled-back creation's box is terminated, and `DeleteOnTermination: false`
-     (`ops/env.yml#L128`) leaves its empty root disk behind as an `available` volume, a few cents a
+     (`ops/env.yml#L151`) leaves its empty root disk behind as an `available` volume, a few cents a
      month: remove it. *Reasoned, not seen:* CloudFormation's deletion of the instance terminates it,
      so EC2's attribute governs (high confidence, never tried).
 
@@ -119,7 +127,7 @@ working copy.
 3. Run it again without `--plan`.
    - **REFUSED:** the change set removes or replaces something and nothing changed. If the plan's
      step names that change on purpose, run again with `--take <LogicalId>`; otherwise change the
-     template. `--take Box` leaves the old box running with the only copy of the records while the
+     template. `--take Box` leaves the old box running with the records' live file while the
      new box comes up empty: read [Reading what the fence kept](#reading-what-the-fence-kept) first.
    - **no changes:** the stack already matches the template.
 
@@ -236,6 +244,54 @@ GitHub's job and without a terminal.
    The address is in the local log of `ops/stack.sh env ridge` (never in a committed file or a
    public log).
 
+## Ridge down and back
+
+Two commands, each from the worktree at `main` (its `ops/` must match `origin/main`), in a terminal signed
+in to AWS with `gh` logged in. Both refuse every environment but ridge, and a stack that is not ridge's
+by its tags and parameters. The destroy asks for a typed name and cannot run from GitHub: the deploy role
+can only read its stack, so there is no timer either. Each log is the newest `<stamp>-<script>-ridge.log`
+in the credo root's `logs/`.
+
+1. Down, about 5 minutes. It reads the account, prints what will go, asks you to type `ridge`, switches
+   off the workflows that name `environment: ridge` (`ci.yml` and `seed.yml`, never `walks.yml`), then
+   deletes the box and its root disk, the UI bucket's files, the copy bucket's files and the bucket, the stack
+   (its records disk goes with it, after the stack's own snapshot of it, which stays) and the two log groups,
+   each read back as gone. `RIDGE_KEEP_DISK_SNAPSHOT=1` takes one more snapshot of the records disk first.
+
+   ```
+   cd <the worktree at main> && bash ops/destroy.sh ridge
+   ```
+
+2. Up, about 15 minutes. It runs `ops/stack.sh env ridge`, `ops/release.sh ridge`, `ops/app.sh ridge` and
+   `ops/check.sh ridge` in that order, then turns the two workflows on and reads them back active. A red
+   stops it at that step with the workflows still off; run it again.
+
+   ```
+   cd <the worktree at main> && bash ops/remake.sh ridge
+   ```
+
+3. The operator, whose one-time link you open at the new address to make your passkey (see
+   [the operator](#the-operator)).
+
+   ```
+   cd <the worktree at main> && bash ops/operator.sh ridge
+   ```
+
+What each log's last lines read:
+
+- The destroy's log has `== verdict: ridge is destroyed, ci.yml and seed.yml are off`, then
+  `== CLOSING, in plain words:` with the two commands above, and ends `== exit 0`. With no stack and no box
+  it reads `== verdict: ridge's stack and box were already gone, so nothing was destroyed by this run, and no workflow was changed`.
+- The remake's log ends `== ridge is remade from main and checked. It is empty: it holds no operator and no demo copy.`,
+  the operator's command, a line that the address may be new, then `== green` and `== exit 0`. A stop reads
+  `== stopped at step <n>/<total>, ops/<script> (exit <code>). No later step ran and the workflows stay off.`
+
+Ridge is empty after the remake. This command does not re-make the demo copies, and the records are gone with
+the disk. The app's address may be new, and a DNS record that points at the old one is repointed by hand.
+The address lane's two settings, `CREDO_DOMAIN` and `CREDO_CERTIFICATE_ARN`, are not in `main` yet: once the
+address lane lands, the remake's stack step takes them from your environment, passed through unchanged,
+and the certificate, outside the stack, survives.
+
 ## The demo copies' root password
 
 `ops/root-password.sh ridge <code>…` gives the root of each named demo copy a new password: typed
@@ -256,24 +312,53 @@ client's own stack is the console's. The why is
      naming no commit of main.
    - **error: the run stopped:** the lines above name the roots set and the roots not reached; those
      keep their old password. Run it again for the same codes.
-   - **<code> is not on this service:** that copy was never made at `/operator`; nothing was written.
+   - **<code> is not on this service:** that copy was never made (`ops/demo-remake.sh ridge` makes all six); nothing was written.
    - **the new password is in this log:** redact the log; nothing to replace.
+
+## The demo copies
+
+The six demo copies on ridge (two invented companies, three copies each, the codes in
+`scripts/src/demo/mapping.ts`) are made by one command, never made by hand in the console. It deletes each copy
+to zero records, makes it again under its partner's password and fills it with 21 days ending yesterday.
+Once, from a terminal; it takes about 2.6 hours (up to 4) plus your typing, and it refuses GitHub's job.
+
+1. On a ridge with no operator yet, first `ops/operator.sh ridge` ([the operator](#the-operator)); the
+   remake itself needs no operator. Use a worktree at `main` with `pnpm install` done, not while the seed runs.
+2. Run it, then type one password for each partner (`p1`, `p2`, then yours), each twice, and `remake ridge` when
+   it lists the six copies. A password is never shown, logged or kept.
+
+   ```
+   cd <the worktree at main> && bash ops/demo-remake.sh ridge
+   ```
+
+3. Read the log: it ends green, with each copy's sign-in read back. A line `== refused: <why>` (exit 2) means
+   nothing was touched. A red after the first delete (exit 1) depends on the step it stopped in, which the
+   log's last `[n/6]` line names:
+   - in "the remake" (the deletes and the makes): run the same command again, whole; it asks the passwords
+     again, finishes a deletion left half done and makes the copies again. `--go-on` is not a way on there: it
+     fills a copy that never got its partner's password, and the round now refuses it, naming the copy.
+   - in "the fill, in rounds" (a dropped tunnel, an AWS session that ended, a round that failed): run
+     `ops/demo-remake.sh ridge --go-on`, which runs the rounds left from the ledger, asks nothing and deletes
+     nothing. Unless the lines above say a copy is not remade: then the same command again, whole.
+   The fill waits about 160 minutes, and AWS must stay signed in until the clock time the log gives.
+4. Send each partner their link and password by your own channel. `/operator` is where you sign in
+   to see the copies, not where they are made.
 
 ## The seed
 
 The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
 somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
 runs `ops/seed.sh ridge` under the deploy role, at most 2 days a copy a run (about 15 minutes; the Seed step is limited to 18, inside the role's 20). The script makes no client and
-no password: the human makes each copy at `/operator` first, under its mapped code. The why is
+no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)). The why is
 [the plan](../docs/plans/2026-10-29-demo-seed.md#how-the-data-reaches-ridge).
 
-1. Make a copy at `/operator` under its code from the mapping (`scripts/src/demo/mapping.ts`), and
-   send its link and root password privately. Then run `ops/seed.sh ridge` by hand from a worktree at
-   `main` with `pnpm install` done, or run the workflow.
+1. Have the copies made first: `ops/demo-remake.sh ridge` makes the six in the mapping (`scripts/src/demo/mapping.ts`)
+   and fills them. Then run `ops/seed.sh ridge` by hand from a worktree at `main` with `pnpm install` done,
+   or run the workflow, to bring them up to yesterday.
 2. Read the log's lines: `seed: <n> copies mapped, <n> up to date, <n> not on this service, <n> days
    applied`, then `seeded <sha>`.
-   - **<code>: not on this service, left:** that mapped code has no client on ridge. Make it at
-     `/operator`; a mistyped code is not in the mapping, so it stays empty.
+   - **<code>: not on this service, left:** that mapped code has no client on ridge. Run
+     `ops/demo-remake.sh ridge` to make it; a mistyped code is not in the mapping, so it stays empty.
    - **<code>: holds more than a new client does, left:** its users used it before the seed filled it. It
      stays as it is; make a new copy under a new code.
    - **<code>: the ledger names client <X>, the mapping <Y>** (or **the ledger names <S>, the mapping
@@ -435,11 +520,13 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
 make the records come back, and **nobody has done either path below**: every step is written from
 what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked
 *untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. There
-is still no copy of any client's records anywhere else ([open item 6](../docs/open-items.md)). The
+is no copy of any client's records that has been read back: the continuous copy is built and has not run
+on an environment ([open item 6](../docs/open-items.md)), so the paths below are for a bad day before it. The
 first real run of either path is a drill, and until then treat these as notes for a bad day, not a
 rehearsed procedure. Region `ap-southeast-5`, your own AWS session, every `aws` line yours to run.
 
-The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`).
+The file to read in both is `/var/lib/c-storage/c-storage.db` (`DB_PATH`, `ops/c-storage.service`); on a box
+that has had a release with the copy it sits on the records disk, mounted where the state directory resolves.
 The unit is `DynamicUser=yes` with `StateDirectoryMode=0700`, so only root reads it: `sudo` on the
 box (`ops/release.sh` uses `sudo` for everything). *Untested:* systemd documents that a dynamic-user
 service keeps its state under `/var/lib/private/c-storage`, with `/var/lib/c-storage` a link to it.
@@ -466,7 +553,7 @@ outside any stack.
    If the group is gone, the box has no way in, and the way to read it is to stop the instance, detach its disk and follow the left-behind volume below.
 3. On the box, stop the service so the file is whole (`sudo systemctl stop c-storage`): the memo
    says a copy taken while it runs can miss commits held in the `-wal` file
-   ([the memo](../docs/memo/c-storage.md#the-file-is-the-only-copy)). Then
+   ([the memo](../docs/memo/c-storage.md#a-second-copy-follows-the-file-within-a-second)). Then
    `sudo ls -la /var/lib/c-storage/` and expect the `.db` file with no `-wal` beside it. *Untested:*
    that a clean stop leaves it so; if a `-wal` is there, copy the whole folder and keep all three files.
 4. Copy it out over the same connection, the way `ops/release.sh` sends files the other way:
@@ -488,20 +575,23 @@ The instance was terminated (console, or any act outside CloudFormation) and its
 status `available`.
 
 1. Find it: `aws ec2 describe-volumes --region ap-southeast-5 --filters Name=status,Values=available --query 'Volumes[].[VolumeId,Size,AvailabilityZone,CreateTime]' --output text`.
-   Pick by size (the stack's `VolumeSize`), by zone and by a `CreateTime` close to the box's launch.
-   *Untested:* the template tags the instance, not the disk, so expect no name on the volume.
+   The records are on the **records disk**, a separate whole-disk XFS volume tagged `Name` = `credo-<env>-records`
+   (`RecordsVolume`, `ops/env.yml`; a stack delete snapshots it too). The root disk, picked by the stack's
+   `VolumeSize` and a `CreateTime` close to the box's launch, holds only `c-storage.db.moved`, the records as
+   they stood before the copy began, which is old.
 2. Launch any instance in the same zone and attach the volume to it as a second disk
    (`aws ec2 attach-volume --volume-id <id> --instance-id <new> --device /dev/sdf`). The disk is
    encrypted under the account's default EBS key (`ops/env.yml` sets `Encrypted: true` and no key id),
    so the same account reads it. *Untested:* a way in to that instance: the repository only shows a box
    reached through the endpoint with `BoxGroup`'s port-22 rule, so the easy case is a new instance in
    the same subnet with that group, which exists only while the environment stack does.
-3. On it, find the disk with `lsblk`, and mount its root partition read-only. *Untested, expected:*
-   the root is XFS (`ops/env.yml`'s UserData comment), and XFS refuses a second filesystem with the
-   running root's id, so `sudo mount -o ro,nouuid /dev/<partition> /mnt`.
-4. Stop at `/mnt/var/lib/c-storage/c-storage.db` (or `/mnt/var/lib/private/c-storage/`): copy and
-   compare as in the retained box's step 4. Nothing was running on it, so no `-wal` is expected beyond what
-   the last stop left.
+3. On it, find the disk with `lsblk`. The records disk has no partition table: mount the whole device
+   read-only, `sudo mount -o ro,nouuid /dev/<device> /mnt` (XFS refuses a second filesystem with the
+   running root's id, hence `nouuid`). *Untested, expected.* A root disk is mounted the same way on its root
+   partition, for the old file only.
+4. Stop at `/mnt/c-storage.db` on the records disk (`/mnt/var/lib/private/c-storage/c-storage.db` on a root
+   disk from before the move): copy and compare as in the retained box's step 4. Nothing was running on it, so
+   no `-wal` is expected beyond what the last stop left.
 5. Remove the volume and the helper instance when the copy has been read, not before.
 
 ## The drill
@@ -509,9 +599,77 @@ status `available`.
 Once on a new box, and again when the unit, the templates or the box change. It breaks the known
 state, so release first.
 
-1. `ops/drill.sh ridge`; rows 13 and 14 of the plan's checks read green.
+1. `ops/drill.sh ridge`; rows 13, 14 and 17 of the plan's checks read green (row 17: the copy holds a code registered seconds before, and a restore to a moment before it does not).
    - **the box did not come back:** wait, then run `ops/check.sh ridge`; the reboot may be slow.
 2. `ops/check.sh ridge` reads green again.
+
+## Restoring the records
+
+The records are copied to the bucket a second at a time ([the plan](../docs/plans/2026-11-11-continuous-copy.md)).
+`ops/check.sh` reads the copy: red when the newest copy lags the last write by over five minutes, when the
+newest full copy is over six days old, or when the records disk is under 1 GiB free. c-storage keeps the time
+of its last write in memory only, so right after a restart (every release is one) there is none to compare
+with: the check then says plainly that **the lag was not read** and does not say the copy holds the last write.
+The drill reads the copy for real.
+
+1. `ops/restore.sh <env>` writes the newest copy to a new file, `restored-<stamp>.db`, on the records disk, and
+   touches nothing live. `--at <time>` (such as `2026-11-12T10:00:00Z`) restores the records as of that moment.
+2. To put a restore in place, `ops/restore.sh <env> [--at <time>] --onto-live`: c-storage stops, the live file and
+   its companions are moved aside (`c-storage.db.aside-<stamp>`, never deleted), the restored file takes the live
+   path and c-storage starts again. Refused on an environment that may hold real data ([on production](#on-production)):
+   restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
+   - **a records disk that holds no `c-storage.db`, while the bucket holds a copy** (a replacement box, or a
+     disk made blank): a release refuses it, blank or mounted by hand alike, and names the one path:
+     `ops/restore.sh <env> [--at <time>] --onto-blank`. It formats a disk with no filesystem, mounts it at the
+     records path and restores the newest copy (or the copy as of `--at`) onto it, with c-storage stopped and
+     never started in between; it runs on any environment, since nothing live exists there, and refuses a
+     c-storage that is running, a filesystem other than XFS and a disk that already holds a `c-storage.db`.
+     Then release again. **Never release before the restore, and never format the disk by hand first:** a
+     c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
+     copy. Not yet walked on a real blank disk.
+   - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
+## The watch
+
+Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),
+the back end's own errors, the back end refusing work under load (its function's `Errors` and
+`Throttles`), and the box failing its health check (`StatusCheckFailed`). Each alarm, and its return to
+normal, goes to the topic. With a Slack workspace ID and a channel ID the stack also makes AWS's Slack
+app's channel configuration, which carries the topic into your channel; with neither, the topic and the
+alarms exist and tell no one, and the output `Watch` says `alarms reach no one: no Slack channel`.
+Neither ID is a credential, and neither is written into any committed file.
+
+1. Your Slack steps, once (from AWS's page "Tutorial: Get started with Slack"):
+   1. In Slack, make a **private** channel: the alarms are yours, and the workspace may hold the
+      partners who post their answers there. Name it as you like.
+   2. In Slack's left pane choose **Automations** (or **More**, then **Automations**), **Browse Apps
+      Directory**, find **Amazon Q Developer in chat applications**, choose **Add**.
+   3. In the channel, type `/invite @Amazon Q`, then choose **Invite Them**.
+   4. In AWS's console, open **Amazon Q Developer in chat applications**; under **Configure a chat
+      client** choose **Slack**, then **Configure**. Slack's authorisation page opens: pick your
+      workspace at the top right, choose **Allow**. You will see the **Workspace details** page.
+   5. Copy the workspace ID from **Workspace details**, and the channel ID from Slack (right-click the
+      channel, **Copy Link**: the ID is the end of the link). Make no channel configuration in the
+      console; the stack makes it.
+2. The stack run, from a worktree at `main`, with both IDs in the environment of that one command
+   (`CREDO_SLACK_WORKSPACE_ID` and `CREDO_SLACK_CHANNEL_ID`): `ops/stack.sh env ridge --plan`, read
+   the change (a topic, four alarms, a channel and its role added, nothing changed or removed), then
+   the same without `--plan`. The log ends `== exit 0` and its outputs read `Watch = alarms reach
+   Slack`.
+   - **One ID without the other** is refused before any change set: a lone channel ID makes no channel.
+   - **`none` for one ID and a real ID for the other** is refused too: the template then makes no
+     channel and the run would still end 0.
+   - **Neither ID given on an update** keeps the stack's values. `none` and `none` turns the channel
+     off; on a stack that holds a channel that is a removal, which the guard refuses unless the run
+     takes `--take AlertsChannel --take AlertsChannelRole`.
+   - **A workspace ID changed later** is two runs, not one: the workspace ID and the configuration's
+     name are both fixed at creation, so a replacement would create the new configuration while the
+     old one still holds the name, and the update would fail and roll back. First `none` and `none`
+     with both `--take` flags above, then the new IDs.
+3. The forced alarm, once the app answers on the environment: the calls-failing alarm is put into its
+   alarm state by hand (`aws cloudwatch set-alarm-state`, in your own AWS session). Two messages
+   follow in the channel, the alarm and, at the next five-minute evaluation, its return to normal.
+   The alarm's history shows each action run. A forced alarm proves the path from alarm to channel,
+   not the metric under it.
 
 ## The ops job
 

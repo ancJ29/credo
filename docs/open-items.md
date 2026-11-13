@@ -12,9 +12,14 @@ such a trigger fires at that environment's stack, not at a stack for each client
 
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
 
-The old app counted each 5xx in its Lambda logs and posted it to a chat channel. Before the first
-client goes live, something must watch the BFF and the box; the machine proposes what watches,
-and where an alert lands is the human's (production).
+Written in `ops/env.yml`, guarded by `ops/test.sh` and not yet applied to ridge: four alarms (the
+API's `5xx`, the back end's `Errors` and `Throttles`, the box's `StatusCheckFailed`) send each alarm
+and its return to normal to one topic, and with a Slack workspace ID and a channel ID the stack makes
+AWS's Slack app carry the topic into one channel ([the runbook](../ops/README.md#the-watch), [the
+plan](plans/2026-11-11-slack-alarm.md)). Not built: the scheduled check that fails when the continuous
+copy lags or the disk is low, production's alarms (one more stack, the same four), and a spend alarm.
+Before the first client goes live the alarms must be applied and one forced; where an alert lands is
+the human's (production).
 
 ## 2. The plan's assumptions are unmeasured — *parked* until a review (the architecture plan, 2026-10-27)
 
@@ -51,25 +56,56 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The nightly backup and its restore, with no copy of the records yet — the machine writes it, the human runs it; waits for a signed client (the architecture plan, 2026-10-27)
+## 6. The continuous copy of the records, its check and its restore — built, not yet run on an environment; the machine wrote it, the human runs the changes and the drill (the continuous-copy plan, 2026-11-11)
 
-**There is no copy of any client's records. This item's backup half is open, and nothing below it is
-built.** The fence half is the backup-policy piece's (below).
+**The backup half is built and not yet run anywhere.** Litestream copies each save of the records file to
+the environment's own bucket under the box's path, and the scripts that check and restore it are written
+and guarded on written input ([the plan](plans/2026-11-11-continuous-copy.md)). Nothing in the bucket has
+been read yet: the bucket's key layout comes from Litestream's source and has not been seen against S3,
+and no restore has been read back. **What stays open is the human's runs** (the network change, ridge's
+change, the release, the drill), and the item closes when `ops/drill.sh ridge` has read a restored file
+holding a save made before it. The fence half is the backup-policy piece's (below).
 
-The box's role may only put, so it cannot restore itself: the restore runs from the human's
-terminal under the human's AWS session, reads a version from S3, and sends it to the box over the
-Instance Connect tunnel.
+How it is built, each line read off the scripts:
 
-The backup's copy goes through SQLite's own backup (`VACUUM INTO`, or the shell's `.backup`), or
-is taken with the service stopped: a plain tarball taken mid-write can miss saves or hold a torn
-file ([the c-storage memo](memo/c-storage.md#the-file-is-the-only-copy)).
+- **The copy:** `ops/c-storage.service` starts Litestream with c-storage as its child
+  (`litestream replicate -exec`), and waits on the records disk's mount (`RequiresMountsFor`). Its
+  configuration, `ops/litestream.yml`, syncs once a second, takes a full copy every 24 hours while the file
+  is written, and deletes nothing itself (`retention.enabled: false`); the bucket's own rule expires copies
+  after seven days. The records live on a disk of their own, which `ops/release.sh` mounts, formats when
+  blank, and moves the old file onto once (the old one kept as `c-storage.db.moved`).
+- **The box's role** may put, get and list under its own path in its own bucket, and holds no delete. So
+  the box restores itself, under its own role: `ops/restore.sh` runs on the box, not from the human's
+  terminal with a copy of Litestream on the Mac.
+- **The check:** `ops/check.sh` reads c-storage's `GET /api/status` on the box and the bucket's objects
+  under the box's path (`copy_status` and `copy_problems` in `ops/lib.sh`). It is red when the newest copy
+  lags the last write by over 300 seconds (`COPY_LAG_S`), when the newest full copy is over six days old
+  (`COPY_FULL_MAX_S`), when the bucket holds no copy or no full copy, or when the records disk has under
+  1 GiB free. c-storage keeps the time of its last write in memory only, so after any restart the lag cannot
+  be read, and the check's green line then says so and does not claim the copy holds the last write (a
+  reading that survives a restart is item 378 below).
+- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
+  default it writes a new file, `restored-<stamp>.db`, on the records disk and touches nothing live.
+  `--onto-live` stops c-storage, moves the live file and its companions aside (never deleted), puts the
+  restore on the live path and starts c-storage; it is refused on an environment that may hold real data
+  ([the runbook](../ops/README.md#restoring-the-records)).
+- **A records disk with no `c-storage.db` whose path in the bucket holds a copy is a restore, never a fresh
+  start:** the release refuses it (blank, or formatted and mounted by hand) and names `ops/restore.sh <env>
+  --onto-blank`, the one scripted path (format if blank, mount, restore, all before c-storage starts), since
+  an empty file would otherwise be copied over the real one.
+- **The copy's address carries the bucket's region** (`s3://<bucket>/<path>?region=<region>`, the release's
+  `copy.env`): Litestream takes its region from that query or its own config, never from `AWS_REGION`, and
+  with none it asks `us-east-1` where the bucket is, which the box's role does not grant and the box cannot
+  reach. From Litestream 0.5.18's source; not yet seen against S3.
+- **The drill:** `ops/drill.sh` gains a row that restores the newest copy and a copy to the box's clock
+  from before a registration, and reads the registration in the first and not the second. It is the human's
+  run on ridge.
 
-ridge, the first box, holds no real data, so the backup still waits for a signed client
-([the ridge plan](plans/2026-10-28-ridge.md#left-behind)). The S3 gateway endpoint (`ops/network.yml`
-holds none) and the box's put-only role (`ops/env.yml#L93`: "no instance role") come with it. Still
-to do, as one piece: the copy, a restore script run from the human's terminal, and a drill that
-reads a restored file, beside `ops/drill.sh`'s rows. Until a drill has read a restored file, nobody
-knows a copy would be readable.
+Three things stay unproven until the human's runs: that the region in the address is what lets Litestream start
+against the bucket, that full copies sit under `<path>/0009/` in S3 (from
+Litestream 0.5.18's own source, where the S3 client builds `<path>/0009/<name>`), and that a restore from
+an empty disk (`ops/restore.sh --onto-blank`) works on a real blank disk. Litestream makes no full copy of a file that has not been
+written, so a file idle for six days reads red on the check by design: the check is what notices it.
 
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
 in [the backup-policy plan](plans/2026-11-08-backup-policy.md); closed with that piece's recap commit; the
@@ -82,7 +118,7 @@ human's change set was run on ridge as `--plan` on 2026-11-08 at 16:44 and refus
 (`ops/lib.sh#L294`, as of `0f7d69c1`, `main` before the piece) — took every record with it. The item first asked for a
 `DeletionPolicy`/`UpdateReplacePolicy` of `Snapshot` or `Retain` "on the volume". Neither half could
 be written: there is no volume resource (the disk is a `BlockDeviceMappings` entry of `Box`,
-`ops/env.yml#L122-L128`), and on an `AWS::EC2::Instance`, which cannot snapshot, AWS's `UpdateReplacePolicy` page says CloudFormation reverts `Snapshot` to `Delete`, so
+`ops/env.yml#L145-L151`), and on an `AWS::EC2::Instance`, which cannot snapshot, AWS's `UpdateReplacePolicy` page says CloudFormation reverts `Snapshot` to `Delete`, so
 it would have read as protection and deleted the disk. What was done instead: `RetainExceptOnCreate` (deletion) and `Retain` (replacement)
 on `Box`, `DeleteOnTermination: false` on the device (for a console termination, which
 neither attribute reaches), a guard holding all three, a `ROLLBACK_COMPLETE` message that says the
@@ -92,7 +128,7 @@ survivable; nothing else changes.** A termination, a torn file, a bad write or a
 the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
 `--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
-`--take Box`), is not a backup: no copy exists and no restore has been run.
+`--take Box`), is not a copy: the copy above is the backup half, and it has not been run yet.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 
@@ -215,15 +251,6 @@ whether `runSteps` had settled when the 30 s ran out. The 240 s for every `visua
 
 Line 32's review (2026-11-01): at slice 3's step 4 `scripts`' `apply.test.ts` row 22 went red at 123 s of its 120 s, and `visual` ran 227.67 s of its 240 s (`logs/20261101-0942-driver-phone-red-scripts-generator-and-apply-timeout.log`).
 
-
-## 29. A deploy stopped between the function's description and its code leaves new words on old code — the machine; *parked* until the next change to `ops/app.sh` (the demo seed plan, step 8, 2026-10-30)
-
-`ops/app.sh` writes the BFF function's description (the commit `ops/seed.sh` compares with
-`/health`) before it writes the function's code. A deploy that stops between the two leaves a
-description naming the new commit on the old code, so the seed's check passes and it runs against a
-BFF that is a commit behind. It needs a deploy that is already red to bite, and the next one is
-red anyway. Fix: write the description after the code, in `ops/app.sh`, and a stand-in `aws` test in
-`ops/test.sh` that stops the code's write and reads the description unchanged.
 
 ## 30. Adding a passkey in Safari may be refused — the machine, with the human's 3 minutes; *parked* until the console is used in Safari (the operator console plan, step 8, 2026-10-30)
 
@@ -428,7 +455,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 ## 44. Time wording left from the 06:00 run — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
-`ops/seed.sh#L13` "Runs each morning" and `#L15` "about a minute" (now 8 to 10); `.github/workflows/seed.yml#L6-L7`, `ops/README.md#L199` and `#L214` "next morning" and "the morning's run". *Fix:* say night, 03:17 +07, and the run's real length. *Severity:* Low. *(Half done, half moot, 2026-11-08: the "each morning" and "next morning" wording is moot, since the schedule is gone and `seed.yml`'s header and `ops/README.md` were rewritten for an on-demand run, see item 151. The other defect, `ops/seed.sh`'s length line, was not fixed by that removal and is done in the fix pass of the same day: the header and the `ops/README.md` table row now say about 15 minutes for a run, longer for a first fill.)*
+`ops/seed.sh#L13` "Runs each morning" and `#L15` "about a minute" (now 8 to 10); `.github/workflows/seed.yml#L6-L7`, `ops/README.md#L199` and `#L214` (as the item was written; that wording is since rewritten) "next morning" and "the morning's run". *Fix:* say night, 03:17 +07, and the run's real length. *Severity:* Low. *(Half done, half moot, 2026-11-08: the "each morning" and "next morning" wording is moot, since the schedule is gone and `seed.yml`'s header and `ops/README.md` were rewritten for an on-demand run, see item 151. The other defect, `ops/seed.sh`'s length line, was not fixed by that removal and is done in the fix pass of the same day: the header and the `ops/README.md` table row now say about 15 minutes for a run, longer for a first fill.)*
 
 ## 45. The closed-day change: small things — the machine; *parked* until after the 11-04 demo (seed-demo-safe, review of line 42, 2026-11-02)
 
@@ -437,7 +464,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 - `apply.ts#L359`: the "closed, sent nothing" line is logged for every closed driver, is not in `report.skipped`, and is absent from the log lines `ops/README.md` lists.
 - `scripts/src/demo/apply.first-fill-orders.test.ts#L377`: the closed record is written straight to storage, so that driver's requests stay waiting.
 - A close between `closedFor` and the confirm still answers 400. *Corrected 2026-11-08:* it was called negligible at 03:17, and there is no 03:17 any more: the seed runs when somebody asks, in the daytime, when a tester may be closing a driver's day, so a collision is likelier, not negligible. What it does when it happens: the 400 is no 404 or 409, so `unlessChanged` does not skip it and the copy's run stops with an error; the run ends red, the ledger stays on the last finished day, and running the seed again repeats that day (orders already there are skipped, the closed driver is now left out), so nothing is doubled. One thing is lost: the order whose confirm took the 400 stays a draft for good (the repeat sees it "already there" and skips it), so that day on ridge ends one delivered order short. Cheapest fix if it bites: treat that one 400 as a skip like the 409. It is not made.
-- `ops/test.sh#L759`: the 15-minute check matches any step, and `#L754` is now redundant.
+- `ops/test.sh#L1139`: the Seed step's minutes check (18 now, 15 when this was written) matches any step, and the `stepmin` read at `#L1141` makes it redundant.
 - `docs/plans/2026-11-02-seed-demo-safe.md#L5`: "10:4x" reads 10:47.
 
 ## 46. The root-password door's read-back ignores its sign-out reply — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding L3)
@@ -466,7 +493,7 @@ Found by the line 35 review (Opus 5.5, 2026-11-01 14:27, `review-a`@`beeaedb`; i
 
 ## 50. Every ops run's keys go through grep's argv and bash 3.2 here-strings — the machine; *parked* until after the 11-04 demo (ridge-root-password, review of line 41, 2026-11-02, finding I2)
 
-`ops/lib.sh#L121`, `#L126`, `#L164`, `#L497-L498`, `#L702-L703`: the keys the end-of-run search looks for are on grep's argument list, and a here-string is written to a temp file by bash 3.2 (the Mac's). *Fix:* one lib.sh change: split without here-strings and `grep -f /dev/stdin` on a pipe, as `search_extra` in `ops/root-password.sh` does.
+`ops/lib.sh#L122`, `#L127`, `#L165`, `#L609-L610`, `#L814-L815`: the keys the end-of-run search looks for are on grep's argument list, and a here-string is written to a temp file by bash 3.2 (the Mac's). *Fix:* one lib.sh change: split without here-strings and `grep -f /dev/stdin` on a pipe, as `search_extra` in `ops/root-password.sh` does.
 
 *Narrowed 2026-11-12 (the safe scripts' fix pass):* the deploy check no longer reads the BFF's function settings whole, whose variables hold its two access keys and went through here-strings on every environment, production's included; it reads only the names and two non-secret values (`BFF_FN_QUERY` in `ops/lib.sh`), and a case holds that the stand-in refuses a read without that query. What stays is the box's key files read through here-strings (`read_keys`, `bff_env_read`) and the search's argument list.
 
@@ -797,7 +824,7 @@ Deferred from line 64.1's review, not a fault of the piece. The customer save re
 
 *Readable half, done in the access log (`docs/plans/2026-11-08-access-log.md`):* the one stage now has an access log, `ApiLogs` at `/aws/apigateway/credo-${Env}` for 14 days, and a guard in `ops/test.sh` (`api_log_guard`) that reddens if a later change takes it away. **It is live on ridge**: the change set ran green there at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`) and three lines were read back at 18:12 (`logs/20261108-1809-ridge-access-log-read.log`). **The wall is not done and stays open and parked as the human's**; this closure covers only the readable half, never the signed origin, the key or the WAF. The log does not name the client whose records were read (item 152). **More useful than written, measured 2026-11-08 18:11:** a call through the distribution left a line carrying one public address consistent with the caller's own, so a guessing run against a real client would leave its own address in the log, which is what this item wanted to be able to read; one run, cause open (item 157). As filed:
 
-The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and, then, nothing logged at the stage (the function's own group already held a line per request, which this item did not say); the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L250-L252`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
+The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and, then, nothing logged at the stage (the function's own group already held a line per request, which this item did not say); the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L285`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
 
 ## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
@@ -852,10 +879,10 @@ seen stopping part way, or the first deletion of real records.
 ## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; *parked* until a key must be replaced, or before a client's own stack (the client-readiness read, 2026-11-07)
 
 c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
-never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L487-L490`). The
-BFF's own service code and access key are made once the same way (`ops/app.sh#L99-L114`, "present, left as it is").
+never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L598-L601`). The
+BFF's own service code and access key are made once the same way (`ops/app.sh#L100-L115`, "present, left as it is").
 Nothing in `ops/` rotates any of the four: there is no script, and no order written down. The two the BFF needs sit
-in the function's environment as plain variables (`ops/app.sh#L131-L137`), so anyone in the account who can read a
+in the function's environment as plain variables (`ops/app.sh#L134-L140`), so anyone in the account who can read a
 function's configuration reads them, which `ops/check.sh#L140` notes while taking care not to print them. Rotating
 by hand means editing the box's file, re-pushing the function's environment and re-registering the service, in that
 order. *Fix:* one script that does the three in order and reads back, or the order written into `ops/README.md` as
@@ -945,7 +972,7 @@ smallest first use and does not need one if a one-time link shown on the root's 
 
 ## 142. Files under `scripts/node_modules/` are executed by the ops scripts and nothing compares them with the lock — the machine; `[OPEN]` (tree guard, review of the guard, 2026-11-07, Low)
 
-`ridge_cli` runs `node --import tsx src/ridge-main.ts` out of `scripts/` (`ops/lib.sh#L635`), and node loads the packages in `scripts/node_modules/` as well as the source. The tree guard (`ops_match_main`, `ops/lib.sh#L180-L218`) compares the tracked and untracked files git does not ignore under the paths `ci.yml` deploys on, plus `.gitignore`; `node_modules/` is ignored (`.gitignore#L41`), so a changed file there is not compared, and nothing verifies the install against `pnpm-lock.yaml`. The deploy job installs with a frozen lock on a fresh checkout, so the hole is the by-hand run on a machine whose install was altered. Its message says only what is compared. *Fix:* a check by hand that the install matches the lock (`pnpm install --offline --frozen-lockfile` leaving nothing changed, or a stamp of the lock's hash written at install and read by the guard). *Trigger:* before a second person runs the ops scripts by hand, or a client's own stack.
+`ridge_cli` runs `node --import tsx src/ridge-main.ts` out of `scripts/` (`ops/lib.sh#L727-L728`), and node loads the packages in `scripts/node_modules/` as well as the source. The tree guard (`ops_match_main`, `ops/lib.sh#L180-L218`) compares the tracked and untracked files git does not ignore under the paths `ci.yml` deploys on, plus `.gitignore`; `node_modules/` is ignored (`.gitignore#L41`), so a changed file there is not compared, and nothing verifies the install against `pnpm-lock.yaml`. The deploy job installs with a frozen lock on a fresh checkout, so the hole is the by-hand run on a machine whose install was altered. Its message says only what is compared. *Fix:* a check by hand that the install matches the lock (`pnpm install --offline --frozen-lockfile` leaving nothing changed, or a stamp of the lock's hash written at install and read by the guard). *Trigger:* before a second person runs the ops scripts by hand, or a client's own stack.
 
 ## 143. `RIDGE_SCRIPTS_DIR` lets the code the ops scripts run sit outside the guarded tree on ridge — the machine; `[DEFERRED]` (tree guard, review of the guard, 2026-11-07, Low; narrowed 2026-11-12)
 
@@ -999,7 +1026,7 @@ A record's key is its uuid, not its code (`bff/src/routes/lists.ts#L116`, `#L157
 
 ## 152. No line names the client whose records were read: the stage's access log cannot carry the client's code — the machine; `[OPEN]` (the access log, 2026-11-08, Low: ridge holds no real client records today, and the path already names a record id on detail routes, so the gap costs nothing until a client signs)
 
-**What is known.** The stage's access-log format (`ops/env.yml#L284-L286`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/routes/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
+**What is known.** The stage's access-log format (`ops/env.yml#L318-L320`) can name only `$context` variables, and the client's code arrives in a request header, so it cannot go in a line at the door. What the line does carry is the path, and the detail routes put the record's minted id in it (`/api/employees/<id>`, `bff/src/routes/employees.route.test.ts#L1285`), so "which record, when, from where" is answered for those routes and "whose" is not. The function's own request line (Fastify's default logger, on since `bff/src/lambda-main.ts#L3` passes no options) is a second trail; whether it holds the client header, or an id that matches the stage's `requestId`, is **not verified** here.
 
 **What is not known.** Whether the two lines can be joined by a shared request id, and whether the BFF should write one line of its own with the client's code and the record read. Neither was looked at; this item records the gap so it is not left silent.
 
@@ -1031,7 +1058,7 @@ Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-rea
 
 ## 158. The blank-`--take` rows pin the symptom, not the order of the two lines that produce it — the machine; `[DEFERRED]` (the change-set-cause piece's review, 2026-11-08, Low)
 
-`ops/stack.sh#L44-L45` must keep `[ $# -ge 2 ] || usage` above `[ -n "$2" ] || usage`: under `set -euo pipefail`, the reverse order turns `--take` as the final argument from a usage message with exit 2 into `$2: unbound variable` with exit 1. The two new rows (`ops/test.sh#L2544-L2549`) assert exit 2 and no verdict line, but both pass `--take ''`, so `$2` exists and both orders exit 2 there; only the final-argument case differs, and no row runs it. So a future edit could swap the two lines and every check would stay green, while an operator's mistyped `--take` died on an unbound variable instead of being told what it got wrong. A small, real gap, not a defect. *Fix:* one row asserting that `--take` as the final argument, with nothing after it, exits 2 specifically. *Trigger:* the next edit of that parser.
+`ops/stack.sh#L44-L45` must keep `[ $# -ge 2 ] || usage` above `[ -n "$2" ] || usage`: under `set -euo pipefail`, the reverse order turns `--take` as the final argument from a usage message with exit 2 into `$2: unbound variable` with exit 1. The two new rows (`ops/test.sh#L2863-L2868`) assert exit 2 and no verdict line, but both pass `--take ''`, so `$2` exists and both orders exit 2 there; only the final-argument case differs, and no row runs it. So a future edit could swap the two lines and every check would stay green, while an operator's mistyped `--take` died on an unbound variable instead of being told what it got wrong. A small, real gap, not a defect. *Fix:* one row asserting that `--take` as the final argument, with nothing after it, exits 2 specifically. *Trigger:* the next edit of that parser.
 
 ## 159. A failed sweep or a failed check-client delete is announced only by a `WARN` nothing reads, and a half-swept client cannot be resumed — the machine; `[DEFERRED]` (clear-test-clients-sweep, review of line 77.1, 2026-11-09, Low)
 
@@ -1064,7 +1091,7 @@ formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Wo
 and `#L37` carry suppression comments written for a checker that never reads them, telling the next
 reader the opposite of the truth. The small Node file that proves a request run actually asserted
 something (`services/c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
-`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L466`, one line each, then delete or
+`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L569`, one line each, then delete or
 correct the two comments. *Trigger:* none needed; it is one line and a read.
 
 ## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
@@ -1401,6 +1428,23 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
 
+## 301. A revert of what production runs waits for `pre-merge`'s whole check, which runs at most every two hours — the machine, by the conventions kind; *parked* until the production plan's rehearsal reads the way back's minutes (the production plan, 2026-11-12)
+
+The way back from a bad release is a revert that travels the whole path: the piece's branch,
+`pre-merge`, the whole check, `main`, the human's push, ridge's deploy, then the production lane
+([the plan](plans/2026-11-12-production.md#hazards-no-gate-catches)). `docs/conventions/qa.md`'s
+"The whole check on `pre-merge`" runs that check at most once every two hours, so a revert landing
+soon after a run waits up to two hours before `main` may move. Fix: one line in that section, that a
+revert of the commit production runs starts the whole check at once, outside the two-hour cadence.
+*Trigger:* the rehearsal's minutes, or the first real revert of a production release.
+
+## 302. The production lane's read job holds ridge's whole deploy role to read one commit — the machine; *parked* until a second reader of ridge's commit or a review asks for it (the production plan, 2026-11-12)
+
+The lane's first job takes ridge's deploy role, which can also release to ridge, only to read what
+ridge runs and that its run was green ([the plan](plans/2026-11-12-production.md#decided-the-machines),
+decision 2). The seed workflow takes the same role for its own reading. A read-only role for ridge's
+commit would narrow it, at one more role in `ops/env.yml` and one more secret. *Trigger:* a second
+workflow that only reads ridge, or a review finding on the read job's rights.
 ## 283. The company's client throws synchronously from methods typed to return a Promise — the machine; `[DEFERRED]` (the storage client that serves one company's review, 2026-11-12, Low)
 
 `bff/src/records/records.ts`'s `tenantStorage` refuses a foreign key by throwing before it sends, from four methods typed to return a Promise, and `bff/src/records/records.test.ts` pins that shape (`expect(() => ...).toThrow`). Every caller today is an `await` inside an async function, so the throw becomes that function's rejection and answers 500. The one place a synchronous throw would escape is a `.map` inside `Promise.all` in `bff/src/records/clients.ts`, where removes already sent would be left with no handler; that site sweeps keys c-storage listed under the company's own prefix, so the throw cannot happen there today. No change is required. *Fix, if taken:* make the four methods `async`, keeping `within` first so nothing is sent, and change the tests to `await expect(client.getRecord(key)).rejects.toThrow(...)`. *Trigger:* a new caller that calls one of the four methods outside an `await`.
@@ -1411,19 +1455,15 @@ A row cited twice in one document is the one shape where two branches each remov
 
 ## 296. By hand, `ops/release.sh` and `ops/app.sh` ship any commit of `main` to production, one ridge never ran included — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Medium)
 
-Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L47`, `#L91`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
+Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L48`, `#L92`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
 
 ## 297. `ops/stack.sh` rewrites an environment's GitHub environment on every run, and whether production's protection rules survive it is unread — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Low)
 
-Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L294-L296`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
+Each `ops/stack.sh env <name>` run sends a body naming a branch policy and no reviewers (`ops/stack.sh#L296-L298`). If production's act rests on rules set on its GitHub environment (required reviewers, a wait), a later stack run may clear them; GitHub's own words on what an update keeps were not read. *Fix:* read GitHub's page (the fetch kind), then keep the rules the update would drop, or set them in the same call. *Trigger:* the production lane choosing a protection rule.
 
-## 314. Ridge has no teardown script, and no workflow to press one — the machine; *parked* until the human brings it back (ridge by script's plan, 2026-11-12)
+## 314. Ridge's teardown has a terminal script, and still no workflow to press it — the machine; *parked* until the human brings the workflow back (ridge cycle, 2026-11-12)
 
-The one teardown, on 2026-11-08, was a one-off outside git, read by a second model and corrected six times before it ended green. `ops/stack.sh`'s commands hold no `down` or `delete`. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)", so the script waits with its workflow. What it must hold is on that page: the workflows off first, the bucket emptied before the stack goes, the box and its disk taken apart, and a gate that is not a terminal. *Trigger:* the human asks for it, or the next teardown of ridge.
-
-## 315. One press of the seed should reach yesterday, however long the copies went unused — the machine; *parked* until the human's answer at ridge by script's step 8 (2026-11-12)
-
-Today a press applies at most 2 days a copy (`MAX_DAYS_PER_RUN` in `scripts/src/demo/apply.ts`), held under the Seed step's 18 minutes and the role's 20 by `ops/test.sh`, so after a gap of n days the copies need about n/2 presses. Recommended to the human: a copy more than 2 days behind skips to the last 2 days, and the days skipped stay empty and are named in the log. Before it is planned, read which of a skipped day's events later days need: the people hired and leaving (`dayEvents`) are not orders. *Trigger:* a yes at that point.
+`ops/destroy.sh ridge` and `ops/remake.sh ridge` now take ridge down and back up from a terminal ([the runbook](../ops/README.md#ridge-down-and-back)). What stays parked is the workflow half. The human's word on the deploy ideas page, 2026-11-10: "For the teardown part, let skip it from github action for now (will add later)". The deploy role can only read its stack, so a press needs a role that may delete, and the destroy's typed name needs a gate that is not a terminal. *Trigger:* the human asks for the workflow.
 
 ## 322. The stance test reads only calls at column 0, so a new script that calls `main_synced` indented is skipped without a word — the machine; `[OPEN]` (review of the safe scripts, 2026-11-12, Low)
 
@@ -1474,3 +1514,88 @@ Gap 4 and the passage near it say what the wait leaves: one guesser trying many 
 ## 342. `scripts/src/running/claim.ts`'s draft cleanup is pinned by no case, so deleting it stays green — the machine; `[DEFERRED]` (the root-proof tests' review, 2026-11-12)
 
 `claim.ts`'s `rmSync` of the draft after a failed write is run by every failing case but asserted by none: each fails at the folder's creation, before any draft exists. The case it guards, a written draft whose rename then fails, cannot be staged as root without a mock (a directory standing at the claim's name throws earlier, at the existence check). *Fix:* pin the draft's removal on a failed rename with a mocked `renameSync`, or drop the line as unreachable. *Trigger:* the next change to `claim.ts`.
+
+## 261. The layer-four change-set test reads every resource the template gains as layer four's — the machine; `[FIXED]` in the Slack alarm's fix pass, 2026-11-12 (the Slack alarm's plan, 2026-11-11, Medium)
+
+`adds_and_one_modify` in `ops/test.sh` compares the recorded layer-four change set (`ops/testdata/changeset-app.json`) with every resource of `ops/env.yml` outside a fixed list of five, so any piece that adds a resource to the template turns `bash ops/test.sh` red there, whatever the resource is for. Three lanes of the final architecture add resources to that template at once (the continuous copy, the watch, the front door's key), and each would meet the same red and change the same lines. *Fix:* pin layer four's own resource names in the test, so the recorded change set is compared with the resources it recorded and a later resource leaves it alone; the first lane to land does it, the later ones take it in and add nothing (docs/plans/2026-11-11-slack-alarm.md, step 2). *Trigger:* the first of those lanes to change `ops/env.yml`. *Fixed 2026-11-12:* `adds_and_one_modify` now pins layer four's sixteen names, compares the recorded change set's Adds with them and checks the template holds each; a resource a later piece adds to the template leaves it alone (three new rows).
+
+## 365. A changed Slack workspace ID is two runs by the runbook, which no real run has shown — the machine; `[OPEN]` (the Slack alarm's review, 2026-11-12, Low)
+
+`ops/README.md` ("The watch") now says a changed workspace ID is `none` and `none` with `--take AlertsChannel --take AlertsChannelRole` first, then the new IDs, because the channel's configuration name is fixed and both it and the workspace ID need a replacement that would create the new one while the old still holds the name (CloudFormation's page for `AWS::Chatbot::SlackChannelConfiguration`). The review read that page and did not run it; the stack run on ridge has not been made yet. *Fix:* read the first real change of a workspace ID, or the change set of the second run, and correct the runbook if the replacement works in one run. *Trigger:* the first change of the workspace ID on any stack, or the stack run on ridge.
+
+## 366. Whether AWS lists parameters on a `REVIEW_IN_PROGRESS` stack is unread; the Slack IDs now take no previous value on a creation either way — the machine; `[OPEN]` (the Slack alarm's review, 2026-11-12, Low)
+
+`slack_param_plan` in `ops/lib.sh` answers `previous` only when the run is not a creation (`CS_TYPE` is not `CREATE`), because a creation would otherwise send `UsePreviousValue` for a parameter that has no previous value. A stack left in `REVIEW_IN_PROGRESS` is a creation (`ops/lib.sh#L346`). The review could not tell whether `describe-stacks` lists the template's parameters on such a stack; the guard is a precaution that costs nothing either way. *Fix:* on the next real run that meets such a stack, read what `describe-stacks` returned; if it lists none, the extra condition is dead and goes. *Trigger:* a stack run meeting `REVIEW_IN_PROGRESS`.
+
+## 367. The forced alarm's count of actions run rests on AWS's wording for a successful action, not seen on a real run — the machine; `[OPEN]` (the Slack alarm's review, 2026-11-12, Medium)
+
+The one-off `watch-force` counts an alarm-history Action item as a success when its summary starts "Successfully executed action" or its data says `actionState` is `Succeeded`, and waits for two delivered notifications in the topic's metrics. Both shapes come from AWS's reference examples and the reviewer's reading, and a failed action is counted nowhere; the field names and the delivered count's lag are untested against a real alarm. *Fix:* after the first forced alarm on ridge, read the log, and set the filter to the exact fields seen. *Trigger:* the first run of the forced alarm.
+
+## 368. The watch's two one-offs leave three smaller gaps — the machine; `[OPEN]` (the Slack alarm's review, 2026-11-12, Info)
+
+`watch-stack` gives no end time for its wait; neither one-off refuses when ridge is absent (the stack script would then create the whole environment); and step 10 of the plan counts "seven Add lines", which becomes two if ridge is rebuilt from `main` after the merge. AWS also says a metric alarm returns to its state "quickly, often within seconds", where the runbook, the force script's header and the plan say about five minutes, so the two messages can arrive close together. *Fix:* print an end time, add a refusal when the ridge stack is absent, and say "two or seven" at step 10. *Trigger:* before the stack run on ridge.
+
+## 369. The destroy's stop line names every workflow as off, though only the ones this run switched off are — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh`, the stop line near `#L87` with the disable at `#L346-L362`: `WF_OFF=1` is set once the first workflow is off, and the line then says "the workflows (ci.yml and seed.yml) were switched off, and they are still off". If `seed.yml`'s disable fails under `set -e`, or its read-back finds it still `active` (`#L362`), the line is false for `seed.yml`; in the second case the line above it says so. *Fix:* make `WF_OFF` the list of workflows this run switched off or found off, added to as each disable returns; at `#L362` take the one that read back active out of the list before the `fail`, and have the line name the list. *Trigger:* the next change to the destroy's stop line, or before the rehearsal on ridge.
+
+## 370. After the box is terminated, the destroy's stop line tells the reader to run the remake, which a half-deleted stack cannot take — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh`, the same line near `#L87`, from the terminate at `#L406` until the stack reads back gone at `#L456`: it says to bring ridge back with `ops/remake.sh`. On that stretch the stack still stands with its box gone; the remake's first step updates that stack and waits for a box that does not come (`stack.sh#L285`), and a stack in `DELETE_FAILED` (`#L454`) refuses any update. Not run: no test runs a remake on a half-deleted stack. *Fix:* set a flag just before `#L406`; once set, the line says part of ridge is already deleted, to run `ops/destroy.sh ridge` again until it ends on its verdict, then `ops/remake.sh ridge`. *Trigger:* the same as item 369, or the first real stop in that stretch.
+
+## 371. The rerun the stop line advises cannot see the disk, and ends saying the disk is gone — the machine; `[DEFERRED]` (the reread of the ridge cycle's fix pass, 2026-11-12, Low)
+
+`ops/destroy.sh#L226-L240`: the disk outlives the box (`DeleteOnTermination: false`, `env.yml#L128`). After a stop between the box's termination and the disk reading back gone (`#L419`, `#L422`, `#L423`, `#L427`), a rerun finds the box terminated and clears `BOX`, never reads `VOL`, skips step 6d and the last read at `#L485`, deletes the stack, and ends on "Gone: the box and its disk" (`#L518`). The disk is still there, holding the records and still billed. This is the original code; the stop line now sends people to it. *Fix:* on a stop in that stretch, the line names the disk `$VOL` and says a rerun cannot see it, so it is kept or deleted by hand; or, when the box is already terminated, the stack path lists the unattached volumes, as the no-stack path does at `#L320-L324`. *Trigger:* the same as item 369.
+
+## 372. `slack_params_guard` passes the `add_slack_params` call moved inside the creation branch — the machine; `[DEFERRED]` (the Slack alarm's reread of the fix pass, 2026-11-12, Low)
+
+The guard in `ops/test.sh` counts the call once and asks for `add_param BoxPort` within the three lines above it, so the call moved to the first line under `if [ "$CS_TYPE" = CREATE ]` still passes, although its message says "before the creation and update paths split". The loss on an update would be loud: no Slack parameter is sent, the parameters fall to the default `none`, and the change-set guard refuses the channel's removal at `--plan`. *Fix:* pin the env branch's depth (the call at four spaces) or check that the next line is the creation `if`. *Trigger:* the next edit of the env branch of `ops/stack.sh`.
+
+## 373. The forced alarm reads a failed action as "not seen" after 14 minutes, not as failed — the machine; `[DEFERRED]` (the Slack alarm's reread of the fix pass, 2026-11-12, Low)
+
+The one-off `watch-force` counts only successful Action items, so a refused publish leaves the count at 0 and the run ends "not seen by" the deadline; the next reader hunts a lag instead of a failure. *Fix:* count the "Failed to execute action" items beside the successes and name them in the note. *Trigger:* the first run of the forced alarm (with item 367).
+
+## 378. The check cannot read the copy's lag after a restart, and the deploy job's check always runs just after one — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 2)
+
+c-storage keeps the time of its last write in memory only (`lastWriteAt` in `services/c-storage/internal/store/store.go`), so after any restart, and every release is one, the check has no write time to compare the newest copy with. The fix pass made the check say so (its green line reads "the lag was NOT read" and no longer claims the copy holds the last write); it did not make the reading. *Fix:* a reading that survives a restart, read on the box under `sudo` as `copy_status` already is: compare the newest local level-0 file name under `.c-storage.db-litestream/ltx/0/` with the bucket's largest `0000/` key (equal maximum transaction ids mean everything written is copied, with no clock), or take the mtime of the file and its `-wal` as the floor of the last write. *Trigger:* the drill on ridge, which reads the copy for real; until then Litestream stopping while saves go on is seen only by a check run after a save.
+
+## 379. The six-day red names no action — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Info)
+
+When the newest full copy is six days old, the check is red and nothing in the runbook says what to do. Without a write Litestream makes no new full copy, and the bucket's rule removes the only one on day seven. *Fix:* one line in the restoring section of `ops/README.md`: a write (or the drill) makes a new full copy, and a red at day six is to be answered before day seven. *Trigger:* the first six-day red, or the drill's close.
+
+## 380. Three sentences say c-storage "holds the only copy of the data", which stops being true at the drill — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Info)
+
+`services/c-storage/internal/config/config.go` (its first comment, there to justify fatal configuration errors, a reason that still holds), `ops/unsafe-changes.jq` (its opening comment) and a comment in `ops/test.sh` carry the sentence. *Fix:* reword each with the recap or at the drill's close, once a restore has been read back. `services/audit-backbone`'s same sentence stays true. *Trigger:* the drill's close.
+
+## 381. The blank-disk restore has not been walked, and the restored file's owner is left to systemd — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 3)
+
+`ops/restore.sh <env> --onto-blank` (`box_restore_blank` in `ops/lib.sh`) formats a disk with no filesystem, mounts it and restores onto it as root with mode 600, then the release starts c-storage as its dynamic user. It relies on systemd re-owning the state directory's contents when the unit starts (documented for `StateDirectory=` with `DynamicUser=`, never seen here), and it has run only on stand-ins and as text guards. *Fix:* none until seen; if c-storage cannot open the restored file, `chown` it to the directory's owner in the script. *Trigger:* the first replacement box, or the drill if it is made to walk a blank disk.
+
+## 382. The destroy's copy-bucket and records-disk steps have run only on stand-ins — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 1)
+
+`ops/destroy.sh` now empties and deletes the copy bucket and reads back the stack delete's snapshot of the records disk (`RecordsVolume` has `DeletionPolicy: Snapshot`, so the stack delete takes one and deletes the disk); it also accepts a box with the records disk attached. All of that is read from AWS's documented behaviour and exercised on `ops/test.sh`'s stand-in for `aws`; it has not run against a real stack. The snapshot the stack delete leaves stays until the human deletes it (a few cents a month). *Fix:* none until seen. *Trigger:* the next `ops/destroy.sh ridge` after ridge holds the copy. Two reread notes, deferred: (a) the destroy counts the copy bucket's files before the prompt, while the box still runs and Litestream still uploads, and compares that count with what `aws s3 rm` reports in 6e2 after the box is terminated; an upload in between makes them differ and the run stops with the box and its root disk already deleted (a rerun counts again and finishes). *Fix:* count again after 6c, or compare with the listing taken after the delete alone. (b) Not read: how the stack delete treats `RecordsAttachment` once 6c has terminated the box, which detaches the disk first; a `DELETE_FAILED` there would show at 6f's read-back.
+
+## 383. The ci fix's new case tests the error handler, not the new order, and the child ports can still collide — the machine; `[DEFERRED]` (the review of the ci fix, 2026-11-12, Low)
+
+`scripts/src/stack.test.ts` "fails at once, naming the port, when the front's port is taken, and takes down what it had started": without the `error` handler it hangs, so the handler is tested; but with the old start order plus the handler every assertion would still pass, so the new order (the front bound first) is not tested. Its title also promises more than it checks: it asserts only `EADDRINUSE`, not the port, and only c-storage's being down, not the audit service or the seed door. The race the diagnosis named is closed only for a front port the stack picks. The two cases that pick the front's port with `freePort()` and the four child ports of every stack (c-storage, the BFF, the audit service's two) are still picked and bound later; if one is taken it is now a fast red naming `EADDRINUSE` or "exited", never a hang. *Fix, if wanted:* assert `toThrow(String(front))` and that the audit service's `/health` refuses.
+
+## 384. The demo copies' remake restates the fill's numbers in bash, so a change to the history length leaves its notice and closing line false — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Low)
+
+`ops/demo-remake.sh` holds `WAIT_MIN=160` and "21 days" in its closing line; they restate `HISTORY_DAYS`, `DAYS_PER_ROUND` and the 7.5-minute measure in `scripts/src/demo/apply.ts`. A change to `HISTORY_DAYS` leaves both false with everything green, and the run's case 14 pins the literal "21 days". `--go-on` also announces 160 minutes whatever is left. *Fix, if wanted:* have `mapping_read`'s node call also print the two constants (the test's stand-in half then copies `apply.ts`'s constants too), and compute the wait and the closing line from them. *Trigger:* the next change to `HISTORY_DAYS` or `DAYS_PER_ROUND`.
+
+## 385. The scripts tests may take about 12 minutes on GitHub at the 21-day fill, inside `app`'s 25 — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Low; needs a run to be certain)
+
+Locally the scripts package went from 116 to 130 s to 215.5 s with the 21-day fill; on GitHub the 7-day fill already ran it in 391.6 s, and `src/stack.test.ts` died at the 120 000 ms test timeout in that run. The fill-heavy files roughly triple (`apply.up-to-yesterday`, `demo.test.ts`, `pnpm-demo`'s row 22). Projected, each test stays under 120 s (row 5 about 33 s, row 22 about 50 s) and the package runs about 12 minutes, inside `.github/workflows/ci.yml`'s 25. Being wrong costs one red push and one fix pass. *Trigger:* the push's CI run for this piece: read the scripts step's time and any test near 120 s.
+
+## 386. The remake step of the demo copies prints no line while it runs and has no tunnel check — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Info)
+
+The deletes, six makes and six first fills (`ops/demo-remake.sh`, the node call under "the remake") print nothing every 30 seconds, unlike a round, and nothing asks whether the tunnel is still up. It should take minutes, but the first fill is unmeasured. A drop there ends the run red by node's failed calls and names the same run again, which is right. *Fix, if wanted:* run it as a round runs (a ticker and `tunnel_up`). *Trigger:* the first run that waits in this step for more than two minutes.
+
+## 387. `ridge-seed.test.ts` no longer asserts the exit status of seven of its runs — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Info)
+
+The old test asserted every run's status; with the 21-day fill the loop of seven extra runs (`for (let night = 0; night < 7; ...) await run()`) asserts none. The ledger's `lastDay` moving exactly 14 days over them covers it in practice. *Fix, if wanted:* collect the statuses and assert them all 0. *Trigger:* the next edit of that test.
+
+## 388. Another ui test counts an api load right after a heading drawn on the page's first render, with no wait — the machine; `[DEFERRED]` (the ui race fix, 2026-11-12, Low)
+
+The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, then a call count at once, while the load starts in a `useEffect`): one more case has it, found by reading every `expect(api.<member>).toHaveBeenCalled…` after an awaited find in `ui/src`. `ui/src/OperatorApp.test.tsx#L449` awaits the heading "Operators", reads the "Add an operator" link, then asserts `listOperators` was called once; `OperatorsPage.tsx` draws both before its load (`ui/src/pages/operator/OperatorsPage.tsx#L19-L25`). The others read were safe: they await text that only the loaded data draws (`pages/client/ListPage.test.tsx#L125`, `#L184`, `#L413`; `pages/client/Reconcile.test.tsx#L41`; `pages/client/OrdersPages.test.tsx#L71`; `pages/client/DeliveriesPages.test.tsx#L36`; `pages/operator/JoinPage.test.tsx#L21`; `pages/operator/OperatorsPage.test.tsx#L43`), or follow a call the app itself waits on (`App.test.tsx#L106`, `OperatorApp.test.tsx#L220`, `pages/client/Access.test.tsx#L97`). The fix is the same one line: the count inside `await waitFor(...)`.
+

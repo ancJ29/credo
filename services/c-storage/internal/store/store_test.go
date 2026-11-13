@@ -177,3 +177,18 @@ func TestAListThatFailsIsAnError(t *testing.T) {
 		t.Fatal("a list under a cancelled context succeeded")
 	}
 }
+
+func TestTheFreeBytesOfAClosedStoreAreAnError(t *testing.T) {
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), Schema)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	s := New(db)
+	if free, err := s.FreeBytes(context.Background()); err != nil || free == 0 {
+		t.Fatalf("free bytes of an open store = %d, %v, want a number", free, err)
+	}
+	db.Close()
+	if _, err := s.FreeBytes(context.Background()); err == nil {
+		t.Fatal("free bytes of a closed store succeeded")
+	}
+}

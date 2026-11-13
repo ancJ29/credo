@@ -166,6 +166,8 @@ case "$KIND" in
     add_param Env "$ENVNAME"
     # c-storage's port, from the unit that sets it: the template has no default, so a run without it fails
     add_param BoxPort "$BOX_PORT"
+    # The Slack alarm's two IDs, from the environment: both or neither, the stack's own kept on an update
+    add_slack_params
     if [ "$CS_TYPE" = CREATE ]; then
       repo=$(repository)
       add_param Repository "$repo"

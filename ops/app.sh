@@ -5,9 +5,10 @@
 # after ops/release.sh, and so can the human while GitHub Actions is down, or after a key changed on the
 # box (the function holds a copy of the BFF's keys, set again at every run).
 #   In order: reads the keys from the box's files and masks them first; makes sure of the BFF's
-#   service in c-storage; sets the function's environment from a 0600 file that is deleted at once, and
-#   its description to the commit (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the function's CodeSha256 with
-#   the one sent; sends the UI's files, index.html last, with the commit in its metadata.
+#   service in c-storage; sets the function's environment from a 0600 file that is deleted at once
+#   (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the
+#   function's CodeSha256 with the one sent; only then sets the function's description to the commit;
+#   sends the UI's files, index.html last, with the commit in its metadata.
 #   In the job: APP_BUNDLE (the bundle's index.js) and APP_UI_DIR (the UI's built folder) name what the
 #   job built from the commit it runs on, before it took the role. By hand: builds <sha> (main's tip
 #   when none) in a throwaway worktree, without the AWS session; a sha main lacks is refused.
@@ -122,10 +123,12 @@ registered=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY X_SUPER_ADMIN_KEY=$ADMIN_KEY SERV
   C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT ridge_cli register) || die "the BFF's service could not be made sure of"
 echo "$registered"
 
-step "the BFF: settings, then code"
+step "the BFF: settings, then code, then the description"
 # Settings go first, so the new code never runs for a moment on the old environment. The environment
 # goes in from a 0600 file, never a command line; the file is deleted at once. The VPC settings are
 # sent each time: the role may change settings only when it names the subnet and group.
+bff_vpc="SubnetIds=$SUBNET_ID,SecurityGroupIds=$BFF_GROUP" # the same in both settings calls
+bff_wait=120 # seconds each of the function's three updates may take
 (
   umask 077
   # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
@@ -133,19 +136,23 @@ step "the BFF: settings, then code"
     jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
     >"$WORK/bff-env.json"
 )
-aws lambda update-function-configuration --function-name "$BFF_NAME" --description "$sha" \
-  --vpc-config "SubnetIds=$SUBNET_ID,SecurityGroupIds=$BFF_GROUP" --environment "file://$WORK/bff-env.json" \
+aws lambda update-function-configuration --function-name "$BFF_NAME" \
+  --vpc-config "$bff_vpc" --environment "file://$WORK/bff-env.json" \
   --query LastUpdateStatus --output text >/dev/null
 rm -f "$WORK/bff-env.json"
-lambda_wait "$BFF_NAME" 120
-ok "the function's environment and description are set, the file deleted"
-# A description that names a commit whose code did not arrive shows as a red check: the UI's
-# index.html still names the old commit.
+lambda_wait "$BFF_NAME" "$bff_wait"
+ok "the function's environment is set, the file deleted"
 aws lambda update-function-code --function-name "$BFF_NAME" --zip-file "fileb://$WORK/bff.zip" --query LastUpdateStatus --output text >/dev/null
-lambda_wait "$BFF_NAME" 120
+lambda_wait "$BFF_NAME" "$bff_wait"
 got_code=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query CodeSha256 --output text)
 [ "$got_code" = "$want_code" ] || die "the function runs code of checksum $got_code, sent as $want_code"
 ok "the function's CodeSha256 is the one sent"
+# The description names the commit, and the seed and the never-backwards rule read it as the commit
+# that runs: it is written only once the code is known to be there.
+aws lambda update-function-configuration --function-name "$BFF_NAME" --description "$sha" \
+  --vpc-config "$bff_vpc" --query LastUpdateStatus --output text >/dev/null
+lambda_wait "$BFF_NAME" "$bff_wait"
+ok "the function's description names the commit"
 
 step "the UI's files, index.html last"
 # Every file but index.html is named by its hash: kept a year. index.html is read again at each visit,

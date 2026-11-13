@@ -278,6 +278,17 @@ jobs:
         timeout-minutes: 5
         working-directory: services/c-storage
         run: make box
+      # Litestream rides the release beside c-storage: the pinned arm64 archive (the box's), fetched from
+      # its release before the role is taken and refused unless its SHA-256 is ops/litestream.pin's, the
+      # one home of the version and the sum. ops/release.sh checks it again before it sends a byte.
+      - name: Litestream, the pinned archive
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: |
+          . ops/litestream.pin
+          archive="$RUNNER_TEMP/litestream.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz"
+          echo "$LITESTREAM_ARM64_SHA256  $archive" | sha256sum -c -
       # No stored key: GitHub's token for environment ridge is exchanged for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
       # AWS's error text carries the account id outside the secret role ARN, and this repository's
@@ -300,6 +311,7 @@ jobs:
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
+          LITESTREAM_ARCHIVE: ${{ runner.temp }}/litestream.tar.gz
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
       # masked first. It skips, saying so, until the stack holds layer four.

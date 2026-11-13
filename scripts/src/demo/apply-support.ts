@@ -85,7 +85,7 @@ export const read = (people: Awaited<ReturnType<typeof staffOf>>) =>
   people.map((p) => [p.code, p.name, p.archived]);
 
 /** The first day from `from` on that has an event of this kind for the copy. */
-export function firstEvent(copy: MappedCopy, kind: 'hire' | 'leave', from = addDays(ANCHOR, 12)) {
+export function firstEvent(copy: MappedCopy, kind: 'hire' | 'leave', from = addDays(ANCHOR, 22)) {
   for (let day = from; ; day = addDays(day, 1)) {
     const event = dayEvents(copy.client, copy.scenario, day).find((e) => e.kind === kind);
     if (event) return { day, event };

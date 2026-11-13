@@ -1,0 +1,14 @@
+info:
+  name: The Reading
+  type: folder
+  seq: 4
+
+request: {}
+
+docs:
+  content: |-
+    ## What the copy's check reads from outside the box
+
+    The free space of the disk under the database file, and when the process last committed a
+    write. Behind the internal key, like every path but `/health`.
+  type: text/markdown
