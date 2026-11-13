@@ -196,6 +196,31 @@ func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// rekeyService replaces a registered service's key, 404 for a code that is not registered. The
+// records stay; the old key is refused from the answer on.
+func (s *Server) rekeyService(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code      string `json:"code"`
+		AccessKey string `json:"accessKey"`
+	}
+	if !httpx.Decode(w, r, &body) {
+		return
+	}
+	if body.Code == "" || body.AccessKey == "" {
+		httpx.BadRequest(w, "code and accessKey are non-empty strings")
+		return
+	}
+	err := s.store.Rekey(r.Context(), body.Code, body.AccessKey)
+	switch {
+	case errors.Is(err, store.ErrNoService):
+		httpx.NotFound(w)
+	case err != nil:
+		httpx.Internal(w, err)
+	default:
+		httpx.JSON(w, http.StatusOK, codeBody{Code: body.Code})
+	}
+}
+
 type statusBody struct {
 	FreeBytes uint64 `json:"freeBytes"`
 	// LastWriteAt is the last commit this process made, null before its first since it started.

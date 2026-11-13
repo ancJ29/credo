@@ -1026,6 +1026,7 @@ SUBNET_ID=''
 UI_BUCKET=''
 APP_ADDRESS=''
 API_ADDRESS=''
+DISTRIBUTION_ID=''
 
 # app_load: the layer-four outputs of STACK_JSON, masked before anything can print them. Fails when
 # the stack does not hold layer four yet (the change set of the plan's step 15 is the human's), which
@@ -1037,6 +1038,8 @@ app_load() {
   UI_BUCKET=$(out UiBucketName)
   APP_ADDRESS=$(out AppAddress)
   API_ADDRESS=$(out ApiAddress)
+  # shellcheck disable=SC2034 # app.sh reads it
+  DISTRIBUTION_ID=$(out DistributionId)
   [ -n "$BFF_NAME" ] || return 1
   # Both addresses are public in nothing but the human's local log, and in no committed file: the
   # whole address and its host are masked, as well as the bare host the tools print.
@@ -1059,6 +1062,78 @@ bff_env_read() {
   SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
   [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
   mask "$SERVICE_ACCESS_KEY"
+}
+
+# front_door_key_read <the distribution's id>: FRONT_DOOR_KEY from the header the distribution's API origin adds
+# (x-front-door-key), masked before anything is printed. The key reaches this shell through a pipe, never a
+# command line or a temp file; a stack or a distribution without it is refused by name, never by value.
+FRONT_DOOR_KEY=''
+front_door_key_read() {
+  [ -n "${1:-}" ] || die "the stack names no distribution (its DistributionId output is missing): ops/stack.sh makes it"
+  FRONT_DOOR_KEY=$(aws cloudfront get-distribution-config --id "$1" --output json |
+    jq -r '[.DistributionConfig.Origins.Items[]? | select(.Id == "api") | .CustomHeaders.Items[]? | select(.HeaderName == "x-front-door-key") | .HeaderValue] | first // empty') ||
+    die "the distribution's configuration could not be read"
+  [[ $FRONT_DOOR_KEY =~ ^[0-9a-f]{64}$ ]] || {
+    FRONT_DOOR_KEY=''
+    die "the distribution's API origin carries no x-front-door-key of 64 hex characters: ops/stack.sh makes it"
+  }
+  mask "$FRONT_DOOR_KEY"
+}
+
+# bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
+# only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
+BFF_WAIT=120
+bff_vpc() {
+  printf 'SubnetIds=%s,SecurityGroupIds=%s' "$SUBNET_ID" "$BFF_GROUP"
+}
+
+# bff_settings_set <the door's key or keys, comma-separated>: the function's environment, set from the keys
+# this run holds (INTERNAL_KEY, SERVICE_CODE, SERVICE_ACCESS_KEY, read from the box) and the one it is given.
+# The deploy and a key run write it alike. The environment goes in from a 0600 file, never a command line;
+# the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
+# passkey is checked against: CloudFront's name, kept for good.
+bff_settings_set() {
+  (
+    umask 077
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 \
+      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS}}' \
+      >"$WORK/bff-env.json"
+  )
+  aws lambda update-function-configuration --function-name "$BFF_NAME" \
+    --vpc-config "$(bff_vpc)" --environment "file://$WORK/bff-env.json" \
+    --query LastUpdateStatus --output text >/dev/null
+  rm -f "$WORK/bff-env.json"
+  lambda_wait "$BFF_NAME" "$BFF_WAIT"
+}
+
+# new_key → 64 hex characters from 32 random bytes of the kernel, as the release makes the store's keys
+new_key() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
+# box_secret_write <path on the box>: the standard input becomes the file, root's, 0600, by a temporary file
+# beside it that is renamed over it. The content travels on the pipe: no command line, here or there, holds it.
+box_secret_write() {
+  box "sudo sh -c 'umask 077 && cat >\"\$0.tmp\" && chown root:root \"\$0.tmp\" && chmod 0600 \"\$0.tmp\" && mv -f \"\$0.tmp\" \"\$0\"' $1"
+}
+
+# store_status <local port> <method> <path> <body or -> [<header line>...]: the status the store answers a call
+# through the open tunnel, 000 when it answers none. The header lines (they carry keys) go in a 0600 file for
+# curl to read, never on its command line; the body is no secret.
+store_status() {
+  local port=$1 method=$2 path=$3 body=$4 hdr h
+  shift 4
+  mkwork
+  hdr=$WORK/store.headers
+  (
+    umask 077
+    : >"$hdr"
+    for h in "$@"; do printf '%s\n' "$h" >>"$hdr"; done
+  )
+  if [ "$body" = - ]; then
+    curl -sS -m 10 -X "$method" -H "@$hdr" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  else
+    curl -sS -m 10 -X "$method" -H "@$hdr" -H 'content-type: application/json' -d "$body" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  fi
+  rm -f "$hdr"
 }
 
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
@@ -1103,9 +1178,9 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the six variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {
@@ -1125,7 +1200,8 @@ function_url() {
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
 # blocks on, and one statement, an allow of s3:GetObject to CloudFront's service under a condition on
-# the distribution's source ARN (the id is not readable by the deploy role, which holds no CloudFront right)
+# the distribution's source ARN (the id is not readable by the deploy role, whose one CloudFront right reads the
+# distribution's configuration)
 bucket_verdict() {
   local policy
   policy=$(jq -r '.Policy // empty' <<<"$2" 2>/dev/null) || policy=''
@@ -1245,6 +1321,19 @@ edge_reads_client() {
 edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
+}
+
+# door_reads <app address> <API address>: the front door's two sides, each a read that writes nothing: the API's
+# own address refuses a call that did not come through the door, and the app's address answers a call that
+# carries a door key of the caller's own (the door replaces it with its key), here the BFF's 404 for a code it
+# does not know. The wrong key is made for the call and is no key of ours.
+door_reads() {
+  EDGE_BASE=$2
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "the API's own address refuses a call that did not come through the front door" 403 "$EDGE_STATUS"
+  EDGE_BASE=$1
+  edge GET /api/config -H 'x-client-code: check-no-such-client' -H "x-front-door-key: wrong-$(random_hex)"
+  expect "the app's address answers a call sent with a wrong door key of its own" 404 "$EDGE_STATUS"
 }
 
 # workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name

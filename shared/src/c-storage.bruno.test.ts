@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createCStorageClient, registerCStorageService } from './c-storage';
+import { createCStorageClient, registerCStorageService, rekeyCStorageService } from './c-storage';
 
 /**
  * The client sends what c-storage's Bruno collection sends. The collection is the service's own
@@ -73,6 +73,16 @@ describe('the c-storage client sends what its Bruno request sends', () => {
       ),
     );
     expect(wire).toEqual(requestOf('01-services/01-register-service.yml', values));
+  });
+
+  it('rekeys a service as 06-rekey-the-service does', async () => {
+    const wire = await sent((call) =>
+      rekeyCStorageService(
+        { ...connection, superAdminKey: values['superAdminKey'], fetch: call },
+        { code: values['serviceCode'], accessKey: values['accessKey'] },
+      ),
+    );
+    expect(wire).toEqual(requestOf('01-services/06-rekey-the-service.yml', values));
   });
 
   it('reads a record as 04-get-record does', async () => {

@@ -4,7 +4,7 @@
 # the deploy role's rights go (docs/plans/2026-10-28-ridge-app.md#layer-four). The deploy job runs it
 # after ops/release.sh, and so can the human while GitHub Actions is down, or after a key changed on the
 # box (the function holds a copy of the BFF's keys, set again at every run).
-#   In order: reads the keys from the box's files and masks them first; makes sure of the BFF's
+#   In order: reads the keys from the box's files, and the front door's from the distribution, and masks them first; makes sure of the BFF's
 #   service in c-storage; sets the function's environment from a 0600 file that is deleted at once
 #   (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the
 #   function's CodeSha256 with the one sent; only then sets the function's description to the commit;
@@ -115,7 +115,8 @@ fi
 stat -c 'bff.env: mode %a, owner %U' "$f"
 REMOTE
 bff_env_read
-storage_url=http://$BOX_LISTEN_ADDR:$BOX_PORT
+# The door's key is read from the distribution, its one home, so the function's copy is what the door sends.
+front_door_key_read "$DISTRIBUTION_ID"
 
 step "the BFF's service in c-storage"
 # The super-admin key reaches this one command's environment, and nothing the function holds.
@@ -125,22 +126,12 @@ echo "$registered"
 
 step "the BFF: settings, then code, then the description"
 # Settings go first, so the new code never runs for a moment on the old environment. The environment
-# goes in from a 0600 file, never a command line; the file is deleted at once. The VPC settings are
-# sent each time: the role may change settings only when it names the subnet and group.
-bff_vpc="SubnetIds=$SUBNET_ID,SecurityGroupIds=$BFF_GROUP" # the same in both settings calls
-bff_wait=120 # seconds each of the function's three updates may take
-(
-  umask 077
-  # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
-  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} \
-    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
-    >"$WORK/bff-env.json"
-)
-aws lambda update-function-configuration --function-name "$BFF_NAME" \
-  --vpc-config "$bff_vpc" --environment "file://$WORK/bff-env.json" \
-  --query LastUpdateStatus --output text >/dev/null
-rm -f "$WORK/bff-env.json"
-lambda_wait "$BFF_NAME" "$bff_wait"
+# goes in from a 0600 file, never a command line; the file is deleted at once (lib.sh's bff_settings_set, which
+# the key script writes alike). The VPC settings are sent each time: the role may change settings only when it
+# names the subnet and group.
+bff_vpc=$(bff_vpc) # the same in both settings calls
+bff_wait=$BFF_WAIT # seconds each of the function's three updates may take
+bff_settings_set "$FRONT_DOOR_KEY"
 ok "the function's environment is set, the file deleted"
 aws lambda update-function-code --function-name "$BFF_NAME" --zip-file "fileb://$WORK/bff.zip" --query LastUpdateStatus --output text >/dev/null
 lambda_wait "$BFF_NAME" "$bff_wait"

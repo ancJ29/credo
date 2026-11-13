@@ -28,7 +28,7 @@ places, nothing failing when a copy is missed.
 
 | The next change | The one way | Copy | [Marks](#how-to-read-a-rule) |
 | --- | --- | --- | --- |
-| reaching the back end, or storage | one object, handed down, never imported into a screen | `ui/src/api.ts`, `bff/src/server.ts#L11` | next copy · reader |
+| reaching the back end, or storage | one object, handed down, never imported into a screen | `ui/src/api.ts`, `bff/src/server.ts`'s `buildBff` | next copy · reader |
 | a name, a bound, a width, a status's meaning | one exported declaration, imported | `shared/` | next copy · reader |
 | a new route | its own module: resolve, authorise, parse, then storage | `bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)` | next copy · reader |
 | a second kind of record | a parameter on the one body | `ui/src/pages/client/ListPage.tsx`'s `ListPage` | next copy · reader |
@@ -98,7 +98,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | what a failure becomes on the wire | `bff/src/errors.ts#L19` (`replyFor`) | a 400 that names its field, `#L35-L41` |
 | a person's sign-in | `bff/src/app.ts#L251` | the refusal and why it names nothing, `#L261-L264` |
 | which records exist, and under which key | `shared/src/records.ts#L7` (`recordKeys`), the layout's one home | — |
-| how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal, `AbortSignal.timeout(timeoutMs)` | `bff/src/server.ts#L11` builds the one client |
+| how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal, `AbortSignal.timeout(timeoutMs)` | `bff/src/server.ts`'s `buildBff` builds the one client |
 | what c-storage will answer | `Server.handle` in `services/c-storage/internal/server/server.go`, which registers a route and appends its pattern to the list a test reads | `services/c-storage/internal/` by package |
 | what `pnpm stack`, `pnpm fake` and `pnpm demo` do | `scripts/src/cli.ts`, which drives `withStack`, `withFake` and `startDemo` (imported from `./fake`, `./demo/apply` and `./stack`) | `scripts/src/stack.ts`, `fake.ts` |
 | which commands must be green | [the gate](../../CLAUDE.md#the-gate) | [QA](qa.md)'s rule 6 for which of them a step runs |
@@ -224,7 +224,7 @@ red when a new file invents a second one — except the last, which is `[holds �
 
 | The shape | Where it is |
 | --- | --- |
-| C11 · one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts#L11` (no `fetch` anywhere in `bff/src`) |
+| C11 · one object makes every call to the back end, taking `fetch` as a parameter; storage is reached only through the client declared once and built once | `ui/src/api.ts`, `shared/src/c-storage.ts`'s `createCStorageClient`, `bff/src/server.ts`'s `buildBff` (no `fetch` anywhere in `bff/src`) |
 | C12 · a contract declared once and passed down, never resolved by hand per caller | `ui/src/page.ts#L6`; authorisation at `bff/src/app.ts#L157-L188`; loading and failure drawn by `ui/src/frame/Loaded.tsx`'s `Loaded` |
 | C13 · entry points hold wiring and no logic | `scripts/src/*-main.ts` (4–23 lines each), `services/c-storage/cmd/server/main.go` (35 lines, the process in `internal/lifecycle`) |
 | C14 · one body serving every kind, the kind as data | `LISTS` in `ui/src/listSheet.ts#L29`, drawn by `ui/src/pages/client/ListPage.tsx`'s `ListPage`, served by `bff/src/routes/lists.ts` |

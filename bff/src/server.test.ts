@@ -17,6 +17,8 @@ afterAll(async () => {
   await audit.stop();
 });
 
+const DOOR = 'door-key-one';
+
 const environment = (port: number, tenant: Awaited<ReturnType<typeof freshTenant>>) => ({
   PORT: String(port),
   C_STORAGE_URL: cs.baseUrl,
@@ -24,6 +26,7 @@ const environment = (port: number, tenant: Awaited<ReturnType<typeof freshTenant
   SERVICE_CODE: tenant.serviceCode,
   SERVICE_ACCESS_KEY: tenant.accessKey,
   APP_ORIGIN: ORIGIN,
+  FRONT_DOOR_KEYS: DOOR,
 });
 
 describe('the BFF as a process runs it', () => {
@@ -39,13 +42,17 @@ describe('the BFF as a process runs it', () => {
           'content-type': 'application/json',
           'x-device-id': 'device-aaaa-0001',
           'x-client-code': CODE,
+          'x-front-door-key': DOOR,
         },
         body: JSON.stringify(ROOT),
       });
       expect(signedIn.status).toBe(200);
       expect(
-        (await fetch(`http://127.0.0.1:${port}/api/config`, { headers: { 'x-client-code': CODE } }))
-          .status,
+        (
+          await fetch(`http://127.0.0.1:${port}/api/config`, {
+            headers: { 'x-client-code': CODE, 'x-front-door-key': DOOR },
+          })
+        ).status,
       ).toBe(404);
     } finally {
       await app.close();
@@ -59,7 +66,7 @@ describe('the BFF as a process runs it', () => {
     ).toThrowError(
       expect.objectContaining({
         message:
-          'invalid environment: PORT, C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN',
+          'invalid environment: PORT, C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN, FRONT_DOOR_KEYS',
       }) as Error,
     );
   });
@@ -72,6 +79,7 @@ describe('the BFF as a process runs it', () => {
       SERVICE_CODE: 's',
       SERVICE_ACCESS_KEY: 'a',
       APP_ORIGIN: ORIGIN,
+      FRONT_DOOR_KEYS: 'k',
       X_SUPER_ADMIN_KEY: 'admin',
     });
     expect(Object.keys(parsed)).not.toContain('X_SUPER_ADMIN_KEY');
@@ -85,6 +93,7 @@ describe('the BFF as a process runs it', () => {
       INTERNAL_ACCESS_KEY: 'i',
       SERVICE_CODE: 's',
       SERVICE_ACCESS_KEY: 'a',
+      FRONT_DOOR_KEYS: 'k',
     };
     for (const good of [
       'https://d111abc.cloudfront.net',
@@ -128,6 +137,97 @@ describe('the BFF as a process runs it', () => {
   });
 });
 
+describe('the front door, as the BFF is given it', () => {
+  const logged: string[] = [];
+  const stream = { write: (line: string) => void logged.push(line) };
+  async function bffWith(keys: string) {
+    const tenant = await freshTenant(cs);
+    await seedTenant(tenant.client, CODE);
+    const app = buildBff(readLambdaEnv({ ...environment(0, tenant), FRONT_DOOR_KEYS: keys }), {
+      logger: false,
+    });
+    return app;
+  }
+  const config = (key?: string) => ({
+    method: 'GET' as const,
+    url: '/api/config',
+    headers: { 'x-client-code': CODE, ...(key === undefined ? {} : { 'x-front-door-key': key }) },
+  });
+
+  // Case 1: a call without the key, or with a wrong one, is 403, and no company is looked up.
+  it('refuses a call without the key, or with a wrong one, before any company is looked up', async () => {
+    const app = await bffWith('door-key-one');
+    try {
+      for (const key of [undefined, '', 'door-key-on', 'door-key-one ', 'DOOR-KEY-ONE']) {
+        const answer = await app.inject(config(key));
+        expect(answer.statusCode, String(key)).toBe(403);
+        expect(answer.json()).toEqual({ error: 'Forbidden' });
+      }
+      // The same call with a company the store does not know is 404 only once the key is right.
+      const unknown = {
+        ...config('door-key-one'),
+        headers: { 'x-client-code': 'no-such-co', 'x-front-door-key': 'door-key-one' },
+      };
+      expect((await app.inject(unknown)).statusCode).toBe(404);
+      const unknownBare = { ...unknown, headers: { 'x-client-code': 'no-such-co' } };
+      expect((await app.inject(unknownBare)).statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // Case 2: an unknown path without the key is 403, not 404.
+  it('answers 403, not 404, for a path that does not exist when the key is missing', async () => {
+    const app = await bffWith('door-key-one');
+    try {
+      expect((await app.inject({ method: 'GET', url: '/no/such/path' })).statusCode).toBe(403);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/no/such/path',
+            headers: { 'x-front-door-key': 'door-key-one' },
+          })
+        ).statusCode,
+      ).toBe(404);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // Case 3: while two keys are set, a call with either is answered.
+  it('answers a call with either of two keys, and refuses a third', async () => {
+    const app = await bffWith('door-key-old,door-key-new');
+    try {
+      // A fresh company has no settings yet: 404 is the answer from behind the door.
+      expect((await app.inject(config('door-key-old'))).statusCode).toBe(404);
+      expect((await app.inject(config('door-key-new'))).statusCode).toBe(404);
+      expect((await app.inject(config('door-key-third'))).statusCode).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // Case 6: no log line of a refused call holds the key.
+  it('writes no log line of a refused call that holds a key, sent or set', async () => {
+    const tenant = await freshTenant(cs);
+    const app = buildBff(
+      readLambdaEnv({ ...environment(0, tenant), FRONT_DOOR_KEYS: 'set-door-key-aaaa' }),
+      { logger: { level: 'trace', stream } as never },
+    );
+    try {
+      const answer = await app.inject(config('sent-wrong-key-bbbb'));
+      expect(answer.statusCode).toBe(403);
+      const text = logged.join('');
+      expect(text).toContain('403');
+      expect(text).not.toContain('set-door-key-aaaa');
+      expect(text).not.toContain('sent-wrong-key-bbbb');
+    } finally {
+      await app.close();
+    }
+  });
+});
+
 describe('the audit service, as the BFF is given it', () => {
   const base = {
     PORT: '3182',
@@ -136,6 +236,7 @@ describe('the audit service, as the BFF is given it', () => {
     SERVICE_CODE: 's',
     SERVICE_ACCESS_KEY: 'a',
     APP_ORIGIN: ORIGIN,
+    FRONT_DOOR_KEYS: 'k',
   };
 
   it('is optional, but only as a pair: one without the other names the missing variable and no value', () => {
@@ -162,7 +263,11 @@ describe('the audit service, as the BFF is given it', () => {
       { logger: false },
     );
     try {
-      const call = scoped(app, CODE);
+      const inside = scoped(app, CODE);
+      const call = {
+        inject: (options: Parameters<typeof inside.inject>[0]) =>
+          inside.inject({ ...options, headers: { 'x-front-door-key': DOOR, ...options.headers } }),
+      };
       const { body } = await signIn(call);
       const route = customerRoutes.one(customer.id);
       const doc = (

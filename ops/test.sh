@@ -346,11 +346,11 @@ bucket_guard() {
     '.Resources.UiAccess.Properties.OriginAccessControlConfig | .OriginAccessControlOriginType == "s3" and .SigningBehavior == "always" and .SigningProtocol == "sigv4"'
 }
 # row 29: the deploy role holds exactly its actions, the function's code and settings held to
-# ridge's subnet and group, the bucket's put; no list, stack, IAM or CloudFront right
+# ridge's subnet and group, the bucket's put; no list, stack or IAM right, and on CloudFront the read of its own distribution alone
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
+  want='cloudformation:DescribeStacks cloudfront:GetDistributionConfig ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
@@ -2133,12 +2133,25 @@ if [[ "$*" != *"lambda update-function-configuration"* ]] && [ -f "$S/envfile.pa
 fi
 arg_after() { local prev='' a; for a in "${args[@]}"; do if [ "$prev" = "$1" ]; then echo "$a"; return; fi; prev=$a; done; }
 case "$*" in
+  *"account get-region-opt-status"*) echo ENABLED ;;
+  *"describe-stacks --stack-name credo-network"*)
+    echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"},{"OutputKey":"VpcCidr","OutputValue":"10.0.0.0/16"}]}]}' ;;
   *"cloudformation describe-stacks"*)
     layer4=''
     if [ -n "${FAKE_LAYER4:-}" ]; then
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
+      [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"},{"ParameterKey":"FrontDoorKey","ParameterValue":"****"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
+  # the key run's change set (ops/keys.sh front-door): the parameters are kept, executing it makes the distribution send the new key
+  *"create-change-set"*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "$S/params.json" ;;
+  *"wait change-set-create-complete"*) [ -n "${FAKE_CHANGESET:-}" ] || exit 255 ;;
+  *"describe-change-set"*)
+    if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
+  *"execute-change-set"*)
+    jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json" >"$S/door.key"
+    echo execute >>"$S/events" ;;
+  *"delete-change-set"* | *"wait stack-update-complete"*) : ;;
   *"send-ssh-public-key"*)
     [ ! -e "$S/send-fails" ] || { echo "stand-in aws: send-ssh-public-key failed (the session ended)" >&2; exit 254; }
     echo True ;;
@@ -2154,6 +2167,8 @@ case "$*" in
       echo "$envfile" >"$S/envfile.path"
       python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
       cp "$envfile" "$S/envfile.seen"
+      jq -c .Variables "$envfile" >>"$S/envfile.history"
+      echo "settings $(jq -r '.Variables.FRONT_DOOR_KEYS | split(",") | length' "$envfile")" >>"$S/events"
     fi
     if [[ "$*" == *" --description "* ]]; then arg_after --description >"$S/description"; fi
     arg_after --vpc-config >"$S/vpc"
@@ -2165,6 +2180,14 @@ case "$*" in
       Description) if [ -n "${FAKE_RUNNING:-}" ]; then echo "$FAKE_RUNNING"; elif [ -f "$S/description" ]; then cat "$S/description"; else echo None; fi ;;
       *) echo "stand-in aws: unknown query: $*" >&2; exit 1 ;;
     esac ;;
+  *"cloudfront wait distribution-deployed"*) echo deployed >>"$S/events" ;;
+  *"cloudfront get-distribution-config"*)
+    # the API origin's header carries the door's key (FAKE_DOOR_NONE: it carries none)
+    if [ -n "${FAKE_DOOR_NONE:-}" ]; then
+      echo '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"api","CustomHeaders":{"Quantity":0}}]}}}'
+    else
+      printf '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"ui","CustomHeaders":{"Quantity":0}},{"Id":"api","CustomHeaders":{"Quantity":1,"Items":[{"HeaderName":"x-front-door-key","HeaderValue":"%s"}]}}]}}}\n' "$([ -f "$S/door.key" ] && cat "$S/door.key" || echo "$FAKE_DKEY")"
+    fi ;;
   *"s3 cp"*) : ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -2192,6 +2215,20 @@ for a in "${args[@]}"; do
   prev=$a
 done
 detach() { python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$@"; }
+# the real store, on the forwarded port, with the keys the box's file holds (the test's own until a key run writes one)
+start_store() {
+  local ik=$FAKE_IKEY ak=$FAKE_AKEY
+  if [ -f "$S/box/keys.env" ]; then
+    ik=$(sed -n 's/^INTERNAL_ACCESS_KEY=//p' "$S/box/keys.env")
+    ak=$(sed -n 's/^X_SUPER_ADMIN_KEY=//p' "$S/box/keys.env")
+  fi
+  mkdir -p "$S/db"
+  env -i PATH="$PATH" PORT="$1" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$ik" X_SUPER_ADMIN_KEY="$ak" \
+    python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$FAKE_CS" </dev/null >>"$S/server.log" 2>&1 &
+  echo $! >"$S/master.pid"
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$1/health" >/dev/null 2>&1 && return 0; sleep 0.1; done
+  return 1
+}
 alive() { [ -f "$S/master.pid" ] && kill -0 "$(cat "$S/master.pid")" 2>/dev/null; }
 case $op in
   check) alive && exit 0; echo "Control socket connect: No such file or directory" >&2; exit 255 ;;
@@ -2235,11 +2272,8 @@ if [ -n "$fwd" ]; then
     if [ "$strict" = 1 ]; then echo "Could not request local forwarding." >&2; exit 255; fi
     exit 0
   fi
-  mkdir -p "$S/db"
-  env -i PATH="$PATH" PORT="$lport" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
-    python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$FAKE_CS" </dev/null >>"$S/server.log" 2>&1 &
-  echo $! >"$S/master.pid"
-  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$lport/health" >/dev/null 2>&1 && exit 0; sleep 0.1; done
+  echo "$lport" >"$S/lport"
+  start_store "$lport" && exit 0
   echo "stand-in ssh: the server did not start" >&2
   exit 255
 fi
@@ -2247,8 +2281,19 @@ cmd=''
 seen=0
 for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in ec2-user@*) seen=1 ;; esac; done
 case $cmd in
-  *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
-  *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
+  # a key run (ops/keys.sh): a file written on the box, a file moved, the store restarted with the box's keys file
+  *'cat >"$0.tmp"'*) path=${cmd##* }; mkdir -p "$S/box"; cat >"$S/box/${path##*/}"; echo "write ${path##*/}" >>"$S/events" ;;
+  *"mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env"*) [ -z "${FAKE_MV_FAIL:-}" ] || { echo "stand-in ssh: the mv failed" >&2; exit 1; }; mv -f "$S/box/bff.env.new" "$S/box/bff.env"; echo "mv bff.env" >>"$S/events" ;;
+  *"rm -f /etc/c-storage/bff.env.new"*) rm -f "$S/box/bff.env.new"; echo "rm bff.env.new" >>"$S/events" ;;
+  *"systemctl restart c-storage"*)
+    echo restart >>"$S/events"
+    if alive; then kill "$(cat "$S/master.pid")"; fi
+    for _ in $(seq 1 50); do (exec 9<>"/dev/tcp/127.0.0.1/$(cat "$S/lport")") 2>/dev/null || break; sleep 0.1; done
+    start_store "$(cat "$S/lport")" ;;
+  *"cat /etc/c-storage/keys.env"*)
+    if [ -f "$S/box/keys.env" ]; then cat "$S/box/keys.env"; else printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY"; fi ;;
+  *"cat /etc/c-storage/bff.env"*)
+    if [ -f "$S/box/bff.env" ]; then cat "$S/box/bff.env"; else printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY"; fi ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
   *"sudo bash -s /var/lib/private/c-storage"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
@@ -2258,6 +2303,7 @@ case $cmd in
 esac
 STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
+export FAKE_DKEY=c0ffee11c0ffee22c0ffee33c0ffee44c0ffee55c0ffee66c0ffee77c0ffee88
 export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c
 export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
@@ -2486,15 +2532,15 @@ check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 
 # The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN","FRONT_DOOR_KEYS"],"AppOrigin":"https://app.example.test","Url":"u"}'
 check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
 check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
-check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+check "the function holds the six variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
   "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
@@ -2661,7 +2707,9 @@ CHK=$E2E/chk
 mkdir -p "$CHK/bin"
 chk_port=$(free_port)
 chk_sha=$e2e_sha
-export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://api-test-host.invalid:9 FAKE_LAYER4=1
+# the API's own address, which refuses a call without the front door's key (door_reads asks it)
+chk_api_port=$(free_port)
+export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://127.0.0.1:$chk_api_port FAKE_LAYER4=1
 rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
 jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
@@ -2744,6 +2792,21 @@ STANDIN
 chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
 chk_edge=$!
+cat >"$WORK/api.py" <<'PY'
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+STATUS = int(sys.argv[2])
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        self.send_response(STATUS)
+        self.send_header('content-length', '0')
+        self.end_headers()
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+python3 -I "$WORK/api.py" "$chk_api_port" 403 >/dev/null 2>&1 &
+chk_api=$!
+for _ in $(seq 1 50); do if port_taken "$chk_api_port"; then break; fi; sleep 0.1; done
 for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
 chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
   local name=$1
@@ -2834,6 +2897,35 @@ check "  and --onto-blank with --onto-live together is its usage, exit 2, before
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
 check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+# ---- the front door, as the check reads it (docs/plans/2026-11-11-front-door-keys.md, step 3, case 12)
+echo "== ops/check.sh reads the front door: the API's own address refuses, the app answers a wrong key of the caller's own"
+chk_run door check.sh ridge --reads-only
+check "case 12: the check reads the API's own address refusing a call, and the app answering one sent with a wrong key" "0 1 1" \
+  "$RC $(chk_has "^ok   the API's own address refuses a call that did not come through the front door: 403" "$S/out") $(chk_has "^ok   the app's address answers a call sent with a wrong door key of its own: 404" "$S/out")"
+check "  and the function's variables now name FRONT_DOOR_KEYS among the six" 1 \
+  "$(chk_has "^ok   the function's variables (names only; never the super-admin key): APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS," "$S/out")"
+door_case() { # <the API's status> <the edge's mode> → the reds door_reads finds, with those two stand-ins
+  local aport eport out apid epid
+  aport=$(free_port)
+  eport=$(free_port)
+  python3 -I "$WORK/api.py" "$aport" "$1" >/dev/null 2>&1 &
+  apid=$!
+  FAKE_EDGE_MODE=$2 python3 -I "$WORK/edge.py" "$eport" >/dev/null 2>&1 &
+  epid=$!
+  for _ in $(seq 1 50); do if port_taken "$aport" && port_taken "$eport"; then break; fi; sleep 0.1; done
+  out=$( (REDS=''; door_reads "http://127.0.0.1:$eport" "http://127.0.0.1:$aport" >/dev/null; printf '%s' "$REDS") 2>&1 )
+  kill "$apid" "$epid" 2>/dev/null || true
+  echo "$out"
+}
+check "the door reads are green when the API refuses and the app answers the BFF's 404" "" "$(door_case 403 '')"
+refuses_door() { # <name> <the API's status> <the edge's mode> <text the red names>
+  local got
+  got=$(door_case "$2" "$3")
+  if grep -qF -- "$4" <<<"$got"; then echo "  ok   $1"; else echo "  FAIL $1: wanted a red naming '$4', got '$got'"; fail=1; fi
+}
+refuses_door "  an API that answers a call without the key is red" 200 '' "the API's own address refuses a call that did not come through the front door"
+refuses_door "  an app that does not answer a call with a wrong key as the BFF does is red" 403 unknown-is-page "the app's address answers a call sent with a wrong door key"
+kill "$chk_api" 2>/dev/null || true
 kill "$chk_edge" 2>/dev/null || true
 unset FAKE_LAYER4 FAKE_APP FAKE_API
 
@@ -2883,7 +2975,7 @@ $([ "$(line_of 'get-function-configuration .*CodeSha256')" -lt "$(line_of 'lambd
 $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
-check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+check "  it names the six variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
 check "  and holds the app's address as the origin its passkeys are bound to" "$FAKE_APP" "$(jq -r .Variables.APP_ORIGIN "$S/envfile.seen")"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
@@ -2903,6 +2995,26 @@ check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this lo
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
   "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# ---- the deploy copies the door's key (docs/plans/2026-11-11-front-door-keys.md, step 3, case 11)
+echo "== ops/app.sh sets the function's FRONT_DOOR_KEYS from the distribution's header"
+e2e_fresh app-door
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "case 11: app.sh sets the function's key from the distribution's, read once before the function is changed" "0 1 yes" \
+  "$RC $(grep -c 'cloudfront get-distribution-config --id E1TESTDIST' "$S/aws.calls" || true) \
+$([ "$(line_of 'cloudfront get-distribution-config')" -lt "$(line_of 'lambda update-function-configuration')" ] && echo yes || echo no)"
+check "  the function's environment holds that key as FRONT_DOOR_KEYS, and the key is in no other variable" "$FAKE_DKEY 1" \
+  "$(jq -r .Variables.FRONT_DOOR_KEYS "$S/envfile.seen") $(grep -c "$FAKE_DKEY" "$S/envfile.seen" || true)"
+check "  the key is masked first, and is in no log, no aws or ssh call, and not on the terminal but in GitHub's mask line" "1 0 0 0 0" \
+  "$(grep -cF "::add-mask::$FAKE_DKEY" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_DKEY" || true) $(grep -cF "$FAKE_DKEY" "$S/aws.calls" || true) $(grep -cF "$FAKE_DKEY" "$S/ssh.calls" || true) $(grep -vE '^::add-mask::' "$S/out" | grep -cF "$FAKE_DKEY" || true)"
+e2e_fresh app-door-none
+FAKE_DOOR_NONE=1 e2e_run app.sh ridge
+check "  a distribution whose API origin carries no key stops the deploy by name, before the function is changed" "1 1 0 0" \
+  "$RC $(grep -c "carries no x-front-door-key of 64 hex characters" "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+e2e_fresh app-door-noid
+FAKE_DISTID_NONE=1 e2e_run app.sh ridge
+check "  a stack that names no distribution stops the deploy by name, and the aws call for it is never made" "1 1 0" \
+  "$RC $(grep -c "names no distribution" "$S/out" || true) $(grep -c 'cloudfront get-distribution-config' "$S/aws.calls" || true)"
 
 # the function runs other code than was sent
 e2e_fresh app-sha
@@ -3771,6 +3883,328 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
+# row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default
+# shellcheck disable=SC2016 # jq programs, in single quotes
+front_door_guard() {
+  must "$1" "FrontDoorKey is not a NoEcho string parameter with no default" \
+    '.Parameters.FrontDoorKey | .Type == "String" and .NoEcho == true and (has("Default") | not)'
+  must "$1" "the API's origin does not carry x-front-door-key from FrontDoorKey, and nothing else" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "api")) | length == 1 and .[0].OriginCustomHeaders == [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]'
+  must "$1" "the UI's origin carries a custom header" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "ui")) | length == 1 and (.[0] | has("OriginCustomHeaders") | not)'
+}
+# row 9: the deploy role reads its own distribution's configuration and writes nothing on CloudFront
+# shellcheck disable=SC2016 # jq programs, in single quotes
+distribution_read_guard() {
+  must "$1" "the deploy role does not read its own distribution's configuration, and only that" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("cloudfront:")) | {Action, Resource}] == [{"Action":"cloudfront:GetDistributionConfig","Resource":{"Fn::Sub":"arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"}}]'
+  must "$1" "a CloudFront action of the deploy role writes" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end | select(startswith("cloudfront:"))] | all(startswith("cloudfront:Get"))'
+}
+passes "the API's origin carries the door's key from a NoEcho parameter (row 8)" front_door_guard "$WORK/env.json"
+refuses "  a parameter that echoes is refused" "NoEcho string parameter" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.NoEcho = false')"
+refuses "  a parameter with a default is refused" "no default" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.Default = "0000000000000000000000000000000000000000000000000000000000000000"')"
+refuses "  an origin with no header is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut 'del(.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders)')"
+refuses "  a header with a literal value is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders[0].HeaderValue = "a-literal"')"
+refuses "  the header on the UI's origin is refused" "UI's origin carries" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[0].OriginCustomHeaders = [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]')"
+passes "the deploy role reads its own distribution and writes nothing on CloudFront (row 9)" distribution_read_guard "$WORK/env.json"
+refuses "  a read of every distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Resource) = "*"')"
+refuses "  an update of the distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Action) = ["cloudfront:GetDistributionConfig","cloudfront:UpdateDistribution"]')"
+refuses "  no read at all is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement |= map(select(.Action != "cloudfront:GetDistributionConfig"))')"
+
+# row 10: stack.sh makes the key on a creation and once for a stack without one, keeps it otherwise,
+# takes it from a 0600 file for a key run, and never prints it. The wrapper stands in front of the
+# stand-in aws above: it keeps the parameters file a change set was made from, and describes the stack
+# without the parameter (the default), with it as NoEcho shows it (FDK_HASKEY), or not at all (FDK_NOSTACK,
+# a creation). Every key here is made up.
+mkdir -p "$E2E/fdkbin"
+cat >"$E2E/fdkbin/aws" <<'STANDIN'
+#!/bin/bash
+a="$*"
+case "$a" in
+  *create-change-set*) p=${a##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json" ;;
+esac
+case "$a" in
+  *"describe-stacks --stack-name credo-network"*)
+    echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+    echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"},{"OutputKey":"VpcCidr","OutputValue":"10.0.0.0/16"}]}]}' ;;
+  *"describe-stacks"*)
+    if [ -n "${FDK_NOSTACK:-}" ]; then
+      echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+      echo "An error occurred (ValidationError) when calling the DescribeStacks operation: Stack with id ridge does not exist" >&2
+      exit 255
+    elif [ -n "${FDK_HASKEY:-}" ]; then
+      "${FDK_REAL:?}" "$@" | sed 's/"Parameters":\[/&{"ParameterKey":"FrontDoorKey","ParameterValue":"****"},/'
+    else
+      exec "${FDK_REAL:?}" "$@"
+    fi ;;
+  *describe-subnets*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls" ;;
+  *"ssm get-parameter"*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"; echo ami-test ;;
+  *) exec "${FDK_REAL:?}" "$@" ;;
+esac
+STANDIN
+chmod +x "$E2E/fdkbin/aws"
+fdk_run() { # <state name> <args...>: stack.sh env ridge --plan in the clone, through the wrapper
+  e2e_fresh "$1"
+  shift
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/fdkbin:$E2E/stackbin:$PATH" FDK_REAL="$E2E/stackbin/aws" bash ops/stack.sh env ridge --plan "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+fdk_sent() { jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue // "(previous)"' "$S/params.json"; }
+fdk_seen() { # <key>: how many places a run wrote hold it: the terminal, the log, the aws calls, the parameters shown
+  cat "$S/out" "$S/aws.calls" "$OPS_LOG_DIR"/*.log | grep -cF -- "$1" || true
+}
+fdk_run fdk-old
+fdk_key=$(fdk_sent)
+check "a stack made before the parameter: a key of 64 hex characters is made once and sent" "0 1" \
+  "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  it prints as (not printed), and no log, terminal line or aws call holds it" "1 0" \
+  "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+check "  and the end-of-run search of the log ran with the key remembered" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+FDK_NOSTACK=1 fdk_run fdk-create
+fdk_key=$(fdk_sent)
+check "a creation makes a key of its own and sends it" "0 1" "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  and never prints it" "1 0" "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+FDK_HASKEY=1 fdk_run fdk-kept
+check "a stack that holds the parameter keeps it: the previous value, none made" "0 (previous)" "$RC $(fdk_sent)"
+check "  and the terminal still says (not printed)" 1 "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true)"
+fdk_made=$(printf 'ab%.0s' $(seq 1 32))
+printf '%s\n' "$fdk_made" >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file
+check "a key run takes the key from the 0600 file it names, replacing the stack's" "0 $fdk_made" "$RC $(fdk_sent)"
+check "  and never prints it" 0 "$(fdk_seen "$fdk_made")"
+chmod 644 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-open
+check "a key file other than 0600 is refused before any change set, without its value" "1 1 0 0" \
+  "$RC $(grep -c 'must be 0600' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen "$fdk_made")"
+printf 'not-a-key\n' >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-short
+check "a key file that holds no 64 hex characters is refused, without its content" "1 1 0 0" \
+  "$RC $(grep -c '64 hex characters' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen not-a-key)"
+
+# ---- the key script (docs/plans/2026-11-11-front-door-keys.md, step 5, cases 14 to 16)
+echo "== ops/keys.sh replaces each of the four keys in its order and reads the old one back refused (case 14); a key run changes the distribution alone (case 15); no key reaches its log (case 16)"
+# The door's two addresses are stand-ins that answer as the chain would: the API's own address answers (404, the
+# BFF's) a call carrying a key the function's latest settings hold and refuses (403) any other; the app's address
+# answers with the key the distribution sends, so it is refused when the function holds none of it.
+cat >"$WORK/door.py" <<'PY'
+import json, os, signal, sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+signal.alarm(1200)
+MODE, POINTER = sys.argv[2], sys.argv[3]
+def state():
+    return open(POINTER).read().strip()
+def function_keys():
+    try:
+        lines = open(state() + '/envfile.history').read().strip().split('\n')
+        return json.loads(lines[-1])['FRONT_DOOR_KEYS'].split(',')
+    except Exception:
+        return []
+def distribution_key():
+    try:
+        return open(state() + '/door.key').read().strip()
+    except Exception:
+        return os.environ['FAKE_DKEY']
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        sent = distribution_key() if MODE == 'app' else (self.headers.get('x-front-door-key') or '')
+        self.send_response(404 if sent in function_keys() else 403)
+        self.send_header('content-length', '0')
+        self.end_headers()
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+kapi=$(free_port)
+kapp=$(free_port)
+python3 -I "$WORK/door.py" "$kapi" api "$WORK/door.state" >/dev/null 2>&1 &
+kapi_pid=$!
+python3 -I "$WORK/door.py" "$kapp" app "$WORK/door.state" >/dev/null 2>&1 &
+kapp_pid=$!
+for _ in $(seq 1 50); do if port_taken "$kapi" && port_taken "$kapp"; then break; fi; sleep 0.1; done
+export FAKE_LAYER4=1 FAKE_APP=http://127.0.0.1:$kapp FAKE_API=http://127.0.0.1:$kapi KEYS_LOCAL_PORT
+KEYS_LOCAL_PORT=$(free_port)
+mkdir -p "$E2E/keysbin"
+cp "$E2E/stackbin/gh" "$E2E/keysbin/gh"
+chmod +x "$E2E/keysbin/gh"
+jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"DeployRole","ResourceType":"AWS::IAM::Role","Replacement":"False","Scope":["Properties"],"Details":[]}}]' \
+  "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-role.json"
+keys_run() { # <state name> <logs name> <args…>: keys.sh ridge <args> in the stack clone, on the state an earlier run of the name left
+  local st=$1 lg=$2
+  shift 2
+  S=$E2E/state-$st
+  mkdir -p "$S"
+  touch "$S/bff.made" # the BFF's service is on the box already (the deploy makes it)
+  export FAKE_STATE=$S OPS_LOG_DIR=$E2E/logs-$st-$lg FAKE_CS=$WORK/server-e2e
+  rm -rf "${OPS_LOG_DIR:?}"
+  : >"$S/events"
+  printf '%s\n' "$S" >"$WORK/door.state"
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/keysbin:$PATH" bash ops/keys.sh ridge "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+boxkey() { sed -n "s/^$1=//p" "$S/box/$2"; } # <name> <file on the box>
+function_var() { tail -n 1 "$S/envfile.history" | jq -r ".$1"; }
+events() { tr '\n' ',' <"$S/events" | sed 's/,$//'; }
+leaks() { cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF -e "$1" -e "$2" || true; } # <old key> <new key>: lines of the log and the terminal that hold either
+is_new() { if [[ $2 =~ ^[0-9a-f]{64}$ ]] && [ "$1" != "$2" ]; then echo yes; else echo no; fi; } # <old> <new>
+
+# the BFF's service is made (and registered in the real store) by the deploy, as on ridge
+e2e_fresh keys-all
+e2e_run app.sh ridge
+check "the deploy that makes the BFF's service ends green (the keys run on its state)" 0 "$RC"
+printf '%s\n' "$S" >"$WORK/door.state"
+
+old_i=$FAKE_IKEY
+keys_run keys-all internal internal
+new_i=$(boxkey INTERNAL_ACCESS_KEY keys.env)
+check "case 14, internal: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the internal key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the super-admin key is as it was" "yes $FAKE_AKEY" "$(is_new "$old_i" "$new_i") $(boxkey X_SUPER_ADMIN_KEY keys.env)"
+check "  its order: the keys file on the box, the store restarted, then the function's copy" "write keys.env,restart,settings 1" "$(events)"
+check "  the function holds the new key and the door's key as it was" "$new_i $FAKE_DKEY" "$(function_var INTERNAL_ACCESS_KEY) $(function_var FRONT_DOOR_KEYS)"
+check "  the old key is read back refused (401) and the new accepted (200) by the real store" "1 1" \
+  "$(grep -c '^ok   the store refuses the old internal key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new: 200$' "$S/out" || true)"
+check "  the seconds of refused calls and of the store's restart are printed" "1 1" \
+  "$(grep -cE '^calls were refused for about [0-9]+ seconds' "$S/out" || true) $(grep -cE '^the store was down for about [0-9]+ seconds' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "case 16, internal: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_i" "$new_i") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_a=$FAKE_AKEY
+keys_run keys-all admin admin
+new_a=$(boxkey X_SUPER_ADMIN_KEY keys.env)
+check "case 14, admin: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the admin key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the internal key is as the last run left it" "yes $new_i" "$(is_new "$old_a" "$new_a") $(boxkey INTERNAL_ACCESS_KEY keys.env)"
+check "  its order: the keys file on the box, then the store restarted, and the function is not touched" "write keys.env,restart" "$(events)"
+check "  the old key is read back refused (401) and the new accepted (404 for a service that is not there, nothing written)" "1 1" \
+  "$(grep -c '^ok   the store refuses the old super-admin key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a service that does not exist: 404, nothing written): 404$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "case 16, admin: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_a" "$new_a") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_s=$FAKE_SKEY
+keys_run keys-all service service
+new_s=$(boxkey SERVICE_ACCESS_KEY bff.env)
+check "case 14, service: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the service key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the service code is as it was; no file waits beside bff.env" "yes bff gone" \
+  "$(is_new "$old_s" "$new_s") $(boxkey SERVICE_CODE bff.env) $(file_state "$S/box/bff.env.new")"
+check "  its order: the new file beside the old, the store's rekey, the new file in place, then the function's copy" "write bff.env.new,mv bff.env,settings 1" "$(events)"
+check "  the function holds the new service key, and the internal key the last run left" "$new_s $new_i" "$(function_var SERVICE_ACCESS_KEY) $(function_var INTERNAL_ACCESS_KEY)"
+check "  the old key is read back refused (403) and the new accepted (404 for a record that is not there) by the real store" "1 1 1" \
+  "$(grep -c '^ok   the store refuses the old service key: 403$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a record that does not exist: 404): 404$' "$S/out" || true) $(grep -c '^service rekeyed$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "  its closing lines say the sign-in waits restarted and the open operator challenges are void" 1 \
+  "$(grep -A 2 '^replaced the service key$' "$S/out" | grep -c '^it also restarted every sign-in wait .* every open operator challenge' || true)"
+check "case 16, service: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_s" "$new_s") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_d=$FAKE_DKEY
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-door.json keys_run keys-all door front-door
+new_d=$(cat "$S/door.key")
+check "case 14, front door: the run ends green (its own verdict and the stack run's), and says which key it replaced" "0 2 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the front-door key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old" yes "$(is_new "$old_d" "$new_d")"
+check "  its order: the function takes both keys, the change set is executed, the distribution's deploy is waited for, the function takes the new alone" "settings 2,execute,deployed,settings 1" "$(events)"
+check "  the both-keys settings held the old key and the new, and the last settings the new alone" "$old_d,$new_d $new_d" \
+  "$(tail -n 2 "$S/envfile.history" | head -n 1 | jq -r .FRONT_DOOR_KEYS) $(function_var FRONT_DOOR_KEYS)"
+check "  the change set was made with the new key from the key file (a parameter, not a new stack), in the compact form add_param writes" "$new_d yes" \
+  "$(jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json") $([ "$(cat "$S/params.json")" = "$(jq -c . "$S/params.json")" ] && echo yes || echo no)"
+check "  the old key is read back refused (403) at the API's own address, the new answered (404), and the app answers through the door" "1 1 1" \
+  "$(grep -c "^ok   the API's own address refuses the old door key: 403$" "$S/out" || true) $(grep -c '^ok     and answers a call with the new one (a client that does not exist: 404): 404$' "$S/out" || true) $(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "  the key run opened no box for the stack and wrote nothing to GitHub" "0" "$(grep -c 'secret set' "$S/gh.calls" || true)"
+check "case 16, front door: neither key is in the logs (this run's and the stack run's) or on the terminal, and each log says so" "0 2" "$(leaks "$old_d" "$new_d") $(cat "$OPS_LOG_DIR"/*.log | grep -c '^ok   no key in this log' || true)"
+
+# case 15: a key run's change set that touches anything but the distribution is refused before it runs
+e2e_fresh keys-refused
+e2e_run app.sh ridge # the BFF's service is registered, as on ridge, which the run's first reads need
+FAKE_CHANGESET=$E2E/changeset-door-role.json keys_run keys-refused door front-door
+check "case 15: a change set that also modifies the deploy role is refused before it is executed" "1 1 1 1" \
+  "$RC $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  DeployRole (AWS::IAM::Role): Modify$' "$S/out" || true) $(grep -c "the stack's key run did not finish" "$S/out" || true)"
+check "  nothing was executed, the distribution sends the key it did, and the function took both keys and no more" "gone settings 2" \
+  "$(file_state "$S/door.key") $(events)"
+key15=$(printf 'cd%.0s' $(seq 1 32))
+printf '%s\n' "$key15" >"$E2E/kr.key"
+chmod 600 "$E2E/kr.key"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-refused
+check "  stack.sh itself, given a key file, refuses it before execute-change-set is called" "1 0 1" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true)"
+jq -c '.Changes[0].ResourceChange.Details += [{"Target":{"Attribute":"Properties","Name":"DistributionConfig","RequiresRecreation":"Never"},"Evaluation":"Static","ChangeSource":"DirectModification"}]' \
+  "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-extra.json"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-extra.json stack_run key-stack-extra
+check "  a change set that also changes the distribution for another cause than the key is refused before execute-change-set is called" "1 0 1 1" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  Distribution (AWS::CloudFront::Distribution): Modify$' "$S/out" || true)"
+FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-plain --plan
+check "  and the same change set without a key file is not that run's to refuse" "0 0" \
+  "$RC $(grep -c 'REFUSED' "$S/out" || true)"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$OPS_DIR/testdata/changeset-door.json stack_run key-stack-door --plan
+check "  a change set of the distribution alone passes, and the key is not printed" "0 1 0" \
+  "$RC $(grep -c '^ok   the key run changes the distribution alone' "$S/out" || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF "$key15" || true)"
+
+# a service run whose last move fails stops saying what it left and what mends it (the state a stop leaves)
+e2e_fresh keys-stopped
+e2e_run app.sh ridge
+FAKE_MV_FAIL=1 keys_run keys-stopped stopped service
+check "a service run whose mv of bff.env fails stops red, and says the store holds the new key, the box the old, and the mending mv and app.sh" "1 1 1 1 1" \
+  "$RC $(grep -c '^STOPPED: the store holds the new service key while the box.s bff.env and the function hold the old' "$S/out" || true) $(grep -c 'sudo mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env, then run ops/app.sh ridge' "$S/out" || true) $(grep -c '^STOPPED: ' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^write bff.env.new$' "$S/events" || true)"
+# a store that refuses the service key the box holds is found before a second run changes anything
+e2e_fresh keys-half
+e2e_run app.sh ridge
+mkdir -p "$S/box"
+printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(printf 'ef%.0s' $(seq 1 32))" >"$S/box/bff.env"
+keys_run keys-half half internal
+check "an internal run finds the store refusing the service key the box holds: nothing is changed, and it says what to do" "1 1 [] 0" \
+  "$RC $(grep -c 'the store refuses the service key the box.s bff.env holds: nothing was changed' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
+
+# the store does not know the BFF's service: the rekey is refused, and nothing is left or changed
+e2e_fresh keys-unregistered
+keys_run keys-unregistered unreg service
+check "the store holds no BFF service: the run stops, the waiting file is removed, no file is moved and the function is not touched" "1 1 rm bff.env.new" \
+  "$RC $(grep -c 'the store did not replace the BFF.s service key' "$S/out" || true) $(events | sed 's/^write bff.env.new,//')"
+check "  and no file was put over bff.env" gone "$(file_state "$S/box/bff.env")"
+
+# the refusals before any act
+e2e_fresh keys-usage
+rc=0
+out=$(bash "$OPS_DIR/keys.sh" 2>&1) || rc=$?
+check "keys.sh with no argument prints its usage and exits 2" "2 usage: ops/keys.sh <env> front-door|internal|admin|service" "$rc $out"
+rc=0
+out=$(bash "$OPS_DIR/keys.sh" ridge nonsense 2>&1) || rc=$?
+check "  and so does a key it does not know" "2 usage: ops/keys.sh <env> front-door|internal|admin|service" "$rc $out"
+e2e_fresh keys-job
+GITHUB_ACTIONS=true keys_run keys-job job internal
+check "keys.sh in a job is refused before any aws call or ssh" "1 1 gone gone" \
+  "$RC $(grep -c 'is run by a person at a terminal, never by a job' "$S/out" || true) $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+
+kill "$kapi_pid" "$kapp_pid" 2>/dev/null || true
+unset KEYS_LOCAL_PORT
+
+# a text guard: no key-holding variable is an argument of jq (--arg), aws, curl, ssh, box or add_param in the three
+# scripts that hold keys (an external command's argument list is readable by any user's ps while it runs); an
+# assignment in front of a command (NAME=$KEY cmd) is the environment, not an argument
+key_arg_lines() { # <file>…: the lines that put a key-holding variable in a command's arguments
+  local f
+  for f in "$@"; do
+    sed -e 's/^[[:space:]]*#.*//' -e 's/[A-Za-z_][A-Za-z_]*=\$[{(]*[A-Za-z_]*[})]*//g' "$f" |
+      grep -nE '(--arg|--argjson|add_param|curl|aws|ssh|box|jq)[ ].*\$\{?(NEW|OLD|INTERNAL_KEY|ADMIN_KEY|SERVICE_ACCESS_KEY|FRONT_DOOR_KEY|key)\b' || true
+  done
+}
+# shellcheck disable=SC2016 # the control's literal text
+printf '%s\n' '  PARAMS=$(jq -c --arg v "$key" ". + [\$v]" <<<"$PARAMS")' 'KEY=$NEW aws x' >"$WORK/key-arg-control.sh"
+check "no key-holding variable is an argument of a command in keys.sh, stack.sh or app.sh" 0 "$(key_arg_lines "$OPS_DIR/keys.sh" "$OPS_DIR/stack.sh" "$OPS_DIR/app.sh" | wc -l | tr -d ' ')"
+check "  and the guard sees a key in jq's --arg, and not one in an assignment in front of a command (a planted control)" 1 "$(key_arg_lines "$WORK/key-arg-control.sh" | wc -l | tr -d ' ')"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 

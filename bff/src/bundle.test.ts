@@ -71,7 +71,7 @@ describe('the Lambda bundle', () => {
         JSON.stringify({
           method: 'GET',
           path: '/api/config',
-          headers: { 'x-client-code': 'no-such-co' },
+          headers: { 'x-client-code': 'no-such-co', 'x-front-door-key': 'door-key-one' },
         }),
       ],
       {
@@ -82,6 +82,7 @@ describe('the Lambda bundle', () => {
           SERVICE_CODE: tenant.serviceCode,
           SERVICE_ACCESS_KEY: tenant.accessKey,
           APP_ORIGIN: ORIGIN,
+          FRONT_DOOR_KEYS: 'door-key-one',
         },
       },
     );
