@@ -4364,6 +4364,7 @@ check "case 14, internal: the run ends green, and says which key it replaced" "0
 check "  the new key is 64 hex characters and not the old; the super-admin key is as it was" "yes $FAKE_AKEY" "$(is_new "$old_i" "$new_i") $(boxkey X_SUPER_ADMIN_KEY keys.env)"
 check "  its order: the keys file on the box, the store restarted, then the function's copy" "write keys.env,restart,settings 1" "$(events)"
 check "  the function holds the new key and the door's key as it was" "$new_i $FAKE_DKEY" "$(function_var INTERNAL_ACCESS_KEY) $(function_var FRONT_DOOR_KEYS)"
+check "  and the log's address and key as they were: a settings call replaces the whole environment" "http://10.20.30.40:$AUDIT_PORT $FAKE_UKEY" "$(function_var AUDIT_URL) $(function_var AUDIT_KEY)"
 check "  the old key is read back refused (401) and the new accepted (200) by the real store" "1 1" \
   "$(grep -c '^ok   the store refuses the old internal key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new: 200$' "$S/out" || true)"
 check "  the seconds of refused calls and of the store's restart are printed" "1 1" \
@@ -4458,6 +4459,13 @@ printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(printf 'ef%.0s' $(seq 1 32
 keys_run keys-half half internal
 check "an internal run finds the store refusing the service key the box holds: nothing is changed, and it says what to do" "1 1 [] 0" \
   "$RC $(grep -c 'the store refuses the service key the box.s bff.env holds: nothing was changed' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
+
+# a box without the log's key file (the release's log half stopped before it made the key) is found before a run changes anything
+e2e_fresh keys-noaudit
+e2e_run app.sh ridge
+FAKE_NO_AUDIT_KEY=1 keys_run keys-noaudit noaudit internal
+check "an internal run on a box without the log's key is refused before anything changes: nothing written, no restart, no settings, no STOPPED line" "1 1 [] 0" \
+  "$RC $(grep -c 'the box holds no /etc/audit-backbone/keys.env' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
 
 # the store does not know the BFF's service: the rekey is refused, and nothing is left or changed
 e2e_fresh keys-unregistered

@@ -1113,7 +1113,8 @@ bff_vpc() {
 # the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
 # passkey is checked against: CloudFront's name, kept for good.
 bff_settings_set() {
-  [ -n "$AUDIT_KEY" ] || audit_read # a settings call replaces the whole environment: the log's address and key go in each time
+  # a settings call replaces the whole environment, so the log's address and key go in each time: the caller read them first
+  [ -n "$AUDIT_KEY" ] || die "bff_settings_set: audit_read first"
   (
     umask 077
     INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
