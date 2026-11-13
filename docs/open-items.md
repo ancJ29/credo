@@ -1603,3 +1603,8 @@ The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, 
 ## 395. The demo remake labels its steps one too high, and the runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
 
 `ops/demo-remake.sh` sets `STEPS=6` and calls `step` five times, so its lines read one to five of six; the ridge guide's `[n/6]` matches what prints. In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* set the count to five (or add the sixth step), and say "a run that prints". *Trigger:* the next edit of either script.
+
+
+## 389. The whole-check test's stand-in edge never knew the check's own client, so its sign-in reds went unread — the machine; `[DEFERRED]` (the activity log's step 6, 2026-11-13, Low)
+
+In `ops/test.sh`, the stand-in edge answers one fixed client code (`FAKE_EDGE_CODE`), while `ops/check.sh` makes a client whose code carries the date. So in the whole-check runs of `ops/check.sh ridge` the stand-in could not know the client the root signs in to, by the code alone, and no case read the run's green. It was found when the step added a customer through that edge and needed the sign-in to hold. *Done at that step:* the stand-in edge takes any `check-2…` code when `FAKE_EDGE_ANYCODE` is set, and the whole-check cases read that run's `RED` lines. *Left:* the other whole-check runs (`reads-only`, the copy cases) still do not read their own `== green`; they read single lines. *Trigger:* the next edit of the check's stand-ins.

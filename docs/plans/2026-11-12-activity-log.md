@@ -93,7 +93,7 @@ check's verdict line on ridge, read as points 2 and 3; stage 4 is ridge itself.
 | 9 | A release waits until the log's `/health` names the commit shipped | the release's log on ridge |
 | 10 | The deploy sets the log's address and key from the box's file, refuses by name when the box holds none, and the function then holds seven names, never the super-admin key | `ops/test.sh` |
 | 11 | The check is red when the log's unit is not active, its writing listener is anywhere but the box's private address, its reading listener anywhere but loopback, or its key file not 600 root | `ops/test.sh`, on written input |
-| 12 | The check's rule readings accept the two ports from the back end's group, and the store's alone on a ridge that lacks the second rule, and refuse anything more (moved to step 1) | `ops/test.sh`, beside the existing verdict cases |
+| 12 | The check's rule readings accept the two ports from the back end's group and nothing less or more: a ridge without the log's rule reads red (widened at step 1, narrowed again at step 6) | `ops/test.sh`, beside the existing verdict cases |
 | 13 | A customer added through the app's address is found in the log by its record, read on the box, with no key in the log | the check on ridge, your run |
 | 14 | A push that changes the service runs its gate in CI, and the deploy waits on that gate | `ops/test.sh`, reading `ci.yml` |
 | 15 | The log's file is copied by its own Litestream inside its own unit, to the box's own path in the copy's bucket | `ops/test.sh` |
@@ -127,7 +127,9 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   file) without them, the log's copy joining at step 12; the egress rule is inline in the back end's group, so the
   update modifies that group in place (the box's group does not change, and case 6 reads the back end's group, not
   the box's); `adds_and_one_modify` pins layer four's names and is left as it was, and the new update is its own
-  guard, `activity_update`, over a hand-written change set, `ops/testdata/changeset-activity.json`; the ports are
+  guard, `activity_update`, over a hand-written change set, `ops/testdata/changeset-activity.json`, which checks the author's
+  expected change set and not the one CloudFormation makes (`ops/stack.sh` does not call it, since a real change set holds
+  other pieces' changes too; the only guard on the owner's run is `ops/unsafe-changes.jq`); the ports are
   `PORT` 3184 and `OPEN_PORT` 3185 in the unit, `AuditPort` the writing one. AWS's page on the egress update was not
   read in this step (no web), so "in place" rests on the change set read at step 2. Each new guard has its refused case
   on a copy of the real file broken one way: the second egress rule dropped or widened, a third port, an address
@@ -140,8 +142,21 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   port, address range or group, a lone log rule or a rule too many is still refused. Each of the two readings
   was seen red once by a mutation of the reading (backed up first, reverted).
 - [ ] 👤 **2. Your stack run,** once step 1 is in `main` and pushed: `ops/stack.sh env ridge --plan`,
-  then without it. Your first point. *Done when:* the machine reads the log whole: one addition, a
-  modify of the back end's group in place, nothing removed or replaced, `== exit 0`. **5 to read.**
+  then without it. Your first point. Ridge by then already holds the continuous copy (its stack run is
+  the same sitting's earlier act), so the plan-only run must print, and the machine reads the log whole
+  for, exactly: `AuditPort=3184` among the parameters; `Add BoxFromBffActivity (AWS::EC2::SecurityGroupIngress)
+  replacement=none`; `Modify BffGroup (AWS::EC2::SecurityGroup) replacement=False` with its detail
+  `Properties SecurityGroupEgress requires-recreation=Never`; `ok no removal and no replacement`; and
+  `== exit 0`. A ridge still at the night's state of 11-12 (no copy yet) also prints the copy's and the Slack
+  alarm's lines, as their own plans name them. **A no** is any one of: `REFUSED`; `replacement=True` or
+  `replacement=Conditional` on any line; a `Remove`; a change to `BoxGroup` or `Box` beyond the copy's own
+  modify; `GroupDescription`, `VpcId` or `GroupName` named as a detail of `BffGroup`; `the change set failed:`
+  naming `AuditPort`. Worth reading before the run without `--plan`: `Bff` or `BoxFromBff` shown as `Modify`
+  with `evaluation=Dynamic` (the guard accepts it); if `BoxFromBff` shows `Conditional` the guard refuses it,
+  and the answer is a decision, not a `--take` by reflex. Not settled before the run: whether CloudFormation
+  adds the one egress rule alone or rewrites the list (the store's door dropped for a moment, which the back
+  end's 600 ms bounds absorb on ridge's demo data). *Done when:* the machine reads the log whole and it
+  matches the yes above, `== exit 0`. **5 to read.**
 - [x] **3. The writing listener.** The store's `listenAddrOf` and its tests copied into the
   service's config, the writing listener bound to it (`internal/lifecycle/lifecycle.go#L45`), the
   reading one left on loopback (`#L49`), the comment naming the old app's proxy rewritten. Cases 1
@@ -202,12 +217,35 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   environment check and the names constant's check); the stand-in ssh answers the log's key file. Each new guard was seen red
   by a mutation: the four CI breaks on copies of `ci.yml`, and on the real `ops/app.sh` the log's settings left out
   and the refusal removed.
-- [ ] **6. The check.** `ops/check.sh`'s box reads (`#L81-L103`) gain the log's unit, its two
+- [x] **6. The check.** `ops/check.sh`'s box reads (`#L81-L103`) gain the log's unit, its two
   listeners, its key file and directory modes, its `/health` naming the commit, and each unit's
-  memory; the rule readings were widened at step 1 (case 12 moved there, so the check reads green on a ridge before and after the stack run); after the walk through the app's address (`#L157-L181`) the root
+  memory; the rule readings, widened at step 1 so the check read green on a ridge before and after the stack run, are narrowed again here to the two ports from the back end's group, so a ridge without the log's rule reads red, with a case that pins it (case 12); after the walk through the app's address (`#L157-L181`) the root
   adds one customer and the box itself reads its entry by that record, the key read on the box and
-  never sent back. Cases 11, 13 and 16 (case 12 is done at step 1). *Done when:* the three `ops/` rows exit 0, each case red
+  never sent back. Cases 11, 12, 13 and 16. *Done when:* the three `ops/` rows exit 0, each case red
   once. **10.**
+  *Done, 2026-11-13 (sonnet):* shellcheck, cfn-lint, the citation test, the whole `ops/test.sh` ("all checks passed") and
+  the scripts package's gate at exit 0 on the committed tree. The check's box reads gained a call of their own (the
+  first word `audit`): the log's unit, its writing listener on the box's private address alone, its reading
+  listener on loopback alone, the key file, the data folder and its files, and its `/health` against the commit
+  c-storage's `/health` names, one `RED` line each (`audit_problems`, on written input); each program's memory
+  beside the box's free memory (`audit_memory_line`, a figure the box does not give said as not read), and the OOM
+  read stays red. After the walk the root adds one customer through the app's address; the box mints a read token
+  from the key file it holds, reads that record's entries on its loopback and prints counts alone (a second call,
+  first word `entry`, the key and token handed to curl as a config on a pipe, never an argument), and the check
+  needs one `customer.create` entry and no key in it. To give the box the client's id, `ridge.ts` gained
+  `tenant-id <code>`, so the scripts package changed too, which the plan did not name. Case 12 is narrowed
+  (Medium 2 of the template review): both rule readings take the store's port and the log's, one rule each, and
+  a ridge or a group without the log's rule reads red; the "without" form is dropped. Medium 1: `activity_update`'s
+  comment and this plan's step 1 now say it checks the author's expected change set, not CloudFormation's.
+  Medium 3: step 2 is rewritten for a ridge that already holds the copy, with the lines a yes and a no print.
+  Low 1: a comment beside `GroupDescription` says it stays because a change replaces the group. Each case was seen
+  red once by a mutation on a scratch copy, reverted (the copy never committed): both pins (the box's reading and
+  the back end's reading with the "without" form back), each of the seven log facts and each of the three entry
+  facts with its check dropped, the memory line dropped, a zero said for a missing figure, the OOM expectation
+  loosened, the customer's add removed from the walk, and `tenant-id` printing the name; the key-on-a-pipe text
+  guard was seen to count a line that echoes the key, not by a run. Not shown offline, so unticked: case 13
+  and case 16 read off ridge. Three old checks changed: the stand-in edge takes the check's dated client
+  code, and the two lists of the client commands now hold `tenant-id` (open item 389).
 - [ ] **7. The prose it makes false.** `docs/activity-log.md` (its title, "Nothing ships it", where
   it runs), `docs/architecture.md`'s picture and part line, `docs/architecture-detail.md`'s row,
   `docs/README.md`'s row, the service's `CLAUDE.md` ("Ship: none yet"), its `README.md` and

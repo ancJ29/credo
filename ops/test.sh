@@ -859,7 +859,10 @@ refuses "  a box shown as Conditional is not that update either" "not a Modify o
   copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
 
 # activity_update <change set>: dies unless the update is the log's one rule on the box added and the BFF's group
-# modified in place (its second egress rule), nothing else, and the guard names nothing
+# modified in place (its second egress rule), nothing else, and the guard names nothing. It checks the author's
+# expected change set, a hand-written file made to match the expectation, and not the change set CloudFormation
+# makes: ops/stack.sh does not call it, since a real change set holds other pieces' changes too. The only guard on
+# the owner's run is unsafe-changes.jq; the lines the owner's --plan must print are in the plan's step 2.
 activity_update() {
   local seen
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
@@ -868,7 +871,7 @@ activity_update() {
   [ "$seen" = "Modify BffGroup False" ] || die "the change set's other changes are not a Modify of BffGroup in place: $seen"
   [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
 }
-passes "the update on ridge for the log's port, as CloudFormation shows it, adds the rule and modifies BffGroup in place; the guard passes" \
+passes "the update for the log's port, as its author expects CloudFormation to show it, adds the rule and modifies BffGroup in place; the guard passes" \
   activity_update "$OPS_DIR/testdata/changeset-activity.json"
 refuses "  a BFF group shown as replaced is not that update, and the guard names it" "not a Modify of BffGroup in place" \
   activity_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "BffGroup") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-replaced.json"; echo "$WORK/cs-act-replaced.json")"
@@ -2582,10 +2585,12 @@ eg='["sg-ep"]'
 ssh_rule=$(tcp 22 "$none" sg-ep)
 app_rule=$(tcp "$BOX_PORT" "$none" sg-bff)
 rules() { jq -sc . <<<"$*"; }
+# the activity log's writing port (row 12 of docs/plans/2026-11-12-activity-log.md): the box admits it from the BFF's group too
+audit_rule=$(tcp "$AUDIT_PORT" "$none" sg-bff)
 check "before layer four the box admits ssh from the endpoint's group alone" yes "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" '' "$BOX_PORT")"
 check "with layer four it admits ssh from the endpoint's group and c-storage's port from the BFF's group" yes \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
-check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$audit_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port open before layer four is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" '' "$BOX_PORT")"
 check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
 check "c-storage's port from an address range is refused" no \
@@ -2601,13 +2606,10 @@ check "ssh from another group than the endpoint's is refused" no \
 check "ssh from anywhere is refused" no \
   "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
 check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
-# the activity log's writing port (row 12 of docs/plans/2026-11-12-activity-log.md, moved into step 1 so the check reads green
-# before and after ridge's stack run): the box admits it from the BFF's group too, or does not yet
-audit_rule=$(tcp "$AUDIT_PORT" "$none" sg-bff)
 check "with the log's port the box admits ssh, c-storage's port and the log's port from the BFF's group" yes \
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "  in any order" yes "$(box_rules_verdict "$(rules "$audit_rule" "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
-check "  and a ridge the stack run has not reached (no log rule yet) reads green too" yes \
+check "  a ridge without the log's rule reads red, the stack run having to come before the code that uses it (the step 6 pin)" no \
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "  the log's port from an address range is refused" no \
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
@@ -2623,17 +2625,17 @@ check "  the log's port when no log port is asked for is refused" no \
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT")"
 
 egress_rule=$(tcp "$BOX_PORT" "$none" sg-box)
-check "the BFF's group sends to c-storage's port on the box's group, and admits nothing" yes "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT")"
-check "  a second egress rule (all traffic) is refused" no \
-  "$(bff_rules_verdict "$(rules "$egress_rule" '{"IpProtocol":"-1","IpRanges":[{"CidrIp":"0.0.0.0/0"}],"Ipv6Ranges":[],"PrefixListIds":[],"UserIdGroupPairs":[]}')" '[]' sg-box "$BOX_PORT")"
-check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT")"
-check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
-check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 audit_egress=$(tcp "$AUDIT_PORT" "$none" sg-box)
+check "the BFF's group sends to c-storage's port on the box's group, and admits nothing, with the log's port beside it" yes "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  a third egress rule (all traffic) is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress" '{"IpProtocol":"-1","IpRanges":[{"CidrIp":"0.0.0.0/0"}],"Ipv6Ranges":[],"PrefixListIds":[],"UserIdGroupPairs":[]}')" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT" "$AUDIT_PORT")"
 check "the BFF's group sends to c-storage's port and the log's port on the box's group, and admits nothing" yes \
   "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
 check "  in any order" yes "$(bff_rules_verdict "$(rules "$audit_egress" "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
-check "  and a ridge the stack run has not reached (one rule) reads green too" yes \
+check "  a group with c-storage's rule alone reads red, the stack run having to come before the code that uses it (the step 6 pin)" no \
   "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
 check "  the log's egress to an address range is refused" no \
   "$(bff_rules_verdict "$(rules "$egress_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
@@ -2704,7 +2706,9 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get('content-length') or 0)
         return json.loads(self.rfile.read(n) or b'{}')
     def known(self):
-        return self.headers.get('x-client-code') == CODE
+        code = self.headers.get('x-client-code') or ''
+        # FAKE_EDGE_ANYCODE: the whole check's client, whose code carries the date, is known (the open reads' check-no-such-client is not)
+        return code == CODE or (os.environ.get('FAKE_EDGE_ANYCODE') != None and code.startswith('check-2'))
     def do_GET(self):
         path = self.path.split('?')[0]
         if path == '/index.html' and os.environ.get('FAKE_EDGE_COMMIT'):
@@ -2722,7 +2726,7 @@ class H(BaseHTTPRequestHandler):
             if code is None: return self.reply(400, b'{}')
             if not self.known():
                 return self.reply(200, PAGE, 'text/html') if MODE == 'unknown-is-page' else self.reply(404, b'{}')
-            return self.reply(200, json.dumps({'config': {'name': NAME}, 'version': 'v'}).encode(), cached=(MODE == 'cached'))
+            return self.reply(200, json.dumps({'config': {'name': ('Check ' + code) if os.environ.get('FAKE_EDGE_ANYCODE') else NAME}, 'version': 'v'}).encode(), cached=(MODE == 'cached'))
         if path == '/api/auth/me':
             ok = self.known() and self.headers.get('x-auth-id') == HANDLE and (not signed_out[0] or MODE == 'no-sign-out')
             return self.reply(200, b'{"user":{"name":"root","root":true}}') if ok else self.reply(401, b'{}')
@@ -2733,6 +2737,11 @@ class H(BaseHTTPRequestHandler):
             b = self.body()
             if self.known() and b.get('name') == 'root' and b.get('password') == PASS:
                 return self.reply(200, json.dumps({'authId': HANDLE, 'expiresAt': 1, 'user': {'name': 'root', 'root': True}}).encode())
+            return self.reply(401, b'{}')
+        if path == '/api/customers':
+            b = self.body()
+            if self.known() and self.headers.get('x-auth-id') == HANDLE and b.get('code') == 'CHK-1':
+                return self.reply(200, json.dumps({'customer': {'id': 'rec-0001', 'code': 'CHK-1', 'name': b.get('name')}, 'version': '1'}).encode())
             return self.reply(401, b'{}')
         if path == '/api/auth/sign-out':
             signed_out[0] = True
@@ -2824,8 +2833,9 @@ mkdir -p "$CHK/bin"
 chk_port=$(free_port)
 chk_sha=$e2e_sha
 export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://api-test-host.invalid:9 FAKE_LAYER4=1
-rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
-jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
+export FAKE_AUDIT_SHA=$chk_sha
+rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" "$(tcp "$AUDIT_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
+jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)" "$(tcp "$AUDIT_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
   '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
@@ -2875,12 +2885,28 @@ case "$*" in
     words=${all##*-- }
     set -- $words
     if [ "$3" = 1 ]; then printf 'answering=yes\naside=%s\n' "$4"; else printf 'restored=/var/lib/private/c-storage/restored-%s.db\n' "$4"; fi ;;
+  *"sudo bash -s -- audit "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    all="$*"
+    words=${all##*-- }
+    set -- $words
+    # the log's own facts (the check passes: audit, the box's address, the writing port, the reading port); FAKE_AUDIT_BREAK
+    # names the one fact to break, FAKE_OOM is the box's kernel log count read by the c-storage call
+    facts=$(printf 'unit=active\nlisten_w=%s:%s \nlisten_r=127.0.0.1:%s \nkeys=600 root\ndir=700\nfiles=600 \nhealth={"buildVersion":"%s"}\nmem_c-storage=%s\nmem_audit-backbone=%s\n' "$2" "$3" "$4" "${FAKE_AUDIT_SHA:-}" "${FAKE_MEM_C:-41943040}" "${FAKE_MEM_A:-20971520}")
+    if [ -n "${FAKE_AUDIT_BREAK:-}" ]; then facts=$(sed "s/^${FAKE_AUDIT_BREAK}=.*/${FAKE_AUDIT_BREAK}=broken/" <<<"$facts"); fi
+    printf '%s\n' "$facts" ;;
+  *"sudo bash -s -- entry "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/entry.calls"
+    cat >/dev/null
+    printf 'minted=%s\ncreated=%s\nleak=%s\n' "${FAKE_ENTRY_MINTED:-yes}" "${FAKE_ENTRY_CREATED:-1}" "${FAKE_ENTRY_LEAK:-0}" ;;
   *"sudo bash -s -- "*)
     echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
     cat >/dev/null
     all="$*"
     port=${all##* } # the check passes c-storage's port last
-    printf 'unit=active\nlisten=10.20.30.40:%s \nkeys=600 root\noom=0\ndbdir=700\ndbfiles=600 \narch=aarch64\nmemory=2048 MiB available of 4096 MiB\nswap=0 of 0 MiB used\ndisk=8192 MiB free of 16384 MiB\n' "$port" ;;
+    printf 'unit=active\nlisten=10.20.30.40:%s \nkeys=600 root\noom=%s\ndbdir=700\ndbfiles=600 \narch=aarch64\nmemory=2048 MiB available of 4096 MiB\nswap=0 of 0 MiB used\ndisk=8192 MiB free of 16384 MiB\n' "$port" "${FAKE_OOM:-0}" ;;
   *) exec "$CHK_BASE/ssh" "$@" ;;
 esac
 STANDIN
@@ -2898,13 +2924,14 @@ if [ "${1:-}" = --import ] && [ "${3:-}" = src/ridge-main.ts ]; then
     tenant) echo pa55word-test ;;
     untenant) echo "client $5 removed" ;;
     clear-checks) echo "swept 0 stranded clients" ;;
+    tenant-id) echo 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 ;;
   esac
   exit 0
 fi
 exec "$CHK_BASE/node" "$@"
 STANDIN
 chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
-FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
+FAKE_EDGE_ANYCODE=1 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
 chk_edge=$!
 for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
 chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
@@ -2939,11 +2966,52 @@ check "case 9: --reads-only on ridge gives the same run: green, no key, no colle
 check "  and prints no 'safe there' line, which ridge never had" 0 "$(chk_has 'may hold real data' "$S/out")"
 
 chk_run full check.sh ridge
-check "  without the flag ridge's check is today's: the keys are read, the collection runs, a client is made, swept and deleted" "1 1 1 clear-checks,tenant,untenant" \
+check "  without the flag ridge's check is today's: the keys are read, the collection runs, a client is made, swept and deleted" "1 1 1 clear-checks,tenant,tenant-id,untenant" \
   "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(chk_has '^ok   bru run exits: 0' "$S/out") $(paste -sd, "$S/ridge.calls")"
 check "  and prints nothing about real data" 0 "$(chk_has 'may hold real data' "$S/out")"
+# the activity log in the whole check (cases 11, 13 and 16 of docs/plans/2026-11-12-activity-log.md)
+check "case 13: the check adds a customer through the edge, makes the client's id known to the box and reads the record's entry there, green" "1 1 1 0" \
+  "$(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^ok   the customer the root added is in the activity log on the box, read by its record, with no key in it' "$S/out") $(chk_has '-- entry 10.20.30.40 3184 3185 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 rec-0001$' "$S/ssh.calls") $(chk_has '^RED' "$S/out")"
+check "  and the key goes to curl on a pipe as a config, never on a command line or back off the box" "1 0 0" \
+  "$(grep -c "printf 'header = \"x-internal-access-key: %s" "$OPS_DIR/check.sh" || true) $(grep -cE 'curl .*(-H|--header) .?.?x-internal-access-key' "$OPS_DIR/check.sh" || true) $(grep -cE 'echo "[^"]*[$][{]?key' "$OPS_DIR/check.sh" || true)"
+check "case 11: the log's unit, listeners, key file, folder, files and /health read sound on the box, green" "1 0" \
+  "$(chk_has '^ok   the activity log is sound on the box' "$S/out") $(chk_has '^RED  the activity log' "$S/out")"
+check "case 16: the check prints each program's memory beside the box's free memory" 1 \
+  "$(chk_has '^programs: c-storage 40 MiB; audit-backbone 20 MiB; box free 2048 MiB available of 4096 MiB$' "$S/out")"
+for broken in minted created leak; do
+  case $broken in
+    minted) export FAKE_ENTRY_MINTED=no  wantmsg='could not mint a read token' ;;
+    created) export FAKE_ENTRY_CREATED=0 wantmsg="holds '0' customer.create entries" ;;
+    leak) export FAKE_ENTRY_LEAK=1  wantmsg='holds the write key' ;;
+  esac
+  chk_run "entry-$broken" check.sh ridge
+  unset FAKE_ENTRY_MINTED FAKE_ENTRY_CREATED FAKE_ENTRY_LEAK
+  check "case 13: with $broken broken the check is red, naming it, and the log ends on == red" "1 1 1" \
+    "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  .*$wantmsg" "$S/out") $(chk_has '^== red' "$S/out")"
+done
+FAKE_OOM=2 chk_run oom check.sh ridge --reads-only
+check "case 16: an out-of-memory kill since boot keeps the check red, with the memory line still printed" "1 1 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  OOM kills since boot: wanted '0', got '2'" "$S/out") $(chk_has '^programs: ' "$S/out")"
+for broken in unit listen_w listen_r keys dir files health; do
+  FAKE_AUDIT_BREAK=$broken chk_run "log-$broken" check.sh ridge --reads-only
+  case $broken in
+    unit) wantmsg="unit is 'broken', not active" ;;
+    listen_w) wantmsg="writing listener is not the box's private address alone" ;;
+    listen_r) wantmsg="reading listener is not loopback alone" ;;
+    keys) wantmsg="key file is 'broken', not '600 root'" ;;
+    dir) wantmsg="data folder is mode 'broken', not 700" ;;
+    files) wantmsg="database files are mode 'broken'" ;;
+    health) wantmsg="/health names 'nothing'" ;;
+  esac
+  check "case 11: with the log's $broken broken the check is red, naming it" "1 1 1" \
+    "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  the activity log's $wantmsg" "$S/out") $(chk_has '^== red' "$S/out")"
+done
+sound_facts=$(printf 'unit=active\nlisten_w=10.20.30.40:%s \nlisten_r=127.0.0.1:%s \nkeys=600 root\ndir=700\nfiles=600 \nhealth={"buildVersion":"abc"}\nmem_c-storage=41943040\nmem_audit-backbone=[not set]\n' "$AUDIT_PORT" "$AUDIT_OPEN_PORT")
+check "case 11: sound facts on written input give no problem, and /health naming another commit gives one" "[] 1" \
+  "[$(audit_problems "$sound_facts" 10.20.30.40 "$AUDIT_PORT" "$AUDIT_OPEN_PORT" abc)] $(audit_problems "$sound_facts" 10.20.30.40 "$AUDIT_PORT" "$AUDIT_OPEN_PORT" def | grep -c 'names .abc., not def' || true)"
+check "case 16: a figure the box did not give is said as not read, never as zero" "c-storage 40 MiB; audit-backbone not read" "$(audit_memory_line "$sound_facts")"
 REAL=1 chk_run strayreal check.sh ridge
-check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys are read, a client is made and deleted" "1 1 clear-checks,tenant,untenant" \
+check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys are read, a client is made and deleted" "1 1 clear-checks,tenant,tenant-id,untenant" \
   "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
