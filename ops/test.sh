@@ -2515,6 +2515,26 @@ check "ssh from another group than the endpoint's is refused" no \
 check "ssh from anywhere is refused" no \
   "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
 check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+# the activity log's writing port (row 12 of docs/plans/2026-11-12-activity-log.md, moved into step 1 so the check reads green
+# before and after ridge's stack run): the box admits it from the BFF's group too, or does not yet
+audit_rule=$(tcp "$AUDIT_PORT" "$none" sg-bff)
+check "with the log's port the box admits ssh, c-storage's port and the log's port from the BFF's group" yes \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(box_rules_verdict "$(rules "$audit_rule" "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  and a ridge the stack run has not reached (no log rule yet) reads green too" yes \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port from an address range is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port from another group is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp "$AUDIT_PORT" "$none" sg-other)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  a fourth rule (another port) beside the log's is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's rule without c-storage's is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port open before layer four is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" '' "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port when no log port is asked for is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT")"
 
 egress_rule=$(tcp "$BOX_PORT" "$none" sg-box)
 check "the BFF's group sends to c-storage's port on the box's group, and admits nothing" yes "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT")"
@@ -2523,6 +2543,23 @@ check "  a second egress rule (all traffic) is refused" no \
 check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT")"
 check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
+audit_egress=$(tcp "$AUDIT_PORT" "$none" sg-box)
+check "the BFF's group sends to c-storage's port and the log's port on the box's group, and admits nothing" yes \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(bff_rules_verdict "$(rules "$audit_egress" "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  and a ridge the stack run has not reached (one rule) reads green too" yes \
+  "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress to an address range is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress to another group is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$(tcp "$AUDIT_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  a third egress rule beside the two is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress" "$(tcp 8080 "$none" sg-box)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress alone is refused" no "$(bff_rules_verdict "$(rules "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  two rules when no log port is asked for are refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT")"
+check "  an ingress rule beside the two is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT" "$AUDIT_PORT")"
 
 # The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
 fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'

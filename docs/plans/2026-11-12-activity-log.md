@@ -93,7 +93,7 @@ check's verdict line on ridge, read as points 2 and 3; stage 4 is ridge itself.
 | 9 | A release waits until the log's `/health` names the commit shipped | the release's log on ridge |
 | 10 | The deploy sets the log's address and key from the box's file, refuses by name when the box holds none, and the function then holds seven names, never the super-admin key | `ops/test.sh` |
 | 11 | The check is red when the log's unit is not active, its writing listener is anywhere but the box's private address, its reading listener anywhere but loopback, or its key file not 600 root | `ops/test.sh`, on written input |
-| 12 | The check's rule readings accept the two ports from the back end's group and refuse anything more | `ops/test.sh`, beside the existing verdict cases |
+| 12 | The check's rule readings accept the two ports from the back end's group, and the store's alone on a ridge that lacks the second rule, and refuse anything more (moved to step 1) | `ops/test.sh`, beside the existing verdict cases |
 | 13 | A customer added through the app's address is found in the log by its record, read on the box, with no key in the log | the check on ridge, your run |
 | 14 | A push that changes the service runs its gate in CI, and the deploy waits on that gate | `ops/test.sh`, reading `ci.yml` |
 | 15 | The log's file is copied by its own Litestream inside its own unit, to the box's own path in the copy's bucket | `ops/test.sh` |
@@ -111,7 +111,7 @@ Each gate is the touched package's one command: `make check` in `services/audit-
 `ops/` the three rows (`shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh`,
 `cfn-lint ops/network.yml ops/github.yml ops/env.yml`, `bash ops/test.sh`), plus the citation test.
 
-- [x] **1. The template's half, landed alone.** `ops/env.yml`: the back end's group gains its second
+- [ ] **1. The template's half, landed alone.** `ops/env.yml`: the back end's group gains its second
   egress rule, to the log's writing port on the box's group, and a new `BoxFromBffActivity` admits
   that port from the back end's group alone. The port is a parameter `ops/stack.sh` passes from the
   log's unit, as it passes `BoxPort` (`ops/stack.sh#L167`, guarded at `ops/test.sh#L500-L505`), so
@@ -120,8 +120,9 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   until step 4. The guards at `ops/test.sh#L253-L261` and `#L507-L524` widened. AWS's page on a
   security group's egress update read first (in place, or not). Cases 3 to 6. *Done when:* the three
   `ops/` rows exit 0, each new guard seen red once. **10.** Lands on `pre-merge` alone.
-  *Done, 2026-11-13 (sonnet):* shellcheck and cfn-lint at exit 0 and the whole `ops/test.sh` at exit 0, "all checks
-  passed", after `pre-merge` was taken in. Built against the template as the continuous copy left it, which differs
+  *Built, 2026-11-13 (sonnet); the tick waits for the whole `ops/test.sh` on this tree:* shellcheck, cfn-lint and the
+  citation test at exit 0 on it; the whole `ops/test.sh` exited 0 on the tree before case 12 moved here, and its rerun on
+  this tree did not get the gate lock in 30 minutes (an act run held it), so it is unproven. `pre-merge` was taken in. Built against the template as the continuous copy left it, which differs
   from the step as written: the unit is not a copy of the store's lines 12 to 22, which now wrap Litestream and wait
   on the records disk, but the store's plain shape (its own user, 0700 under umask 0077, two ports, listen file, key
   file) without them, the log's copy joining at step 12; the egress rule is inline in the back end's group, so the
@@ -133,8 +134,12 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   on a copy of the real file broken one way: the second egress rule dropped or widened, a third port, an address
   range, the box rule from another group or for the store's port, a default on the port, a stack run that forgets
   the port, a change set that replaces the back end's group, adds a rule or modifies the box's group, and six breaks
-  of the unit. `ops/check.sh`'s rule readings still pin the single rule, so a check of ridge after the stack run
-  reads red until step 6 widens them.
+  of the unit. Case 12 moved here from step 6, by the orchestrator's decision: `ops/check.sh`'s rule readings
+  (`box_rules_verdict`, `bff_rules_verdict`) took the single rule, so a check of ridge would have read red between
+  the stack run and step 6. They now take the log's writing port beside the store's, one rule each, and read green
+  on a ridge that has the second rule and on one that has not yet (the stack run comes after the push); any other
+  port, address range or group, a lone log rule or a rule too many is still refused. Each of the two readings
+  was seen red once by a mutation of the reading (backed up first, reverted).
 - [ ] 👤 **2. Your stack run,** once step 1 is in `main` and pushed: `ops/stack.sh env ridge --plan`,
   then without it. Your first point. *Done when:* the machine reads the log whole: one addition, a
   modify of the back end's group in place, nothing removed or replaced, `== exit 0`. **5 to read.**
@@ -156,9 +161,9 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   each case red once; `actionlint` read by hand (`ops/CLAUDE.md`'s OP3). **8.**
 - [ ] **6. The check.** `ops/check.sh`'s box reads (`#L81-L103`) gain the log's unit, its two
   listeners, its key file and directory modes, its `/health` naming the commit, and each unit's
-  memory; the rule readings widen; after the walk through the app's address (`#L157-L181`) the root
+  memory; the rule readings were widened at step 1 (case 12 moved there, so the check reads green on a ridge before and after the stack run); after the walk through the app's address (`#L157-L181`) the root
   adds one customer and the box itself reads its entry by that record, the key read on the box and
-  never sent back. Cases 11 to 13 and 16. *Done when:* the three `ops/` rows exit 0, each case red
+  never sent back. Cases 11, 13 and 16 (case 12 is done at step 1). *Done when:* the three `ops/` rows exit 0, each case red
   once. **10.**
 - [ ] **7. The prose it makes false.** `docs/activity-log.md` (its title, "Nothing ships it", where
   it runs), `docs/architecture.md`'s picture and part line, `docs/architecture-detail.md`'s row,

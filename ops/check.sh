@@ -88,7 +88,7 @@ endpoint_groups=$(aws ec2 describe-instance-connect-endpoints --filters "Name=vp
 rules=$(aws ec2 describe-security-groups --group-ids "$group_id" --query 'SecurityGroups[0].IpPermissions' --output json)
 # Ssh from a group of the endpoint and, from layer four, c-storage's port from the BFF's group: those and nothing else.
 expect "the box's group admits ssh from the endpoint's group, and c-storage's port from the BFF's group, nothing else" yes \
-  "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT")"
+  "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT" "$AUDIT_PORT")"
 
 step "the tunnel, and the box's reads"
 box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
@@ -175,7 +175,7 @@ else
   fi
   bff_sg=$(aws ec2 describe-security-groups --group-ids "$BFF_GROUP" --output json)
   expect "the BFF's group sends to c-storage's port on the box's group alone, and admits nothing" yes \
-    "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT")"
+    "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT" "$AUDIT_PORT")"
   # The function's configuration holds its two access keys, so only the fields BFF_FN_QUERY names are
   # read: no key value reaches this shell, on any environment (open item 50).
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query "$BFF_FN_QUERY" --output json)

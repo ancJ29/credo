@@ -1016,31 +1016,41 @@ bff_env_read() {
 }
 
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
-# empty before layer four> <c-storage's port> → yes, or no. Ssh from a group of the endpoint, and with
-# layer four c-storage's port from BffGroup alone, each a single tcp port from one group: no address
-# range, list or other group, and no third rule.
+# empty before layer four> <c-storage's port> [<the activity log's writing port>] → yes, or no. Ssh from a
+# group of the endpoint, and with layer four c-storage's port from BffGroup alone, and the activity log's
+# writing port from it too when that port is given and the rule is there (a ridge the stack run has not
+# reached yet has not got it, and reads green too), each a single tcp port from one group: no address
+# range, list or other group, no other port and no further rule.
 box_rules_verdict() {
-  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" '
+  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" --argjson audit "${5:-null}" '
     if all(.[]; .IpProtocol == "tcp" and .FromPort == .ToPort and (.IpRanges | length) == 0
         and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0 and (.UserIdGroupPairs | length) == 1)
     then
       [.[] | {port: .FromPort, group: .UserIdGroupPairs[0].GroupId}] as $r
       | ($r | map(select(.port == 22))) as $ssh
-      | ($r | map(select(.port != 22))) as $app
-      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null)
-           and $app == (if $bff == "" then [] else [{port: $port, group: $bff}] end)
+      | ($r | map(select(.port != 22)) | sort_by(.port)) as $app
+      | (if $bff == "" then [[]]
+         else [[{port: $port, group: $bff}]]
+              + (if $audit == null then [] else [[{port: $port, group: $bff}, {port: $audit, group: $bff}] | sort_by(.port)] end) end) as $ok
+      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null) and any($ok[]; . == $app)
         then "yes" else "no" end
     else "no" end' <<<"$1"
 }
 
-# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> →
-# yes, or no: it sends to c-storage's port on the box's group, one rule and nowhere else, and admits nothing
+# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> [<the activity
+# log's writing port>] → yes, or no: it sends to c-storage's port on the box's group, and to the activity log's
+# port there too when that port is given and the rule is there (a ridge the stack run has not reached yet has not
+# got it, and reads green too), each a single rule to the box's group alone, nothing else, and admits nothing
 bff_rules_verdict() {
-  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" '
-    if $ingress == [] and length == 1 and .[0].IpProtocol == "tcp" and .[0].FromPort == $port and .[0].ToPort == $port
-       and (.[0].IpRanges | length) == 0 and (.[0].Ipv6Ranges | length) == 0 and (.[0].PrefixListIds | length) == 0
-       and (.[0].UserIdGroupPairs | length) == 1 and .[0].UserIdGroupPairs[0].GroupId == $box
-    then "yes" else "no" end' <<<"$1"
+  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" --argjson audit "${5:-null}" '
+    def one($p): .IpProtocol == "tcp" and .FromPort == $p and .ToPort == $p
+       and (.IpRanges | length) == 0 and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0
+       and (.UserIdGroupPairs | length) == 1 and .UserIdGroupPairs[0].GroupId == $box;
+    sort_by(.FromPort) as $r
+    | if $ingress == []
+         and (($r | length) == 1 and ($r[0] | one($port))
+              or ($audit != null and ($r | length) == 2 and ($r[0] | one([$port, $audit] | min)) and ($r[1] | one([$port, $audit] | max))))
+      then "yes" else "no" end' <<<"$1"
 }
 
 # BFF_FN_QUERY: the only fields of the function's configuration the check reads, as --query. The
