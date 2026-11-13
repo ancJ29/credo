@@ -118,7 +118,9 @@ front_door_key_param() {
     return 0
   fi
   mask "$key"
-  add_param FrontDoorKey "$key"
+  # The key reaches jq on a pipe, never as an --arg (add_param's form), which is a command line any user's ps reads.
+  # PARAMS holds no key before this line: this is the last parameter in both branches of the caller.
+  PARAMS=$(printf '%s' "$key" | jq -Rsc --argjson p "$PARAMS" '$p + [{ParameterKey: "FrontDoorKey", ParameterValue: .}]')
 }
 
 # stack_events: what failed, from the stack's events
@@ -267,9 +269,10 @@ else
     exit 1
   fi
   # A key run (FRONT_DOOR_KEY_FILE) changes the distribution's header and nothing else: a change set that
-  # touches another resource, or does more to the distribution than modify it, is refused before it runs.
+  # touches another resource, does more to the distribution than modify it, or modifies it for any cause but the
+  # FrontDoorKey parameter (a detail whose source is not that parameter's reference) is refused before it runs.
   if [ -n "${FRONT_DOOR_KEY_FILE:-}" ]; then
-    others=$(jq -r '.Changes[]?.ResourceChange | select(.Action != "Modify" or .LogicalResourceId != "Distribution") | "\(.LogicalResourceId) (\(.ResourceType)): \(.Action)"' "$WORK/changes.json")
+    others=$(jq -r '.Changes[]?.ResourceChange | select(.Action != "Modify" or .LogicalResourceId != "Distribution" or ([.Details[]? | select(.ChangeSource != "ParameterReference" or .CausingEntity != "FrontDoorKey")] | length > 0)) | "\(.LogicalResourceId) (\(.ResourceType)): \(.Action)"' "$WORK/changes.json")
     if [ -n "$others" ]; then
       echo "REFUSED: a key run changes the distribution alone, and this change set also holds:"
       while IFS= read -r line; do echo "  $line"; done <<<"$others"

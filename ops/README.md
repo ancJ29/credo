@@ -224,6 +224,11 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
      `ops/app.sh ridge`, or the BFF answers 503. A leaked service key is replaced by
      `ops/keys.sh ridge service` ([the keys](#the-keys)); the records stay.
    - **a key is in this log:** as in [the check](#the-check).
+   - **the stack names no distribution (its `DistributionId` output is missing):** the deploy reads the front door's
+     key from the distribution, and a stack made before this output has none. Run `ops/stack.sh env <env>` once
+     before the push whose deploy needs it: on ridge, the stack run comes before the push that carries the back
+     end's door check (the piece lands whole), or that deploy ends red at the door's key before it changes
+     anything, and the app keeps answering on the old code.
 
 ## The keys
 
@@ -236,16 +241,18 @@ or `service`:
 
 | Key | The order | Calls refused meanwhile |
 | --- | --- | --- |
-| `front-door` | the back end takes the old key and the new; a change set (`ops/stack.sh`, with the new key in a 0600 file) sends the new to the distribution and is refused when it changes anything else; the stack's update waits until the distribution is deployed; then the back end takes the new alone | none |
+| `front-door` | the back end takes the old key and the new; a change set (`ops/stack.sh`, with the new key in a 0600 file) sends the new to the distribution and is refused when it changes anything else; the stack's update, then the distribution's own deploy (`aws cloudfront wait distribution-deployed`), are waited for; then the back end takes the new alone | none |
 | `internal` | a new `keys.env` on the box, the store restarted and answering, then the function's copy set | from the store's restart to the function's update; the seconds are printed |
 | `admin` | a new `keys.env` on the box, the store restarted | the seconds the store takes to restart; the back end never holds this key |
-| `service` | the new `bff.env` beside the old, the store's `rekey`, the new file in place, then the function's copy set | from the rekey to the function's update; the seconds are printed |
+| `service` | the new `bff.env` beside the old, the store's `rekey`, the new file in place, then the function's copy set | from the rekey to the function's update; the seconds are printed. A second cost of the same act: the back end derives its sign-in waits' record names and its operator challenges' signing key from this key, so **every sign-in wait restarts (each name has five fresh tries) and every open operator challenge is void** (a 5-minute token; an operator mid-sign-in signs in again) |
 
 1. Read the log's last lines: `== green`, then `replaced the <key> key`. Before them, the read-backs: `the store
    refuses the old internal key: 401` and `and accepts the new: 200` (internal); `the store refuses the old
    super-admin key: 401` and a 404 for a service that is not there (admin); `the store refuses the old service
    key: 403` and a 404 for a record that is not there (service); `the API's own address refuses the old door
-   key: 403`, a 404 for a call with the new one and a 404 through the app's address (front door).
+   key: 403` and a 404 for a call with the new one (front door). Every kind then ends on `the app's address,
+   through the door, answers a call with no key of its own: 404`, the back end at work with the keys it holds
+   now. The service run's closing lines add the cost above (the sign-in waits and the challenges).
    The front door's run of `ops/stack.sh` prints on the terminal and in its own log in `logs/`, not in this one.
    - **the store refuses the internal key the box's file holds:** nothing was changed; the box's file and the
      store disagree, which a restart of c-storage on the box settles.
@@ -256,9 +263,20 @@ or `service`:
    - **the stack's key run did not finish:** the function still takes both door keys, which answers every call.
      `REFUSED: a key run changes the distribution alone` names the other change; make it with
      `ops/stack.sh env <env>` first. Run it again, or `ops/app.sh`, which sets the distribution's key alone.
+   - **STOPPED:** a run that stops after its first change prints a `STOPPED` line saying what it left and the
+     command that mends it (most often `ops/app.sh <env>`, which sets the function's copy from the box's files
+     and the distribution); read it before running anything again.
+   - **the store refuses the service key the box's `bff.env` holds:** an earlier service run stopped half way
+     (the store rekeyed, the file not moved); nothing was changed. Move `/etc/c-storage/bff.env.new` over
+     `bff.env` on the box if it is there, or run the service key again.
+   - **the app's address does not answer 404 at the end:** the back end at work does not hold the keys the run
+     set, most likely a deploy that ran meanwhile; run `ops/app.sh <env>` and then `ops/check.sh <env>`.
    - **a key is in this log:** as in [the check](#the-check); the key was printed by a bug, replace it again.
-2. The deploy follows a replaced key on its own: `ops/app.sh` reads the box's files and the distribution at each
-   run. After a key run nothing else is owed; run `ops/check.sh <env>` to read the whole environment.
+2. **Push nothing to `main` while a key run runs.** A push starts the deploy job, whose `ops/app.sh` reads
+   `bff.env` a minute before it sets the function and can set an old key over the new one; the run's last read
+   then ends red, and the mend is `ops/app.sh <env>`. Otherwise the deploy follows a replaced key on its own: it
+   reads the box's files and the distribution at each run. After a key run nothing else is owed; run
+   `ops/check.sh <env>` to read the whole environment.
 
 ## The operator
 

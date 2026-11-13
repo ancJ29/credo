@@ -1605,3 +1605,28 @@ The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, 
 ## 397. `ops/CLAUDE.md`'s counts of scripts (OP4 "thirteen", OP5 and OP9 "10 of 10", OP6 "9 of 10") do not match the folder, and its port line named a taken port — the machine; `[DEFERRED]` (the key script, 2026-11-13, Info)
 
 The folder holds fourteen scripts that call `main_synced` (with `ops/keys.sh`) and about fifteen that print a usage line; the rules say ten and thirteen. The port line said a new script takes 3197, which `ops/demo-remake.sh` already holds; this step set `ops/keys.sh` to 3198 and the line to "3191 to 3198; next 3199". *Fix, if wanted:* drop the counts from the rules (the stance test already holds the glob) or have a test compare them.
+
+
+## 398. A service-key run restarts every sign-in wait and voids every open operator challenge, because both are derived from the service key — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Medium; the cost is now said, the separate secrets are parked)
+
+`bff/src/records/sign-in-wait.ts` (`waitKeyFrom`) names each wait's record by an HMAC under a key derived from the back end's service key, and `bff/src/calling/challenge.ts` (`createChallenges`) signs the operator's challenges under another key derived from the same one. After `ops/keys.sh <env> service`, a name that was in a wait is looked up under a new record name and gets five fresh tries, the old wait records stay in the store, and an operator mid-sign-in fails once (a challenge lives 5 minutes). The script's header, its closing line and the runbook now say so. *Fix, if wanted:* a secret of their own for the waits and for the challenges, held beside the service key on the box and in the function, so a service rekey leaves them alone; it adds one more key to the four. *Trigger:* the first production company, or a service-key replacement that happens during a sign-in wait someone cares about.
+
+## 399. `wait_store`'s failure message in `ops/keys.sh` is shared by the internal and the admin runs, and says "the function still the old" for both — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
+
+The admin run never touches the function and the internal key does not change in it, so the clause is false there. *Fix, if wanted:* pass the message in, or word it for both. *Trigger:* the next edit of `ops/keys.sh`.
+
+## 412. `FRONT_DOOR_KEY_FILE` is a switch carried by the shell's environment, so a shell that still exports it turns an ordinary stack run into a key run — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
+
+`ops/stack.sh` reads the variable at four places (the step count, the key, the guard, the box step). A shell that exports it with a valid file makes `ops/stack.sh env <env>` change the door's key with no function update, so every API call is 403 until `ops/app.sh` runs, and the box and GitHub steps are skipped. *Fix, if wanted:* take it as an argument (`--door-key-file <path>`; a path is no secret), which `ops/keys.sh` passes. *Trigger:* the next edit of `ops/stack.sh`, or the first time a key run is left exported in a shell.
+
+## 413. The door header's name is written out three times in TypeScript, while its sibling `CLIENT_HEADER` is declared once — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; `code.md` C2)
+
+`bff/src/server.ts`, `scripts/src/running/front.ts` and `scripts/src/stack.ts` each hold `x-front-door-key`; `shared/src/wire.ts` declares `CLIENT_HEADER` once. *Fix, if wanted:* export `FRONT_DOOR_HEADER` there and import it in the three. *Trigger:* the next edit of any of the three.
+
+## 414. The door hook writes its own 403 reply instead of throwing `HttpError(403, 'Forbidden')` for the one error handler — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; `code.md` C7)
+
+`bff/src/server.ts` replies inside the hook; `bff/src/app.ts` holds the one error handler that turns an `HttpError` into a reply. *Fix, if wanted:* throw. Check first that the not-found path and the log line (case 6) are unchanged. *Trigger:* the next edit of the hook.
+
+## 415. The piece moved living line citations that step 7 did not list: `docs/conventions/code.md` cites a line of the back end's `server.ts` three times, and `docs/architecture-detail.md` cites lines of its `env.ts` and counts "seven" and "five" variables, now eight and six — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; folded into the plan's step 7)
+
+Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite line 11 of the back end's `server.ts`, which was `createCStorageClient({` and is `export function buildBff(` now. The paragraph of `docs/architecture-detail.md` near its line 115 cites three lines of the back end's `env.ts`. *Fix:* cite by symbol and correct the counts in step 7; `code.md` is main's convention, so its change goes by the conventions route. *Trigger:* step 7.

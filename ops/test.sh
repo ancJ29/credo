@@ -2166,6 +2166,7 @@ case "$*" in
       Description) if [ -n "${FAKE_RUNNING:-}" ]; then echo "$FAKE_RUNNING"; elif [ -f "$S/description" ]; then cat "$S/description"; else echo None; fi ;;
       *) echo "stand-in aws: unknown query: $*" >&2; exit 1 ;;
     esac ;;
+  *"cloudfront wait distribution-deployed"*) echo deployed >>"$S/events" ;;
   *"cloudfront get-distribution-config"*)
     # the API origin's header carries the door's key (FAKE_DOOR_NONE: it carries none)
     if [ -n "${FAKE_DOOR_NONE:-}" ]; then
@@ -2247,7 +2248,7 @@ for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in
 case $cmd in
   # a key run (ops/keys.sh): a file written on the box, a file moved, the store restarted with the box's keys file
   *'cat >"$0.tmp"'*) path=${cmd##* }; mkdir -p "$S/box"; cat >"$S/box/${path##*/}"; echo "write ${path##*/}" >>"$S/events" ;;
-  *"mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env"*) mv -f "$S/box/bff.env.new" "$S/box/bff.env"; echo "mv bff.env" >>"$S/events" ;;
+  *"mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env"*) [ -z "${FAKE_MV_FAIL:-}" ] || { echo "stand-in ssh: the mv failed" >&2; exit 1; }; mv -f "$S/box/bff.env.new" "$S/box/bff.env"; echo "mv bff.env" >>"$S/events" ;;
   *"rm -f /etc/c-storage/bff.env.new"*) rm -f "$S/box/bff.env.new"; echo "rm bff.env.new" >>"$S/events" ;;
   *"systemctl restart c-storage"*)
     echo restart >>"$S/events"
@@ -3845,6 +3846,8 @@ check "  the old key is read back refused (401) and the new accepted (200) by th
   "$(grep -c '^ok   the store refuses the old internal key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new: 200$' "$S/out" || true)"
 check "  the seconds of refused calls and of the store's restart are printed" "1 1" \
   "$(grep -cE '^calls were refused for about [0-9]+ seconds' "$S/out" || true) $(grep -cE '^the store was down for about [0-9]+ seconds' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
 check "case 16, internal: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_i" "$new_i") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 
 old_a=$FAKE_AKEY
@@ -3856,6 +3859,8 @@ check "  the new key is 64 hex characters and not the old; the internal key is a
 check "  its order: the keys file on the box, then the store restarted, and the function is not touched" "write keys.env,restart" "$(events)"
 check "  the old key is read back refused (401) and the new accepted (404 for a service that is not there, nothing written)" "1 1" \
   "$(grep -c '^ok   the store refuses the old super-admin key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a service that does not exist: 404, nothing written): 404$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
 check "case 16, admin: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_a" "$new_a") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 
 old_s=$FAKE_SKEY
@@ -3869,6 +3874,10 @@ check "  its order: the new file beside the old, the store's rekey, the new file
 check "  the function holds the new service key, and the internal key the last run left" "$new_s $new_i" "$(function_var SERVICE_ACCESS_KEY) $(function_var INTERNAL_ACCESS_KEY)"
 check "  the old key is read back refused (403) and the new accepted (404 for a record that is not there) by the real store" "1 1 1" \
   "$(grep -c '^ok   the store refuses the old service key: 403$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a record that does not exist: 404): 404$' "$S/out" || true) $(grep -c '^service rekeyed$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "  its closing lines say the sign-in waits restarted and the open operator challenges are void" 1 \
+  "$(grep -A 2 '^replaced the service key$' "$S/out" | grep -c '^it also restarted every sign-in wait .* every open operator challenge' || true)"
 check "case 16, service: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_s" "$new_s") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
 
 old_d=$FAKE_DKEY
@@ -3877,11 +3886,11 @@ new_d=$(cat "$S/door.key")
 check "case 14, front door: the run ends green (its own verdict and the stack run's), and says which key it replaced" "0 2 1" \
   "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the front-door key$' "$S/out" || true)"
 check "  the new key is 64 hex characters and not the old" yes "$(is_new "$old_d" "$new_d")"
-check "  its order: the function takes both keys, the change set is executed, the function takes the new alone" "settings 2,execute,settings 1" "$(events)"
+check "  its order: the function takes both keys, the change set is executed, the distribution's deploy is waited for, the function takes the new alone" "settings 2,execute,deployed,settings 1" "$(events)"
 check "  the both-keys settings held the old key and the new, and the last settings the new alone" "$old_d,$new_d $new_d" \
   "$(tail -n 2 "$S/envfile.history" | head -n 1 | jq -r .FRONT_DOOR_KEYS) $(function_var FRONT_DOOR_KEYS)"
-check "  the change set was made with the new key from the key file (a parameter, not a new stack)" "$new_d" \
-  "$(jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json")"
+check "  the change set was made with the new key from the key file (a parameter, not a new stack), in the compact form add_param writes" "$new_d yes" \
+  "$(jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json") $([ "$(cat "$S/params.json")" = "$(jq -c . "$S/params.json")" ] && echo yes || echo no)"
 check "  the old key is read back refused (403) at the API's own address, the new answered (404), and the app answers through the door" "1 1 1" \
   "$(grep -c "^ok   the API's own address refuses the old door key: 403$" "$S/out" || true) $(grep -c '^ok     and answers a call with the new one (a client that does not exist: 404): 404$' "$S/out" || true) $(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
 check "  the key run opened no box for the stack and wrote nothing to GitHub" "0" "$(grep -c 'secret set' "$S/gh.calls" || true)"
@@ -3889,6 +3898,7 @@ check "case 16, front door: neither key is in the logs (this run's and the stack
 
 # case 15: a key run's change set that touches anything but the distribution is refused before it runs
 e2e_fresh keys-refused
+e2e_run app.sh ridge # the BFF's service is registered, as on ridge, which the run's first reads need
 FAKE_CHANGESET=$E2E/changeset-door-role.json keys_run keys-refused door front-door
 check "case 15: a change set that also modifies the deploy role is refused before it is executed" "1 1 1 1" \
   "$RC $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  DeployRole (AWS::IAM::Role): Modify$' "$S/out" || true) $(grep -c "the stack's key run did not finish" "$S/out" || true)"
@@ -3900,12 +3910,32 @@ chmod 600 "$E2E/kr.key"
 FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-refused
 check "  stack.sh itself, given a key file, refuses it before execute-change-set is called" "1 0 1" \
   "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true)"
+jq -c '.Changes[0].ResourceChange.Details += [{"Target":{"Attribute":"Properties","Name":"DistributionConfig","RequiresRecreation":"Never"},"Evaluation":"Static","ChangeSource":"DirectModification"}]' \
+  "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-extra.json"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-extra.json stack_run key-stack-extra
+check "  a change set that also changes the distribution for another cause than the key is refused before execute-change-set is called" "1 0 1 1" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  Distribution (AWS::CloudFront::Distribution): Modify$' "$S/out" || true)"
 FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-plain --plan
 check "  and the same change set without a key file is not that run's to refuse" "0 0" \
   "$RC $(grep -c 'REFUSED' "$S/out" || true)"
 FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$OPS_DIR/testdata/changeset-door.json stack_run key-stack-door --plan
 check "  a change set of the distribution alone passes, and the key is not printed" "0 1 0" \
   "$RC $(grep -c '^ok   the key run changes the distribution alone' "$S/out" || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF "$key15" || true)"
+
+# a service run whose last move fails stops saying what it left and what mends it (the state a stop leaves)
+e2e_fresh keys-stopped
+e2e_run app.sh ridge
+FAKE_MV_FAIL=1 keys_run keys-stopped stopped service
+check "a service run whose mv of bff.env fails stops red, and says the store holds the new key, the box the old, and the mending mv and app.sh" "1 1 1 1 1" \
+  "$RC $(grep -c '^STOPPED: the store holds the new service key while the box.s bff.env and the function hold the old' "$S/out" || true) $(grep -c 'sudo mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env, then run ops/app.sh ridge' "$S/out" || true) $(grep -c '^STOPPED: ' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^write bff.env.new$' "$S/events" || true)"
+# a store that refuses the service key the box holds is found before a second run changes anything
+e2e_fresh keys-half
+e2e_run app.sh ridge
+mkdir -p "$S/box"
+printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(printf 'ef%.0s' $(seq 1 32))" >"$S/box/bff.env"
+keys_run keys-half half internal
+check "an internal run finds the store refusing the service key the box holds: nothing is changed, and it says what to do" "1 1 [] 0" \
+  "$RC $(grep -c 'the store refuses the service key the box.s bff.env holds: nothing was changed' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
 
 # the store does not know the BFF's service: the rekey is refused, and nothing is left or changed
 e2e_fresh keys-unregistered
@@ -3929,6 +3959,21 @@ check "keys.sh in a job is refused before any aws call or ssh" "1 1 gone gone" \
 
 kill "$kapi_pid" "$kapp_pid" 2>/dev/null || true
 unset KEYS_LOCAL_PORT
+
+# a text guard: no key-holding variable is an argument of jq (--arg), aws, curl, ssh, box or add_param in the three
+# scripts that hold keys (an external command's argument list is readable by any user's ps while it runs); an
+# assignment in front of a command (NAME=$KEY cmd) is the environment, not an argument
+key_arg_lines() { # <file>…: the lines that put a key-holding variable in a command's arguments
+  local f
+  for f in "$@"; do
+    sed -e 's/^[[:space:]]*#.*//' -e 's/[A-Za-z_][A-Za-z_]*=\$[{(]*[A-Za-z_]*[})]*//g' "$f" |
+      grep -nE '(--arg|--argjson|add_param|curl|aws|ssh|box|jq)[ ].*\$\{?(NEW|OLD|INTERNAL_KEY|ADMIN_KEY|SERVICE_ACCESS_KEY|FRONT_DOOR_KEY|key)\b' || true
+  done
+}
+# shellcheck disable=SC2016 # the control's literal text
+printf '%s\n' '  PARAMS=$(jq -c --arg v "$key" ". + [\$v]" <<<"$PARAMS")' 'KEY=$NEW aws x' >"$WORK/key-arg-control.sh"
+check "no key-holding variable is an argument of a command in keys.sh, stack.sh or app.sh" 0 "$(key_arg_lines "$OPS_DIR/keys.sh" "$OPS_DIR/stack.sh" "$OPS_DIR/app.sh" | wc -l | tr -d ' ')"
+check "  and the guard sees a key in jq's --arg, and not one in an assignment in front of a command (a planted control)" 1 "$(key_arg_lines "$WORK/key-arg-control.sh" | wc -l | tr -d ' ')"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 

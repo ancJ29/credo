@@ -6,19 +6,23 @@
 # kernel, masked first, and travels on pipes and 0600 files: no command line, log or terminal holds it.
 #   front-door  the back end takes the old key and the new; a change set (ops/stack.sh, FRONT_DOOR_KEY_FILE)
 #               sends the new to the distribution, refused when it changes anything else, and the stack's
-#               update waits until the distribution is deployed; then the back end takes the new alone.
-#               No call is refused meanwhile.
+#               update and then the distribution's own deploy are waited for; then the back end takes the new
+#               alone. No call is refused meanwhile.
 #   internal    new keys.env on the box, the store restarted and answering, then the function's copy set.
 #               Calls fail from the restart to the function's update; the seconds are printed.
 #   admin       new keys.env on the box, the store restarted. The back end never holds this key; calls fail
 #               only for the seconds the store takes to restart.
 #   service     the new bff.env waits beside the old one, the store's rekey replaces the BFF's key, the new
 #               file is put in place, then the function's copy is set. Calls fail from the rekey to the
-#               function's update; the seconds are printed.
+#               function's update; the seconds are printed. A second cost of the same act: the back end derives
+#               its sign-in waits' record names and its operator challenges' signing key from the service key,
+#               so replacing it restarts every sign-in wait (each name has five fresh tries) and voids every
+#               open operator challenge (a 5-minute token; an operator mid-sign-in signs in again).
 # Run by the human, from a worktree at main with pnpm install done, in a terminal holding an AWS session. Never
 # by CI. Expected length: under a minute for internal, admin and service; the distribution's deploy (about 5
-# minutes) for front-door. A run that stops after the first change says what was changed; running it again
-# replaces the key once more.
+# minutes) for front-door. A run that stops after the first change says what it left (a STOPPED line) and what
+# mends it; running it again replaces the key once more. No push to main while a key run runs: its deploy would
+# set the old key on the function after this run set the new one.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -41,6 +45,13 @@ STEPS=6
 # Neither the local stack's port (3181), the check's (3191), the tunnel's (3192), the deploy's (3193),
 # the operator's (3194), the seed's (3195), the root password's (3196) nor the demo remake's (3197).
 LOCAL_PORT=${KEYS_LOCAL_PORT:-3198}
+
+# STOP_STATE: what a stop leaves once the first change is made, and what mends it; empty before the first change
+# and after the last. lib.sh's on_exit prints it through cleanup_extra, whatever ended the run.
+STOP_STATE=''
+cleanup_extra() {
+  [ -z "$STOP_STATE" ] || echo "STOPPED: $STOP_STATE"
+}
 
 log_start keys "$ENVNAME"
 mkwork
@@ -66,6 +77,12 @@ bff_env_read
 front_door_key_read "$DISTRIBUTION_ID"
 [ "$(store_status "$LOCAL_PORT" GET /api/status - "x-internal-access-key: $INTERNAL_KEY")" = 200 ] ||
   die "the store refuses the internal key the box's file holds: nothing was changed"
+# The service key too, for the other three kinds: a service run that stopped half way (the store rekeyed, the box's
+# file not yet moved) is found here, before a second run changes anything. The service run itself is the mend.
+if [ "$WHICH" != service ]; then
+  [ "$(store_status "$LOCAL_PORT" GET /api/records/"$SERVICE_CODE"/keys-check-no-such-record - "x-internal-access-key: $INTERNAL_KEY" "x-access-key: $SERVICE_ACCESS_KEY")" = 404 ] ||
+    die "the store refuses the service key the box's bff.env holds: nothing was changed; an earlier service run probably stopped half way (look for /etc/c-storage/bff.env.new on the box and move it over bff.env), or run ops/keys.sh $ENVNAME service again"
+fi
 ok "the store accepts the keys the box holds"
 
 # wait_store <internal key>: until the store answers its status with the key, 40 tries a second apart
@@ -101,18 +118,22 @@ case "$WHICH" in
   internal)
     printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$NEW" "$ADMIN_KEY" | box_secret_write /etc/c-storage/keys.env
     first=$(date +%s)
+    STOP_STATE="the box's keys file holds the new internal key and the function the old, so the back end's calls are refused until the function has the new one: make sure the store runs on the box (journalctl -u c-storage), then run ops/app.sh $ENVNAME, which sets the function's copy from the box's file"
     ok "the box's keys file holds the new internal key"
     restart_store "$NEW"
     OLD=$INTERNAL_KEY
     INTERNAL_KEY=$NEW
     bff_settings_set "$FRONT_DOOR_KEY"
+    STOP_STATE=''
     ok "the function's copy is the new key"
     refused_for "$first"
     ;;
   admin)
     printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$INTERNAL_KEY" "$NEW" | box_secret_write /etc/c-storage/keys.env
+    STOP_STATE="the box's keys file holds the new super-admin key and the store may not have restarted with it: restart it on the box (sudo systemctl restart c-storage; journalctl -u c-storage) and read it answer; the back end never holds this key, so no call of the app is refused for that"
     ok "the box's keys file holds the new super-admin key"
     restart_store "$INTERNAL_KEY"
+    STOP_STATE=''
     OLD=$ADMIN_KEY
     ADMIN_KEY=$NEW
     ;;
@@ -126,12 +147,15 @@ case "$WHICH" in
       box 'sudo rm -f /etc/c-storage/bff.env.new' || true
       die "the store did not replace the BFF's service key; the new file was removed and nothing was changed"
     fi
+    STOP_STATE="the store holds the new service key while the box's bff.env and the function hold the old, so the back end's calls are refused: on the box run sudo mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env, then run ops/app.sh $ENVNAME, which sets the function's copy from that file"
     ok "the store holds the new service key"
     box 'sudo mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env'
+    STOP_STATE="the store and the box's bff.env hold the new service key and the function the old, so the back end's calls are refused: run ops/app.sh $ENVNAME, which sets the function's copy from the box's file"
     ok "the box's bff.env is the new one"
     OLD=$SERVICE_ACCESS_KEY
     SERVICE_ACCESS_KEY=$NEW
     bff_settings_set "$FRONT_DOOR_KEY"
+    STOP_STATE=''
     ok "the function's copy is the new key"
     refused_for "$first"
     ;;
@@ -139,15 +163,15 @@ case "$WHICH" in
     OLD=$FRONT_DOOR_KEY
     # The back end takes both keys first, so a call is answered with either while the distribution changes.
     bff_settings_set "$OLD,$NEW"
+    STOP_STATE="the function takes both door keys, which answers every call, and the distribution sends the old or the new: run this again, or ops/app.sh $ENVNAME, which sets the distribution's key alone"
     ok "the function takes the old door key and the new"
     keyfile=$WORK/front-door.key
     (
       umask 077
       printf '%s\n' "$NEW" >"$keyfile"
     )
-    # The stack's update waits until the distribution is deployed. A refusal or a failure here leaves the
-    # function with both keys, which answers every call; run this again, or ops/app.sh, which sets the
-    # distribution's key alone.
+    # A refusal or a failure here leaves the function with both keys, which answers every call; run this
+    # again, or ops/app.sh, which sets the distribution's key alone.
     # Its lines go to the terminal and to its own log (it prints the app's address, which this log must not
     # hold: this run masked it), not to this log.
     echo "the stack's key run follows on the terminal, and in its own log in logs/"
@@ -157,7 +181,14 @@ case "$WHICH" in
     front_door_key_read "$DISTRIBUTION_ID"
     [ "$FRONT_DOOR_KEY" = "$NEW" ] || die "the distribution still sends a key other than the new one: the function still takes both keys; run this again"
     ok "the distribution sends the new key"
+    # The stack's update returns when CloudFormation does, which is not read to mean every edge sends the new
+    # key; the distribution's own deploy is waited for, so the new key alone is taken only once it is everywhere.
+    echo "waiting until the distribution is deployed (minutes)"
+    aws cloudfront wait distribution-deployed --id "$DISTRIBUTION_ID" ||
+      die "the distribution is not deployed yet or the wait failed: the function still takes both keys; run this again"
+    ok "the distribution is deployed"
     bff_settings_set "$NEW"
+    STOP_STATE=''
     ok "the function takes the new key alone"
     echo "no call was refused: the function took both keys until the distribution sent the new"
     ;;
@@ -196,13 +227,19 @@ case "$WHICH" in
     edge GET /api/config -H 'x-client-code: keys-check-no-such-client' -H "@$hdr"
     expect "  and answers a call with the new one (a client that does not exist: 404)" 404 "$EDGE_STATUS"
     rm -f "$hdr"
-    EDGE_BASE=$APP_ADDRESS
-    edge GET /api/config -H 'x-client-code: keys-check-no-such-client'
-    expect "  and the app's address, through the door, answers a call with no key of its own" 404 "$EDGE_STATUS"
     ;;
 esac
+# Every kind ends on the app's address, as a person reaches it: the back end answering through the door with the
+# keys it holds now (a client that does not exist: 404, so it reached the store). The store reads above do not
+# show the function's copy at work; a deploy that ran meanwhile and set an old key would show here as a 403 or 5xx.
+EDGE_BASE=$APP_ADDRESS
+edge GET /api/config -H 'x-client-code: keys-check-no-such-client'
+expect "  and the app's address, through the door, answers a call with no key of its own" 404 "$EDGE_STATUS"
 
 step "the log holds no key"
 echo "the end of the run searches this log for the old and the new key"
 verdict
 echo "replaced the $WHICH key"
+if [ "$WHICH" = service ]; then
+  echo "it also restarted every sign-in wait (each name has five fresh tries) and voided every open operator challenge (an operator mid-sign-in signs in again): both are derived from the service key"
+fi

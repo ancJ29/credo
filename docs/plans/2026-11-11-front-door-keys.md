@@ -227,22 +227,49 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   (GITHUB_ACTIONS) and takes port 3198 (3197 is the demo remake's; `ops/CLAUDE.md`'s line named it free, item 397).
   Not run: a real key run on ridge, which is step 8; CloudFront accepting the change set's header update, the
   function's setting taking two comma-separated keys under Lambda, and the seconds a real restart takes.
-- [ ] **6. The review.** Another model reads code, tests and this table (QA's rule 5): one review,
+- [x] **6. The review.** Another model reads code, tests and this table (QA's rule 5): one review,
   one fix pass, each finding tagged. *Done when:* each finding is fixed, rejected or deferred with
   its reason, and the fix pass's gates exit 0. **About 20 min.**
+  *Done 2026-11-13, the fix pass after the review of steps 1 to 5:* fixed: a service run says it also restarts
+  every sign-in wait and voids every open operator challenge (script header, closing lines, the runbook's service
+  row, your second point; separate secrets parked as item 398); a key run refuses a change set that also changes
+  the distribution for any cause but the `FrontDoorKey` parameter (a detail whose source is another); every kind
+  of run ends on the app's address answering 404 through the door, and the runbook says to push nothing to `main`
+  during a key run; the door's key reaches `jq` on a pipe, never `--arg`, the output byte-identical to
+  `add_param`'s, with a text guard that no key-holding variable is an argument of `jq`, `aws`, `curl`, `ssh`,
+  `box` or `add_param` in the three scripts that hold keys; a stop after the first change prints a `STOPPED`
+  line with the state it left and its mending command, and the three other kinds check the service key in the
+  read-first step; the front-door run waits for `aws cloudfront wait distribution-deployed` before the back end
+  takes the new key alone; the ridge order of step 8 and the runbook's app section now say that the stack run
+  adding `DistributionId` follows the piece's push, and the first deploy ends red once, before it changes
+  anything. Rejected, with its lines: M5's remedy as the review words it (the stack run before the push),
+  because `ops/stack.sh#L170` reads the template from `origin/main`, so no stack run can precede a push of the
+  template; the piece lands whole, so the red is said in advance instead. Parked: items 399, 412, 413, 414
+  and 415 (the last folded into step 7). Each fix seen red once by a mutation in a trial harness cut from
+  `ops/test.sh` (its setup, stand-ins and the key section, 25 seconds), reverted, the files equal to their
+  backups: the service note removed, the Details clause removed, the app read removed, `add_param` put back, the
+  `STOPPED` print removed, the deploy wait removed, the service pre-check turned off. Not seen: a real
+  change set's details for a key-only change (the fixture's shape is the reviewer's), CloudFront's own wait.
 - [ ] **7. The prose it makes false, and the recap.** `docs/architecture-detail.md#L321-L330`
-  ("answers anyone"), `docs/client-readiness.md`'s sections on the open address and the keys,
+  ("answers anyone"); the living line citations the piece moved (item 415: three lines of `docs/conventions/code.md`
+  that cite a line of the back end's `server.ts`, by symbol from now on, through the conventions route; the lines
+  of `docs/architecture-detail.md` that cite the back end's `env.ts` and count its variables), `docs/client-readiness.md`'s sections on the open address and the keys,
   `docs/architecture.md`'s "What is never there" (a row: no call reaches the back end but through
   the door, held by case 1), `docs/memo/bff.md`'s promise; items 121 and 134 closed. *Done when:*
   the citation test exits 0 and `git grep -nE '/Users/|~/'` finds nothing. **About 8 min.** The
   rest lands on `pre-merge`.
 - [ ] **8. Ridge, stage 4.** 👤 Each act needs your AWS session, in your own terminal:
-  1. With step 1 in `main`: your push; `ops/stack.sh env ridge --plan`, where you will see one
-     `Modify` of `Distribution` and one of `DeployRole`, nothing removed or replaced, and
+  1. Your push of the piece, whole: `ops/stack.sh` reads its template from `origin/main`
+     (`ops/stack.sh#L170`), so the stack run that adds the `DistributionId` output (step 3's deploy needs it)
+     cannot come before a push that carries the template. That push's deploy therefore ends red once, at
+     `ops/app.sh`'s refusal "the stack names no distribution", before it changes anything; the old back end
+     keeps answering. Expected, not a fault.
+  2. Then `ops/stack.sh env ridge --plan`, where you will see one `Modify` of `Distribution` and one of
+     `DeployRole`, one new output, `DistributionId`, nothing removed or replaced, and
      `FrontDoorKey=(not printed)`; then `ops/stack.sh env ridge`, ending on its verdict.
-  2. With the rest in `main`: your push, whose deploy closes the door; then `ops/check.sh ridge`,
-     ending `== green` with step 3's two door lines.
-  3. One script the machine writes in the credo root's `one-off/`, running `ops/keys.sh ridge` for
+  3. Re-run the latest deploy job, which closes the door; then `ops/check.sh ridge`, ending `== green` with
+     step 3's two door lines. `ops/README.md`'s app section has the same order in its own lines.
+  4. One script the machine writes in the credo root's `one-off/`, running `ops/keys.sh ridge` for
      each key and then `ops/check.sh ridge`. You will see each run end on its verdict, its old key
      refused, and its seconds of refused calls where it has any.
 
@@ -291,7 +318,11 @@ Drawn from `ops/env.yml#L382-L404`, `bff/src/server.ts#L7` and the script of ste
    one, so for a few seconds calls fail and the screens show their failed state; you pick the
    moment. *Is a few seconds, measured on ridge, acceptable for production?* I recommend yes: a
    leak is rare and closing it fast matters more. A no adds a step of about 10 minutes, the store
-   taking both keys while they switch.
+   taking both keys while they switch. The back end's own key costs a second thing in the same act (found in
+   the review): the back end derives its sign-in waits' record names and its operator challenges' signing key
+   from it, so replacing it restarts every sign-in wait (each name has five fresh tries) and voids every open
+   operator challenge (a 5-minute token; an operator mid-sign-in signs in again). The script says so in its
+   header and its closing line; keys of their own for the waits and the challenges are parked (item 398).
 3. **The keys replaced on ridge, at the end of step 8.** You will see the one-off's log summed in
    four lines: each key replaced, its old value refused, the app answering, and the seconds of
    refused calls. *Does ridge show every key replaceable by one command?* A yes closes the
