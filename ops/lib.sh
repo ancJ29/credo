@@ -595,7 +595,7 @@ RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s "$RECORDS_MOUNT" <<'REMOTE'
+    box sudo bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
 df -Pm / | awk 'NR==2{printf "%s ", $4}'
 if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi

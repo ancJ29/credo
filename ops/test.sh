@@ -934,6 +934,20 @@ mount_refusal_guard() { # <release.sh>
   first_before "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die' 'systemctl restart c-storage' "the release restarts c-storage before it reads the mount"
 }
 passes "a release refuses to start c-storage when the records disk is not mounted (row 10)" mount_refusal_guard "$OPS_DIR/release.sh"
+# the records path sits under /var/lib/private, mode 0700 root: a box command that names it runs under sudo
+# (the fake box has no such folder, so this guards the text; the unprivileged check once read "not mounted" of a mount that was there)
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+mount_root_guard() { # <release.sh> <lib.sh>
+  need "$1" 'box "sudo mountpoint -q \$RECORDS_MOUNT" \|\| die' "the release reads the records mount without root"
+  ! grep -hE '(^|[^a-z_])box [^|]*RECORDS_MOUNT' "$1" "$2" | grep -v 'sudo' | grep -q . || die "a box command names the records path without sudo"
+}
+passes "a box command that names the records path runs as root (the path is 0700)" mount_root_guard "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose mount check drops sudo is refused" "without root" \
+  mount_root_guard "$(mutated release-nosudo.sh 's/box "sudo mountpoint/box "mountpoint/' "$OPS_DIR/release.sh")" "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a resources read that drops sudo is refused" "without sudo" \
+  mount_root_guard "$OPS_DIR/release.sh" "$(mutated lib-nosudo.sh 's/box sudo bash -s "\$RECORDS_MOUNT"/box bash -s "$RECORDS_MOUNT"/' "$OPS_DIR/lib.sh")"
 # shellcheck disable=SC2016 # sed programs, in single quotes
 refuses "  a release with no such refusal is refused" "does not refuse a records disk" \
   mount_refusal_guard "$(mutated release-nomount.sh '/mountpoint -q \$RECORDS_MOUNT" || die/d' "$OPS_DIR/release.sh")"
@@ -2215,6 +2229,7 @@ case $cmd in
   *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
   *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
+  *"sudo bash -s /var/lib/private/c-storage"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
   *"bash -s"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"curl -fsS -m 5 http://"*"/health"*) if [ -n "${FAKE_RUNNING:-}" ]; then printf '{"status":"OK","buildVersion":"%s"}' "$FAKE_RUNNING"; else exit 7; fi ;;
