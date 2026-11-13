@@ -142,11 +142,22 @@ Each gate is the touched package's one command: `make check` in `services/audit-
 - [ ] 👤 **2. Your stack run,** once step 1 is in `main` and pushed: `ops/stack.sh env ridge --plan`,
   then without it. Your first point. *Done when:* the machine reads the log whole: one addition, a
   modify of the back end's group in place, nothing removed or replaced, `== exit 0`. **5 to read.**
-- [ ] **3. The writing listener.** The store's `listenAddrOf` and its tests copied into the
+- [x] **3. The writing listener.** The store's `listenAddrOf` and its tests copied into the
   service's config, the writing listener bound to it (`internal/lifecycle/lifecycle.go#L45`), the
   reading one left on loopback (`#L49`), the comment naming the old app's proxy rewritten. Cases 1
   and 2. *Done when:* `make check` in `services/audit-backbone/` exits 0 at 100 %, each case red
   once. **5.**
+  *Done, 2026-11-13 (sonnet):* `make check` in `services/audit-backbone/` at exit 0 at 100 %, the citation test at exit 0.
+  The store's `listenAddrOf` and its tests are copied as they stand on this branch (unspecified, mapped-unspecified,
+  named, ported, ranged, zoned and listed values refused naming the variable and never the value; unset or blank
+  loopback). The differences: the default constant lives in the service's config and the open listener takes it, since
+  the service has two listeners and the store one; `server.Listen` takes the address and the port as the store's does,
+  and the old loopback-only test became the store's bind-the-address test; the two binds moved into one `bind`
+  in `lifecycle.go`, so a test reads both addresses (`::1` for the writing one tells it from the default) and a second
+  refuses an address the host does not own, naming the writing listener. Each case seen red by a mutation of its
+  code, reverted and compared equal: the open listener on the configured address, the writing one on loopback,
+  `Listen` ignoring its address, the variable never read, the mapped form not unmapped, the unspecified check, the
+  zone check, the value printed in the error, and the listener's name dropped from the refusal.
 - [ ] **4. The box's side.** `ops/release.sh` builds the service by hand (`make check`, then
   `make dist BUILD_COMMIT=<sha>`) or takes the job's binary, sends it with its checksum, makes the
   key once, installs both units in the one rename command (`ops/release.sh#L117-L121`), and waits on
