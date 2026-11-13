@@ -29,5 +29,5 @@ The page's closing section names them: the demo copies' remake and the root pass
 
 - Commits `497dd197`, `899b8409`, `3c224577`, on `pre-merge` at `c1b033ef`.
 - The one check run was the citation test, in the agents' terminals, ended 0; no log was saved.
-- The package gate for the one code line: <!-- FILL: the package gate's log name and exit -->
+- The package gate for the one code line: the `scripts` package's whole check ended green on 2026-11-13, each of its five steps at 0, on the commit that holds this recap's page.
 - `docs/products.md`: no row changes; it lists what a partner or operator can do, and the page adds no act.
