@@ -115,6 +115,9 @@ fi
 stat -c 'bff.env: mode %a, owner %U' "$f"
 REMOTE
 bff_env_read
+# The activity log's address and write key, from the box's own files (lib.sh's audit_read): refused by name before
+# anything is sent when the box has none.
+audit_read
 # The door's key is read from the distribution, its one home, so the function's copy is what the door sends.
 front_door_key_read "$DISTRIBUTION_ID"
 

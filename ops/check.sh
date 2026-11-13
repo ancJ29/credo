@@ -10,6 +10,8 @@
 # facts, /health, the records' copy, layer four's reads and the six reads through the app's address that need no client.
 # The copy: c-storage's /api/status, read on the box (its key never leaves it), against the newest object the
 # bucket holds under the box's path (lib.sh's copy_problems names what is red).
+# The activity log (when released): its unit, listeners, key file and folder modes, /health and each program's memory, read on the
+# box; and, with a client of the check's own, the customer its root adds, read back from the log on the box by its record.
 # Runs after each release in the deploy job, and by hand.
 # Needs services/c-storage/bruno/ (the collection), Bruno CLI 4.2.0 (`npm install -g --ignore-scripts @usebruno/cli@4.2.0`) and
 # node, which reads its report, and /health's buildVersion (the plan's step 6). With layer four also
@@ -87,8 +89,8 @@ endpoint_groups=$(aws ec2 describe-instance-connect-endpoints --filters "Name=vp
   --query 'InstanceConnectEndpoints[].SecurityGroupIds[]' --output json)
 rules=$(aws ec2 describe-security-groups --group-ids "$group_id" --query 'SecurityGroups[0].IpPermissions' --output json)
 # Ssh from a group of the endpoint and, from layer four, c-storage's port from the BFF's group: those and nothing else.
-expect "the box's group admits ssh from the endpoint's group, and c-storage's port from the BFF's group, nothing else" yes \
-  "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT")"
+expect "the box's group admits ssh from the endpoint's group, and c-storage's port and the log's port from the BFF's group, nothing else" yes \
+  "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT" "$AUDIT_PORT")"
 
 step "the tunnel, and the box's reads"
 box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
@@ -115,6 +117,23 @@ expect "the database directory's mode" 700 "$(fact dbdir)"
 expect "the database files' mode (the db, its wal and shm)" "600 " "$(fact dbfiles)"
 expect "OOM kills since boot" 0 "$(fact oom)"
 echo "box: $(fact arch); memory $(fact memory); swap $(fact swap); disk $(fact disk)"
+# The activity log's own reads, in a call of their own whose first word the stand-ins tell apart.
+audit_facts=$(box sudo bash -s -- audit "$BOX_LISTEN_ADDR" "$AUDIT_PORT" "$AUDIT_OPEN_PORT" <<'REMOTE'
+addr=$2
+w=$3
+r=$4
+echo "unit=$(systemctl is-active audit-backbone 2>&1 || true)"
+echo "listen_w=$(ss -Hltn sport = :"$w" | awk '{print $4}' | sort -u | tr '\n' ' ')"
+echo "listen_r=$(ss -Hltn sport = :"$r" | awk '{print $4}' | sort -u | tr '\n' ' ')"
+echo "keys=$(stat -c '%a %U' /etc/audit-backbone/keys.env 2>&1 || true)"
+echo "dir=$(stat -L -c '%a' /var/lib/audit-backbone 2>&1 || true)"
+echo "files=$(stat -L -c '%a' /var/lib/audit-backbone/audit-backbone.db* 2>&1 | sort -u | tr '\n' ' ')"
+echo "health=$(curl -fsS -m 5 "http://$addr:$w/health" 2>&1 | tr -d '\n' || true)"
+echo "mem_c-storage=$(systemctl show -p MemoryCurrent --value c-storage 2>&1 || true)"
+echo "mem_audit-backbone=$(systemctl show -p MemoryCurrent --value audit-backbone 2>&1 || true)"
+REMOTE
+)
+echo "programs: $(audit_memory_line "$audit_facts"); box free $(fact memory)"
 
 step "/health names a commit of main"
 health_main_read "$LOCAL_PORT"
@@ -122,6 +141,13 @@ if [ -n "$HEALTH_PROBLEM" ]; then
   red "$HEALTH_PROBLEM"
 else
   ok "/health names $HEALTH_BUILD, a commit of main"
+fi
+# The activity log is read against the same commit: it is released with c-storage, from one sha
+audit_found=$(audit_problems "$audit_facts" "$BOX_LISTEN_ADDR" "$AUDIT_PORT" "$AUDIT_OPEN_PORT" "$HEALTH_BUILD")
+if [ -z "$audit_found" ]; then
+  ok "the activity log is sound on the box: unit active, listeners where they belong, key file 600 root, data folder 700, /health naming $HEALTH_BUILD"
+else
+  while IFS= read -r fault; do red "$fault"; done <<<"$audit_found"
 fi
 
 step "the records' copy: the status on the box, and the bucket's newest copy"
@@ -174,8 +200,8 @@ else
     [ -d "$REPO_DIR/scripts/node_modules" ] || [ -n "${RIDGE_SCRIPTS_DIR:-}" ] || die "needs pnpm install done, for the client the check makes"
   fi
   bff_sg=$(aws ec2 describe-security-groups --group-ids "$BFF_GROUP" --output json)
-  expect "the BFF's group sends to c-storage's port on the box's group alone, and admits nothing" yes \
-    "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT")"
+  expect "the BFF's group sends to c-storage's port and the log's port on the box's group alone, and admits nothing" yes \
+    "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT" "$AUDIT_PORT")"
   # The function's configuration holds its two access keys, so only the fields BFF_FN_QUERY names are
   # read: no key value reaches this shell, on any environment (open item 50).
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query "$BFF_FN_QUERY" --output json)
@@ -221,7 +247,46 @@ else
   tenant_pass=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
     ridge_cli tenant "$tenant" "$tenant_name") || die "the check's client could not be made"
   mask "$tenant_pass"
+  EDGE_ADD_CUSTOMER=1
   edge_reads "$APP_ADDRESS" "$tenant" "$tenant_pass" "$tenant_name"
+  # The customer the root added is read back from the activity log on the box itself: the box mints a read token
+  # for the client from the write key it holds, reads the record's entries on its loopback, and prints counts alone.
+  tenant_id=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
+    ridge_cli tenant-id "$tenant") || die "the check's client has no id in c-storage"
+  if [ -z "$EDGE_RECORD" ]; then
+    # ssh joins its arguments into one string, so an empty record would vanish there and end the box's read unbound
+    red "the customer the root added has no record id, so its entry cannot be read from the activity log on the box"
+  else
+    entry_facts=$(box sudo bash -s -- entry "$BOX_LISTEN_ADDR" "$AUDIT_PORT" "$AUDIT_OPEN_PORT" "$tenant_id" "$EDGE_RECORD" <<'REMOTE'
+set -u
+addr=$2
+w=$3
+r=$4
+client=$5
+record=$6
+key=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' /etc/audit-backbone/keys.env)
+# the key and the token go to curl on its standard input as a config, never on a command line
+minted=$(printf 'header = "x-internal-access-key: %s"\n' "$key" |
+  curl -sS -m 5 -K - -H 'content-type: application/json' -d "{\"clientId\":\"$client\"}" "http://$addr:$w/api/read-tokens" 2>/dev/null |
+  sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+if [ -z "$minted" ]; then
+  echo "minted=no"
+else
+  echo "minted=yes"
+  body=$(printf 'header = "authorization: Bearer %s"\n' "$minted" |
+    curl -sS -m 5 -K - "http://127.0.0.1:$r/api/activities/by-target/$record" 2>/dev/null)
+  echo "created=$(printf '%s' "$body" | grep -o '"action":"customer.create"' | wc -l | tr -d ' ')"
+  echo "leak=$(printf '%s' "$body" | grep -cFf <(printf '%s\n' "$key") || true)"
+fi
+REMOTE
+)
+    entry_found=$(audit_entry_problems "$entry_facts")
+    if [ -z "$entry_found" ]; then
+      ok "the customer the root added is in the activity log on the box, read by its record, with no key in it"
+    else
+      while IFS= read -r fault; do red "$fault"; done <<<"$entry_found"
+    fi
+  fi
 fi
 
 verdict
