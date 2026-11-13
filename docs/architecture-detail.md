@@ -23,7 +23,7 @@ needs before touching any of it, is on
 | `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
-| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is the only copy |
+| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy not yet run on an environment |
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; not yet on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
@@ -64,15 +64,15 @@ deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
 orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
 ([`records.ts#L41`](../shared/src/records.ts#L41),
-[`services/c-storage/internal/store/store.go#L132`](../services/c-storage/internal/store/store.go#L132)).
+[`MaxList` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)).
 
 **How a record is written safely.** The version token is a `tag`: the hex SHA-256 of the record's
 stored text, computed fresh on every read and stored nowhere
-([`store.go#L54`](../services/c-storage/internal/store/store.go#L54)). A writer sends it back as `If-Match`
+([the store](../services/c-storage/internal/store/store.go), its tag function). A writer sends it back as `If-Match`
 (or `If-None-Match: *` to claim a key that must not exist); c-storage compares inside the write's
 own transaction and answers **412** if the record moved
-([`store.go#L68`](../services/c-storage/internal/store/store.go#L68),
-[`services/c-storage/internal/server/handlers.go#L132`](../services/c-storage/internal/server/handlers.go#L132)). A precondition
+([`Store.write` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go),
+[the `store.ErrMoved` case in `services/c-storage/internal/server/handlers.go`](../services/c-storage/internal/server/handlers.go)). A precondition
 it cannot parse is a 400, never ignored — but a request sending *no* precondition overwrites
 whatever is there, so the guard holds only where the BFF sends the tag.
 
@@ -109,8 +109,8 @@ route but `/health` including the 404 fallback, so an unknown path answers 401 e
 one; a per-service `x-access-key`, stored only as a SHA-256 and compared in constant time; and
 `x-super-admin-key`, whose sole power is creating a service
 ([`services/c-storage/internal/auth/auth.go#L17`](../services/c-storage/internal/auth/auth.go#L17),
-[`services/c-storage/internal/server/server.go#L59`](../services/c-storage/internal/server/server.go#L59),
-[`services/c-storage/internal/store/store.go#L93`](../services/c-storage/internal/store/store.go#L93)). **The BFF never holds
+[`Server.Handler` in `services/c-storage/internal/server/server.go`](../services/c-storage/internal/server/server.go),
+[`Store.Admits` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
 ([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
 [`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
@@ -254,14 +254,14 @@ shape** (`ci.yml`'s comment "Releases only: a template change stays the human's 
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
 third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "The app's builds and installs run third-party code"), and the role itself is narrow
 to the point of naming the one function and the one instance
-([`ops/env.yml#L444`](../ops/env.yml#L444)). Two other workflows:
+(`ops/env.yml`'s `DeployRole`). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
 Access — the only deploy target that is not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
-([`ops/env.yml#L218`](../ops/env.yml#L218), [`ops/README.md`](../ops/README.md)).
+(`ops/env.yml`'s `Bff`, [`ops/README.md`](../ops/README.md)).
 
 ## How it is checked
 
@@ -315,12 +315,12 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"CloudFront → the BFF's function URL, signed by origin access control", and the API client
   hashing each write into `x-amz-content-sha256`** (its `#L74`, `#L130`, the body hash at `#L133`).
   CloudFront reaches an API
-  Gateway HTTP API ([`ops/env.yml#L388`](../ops/env.yml#L388)); function URLs are not offered in the
+  Gateway HTTP API ([`ops/env.yml`](../ops/env.yml), `Distribution`); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
 - **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
   request throttle, not a signature, is what bounds the cost
-  ([`ops/env.yml#L250-L252`](../ops/env.yml#L250)). Read "answers anyone" as *reachable*, not as
+  (`ops/env.yml`'s `ApiStage`). Read "answers anyone" as *reachable*, not as
   *unauthenticated*: a call arriving that way still meets the BFF's own checks — the client header,
   the session, the permission — so what was lost is the network wall in front of them, not the
   wall itself. It is the one property of the day-one design that
@@ -331,8 +331,8 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   the same age. The function has written a line per request to its own group all along: nothing in
   `bff/src/lambda-main.ts#L3` turns the logger off, so `server.ts#L9`'s default stands
   (`app.ts#L86`), and the function's `LoggingConfig` names that group
-  ([`ops/env.yml#L232-L233`](../ops/env.yml#L232)). The stage's own access log, `ApiLogs`
-  ([`#L176-L181`](../ops/env.yml#L176), [`#L284-L286`](../ops/env.yml#L284)), is in the template
+  (`ops/env.yml`'s `Bff`). The stage's own access log, `ApiLogs` and `ApiStage`'s `AccessLogSettings`
+  (both in `ops/env.yml`), is in the template
   and runs on a stack only once the change set for it has been applied. Neither names the client
   whose records were read ([open item 152](open-items.md)).
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**.
@@ -357,21 +357,15 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   ridge is built and deploys on every push to `main`. What is still unbuilt is production: in the
   pooled shape one more environment's stack holding many tenants, not a stack for each client.
 
-**Not in that list: the nightly backup.** The plan's diagram shows a nightly copy to S3 through an
-S3 gateway endpoint, under a put-only role on the box (`#L28`, `#L76`, `#L97`), and none of those
-three resources exists — but that is a **deliberate deferral the project recorded the same day**,
-not something lost. [Open item 6](open-items.md) gates the backup and its restore on a signed
-client, on the reasoning that ridge, the first box, holds no real data, and it says plainly that
-"the S3 gateway endpoint and the box's put-only role come with it". So the right reading is: the
-backup is designed and postponed, and until a client signs, **the one SQLite file is the only copy
-of a deployment's data** — which is a known, accepted position for an environment holding only demo
-data, and the thing to build first for one that does not.
-
-One inconsistency inside that to be aware of when it *is* built: item 6's own first line says "the
-box's role may only put, so it cannot restore itself", in the present tense, while
-[`ops/env.yml#L93`](../ops/env.yml#L93) says "no instance role". The item describes the design; the
-template describes the machine. When the backup is built, item 6's description of the role is what
-has to be built — not a description of what is already there.
+**Not in that list: the nightly backup, which became a continuous copy.** The first plan's diagram showed a
+nightly copy to S3 under a put-only role on the box, none of it built, deferred to a signed client
+([open item 6](open-items.md)). The continuous-copy piece replaced it: Litestream copies each save to the
+environment's own bucket through an S3 gateway door, the box's role may put, get and list under its own
+path and holds no delete, and the records sit on a disk of their own (`ops/env.yml`'s `CopyBucket`,
+`BoxRole` and `RecordsVolume`). **It is built and guarded on written input, and no environment has run it
+yet**, so until the human's changes and the drill have run, a deployment's one SQLite file is still the only
+copy that has been proved readable. The restore runs on the box under its own role, which is why the role
+reads; the first plan's "may only put" was dropped for that reason.
 
 ## Where these pages' facts came from
 

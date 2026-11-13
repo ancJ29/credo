@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   The one network under every environment and every client's stack: a VPC with no internet
-  gateway and the Instance Connect Endpoint, the only way in. Made by ops/stack.sh network, as
+  gateway and the Instance Connect Endpoint, the only way in, and S3's gateway door, which AWS does not charge for. Made by ops/stack.sh network, as
   the stack credo-network; docs/plans/2026-10-28-ridge.md#the-templates says why.
 
 Parameters:
@@ -37,6 +37,17 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref AWS::StackName
+
+  # S3's gateway door on the one route table: a box reaches S3 (the records' copy) without an
+  # internet gateway or a NAT. A gateway endpoint adds a route to the table and is not charged.
+  S3Door:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Gateway
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref Vpc
+      RouteTableIds:
+        - !Ref Routes
 
   EndpointSubnet:
     Type: AWS::EC2::Subnet
