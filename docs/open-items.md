@@ -1685,3 +1685,7 @@ The page (a living document) cites `bff/src/routes/orders.ts#L218` to `#L483`; r
 
 The stand-in's copy ends in seconds, and the slow variants are stopped before 30 seconds, so the "still copying" line is read by no test. *Fix, if wanted:* a variant whose node waits past 30 seconds and a count of the line. *Trigger:* the first real run that shows the line wrong.
 
+
+## 416. Knip says an ignore entry is no longer needed — the machine; *parked* until a review (the long runs plan's fill, 2026-11-13, Low)
+
+Every scripts gate's knip step ends with one configuration hint, `services/audit-backbone/**` in `knip.json`'s `ignore`: "Remove from ignore". The entry was added when the Go service came in, so the root check would not claim files the Go gate owns; knip now reads it as an entry it does not need, for a reason not read. It is a hint, not a red: the step ends 0. *Fix, if wanted:* remove the entry and read that knip still ends 0 with no hint. *Trigger:* the next change to `knip.json`.

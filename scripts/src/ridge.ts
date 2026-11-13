@@ -18,6 +18,7 @@ import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/ap
 import { vietnamToday } from './demo/days';
 import { readLedger } from './demo/ledger';
 import { allCopies, copyOfCode, type MappedCopy } from './demo/mapping';
+import { withLocalStore } from './local-store';
 import { ensureService, rekeyService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
@@ -149,25 +150,75 @@ async function deleteCopy(storage: CStorageClient, code: string, now: () => numb
   }
 }
 
-/** One copy remade: deleted whole, made again by the operator's create (its first password dropped),
- * given its partner's password, and filled for the first time with no day applied. */
-async function remakeCopy(
-  storage: CStorageClient,
+/** The minutes since `since` (a `performance.now()`), to one decimal: a step's length for the log. */
+const minutesSince = (since: number) => ((performance.now() - since) / 60_000).toFixed(1);
+
+/** One copy made and filled on this Mac's store: made by the operator's create (its first password
+ * dropped), given its partner's password, and filled with the 21 days to yesterday in one run. */
+async function fillLocally(
+  local: CStorageClient,
   copy: MappedCopy,
   password: string,
   io: { out: (line: string) => void; now: () => number },
 ) {
-  await deleteCopy(storage, copy.code, io.now);
-  io.out(`${copy.code}: deleted`);
-  const made = await createClient(storage, {
+  const made = await createClient(local, {
     code: copy.code,
     name: copy.company,
     madeAt: io.now(),
   });
-  if (made === 'taken') throw new Error(`${copy.code}: the service still holds it`);
-  await setRootPasswords(storage, [copy.code], password, io);
-  const report = await applyCopy(storage, copy, vietnamToday(io.now()), io.out, 0);
-  if (report.status !== 'ok') throw new Error(`${copy.code}: ${report.note}`);
+  /* v8 ignore next -- unreachable: the store is new to this run, and each code of the mapping is one copy's */
+  if (made === 'taken') throw new Error('this Mac’s new store already holds it');
+  await setRootPasswords(local, [copy.code], password, io);
+  const report = await applyCopy(local, copy, vietnamToday(io.now()), io.out);
+  if (report.status !== 'ok') throw new Error(report.note);
+}
+
+/** The company `id`, under `code`, carried from `source` to `target` by `copyCompany`'s loop, the
+ * two compared before and after, a line each; a target that still differs after is an error. */
+async function carryCompany(
+  source: CStorageClient,
+  target: CStorageClient,
+  id: string,
+  code: string,
+  out: (line: string) => void,
+) {
+  const [one, other] = [tenantStorage(source, id), tenantStorage(target, id)];
+  const line = async (when: string) => {
+    const { records, differ } = await compareCompany(one, other);
+    out(`${code} ${when}: the source holds ${records} records, ${differ} differ on the target`);
+    return differ;
+  };
+  await line('before');
+  for (
+    let step = await copyCompany(one, other);
+    ;
+    step = await copyCompany(one, other, { after: step.after })
+  ) {
+    out(`${code}: ${step.copied} written, ${step.removed} removed`);
+    if (step.done) break;
+  }
+  if ((await line('after')) !== 0) throw new Error(`${code}: the target differs after the copy`);
+}
+
+/** One copy carried from this Mac's store to the target: deleted there whole, its records copied,
+ * the two compared at zero, and only then its index written, so a half-copied company is never
+ * reachable. Answers the milliseconds of the delete and of the copy. */
+async function carryCopy(
+  local: CStorageClient,
+  target: CStorageClient,
+  copy: MappedCopy,
+  io: { out: (line: string) => void; now: () => number },
+) {
+  const begun = performance.now();
+  await deleteCopy(target, copy.code, io.now);
+  io.out(`${copy.code}: deleted on the target, ${minutesSince(begun)} minutes`);
+  const deleted = performance.now();
+  const index = (await local.getRecord(recordKeys.client(copy.code)))!;
+  await carryCompany(local, target, storedClientSchema.parse(index.data).id, copy.code, io.out);
+  if ((await target.putRecord(recordKeys.client(copy.code), index.data, null)) === 'moved')
+    throw new Error('the service still holds it');
+  io.out(`${copy.code}: copied whole and its index written, ${minutesSince(deleted)} minutes`);
+  return { deleting: deleted - begun, copying: performance.now() - deleted };
 }
 
 /** The mapped copies a round cannot go on with: not on the service, or with no ledger (a remake that
@@ -221,7 +272,9 @@ const USAGE =
  * that exists up to yesterday ({@link applyAll}); it makes no client and prints no password, and a
  * copy it had to leave (used first, or held by another run) ends it red after the others are done.
  * `root-password` sets the named demo copies' roots to the password on the standard input and
- * prints no password; `--check` needs no connection. Returns the exit status: 2 for what was
+ * prints no password; `--check` needs no connection. `remake` makes and fills the six copies on a
+ * store of this Mac's own ({@link withLocalStore}), then carries each to the target whole, one at a
+ * time, printing each step's minutes. Returns the exit status: 2 for what was
  * refused before anything was written, 1 for a failure.
  */
 export async function runRidge(
@@ -361,16 +414,45 @@ export async function runRidge(
       const passwords = partnerPasswords((await io.stdin?.()) ?? '');
       const now = io.now ?? Date.now;
       const copies = allCopies();
-      await Promise.all(
-        copies.map((copy) =>
-          remakeCopy(client(), copy, passwords.get(copy.partner)!, { out: io.out, now }).catch(
+      const target = client();
+      const begun = performance.now();
+      await withLocalStore(async (local) => {
+        // Filled here first, all six side by side, each let end before the store stops: a fill that
+        // stops has deleted nothing on the target.
+        const fills = await Promise.allSettled(
+          copies.map((copy) =>
+            fillLocally(local, copy, passwords.get(copy.partner)!, { out: io.out, now }),
+          ),
+        );
+        const failed = fills.flatMap((fill, at) =>
+          fill.status === 'rejected'
+            ? [`${copies[at].code}: ${(fill.reason as Error).message}`]
+            : [],
+        );
+        if (failed.length > 0)
+          throw new Error(`nothing was deleted on the target: ${failed.join('; ')}`);
+        io.out(
+          `remake: this Mac's store built and the ${copies.length} copies filled on it, ${minutesSince(begun)} minutes`,
+        );
+        const spent = { deleting: 0, copying: 0 };
+        // One copy at a time, each unreachable on the target only between its delete and its index.
+        for (const copy of copies) {
+          const one = await carryCopy(local, target, copy, { out: io.out, now }).catch(
             (error: unknown) => {
               throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
             },
-          ),
-        ),
+          );
+          spent.deleting += one.deleting;
+          spent.copying += one.copying;
+        }
+        const minutes = (ms: number) => (ms / 60_000).toFixed(1);
+        io.out(
+          `remake: the deletes ${minutes(spent.deleting)} minutes, the copies ${minutes(spent.copying)} minutes`,
+        );
+      });
+      io.out(
+        `remake: ${copies.length} copies deleted, filled on this Mac and copied whole, ${minutesSince(begun)} minutes in all`,
       );
-      io.out(`remake: ${copies.length} copies deleted, made again and given their passwords`);
       return 0;
     }
 
@@ -445,25 +527,7 @@ export async function runRidge(
       const there = await target.getRecord(recordKeys.client(code));
       if (there && storedClientSchema.parse(there.data).id !== id)
         throw new Refused(`the target names ${code} under another company id: nothing was written`);
-      const [one, other] = [tenantStorage(source, id), tenantStorage(target, id)];
-      const line = async (when: string) => {
-        const { records, differ } = await compareCompany(one, other);
-        io.out(
-          `${code} ${when}: the source holds ${records} records, ${differ} differ on the target`,
-        );
-        return differ;
-      };
-      await line('before');
-      for (
-        let step = await copyCompany(one, other);
-        ;
-        step = await copyCompany(one, other, { after: step.after })
-      ) {
-        io.out(`${code}: ${step.copied} written, ${step.removed} removed`);
-        if (step.done) break;
-      }
-      if ((await line('after')) !== 0)
-        throw new Error(`${code}: the target differs after the copy`);
+      await carryCompany(source, target, id, code, io.out);
       return 0;
     }
 
