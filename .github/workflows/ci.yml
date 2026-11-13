@@ -145,7 +145,7 @@ jobs:
         run: |
           date -u '+%Y-%m-%d %H:%M:%S UTC'
           echo "processors: $(nproc)"
-          free -m
+          free -m || true
           df -h / "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
           lscpu | grep -E '^(Model name|Architecture|CPU\(s\)|Thread|Core|Socket|CPU MHz|Hypervisor|Virtualization type)' || true
           cat /proc/loadavg
@@ -186,7 +186,7 @@ jobs:
           echo "cache pnpm store: none is configured in this job (the Install step's 'reused' and 'downloaded' counts above are the fact)"
           echo "node: availableParallelism=$(node -p 'require("os").availableParallelism()') VITEST_MAX_WORKERS=${VITEST_MAX_WORKERS:-unset}"
           for pkg in bff scripts shared ui visual; do
-            pnpm --filter "@credo/$pkg" exec node --input-type=module -e "
+            timeout 120 pnpm --filter "@credo/$pkg" exec node --input-type=module -e "
               const { createVitest } = await import('vitest/node');
               const v = await createVitest('test', { watch: false, root: process.cwd() });
               console.log('vitest ' + '$pkg' + ': pool=' + v.config.pool + ' maxWorkers=' + v.config.maxWorkers + ' fileParallelism=' + v.config.fileParallelism);
@@ -194,7 +194,7 @@ jobs:
             " || echo "vitest $pkg: the resolved workers could not be read (exit $?)"
           done
       # DEBUG timing, piece 140: remove when the cause is known. The load sampler: one line every 30 s into a
-      # file (a step's own output is closed to a process outliving it), 120 samples at most (60 minutes), and it
+      # file (a step's own output is closed to a process outliving it), 720 samples at most (6 hours, GitHub's default job limit, since the job has none now), and it
       # ends sooner when the stop file appears, which the step after pnpm check always writes. It is
       # started here because the pnpm check step below is pinned to its one line by ops/test.sh.
       - name: DEBUG timing, start the load sampler
@@ -206,7 +206,7 @@ jobs:
           out=$1
           stop=$2
           n=0
-          while [ "$n" -lt 120 ] && [ ! -e "$stop" ]; do
+          while [ "$n" -lt 720 ] && [ ! -e "$stop" ]; do
             printf '%s load=%s mem_available_mb=%s swap_used_mb=%s cpu_steal_jiffies=%s procs_running=%s node_procs=%s psi_cpu="%s"\n' \
               "$(date -u +%H:%M:%S)" "$(cut -d' ' -f1-3 /proc/loadavg)" \
               "$(free -m | awk '/^Mem:/ {print $7}')" "$(free -m | awk '/^Swap:/ {print $3}')" \
@@ -225,7 +225,7 @@ jobs:
           : > "$samples"
           bash "$RUNNER_TEMP/debug-timing-sampler.sh" "$samples" "$stop" >/dev/null 2>&1 </dev/null &
           echo "$!" > "$RUNNER_TEMP/debug-timing-sampler.pid"
-          echo "sampler started, pid $!, at most 120 samples 30 s apart, ends at the stop file"
+          echo "sampler started, pid $!, at most 720 samples 30 s apart, ends at the stop file"
       - name: pnpm check
         run: pnpm check
       # DEBUG timing, piece 140: remove when the cause is known. Always runs: stops the sampler (the stop file,
