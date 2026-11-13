@@ -34,7 +34,18 @@ this version of the Bruno command line.
 
 Every block below runs from the `main` folder and reads `ops/` there. Each script fetches `origin/main` itself
 and stops, changing nothing, when the code in that folder is not the same as `origin/main`'s, so bring the
-`main` folder up to date first.
+`main` folder up to date first. When they differ a script prints one line for both cases, `the code here (tracked
+and unignored files under every path ci.yml deploys on, and .gitignore) differs from origin/main's: run the scripts
+from a worktree at main, never unreviewed ones`, and it counts an edit you have not committed as a difference too.
+If `main` is behind GitHub, pull:
+
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && git pull --ff-only origin main
+```
+
+You will see git fetch and move `main` forward, or say it is already up to date. If instead `main` holds commits
+GitHub lacks (merged here, not pushed), the pull changes nothing and the difference stays: the fix is a push, which
+is your decision, not a step on this page.
 
 ## 1. Deploy a change
 
@@ -48,14 +59,14 @@ Only while GitHub Actions is down, do the same by hand, these two in order:
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/release.sh ridge
 ```
 
-The log's last line is `released` and the commit it put on the box. If ridge already runs something newer it
+Near its end the log says `released` and the commit it put on the box. If ridge already runs something newer it
 says `superseded: ridge runs` and that commit, sends nothing and still exits 0: ridge never moves backwards.
 
 ```sh
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/app.sh ridge
 ```
 
-The last line is `shipped` and the commit: the app's server code and its screens are on ridge.
+Near its end the log says `shipped` and the commit: the app's server code and its screens are on ridge.
 
 ## 2. Check ridge
 
@@ -64,7 +75,7 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 About 3 minutes. It reads ridge from AWS and from the box, makes a throwaway company, signs it in through the
-app's address as a partner would and deletes it again. The log ends `== green`, or `== red` followed by one line
+app's address as a partner would and deletes it again. Near its end the log reads `== green`, or `== red` followed by one line
 for each thing that failed. Add `--reads-only` after `ridge` if you want it to change nothing at all.
 
 ## 3. Take ridge down (Friday night)
@@ -92,7 +103,7 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 About 15 minutes, five steps: the stack, the release, the app, the check, then the two workflows switched back
-on and read back active. It ends `== ridge is remade from main and checked. It is empty: it holds no operator
+on and read back active. Near its end it reads `== ridge is remade from main and checked. It is empty: it holds no operator
 and no demo copy.` and then `== green`. If a step is red it says `== stopped at step` and which one, the
 workflows stay off, and the remedy is to run the same block again.
 
@@ -114,6 +125,8 @@ after `ridge`, which replaces every passkey they held and ends their sessions.
 
 ## 6. Make the six demo copies
 
+**This deletes all six copies, and whatever partners did in them.** Do not run it while the seed runs (step 7).
+
 ```sh
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/demo-remake.sh ridge
 ```
@@ -122,7 +135,7 @@ About 2.6 hours, up to 4, and your AWS session must stay open to the clock time 
 password for each partner, each typed twice and never shown; send each partner their link and password by your
 own channel. It then lists the six copies and asks you to type `remake ridge`. It deletes each copy, makes it
 again under that partner's password and fills it with 21 days ending yesterday, printing a line every 30 seconds
-while it works. The last line is `the 6 demo copies on ridge are remade, each with its partner's password, 21
+while it works. Its last line before `== exit` is `the 6 demo copies on ridge are remade, each with its partner's password, 21
 days filled up to yesterday`.
 
 A stop before the first delete reads `== refused:` and changed nothing. A stop after it reads `error:`: run the
@@ -156,8 +169,8 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 Put the copy's code from `scripts/src/demo/mapping.ts` where `CODE` is; name several codes, space apart, for
-copies one person holds. It asks for the password twice, shows nothing, logs nothing and keeps nothing. Its last
-line is `set on` and the number of roots, `root(s); every session of them ended`.
+copies one person holds. Do not run it while the seed runs (step 7). It asks for the password twice, shows nothing, logs nothing and keeps nothing. Near its end it
+says `set on` and the number of roots, `root(s); every session of them ended`.
 
 ## 9. Put the records back from the copy
 
