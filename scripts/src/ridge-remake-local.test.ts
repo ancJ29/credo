@@ -14,12 +14,25 @@ import {
   ROUTES,
   storedClientSchema,
 } from '@credo/shared';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { HISTORY_DAYS } from './demo/apply';
 import { addDays } from './demo/days';
 import { readLedger } from './demo/ledger';
 import { allCopies } from './demo/mapping';
 import { runRidge } from './ridge';
+
+/** A mapping with one copy more than the kept store was filled for, while `newer.on` is set. */
+const newer = vi.hoisted(() => ({ on: false }));
+vi.mock('./demo/mapping', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./demo/mapping')>();
+  return {
+    ...real,
+    allCopies: () => {
+      const all = real.allCopies();
+      return newer.on ? [...all, { ...all[0], code: 'demo-newer' }] : all;
+    },
+  };
+});
 
 /** The target: a c-storage of the test's own. The remake starts the other, its local store. */
 let cs: RunningCStorage;
@@ -195,6 +208,7 @@ describe('ridge_cli remake, stopped mid-copy and gone on with', () => {
       SERVICE_CODE: tenant.serviceCode,
       SERVICE_ACCESS_KEY: tenant.accessKey,
       REMAKE_STORE_DIR: state.kept,
+      REMAKE_COMMIT: 'abc1234',
     };
     let writes = 0;
     // The tunnel gone after CUT writes: every later call on the target fails as a dropped one does.
@@ -218,6 +232,24 @@ describe('ridge_cli remake, stopped mid-copy and gone on with', () => {
     expect(await signInStatus(target, second.code, PASSWORDS[second.partner])).not.toBe(200);
     expect(existsSync(join(kept, 'filled'))).toBe(true);
   });
+
+  it('case 2b: --go-on from a store filled for an older mapping is refused, status 2, before any delete, the store kept', async () => {
+    const { target, kept } = state;
+    const [first] = copies;
+    const before = await indexOf(target, first.code);
+
+    newer.on = true;
+    const result = await run(['remake', '--go-on'], null, fetch).finally(() => {
+      newer.on = false;
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.err).toEqual([
+      "error: nothing was deleted on the target: this Mac's store holds no copy demo-newer: run ops/demo-remake.sh ridge whole",
+    ]);
+    expect(await indexOf(target, first.code)).toEqual(before);
+    expect(existsSync(join(kept, 'filled'))).toBe(true);
+  }, 600_000);
 
   it('case 3: a remake stopped mid-copy, run again with --go-on, writes only what differs and ends equal', async () => {
     const { kept } = state;

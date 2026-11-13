@@ -102,15 +102,23 @@ const REMAKE_USAGE =
   'usage: remake [--check] (one line a partner on stdin: the partner’s label, a space, the password) | remake --go-on (the store a stopped run kept, in REMAKE_STORE_DIR)';
 
 /** The file a remake writes in its kept store once all six copies are filled there, holding the day
- * of the fill: `--go-on` goes on only from a store that holds it. */
+ * of the fill and the commit that made it, a space between: `--go-on` goes on only from a store that
+ * holds it, written today by this commit. */
 const FILLED_FILE = 'filled';
 
-/** The day the kept store in `dir` was filled on; refused when no store filled whole is kept there. */
-async function filledOn(dir: string | undefined) {
-  const day = dir ? await readFile(join(dir, FILLED_FILE), 'utf8').catch(() => null) : null;
-  if (day === null)
+/** The day the kept store in `dir` was filled on; refused when no store filled whole is kept there,
+ * or when it was filled on another day or by another commit than this one (a store kept from a
+ * stopped run days ago would be copied over ridge's current copies). */
+async function filledOn(dir: string | undefined, today: string, commit: string) {
+  const text = dir ? await readFile(join(dir, FILLED_FILE), 'utf8').catch(() => null) : null;
+  if (text === null)
     throw new Refused(
       'remake --go-on: no store filled whole by a stopped run is kept: run ops/demo-remake.sh ridge whole',
+    );
+  const [day, made = ''] = text.split(' ');
+  if (day !== today || made !== commit)
+    throw new Refused(
+      `remake --go-on: the kept store was filled on ${day} by commit ${made || 'none'}, not today by commit ${commit || 'none'}: run ops/demo-remake.sh ridge whole`,
     );
   return day;
 }
@@ -224,10 +232,10 @@ async function carryCopy(
   local: CStorageClient,
   target: CStorageClient,
   copy: MappedCopy,
+  index: { data: unknown },
   io: { out: (line: string) => void; now: () => number },
 ) {
   const begun = performance.now();
-  const index = (await local.getRecord(recordKeys.client(copy.code)))!;
   const id = storedClientSchema.parse(index.data).id;
   const there = await target.getRecord(recordKeys.client(copy.code));
   const carried = there !== null && storedClientSchema.parse(there.data).id === id;
@@ -437,8 +445,9 @@ export async function runRidge(
       const goOn = rest[0] === '--go-on';
       const keptDir = env['REMAKE_STORE_DIR'];
       const passwords = goOn ? null : partnerPasswords((await io.stdin?.()) ?? '');
-      const filled = goOn ? await filledOn(keptDir) : null;
       const now = io.now ?? Date.now;
+      const commit = env['REMAKE_COMMIT'] ?? '';
+      const filled = goOn ? await filledOn(keptDir, vietnamToday(now()), commit) : null;
       const copies = allCopies();
       const target = client();
       const begun = performance.now();
@@ -459,7 +468,7 @@ export async function runRidge(
           );
           if (failed.length > 0)
             throw new Refused(`nothing was deleted on the target: ${failed.join('; ')}`);
-          await writeFile(join(dir, FILLED_FILE), vietnamToday(now()));
+          await writeFile(join(dir, FILLED_FILE), `${vietnamToday(now())} ${commit}`);
           io.out(
             `remake: this Mac's store built and the ${copies.length} copies filled on it, ${minutesSince(begun)} minutes`,
           );
@@ -468,15 +477,27 @@ export async function runRidge(
             `remake --go-on: the store the stopped run filled on ${filled} started again, ${minutesSince(begun)} minutes`,
           );
         }
+        // A kept store from an older mapping lacks a copy: refused before any delete, never a crash
+        // after the first.
+        const indexes = new Map<string, { data: unknown }>();
+        for (const copy of copies) {
+          const index = await local.getRecord(recordKeys.client(copy.code));
+          if (!index)
+            throw new Refused(
+              `nothing was deleted on the target: this Mac's store holds no copy ${copy.code}: run ops/demo-remake.sh ridge whole`,
+            );
+          indexes.set(copy.code, index);
+        }
         reached = true;
         const spent = { deleting: 0, copying: 0 };
         // One copy at a time, each unreachable on the target only between its delete and its index.
         for (const copy of copies) {
-          const one = await carryCopy(local, target, copy, { out: io.out, now }).catch(
-            (error: unknown) => {
-              throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
-            },
-          );
+          const one = await carryCopy(local, target, copy, indexes.get(copy.code)!, {
+            out: io.out,
+            now,
+          }).catch((error: unknown) => {
+            throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
+          });
           spent.deleting += one.deleting;
           spent.copying += one.copying;
         }

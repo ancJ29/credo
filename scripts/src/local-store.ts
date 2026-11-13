@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { buildCStorage } from '@credo/bff/tests/build';
 import { createCStorageClient, type CStorageClient } from '@credo/shared';
 import { freePort, startProcess, waitUntilUp } from './running/processes';
@@ -60,6 +60,17 @@ export async function startStore(
 /** The keys of a kept store, beside its database, so the next start on it is let in by its service. */
 const KEYS_FILE = 'keys.json';
 
+/** The folder a remake keeps its store in, by name: the credo root's own. */
+const KEPT_NAME = '.demo-remake-store';
+
+/** Refuses to empty a folder that holds files but no keys file of a kept store, unless it is named for
+ * the remake's store (a mistyped REMAKE_STORE_DIR would be removed whole). */
+async function refuseNotAStore(dir: string) {
+  const held = await readdir(dir).catch(() => [] as string[]);
+  if (held.length > 0 && !held.includes(KEYS_FILE) && basename(dir) !== KEPT_NAME)
+    throw new Error(`${dir} is not a kept store (no ${KEYS_FILE} in it): it is not emptied`);
+}
+
 /**
  * A store of this Mac's own for the length of `use`: c-storage built from the checkout and started
  * on a database in a temp folder, its service registered, and stopped however `use` ends. With
@@ -73,6 +84,7 @@ export async function withLocalStore<T>(
 ): Promise<T> {
   const dir = kept?.dir ?? (await mkdtemp(join(tmpdir(), 'credo-local-store-')));
   if (kept && !kept.reuse) {
+    await refuseNotAStore(dir);
     await rm(dir, { recursive: true, force: true });
     await mkdir(dir, { recursive: true, mode: 0o700 });
   }

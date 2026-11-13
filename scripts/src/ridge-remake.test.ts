@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApp } from '@credo/bff';
@@ -428,5 +428,51 @@ describe('ridge_cli remake', () => {
         'error: remake --go-on: no store filled whole by a stopped run is kept: run ops/demo-remake.sh ridge whole',
       ]);
     }
+  });
+
+  it('case 3b: --go-on refuses a kept store filled on another day or by another commit, before it starts', async () => {
+    const { run } = await ridge();
+    // MORNING is the 30th at 06:00 in Vietnam.
+    const fills: [string, string, string][] = [
+      [
+        '2026-10-28 abc123',
+        'abc123',
+        'filled on 2026-10-28 by commit abc123, not today by commit abc123',
+      ],
+      [
+        '2026-10-30 old000',
+        'new111',
+        'filled on 2026-10-30 by commit old000, not today by commit new111',
+      ],
+      ['2026-10-30', 'new111', 'filled on 2026-10-30 by commit none, not today by commit new111'],
+      ['2026-10-30 old000', '', 'filled on 2026-10-30 by commit old000, not today by commit none'],
+    ];
+    for (const [filled, commit, said] of fills) {
+      const kept = await mkdtemp(join(dir, 'old-fill-'));
+      await writeFile(join(kept, 'filled'), filled);
+      const result = await run(['remake', '--go-on'], null, undefined, true, {
+        REMAKE_STORE_DIR: kept,
+        REMAKE_COMMIT: commit,
+      });
+      expect(result.status, filled).toBe(2);
+      expect(result.err).toEqual([
+        `error: remake --go-on: the kept store was ${said}: run ops/demo-remake.sh ridge whole`,
+      ]);
+    }
+  });
+
+  it('a folder that is no kept store is refused before anything is emptied', async () => {
+    const { run } = await ridge();
+    const stray = await mkdtemp(join(dir, 'stray-'));
+    await writeFile(join(stray, 'notes.txt'), 'mine');
+
+    const result = await run(['remake'], typed(), undefined, true, { REMAKE_STORE_DIR: stray });
+
+    expect(result.status).toBe(2);
+    expect(result.err).toHaveLength(1);
+    expect(result.err[0]).toMatch(
+      /is not a kept store \(no keys\.json in it\): it is not emptied$/,
+    );
+    expect(await readFile(join(stray, 'notes.txt'), 'utf8')).toBe('mine');
   });
 });
