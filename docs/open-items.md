@@ -1712,7 +1712,7 @@ Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite 
 
 Every scripts gate's knip step ends with one configuration hint, `services/audit-backbone/**` in `knip.json`'s `ignore`: "Remove from ignore". The entry was added when the Go service came in, so the root check would not claim files the Go gate owns; knip now reads it as an entry it does not need, for a reason not read. It is a hint, not a red: the step ends 0. *Fix, if wanted:* remove the entry and read that knip still ends 0 with no hint. *Trigger:* the next change to `knip.json`.
 
-## 417. act's audit job alone ran 13 minutes 45 against an expected 2, its Go cache neither restored nor saved — the machine; *parked* until the long runs plan's act step (the orchestrator's measurement, 2026-11-13, Low)
+## 421. act's audit job alone ran 13 minutes 45 against an expected 2, its Go cache neither restored nor saved — the machine; *parked* until the long runs plan's act step (the orchestrator's measurement, 2026-11-13, Low)
 
 The orchestrator's act run of the `audit` job alone, for the day's push, took 13 minutes 45 seconds where about 2 were expected, and 17 minutes 6 seconds in all with 3 minutes 16 seconds waiting for the gate lock. The Go cache's restore and its save were both refused (connection refused), so the toolchain and the modules were downloaded again. A cache that never restores is the same as none. *Fix, if wanted:* read why act's cache server refuses before the act step bounds its run at 15 minutes, since a job that downloads its toolchain each run spends its minutes there. *Trigger:* the plan's act step (`docs/plans/2026-11-13-long-runs.md`, step 4).
 
