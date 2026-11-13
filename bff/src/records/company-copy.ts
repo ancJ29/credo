@@ -1,6 +1,8 @@
 import { recordKeys } from '@credo/shared';
 import { pagesOf, type TenantStorage } from './records';
 
+export { tenantStorage } from './records';
+
 /** How many writes of a copy run at once, as the deletion sweep's removals do. */
 const COPY_AT_ONCE = 20;
 /** The most changes one call of `copyCompany` makes, the deletion sweep's figure for one

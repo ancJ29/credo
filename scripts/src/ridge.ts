@@ -1,4 +1,5 @@
 import { createClient, deleteClient, listClients } from '@credo/bff/clients';
+import { compareCompany, copyCompany, tenantStorage } from '@credo/bff/company-copy';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
@@ -183,8 +184,17 @@ async function copiesNotRemade(storage: CStorageClient): Promise<string[]> {
   return found.filter((code) => code !== null);
 }
 
+/** The four connection variables of the target, each under its name in the source's environment
+ * (`FROM_` before it). */
+const storageNames = {
+  C_STORAGE_URL: 'C_STORAGE_URL',
+  INTERNAL_ACCESS_KEY: 'INTERNAL_ACCESS_KEY',
+  SERVICE_CODE: 'SERVICE_CODE',
+  SERVICE_ACCESS_KEY: 'SERVICE_ACCESS_KEY',
+};
+
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>…';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | copy-company <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
@@ -369,6 +379,51 @@ export async function runRidge(
       if (stopped.length > 0) {
         throw new Error(`left as they were, see above: ${stopped.map((r) => r.code).join(', ')}`);
       }
+      return 0;
+    }
+
+    if (command === 'copy-company') {
+      const [code] = rest;
+      if (!clientCodeSchema.safeParse(code).success || rest.length !== 1) throw new Refused(USAGE);
+      const from = readStorageEnv(
+        Object.fromEntries(
+          Object.entries(storageNames).map(([name, source]) => [name, env[`FROM_${source}`]]),
+        ),
+      );
+      if (
+        from.C_STORAGE_URL === storage.C_STORAGE_URL &&
+        from.SERVICE_CODE === storage.SERVICE_CODE
+      )
+        throw new Refused('the source and the target are the same service');
+      const source = createCStorageClient({
+        baseUrl: from.C_STORAGE_URL,
+        internalAccessKey: from.INTERNAL_ACCESS_KEY,
+        serviceCode: from.SERVICE_CODE,
+        accessKey: from.SERVICE_ACCESS_KEY,
+        fetch: io.fetch,
+      });
+      const held = await source.getRecord(recordKeys.client(code));
+      if (!held) throw new Refused(`the source holds no company with the code ${code}`);
+      const id = storedClientSchema.parse(held.data).id;
+      const [one, other] = [tenantStorage(source, id), tenantStorage(client(), id)];
+      const line = async (when: string) => {
+        const { records, differ } = await compareCompany(one, other);
+        io.out(
+          `${code} ${when}: the source holds ${records} records, ${differ} differ on the target`,
+        );
+        return differ;
+      };
+      await line('before');
+      for (
+        let step = await copyCompany(one, other);
+        ;
+        step = await copyCompany(one, other, { after: step.after })
+      ) {
+        io.out(`${code}: ${step.copied} written, ${step.removed} removed`);
+        if (step.done) break;
+      }
+      if ((await line('after')) !== 0)
+        throw new Error(`${code}: the target differs after the copy`);
       return 0;
     }
 
