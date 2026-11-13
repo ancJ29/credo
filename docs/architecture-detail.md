@@ -62,8 +62,8 @@ with what is tested, what is held by review alone, and which routes resolve a co
 What a session reads here instead is where key design does real work — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
-orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
-([`records.ts#L41`](../shared/src/records.ts#L41),
+orders and deliveries are keyed by day so a day's list stays one page, a page being at most 1,000
+records or about 4 MiB ([`order` in `shared/src/records.ts`](../shared/src/records.ts),
 [`MaxList` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)).
 
 **How a record is written safely.** The version token is a `tag`: the hex SHA-256 of the record's
@@ -112,14 +112,14 @@ one; a per-service `x-access-key`, stored only as a SHA-256 and compared in cons
 [`Server.Handler` in `services/c-storage/internal/server/server.go`](../services/c-storage/internal/server/server.go),
 [`Store.Admits` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)). **The BFF never holds
 the super-admin key** — registration is the stack's own step, done once
-([`bff/src/env.ts#L39`](../bff/src/env.ts#L39),
-[`scripts/src/register.ts#L10`](../scripts/src/register.ts#L10)). The rule, in `env.ts`'s own
+([`readEnv` in `bff/src/env.ts`](../bff/src/env.ts),
+[`Connection` in `scripts/src/register.ts`](../scripts/src/register.ts)). The rule, in `env.ts`'s own
 words, is that the variables the BFF reads are "the only ones it is given": as a listener that is
-seven — `PORT`, `HOST`, the four for c-storage and `APP_ORIGIN`, all supplied by the local stack
-([`bff/src/env.ts#L21`](../bff/src/env.ts#L21),
-[`scripts/src/stack.ts#L79`](../scripts/src/stack.ts#L79)) — and as a Lambda five, the same set
+eight — `PORT`, `HOST`, the four for c-storage, `APP_ORIGIN` and `FRONT_DOOR_KEYS`, all supplied by the local stack
+([`envSchema` in `bff/src/env.ts`](../bff/src/env.ts),
+[the environment `scripts/src/stack.ts` hands the back end](../scripts/src/stack.ts)) — and as a Lambda six, the same set
 without the listener's two, since API Gateway is the listener
-([`bff/src/env.ts#L48`](../bff/src/env.ts#L48)).
+([`readLambdaEnv` in `bff/src/env.ts`](../bff/src/env.ts)). The optional audit pair is on top of both.
 
 ## How a call finds its tenant's box
 
@@ -318,18 +318,16 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   Gateway HTTP API ([`ops/env.yml`](../ops/env.yml), `Distribution`); function URLs are not offered in the
   Region. The body hash is gone from the codebase. The plan carries an amendment note at `#L137`
   but its own table still says otherwise.
-- **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answers anyone; a
-  request throttle, not a signature, is what bounds the cost
-  (`ops/env.yml`'s `ApiStage`). Read "answers anyone" as *reachable*, not as
-  *unauthenticated*: a call arriving that way still meets the BFF's own checks — the client header,
-  the session, the permission — so what was lost is the network wall in front of them, not the
-  wall itself. It is the one property of the day-one design that
-  was given up without anyone deciding to — it followed from the Region's limit when function URLs
-  turned out not to be offered there — and until 2026-11-07 that template comment was the only
-  place it was written down. It is now [open item 121](open-items.md), parked for the human until a
-  client signs or real client data reaches a deployment. Two logs record a call, and they are not
+- **"Only CloudFront calls the back end"** (`#L41`). The HTTP API's own address answered anyone,
+  and a request throttle, not a signature, bounded the cost (`ops/env.yml`'s `ApiStage`); it was the one
+  property of the day-one design given up without anyone deciding to — it followed from the Region's limit
+  when function URLs turned out not to be offered there. It is regained since 2026-11-13: CloudFront sends a
+  secret key as `x-front-door-key` on every call it passes on, and the back end's first hook
+  (`bff/src/server.ts`'s `buildBff`) refuses any call without it, so the address answers a 403 to everyone
+  but the front door. [Open item 121](open-items.md) is closed by it, and
+  [`ops/keys.sh`](../ops/keys.sh) replaces the key with no call refused. Two logs record a call, and they are not
   the same age. The function has written a line per request to its own group all along: nothing in
-  `bff/src/lambda-main.ts#L3` turns the logger off, so `server.ts#L9`'s default stands
+  `bff/src/lambda-main.ts#L3` turns the logger off, so the `logger = true` default of `bff/src/server.ts`'s `buildBff` stands
   (`app.ts#L86`), and the function's `LoggingConfig` names that group
   (`ops/env.yml`'s `Bff`). The stage's own access log, `ApiLogs` and `ApiStage`'s `AccessLogSettings`
   (both in `ops/env.yml`), is in the template

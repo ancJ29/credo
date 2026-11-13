@@ -1,4 +1,5 @@
 import { createClient, deleteClient, listClients } from '@credo/bff/clients';
+import { compareCompany, copyCompany, tenantStorage } from '@credo/bff/company-copy';
 import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import { createOperator, makeLink, readRoster } from '@credo/bff/operators';
 import {
@@ -6,6 +7,7 @@ import {
   clientCodeSchema,
   createCStorageClient,
   joinLinkPath,
+  normaliseClientCode,
   normaliseSignInName,
   recordKeys,
   sameOperatorName,
@@ -15,8 +17,8 @@ import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
 import { readLedger } from './demo/ledger';
-import { allCopies, type MappedCopy } from './demo/mapping';
-import { ensureService } from './register';
+import { allCopies, copyOfCode, type MappedCopy } from './demo/mapping';
+import { ensureService, rekeyService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
 export type RidgeIo = {
@@ -183,12 +185,33 @@ async function copiesNotRemade(storage: CStorageClient): Promise<string[]> {
   return found.filter((code) => code !== null);
 }
 
+/** The four connection variables of the target, each under its name in the source's environment
+ * (`FROM_` before it). */
+const storageNames = {
+  C_STORAGE_URL: 'C_STORAGE_URL',
+  INTERNAL_ACCESS_KEY: 'INTERNAL_ACCESS_KEY',
+  SERVICE_CODE: 'SERVICE_CODE',
+  SERVICE_ACCESS_KEY: 'SERVICE_ACCESS_KEY',
+};
+
+/** The record ops/company-restore.sh writes into a demo copy to tell it restored from its neighbour,
+ * under the copy's own prefix, so the copy removes it. */
+const DRILL_RECORD = 'drill-restore';
+
+/** The code as the product takes it, when it is one of the demo copies; else a refusal. */
+function demoCopy(code: string) {
+  const normalised = normaliseClientCode(code);
+  if (!copyOfCode(normalised)) throw new Refused(`${code} is not one of the demo copies`);
+  return normalised;
+}
+
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | tenant-id <code> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>…';
+  'usage: register | rekey (the new key on stdin) | operator [--replace] [<name>] | tenant <code> <name> | tenant-id <code> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
- * the BFF's service registered with the super-admin key, the operator's account, and a client made
+ * the BFF's service registered with the super-admin key (and `rekey`, which replaces its key by the
+ * new one on the standard input, the same key), the operator's account, and a client made
  * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
  * (the check's client, with the keys the create used; it prints how many records went), `tenant-id` prints the id a
  * client's code names (the activity log keeps its entries by that id), and
@@ -220,6 +243,14 @@ export async function runRidge(
       io.out('checked: every partner has a password that follows the rule');
       return 0;
     }
+    if (command === 'copy-company' && rest[0] === '--check') {
+      const [code, ...extra] = rest.slice(1);
+      if (!code || extra.length > 0) throw new Refused(USAGE);
+      const demo = demoCopy(code);
+      const neighbour = allCopies().find((copy) => copy.code !== demo)!;
+      io.out(`checked: ${demo} is a demo copy, ${neighbour.code} is its neighbour for the drill`);
+      return 0;
+    }
     const storage = readStorageEnv(env);
     const connection = {
       baseUrl: storage.C_STORAGE_URL,
@@ -234,6 +265,18 @@ export async function runRidge(
       const superAdminKey = env['X_SUPER_ADMIN_KEY'];
       if (!superAdminKey) throw new Error('invalid environment: X_SUPER_ADMIN_KEY');
       io.out(`service ${await ensureService({ ...connection, superAdminKey }, service)}`);
+      return 0;
+    }
+
+    if (command === 'rekey') {
+      const superAdminKey = env['X_SUPER_ADMIN_KEY'];
+      if (!superAdminKey) throw new Error('invalid environment: X_SUPER_ADMIN_KEY');
+      const accessKey = ((await io.stdin?.()) ?? '').split('\n', 1).join('');
+      if (!accessKey)
+        throw new Refused('rekey: the new key is read from the standard input, one line');
+      io.out(
+        `service ${await rekeyService({ ...connection, superAdminKey }, { code: service.code, accessKey })}`,
+      );
       return 0;
     }
 
@@ -379,6 +422,72 @@ export async function runRidge(
       if (stopped.length > 0) {
         throw new Error(`left as they were, see above: ${stopped.map((r) => r.code).join(', ')}`);
       }
+      return 0;
+    }
+
+    if (command === 'copy-company') {
+      // The code as the product takes it, as --check and drill-record read it: Demo-A is demo-a.
+      const code = normaliseClientCode(rest[0] ?? '');
+      if (!clientCodeSchema.safeParse(code).success || rest.length !== 1) throw new Refused(USAGE);
+      const from = readStorageEnv(
+        Object.fromEntries(
+          Object.entries(storageNames).map(([name, source]) => [name, env[`FROM_${source}`]]),
+        ),
+      );
+      if (
+        from.C_STORAGE_URL === storage.C_STORAGE_URL &&
+        from.SERVICE_CODE === storage.SERVICE_CODE
+      )
+        throw new Refused('the source and the target are the same service');
+      const source = createCStorageClient({
+        baseUrl: from.C_STORAGE_URL,
+        internalAccessKey: from.INTERNAL_ACCESS_KEY,
+        serviceCode: from.SERVICE_CODE,
+        accessKey: from.SERVICE_ACCESS_KEY,
+        fetch: io.fetch,
+      });
+      const held = await source.getRecord(recordKeys.client(code));
+      if (!held) throw new Refused(`the source holds no company with the code ${code}`);
+      const id = storedClientSchema.parse(held.data).id;
+      // A target remade since the moment restored names the code under another id: the records would go under an
+      // id no index there names. An absent index is allowed (the company is moved onto a store that lacks it).
+      const target = client();
+      const there = await target.getRecord(recordKeys.client(code));
+      if (there && storedClientSchema.parse(there.data).id !== id)
+        throw new Refused(`the target names ${code} under another company id: nothing was written`);
+      const [one, other] = [tenantStorage(source, id), tenantStorage(target, id)];
+      const line = async (when: string) => {
+        const { records, differ } = await compareCompany(one, other);
+        io.out(
+          `${code} ${when}: the source holds ${records} records, ${differ} differ on the target`,
+        );
+        return differ;
+      };
+      await line('before');
+      for (
+        let step = await copyCompany(one, other);
+        ;
+        step = await copyCompany(one, other, { after: step.after })
+      ) {
+        io.out(`${code}: ${step.copied} written, ${step.removed} removed`);
+        if (step.done) break;
+      }
+      if ((await line('after')) !== 0)
+        throw new Error(`${code}: the target differs after the copy`);
+      return 0;
+    }
+
+    if (command === 'drill-record') {
+      const [what, code, ...extra] = rest;
+      if (!['put', 'has', 'remove'].includes(what ?? '') || !code || extra.length > 0)
+        throw new Refused(USAGE);
+      const store = client();
+      const held = await store.getRecord(recordKeys.client(demoCopy(code)));
+      if (!held) throw new Refused(`${code} is not on this service`);
+      const key = `${recordKeys.tenant(storedClientSchema.parse(held.data).id).all}${DRILL_RECORD}`;
+      if (what === 'put') await store.putRecord(key, { drill: true });
+      if (what === 'remove') await store.removeRecord(key);
+      io.out(what === 'has' ? ((await store.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
       return 0;
     }
 

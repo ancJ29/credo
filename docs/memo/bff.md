@@ -40,6 +40,7 @@ Drawn from [`app.ts`](../../bff/src/app.ts), [`errors.ts`](../../bff/src/errors.
 
 | It promises | Protects against | Why |
 | --- | --- | --- |
+| A call without the front door's key is a 403 before anything is read, and a key can be replaced with two held | an address reached around CloudFront | [the front door](#a-call-without-the-front-doors-key-is-refused-before-anything-is-read) |
 | The company is read first, and reading it authenticates nobody | a caller taking a resolved company for a signed-in person | [the company](#the-company-is-resolved-first-and-that-authenticates-nobody) |
 | A session lasts a week; an operator's ends an hour unused, twelve from issue | a console left open all day | [the session](#a-session-lasts-a-week-and-an-operators-an-hour-unused) |
 | A 401 means the session is over; a 403 means only this act is refused | an outage signing everyone out | [401 against 403](#a-401-ends-the-session-a-403-ends-only-the-act) |
@@ -58,6 +59,16 @@ a write path copied without its re-read
 ([the identity compare](#a-record-that-already-holds-what-was-asked-counts-as-our-own-write),
 [each write path](#each-write-path-recovers-in-its-own-way-and-there-is-no-shared-helper)).
 **And no record says who changed it** ([the actor](#no-record-says-who-changed-it)).
+
+## A call without the front door's key is refused before anything is read
+
+CloudFront adds a secret key to every call it passes on, as `x-front-door-key`. The first hook of
+[`buildBff`](../../bff/src/server.ts), which runs on every route and on the not-found handler, compares the
+digest of what was sent with the digest of each key it holds (`FRONT_DOOR_KEYS`, one key or two with a comma
+between them) and answers `403 Forbidden` to a call that matches none, before a company is looked up or anything
+is logged. Every key is compared, so the time does not tell which one matched. Two keys are held only while the
+key is replaced by `ops/keys.sh <env> front-door`, so no call is refused meanwhile. *Price of the choice:* the
+key sits in the function's environment as a plain variable, like the other keys there.
 
 ## The company is resolved first, and that authenticates nobody
 

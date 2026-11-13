@@ -136,9 +136,10 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 alike.
 
 **The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
-record whose meaning is the BFF's and not its own. A list is one prefix read of at most 1,000
-records, and past that bound it is an error and never a short list, which is why orders and
-deliveries are filed by day. Its promises are a store's: a save over a record
+record whose meaning is the BFF's and not its own. A list is a prefix read in pages, each
+ending at 1,000 records or about 4 MiB with the next starting after its last key, and the back end
+reads every page, so a list is never short; orders and deliveries are still filed by day, which
+keeps a day's list to a page. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
@@ -216,6 +217,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 
 | What is never there | What stops a breach |
 | --- | --- |
+| **No call reaches the back end but through the front door.** The API's own address answers a 403 to a call without the door's key | **a test.** The hook in `bff/src/server.ts`'s `buildBff` is the first on every route and on the not-found handler, and the case "refuses a call without the key, or with a wrong one" in `bff/src/server.test.ts` fails if a call without it is answered |
 | **No `fetch` in the back end.** It reaches storage only through the one client built for it | nothing. A reviewer reading the diff |
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |

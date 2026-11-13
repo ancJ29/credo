@@ -95,6 +95,7 @@ var everyRoute = []route{
 	{"DELETE", "/api/records/svc/k", "", true},
 	{"GET", "/api/records/svc?prefix=k", "", true},
 	{"POST", "/api/services/register", `{"code":"new","accessKey":"k"}`, false},
+	{"POST", "/api/services/rekey", `{"code":"new","accessKey":"k2"}`, false},
 	{"GET", statusPath, "", false},
 }
 
@@ -368,10 +369,14 @@ type listAnswer struct {
 	More bool
 }
 
-func list(t *testing.T, s *Server, prefix string, want int) listAnswer {
+func list(t *testing.T, s *Server, prefix string, want int, after ...string) listAnswer {
 	t.Helper()
 	var got listAnswer
-	body := call(t, s, "GET", "/api/records/svc?prefix="+url.QueryEscape(prefix), "", want)
+	query := "?prefix=" + url.QueryEscape(prefix)
+	if len(after) == 1 && after[0] != "" {
+		query += "&after=" + url.QueryEscape(after[0])
+	}
+	body := call(t, s, "GET", "/api/records/svc"+query, "", want)
 	if want == http.StatusOK {
 		if err := json.Unmarshal([]byte(body), &got); err != nil {
 			t.Fatalf("a list answers %s: %v", body, err)
@@ -438,6 +443,60 @@ func TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore(t *testing.T) {
 	}
 }
 
+// A page holds the prefix's keys after `after`, in key order and at most 1,000, and says if more
+// are left: reading page after page, each after the last key read, gives every key once.
+func TestAListAfterAKeyHoldsTheKeysPastItInKeyOrder(t *testing.T) {
+	s, db := build(t)
+	var keys []string
+	for i := range 2500 {
+		keys = append(keys, fmt.Sprintf("n.%04d", i))
+	}
+	seed(t, db, "svc", keys...)
+	seed(t, db, "svc", "m.9999", "o.0000")
+	var read []string
+	after, pages := "", 0
+	for {
+		got := list(t, s, "n.", http.StatusOK, after)
+		pages++
+		read = append(read, keysOf(got)...)
+		if !got.More {
+			break
+		}
+		if len(got.Records) != 1000 {
+			t.Fatalf("page %d holds %d records with more left, want 1000", pages, len(got.Records))
+		}
+		after = got.Records[len(got.Records)-1].Key
+	}
+	if pages != 3 || !slices.Equal(read, keys) {
+		t.Errorf("read in %d pages, %d keys (first %q); want 3 pages and the %d keys in order", pages, len(read), read[0], len(keys))
+	}
+	if got := list(t, s, "n.", http.StatusOK, "n.9999"); len(got.Records) != 0 || got.More {
+		t.Errorf("an after past the last key: %d records, more %v; want none", len(got.Records), got.More)
+	}
+}
+
+// An after outside the prefix is a cursor of another list: refused, whether it sorts below the
+// prefix, above it, or is the prefix cut short.
+func TestAListAfterOutsideThePrefixIsRefused(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "m.9999", "n.0001", "o.0000")
+	for _, after := range []string{"a", "m.9999", "n", "o.0000"} {
+		list(t, s, "n.", http.StatusBadRequest, after)
+	}
+	if got := list(t, s, "n.", http.StatusOK, "n."); len(got.Records) != 1 {
+		t.Errorf("an after that is the prefix itself: %d records, want 1", len(got.Records))
+	}
+}
+
+// An after that is not one text is refused, as a prefix is.
+func TestAListAfterNeedsOneText(t *testing.T) {
+	s, db := build(t)
+	seed(t, db, "svc", "a")
+	for _, query := range []string{"?prefix=a&after=a&after=b", "?prefix=a&after=%ff"} {
+		call(t, s, "GET", "/api/records/svc"+query, "", http.StatusBadRequest)
+	}
+}
+
 // A list with no prefix, or an empty one, would read the whole service: refused.
 func TestAListNeedsOneNonEmptyPrefix(t *testing.T) {
 	s, db := build(t)
@@ -481,6 +540,26 @@ func TestRegisteringACodeTwiceIsAConflict(t *testing.T) {
 	}
 	for _, bad := range []string{`{"code":"x"}`, `{"accessKey":"k"}`, `{"code":"","accessKey":"k"}`, `[`} {
 		call(t, s, "POST", "/api/services/register", bad, http.StatusBadRequest)
+	}
+}
+
+// A rekey replaces the key: the old one is refused, the new one opens the records that were there;
+// an unknown code is a 404 and a body without both strings a 400. The admin key is refused when
+// missing or wrong by TestEveryServiceRouteRefusesAMissingOrWrongAdminKey.
+func TestARekeyReplacesTheKeyAndKeepsTheRecords(t *testing.T) {
+	s, _ := build(t)
+	call(t, s, "POST", "/api/records/svc", `{"key":"k","data":{"a":1}}`, http.StatusCreated)
+	if got := call(t, s, "POST", "/api/services/rekey", `{"code":"svc","accessKey":"fresh-key"}`, http.StatusOK); got != `{"code":"svc"}` {
+		t.Fatalf("rekey = %s", got)
+	}
+	for key, want := range map[string]int{accessKey: http.StatusForbidden, "fresh-key": http.StatusOK} {
+		if res := serve(s, request("GET", "/api/records/svc/k", "", keys{internalKey, "", key})); res.Code != want {
+			t.Fatalf("a read with %s = %d, want %d", key, res.Code, want)
+		}
+	}
+	call(t, s, "POST", "/api/services/rekey", `{"code":"nobody","accessKey":"x"}`, http.StatusNotFound)
+	for _, bad := range []string{`{"code":"svc"}`, `{"accessKey":"k"}`, `{"code":"","accessKey":"k"}`, `[`} {
+		call(t, s, "POST", "/api/services/rekey", bad, http.StatusBadRequest)
 	}
 }
 

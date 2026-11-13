@@ -47,7 +47,7 @@ Drawn from [`server.go`](../../services/c-storage/internal/server/server.go),
 | No record is public | the shared key alone reading a record | [public](#no-record-is-public) |
 | Keys match exactly; a service's key is stored only as a hash | a nearly right key; a copied file giving a key away | [keys](#keys-are-compared-exactly-and-stored-hashed) |
 | A save over a record changed since it was read is refused, 412 | one person's save erasing another's | [412](#a-write-on-a-moved-record-is-refused) |
-| A list answers one prefix, at most 1,000 records, and says when there are more | a short list taken for the whole | [the list](#a-list-reads-one-prefix) |
+| A list answers one prefix, a page of at most 1,000 records or about 4 MiB, says when there are more, and the next page starts after a key | a short list taken for the whole | [the list](#a-list-reads-one-prefix) |
 | One save at a time | two saves at once losing one | [one writer](#one-writer-at-a-time) |
 | The file's version is checked at start | running on a file it cannot read | [the schema](#the-schema-version-is-checked-at-open) |
 | It listens on one address: loopback, or the box's private address when told | every interface answering, so a firewall is the only wall | [the listener](#the-listener-binds-one-address) |
@@ -105,13 +105,14 @@ backup included, holds no service key. The internal and super-admin keys are not
   random. Registering takes any non-empty key, so no gate refuses a short one, which a copy of the
   file would then give up to guessing. *Trigger to revisit:* the first access key a person
   chooses.
-- *Hazard no gate catches:* a lost access key cannot be read back, and nothing changes or removes
-  a service. Registering a code a second time answers 409 and keeps the first key
-  (`TestRegisteringACodeTwiceIsAConflict`), so a lost key strands its records: the way out is a new
-  service code, with the records carried over from the file by hand. A caller that reads the 409
-  as "registered" learns that the code exists, not that its key is the one stored; a mismatch
-  first shows as every record call answering 403. *Trigger to revisit:* the first lost or leaked
-  key, when a route that replaces a key becomes a decision of its own, behind the admin key.
+- *The promise:* a lost or leaked service key is replaced, not worked around. `POST
+  /api/services/rekey`, behind the super-admin key, replaces a registered service's key hash: the
+  old key is refused from the answer on, the records stay, an unknown code answers 404
+  (`TestARekeyReplacesTheKeyAndKeepsTheRecords`). Registering a code a second time still answers
+  409 and keeps the first key (`TestRegisteringACodeTwiceIsAConflict`), and a caller that reads the
+  409 as "registered" learns that the code exists, not that its key is the one stored; a mismatch
+  first shows as every record call answering 403, and the way out is the rekey. A key cannot be read
+  back, and a rekey is the only way it changes.
 
 ## A write on a moved record is refused
 
@@ -144,7 +145,7 @@ would run a guarded write unguarded while its caller believes otherwise.
 
 `GET /api/records/{serviceCode}?prefix=…` answers `{records: [{key, data, tag}], more}`: the
 service's records whose key starts with the prefix, a literal, in key order, each with the tag a
-read of that key gives, at most 1,000. `more` is true when there are more, so a caller never takes
+read of that key gives, a page of at most 1,000 (see below). `more` is true when there are more, so a caller never takes
 a short list for the whole (`TestAListHoldsAtMostAThousandAndSaysWhenThereAreMore`). No prefix or
 an empty one is a 400, since it would read the whole service (`TestAListNeedsOneNonEmptyPrefix`);
 the route sits behind the same two key gates as every record route
@@ -157,11 +158,22 @@ with no sort and no schema change.
 
 - *Rejected:* a list of keys, then a read of each. A list of 50 people would be 51 calls over
   the tunnel for one page.
-- *Rejected:* paging past 1,000. Nothing calls it: the app's lists are about 500 records at most,
-  and a caller that meets `more` fails rather than show a part. *Trigger:* the first list that
-  reaches the bound.
-- *Hazard no gate catches:* a record is one JSON text, so a list of 1,000 records of 8 KB is 8 MB
-  in one answer. The callers bound each record's size (`extra`'s 8 KB), not this service.
+- *Rejected:* paging past 1,000 by an offset or a caller's `limit`: a save between pages moves every
+  later page, and each caller would size its pages by its own records. A page starts after a key
+  instead, below.
+- *Rejected:* a list of keys, then a read of each (above); a route writing many records at once.
+
+A page starts after a key. `after`, optional, is the last key of the page before; the page holds the
+keys under the prefix greater than it, so a save between pages moves nothing and the next page is the
+same request with the last key read (`TestAListAfterAKeyHoldsTheKeysPastItInKeyOrder`). An `after`
+outside the prefix is a 400, a cursor of another list (`TestAListAfterOutsideThePrefixIsRefused`);
+one that is not one text is a 400 as a prefix is. A list with no `after` answers as before.
+
+A page ends at 1,000 records or about 4 MiB of data (`MaxListBytes`), whichever is first, and holds
+at least one record however large: a delivery's photo is a record of up to 50 KB before its
+encoding, so a page of 1,000 would be about 70 MB on a box with a little over 270 MiB free
+(`TestAListEndsAtAboutFourMebibytesAndHoldsOneRecordHoweverLarge`). `more` says so, and no caller
+sizes its own pages.
 
 ## One writer at a time
 

@@ -141,21 +141,23 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     throw new HttpError(503, 'Service unavailable');
   }
 
-  /** The customer and the lines of a save, priced by the app: an id the lists lack, or a total too
-   * large, is a 400. */
+  /** The customer and the lines of a save, priced by the app: each read by its key, the customer and
+   * each distinct product the save names and no more. An id the company lacks, or a total too large,
+   * is a 400. */
   async function priced(storage: TenantStorage, body: z.infer<typeof saveOrderRequestSchema>) {
     const keys = recordKeys.tenant(storage.tenantId);
-    const customers = await recordTools(storage).every(
-      keys.customerPrefix,
-      customerSchema,
-      'customer',
-    );
-    const products = await recordTools(storage).every(keys.productPrefix, productSchema, 'product');
-    const customer = customers.find((one) => one.record.id === body.customerId)?.record;
-    const lines = priceLines(
-      body.lines,
-      products.map((one) => one.record),
-    );
+    const found = await storage.getRecord(keys.customer(body.customerId));
+    const customer = found ? parsed(customerSchema, 'a customer', found) : undefined;
+    const products = (
+      await Promise.all(
+        [...new Set(body.lines.map((line) => line.productId))].map((id) =>
+          storage.getRecord(keys.product(id)),
+        ),
+      )
+    )
+      .filter((stored) => stored !== null)
+      .map((stored) => parsed(productSchema, 'a product', stored));
+    const lines = priceLines(body.lines, products);
     if (!customer || lines.kind !== 'priced') {
       throw new HttpError(400, 'Bad request', { details: 'a customer and products of the lists' });
     }

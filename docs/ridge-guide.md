@@ -191,8 +191,8 @@ Every script writes its log to the `logs` folder of the project's root and ends 
 A line `RED` or a `== red` in it is the thing to read first.
 
 This page does not cover the tunnel (`ops/tunnel.sh ridge`, to read ridge's storage from Bruno), the crash drill
-(`ops/drill.sh ridge`), the alarms and their Slack channel, or a change to a template (`ops/stack.sh`). They are
-in the runbook.
+(`ops/drill.sh ridge`), putting one demo copy back to an earlier moment (`ops/company-restore.sh ridge <code>`), the
+alarms and their Slack channel, or a change to a template (`ops/stack.sh`). They are in the runbook.
 
 ## What has not run yet
 

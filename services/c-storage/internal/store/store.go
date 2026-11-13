@@ -23,9 +23,10 @@ import (
 var Schema string
 
 var (
-	ErrExists   = errors.New("the service code is already registered")
-	ErrNotFound = errors.New("no record under that key")
-	ErrMoved    = errors.New("the record is not as the caller read it")
+	ErrExists    = errors.New("the service code is already registered")
+	ErrNoService = errors.New("no service under that code")
+	ErrNotFound  = errors.New("no record under that key")
+	ErrMoved     = errors.New("the record is not as the caller read it")
 )
 
 type Store struct {
@@ -54,6 +55,21 @@ func (s *Store) Register(ctx context.Context, code, accessKey string) error {
 	// The driver's RowsAffected never fails.
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrExists
+	}
+	s.wrote()
+	return nil
+}
+
+// Rekey replaces code's key with accessKey, or returns ErrNoService. The old key is refused from
+// the commit on; the service's records are untouched.
+func (s *Store) Rekey(ctx context.Context, code, accessKey string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE services SET hashed_access_key = ? WHERE code = ?`, hash(accessKey), code)
+	if err != nil {
+		return err
+	}
+	// The driver's RowsAffected never fails.
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNoService
 	}
 	s.wrote()
 	return nil
@@ -165,6 +181,11 @@ func (s *Store) Remove(ctx context.Context, code, key string, p *Precondition) e
 // short list.
 const MaxList = 1000
 
+// MaxListBytes bounds one list by the size of its data too, since a record can be large (a
+// delivery's photo): a page ends once the next record would take its data past this, and holds
+// at least one record however large.
+const MaxListBytes = 4 << 20
+
 // Listed is one record of a list: its key and its data as stored, whose Tag a caller reads.
 type Listed struct {
 	Key  string
@@ -191,11 +212,16 @@ func prefixEnd(prefix string) string {
 	return ""
 }
 
-// List returns the records whose key starts with prefix, in key order, at most MaxList of them,
-// and whether more are left. A prefix is a literal: no character in it is a pattern. On an error
-// the records are not to be read.
-func (s *Store) List(ctx context.Context, code, prefix string) (records []Listed, more bool, err error) {
+// List returns the records whose key starts with prefix and is greater than after (no bound when
+// after is empty), in key order, at most MaxList of them and about MaxListBytes of data (one record
+// at least), and whether more are left: the next page is the same list with the last key read as its
+// after. A prefix is a literal: no character in it is a pattern. On an error the records are not to
+// be read.
+func (s *Store) List(ctx context.Context, code, prefix, after string) (records []Listed, more bool, err error) {
 	query, args := `SELECT key, data FROM records WHERE service_code = ? AND key >= ?`, []any{code, prefix}
+	if after != "" {
+		query, args = query+` AND key > ?`, append(args, after)
+	}
 	if end := prefixEnd(prefix); end != "" {
 		query, args = query+` AND key < ?`, append(args, end)
 	}
@@ -208,14 +234,17 @@ func (s *Store) List(ctx context.Context, code, prefix string) (records []Listed
 	// A TEXT column scanned into a string cannot fail, and rows.Err is the cursor's; both are joined
 	// into the one error a caller reads before it reads the records.
 	var failed error
+	size := 0
 	for rows.Next() {
 		var key, data string
 		failed = errors.Join(failed, rows.Scan(&key, &data))
+		if len(records) == MaxList || (len(records) > 0 && size+len(data) > MaxListBytes) {
+			more = true
+			break
+		}
+		size += len(data)
 		records = append(records, Listed{Key: key, Data: json.RawMessage(data)})
 	}
 	failed = errors.Join(failed, rows.Err())
-	if len(records) > MaxList {
-		return records[:MaxList], true, failed
-	}
-	return records, false, failed
+	return records, more, failed
 }

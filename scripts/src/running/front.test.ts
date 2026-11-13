@@ -21,6 +21,7 @@ let dir: string;
 let bff: Server;
 let front: Server;
 let url: string;
+let bffUrl: string;
 let seen: Seen[] = [];
 let bffAnswer = { status: 200, type: 'application/json', body: '{"from":"bff"}' };
 
@@ -48,7 +49,12 @@ beforeAll(async () => {
       response.end(bffAnswer.status === 204 ? undefined : bffAnswer.body);
     });
   });
-  front = createFront({ staticDir: dir, bffUrl: await listen(bff) });
+  bffUrl = await listen(bff);
+  front = createFront({
+    staticDir: dir,
+    bffUrl,
+    frontDoorKey: 'door-test-key',
+  });
   url = await listen(front);
 });
 
@@ -134,6 +140,35 @@ describe('the local front', () => {
 
     expect([sent.status, bare.status]).toEqual([204, 204]);
     expect(seen.map((call) => call.body)).toEqual([text, '']);
+  });
+
+  it('adds the stack’s key to every /api call and replaces any key the caller sent', async () => {
+    bffAnswer = { status: 200, type: 'application/json', body: '{}' };
+    seen = [];
+    await fetch(`${url}/api/config`);
+    await fetch(`${url}/api/config`, { headers: { 'x-front-door-key': 'caller-guess' } });
+    await put('{}');
+    expect(seen.map((call) => call.headers['x-front-door-key'])).toEqual([
+      'door-test-key',
+      'door-test-key',
+      'door-test-key',
+    ]);
+    // A page is the front's own and goes nowhere near the BFF.
+    seen = [];
+    await fetch(`${url}/settings`);
+    expect(seen).toEqual([]);
+  });
+
+  it('adds no key where it has none to add, as under the fake', async () => {
+    const keyless = createFront({ staticDir: dir, bffUrl });
+    const at = await listen(keyless);
+    try {
+      seen = [];
+      await fetch(`${at}/api/config`, { headers: { 'x-front-door-key': 'kept-as-sent' } });
+      expect(seen[0]?.headers['x-front-door-key']).toBeUndefined();
+    } finally {
+      await close(keyless);
+    }
   });
 
   it('answers 502 when the BFF cannot be reached', async () => {

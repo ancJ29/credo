@@ -16,6 +16,7 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | a release | push to `main`, or a press of `ci` on `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
+| one of the four keys replaced (the front door's, the store's internal key or super-admin key, the back end's own service key) | `ops/keys.sh <env> <key>` ([the keys](#the-keys)) | under a minute; the front door's about 5 minutes |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
 | ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
@@ -31,6 +32,7 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
+| one demo copy back to the copy's newest moment, alone | `ops/company-restore.sh ridge <code>` ([restoring the records](#restoring-the-records)) | about two minutes |
 | the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
@@ -61,9 +63,11 @@ name its stack `ridge`.
 | `ops/stack.sh` | works | a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment |
 | `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
 | `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
+| `ops/keys.sh` | works | it replaces one key and reads the old value back refused, and changes nothing else |
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
 | `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, the copy's status (read on the box; its key stays there) and the bucket's listing, layer four's reads and the six reads that need no client stay |
 | `ops/restore.sh` | works, to a new file | by default it writes a new file beside the live one and touches nothing live; `--onto-live` is refused there |
+| `ops/company-restore.sh` | refuses | it holds ridge's demo copies alone, and a client's own stack is never reached by it |
 | `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |
@@ -234,10 +238,62 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
    - **the function runs code of checksum ...:** what the function runs is not what was sent; run it again.
    - **the box holds a bff.env:** the BFF's service code and key, made once by the first run, 0600, root's.
      The function holds a copy, set again at each run: after a key changes on the box, run
-     `ops/app.sh ridge`, or the BFF answers 503. The BFF's service key cannot be replaced (c-storage has
-     no route for it): a leaked one means a new `bff.env` and a new service code, and ridge's clients
-     made again.
+     `ops/app.sh ridge`, or the BFF answers 503. A leaked service key is replaced by
+     `ops/keys.sh ridge service` ([the keys](#the-keys)); the records stay.
    - **a key is in this log:** as in [the check](#the-check).
+   - **the stack names no distribution (its `DistributionId` output is missing):** the deploy reads the front door's
+     key from the distribution, and a stack made before this output has none. `ops/stack.sh` reads its template
+     from `origin/main`, so on ridge the order is: the push (the piece lands whole); its deploy ends red once,
+     at this refusal, before it changes anything on the box or the function, and the app keeps answering on the
+     old code; then `ops/stack.sh env <env>`; then a rerun of the deploy job; then `ops/check.sh <env>`.
+
+## The keys
+
+`ops/keys.sh <env> <key>` replaces one of the four keys by a new one made on this Mac from the kernel, in the
+order that keeps calls answered as long as the key allows, then reads the old value back refused and the new one
+accepted. The new key travels on pipes and 0600 files: no command line, log or terminal holds it, and the end of
+the run searches its log for the old and the new. Run it from a worktree at `main` with `pnpm install` done, in a
+terminal holding an AWS session; the deploy job never runs it. Take the key as `front-door`, `internal`, `admin`
+or `service`:
+
+| Key | The order | Calls refused meanwhile |
+| --- | --- | --- |
+| `front-door` | the back end takes the old key and the new; a change set (`ops/stack.sh`, with the new key in a 0600 file) sends the new to the distribution and is refused when it changes anything else; the stack's update, then the distribution's own deploy (`aws cloudfront wait distribution-deployed`), are waited for; then the back end takes the new alone | none |
+| `internal` | a new `keys.env` on the box, the store restarted and answering, then the function's copy set | from the store's restart to the function's update; the seconds are printed |
+| `admin` | a new `keys.env` on the box, the store restarted | the seconds the store takes to restart; the back end never holds this key |
+| `service` | the new `bff.env` beside the old, the store's `rekey`, the new file in place, then the function's copy set | from the rekey to the function's update; the seconds are printed. A second cost of the same act: the back end derives its sign-in waits' record names and its operator challenges' signing key from this key, so **every sign-in wait restarts (each name has five fresh tries) and every open operator challenge is void** (a 5-minute token; an operator mid-sign-in signs in again) |
+
+1. Read the log's last lines: `== green`, then `replaced the <key> key`. Before them, the read-backs: `the store
+   refuses the old internal key: 401` and `and accepts the new: 200` (internal); `the store refuses the old
+   super-admin key: 401` and a 404 for a service that is not there (admin); `the store refuses the old service
+   key: 403` and a 404 for a record that is not there (service); `the API's own address refuses the old door
+   key: 403` and a 404 for a call with the new one (front door). Every kind then ends on `the app's address,
+   through the door, answers a call with no key of its own: 404`, the back end at work with the keys it holds
+   now. The service run's closing lines add the cost above (the sign-in waits and the challenges).
+   The front door's run of `ops/stack.sh` prints on the terminal and in its own log in `logs/`, not in this one.
+   - **the store refuses the internal key the box's file holds:** nothing was changed; the box's file and the
+     store disagree, which a restart of c-storage on the box settles.
+   - **the store does not answer with the new key after 40 seconds:** the box's keys file holds the new key and
+     the function still the old; read the journal on the box (`journalctl -u c-storage`), then run it again.
+   - **the store did not replace the BFF's service key:** the store has no service of that code (the first app
+     deploy makes it) or refused the call; the waiting `bff.env.new` was removed and nothing changed.
+   - **the stack's key run did not finish:** the function still takes both door keys, which answers every call.
+     `REFUSED: a key run changes the distribution alone` names the other change; make it with
+     `ops/stack.sh env <env>` first. Run it again, or `ops/app.sh`, which sets the distribution's key alone.
+   - **STOPPED:** a run that stops after its first change prints a `STOPPED` line saying what it left and the
+     command that mends it (most often `ops/app.sh <env>`, which sets the function's copy from the box's files
+     and the distribution); read it before running anything again.
+   - **the store refuses the service key the box's `bff.env` holds:** an earlier service run stopped half way
+     (the store rekeyed, the file not moved); nothing was changed. Move `/etc/c-storage/bff.env.new` over
+     `bff.env` on the box if it is there, or run the service key again.
+   - **the app's address does not answer 404 at the end:** the back end at work does not hold the keys the run
+     set, most likely a deploy that ran meanwhile; run `ops/app.sh <env>` and then `ops/check.sh <env>`.
+   - **a key is in this log:** as in [the check](#the-check); the key was printed by a bug, replace it again.
+2. **Push nothing to `main` while a key run runs.** A push starts the deploy job, whose `ops/app.sh` reads
+   `bff.env` a minute before it sets the function and can set an old key over the new one; the run's last read
+   then ends red, and the mend is `ops/app.sh <env>`. Otherwise the deploy follows a replaced key on its own: it
+   reads the box's files and the distribution at each run. After a key run nothing else is owed; run
+   `ops/check.sh <env>` to read the whole environment.
 
 ## The operator
 
@@ -644,6 +700,11 @@ The drill reads the copy for real.
      c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
      copy. Not yet walked on a real blank disk.
    - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
+3. To put **one demo copy** back and leave its neighbours as they are now, `ops/company-restore.sh ridge <code>`
+   (ridge's demo copies alone): it restores the newest copy to a new file, serves it with a second c-storage on
+   the box's loopback for the run alone (ended by a `timeout` of 15 minutes and at the run's end), writes a drill
+   record into the named copy and a neighbour, copies the named copy back (`copy-company`), and reads the named
+   copy's record gone, the neighbour's kept and the compare at 0. The restored file is removed at the end; if the connection is gone by then, a `WARN` line in the log names the file, the time the second c-storage ends by itself and the copies that may still hold a drill record.
 ## The watch
 
 Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),
@@ -691,7 +752,7 @@ Neither ID is a credential, and neither is written into any committed file.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among
-them), `app.sh`, `operator.sh`, `root-password.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
+them), `app.sh`, `keys.sh` (each of the four keys replaced, the old one read back refused), `operator.sh`, `root-password.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
 the real c-storage, built there, so Go must be installed. The guards also need Ruby (reads `env.yml`
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:

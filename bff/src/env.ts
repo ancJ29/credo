@@ -18,6 +18,11 @@ const originShape = {
     return url?.origin === value && (url.protocol === 'https:' || url.hostname === 'localhost');
   }),
 };
+/** The keys the front door sends as `x-front-door-key`: one, or two while a key is replaced. A
+ * call without one of them is refused before anything is read. */
+const frontDoorShape = {
+  FRONT_DOOR_KEYS: z.string().regex(/^[^,\s]+(,[^,\s]+)?$/),
+};
 /** The audit service's keyed address and its key. Both or neither: without them the BFF saves a
  * change and logs that the log is not configured, so a release that lacks them keeps working. */
 const auditShape = {
@@ -35,6 +40,7 @@ const envSchema = z
     HOST: z.string().min(1).default('127.0.0.1'),
     ...storageShape,
     ...originShape,
+    ...frontDoorShape,
     ...auditShape,
   })
   .refine(auditTogether, auditPair);
@@ -45,6 +51,7 @@ export const BFF_ENV_KEYS = Object.keys(envSchema.shape);
 export type StorageEnv = z.infer<z.ZodObject<typeof storageShape>>;
 export type BffEnv = StorageEnv &
   z.infer<z.ZodObject<typeof originShape>> &
+  z.infer<z.ZodObject<typeof frontDoorShape>> &
   z.infer<z.ZodObject<typeof auditShape>>;
 
 function failure(error: z.ZodError): never {
@@ -61,11 +68,11 @@ export function readEnv(env: Record<string, string | undefined>) {
   return parsed.data;
 }
 
-/** The Lambda's environment: the same four c-storage variables, the audit pair if set, the app's address and no
+/** The Lambda's environment: the same four c-storage variables, the audit pair if set, the app's address, the front door's keys and no
  * listener, since API Gateway is the listener. Errors as `readEnv` does. */
 export function readLambdaEnv(env: Record<string, string | undefined>): BffEnv {
   const parsed = z
-    .object({ ...storageShape, ...originShape, ...auditShape })
+    .object({ ...storageShape, ...originShape, ...frontDoorShape, ...auditShape })
     .refine(auditTogether, auditPair)
     .safeParse(env);
   if (!parsed.success) return failure(parsed.error);

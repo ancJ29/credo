@@ -296,7 +296,8 @@ describe('local status', () => {
     }
     return () => Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
   };
-  const own = (part: string) => (part === 'seedDoor' ? 404 : 200);
+  // The BFF's own answer to a call without the front door's key is a refusal.
+  const own = (part: string) => (part === 'seedDoor' ? 404 : part === 'bff' ? 403 : 200);
   const written = () =>
     writeHandle(
       paths,
@@ -365,6 +366,21 @@ describe('local status', () => {
     }
 
     expect(said.out.every((line) => line.includes('DOWN'))).toBe(true);
+  });
+
+  it('calls the BFF down when it answers a call without the front door’s key, since its door is open', async () => {
+    const said = lines();
+    await written();
+    const close = await serve((part) => (part === 'bff' ? 200 : own(part)));
+    try {
+      expect(await runLocal(['status'], baseIo(said))).toBe(1);
+    } finally {
+      await close();
+    }
+
+    expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
+      `the BFF: DOWN on port ${ports.bff}`,
+    ]);
   });
 
   it('calls a part down when it answers but the process the handle names is gone', async () => {

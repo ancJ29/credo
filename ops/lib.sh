@@ -601,7 +601,7 @@ RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s "$RECORDS_MOUNT" <<'REMOTE'
+    box sudo bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
 df -Pm / | awk 'NR==2{printf "%s ", $4}'
 if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi
@@ -774,6 +774,55 @@ else
   echo "restored=$new"
 fi
 REMOTE
+}
+
+# box_serve_restored <the restored file> <port> <seconds> → serves a restored file (box_restore's restored-*.db)
+# with a second c-storage on the box's loopback at <port>, with the keys the live one reads, and ends it by
+# itself after <seconds> (timeout, in its own arguments); box_stop_restored ends it sooner. The live c-storage,
+# its file and its port are not touched. Prints serving=<port>.
+box_serve_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" <<'REMOTE'
+set -euo pipefail
+mount=$1 file=$2 port=$3 secs=$4
+case $file in "$mount"/restored-*.db) ;; *) echo "not a restored file: $file" >&2; exit 1 ;; esac
+# A case pattern's * also matches a /: the name after the folder holds none, or a name that climbs out of it passes.
+case ${file#"$mount"/} in */*) echo "not a restored file: $file" >&2; exit 1 ;; esac
+[ -s "$file" ] || { echo "no restored file: $file" >&2; exit 1; }
+if [ -e /run/c-storage-restored.pid ] && kill -0 "$(cat /run/c-storage-restored.pid)" 2>/dev/null; then
+  echo "a second c-storage is already serving a restored file" >&2
+  exit 1
+fi
+set -a
+. /etc/c-storage/keys.env
+set +a
+PORT=$port LISTEN_ADDR=127.0.0.1 DB_PATH=$file setsid timeout "$secs" /opt/c-storage/c-storage </dev/null >/dev/null 2>&1 &
+echo $! >/run/c-storage-restored.pid
+for _ in $(seq 1 30); do
+  if curl -fsS -m 2 -o /dev/null "http://127.0.0.1:$port/health"; then echo "serving=$port"; exit 0; fi
+  sleep 1
+done
+echo "the second c-storage did not answer" >&2
+exit 1
+REMOTE
+}
+
+# box_stop_restored <the restored file>: ends the second c-storage and removes the restored file it served
+# with its companions, whatever state they are in (a stop that finds nothing is quiet).
+box_stop_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" <<'REMOTE'
+mount=$1 file=$2
+if [ -e /run/c-storage-restored.pid ]; then
+  kill "$(cat /run/c-storage-restored.pid)" 2>/dev/null || true
+  rm -f /run/c-storage-restored.pid
+fi
+# A case pattern's * also matches a /: a name that climbs out of the folder (restored-x/../ and then a live name) removes nothing.
+case $file in "$mount"/restored-*.db) case ${file#"$mount"/} in */*) ;; *) rm -f "$file" "$file-wal" "$file-shm" ;; esac ;; esac
+REMOTE
+}
+
+# box_forward <local port> <box loopback port>: a second forward over the open connection, to the box's loopback
+box_forward() {
+  ssh -S "$WORK/cm" -O forward -L "127.0.0.1:$1:127.0.0.1:$2" -o LogLevel=ERROR "$BOX_USER@$BOX_ID"
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release
@@ -983,6 +1032,7 @@ SUBNET_ID=''
 UI_BUCKET=''
 APP_ADDRESS=''
 API_ADDRESS=''
+DISTRIBUTION_ID=''
 
 # app_load: the layer-four outputs of STACK_JSON, masked before anything can print them. Fails when
 # the stack does not hold layer four yet (the change set of the plan's step 15 is the human's), which
@@ -994,6 +1044,8 @@ app_load() {
   UI_BUCKET=$(out UiBucketName)
   APP_ADDRESS=$(out AppAddress)
   API_ADDRESS=$(out ApiAddress)
+  # shellcheck disable=SC2034 # app.sh reads it
+  DISTRIBUTION_ID=$(out DistributionId)
   [ -n "$BFF_NAME" ] || return 1
   # Both addresses are public in nothing but the human's local log, and in no committed file: the
   # whole address and its host are masked, as well as the bare host the tools print.
@@ -1016,6 +1068,93 @@ bff_env_read() {
   SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
   [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
   mask "$SERVICE_ACCESS_KEY"
+}
+
+# front_door_key_read <the distribution's id>: FRONT_DOOR_KEY from the header the distribution's API origin adds
+# (x-front-door-key), masked before anything is printed. The key reaches this shell through a pipe, never a
+# command line or a temp file; a stack or a distribution without it is refused by name, never by value.
+FRONT_DOOR_KEY=''
+front_door_key_read() {
+  [ -n "${1:-}" ] || die "the stack names no distribution (its DistributionId output is missing): ops/stack.sh makes it"
+  FRONT_DOOR_KEY=$(aws cloudfront get-distribution-config --id "$1" --output json |
+    jq -r '[.DistributionConfig.Origins.Items[]? | select(.Id == "api") | .CustomHeaders.Items[]? | select(.HeaderName == "x-front-door-key") | .HeaderValue] | first // empty') ||
+    die "the distribution's configuration could not be read"
+  [[ $FRONT_DOOR_KEY =~ ^[0-9a-f]{64}$ ]] || {
+    FRONT_DOOR_KEY=''
+    die "the distribution's API origin carries no x-front-door-key of 64 hex characters: ops/stack.sh makes it"
+  }
+  mask "$FRONT_DOOR_KEY"
+}
+
+# audit_read: AUDIT_URL and AUDIT_KEY, the activity log's address and write key, from the box's own files: the release made
+# the key (once) and started the log. A box without the key file is refused by name, before anything is sent; the key is
+# masked the moment it is read and reaches the function's settings only through a 0600 file.
+AUDIT_URL=''
+AUDIT_KEY=''
+audit_read() {
+  local audit_kv
+  AUDIT_URL=http://$BOX_LISTEN_ADDR:$AUDIT_PORT
+  audit_kv=$(box sudo cat /etc/audit-backbone/keys.env) || die "the box holds no /etc/audit-backbone/keys.env: ops/release.sh $ENVNAME ships the activity log and makes its key; run it first"
+  AUDIT_KEY=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_kv")
+  [ -n "$AUDIT_KEY" ] || die "the box's /etc/audit-backbone/keys.env holds no ACTIVITY_WRITE_KEY: ops/release.sh $ENVNAME makes it"
+  mask "$AUDIT_KEY"
+}
+
+# bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
+# only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
+BFF_WAIT=120
+bff_vpc() {
+  printf 'SubnetIds=%s,SecurityGroupIds=%s' "$SUBNET_ID" "$BFF_GROUP"
+}
+
+# bff_settings_set <the door's key or keys, comma-separated>: the function's environment, set from the keys
+# this run holds (INTERNAL_KEY, SERVICE_CODE, SERVICE_ACCESS_KEY, read from the box) and the one it is given.
+# The deploy and a key run write it alike. The environment goes in from a 0600 file, never a command line;
+# the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
+# passkey is checked against: CloudFront's name, kept for good.
+bff_settings_set() {
+  [ -n "$AUDIT_KEY" ] || audit_read # a settings call replaces the whole environment: the log's address and key go in each time
+  (
+    umask 077
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
+      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY}}' \
+      >"$WORK/bff-env.json"
+  )
+  aws lambda update-function-configuration --function-name "$BFF_NAME" \
+    --vpc-config "$(bff_vpc)" --environment "file://$WORK/bff-env.json" \
+    --query LastUpdateStatus --output text >/dev/null
+  rm -f "$WORK/bff-env.json"
+  lambda_wait "$BFF_NAME" "$BFF_WAIT"
+}
+
+# new_key → 64 hex characters from 32 random bytes of the kernel, as the release makes the store's keys
+new_key() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
+# box_secret_write <path on the box>: the standard input becomes the file, root's, 0600, by a temporary file
+# beside it that is renamed over it. The content travels on the pipe: no command line, here or there, holds it.
+box_secret_write() {
+  box "sudo sh -c 'umask 077 && cat >\"\$0.tmp\" && chown root:root \"\$0.tmp\" && chmod 0600 \"\$0.tmp\" && mv -f \"\$0.tmp\" \"\$0\"' $1"
+}
+
+# store_status <local port> <method> <path> <body or -> [<header line>...]: the status the store answers a call
+# through the open tunnel, 000 when it answers none. The header lines (they carry keys) go in a 0600 file for
+# curl to read, never on its command line; the body is no secret.
+store_status() {
+  local port=$1 method=$2 path=$3 body=$4 hdr h
+  shift 4
+  mkwork
+  hdr=$WORK/store.headers
+  (
+    umask 077
+    : >"$hdr"
+    for h in "$@"; do printf '%s\n' "$h" >>"$hdr"; done
+  )
+  if [ "$body" = - ]; then
+    curl -sS -m 10 -X "$method" -H "@$hdr" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  else
+    curl -sS -m 10 -X "$method" -H "@$hdr" -H 'content-type: application/json' -d "$body" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  fi
+  rm -f "$hdr"
 }
 
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
@@ -1118,9 +1257,9 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the seven variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the eight variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {
@@ -1140,7 +1279,8 @@ function_url() {
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
 # blocks on, and one statement, an allow of s3:GetObject to CloudFront's service under a condition on
-# the distribution's source ARN (the id is not readable by the deploy role, which holds no CloudFront right)
+# the distribution's source ARN (the id is not readable by the deploy role, whose one CloudFront right reads the
+# distribution's configuration)
 bucket_verdict() {
   local policy
   policy=$(jq -r '.Policy // empty' <<<"$2" 2>/dev/null) || policy=''
@@ -1269,6 +1409,19 @@ edge_reads_client() {
 edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
+}
+
+# door_reads <app address> <API address>: the front door's two sides, each a read that writes nothing: the API's
+# own address refuses a call that did not come through the door, and the app's address answers a call that
+# carries a door key of the caller's own (the door replaces it with its key), here the BFF's 404 for a code it
+# does not know. The wrong key is made for the call and is no key of ours.
+door_reads() {
+  EDGE_BASE=$2
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "the API's own address refuses a call that did not come through the front door" 403 "$EDGE_STATUS"
+  EDGE_BASE=$1
+  edge GET /api/config -H 'x-client-code: check-no-such-client' -H "x-front-door-key: wrong-$(random_hex)"
+  expect "the app's address answers a call sent with a wrong door key of its own" 404 "$EDGE_STATUS"
 }
 
 # workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name

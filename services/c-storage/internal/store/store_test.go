@@ -47,6 +47,26 @@ func TestAccessKeysAreStoredHashed(t *testing.T) {
 	}
 }
 
+// A rekey stores the new key's hash and refuses the old at once; an unknown code is ErrNoService.
+func TestARekeyStoresTheNewHashAndAnUnknownCodeIsNamed(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	if err := s.Register(ctx, "svc", "old-key"); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if err := s.Rekey(ctx, "svc", "new-key"); err != nil {
+		t.Fatalf("rekey: %v", err)
+	}
+	for key, want := range map[string]bool{"old-key": false, "new-key": true} {
+		if ok, err := s.Admits(ctx, "svc", key); err != nil || ok != want {
+			t.Errorf("Admits(%q) = %v, %v; want %v", key, ok, err, want)
+		}
+	}
+	if err := s.Rekey(ctx, "nobody", "x"); !errors.Is(err, ErrNoService) {
+		t.Errorf("rekey of an unknown code = %v, want ErrNoService", err)
+	}
+}
+
 // Callers who read the record as absent all write; the check and the write
 // are one transaction, so exactly one lands.
 func TestOfWritesNamingNoRecordOneLands(t *testing.T) {
@@ -116,7 +136,7 @@ func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
 				want = append(want, key)
 			}
 		}
-		listed, more, err := s.List(ctx, "svc", prefix)
+		listed, more, err := s.List(ctx, "svc", prefix, "")
 		if err != nil || more {
 			t.Fatalf("list %q: more %v, %v", prefix, more, err)
 		}
@@ -130,13 +150,50 @@ func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
 	}
 }
 
+// A page ends at about MaxListBytes of data with more left, and holds one record however large.
+func TestAListEndsAtAboutFourMebibytesAndHoldsOneRecordHoweverLarge(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	put := func(key string, size int) {
+		t.Helper()
+		data := json.RawMessage(`{"p":"` + strings.Repeat("x", size) + `"}`)
+		if err := s.Put(ctx, "svc", key, data, nil); err != nil {
+			t.Fatalf("put: %v", err)
+		}
+	}
+	keysOf := func(listed []Listed) string {
+		var keys []string
+		for _, l := range listed {
+			keys = append(keys, l.Key)
+		}
+		return strings.Join(keys, "|")
+	}
+	for _, key := range []string{"a.1", "a.2", "a.3"} {
+		put(key, 3<<19) // 1.5 MiB each
+	}
+	listed, more, err := s.List(ctx, "svc", "a.", "")
+	if err != nil || !more || keysOf(listed) != "a.1|a.2" {
+		t.Fatalf("three of 1.5 MiB: %q, more %v, %v; want a.1|a.2 and more", keysOf(listed), more, err)
+	}
+	listed, more, err = s.List(ctx, "svc", "a.", "a.2")
+	if err != nil || more || keysOf(listed) != "a.3" {
+		t.Fatalf("the page after: %q, more %v, %v; want a.3 and no more", keysOf(listed), more, err)
+	}
+	put("b.1", MaxListBytes+1)
+	put("b.2", 10)
+	listed, more, err = s.List(ctx, "svc", "b.", "")
+	if err != nil || !more || keysOf(listed) != "b.1" {
+		t.Fatalf("one record past the bound: %q, more %v, %v; want b.1 alone and more", keysOf(listed), more, err)
+	}
+}
+
 // A list that cannot read is an error, never a short list.
 func TestAListThatFailsIsAnError(t *testing.T) {
 	s := open(t)
 	ctx := context.Background()
 	gone, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, _, err := s.List(gone, "svc", "k"); err == nil {
+	if _, _, err := s.List(gone, "svc", "k", ""); err == nil {
 		t.Fatal("a list under a cancelled context succeeded")
 	}
 }

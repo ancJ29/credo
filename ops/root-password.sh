@@ -29,7 +29,7 @@ shift
 CODES=("$@")
 STEPS=5
 # Neither the local stack's port (3181), the check's (3191), the tunnel's (3192), the deploy's
-# (3193), the operator's (3194) nor the seed's (3195).
+# (3193), the operator's (3194), the seed's (3195), the demo remake's (3197) nor the key script's (3198).
 LOCAL_PORT=${ROOT_PASSWORD_LOCAL_PORT:-3196}
 
 # A stop before the first write is a refusal (walk/run.sh's form), lib.sh's guards included: they call

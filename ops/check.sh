@@ -218,6 +218,7 @@ else
   edge GET /index.html
   index_commit=$(meta_commit "$EDGE_HEADERS")
   expect "/health, the function's description and index.html's metadata name one commit" yes "$(commits_agree "$HEALTH_BUILD" "$fn_commit" "$index_commit")"
+  door_reads "$APP_ADDRESS" "$API_ADDRESS"
 fi
 
 step "through the app's address, as a partner reaches it"
