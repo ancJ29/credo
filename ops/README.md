@@ -225,10 +225,10 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
      `ops/keys.sh ridge service` ([the keys](#the-keys)); the records stay.
    - **a key is in this log:** as in [the check](#the-check).
    - **the stack names no distribution (its `DistributionId` output is missing):** the deploy reads the front door's
-     key from the distribution, and a stack made before this output has none. Run `ops/stack.sh env <env>` once
-     before the push whose deploy needs it: on ridge, the stack run comes before the push that carries the back
-     end's door check (the piece lands whole), or that deploy ends red at the door's key before it changes
-     anything, and the app keeps answering on the old code.
+     key from the distribution, and a stack made before this output has none. `ops/stack.sh` reads its template
+     from `origin/main`, so on ridge the order is: the push (the piece lands whole); its deploy ends red once,
+     at this refusal, before it changes anything on the box or the function, and the app keeps answering on the
+     old code; then `ops/stack.sh env <env>`; then a rerun of the deploy job; then `ops/check.sh <env>`.
 
 ## The keys
 

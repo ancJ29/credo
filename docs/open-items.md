@@ -1613,7 +1613,7 @@ The folder holds fourteen scripts that call `main_synced` (with `ops/keys.sh`) a
 
 ## 399. `wait_store`'s failure message in `ops/keys.sh` is shared by the internal and the admin runs, and says "the function still the old" for both — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
 
-The admin run never touches the function and the internal key does not change in it, so the clause is false there. *Fix, if wanted:* pass the message in, or word it for both. *Trigger:* the next edit of `ops/keys.sh`.
+The admin run never touches the function and the internal key does not change in it, so the clause is false there. The reread added two more of the same kind. The admin run's `STOPPED` line says no call of the app is refused, but when the store does not come back after its restart (`wait_store`'s 40 seconds) every call is refused. And the service run's rekey-refusal stop says "nothing was changed" even when a rekey that timed out may have landed in the store. *Fix, if wanted:* pass the message in, or word it for both. *Trigger:* the next edit of `ops/keys.sh`.
 
 ## 412. `FRONT_DOOR_KEY_FILE` is a switch carried by the shell's environment, so a shell that still exports it turns an ordinary stack run into a key run — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
 
