@@ -275,6 +275,35 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
 
   *Done when:* each log, read whole, reads as said, and the recap carries the seconds measured.
   **About 12 min** of the machine's: the one-off about 2, six log reads at about 2.
+- [x] **8a. The key run's guard, fixed (2026-11-13).** The front door's key run on ridge stopped safe: the stack
+  script's own check refused the real change set (`REFUSED: a key run changes the distribution alone`, one `Modify`
+  of `Distribution`, nothing executed). *Root cause:* the check demanded that every detail of the distribution's
+  `Modify` have `ChangeSource` `ParameterReference` and `CausingEntity` `FrontDoorKey`, but CloudFormation gives a
+  parameter change two details per target, and the Dynamic one is a `DirectModification` with no cause; the fixture
+  held one detail, the reviewer's shape (step 6's "Not seen"). AWS's words, from the user guide's change set examples
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets-samples.html`,
+  "Modifying an input parameter value", fetched 2026-11-13): "Resources that reference a changed parameter value
+  (using the `Ref` intrinsic function) always result in two changes: one with a `Dynamic` evaluation and another with
+  a `Static` evaluation." and "In this example, the `ChangeSource` field equals `ParameterReference`, meaning that
+  this change is a result of an updated parameter reference value. The change set must contain a similar `Dynamic`
+  evaluation change."; its example puts the Dynamic detail at `DirectModification`, no `CausingEntity`, the same
+  `Target` as the Static one with `CausingEntity` the parameter. The API reference
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_ResourceChangeDetail.html`): "If the
+  `ChangeSource` value is `DirectModification`, no value is given for `CausingEntity`." *Fixed:*
+  `ops/key-run-changes.jq` admits a `Modify` of `Distribution` whose details are each a Static `ParameterReference`
+  of `FrontDoorKey`, or a Dynamic `DirectModification` with no cause whose `Target` a Static one of the key also
+  names, and at least one of the first kind; any other detail (a template edit is a Static `DirectModification`,
+  another parameter another cause, a Dynamic one with no partner) is refused. `ops/stack.sh` prints each detail with
+  its `source=` and `cause=` (never a parameter value). The fixture `ops/testdata/changeset-door.json` has the
+  documented two details. New cases in `ops/test.sh`: the documented shape accepted (the existing door cases), a
+  second parameter, a Dynamic detail whose partner names another target, and a `Modify` with no detail refused, and
+  the refusal's print of source and cause. Each seen red once in a trial harness cut from `ops/test.sh`, reverted:
+  the cause check dropped (second parameter), the partner's target not compared (orphan), the Static-detail
+  requirement dropped (no detail), the partner allowance removed (the documented shape refused), the print without
+  source and cause. ShellCheck as CI runs it, cfn-lint and the whole `bash ops/test.sh` each ended at exit 0 on the
+  committed tree. *Not seen:* a real change set's Dynamic detail on ridge (the guard takes AWS's documented shape; a
+  template edit to `DistributionConfig` the same run would also give a Dynamic `DirectModification`, but it comes with
+  its own Static one, which is refused). **About 25 min.**
 
 **Where it meets the other lanes.** Ridge's re-creation builds first and changes no committed file
 of this one; step 8 needs ridge up. The continuous copy's plan changes `ops/env.yml`, `ops/check.sh`,

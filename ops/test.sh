@@ -4152,7 +4152,7 @@ FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-cond
 check "a Conditional change refused: exit 1, REFUSED, and no change applied" "1 1 0" \
   "$RC $(grep -c '^REFUSED: this change set removes or replaces' "$S/out" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
 check "  and its refusal line names the property that carried it" 1 \
-  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic$' "$S/out" || true)"
+  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic source=DirectModification cause=-$' "$S/out" || true)"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional-taken --plan --take Box
 check "  with Box taken the plan passes, exit 0, and the verdict names what was let through" "0 1 0" \
   "$RC $(grep -c 'nothing unsafe except what was taken: Box$' "$S/out" || true) $(grep -c 'no removal and no replacement' "$S/out" || true)"
@@ -4438,6 +4438,21 @@ jq -c '.Changes[0].ResourceChange.Details += [{"Target":{"Attribute":"Properties
 FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-extra.json stack_run key-stack-extra
 check "  a change set that also changes the distribution for another cause than the key is refused before execute-change-set is called" "1 0 1 1" \
   "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  Distribution (AWS::CloudFront::Distribution): Modify$' "$S/out" || true)"
+check "  and its refusal prints every detail with its source and cause (the key's two, and the extra), no parameter value" "1 1 1 0" \
+  "$(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Dynamic source=DirectModification cause=-$' "$S/out" || true) $(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Static source=ParameterReference cause=FrontDoorKey$' "$S/out" || true) $(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Static source=DirectModification cause=-$' "$S/out" || true) $(grep -cF "$key15" "$S/out" || true)"
+# The documented shape (ops/testdata/changeset-door.json, built as the user guide's "Modifying an input parameter value" shows it,
+# docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets-samples.html: a Dynamic
+# DirectModification detail with no cause, and a Static ParameterReference one naming the parameter, over one Target) is
+# accepted above; a distribution change that shape does not explain is refused: another parameter, a Dynamic
+# detail whose Static partner names another Target, and a Modify with no detail at all.
+jq -c '.Changes[0].ResourceChange.Details[1].CausingEntity = "SubjectPrefix"' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-param.json"
+jq -c '.Changes[0].ResourceChange.Details[1].Target.Name = "Origins"' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-orphan.json"
+jq -c '.Changes[0].ResourceChange.Details = []' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-empty.json"
+for variant in param orphan empty; do
+  FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-$variant.json stack_run key-stack-$variant
+  check "  a distribution change the documented shape does not explain ($variant) is refused before execute-change-set" "1 0 1" \
+    "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true)"
+done
 FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-plain --plan
 check "  and the same change set without a key file is not that run's to refuse" "0 0" \
   "$RC $(grep -c 'REFUSED' "$S/out" || true)"

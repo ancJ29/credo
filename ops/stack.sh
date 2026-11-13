@@ -258,7 +258,7 @@ else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
   # Each change, then one line per detail naming the property that carried it: the change set is deleted
   # on the way out, so this print is the only record of a refusal's cause.
-  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-")")' "$WORK/changes.json"
+  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-") source=\(.ChangeSource // "-") cause=\(.CausingEntity // "-")")' "$WORK/changes.json"
 
   step "the guard: nothing removed or replaced"
   unsafe=$(jq -r --argjson take "$TAKE" -f "$OPS_DIR/unsafe-changes.jq" "$WORK/changes.json")
@@ -271,9 +271,9 @@ else
   fi
   # A key run (FRONT_DOOR_KEY_FILE) changes the distribution's header and nothing else: a change set that
   # touches another resource, does more to the distribution than modify it, or modifies it for any cause but the
-  # FrontDoorKey parameter (a detail whose source is not that parameter's reference) is refused before it runs.
+  # FrontDoorKey parameter (a detail the documented parameter change does not explain, ops/key-run-changes.jq) is refused before it runs.
   if [ -n "${FRONT_DOOR_KEY_FILE:-}" ]; then
-    others=$(jq -r '.Changes[]?.ResourceChange | select(.Action != "Modify" or .LogicalResourceId != "Distribution" or ([.Details[]? | select(.ChangeSource != "ParameterReference" or .CausingEntity != "FrontDoorKey")] | length > 0)) | "\(.LogicalResourceId) (\(.ResourceType)): \(.Action)"' "$WORK/changes.json")
+    others=$(jq -r -f "$OPS_DIR/key-run-changes.jq" "$WORK/changes.json")
     if [ -n "$others" ]; then
       echo "REFUSED: a key run changes the distribution alone, and this change set also holds:"
       while IFS= read -r line; do echo "  $line"; done <<<"$others"
