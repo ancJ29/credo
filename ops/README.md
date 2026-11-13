@@ -205,6 +205,14 @@ put that back (the BFF then answers 503 until the next deploy).
      BFF call answers 503 though its own check reads green. No script can refuse it, since the old
      run uses the old scripts. The way back is to re-run the latest deploy
      ([plan hazard](../docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches)).
+   - **the activity log's first landing on ridge: one push, one red deploy, a stack run, a rerun.** The
+     template's half and the code reach `main` in one push, so that deploy runs before ridge's stack has the log's
+     rule and port, and ends red once at the check: the release and `app.sh` have finished (the log runs on the box, the
+     function holds `AUDIT_URL` and `AUDIT_KEY`), and the check names three reds, the box group's rule reading, the back
+     end group's, and the entry count `'0'`, not 1. That red is expected; nothing is half-changed. Then, in this order:
+     `ops/stack.sh env ridge --plan`, read it, `ops/stack.sh env ridge` (it reads its template from `origin/main`, so
+     only after the push), then re-run the latest `ci` run of `main` with "Re-run all jobs"; a rerun of the same
+     commit is not superseded, and the check then ends `== green` with the entry found.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; run
      `ops/stack.sh env ridge` (plan step 11).
    - The job checks `ops/` against its own commit, not the newer `main`, so a push that lands

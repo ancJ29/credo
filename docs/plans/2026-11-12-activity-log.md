@@ -141,8 +141,10 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   on a ridge that has the second rule and on one that has not yet (the stack run comes after the push); any other
   port, address range or group, a lone log rule or a rule too many is still refused. Each of the two readings
   was seen red once by a mutation of the reading (backed up first, reverted).
-- [ ] 👤 **2. Your stack run,** once step 1 is in `main` and pushed: `ops/stack.sh env ridge --plan`,
-  then without it. Your first point. Ridge by then already holds the continuous copy (its stack run is
+- [ ] 👤 **2. Your stack run, after step 11's push and its one red deploy:** `ops/stack.sh env ridge --plan`,
+  then without it. Your first point. The piece lands whole, so the template's half (step 1) and steps 3 to 10 reach
+  `main` in one push, and the stack run follows it: `ops/stack.sh` reads its template from `origin/main`
+  (`ops/stack.sh#L142`), so it can run only after that push. Then re-run the deploy job (step 13). Ridge by then already holds the continuous copy (its stack run is
   the same sitting's earlier act), so the plan-only run must print, and the machine reads the log whole
   for, exactly: `AuditPort=3184` among the parameters; `Add BoxFromBffActivity (AWS::EC2::SecurityGroupIngress)
   replacement=none`; `Modify BffGroup (AWS::EC2::SecurityGroup) replacement=False` with its detail
@@ -246,12 +248,13 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   guard was seen to count a line that echoes the key, not by a run. Not shown offline, so unticked: case 13
   and case 16 read off ridge. Three old checks changed: the stand-in edge takes the check's dated client
   code, and the two lists of the client commands now hold `tenant-id` (open item 389).
-- [ ] **7. The prose it makes false.** `docs/activity-log.md` (its title, "Nothing ships it", where
+- [x] **7. The prose it makes false.** `docs/activity-log.md` (its title, "Nothing ships it", where
   it runs), `docs/architecture.md`'s picture and part line, `docs/architecture-detail.md`'s row,
   `docs/README.md`'s row, the service's `CLAUDE.md` ("Ship: none yet"), its `README.md` and
   `Makefile` first lines, the root `CLAUDE.md`'s gate table (a seventh command, CI's `audit` job),
   `ops/README.md`'s release steps. *Done when:* the citation test exits 0 and `git grep -nE
   '/Users/|~/'` finds nothing. **8.**
+  *Ticked 2026-11-13, resting on this "Done" note below: the prose built at `1b0e1b3a` with its gate at exit 0.*
   *Done, 2026-11-13 (sonnet):* the scripts package's gate (prettier and the citation test) at exit 0 on the
   committed tree, and the diff adds no line matching `/Users/|~/` (the tree's own matches, a Go comment's
   `~/Library/Caches` and four walk snapshots, were there before and are not this step's). Prose only; `ops/test.sh` was
@@ -268,8 +271,11 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   the release by hand (its stop messages), the deploy job's binary, path list and `needs`. Not touched: the
   gate row 3 (ShellCheck lists only c-storage's scripts; the service's four scripts are not in it, a gap
   that predates this step and is for the review).
-- [ ] **8. One review**, on a model other than the author's, with the whole check: code, tests and
+- [x] **8. One review**, on a model other than the author's, with the whole check: code, tests and
   this table (QA's rule 5). *Done when:* a verdict line, each finding with its line. **20.**
+  *Done, 2026-11-13 12:17 (opus):* ticked on the review's page, `orch/worktrees/reviews/2026-11-13-activity-log-steps-3-7.md`
+  (a verdict line, each finding with its line, on a model other than the author's), whose findings step 9 fixed at
+  `db055edf`; this tick rests on that page and that commit, not on a new run.
 - [x] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
   the gates of steps 3 to 6 at exit 0 again. **10.**
   Done 2026-11-13. Fixed: Medium 1 (the box reading's eight old refusals now carry the log's rule and port, so each is
@@ -284,18 +290,31 @@ Each gate is the touched package's one command: `make check` in `services/audit-
 - [x] **10. The recap**, before the landing; rows 9, 13 and 16 marked not yet known. *Done when:*
   committed in `docs/recaps/` with its `docs/products.md` row. **8.**
   *Done, 2026-11-13 (sonnet):* `docs/recaps/2026-11-13-activity-log.md`, three markers open (the push and stack run, the first entry, the memory reading). No products row changes, since nothing new is open to a partner or operator until ridge runs it.
-- [ ] 👤 **11. Your push of steps 3 to 10**, which deploys onto ridge. Your second point. *Done
-  when:* the deploy's log reads the release naming both commits, the function's seven names, and the
-  check `== green` with the customer's entry found. **5 to read.**
+- [ ] 👤 **11. Your one push** of step 1 and steps 3 to 10 together, which deploys onto ridge before its stack holds the
+  log's rule and port. Your first act; step 2 follows it. The deploy goes red once, by design, and the order
+  is read off the code: the release (`ops/release.sh#L232-L294`) is all on the box and needs no rule (it installs the log, starts it,
+  makes the key once, and reads `/health` from the box itself); `ops/app.sh#L119-L145` sets the function's `AUDIT_URL`
+  and `AUDIT_KEY` and ships its code; then `ops/check.sh` reads three reds and ends `== red` where it ends:
+  the box group's rule reading (`ops/check.sh#L92-L93`, `ops/lib.sh#L1028-L1045`) and the back end group's
+  (`ops/check.sh#L203-L204`, `ops/lib.sh#L1048-L1060`), each refusing a ridge without the log's rule, and the entry read
+  (`ops/check.sh#L282`, `ops/lib.sh#L1096-L1105`) finding `'0'` customer.create entries, not 1: the back end's write
+  to the closed port fails, is logged in the request log and the customer's add still succeeds
+  (`docs/activity-log.md#L191-L196`). Nothing is half-changed: by then the box runs the log and the function holds
+  its settings and code at the commit; what is missing is only the stack's rule, so the log runs and no entry
+  reaches it. A ridge that already had the rule would read green. *Done when:* the deploy's log reads `released <sha>`
+  naming both commits, the function's seven names, and the check's three reds as above and no other. **5 to read.**
 - [ ] **12. The log's file joins the copy**, once the continuous copy has landed and its release ran
   on ridge (its step 12). The log's unit starts its own `litestream replicate -exec`, the continuous
   copy's `ops/litestream.yml` copied with the log's file and the path `<box>/activity`, on the records
   disk; the check reads that copy fresh. Case 15. *Done when:* the three `ops/` rows exit 0, the case
   red once, and a reread of the changed lines by the step 8 reviewer's model. **10, and 5 for the
   reread.**
-- [ ] 👤 **13. Your release and check,** `ops/release.sh ridge` then `ops/check.sh ridge`, or the push
-  of step 12. Your third point. *Done when:* the check's log prints each program's memory and the
-  box's free memory, no out-of-memory kill, `== green`; the recap and item 2's memory half take the
+- [ ] 👤 **13. Your rerun of the deploy job and the check,** after step 2's stack run and, when step 12 has landed, its
+  push: press "Re-run all jobs" on the latest `ci` run of `main` (or press `ci` on `main`), or by hand
+  `ops/release.sh ridge`, `ops/app.sh ridge` then `ops/check.sh ridge`. A rerun of the same commit is not superseded
+  (`ops/release.sh#L9-L12`: only a strict ancestor is) and leaves the log's key as it is. Your third point. *Done when:*
+  the deploy's check prints `== green` with the customer's entry found (the running half, your second point), then
+  each program's memory and the box's free memory, no out-of-memory kill; the recap and item 2's memory half take the
   figure. **5 to read.**
 
 About 106 machine minutes for steps 1, 3 to 10 and 12, and 15 more to read your three runs: about
@@ -335,18 +354,18 @@ twice the cut's hour, which counted neither the listener, the CI job nor the cop
 
 ## The human's points
 
-**1, at step 2: the stack change for ridge.** You will read the `--plan` of ridge's environment: one
+**1, at step 2 (after step 11's one push and its one red deploy): the stack change for ridge.** You will read the `--plan` of ridge's environment: one
 rule added, letting the back end reach the activity log's port on the box, and the back end's group
-changed in place, nothing replaced. A yes: run it without `--plan`, and the code can then be pushed.
+changed in place, nothing replaced. A yes: run it without `--plan`, then re-run the deploy job (step 13).
 A no: the guard has already refused it, nothing changed, and the piece finds another way to open
 the port.
 
-**2, at step 11: the first entry on ridge.** You will read the check's log after your push: a fresh
+**2, at step 13: the first entry on ridge.** You will read the check's log after the rerun of the deploy job (the push's own deploy ended red once, as step 11 says): a fresh
 company's root added a customer through the app's own address, and the check found that change in
 the activity log on the box, no key printed. Does that read as the log running on ridge? A yes
 closes the running half; a no reopens the piece at the line that did not convince you.
 
-**3, at step 13: the box's memory, read once.** You will read one line a program (the store, the
+**3, at step 13 once step 12 has landed: the box's memory, read once.** You will read one line a program (the store, the
 log, each one's copy), the box's free memory beside them, the 96 MiB a release refuses below, and
 the out-of-memory kills, which should be none. Room enough for the log beside the store? A yes keeps
 it there at no cost. A no is your money decision: a box of its own, about $4.20 a month.
