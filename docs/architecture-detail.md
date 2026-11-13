@@ -246,7 +246,7 @@ Terraform anywhere.
 
 **What CI does.** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) holds five jobs: four
 check jobs that run on every push and pull request — `check` (`make check` in c-storage),
-`e2e` (its Bruno collection against the built binary), `app` (`pnpm check`) and
+`e2e` (its Bruno collection against the built binary), `app` (each package's `pnpm check` in a job of its own, with `app` waiting on all of them) and
 `ops` (ShellCheck at a pinned SHA-256 plus cfn-lint over the three templates) — and then,
 on a push to `main` or a press of `ci` on `main` only, `deploy` in the `ridge` GitHub environment. That job ships **code, never stack
 shape** (`ci.yml`'s comment "Releases only: a template change stays the human's change set"): c-storage's arm64 binary to the box over an Instance Connect tunnel

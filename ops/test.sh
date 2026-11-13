@@ -1675,36 +1675,65 @@ refuses "  an app that is not built before the role is taken is refused" "the ap
 sed '/^          CREDO_BUILD: \${{ github.sha }}$/d' "$WORKFLOW" >"$WORK/wf-nostamp.yml"
 refuses "  a build step that does not stamp the commit is refused (row 39)" "CREDO_BUILD: github.sha in the env of the build step" deploy_guards "$WORK/wf-nostamp.yml"
 
-# app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24
-app_block() { awk '/^  app:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
+# app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24. One job a package
+# (every package pnpm-workspace.yaml lists, so none is dropped), each running that package's own check under a
+# 40-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
+job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
 app_guards() {
-  local block missing=''
-  block=$(app_block "$1")
+  local pkgs p block missing='' want_needs='' n24 n26 chk have
+  pkgs=$(sed -n 's/^  - //p' "$REPO_DIR/pnpm-workspace.yaml")
+  [ -n "$pkgs" ] || die "no package could be read from pnpm-workspace.yaml"
+  for p in $pkgs; do
+    want_needs="${want_needs}${want_needs:+, }app-$p"
+    block=$(job_block "$1" "app-$p")
+    if [ -z "$block" ]; then missing="${missing}[no job app-$p] "; continue; fi
+    need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[app-$p: $1] "; }
+    need "        run: pnpm --filter @credo/$p check"
+    need "    timeout-minutes: 40"
+    need "          node-version: 26"
+    need "    runs-on: ubuntu-24.04"
+    need "        run: pnpm install --frozen-lockfile"
+    grep -q '^    if:' <<<"$block" && missing="${missing}[app-$p: no if of its own] "
+    grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app-$p: no continue-on-error] "
+    if [ "$p" = bff ]; then
+      need "          node-version: 24"
+      # shellcheck disable=SC2016 # the workflow's literal text
+      grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
+      # Node 24 is named before Node 26 is set up, so the check runs under 26 and the bundle under 24.
+      n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
+      n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
+      chk=$(grep -n 'run: pnpm --filter @credo/bff check' <<<"$block" | head -n 1 | cut -d: -f1)
+      [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then the BFF's check] "
+    fi
+  done
+  have=$(grep -cE '^  app-[A-Za-z0-9_-]+:$' "$1" || true)
+  [ "$have" = "$(wc -w <<<"$pkgs" | tr -d ' ')" ] || missing="${missing}[$have app-* jobs, one a package expected] "
+  block=$(job_block "$1" app)
   [ -n "$block" ] || die "no app job"
-  need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  need "        run: pnpm check"
-  need "          node-version: 24"
-  need "          node-version: 26"
-  need "    runs-on: ubuntu-24.04"
-  need "        run: pnpm install --frozen-lockfile"
-  # shellcheck disable=SC2016 # the workflow's literal text
-  grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
-  # Node 24 is named before Node 26 is set up, so pnpm check runs under 26 and the bundle under 24.
-  n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
-  n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
-  chk=$(grep -n 'run: pnpm check' <<<"$block" | head -n 1 | cut -d: -f1)
-  [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then pnpm check] "
-  grep -q 'continue-on-error' <<<"$block" && missing="${missing}[no continue-on-error in the app job] "
-  [ -z "$missing" ] || die "the app job lacks: $missing"
+  grep -qxF -- "    needs: [$want_needs]" <<<"$block" || missing="${missing}[app: needs: [$want_needs]] "
+  grep -q '^    if:' <<<"$block" && missing="${missing}[app: no if of its own, so a failed or skipped need leaves it skipped] "
+  grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app: no continue-on-error] "
+  [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
-passes "the app job runs pnpm check, with the bundle under Node 24 (rows 34 and 24)" app_guards "$WORKFLOW"
-sed 's#^        run: pnpm check$#        run: pnpm lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
-refuses "  an app job that does not run pnpm check is refused" "run: pnpm check" app_guards "$WORK/wf-nocheck.yml"
+passes "the app gate is one job a package, each with its own check and a 40-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
+sed 's#^        run: pnpm --filter @credo/scripts check$#        run: pnpm --filter @credo/scripts lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
+refuses "  a package job that does not run its package's check is refused" "app-scripts: " app_guards "$WORK/wf-nocheck.yml"
 sed 's#^          node-version: 24$#          node-version: 26#' "$WORKFLOW" >"$WORK/wf-no24.yml"
-refuses "  an app job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
+refuses "  an app-bff job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
 # shellcheck disable=SC2016 # the workflow's literal text
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
+sed 's#^    needs: \[app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk\]$#    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual]#' "$WORKFLOW" >"$WORK/wf-appneeds.yml"
+refuses "  an app job that does not wait on every package job is refused" "app: needs: [app-bff" app_guards "$WORK/wf-appneeds.yml"
+awk '$0 == "  app:" {print; print "    if: always()"; next} 1' "$WORKFLOW" >"$WORK/wf-appalways.yml"
+refuses "  an app job with an if of its own (always() would let the deploy start over a red package) is refused" "app: no if of its own" app_guards "$WORK/wf-appalways.yml"
+awk '$0 == "  app-ui:" {skip = 1; next} skip && /^  [A-Za-z_-]+:/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nopkg.yml"
+refuses "  a package with no job (a dropped package) is refused" "no job app-ui" app_guards "$WORK/wf-nopkg.yml"
+awk '$0 == "  app-visual:" {f = 1} f && $0 == "    timeout-minutes: 40" {print "    timeout-minutes: 90"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cap.yml"
+refuses "  a package job with another cap than 40 minutes is refused" "app-visual:     timeout-minutes: 40" app_guards "$WORK/wf-cap.yml"
+awk '$0 == "  app-walk:" {f = 1} f && $0 == "    runs-on: ubuntu-24.04" {print; print "    continue-on-error: true"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cont.yml"
+refuses "  a package job that may fail and go on is refused" "app-walk: no continue-on-error" app_guards "$WORK/wf-cont.yml"
+check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
 
 echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml

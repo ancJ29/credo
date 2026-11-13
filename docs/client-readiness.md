@@ -226,10 +226,11 @@ by the Mac's bash 3.2.
 
 ### The deploy, and the only route back
 
-The gate is four jobs and the deploy needs all four
-(`.github/workflows/ci.yml`'s `deploy` job, its `needs`). The `app` job's cap was what
-skipped two deploys, and its comment now says so: "25, not 15 … The cap was skipping deploys, not
-catching a hang" (`.github/workflows/ci.yml`'s `app` job, the comment above its `timeout-minutes`).
+The gate is five jobs and the deploy needs all five
+(`.github/workflows/ci.yml`'s `deploy` job, its `needs`); the fifth, `app`, waits on six package jobs
+of its own and is green only when all six are. The app gate's cap was what skipped two deploys (a
+25-minute cap on one job running every package, cut on 11-13 while its tests took about 24 minutes): since
+the split each package job has its own cap, 40 minutes, about 1.5 times the longest whole run measured.
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
 is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first

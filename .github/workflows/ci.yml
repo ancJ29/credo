@@ -50,8 +50,8 @@ permissions:
   contents: read
 
 # Vitest starts a worker per core for each test file, ~2 s of startup each under load. With the
-# jobs running at once (act runs all four on one Mac), a test that takes 2 s alone passes its 5 s
-# limit. Two workers a package: GitHub's runner has four cores and runs one package at a time.
+# jobs running at once (act runs them all on one Mac), a test that takes 2 s alone passes its 5 s
+# limit. Two workers a package: GitHub's runner has four cores and each package job has a runner of its own.
 env:
   VITEST_MAX_WORKERS: 2
 
@@ -128,34 +128,24 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # The app's own gate: pnpm check (typecheck, lint, format, every package's tests at 100 %, knip).
+  # The app's own gate, one job a package, so the longest job is the slowest package (the scripts tests, about
+  # 15 minutes on GitHub's runner) and not their sum (about 24 minutes, measured on 11-13): each job runs
+  # `pnpm --filter @credo/<package> check`, that package's typecheck and tests at 100 % and the repository-wide
+  # eslint, prettier and knip, all through ops/gate.sh. Each is capped at 40 minutes, about 1.5 times the longest whole
+  # run measured (25.5 minutes). The job `app` below waits on all six and is the name the deploy waits on.
   # The BFF's tests build the real c-storage, hence Go. The Lambda bundle's test runs the bundle in
   # the Node named by BUNDLE_NODE, Node 24, the runtime's: a Node 26 API that Lambda lacks fails
-  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
-  app:
+  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches); only the BFF's job sets it.
+  app-bff:
     runs-on: ubuntu-24.04
-    # No timeout-minutes here, on purpose, for one measuring run (the push of 11-13 20:28 was cut at the
-    # old 25 minutes while an earlier run took about 9): to be set again from the measured runs. Until
-    # then GitHub's own 6-hour default holds, so the DEBUG timing sampler below ends by itself.
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
-      # DEBUG timing, piece 140: remove the DEBUG timing steps when the cause is known. The machine's facts.
-      - name: DEBUG timing, the machine
-        run: |
-          date -u '+%Y-%m-%d %H:%M:%S UTC'
-          echo "processors: $(nproc)"
-          free -m || true
-          df -h / "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
-          lscpu | grep -E '^(Model name|Architecture|CPU\(s\)|Thread|Core|Socket|CPU MHz|Hypervisor|Virtualization type)' || true
-          cat /proc/loadavg
-          if [ -r /sys/fs/cgroup/cpu.max ]; then echo "cgroup cpu.max: $(cat /sys/fs/cgroup/cpu.max)"; fi
-          if [ -r /sys/fs/cgroup/memory.max ]; then echo "cgroup memory.max: $(cat /sys/fs/cgroup/memory.max)"; fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        id: go # DEBUG timing: the id lets the cache step read cache-hit
         with:
           go-version-file: services/c-storage/go.mod
           cache-dependency-path: services/c-storage/go.sum
@@ -167,86 +157,139 @@ jobs:
           node --version | grep -q '^v24\.'
           echo "BUNDLE_NODE=$(command -v node)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        id: node26 # DEBUG timing: the id lets the cache step read cache-hit
         with:
           node-version: 26
       - name: pnpm 12.10.1
         run: npm install -g --ignore-scripts pnpm@12.10.1
       - name: Install
         run: pnpm install --frozen-lockfile
-      # DEBUG timing, piece 140: remove when the cause is known. Whether each cache restored, and the
-      # workers each package's vitest resolves here (the env's VITEST_MAX_WORKERS is read the way the run reads it).
-      - name: DEBUG timing, caches and workers
-        env:
-          GO_CACHE_HIT: ${{ steps.go.outputs.cache-hit }}
-          NODE_CACHE_HIT: ${{ steps.node26.outputs.cache-hit }}
-        run: |
-          echo "cache setup-go (Go modules and build cache): cache-hit='${GO_CACHE_HIT:-}' (true is a hit, false a miss, empty none asked for or reported)"
-          echo "cache setup-node 26 (package manager): cache-hit='${NODE_CACHE_HIT:-}'"
-          echo "cache pnpm store: none is configured in this job (the Install step's 'reused' and 'downloaded' counts above are the fact)"
-          echo "node: availableParallelism=$(node -p 'require("os").availableParallelism()') VITEST_MAX_WORKERS=${VITEST_MAX_WORKERS:-unset}"
-          for pkg in bff scripts shared ui visual; do
-            timeout 120 pnpm --filter "@credo/$pkg" exec node --input-type=module -e "
-              const { createVitest } = await import('vitest/node');
-              const v = await createVitest('test', { watch: false, root: process.cwd() });
-              console.log('vitest ' + '$pkg' + ': pool=' + v.config.pool + ' maxWorkers=' + v.config.maxWorkers + ' fileParallelism=' + v.config.fileParallelism);
-              await v.close();
-            " || echo "vitest $pkg: the resolved workers could not be read (exit $?)"
-          done
-      # DEBUG timing, piece 140: remove when the cause is known. The load sampler: one line every 30 s into a
-      # file (a step's own output is closed to a process outliving it), 720 samples at most (6 hours, GitHub's default job limit, since the job has none now), and it
-      # ends sooner when the stop file appears, which the step after pnpm check always writes. It is
-      # started here because the pnpm check step below is pinned to its one line by ops/test.sh.
-      - name: DEBUG timing, start the load sampler
-        run: |
-          samples="$RUNNER_TEMP/debug-timing-samples.log"
-          stop="$RUNNER_TEMP/debug-timing-stop"
-          rm -f "$stop"
-          cat > "$RUNNER_TEMP/debug-timing-sampler.sh" <<'SAMPLER'
-          out=$1
-          stop=$2
-          n=0
-          while [ "$n" -lt 720 ] && [ ! -e "$stop" ]; do
-            printf '%s load=%s mem_available_mb=%s swap_used_mb=%s cpu_steal_jiffies=%s procs_running=%s node_procs=%s psi_cpu="%s"\n' \
-              "$(date -u +%H:%M:%S)" "$(cut -d' ' -f1-3 /proc/loadavg)" \
-              "$(free -m | awk '/^Mem:/ {print $7}')" "$(free -m | awk '/^Swap:/ {print $3}')" \
-              "$(awk '/^cpu / {print $9}' /proc/stat)" "$(awk '/^procs_running/ {print $2}' /proc/stat)" \
-              "$(pgrep -c node || true)" "$(head -n 1 /proc/pressure/cpu 2>/dev/null || true)" >>"$out"
-            n=$((n + 1))
-            i=0
-            while [ "$i" -lt 30 ] && [ ! -e "$stop" ]; do
-              sleep 1
-              i=$((i + 1))
-            done
-          done
-          if [ -e "$stop" ]; then why='stop file'; else why='sample bound'; fi
-          printf '%s sampler ended after %s samples (%s)\n' "$(date -u +%H:%M:%S)" "$n" "$why" >>"$out"
-          SAMPLER
-          : > "$samples"
-          bash "$RUNNER_TEMP/debug-timing-sampler.sh" "$samples" "$stop" >/dev/null 2>&1 </dev/null &
-          echo "$!" > "$RUNNER_TEMP/debug-timing-sampler.pid"
-          echo "sampler started, pid $!, at most 720 samples 30 s apart, ends at the stop file"
-      - name: pnpm check
-        run: pnpm check
-      # DEBUG timing, piece 140: remove when the cause is known. Always runs: stops the sampler (the stop file,
-      # then a kill if it has not ended within 40 s) and prints what it wrote.
-      - name: DEBUG timing, stop the load sampler and print it
-        if: always()
-        run: |
-          samples="$RUNNER_TEMP/debug-timing-samples.log"
-          touch "$RUNNER_TEMP/debug-timing-stop"
-          pid=$(cat "$RUNNER_TEMP/debug-timing-sampler.pid" 2>/dev/null || true)
-          waited=0
-          while [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 40 ]; do
-            sleep 1
-            waited=$((waited + 1))
-          done
-          if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-            kill "$pid" || true
-            echo "the sampler had to be killed after 40 s"
-          fi
-          echo "== load and memory every 30 s through the gate (UTC; GitHub's line stamps give the rest)"
-          cat "$samples" 2>/dev/null || echo "no samples file"
+      - name: Gate bff
+        run: pnpm --filter @credo/bff check
+
+  app-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate scripts
+        run: pnpm --filter @credo/scripts check
+
+  app-shared:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate shared
+        run: pnpm --filter @credo/shared check
+
+  app-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate ui
+        run: pnpm --filter @credo/ui check
+
+  app-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate visual
+        run: pnpm --filter @credo/visual check
+
+  app-walk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate walk
+        run: pnpm --filter @credo/walk check
+
+  # The app's gate as the deploy knows it: green only when all six package jobs are. No `if` here, on purpose: the
+  # default `success()` leaves this job skipped when a job it needs failed, was cancelled or was skipped, and the
+  # deploy, which needs this one and also has no status function in its `if`, is then skipped too.
+  app:
+    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo "all six package gates are green"
 
   # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
   # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
@@ -309,7 +352,7 @@ jobs:
         timeout-minutes: 5
         run: bash ops/test.sh
 
-  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main, or
+  # Ridge's release, the app's ship and the check, after the five gates above (check, audit, e2e, ops and app) are green. The human's push to main, or
   # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions for the push, docs/plans/2026-11-12-ridge-by-script.md for the press).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
