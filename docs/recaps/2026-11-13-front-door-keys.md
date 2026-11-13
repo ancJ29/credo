@@ -7,22 +7,24 @@
 
 ## What happened
 
-CloudFront adds a secret key to every call it passes on, and the back end's first hook refuses any call without it. The store gained a route that replaces a service's key. Each key run ends on the app's address answering through the door. Steps 1 to 7 are ticked.
+CloudFront adds a secret key to every call it passes on, and the back end's first hook refuses any call without it. The store gained a route that replaces a service's key. Steps 1 to 7 are ticked.
 
-The review found five Mediums and seven Lows; the fix pass fixed, parked or rejected each, and the reread found every fix holding and one runbook sentence, since reworded. Rejected: the stack run before the push, since it reads its template from `main`.
+The review found five Mediums and seven Lows; the fix pass fixed, parked or rejected each, and the reread found every fix holding.
 
-## Not yet run
+## On ridge and on Linux
 
-Every check ran on this Mac; none has run on Linux (CI's Ubuntu). Nothing has run on ridge: CloudFront accepting the key-only change, the function taking two keys, the distribution's own wait, and the seconds a real replacement refuses calls.
+Ridge's check ended green before the keys and after them (37 requests each time). The first front-door run stopped safe: the stack run refused its change set, which the guard fix (`07c104af`) now admits. The second ended green, the old key refused with 403. Calls were refused about 4 seconds for the internal key and about 6 for the service key, whose run also restarted every sign-in wait and voided open challenges. The admin key ran green and the operator was replaced.
+
+On Linux (CI's Ubuntu) the audit, ops, check and e2e jobs passed, but the app job was cancelled in `pnpm check` at about 25 minutes, its limit (`.github/workflows/ci.yml#L139`), and the deploy was skipped: no deploy of this landing has run.
 
 ## Still yours
 
-- Ridge: your push (its deploy ends red once, at the door's key, before anything changes), the stack run adding `DistributionId`, the rerun, the check, then the key runs. <!-- FILL: do not write a result, a count, a time or a log name -->
-- Your point: while a key is replaced its calls are refused for a few seconds, and replacing the back end's service key restarts every sign-in wait and voids open operator challenges. <!-- FILL: do not write a result, a count, a time or a log name -->
-- Items 397 to 399 and 412 to 414. Step 7 made the prose true, closed items 121, 134 and 415, and re-pointed moved citations; the conventions page's go to `main` by its route.
+- The deploy: a rerun of GitHub's run. <!-- FILL: the rerun's verdict -->
+- Your point, answered 2026-11-13 14:52: yes, those refused seconds and the service key's sign-in effects are acceptable once real clients use it; the runbook says so.
+- Items 397 to 399, 412 to 414 and 417 to 419. Step 7 closed items 121, 134 and 415; the conventions page's citations go to `main` by its route.
 
 ## Evidence
 
-- Commits `ac85857e`, `f2583090`, `9e20e3ba`, `1adaaed6`, `54d6f81d`, `4c87f87f`, `6b094ada`.
+- Commits `ac85857e`, `f2583090`, `9e20e3ba`, `1adaaed6`, `54d6f81d`, `4c87f87f`, `6b094ada`, `07c104af`.
 - `ops/test.sh` and the `scripts` gate (the citation test inside) ended at exit 0 on the final tree; the store's `make check` ended at exit 0 at step 4, no Go changed after.
 - `docs/products.md`: no row changes; scripts are not rows.
