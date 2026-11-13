@@ -1091,10 +1091,15 @@ audit_memory_line() {
 }
 
 # audit_entry_problems <the box's lines from its read of one record's entries> → one problem a line, none when the
-# record holds exactly one customer.create entry, read with a token minted on the box, and no entry holds the write key
+# record holds exactly one customer.create entry, read with a token minted on the box, and no entry holds the write key;
+# when no token was minted nothing was read, and that is the one problem named
 audit_entry_problems() {
   local f=$1
-  [ "$(audit_fact "$f" minted)" = yes ] || echo "the box could not mint a read token for the check's client"
+  # no token, no read: the box prints minted=no alone, and a count or a leak claimed from nothing would be false
+  if [ "$(audit_fact "$f" minted)" != yes ]; then
+    echo "the box could not mint a read token for the check's client"
+    return 0
+  fi
   [ "$(audit_fact "$f" created)" = 1 ] || echo "the customer's record holds '$(audit_fact "$f" created)' customer.create entries in the activity log, not 1"
   [ "$(audit_fact "$f" leak)" = 0 ] || echo "an entry read from the activity log holds the write key ('$(audit_fact "$f" leak)')"
 }

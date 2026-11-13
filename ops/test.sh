@@ -2592,20 +2592,20 @@ check "with layer four it admits ssh from the endpoint's group and c-storage's p
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$audit_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port open before layer four is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" '' "$BOX_PORT")"
-check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from an address range is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$anywhere" sg-bff)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from another group is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-other)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from two groups is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-bff sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-bff sg-other)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "a third rule (another port) is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "ssh from another group than the endpoint's is refused" no \
-  "$(box_rules_verdict "$(rules "$(tcp 22 "$none" sg-other)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$none" sg-other)" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "ssh from anywhere is refused" no \
-  "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
-check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "with the log's port the box admits ssh, c-storage's port and the log's port from the BFF's group" yes \
   "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "  in any order" yes "$(box_rules_verdict "$(rules "$audit_rule" "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
@@ -2740,6 +2740,9 @@ class H(BaseHTTPRequestHandler):
             return self.reply(401, b'{}')
         if path == '/api/customers':
             b = self.body()
+            # FAKE_EDGE_NOADD_FLAG: while the file exists the add fails (the customer is not made, so no record id)
+            if os.path.exists(os.environ.get('FAKE_EDGE_NOADD_FLAG', '/nonexistent')):
+                return self.reply(500, b'{}')
             if self.known() and self.headers.get('x-auth-id') == HANDLE and b.get('code') == 'CHK-1':
                 return self.reply(200, json.dumps({'customer': {'id': 'rec-0001', 'code': 'CHK-1', 'name': b.get('name')}, 'version': '1'}).encode())
             return self.reply(401, b'{}')
@@ -2900,7 +2903,8 @@ case "$*" in
     echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
     echo "$*" >>"$FAKE_STATE/entry.calls"
     cat >/dev/null
-    printf 'minted=%s\ncreated=%s\nleak=%s\n' "${FAKE_ENTRY_MINTED:-yes}" "${FAKE_ENTRY_CREATED:-1}" "${FAKE_ENTRY_LEAK:-0}" ;;
+    # as the box does: no token minted, nothing more is read, so it prints minted=no alone
+    if [ "${FAKE_ENTRY_MINTED:-yes}" = no ]; then echo 'minted=no'; else printf 'minted=yes\ncreated=%s\nleak=%s\n' "${FAKE_ENTRY_CREATED:-1}" "${FAKE_ENTRY_LEAK:-0}"; fi ;;
   *"sudo bash -s -- "*)
     echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
     cat >/dev/null
@@ -2931,7 +2935,7 @@ fi
 exec "$CHK_BASE/node" "$@"
 STANDIN
 chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
-FAKE_EDGE_ANYCODE=1 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
+FAKE_EDGE_NOADD_FLAG=$WORK/noadd.flag FAKE_EDGE_ANYCODE=1 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
 chk_edge=$!
 for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
 chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
@@ -2988,7 +2992,17 @@ for broken in minted created leak; do
   unset FAKE_ENTRY_MINTED FAKE_ENTRY_CREATED FAKE_ENTRY_LEAK
   check "case 13: with $broken broken the check is red, naming it, and the log ends on == red" "1 1 1" \
     "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  .*$wantmsg" "$S/out") $(chk_has '^== red' "$S/out")"
+  if [ "$broken" = minted ]; then
+    check "  and with no token minted it claims no count of entries and no leaked key, nothing having been read (the review's Low 2)" 0 \
+      "$(chk_has '^RED  .*\(customer.create entries\|holds the write key\)' "$S/out")"
+  fi
 done
+# the review's Low 3: the customer's add fails, so there is no record id and the box is never asked to read an entry
+touch "$WORK/noadd.flag"
+chk_run noadd check.sh ridge
+rm -f "$WORK/noadd.flag"
+check "  with the customer's add failing the check reds on the empty record, never asks the box to read it, and ends on == red" "1 1 1 gone 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  the customer the root added has no record id" "$S/out") $(chk_has '^== red' "$S/out") $(file_state "$S/entry.calls") $(chk_has '^RED  .*adds one customer through the edge' "$S/out")"
 FAKE_OOM=2 chk_run oom check.sh ridge --reads-only
 check "case 16: an out-of-memory kill since boot keeps the check red, with the memory line still printed" "1 1 1" \
   "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  OOM kills since boot: wanted '0', got '2'" "$S/out") $(chk_has '^programs: ' "$S/out")"

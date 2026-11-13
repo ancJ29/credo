@@ -89,7 +89,7 @@ endpoint_groups=$(aws ec2 describe-instance-connect-endpoints --filters "Name=vp
   --query 'InstanceConnectEndpoints[].SecurityGroupIds[]' --output json)
 rules=$(aws ec2 describe-security-groups --group-ids "$group_id" --query 'SecurityGroups[0].IpPermissions' --output json)
 # Ssh from a group of the endpoint and, from layer four, c-storage's port from the BFF's group: those and nothing else.
-expect "the box's group admits ssh from the endpoint's group, and c-storage's port from the BFF's group, nothing else" yes \
+expect "the box's group admits ssh from the endpoint's group, and c-storage's port and the log's port from the BFF's group, nothing else" yes \
   "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT" "$AUDIT_PORT")"
 
 step "the tunnel, and the box's reads"
@@ -200,7 +200,7 @@ else
     [ -d "$REPO_DIR/scripts/node_modules" ] || [ -n "${RIDGE_SCRIPTS_DIR:-}" ] || die "needs pnpm install done, for the client the check makes"
   fi
   bff_sg=$(aws ec2 describe-security-groups --group-ids "$BFF_GROUP" --output json)
-  expect "the BFF's group sends to c-storage's port on the box's group alone, and admits nothing" yes \
+  expect "the BFF's group sends to c-storage's port and the log's port on the box's group alone, and admits nothing" yes \
     "$(bff_rules_verdict "$(jq -c '.SecurityGroups[0].IpPermissionsEgress' <<<"$bff_sg")" "$(jq -c '.SecurityGroups[0].IpPermissions' <<<"$bff_sg")" "$group_id" "$BOX_PORT" "$AUDIT_PORT")"
   # The function's configuration holds its two access keys, so only the fields BFF_FN_QUERY names are
   # read: no key value reaches this shell, on any environment (open item 50).
@@ -252,7 +252,11 @@ else
   # for the client from the write key it holds, reads the record's entries on its loopback, and prints counts alone.
   tenant_id=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
     ridge_cli tenant-id "$tenant") || die "the check's client has no id in c-storage"
-  entry_facts=$(box sudo bash -s -- entry "$BOX_LISTEN_ADDR" "$AUDIT_PORT" "$AUDIT_OPEN_PORT" "$tenant_id" "$EDGE_RECORD" <<'REMOTE'
+  if [ -z "$EDGE_RECORD" ]; then
+    # ssh joins its arguments into one string, so an empty record would vanish there and end the box's read unbound
+    red "the customer the root added has no record id, so its entry cannot be read from the activity log on the box"
+  else
+    entry_facts=$(box sudo bash -s -- entry "$BOX_LISTEN_ADDR" "$AUDIT_PORT" "$AUDIT_OPEN_PORT" "$tenant_id" "$EDGE_RECORD" <<'REMOTE'
 set -u
 addr=$2
 w=$3
@@ -275,11 +279,12 @@ else
 fi
 REMOTE
 )
-  entry_found=$(audit_entry_problems "$entry_facts")
-  if [ -z "$entry_found" ]; then
-    ok "the customer the root added is in the activity log on the box, read by its record, with no key in it"
-  else
-    while IFS= read -r fault; do red "$fault"; done <<<"$entry_found"
+    entry_found=$(audit_entry_problems "$entry_facts")
+    if [ -z "$entry_found" ]; then
+      ok "the customer the root added is in the activity log on the box, read by its record, with no key in it"
+    else
+      while IFS= read -r fault; do red "$fault"; done <<<"$entry_found"
+    fi
   fi
 fi
 

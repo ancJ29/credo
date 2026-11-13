@@ -270,8 +270,17 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   that predates this step and is for the review).
 - [ ] **8. One review**, on a model other than the author's, with the whole check: code, tests and
   this table (QA's rule 5). *Done when:* a verdict line, each finding with its line. **20.**
-- [ ] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
+- [x] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and
   the gates of steps 3 to 6 at exit 0 again. **10.**
+  Done 2026-11-13. Fixed: Medium 1 (the box reading's eight old refusals now carry the log's rule and port, so each is
+  the good ridge with one fault; with the ssh-group test deleted from the reading one went red, reverted); Medium 2
+  (the service memo's dated amendment, a guideline line in its `CLAUDE.md` like the store's, and the replacing test
+  names); Low 1 (the six false lines and two check labels); Low 2 (no count or leak claimed when no token was
+  minted, the stand-in printing `minted=no` alone; red once with the early return removed); Low 3 (an empty record
+  id is one red line and the box's read is skipped; red once with the guard disabled). Deferred as items 390, 391,
+  410 and 411 (Lows 4 to 7). Rejected: none. The pre-merge take-in waits for the landing. Gates run on this tree:
+  `ops/test.sh`, `pnpm --filter @credo/scripts check`; `bash -n` and `shellcheck -x` on the three shell files were
+  clean; the service's Go and Makefile did not change, so its `make check` was not run.
 - [ ] **10. The recap**, before the landing; rows 9, 13 and 16 marked not yet known. *Done when:*
   committed in `docs/recaps/` with its `docs/products.md` row. **8.**
 - [ ] 👤 **11. Your push of steps 3 to 10**, which deploys onto ridge. Your second point. *Done

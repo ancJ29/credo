@@ -1608,3 +1608,20 @@ The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, 
 ## 389. The whole-check test's stand-in edge never knew the check's own client, so its sign-in reds went unread — the machine; `[DEFERRED]` (the activity log's step 6, 2026-11-13, Low)
 
 In `ops/test.sh`, the stand-in edge answers one fixed client code (`FAKE_EDGE_CODE`), while `ops/check.sh` makes a client whose code carries the date. So in the whole-check runs of `ops/check.sh ridge` the stand-in could not know the client the root signs in to, by the code alone, and no case read the run's green. It was found when the step added a customer through that edge and needed the sign-in to hold. *Done at that step:* the stand-in edge takes any `check-2…` code when `FAKE_EDGE_ANYCODE` is set, and the whole-check cases read that run's `RED` lines. *Left:* the other whole-check runs (`reads-only`, the copy cases) still do not read their own `== green`; they read single lines. *Trigger:* the next edit of the check's stand-ins.
+
+
+## 390. By hand, the log's gate and build run after c-storage has restarted — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 4)
+
+In `ops/release.sh` the by-hand path builds and checks the store before anything is sent (`#L62-L68`), but the log's `make check` and `make dist` run in its second half (`#L245-L249`), after c-storage has restarted. A red log gate then leaves c-storage on the new commit and the log behind. The job's path is unaffected, since the binary is built there before the role is taken. *Fix, if wanted:* move the by-hand `make check` and `make dist` of the log up beside the store's; the send stays in the second half, so the log's half still does not touch c-storage. *Trigger:* the first by-hand release after GitHub Actions has been down.
+
+## 391. Two values of the activity log are each written in several places — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 5; code convention C1)
+
+The keys file path `/etc/audit-backbone/keys.env` is spelled out in six places: `ops/release.sh` (two), `ops/app.sh`, `ops/check.sh` (two) and `ops/audit-backbone.service`. The open port is read by a second `sed` in `ops/lib.sh` beside `unit_port`. The store's keys path is spread the same way today. *Fix, if wanted:* `unit_port <file> [<name>]` with `OPEN_PORT` as the name, and the keys path as one name in `ops/lib.sh`, passed to the here-documents as an argument. *Trigger:* the next change of either value.
+
+## 410. The binary the deploy ships is built with a different Go than the one CI tests — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 6)
+
+The deploy job's Go is c-storage's (its `toolchain go1.26.7`), while the `audit` job tests on the service's own `go 1.25.0`. Because `go.mod` says 1.25.0, the runtime defaults stay those of 1.25, so the risk is small. *Fix, if wanted:* give the service's `go.mod` the store's `toolchain` line, or set up Go a second time in the deploy job before the log's build. *Trigger:* a Go release that changes a runtime default the service meets.
+
+## 411. ShellCheck covers c-storage's scripts only, not the activity log's four — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 7)
+
+Gate row 3 and CI's `ops` job run ShellCheck on c-storage's scripts; the four in `services/audit-backbone/scripts/*.sh` are not covered, and `cover.sh` is now a CI gate step. The gap predates the piece's shipping. *Fix, if wanted:* add the folder to the row and the job. *Trigger:* the next edit of one of the four scripts.

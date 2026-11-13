@@ -77,7 +77,7 @@ flowchart LR
   work["the work<br/>permission, read, write — or a refusal"]
   mw["the middleware<br/>records intent + outcome"]
   res["the response"]
-  ab["audit-backbone<br/>reached locally, not on ridge"]
+  ab["audit-backbone<br/>on the box: writes on its private address, reads on loopback"]
   req --> ctl --> work --> mw --> res
   mw -. "the entry, before the response<br/>600 ms, fail open" .-> ab
   classDef intended stroke-dasharray: 6 4

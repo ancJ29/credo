@@ -1,5 +1,5 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage, the activity log and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 

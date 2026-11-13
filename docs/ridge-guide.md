@@ -49,8 +49,8 @@ is your decision, not a step on this page.
 
 ## 1. Deploy a change
 
-A push to `main` that touches the storage service, `ops/`, the app or the workflow deploys onto ridge by itself,
-once the four gates are green. To deploy without a push, open the repository on GitHub, choose the workflow `ci`,
+A push to `main` that touches the storage service, the activity log's service, `ops/`, the app or the workflow deploys onto ridge by itself,
+once the five gates are green. To deploy without a push, open the repository on GitHub, choose the workflow `ci`,
 press **Run workflow** on `main`. Nothing to paste.
 
 Only while GitHub Actions is down, do the same by hand, these two in order:
@@ -93,7 +93,7 @@ reach ridge (`ci` and `seed`, never `walks`), deletes everything of ridge's one 
 back as gone. The log's verdict is `== verdict: ridge is destroyed, ci.yml and seed.yml are off`, and it ends
 `== exit 0`. If it stops part-way, run the same block again: it looks again and skips what is gone.
 
-While ridge is down, a push to `main` runs nothing of `ci`, the four gates included: GitHub starts no
+While ridge is down, a push to `main` runs nothing of `ci`, the five gates included: GitHub starts no
 workflow that is off.
 
 ## 4. Bring ridge back (Monday morning)
