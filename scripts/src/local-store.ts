@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildCStorage } from '@credo/bff/tests/build';
@@ -57,21 +57,46 @@ export async function startStore(
   return { url, port, pid: started.child.pid!, internalAccessKey, superAdminKey, service, storage };
 }
 
+/** The keys of a kept store, beside its database, so the next start on it is let in by its service. */
+const KEYS_FILE = 'keys.json';
+
 /**
  * A store of this Mac's own for the length of `use`: c-storage built from the checkout and started
- * on a scratch database in a temp folder, its service registered; stopped, and the folder removed
- * with its database, however `use` ends.
+ * on a database in a temp folder, its service registered, and stopped however `use` ends. With
+ * `kept`, the folder is `kept.dir`: emptied first, or with `reuse` started again on the database and
+ * keys an earlier run left there; it is removed when `use` ends well and kept when it does not, so a
+ * stopped run can be gone on with. A temp folder is always removed.
  */
-export async function withLocalStore<T>(use: (storage: CStorageClient) => Promise<T>): Promise<T> {
-  const dir = await mkdtemp(join(tmpdir(), 'credo-local-store-'));
+export async function withLocalStore<T>(
+  use: (storage: CStorageClient, dir: string) => Promise<T>,
+  kept?: { dir: string; reuse: boolean },
+): Promise<T> {
+  const dir = kept?.dir ?? (await mkdtemp(join(tmpdir(), 'credo-local-store-')));
+  if (kept && !kept.reuse) {
+    await rm(dir, { recursive: true, force: true });
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+  }
   const stops: (() => Promise<unknown>)[] = [];
+  let ended = false;
   try {
     const binary = join(dir, 'c-storage');
     await buildCStorage(binary);
-    const store = await startStore(binary, dir, stops);
-    return await use(store.storage);
+    const keysAt = join(dir, KEYS_FILE);
+    const keys = kept?.reuse
+      ? (JSON.parse(await readFile(keysAt, 'utf8')) as StoreKeys)
+      : undefined;
+    const store = await startStore(binary, dir, stops, { keys });
+    if (kept && !kept.reuse) {
+      const { internalAccessKey, superAdminKey, service } = store;
+      await writeFile(keysAt, JSON.stringify({ internalAccessKey, superAdminKey, service }), {
+        mode: 0o600,
+      });
+    }
+    const result = await use(store.storage, dir);
+    ended = true;
+    return result;
   } finally {
     for (const stop of stops.splice(0)) await stop();
-    await rm(dir, { recursive: true, force: true });
+    if (ended || !kept) await rm(dir, { recursive: true, force: true });
   }
 }

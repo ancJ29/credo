@@ -131,17 +131,16 @@ after `ridge`, which replaces every passkey they held and ends their sessions.
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/demo-remake.sh ridge
 ```
 
-About 2.6 hours, up to 4, and your AWS session must stay open to the clock time it prints. It first asks for one
-password for each partner, each typed twice and never shown; send each partner their link and password by your
-own channel. It then lists the six copies and asks you to type `remake ridge`. It deletes each copy, makes it
-again under that partner's password and fills it with 21 days ending yesterday, printing a line every 30 seconds
-while it works. Its last line before `== exit` is `the 6 demo copies on ridge are remade, each with its partner's password, 21
-days filled up to yesterday`.
+About 10 minutes, up to 15, with Go on your PATH. It first asks for one password for each partner, each typed
+twice and never shown; send each partner their link and password by your own channel. It then lists the six
+copies and asks you to type `remake ridge`. It makes the six again under the partners' passwords and fills them
+with 21 days ending yesterday on a store of this Mac's own, then deletes each copy on ridge and copies it there
+whole, printing a line every 30 seconds while it works. Its last line before `== exit` is `the 6 demo copies on
+ridge are remade, each with its partner's password, 21 days filled up to yesterday`.
 
-A stop before the first delete reads `== refused:` and changed nothing. A stop after it reads `error:`: run the
-block again whole if the log's last `[n/6]` line is in the remake, or add `--go-on` after `ridge` if it is in the
-fill (that asks nothing and deletes nothing), unless the lines above say a copy is not remade: then the block
-again whole.
+A stop before the first delete reads `== refused:` and changed nothing. A stop after it reads `error:`: add
+`--go-on` after `ridge`, which asks nothing and copies only what differs from the store this Mac kept, or run
+the block again whole.
 
 ## 7. Bring the demo copies up to yesterday
 
@@ -197,8 +196,8 @@ alarms and their Slack channel, or a change to a template (`ops/stack.sh`). They
 ## What has not run yet
 
 - Steps 6 and 8 (`ops/demo-remake.sh`, `ops/root-password.sh`) are in the repository and tested on stand-ins,
-  but no recap in `docs/recaps/` records a run of either on the real ridge. Step 6's timings above are the
-  script's own estimates.
+  but no recap in `docs/recaps/` records a run of either on the real ridge. Step 6's timing above is the
+  plan's aim, measured only between two stores on this Mac.
 - Step 9 (`ops/restore.sh`) and the copy it reads are built and tested on this Mac; the continuous-copy recap
   says nothing of it has run on ridge yet. Treat it as untried.
 - Steps 3, 4 and 5 ran on the real ridge on 2026-11-12: the take-down took about 5.5 minutes, the bring-back

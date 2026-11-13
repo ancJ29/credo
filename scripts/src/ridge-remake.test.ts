@@ -99,18 +99,23 @@ async function ridge() {
     stdin: string | null = typed(),
     fetch?: typeof globalThis.fetch,
     clock = true,
+    more: Record<string, string> = {},
   ) {
     const lines = { out: [] as string[], err: [] as string[] };
-    const status = await runRidge(argv, env, {
-      out: (line) => lines.out.push(line),
-      show: () => {
-        throw new Error('remake shows nothing on the terminal');
+    const status = await runRidge(
+      argv,
+      { ...env, ...more },
+      {
+        out: (line) => lines.out.push(line),
+        show: () => {
+          throw new Error('remake shows nothing on the terminal');
+        },
+        err: (line) => lines.err.push(line),
+        fetch,
+        now: clock ? () => MORNING : undefined,
+        stdin: stdin === null ? undefined : () => Promise.resolve(stdin),
       },
-      err: (line) => lines.err.push(line),
-      fetch,
-      now: clock ? () => MORNING : undefined,
-      stdin: stdin === null ? undefined : () => Promise.resolve(stdin),
-    });
+    );
     return { status, ...lines };
   }
   return { storage, run };
@@ -205,8 +210,8 @@ describe('ridge_cli remake', () => {
     });
   }, 600_000);
 
-  it('row 5: a used copy is deleted to zero records, made again, signs in with its partner’s password and holds a new ledger filled to yesterday; a round after it applies no day', async () => {
-    const { storage, run, used, result } = shared;
+  it('row 5: a used copy is deleted to zero records, made again, signs in with its partner’s password and holds a new ledger filled to yesterday', async () => {
+    const { storage, used, result } = shared;
     const first = copies[0];
 
     expect(result.status).toBe(0);
@@ -223,12 +228,6 @@ describe('ridge_cli remake', () => {
     expect(ledger.lastDay).toBe(YESTERDAY);
     expect(result.out.at(-1)).toMatch(
       /^remake: 6 copies deleted, filled on this Mac and copied whole, \d+\.\d minutes in all$/,
-    );
-
-    const round = await run(['seed', '--round'], null);
-    expect(round.status).toBe(0);
-    expect(round.out.at(-1)).toBe(
-      'seed: 6 copies mapped, 6 up to date, 0 not on this service, 0 days applied',
     );
   });
 
@@ -314,7 +313,7 @@ describe('ridge_cli remake', () => {
     expect((await indexOf(storage, first.code))!.id).toBe(made.id);
   }, 600_000);
 
-  it('row 7: a fill that stops on this Mac stops the run red, naming each copy, before any delete on the target', async () => {
+  it('row 7: a fill that stops on this Mac is refused, status 2, naming each copy, before any delete on the target', async () => {
     const { storage, run } = await ridge();
     const first = copies[0];
     const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
@@ -326,7 +325,7 @@ describe('ridge_cli remake', () => {
       refuseFills.on = false;
     });
 
-    expect(result.status).toBe(1);
+    expect(result.status).toBe(2);
     expect(result.err).toEqual([
       `error: nothing was deleted on the target: ${copies.map((copy) => `${copy.code}: another run holds it, left`).join('; ')}`,
     ]);
@@ -395,69 +394,39 @@ describe('ridge_cli remake', () => {
     expect(ok.out).toEqual(['checked: every partner has a password that follows the rule']);
   });
 
-  it('row 10: from copies first-filled with no day, each round applies at most five, behind until the last, which ends at yesterday with 21 days in the ledger', async () => {
+  it('case 5: a store on this Mac that does not start is refused, status 2, before any delete on the target', async () => {
     const { storage, run } = await ridge();
-    const ids: string[] = [];
-    for (const copy of copies) {
-      const made = await createClient(storage, { code: copy.code, name: copy.company, madeAt: 1 });
-      if (made === 'taken') throw new Error('taken');
-      expect((await applyCopy(storage, copy, TODAY, undefined, 0)).status).toBe('ok');
-      ids.push(made.id);
-    }
-    const lastDays = async () =>
-      Promise.all(ids.map(async (id) => (await readLedger(storage, id))!.ledger));
-
-    const applied: number[] = [];
-    let behind: boolean;
-    do {
-      const round = await run(['seed', '--round'], null);
-      expect(round.status).toBe(0);
-      const days = round.out.filter((line) => / applied, \d+ events$/.test(line)).length;
-      applied.push(days / copies.length);
-      behind = round.out.some((line) => line.startsWith('seed: STILL BEHIND'));
-      expect(behind).toBe(applied.length < 5);
-    } while (behind);
-
-    expect(applied).toEqual([5, 5, 5, 5, 1]);
-    for (const ledger of await lastDays()) {
-      expect(ledger.lastDay).toBe(YESTERDAY);
-      expect(ledger.firstDay).toBe(addDays(YESTERDAY, -20));
-    }
-  }, 900_000);
-
-  it('row 10: a round runs no day while a copy is missing or made without its first fill: it names the copy and ends 1, never first-filling it under the create’s password', async () => {
-    const { storage, run } = await ridge();
-    const [first, ...others] = copies;
-    for (const copy of others) {
-      const made = await createClient(storage, { code: copy.code, name: copy.company, madeAt: 1 });
-      if (made === 'taken') throw new Error('taken');
-      expect((await applyCopy(storage, copy, TODAY, undefined, 0)).status).toBe('ok');
-    }
-
-    const missing = await run(['seed', '--round'], null);
-
-    expect(missing.status).toBe(1);
-    expect(missing.out).toEqual([]);
-    expect(missing.err).toHaveLength(1);
-    expect(missing.err[0]).toContain(
-      `not remade (missing, or made without its first fill): ${first.code};`,
-    );
-    expect(missing.err[0]).toContain('again whole, not with --go-on');
-
+    const first = copies[0];
     const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
     if (made === 'taken') throw new Error('taken');
+    const before = await recordCount(storage, made.id);
 
-    const unfilled = await run(['seed', '--round'], null);
+    // A folder that cannot be made: a path under a file.
+    const result = await run(['remake'], typed(), undefined, true, {
+      REMAKE_STORE_DIR: join(dir, 'c-storage', 'store'),
+    });
 
-    expect(unfilled.status).toBe(1);
-    expect(unfilled.err[0]).toContain(`${first.code};`);
-    expect(unfilled.out).toEqual([]);
-    expect(await readLedger(storage, made.id)).toBeNull();
+    expect(result.status).toBe(2);
+    expect(result.err).toHaveLength(1);
+    expect(result.err[0]).toMatch(
+      /^error: nothing was deleted on the target, this Mac's store stopped first: /,
+    );
+    expect((await indexOf(storage, first.code))!.id).toBe(made.id);
+    expect(await recordCount(storage, made.id)).toEqual(before);
+    expect(await signInStatus(storage, first.code, made.password)).toBe(200);
+  });
 
-    expect((await applyCopy(storage, first, TODAY, undefined, 0)).status).toBe('ok');
-    const round = await run(['seed', '--round'], null);
+  it('case 3: --go-on with no store a stopped run filled whole is refused, status 2, asking no password', async () => {
+    const { run } = await ridge();
+    const empty = await mkdtemp(join(dir, 'no-fill-'));
 
-    expect(round.status).toBe(0);
-    expect(round.out.some((line) => line.startsWith('seed: STILL BEHIND'))).toBe(true);
-  }, 600_000);
+    const kepts: Record<string, string>[] = [{}, { REMAKE_STORE_DIR: empty }];
+    for (const kept of kepts) {
+      const result = await run(['remake', '--go-on'], null, undefined, true, kept);
+      expect(result.status, JSON.stringify(kept)).toBe(2);
+      expect(result.err).toEqual([
+        'error: remake --go-on: no store filled whole by a stopped run is kept: run ops/demo-remake.sh ridge whole',
+      ]);
+    }
+  });
 });

@@ -1596,17 +1596,13 @@ When the newest full copy is six days old, the check is red and nothing in the r
 
 `scripts/src/stack.test.ts` "fails at once, naming the port, when the front's port is taken, and takes down what it had started": without the `error` handler it hangs, so the handler is tested; but with the old start order plus the handler every assertion would still pass, so the new order (the front bound first) is not tested. Its title also promises more than it checks: it asserts only `EADDRINUSE`, not the port, and only c-storage's being down, not the audit service or the seed door. The race the diagnosis named is closed only for a front port the stack picks. The two cases that pick the front's port with `freePort()` and the four child ports of every stack (c-storage, the BFF, the audit service's two) are still picked and bound later; if one is taken it is now a fast red naming `EADDRINUSE` or "exited", never a hang. *Fix, if wanted:* assert `toThrow(String(front))` and that the audit service's `/health` refuses.
 
-## 384. The demo copies' remake restates the fill's numbers in bash, so a change to the history length leaves its notice and closing line false — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Low)
+## 384. The demo copies' remake restates the history length in bash, so a change to it leaves the closing line false — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Low)
 
-`ops/demo-remake.sh` holds `WAIT_MIN=160` and "21 days" in its closing line; they restate `HISTORY_DAYS`, `DAYS_PER_ROUND` and the 7.5-minute measure in `scripts/src/demo/apply.ts`. A change to `HISTORY_DAYS` leaves both false with everything green, and the run's case 14 pins the literal "21 days". `--go-on` also announces 160 minutes whatever is left. *Fix, if wanted:* have `mapping_read`'s node call also print the two constants (the test's stand-in half then copies `apply.ts`'s constants too), and compute the wait and the closing line from them. *Trigger:* the next change to `HISTORY_DAYS` or `DAYS_PER_ROUND`.
+`ops/demo-remake.sh` holds "21 days" in its closing line; it restates `HISTORY_DAYS` in `scripts/src/demo/apply.ts`. A change to `HISTORY_DAYS` leaves it false with everything green, and the run's case 14 pins the literal "21 days". *Fix, if wanted:* have `mapping_read`'s node call also print the constant (the test's stand-in half then copies it too), and compute the closing line from it. *Trigger:* the next change to `HISTORY_DAYS`.
 
 ## 385. The scripts tests may take about 12 minutes on GitHub at the 21-day fill, inside `app`'s 25 — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Low; needs a run to be certain)
 
 Locally the scripts package went from 116 to 130 s to 215.5 s with the 21-day fill; on GitHub the 7-day fill already ran it in 391.6 s, and `src/stack.test.ts` died at the 120 000 ms test timeout in that run. The fill-heavy files roughly triple (`apply.up-to-yesterday`, `demo.test.ts`, `pnpm-demo`'s row 22). Projected, each test stays under 120 s (row 5 about 33 s, row 22 about 50 s) and the package runs about 12 minutes, inside `.github/workflows/ci.yml`'s 25. Being wrong costs one red push and one fix pass. *Trigger:* the push's CI run for this piece: read the scripts step's time and any test near 120 s.
-
-## 386. The remake step of the demo copies prints no line while it runs and has no tunnel check — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Info)
-
-The deletes, six makes and six first fills (`ops/demo-remake.sh`, the node call under "the remake") print nothing every 30 seconds, unlike a round, and nothing asks whether the tunnel is still up. It should take minutes, but the first fill is unmeasured. A drop there ends the run red by node's failed calls and names the same run again, which is right. *Fix, if wanted:* run it as a round runs (a ticker and `tunnel_up`). *Trigger:* the first run that waits in this step for more than two minutes.
 
 ## 387. `ridge-seed.test.ts` no longer asserts the exit status of seven of its runs — the machine; `[DEFERRED]` (the review of the demo copies by script, 2026-11-12, Info)
 
@@ -1629,9 +1625,9 @@ The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, 
 
 `bff/src/records/records.ts` (`first.key <= cursor`) and `bff/src/records/company-copy.ts` (`s.key <= t.key`) compare keys in UTF-16 code units, while SQLite orders them by bytes (code-point order). They disagree for a character above U+FFFF set against one in U+E000 to U+FFFF; a sign-in name (`user(name)`) may carry either. At worst: a false "longer than c-storage returns" 500 on a list of more than one page, or a mispaired key in the copy, which shows as a false stop or a red compare; never another company's key and never a silent green. *Fix, if wanted:* one code-point comparator for both sites and one test with that pair of keys. *Trigger:* a key with such a character on a real list, or the next edit of either file.
 
-## 395. The demo remake labels its steps one too high, and the runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
+## 395. The runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
 
-`ops/demo-remake.sh` sets `STEPS=6` and calls `step` five times, so its lines read one to five of six; the ridge guide's `[n/6]` matches what prints. In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* set the count to five (or add the sixth step), and say "a run that prints". *Trigger:* the next edit of either script.
+In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* say "a run that prints". *Trigger:* the next edit of `ops/seed.sh`.
 
 
 ## 389. The whole-check test's stand-in edge never knew the check's own client, so its sign-in reds went unread — the machine; `[DEFERRED]` (the activity log's step 6, 2026-11-13, Low)
@@ -1715,3 +1711,7 @@ Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite 
 ## 416. Knip says an ignore entry is no longer needed — the machine; *parked* until a review (the long runs plan's fill, 2026-11-13, Low)
 
 Every scripts gate's knip step ends with one configuration hint, `services/audit-backbone/**` in `knip.json`'s `ignore`: "Remove from ignore". The entry was added when the Go service came in, so the root check would not claim files the Go gate owns; knip now reads it as an entry it does not need, for a reason not read. It is a hint, not a red: the step ends 0. *Fix, if wanted:* remove the entry and read that knip still ends 0 with no hint. *Trigger:* the next change to `knip.json`.
+
+## 417. act's audit job alone ran 13 minutes 45 against an expected 2, its Go cache neither restored nor saved — the machine; *parked* until the long runs plan's act step (the orchestrator's measurement, 2026-11-13, Low)
+
+The orchestrator's act run of the `audit` job alone, for the day's push, took 13 minutes 45 seconds where about 2 were expected, and 17 minutes 6 seconds in all with 3 minutes 16 seconds waiting for the gate lock. The Go cache's restore and its save were both refused (connection refused), so the toolchain and the modules were downloaded again. A cache that never restores is the same as none. *Fix, if wanted:* read why act's cache server refuses before the act step bounds its run at 15 minutes, since a job that downloads its toolchain each run spends its minutes there. *Trigger:* the plan's act step (`docs/plans/2026-11-13-long-runs.md`, step 4).

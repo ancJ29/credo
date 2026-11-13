@@ -1813,18 +1813,6 @@ mkdir -p "$WORK/seed-days/scripts/src/demo"
 sed 's/^export const MAX_DAYS_PER_RUN = 2;$/export const MAX_DAYS_PER_RUN = 3;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/seed-days/scripts/src/demo/apply.ts"
 seed_guards_days() { REPO_DIR="$WORK/seed-days" seed_guards "$SEED_WORKFLOW"; }
 refuses "three days a run in an 18-minute Seed step is refused" "hold 3 days at 7.5 minutes a day" seed_guards_days
-# The demo copies' fill goes in rounds, each on a tunnel that lasts the endpoint's hour: days a round x 7.5 minutes x 1.2
-# must fit 50 minutes, the hour less ten (docs/plans/2026-11-12-ridge-by-script.md, case 15).
-round_budget() { # <tree>: its DAYS_PER_ROUND fits the tunnel
-  local d
-  d=$(sed -n 's/^export const DAYS_PER_ROUND = \([0-9][0-9]*\);$/\1/p' "$1/scripts/src/demo/apply.ts")
-  [ -n "$d" ] || die "DAYS_PER_ROUND is not readable"
-  [ $((d * 90)) -le 500 ] || die "a round of $d days at 7.5 minutes a day with a fifth over does not fit the tunnel's 50 minutes"
-}
-passes "a round of DAYS_PER_ROUND days fits the tunnel's 50 minutes at 7.5 minutes a day with a fifth over" round_budget "$REPO_DIR"
-mkdir -p "$WORK/round-days/scripts/src/demo"
-sed 's/^export const DAYS_PER_ROUND = 5;$/export const DAYS_PER_ROUND = 7;/' "$REPO_DIR/scripts/src/demo/apply.ts" >"$WORK/round-days/scripts/src/demo/apply.ts"
-refuses "seven days a round, which outlives the tunnel's hour, is refused" "a round of 7 days at 7.5 minutes a day" round_budget "$WORK/round-days"
 awk '$0 == "      contents: read" && !d {d = 1; print; print "      issues: write"; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-issuesseed.yml"
 refuses "an issues: permission on the seed job is refused" "no permission but" seed_guards "$WORK/seed-issuesseed.yml"
 awk '/^    permissions:$/ && !d {d = 1; print "    permissions:"; print "      contents: write"; skip = 1; next} skip && /^      contents: read$/ {skip = 0; next} 1' "$SEED_WORKFLOW" >"$WORK/seed-contentswrite.yml"
@@ -3953,47 +3941,50 @@ check "a seed that stops (the BFF's key refused) ends red, naming that it stoppe
   "$RC $(seed_lines '^error: the seed stopped') $(seed_lines '^seeded')"
 unset SEED_LOCAL_PORT
 
-echo "== ops/demo-remake.sh run whole (rows 12 to 14: ridge's demo copies alone, a terminal, never a job; nothing deleted without the typed words; the wait named and kept alive; a dropped round finished by --go-on)"
-# The node half is a stand-in under RIDGE_SCRIPTS_DIR: it answers the three commands with a line, counts the
-# rounds in the state folder, holds a round FAKE_ROUND_MS and, in round FAKE_DROP_ROUND, ends the tunnel's master
-# and hangs (FAKE_OPEN_FAILS_AFTER: the aws stand-in refuses the next key; FAKE_MISSING: the last summary counts a missing copy). The real mapping and the real tsx are used, so no 21-day fill runs here (the node half's own tests hold it).
+echo "== ops/demo-remake.sh run whole (rows 12 to 14: ridge's demo copies alone, a terminal, never a job; nothing deleted without the typed words; the wait named and kept alive on one tunnel; a dropped run gone on with by --go-on; case 5: a store on this Mac that does not start is a refusal)"
+# The node half is a stand-in under RIDGE_SCRIPTS_DIR: it answers remake, remake --check and remake --go-on with a
+# line, records the store's folder it was handed, holds the remake FAKE_REMAKE_MS and, with FAKE_DROP, ends the
+# tunnel's master and hangs (FAKE_STORE_FAILS: this Mac's store does not start, exit 2; FAKE_COPY_FAILS: a copy stops
+# after its delete, exit 1). The real mapping and the real tsx are used, so no fill runs here (the node half's own
+# tests hold it, scripts/src/ridge-remake-local.test.ts).
 HALF=$WORK/half
 mkdir -p "$HALF/src/demo"
 cp "$REPO_DIR/scripts/src/demo/mapping.ts" "$HALF/src/demo/mapping.ts"
 ln -s "$REPO_DIR/scripts/node_modules" "$HALF/node_modules"
 cat >"$HALF/src/ridge-main.ts" <<'HALFTS'
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 
 const state = process.env.FAKE_STATE!;
 const [command, ...rest] = process.argv.slice(2);
 appendFileSync(`${state}/half.calls`, `${command} ${rest.join(' ')}\n`);
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
 async function main() {
-  if (command === 'remake') {
-    readFileSync(0, 'utf8');
-    console.log(rest[0] === '--check' ? 'checked: stand-in' : 'remake: stand-in');
-  } else if (command === 'seed') {
-    const file = `${state}/rounds`;
-    const n = (existsSync(file) ? Number(readFileSync(file, 'utf8')) : 0) + 1;
-    writeFileSync(file, String(n));
-    console.log(`stand-in: round ${n} begins`);
-    await sleep(Number(process.env.FAKE_ROUND_MS ?? 0));
-    if (process.env.FAKE_OPEN_FAILS_AFTER === String(n)) writeFileSync(`${state}/send-fails`, '');
-    if (process.env.FAKE_DROP_ROUND === String(n)) {
-      process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
-      await sleep(30000);
-    }
-    console.log(
-      n < Number(process.env.FAKE_ROUNDS ?? 3)
-        ? 'seed: STILL BEHIND, 1 copies have days left (x 5); stand-in'
-        : process.env.FAKE_MISSING
-          ? 'seed: 6 copies mapped, 5 up to date, 1 not on this service, 5 days applied'
-          : 'seed: 6 copies mapped, 6 up to date, 0 not on this service, 5 days applied',
-    );
-  } else {
+  if (command !== 'remake') {
     console.error(`stand-in half: unknown ${command}`);
     process.exit(1);
   }
+  if (rest[0] === '--check') {
+    readFileSync(0, 'utf8');
+    console.log('checked: stand-in');
+    return;
+  }
+  if (rest[0] !== '--go-on') readFileSync(0, 'utf8');
+  appendFileSync(`${state}/store.dirs`, `${process.env.REMAKE_STORE_DIR}\n`);
+  if (process.env.FAKE_STORE_FAILS) {
+    console.error("error: nothing was deleted on the target, this Mac's store stopped first: stand-in");
+    process.exit(2);
+  }
+  console.log(`stand-in: remake ${rest[0] ?? 'whole'} begins`);
+  await sleep(Number(process.env.FAKE_REMAKE_MS ?? 0));
+  if (process.env.FAKE_DROP && rest[0] !== '--go-on') {
+    process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
+    await sleep(30000);
+  }
+  if (process.env.FAKE_COPY_FAILS) {
+    console.error('error: stand-in-1: the target differs after the copy');
+    process.exit(1);
+  }
+  console.log('remake: 6 copies deleted, filled on this Mac and copied whole, 0.1 minutes in all');
 }
 void main();
 HALFTS
@@ -4040,15 +4031,18 @@ GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "the BFF's service exists on the box, for the demo copies' run" 0 "$RC"
 sends_before=$(grep -c 'send-ssh-public-key' "$S/aws.calls" || true)
 exits_before=$(grep -c -e '-O exit' "$S/ssh.calls" || true)
-DR_LOGS=run1 FAKE_ROUNDS=3 FAKE_ROUND_MS=3000 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+DR_LOGS=run1 FAKE_REMAKE_MS=3000 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
 check "14: the run ends 0 and its log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
-check "  the notice names the minutes and a clock time, before the first round" "1 yes" \
-  "$(dr_lines '^the fill may wait about [0-9][0-9]* minutes, until about [0-9][0-9]:[0-9][0-9], and the AWS session must hold until then; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the fill may wait/ {n = NR} /^round 1$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
-check "  the remake ran once, after its check, and three rounds followed it" "1 1 3" \
-  "$(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -c '^seed --round$' "$S/half.calls")"
-check "  a line while each round runs (rounds of 3 s, a line a second)" "yes" "$([ "$(dr_lines '^   the round runs, [0-9]*s, the tunnel is up')" -ge 3 ] && echo yes || echo no)"
-check "  each round on a new tunnel: four opens, four closes" "4 4" \
+check "  the notice names the 15 minutes and a clock time, before the remake begins" "1 yes" \
+  "$(dr_lines '^the remake may take up to about 15 minutes, until about [0-9][0-9]:[0-9][0-9]; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the remake may take/ {n = NR} /^stand-in: remake whole begins$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
+check "  the remake ran once, after its check, and nothing else of the node half" "1 1 2" \
+  "$(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(wc -l <"$S/half.calls" | tr -d ' ')"
+check "  a line while the remake runs (3 s, a line a second)" "yes" "$([ "$(dr_lines '^   the remake runs, [0-9]*s, the tunnel is up')" -ge 3 ] && echo yes || echo no)"
+check "  on one tunnel: one open, one close" "1 1" \
   "$(($(grep -c 'send-ssh-public-key' "$S/aws.calls") - sends_before)) $(($(grep -c -e '-O exit' "$S/ssh.calls") - exits_before))"
+# The credo root as git names it (through /private on this Mac), the folder that holds the clone's git directory.
+check "  the store on this Mac is the credo root's .demo-remake-store" \
+  "$(dirname "$(git -C "$E2E/repo" rev-parse --path-format=absolute --git-common-dir)")/.demo-remake-store" "$(cat "$S/store.dirs")"
 check "  the six copies and the 21 days said at the end" "1" "$(dr_lines '^the 6 demo copies on ridge are remade, each with its partner.s password, 21 days filled up to yesterday$')"
 check "  no password in the log, the terminal, a call of aws, ssh or the node half" "0 0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2") $(dr_seen "$DRPW3")"
 # shellcheck disable=SC2016 # the script's source text is searched, not expanded
@@ -4056,29 +4050,29 @@ check "  the default between lines is 30 seconds" 1 "$(grep -c '^TICK=\${DEMO_RE
 
 e2e_fresh dr-drop
 GITHUB_ACTIONS='' e2e_run app.sh ridge
-DR_LOGS=run2 FAKE_ROUNDS=3 FAKE_ROUND_MS=1000 FAKE_DROP_ROUND=2 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+DR_LOGS=run2 FAKE_REMAKE_MS=1000 FAKE_DROP=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
 if [ "$RC" != 1 ]; then echo "  (the run's last lines:)"; tail -n 8 "$S/out"; fi
-check "  a tunnel that drops in round 2 ends the run red, naming --go-on, with the exit 1" "1 1 1" \
+check "  a tunnel that drops during the remake ends the run red, naming --go-on, with the exit 1" "1 1 1" \
   "$RC $(dr_lines '^error: the tunnel dropped') $(dr_lines 'ops/demo-remake.sh ridge --go-on')"
-check "  the dropped round's own lines reach the log, so it says where the round stood" 1 "$(dr_lines '^stand-in: round 2 begins$')"
-DR_LOGS=run3 FAKE_ROUNDS=3 dr_run '' ridge --go-on
-check "  --go-on finishes the fill: exit 0, a third round, no new remake, no new question" "0 3 1 1 yes" \
-  "$RC $(grep -c '^seed --round$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
+check "  the remake's own lines reach the log as it runs, so it says where it stood" 1 "$(dr_lines '^stand-in: remake whole begins$')"
+DR_LOGS=run3 dr_run '' ridge --go-on
+check "  --go-on goes on: exit 0, the remake gone on with once, no new whole remake, no new question" "0 1 1 1 yes" \
+  "$RC $(grep -c '^remake --go-on$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
 check "  and --go-on needs no terminal and no typing" "yes" "$(grep -q 'refused' "$S/out" && echo no || echo yes)"
+check "  and is handed the store the stopped run filled" "2 1" "$(wc -l <"$S/store.dirs" | tr -d ' ') $(sort -u "$S/store.dirs" | wc -l | tr -d ' ')"
 
-# A stop while a round opens its tunnel, once the copies are made (an AWS session that ended): it names --go-on.
-e2e_fresh dr-open
+# A store on this Mac that does not start: the node half's refusal, before any delete, is the run's.
+e2e_fresh dr-store
 GITHUB_ACTIONS='' e2e_run app.sh ridge
-DR_LOGS=run4 FAKE_ROUNDS=3 FAKE_OPEN_FAILS_AFTER=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
-check "  a tunnel that cannot open for round 2 ends red (exit 1) and names --go-on, the copies being made" "1 1 1" \
-  "$RC $(dr_lines '^error: the box does not answer') $(dr_lines '^the copies are made: fix that, then run ops/demo-remake.sh ridge --go-on$')"
-check "  and no line says the run goes on after it has ended" 0 "$(grep -c 'the run goes on' "$OPS_DIR/demo-remake.sh" || true)"
-# A last summary that counts a copy missing: no closing line, and the run ends red.
-e2e_fresh dr-missing
+DR_LOGS=run4 FAKE_STORE_FAILS=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "case 5: a store on this Mac that does not start refuses the run (exit 2) before any delete, naming why, with no closing line" "2 1 1 0" \
+  "$RC $(dr_lines '^== refused: the remake was refused before any delete (the line above): nothing was deleted$') $(dr_lines "this Mac's store stopped first") $(dr_lines '^the 6 demo copies on ridge are remade')"
+# A copy that stops after its delete: red, naming --go-on.
+e2e_fresh dr-copy
 GITHUB_ACTIONS='' e2e_run app.sh ridge
-DR_LOGS=run5 FAKE_ROUNDS=1 FAKE_MISSING=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
-check "  a last round that counts a copy not on the service ends red, with no closing line" "1 1 0" \
-  "$RC $(dr_lines '^error: the last round did not find every copy on the service') $(dr_lines '^the 6 demo copies on ridge are remade')"
+DR_LOGS=run5 FAKE_COPY_FAILS=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a remake that stops after a delete ends red (exit 1), naming --go-on, with no closing line" "1 1 1 0" \
+  "$RC $(dr_lines '^error: the remake stopped') $(dr_lines 'ops/demo-remake.sh ridge --go-on to copy again what differs, or the same run again whole') $(dr_lines '^the 6 demo copies on ridge are remade')"
 # A password in a variable the caller exported under the name the script's locals use: bash 3.2 keeps the export flag
 # of a local, so a child started while the script holds the password would receive it. The grep stand-in records
 # the environment it is started with.
