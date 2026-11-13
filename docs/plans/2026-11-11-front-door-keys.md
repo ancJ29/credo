@@ -177,11 +177,25 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   function's setting is accepted by Lambda with the key as read, and that CloudFront replaces a key the
   caller sends (case 12 on ridge). Stage 3's picture, your first point, waits for the diagram and the two
   check lines from that run.
-- [ ] **4. The store replaces a service's key.** The route and its tests, its Bruno request, the
+- [x] **4. The store replaces a service's key.** The route and its tests, its Bruno request, the
   call beside `registerCStorageService`, a `rekey` command in `scripts/src/ridge.ts`, and the
   memo's hazard rewritten as the promise it now is. Case 13. *Done when:* `make check` in
   `services/c-storage/`, `pnpm --filter @credo/shared check` and `pnpm --filter @credo/scripts
   check` exit 0, the case red once. **About 15 min**: three parts at about 5.
+  *Done 2026-11-13:* `POST /api/services/rekey` behind the super-admin key replaces a service's key
+  hash (200 with the code, 404 for an unknown code, 400 for a body without both strings), the records
+  untouched; three Bruno requests (401 without the admin key, 404 unknown, 200 rekeying to the key the
+  service already holds, so the requests after it still pass); `rekeyCStorageService` beside
+  `registerCStorageService`; `rekey` in `scripts/src/ridge.ts` reads the new key from the first line
+  of the standard input and the admin key from `X_SUPER_ADMIN_KEY`, prints `service rekeyed` and no
+  key, exits 2 on no input and 1 for an unregistered service; the memo's hazard is now its promise.
+  The step counted five parts, not three (route with its store function, Bruno, the shared call, the
+  ridge command, the memo). `make check` in `services/c-storage/` (coverage 100 %), the `shared` and
+  `scripts` gates (the citation test inside it) each ended `== exit 0` on the final tree after one
+  prettier fix and one branch the coverage gate named. Case 13 seen red by mutation, reverted: the new
+  hash not stored (the old key still admitted), an unknown code answering success, the admin gate
+  removed from the route, the shared call reading 404 as success, the ridge command not refusing an
+  unregistered service. Not run: a real rekey on ridge (step 8); `ops/` untouched, so `ops/test.sh` not rerun.
 - [ ] **5. The key script.** `ops/keys.sh` and its four orders, the settings helper, its row in
   `ops/README.md`'s table and its runbook section, `ops/README.md#L180-L182` rewritten. Cases 14
   to 16. *Done when:* `shellcheck` and `bash ops/test.sh` exit 0, each case red with its order

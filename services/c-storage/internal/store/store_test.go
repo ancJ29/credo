@@ -47,6 +47,26 @@ func TestAccessKeysAreStoredHashed(t *testing.T) {
 	}
 }
 
+// A rekey stores the new key's hash and refuses the old at once; an unknown code is ErrNoService.
+func TestARekeyStoresTheNewHashAndAnUnknownCodeIsNamed(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	if err := s.Register(ctx, "svc", "old-key"); err != nil {
+		t.Fatalf("register: %v", err)
+	}
+	if err := s.Rekey(ctx, "svc", "new-key"); err != nil {
+		t.Fatalf("rekey: %v", err)
+	}
+	for key, want := range map[string]bool{"old-key": false, "new-key": true} {
+		if ok, err := s.Admits(ctx, "svc", key); err != nil || ok != want {
+			t.Errorf("Admits(%q) = %v, %v; want %v", key, ok, err, want)
+		}
+	}
+	if err := s.Rekey(ctx, "nobody", "x"); !errors.Is(err, ErrNoService) {
+		t.Errorf("rekey of an unknown code = %v, want ErrNoService", err)
+	}
+}
+
 // Callers who read the record as absent all write; the check and the write
 // are one transaction, so exactly one lands.
 func TestOfWritesNamingNoRecordOneLands(t *testing.T) {

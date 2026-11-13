@@ -23,9 +23,10 @@ import (
 var Schema string
 
 var (
-	ErrExists   = errors.New("the service code is already registered")
-	ErrNotFound = errors.New("no record under that key")
-	ErrMoved    = errors.New("the record is not as the caller read it")
+	ErrExists    = errors.New("the service code is already registered")
+	ErrNoService = errors.New("no service under that code")
+	ErrNotFound  = errors.New("no record under that key")
+	ErrMoved     = errors.New("the record is not as the caller read it")
 )
 
 type Store struct {
@@ -54,6 +55,21 @@ func (s *Store) Register(ctx context.Context, code, accessKey string) error {
 	// The driver's RowsAffected never fails.
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrExists
+	}
+	s.wrote()
+	return nil
+}
+
+// Rekey replaces code's key with accessKey, or returns ErrNoService. The old key is refused from
+// the commit on; the service's records are untouched.
+func (s *Store) Rekey(ctx context.Context, code, accessKey string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE services SET hashed_access_key = ? WHERE code = ?`, hash(accessKey), code)
+	if err != nil {
+		return err
+	}
+	// The driver's RowsAffected never fails.
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNoService
 	}
 	s.wrote()
 	return nil
