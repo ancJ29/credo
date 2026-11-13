@@ -1067,9 +1067,9 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the seven variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {

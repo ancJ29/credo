@@ -1105,6 +1105,36 @@ check "  and a release that always writes it is seen: the second run rewrites" \
   "activity log key: made|1|activity log key: made|rewritten|1" \
   "$(audit_key_run "$(mutated release-audit-key.sh 's#^if \[ -e "\$f" \]; then$#if false; then#' "$OPS_DIR/release.sh")" "$WORK/audit-key2")"
 echo "== (the release's second half ends here)"
+echo "== the activity log's gate in CI, and the deploy waits on it (case 14 of docs/plans/2026-11-12-activity-log.md)"
+# audit_ci_guard <ci.yml>: a push or pull request that changes the service runs the pipeline, the audit job is the service's make check, the
+# deploy waits on it, builds the binary before the role is taken, and hands its name to the release (without which the release's second
+# half would end red after c-storage is released)
+# shellcheck disable=SC2016 # the workflow's literal text
+audit_ci_guard() {
+  [ "$(grep -cF -- '      - "services/audit-backbone/**"' "$1")" = 2 ] || die "the push and pull_request path lists do not both name services/audit-backbone/**"
+  local job deploy
+  job=$(awk '/^  audit:$/ {f = 1; next} f && /^  [a-z0-9-]+:$/ {exit} f' "$1")
+  if ! grep -qxF -- '        working-directory: services/audit-backbone' <<<"$job" || ! grep -qxF -- '        run: make check' <<<"$job"; then die "the audit job is not make check in services/audit-backbone"; fi
+  grep -qF -- 'go-version-file: services/audit-backbone/go.mod' <<<"$job" || die "the audit job does not set up Go from the service's own go.mod"
+  deploy=$(awk '/^  deploy:$/ {f = 1; next} f && /^  [a-z0-9-]+:$/ {exit} f' "$1")
+  grep -qE '^    needs: \[[^]]*\baudit\b[^]]*\]$' <<<"$deploy" || die "the deploy does not wait on the audit job"
+  first_before "$1" 'name: Build the activity log.s binary' 'uses: aws-actions/configure-aws-credentials' "the activity log's binary is not built before the role is taken"
+  awk '/name: Build the activity log.s binary/ {f = 1} f' "$1" | grep -qF -- 'BUILD_COMMIT: ${{ github.sha }}' || die "the activity log's binary is not stamped with the commit"
+  awk '/^      - name: Release$/ {f = 1; next} f && /^      - / {exit} f' "$1" | grep -qF -- 'RELEASE_AUDIT_BINARY: ${{ github.workspace }}/services/audit-backbone/dist/credo-audit-backbone' ||
+    die "the release step does not name RELEASE_AUDIT_BINARY, so the release's second half would end red"
+}
+passes "a push that changes the service runs the pipeline, its make check is a job, the deploy waits on it, builds its binary and names it to the release" audit_ci_guard "$CI_YML"
+refuses "  a path list that lacks the service is refused" "do not both name services/audit-backbone" \
+  audit_ci_guard "$(awk '/services\/audit-backbone\/\*\*/ && !d {d = 1; next} 1' "$CI_YML" >"$WORK/ci-nopath.yml"; echo "$WORK/ci-nopath.yml")"
+refuses "  an audit job that runs something other than make check is refused" "not make check in services/audit-backbone" \
+  audit_ci_guard "$(mutated ci-auditrun.yml '/^  audit:$/,/^  e2e:$/s#run: make check#run: true#' "$CI_YML")"
+refuses "  a deploy that does not wait on the audit job is refused" "does not wait on the audit job" \
+  audit_ci_guard "$(mutated ci-needs.yml 's#needs: \[check, audit, e2e, ops, app\]#needs: [check, e2e, ops, app]#' "$CI_YML")"
+refuses "  a release step that names no log binary is refused" "does not name RELEASE_AUDIT_BINARY" \
+  audit_ci_guard "$(mutated ci-norelbin.yml '/RELEASE_AUDIT_BINARY:/d' "$CI_YML")"
+refuses "  a log binary build that is gone before the role is taken is refused" "not built before the role is taken" \
+  audit_ci_guard "$(mutated ci-lateb.yml "s#name: Build the activity log's binary#name: Build something else#" "$CI_YML")"
+
 # the restore reads the address from the same file the unit does (the region is in it), onto a new file, the live path, or a blank disk
 # shellcheck disable=SC2016 # the file's source text is searched, not expanded
 restore_address_guard() { # <lib.sh>
@@ -1531,7 +1561,7 @@ deploy_guards() {
   [ -n "$block" ] || die "no deploy job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
   need "    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'"
-  need "    needs: [check, e2e, ops, app]"
+  need "    needs: [check, audit, e2e, ops, app]"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
   need "      group: ridge"
@@ -1604,8 +1634,8 @@ awk '/^    environment: ridge$/ {print; print "    continue-on-error: true"; nex
 refuses "a deploy job that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-job.yml"
 awk '/^        run: make box$/ {print "        continue-on-error: true"} 1' "$WORKFLOW" >"$WORK/wf-continue-step.yml"
 refuses "a deploy step that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-step.yml"
-sed 's/needs: \[check, e2e, ops, app\]/needs: [check, e2e, ops]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
-refuses "a deploy that does not wait for the four gates, the app's among them, is refused (row 34)" "needs: [check, e2e, ops, app]" deploy_guards "$WORK/wf-needs.yml"
+sed 's/needs: \[check, audit, e2e, ops, app\]/needs: [check, audit, e2e, ops]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
+refuses "a deploy that does not wait for the five gates, the app's among them, is refused (row 34)" "needs: [check, audit, e2e, ops, app]" deploy_guards "$WORK/wf-needs.yml"
 sed 's/^      group: ridge$/      group: ridge-per-run/' "$WORKFLOW" >"$WORK/wf-group.yml"
 refuses "a deploy whose concurrency group is not the one ridge group is refused" "group: ridge" deploy_guards "$WORK/wf-group.yml"
 sed '/^    environment: ridge$/d' "$WORKFLOW" >"$WORK/wf-env.yml"
@@ -1810,8 +1840,8 @@ refuses "a seed that installs nothing before the role is refused" "the install, 
 
 echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
-check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
-  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
+check "the real ci.yml's push trigger reads as its 17 paths, a trailing /** dropped" "17 services/c-storage walk .github/workflows/seed.yml" \
+  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;9p;17p' | tr '\n' ' ' | sed 's/ $//')"
 # The press: ci.yml holds one workflow_dispatch trigger, beside push and pull_request and outside
 # the push's paths.
 check "the real ci.yml holds a workflow_dispatch trigger, once, at the top level of on:" 1 \
@@ -2344,6 +2374,7 @@ for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in
 case $cmd in
   *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
   *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
+  *"cat /etc/audit-backbone/keys.env"*) if [ -n "${FAKE_NO_AUDIT_KEY:-}" ]; then exit 1; fi; printf 'ACTIVITY_WRITE_KEY=%s\n' "$FAKE_UKEY" ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
   *"bash -s"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
@@ -2352,7 +2383,7 @@ case $cmd in
 esac
 STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
-export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c
+export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c FAKE_UKEY=0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
 export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
@@ -2617,15 +2648,15 @@ check "  an ingress rule beside the two is refused" no \
   "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT" "$AUDIT_PORT")"
 
 # The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN","AUDIT_URL","AUDIT_KEY"],"AppOrigin":"https://app.example.test","Url":"u"}'
 check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
 check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
-check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+check "the function holds the seven variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
   "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
@@ -3014,7 +3045,7 @@ $([ "$(line_of 'get-function-configuration .*CodeSha256')" -lt "$(line_of 'lambd
 $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
-check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+check "  it names the seven variables, and the super-admin key is not among them" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
 check "  and holds the app's address as the origin its passkeys are bound to" "$FAKE_APP" "$(jq -r .Variables.APP_ORIGIN "$S/envfile.seen")"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
@@ -3029,6 +3060,11 @@ check "  the box's private address is masked, and prints nowhere" "1 0" \
 check "  and check.sh never lets expect print it as the wanted value" 0 \
   "$(grep -cE 'expect +"[^"]*" +"(http://)?[$]BOX_LISTEN_ADDR' "$OPS_DIR/check.sh" || true)"
 check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+# the activity log's address and key (case 10 of docs/plans/2026-11-12-activity-log.md): from the box's own file, masked first, never in a log
+check "  the function's settings carry the log's address, the box's private address on the log's port, and the key the box holds" "http://10.20.30.40:$AUDIT_PORT $FAKE_UKEY" \
+  "$(jq -r .Variables.AUDIT_URL "$S/envfile.seen") $(jq -r .Variables.AUDIT_KEY "$S/envfile.seen")"
+check "  the log's key is masked first, and is in no log and nowhere on the terminal but the mask line" "1 0 0" \
+  "$(grep -cE "^::add-mask::$FAKE_UKEY\$" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_UKEY" || true) $(grep -v '^::add-mask::' "$S/out" | grep -cF "$FAKE_UKEY" || true)"
 
 # a second run: the service is present; the first run's bff.env is left as it is
 GITHUB_ACTIONS='' e2e_run app.sh ridge
@@ -3070,6 +3106,12 @@ desc_newer=$(git_e2e commit-tree "HEAD^{tree}" -p HEAD -m newer)
 FAKE_RUNNING=$desc_newer e2e_run app.sh ridge
 check "a function that runs a newer commit is left as it is: exit 0, nothing sent" "0 1 gone" \
   "$RC $(grep -c "^nothing sent: $app_sha is behind what ridge runs" "$S/out" || true) $(file_state "$S/code.zip")"
+
+echo "== ops/app.sh on a box that holds no key for the activity log (case 10 of docs/plans/2026-11-12-activity-log.md)"
+e2e_fresh app-no-audit-key
+FAKE_NO_AUDIT_KEY=1 e2e_run app.sh ridge
+check "a box with no /etc/audit-backbone/keys.env is refused by name, before the function or the UI is touched" "1 1 0 gone" \
+  "$RC $(grep -c 'the box holds no /etc/audit-backbone/keys.env: ops/release.sh ridge ships the activity log' "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(file_state "$S/code.zip")"
 
 echo "== ops/release.sh ends the deploy job's later steps when superseded"
 e2e_fresh release-superseded

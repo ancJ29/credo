@@ -116,6 +116,14 @@ stat -c 'bff.env: mode %a, owner %U' "$f"
 REMOTE
 bff_env_read
 storage_url=http://$BOX_LISTEN_ADDR:$BOX_PORT
+# The activity log's address and write key, from the box's own files: the release made the key (once) and
+# started the log. A box without the key file is refused by name, before anything is sent; the key is masked
+# the moment it is read and reaches the function's settings only through a 0600 file.
+audit_url=http://$BOX_LISTEN_ADDR:$AUDIT_PORT
+audit_kv=$(box sudo cat /etc/audit-backbone/keys.env) || die "the box holds no /etc/audit-backbone/keys.env: ops/release.sh $ENVNAME ships the activity log and makes its key; run it first"
+AUDIT_KEY=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_kv")
+[ -n "$AUDIT_KEY" ] || die "the box's /etc/audit-backbone/keys.env holds no ACTIVITY_WRITE_KEY: ops/release.sh $ENVNAME makes it"
+mask "$AUDIT_KEY"
 
 step "the BFF's service in c-storage"
 # The super-admin key reaches this one command's environment, and nothing the function holds.
@@ -133,7 +141,8 @@ bff_wait=120 # seconds each of the function's three updates may take
   umask 077
   # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
   INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} \
-    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
+    AUDIT_URL=$audit_url AUDIT_KEY=$AUDIT_KEY \
+    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY}}' \
     >"$WORK/bff-env.json"
 )
 aws lambda update-function-configuration --function-name "$BFF_NAME" \

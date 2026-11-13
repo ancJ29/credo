@@ -182,12 +182,26 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   by a mutation. One old guard was narrowed: the one that counts the release's `LISTEN_ADDR` write now reads
   c-storage's line (the log's release writes its own, so the count was 2 and it reddened once). Not shown offline, so unticked: case 9, the real release on ridge naming the commit on both
   `/health` reads, and the checksum refusal and the key on a real box.
-- [ ] **5. The deploy and CI.** `ops/app.sh` adds `AUDIT_URL` and `AUDIT_KEY` to the function's
+- [x] **5. The deploy and CI.** `ops/app.sh` adds `AUDIT_URL` and `AUDIT_KEY` to the function's
   settings (`ops/app.sh#L128-L134`) from the box's file; the variable list at `ops/lib.sh#L777`
   gains both; `ci.yml` gains `services/audit-backbone/**` in both path lists, an `audit` job, the
   deploy's `needs` (`#L216`), a build of the binary beside the store's (`#L274-L279`) and its name
   handed to the release (`#L296-L302`). Cases 10 and 14. *Done when:* the three `ops/` rows exit 0,
   each case red once; `actionlint` read by hand (`ops/CLAUDE.md`'s OP3). **8.**
+  *Done, 2026-11-13 (sonnet):* shellcheck, cfn-lint, `actionlint` on `ci.yml` (installed here, exit 0), the citation test and
+  the whole `ops/test.sh` at exit 0 on the committed tree. Built to the tree, not the lines cited. `ops/app.sh` reads
+  the log's key from the box's `/etc/audit-backbone/keys.env` right after the BFF's own, masks it at once, takes the
+  address from the log's unit (`AUDIT_PORT`, the box's private address), and puts both in the function's settings
+  through the same 0600 file; a box without the file, or with no key in it, is refused by name before anything is
+  sent, saying to run the release first. `BFF_ENV_NAMES` is the seven names, never the super-admin key. `ci.yml`
+  gains the service in both path lists, an `audit` job (the service's `make check`), the deploy waits on it, builds
+  the arm64 binary stamped with the commit beside the store's, before the role is taken, and names it to the release
+  as `RELEASE_AUDIT_BINARY`. That closes the cost step 4 named, a job's release going red by name after c-storage was
+  released: the case `audit_ci_guard` pins the release step's naming of the binary, beside the step 4 case that
+  refuses a job without one. Two old checks changed because the function now holds seven names, not five (the stand-in's
+  environment check and the names constant's check); the stand-in ssh answers the log's key file. Each new guard was seen red
+  by a mutation: the four CI breaks on copies of `ci.yml`, and on the real `ops/app.sh` the log's settings left out
+  and the refusal removed.
 - [ ] **6. The check.** `ops/check.sh`'s box reads (`#L81-L103`) gain the log's unit, its two
   listeners, its key file and directory modes, its `/health` naming the commit, and each unit's
   memory; the rule readings were widened at step 1 (case 12 moved there, so the check reads green on a ridge before and after the stack run); after the walk through the app's address (`#L157-L181`) the root
