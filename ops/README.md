@@ -20,7 +20,7 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
 | ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
-| the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 2.6 hours |
+| the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 10 minutes, up to 15 |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
@@ -393,12 +393,14 @@ client's own stack is the console's. The why is
 ## The demo copies
 
 The six demo copies on ridge (two invented companies, three copies each, the codes in
-`scripts/src/demo/mapping.ts`) are made by one command, never made by hand in the console. It deletes each copy
-to zero records, makes it again under its partner's password and fills it with 21 days ending yesterday.
-Once, from a terminal; it takes about 2.6 hours (up to 4) plus your typing, and it refuses GitHub's job.
+`scripts/src/demo/mapping.ts`) are made by one command, never made by hand in the console. It makes the six
+under their partners' passwords and fills them with 21 days ending yesterday on a store of this Mac's own, then
+deletes each copy on ridge to zero records and copies it there whole, one at a time.
+Once, from a terminal; it takes about 10 minutes (up to 15) plus your typing, and it refuses GitHub's job.
 
 1. On a ridge with no operator yet, first `ops/operator.sh ridge` ([the operator](#the-operator)); the
-   remake itself needs no operator. Use a worktree at `main` with `pnpm install` done, not while the seed runs.
+   remake itself needs no operator. Use a worktree at `main` with `pnpm install` done and Go on PATH (it
+   builds the store on this Mac), not while the seed runs.
 2. Run it, then type one password for each partner (`p1`, `p2`, then yours), each twice, and `remake ridge` when
    it lists the six copies. A password is never shown, logged or kept.
 
@@ -406,16 +408,12 @@ Once, from a terminal; it takes about 2.6 hours (up to 4) plus your typing, and 
    cd <the worktree at main> && bash ops/demo-remake.sh ridge
    ```
 
-3. Read the log: it ends green, with each copy's sign-in read back. A line `== refused: <why>` (exit 2) means
-   nothing was touched. A red after the first delete (exit 1) depends on the step it stopped in, which the
-   log's last `[n/6]` line names:
-   - in "the remake" (the deletes and the makes): run the same command again, whole; it asks the passwords
-     again, finishes a deletion left half done and makes the copies again. `--go-on` is not a way on there: it
-     fills a copy that never got its partner's password, and the round now refuses it, naming the copy.
-   - in "the fill, in rounds" (a dropped tunnel, an AWS session that ended, a round that failed): run
-     `ops/demo-remake.sh ridge --go-on`, which runs the rounds left from the ledger, asks nothing and deletes
-     nothing. Unless the lines above say a copy is not remade: then the same command again, whole.
-   The fill waits about 160 minutes, and AWS must stay signed in until the clock time the log gives.
+3. Read the log: it ends on `the 6 demo copies on ridge are remade`, each copy compared at 0 differ after its
+   copy. A line `== refused: <why>` (exit 2) means nothing was deleted, a store on this Mac that did not start
+   or a fill that stopped there included. A red after the first delete (exit 1), such as a dropped tunnel:
+   run `ops/demo-remake.sh ridge --go-on`, which asks nothing, starts the store this Mac kept for it again and
+   copies only what differs; or the same command again, whole, which asks the passwords and fills anew. A copy
+   cut off mid-copy stays unreachable until a run ends equal.
 4. Send each partner their link and password by your own channel. `/operator` is where you sign in
    to see the copies, not where they are made.
 

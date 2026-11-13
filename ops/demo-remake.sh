@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 # ops/demo-remake.sh ridge [--go-on]
-# Remakes the six demo copies on ridge in one run: each copy deleted to zero records, made again under its
-# partner's password, and filled with 21 days ending yesterday (the node half is scripts/src/ridge.ts:
-# ridge_cli remake, then ridge_cli seed --round until no copy is behind). One password a partner (p1, p2,
-# then yours), each typed here twice, never shown, never logged and never kept; each is checked against
-# that partner's codes before anything is touched, then each copy's sign-in is read back by the node half.
+# Remakes the six demo copies on ridge in one run: made under each partner's password and filled with 21 days
+# ending yesterday on a store of this Mac's own, then each copy in turn deleted on ridge to zero records,
+# copied whole and only then made reachable again (the node half is scripts/src/ridge.ts: ridge_cli remake).
+# One password a partner (p1, p2, then yours), each typed here twice, never shown, never logged and never
+# kept; each is checked against that partner's codes before anything is touched.
 #   In order: ridge alone, a terminal, main and this commit; the passwords typed twice and checked (no
 #   connection); the six copies listed and the words "remake ridge" typed back; the stack and the tunnel;
 #   the box's disk, memory and swap, and /health naming a commit of main that is this one (or an earlier one
-#   that differs in no deployed path), with the BFF's function; then the remake, then the fill in rounds.
-#   Nothing is written before they have passed. Each password reaches node on a pipe from bash's builtin
-#   printf: never argv, the environment, a here-string or a file.
-# The fill goes in rounds because a tunnel lasts the endpoint's hour and 21 days are about 157 minutes at
-# 7.5 minutes a day: each round is a new tunnel and a new read of /health, 5 days a copy at most (about 38
-# minutes), and a line every 30 seconds while it runs. A tunnel that drops ends the run red; --go-on then
-# runs the rounds that are left from the ledger, asks nothing and deletes nothing.
-# Until the first delete a stop is a refusal, "== refused: <why>" and exit 2; from the delete on, "error:"
-# and exit 1: the same run again, or --go-on once the copies are made. By hand, from a terminal, in a
-# worktree at main with pnpm install done; not during the seed's run, nor with a session open on a copy
-# you mean to keep. Expected length: about 2.6 hours (up to 4), plus the typing.
+#   that differs in no deployed path), with the BFF's function; then the remake on that one tunnel, a line
+#   every 30 seconds while it runs. Nothing is written before they have passed. Each password reaches node
+#   on a pipe from bash's builtin printf: never argv, the environment, a here-string or a file.
+# The store on this Mac lives in the credo root's .demo-remake-store for the run, and is kept when the run
+# stops after its fill: --go-on starts it again and copies again only what differs on ridge, asking nothing.
+# A run that ends green removes it.
+# Until the first delete a stop is a refusal, "== refused: <why>" and exit 2 (a store on this Mac that does
+# not start, or a fill that stops there, included); from the delete on, "error:" and exit 1: --go-on, or the
+# same run again whole. By hand, from a terminal, in a worktree at main with pnpm install done and Go on
+# PATH; not during the seed's run, nor with a session open on a copy you mean to keep. Expected length:
+# about 10 minutes, up to 15, plus the typing.
 set -euo pipefail
 
 # shellcheck source=lib.sh
@@ -35,15 +35,17 @@ if [ $# -eq 2 ]; then
   [ "$2" = --go-on ] || usage
   GO_ON=1
 fi
-STEPS=6
+STEPS=4
 # Neither the local stack's port (3181), the check's (3191), the tunnel's (3192), the deploy's (3193), the
 # operator's (3194), the seed's (3195) nor the root password's (3196).
 LOCAL_PORT=${DEMO_REMAKE_LOCAL_PORT:-3197}
-# The seconds between the lines a round prints while it runs; the tests shorten it, the run does not.
+# The seconds between the lines the remake prints while it runs; the tests shorten it, the run does not.
 TICK=${DEMO_REMAKE_TICK:-30}
-# The wait the notice names: 21 days in 5 rounds of about 38 minutes, the remake and the reads beside them.
-WAIT_MIN=160
-MAX_ROUNDS=8
+# The wait the notice names: the bound every run on this Mac is held to (docs/plans/2026-11-13-long-runs.md).
+WAIT_MIN=15
+# The folder of the store on this Mac, in the credo root (the folder that holds .bare), as lib.sh's log_start
+# derives it: the run and its --go-on name the same one.
+STORE_DIR=$(dirname "$(git -C "$REPO_DIR" rev-parse --path-format=absolute --git-common-dir)")/.demo-remake-store
 
 # A stop before the first delete is a refusal (walk/run.sh's form), lib.sh's guards included: they call
 # die, which is this one from here on.
@@ -63,9 +65,7 @@ die() {
 PARTNERS=()
 COPIES=()
 PWS=()
-ROUND_PID=''
-# NEXT: what to run when the run stops while a round opens its tunnel (empty outside that), printed as the run ends
-NEXT=''
+REMAKE_PID=''
 
 # mapping_read: PARTNERS (each label once) and COPIES ("<label> <code>"), from the mapping.
 mapping_read() {
@@ -130,10 +130,28 @@ kill_tree() {
   kill "$1" 2>/dev/null || true
 }
 
-# cleanup_extra: a round still running when the run ends is ended with it
+# filled_yet: this Mac's store holds the six filled copies (the node half printed its line), or --go-on
+# started from one: a stop after it is gone on with by --go-on, a stop before it deleted nothing on ridge
+filled_yet() {
+  [ "$GO_ON" = 1 ] || grep -q "^remake: this Mac's store built and the [0-9]* copies filled on it" "$LOG" 2>/dev/null
+}
+
+# stop_advice: the line that says what a stop left and the one command to go on, by where the remake stood
+stop_advice() {
+  if filled_yet; then
+    echo "run ops/demo-remake.sh $ENVNAME --go-on to copy again what differs, or the same run again whole"
+  else
+    echo "the store on this Mac was not filled whole and nothing on $ENVNAME was deleted: run ops/demo-remake.sh $ENVNAME again whole"
+  fi
+}
+
+# cleanup_extra: a remake still running when the run ends (a signal ends it here) is ended with it, and
+# the stop says what it left
 cleanup_extra() {
-  if [ -n "$ROUND_PID" ]; then kill_tree "$ROUND_PID"; fi
-  if [ -n "$NEXT" ]; then echo "$NEXT" >&2; fi
+  if [ -n "$REMAKE_PID" ]; then
+    kill_tree "$REMAKE_PID"
+    echo "the run was stopped while the remake ran: $(stop_advice)"
+  fi
 }
 
 # clock_after <minutes> → HH:MM that many minutes from now, read by date here
@@ -177,33 +195,43 @@ open_tunnel() {
   bff_env_read
 }
 
-# round_run: one round of the fill on the open tunnel, its output in $WORK/round.out, a line every TICK seconds
-# while it runs; a tunnel that is no longer up ends the round and the run.
-round_run() {
+# remake_run: the remake on the open tunnel, its lines straight to the log, a line every TICK seconds while it
+# runs; a tunnel that is no longer up ends it and the run. The node half's 2 is a refusal before any delete.
+remake_run() {
   local sec=0 rc=0
-  : >"$WORK/round.out"
-  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
-    ridge_cli seed --round >"$WORK/round.out" 2>&1 &
-  ROUND_PID=$!
-  while kill -0 "$ROUND_PID" 2>/dev/null; do
+  WRITTEN=1
+  if [ "$GO_ON" = 1 ]; then
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR REMAKE_COMMIT=$sha \
+      ridge_cli remake --go-on </dev/null &
+  else
+    passwords_pipe | INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR REMAKE_COMMIT=$sha \
+      ridge_cli remake &
+  fi
+  REMAKE_PID=$!
+  while kill -0 "$REMAKE_PID" 2>/dev/null; do
     sleep 1 >/dev/null 2>&1 &
     wait $!
     sec=$((sec + 1))
     if [ $((sec % TICK)) = 0 ]; then
       if ! tunnel_up; then
-        cleanup_extra
-        ROUND_PID=''
-        # what the round printed before the drop, so the log says which day it stood at
-        cat "$WORK/round.out"
-        die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network) $sec seconds into the round: the copies are made, run ops/demo-remake.sh $ENVNAME --go-on to finish the fill"
+        kill_tree "$REMAKE_PID"
+        REMAKE_PID=''
+        filled_yet || WRITTEN=0
+        die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network) $sec seconds into the remake: $(stop_advice)"
       fi
-      echo "   the round runs, ${sec}s, the tunnel is up ($(clock_after 0))"
+      echo "   the remake runs, ${sec}s, the tunnel is up ($(clock_after 0))"
     fi
   done
-  wait "$ROUND_PID" || rc=$?
-  ROUND_PID=''
-  cat "$WORK/round.out"
-  [ "$rc" = 0 ] || die "a round of the fill stopped (the lines above): run ops/demo-remake.sh $ENVNAME --go-on to finish it, unless they say a copy is not remade: then run ops/demo-remake.sh $ENVNAME again whole, without --go-on"
+  wait "$REMAKE_PID" || rc=$?
+  REMAKE_PID=''
+  if [ "$rc" = 2 ]; then
+    WRITTEN=0
+    die "the remake was refused before any delete (the line above): nothing was deleted"
+  fi
+  [ "$rc" = 0 ] || {
+    filled_yet || WRITTEN=0
+    die "the remake stopped (the lines above name the copy and why): $(stop_advice)"
+  }
 }
 
 log_start demo-remake "$ENVNAME"
@@ -211,7 +239,7 @@ mkwork
 
 step "ridge alone, a terminal, main, and this commit"
 refuse_real "$ENVNAME" "demo-remake.sh holds ridge's demo copies alone: a client's own stack is the console's, and it is never deleted here"
-[ "${GITHUB_ACTIONS:-}" != true ] || die "the passwords are typed on a terminal and the run is hours long, never in a job: run this by hand"
+[ "${GITHUB_ACTIONS:-}" != true ] || die "the passwords are typed on a terminal, never in a job: run this by hand"
 # fd 3 is the terminal (log_start keeps it past the log). OPS_TEST_NO_TTY is ops/test.sh's alone, on a
 # machine that cannot open a pseudo-terminal: the typing then comes from a pipe.
 if [ "$GO_ON" = 0 ]; then
@@ -229,7 +257,7 @@ mapping_read
 
 step "the passwords, the copies, and the word"
 if [ "$GO_ON" = 1 ]; then
-  echo "--go-on: nothing is asked and nothing is deleted; only the rounds of the fill that are left"
+  echo "--go-on: nothing is asked; the copy goes on from the store the stopped run filled, copying only what differs"
 else
   for p in "${PARTNERS[@]}"; do type_password "$p"; done
   passwords_pipe | ridge_cli remake --check || die "a password or a partner is refused (the line above): nothing was changed"
@@ -247,33 +275,7 @@ stack_load "$ENVNAME"
 app_load || die "$ENVNAME's stack holds no layer four yet: ops/stack.sh env $ENVNAME first"
 open_tunnel
 
-step "the remake"
-if [ "$GO_ON" = 1 ]; then
-  echo "--go-on: no copy is deleted or made"
-else
-  WRITTEN=1
-  passwords_pipe | INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
-    ridge_cli remake || die "the remake stopped (the lines above name the copy and why): the same run again ends in the same state"
-fi
-
-step "the fill, in rounds"
-WRITTEN=1
-echo "the fill may wait about $WAIT_MIN minutes, until about $(clock_after "$WAIT_MIN"), and the AWS session must hold until then; a line every ${TICK} seconds shows it is alive"
-round=0
-while :; do
-  round=$((round + 1))
-  [ "$round" -le "$MAX_ROUNDS" ] || die "$MAX_ROUNDS rounds and the copies are still behind: read the lines above"
-  echo "round $round"
-  # The first tunnel is the remake's; --go-on has made none since, so its first round uses the one opened above.
-  if [ "$round" -gt 1 ] || [ "$GO_ON" = 0 ]; then
-    NEXT="the copies are made: fix that, then run ops/demo-remake.sh $ENVNAME --go-on"
-    open_tunnel
-    NEXT=''
-  fi
-  round_run
-  grep -q '^seed: STILL BEHIND' "$WORK/round.out" || break
-done
-# The closing line only when the last round found every copy on the service (the round itself refuses a copy
-# not remade; this is the second look, on the summary it printed).
-grep -q '^seed: .*, 0 not on this service, ' "$WORK/round.out" || die "the last round did not find every copy on the service (the lines above): run ops/demo-remake.sh $ENVNAME again whole, without --go-on"
+step "the remake: filled on this Mac, then each copy deleted on $ENVNAME and copied whole"
+echo "the remake may take up to about $WAIT_MIN minutes, until about $(clock_after "$WAIT_MIN"); a line every ${TICK} seconds shows it is alive"
+remake_run
 echo "the ${#COPIES[@]} demo copies on $ENVNAME are remade, each with its partner's password, 21 days filled up to yesterday"

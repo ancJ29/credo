@@ -6,18 +6,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAudit, buildCStorage } from '@credo/bff/tests/build';
-import { createCStorageClient, type CStorageClient, joinLinkPath } from '@credo/shared';
+import { type CStorageClient, joinLinkPath } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './running/front';
 import { ROOT_NAME, seedClient, seedDemo } from './generator';
+import { newKey, startStore } from './local-store';
 import { freePort, startProcess, waitUntilUp } from './running/processes';
-import { ensureService } from './register';
 import { createSeeding, logToStderr } from './seeding';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const UI_DIR = join(ROOT, 'ui');
-const SERVICE_CODE = 'demo';
 
 export type Artifacts = { cStorage: string; audit: string; uiDir: string; dir: string };
 
@@ -82,8 +81,6 @@ export const listening = (server: Server, port = 0) =>
       resolve(server.address() as AddressInfo);
     });
   });
-
-const key = () => randomBytes(24).toString('hex');
 
 /** What a command needs to print one client's entries: the audit service's keyed and open
  * addresses and its key, and the c-storage that maps a client's code to its minted id. */
@@ -185,31 +182,13 @@ export async function startStack(
   };
   try {
     const { resume } = options;
-    const internalAccessKey = resume?.internalAccessKey ?? key();
-    const superAdminKey = resume?.superAdminKey ?? key();
-    const service = resume?.service ?? { code: SERVICE_CODE, accessKey: key() };
-    const auditKey = resume?.auditKey ?? key();
-    const csPort = options.ports?.cStorage ?? (await freePort());
-    const cStorageUrl = `http://127.0.0.1:${csPort}`;
-    const cStorage = await startProcess(artifacts.cStorage, [], {
-      env: {
-        PORT: String(csPort),
-        DB_PATH: join(dataDir, 'records.db'),
-        INTERNAL_ACCESS_KEY: internalAccessKey,
-        X_SUPER_ADMIN_KEY: superAdminKey,
-      },
-      logFile: join(dataDir, 'c-storage.log'),
+    const store = await startStore(artifacts.cStorage, dataDir, stops, {
+      port: options.ports?.cStorage,
+      keys: resume,
     });
-    stops.unshift(cStorage.stop);
-    await waitUntilUp(`${cStorageUrl}/health`, cStorage, 'c-storage');
-
-    await ensureService({ baseUrl: cStorageUrl, internalAccessKey, superAdminKey }, service);
-    const storage = createCStorageClient({
-      baseUrl: cStorageUrl,
-      internalAccessKey,
-      serviceCode: service.code,
-      accessKey: service.accessKey,
-    });
+    const { internalAccessKey, superAdminKey, service, storage } = store;
+    const cStorageUrl = store.url;
+    const auditKey = resume?.auditKey ?? newKey();
     const auditPort = options.auditPorts?.keyed ?? (await freePort());
     const auditOpenPort = options.auditPorts?.open ?? (await freePort());
     const auditUrl = `http://127.0.0.1:${auditPort}`;
@@ -270,9 +249,9 @@ export async function startStack(
     });
 
     const facts: StackFacts = {
-      ports: { cStorage: csPort, front: frontPort, bff: bffPort, seedDoor: seedPort },
+      ports: { cStorage: store.port, front: frontPort, bff: bffPort, seedDoor: seedPort },
       // A child that has started has a pid: spawn answers none only for one that never ran.
-      pids: { cStorage: cStorage.child.pid!, audit: auditProcess.child.pid!, bff: bff.child.pid! },
+      pids: { cStorage: store.pid, audit: auditProcess.child.pid!, bff: bff.child.pid! },
       cStorage: { url: cStorageUrl, internalAccessKey, superAdminKey },
       service,
       audit: { url: auditUrl, readUrl: `http://127.0.0.1:${auditOpenPort}`, key: auditKey },

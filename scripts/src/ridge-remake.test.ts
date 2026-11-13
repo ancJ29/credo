@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApp } from '@credo/bff';
@@ -14,7 +14,7 @@ import {
   storedClientSchema,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { DAYS_PER_ROUND, HISTORY_DAYS, applyCopy } from './demo/apply';
+import { HISTORY_DAYS, applyCopy } from './demo/apply';
 import { addDays } from './demo/days';
 import { readLedger } from './demo/ledger';
 import { allCopies } from './demo/mapping';
@@ -31,6 +31,27 @@ vi.mock('@credo/bff/password', async (importOriginal) => {
       minted.push(password);
       return password;
     },
+  };
+});
+
+/** Set, every fill on this Mac's store is refused, as a fill that cannot go on reports itself. */
+const refuseFills = vi.hoisted(() => ({ on: false }));
+vi.mock('./demo/apply', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./demo/apply')>();
+  return {
+    ...real,
+    applyCopy: (...args: Parameters<typeof real.applyCopy>) =>
+      refuseFills.on
+        ? Promise.resolve({
+            code: args[1].code,
+            status: 'refused' as const,
+            filled: false,
+            days: [],
+            remaining: 0,
+            skipped: [],
+            note: 'another run holds it, left',
+          })
+        : real.applyCopy(...args),
   };
 });
 
@@ -78,18 +99,23 @@ async function ridge() {
     stdin: string | null = typed(),
     fetch?: typeof globalThis.fetch,
     clock = true,
+    more: Record<string, string> = {},
   ) {
     const lines = { out: [] as string[], err: [] as string[] };
-    const status = await runRidge(argv, env, {
-      out: (line) => lines.out.push(line),
-      show: () => {
-        throw new Error('remake shows nothing on the terminal');
+    const status = await runRidge(
+      argv,
+      { ...env, ...more },
+      {
+        out: (line) => lines.out.push(line),
+        show: () => {
+          throw new Error('remake shows nothing on the terminal');
+        },
+        err: (line) => lines.err.push(line),
+        fetch,
+        now: clock ? () => MORNING : undefined,
+        stdin: stdin === null ? undefined : () => Promise.resolve(stdin),
       },
-      err: (line) => lines.err.push(line),
-      fetch,
-      now: clock ? () => MORNING : undefined,
-      stdin: stdin === null ? undefined : () => Promise.resolve(stdin),
-    });
+    );
     return { status, ...lines };
   }
   return { storage, run };
@@ -123,95 +149,142 @@ const recordCount = async (storage: CStorageClient, tenantId: string) => {
   return { count: listed.records.length, more: listed.more };
 };
 
+const YESTERDAY = '2026-10-29';
+
+/** Pads a company past one press of a deletion (200 records), so one call to deleteClient is not
+ * enough. */
+async function pad(storage: CStorageClient, tenantId: string) {
+  for (let at = 0; at < 250; at += 1) {
+    await storage.putRecord(`${recordKeys.tenant(tenantId).all}pad-${at}`, { at }, null);
+  }
+}
+
 describe('ridge_cli remake', () => {
-  it('row 5: a used copy is deleted to zero records, made again, signs in with its partner’s password and holds a new ledger; the rounds then go to up to date', async () => {
+  /** One remake, read by the rows that only read its result: a target holding the first copy used
+   * (row 5), the second with a deletion stopped halfway (row 7), the other four not at all (row 6). */
+  const shared = {} as {
+    storage: CStorageClient;
+    run: Awaited<ReturnType<typeof ridge>>['run'];
+    used: { id: string; password: string };
+    halfDeleted: string;
+    result: { status: number; out: string[]; err: string[] };
+  };
+  beforeAll(async () => {
     const { storage, run } = await ridge();
-    const first = copies[0];
+    const [first, second] = copies;
     const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
     if (made === 'taken') throw new Error('taken');
-    const used = await applyCopy(storage, first, TODAY, undefined, 1);
-    expect(used.status).toBe('ok');
-    // more records than one press of a deletion removes, so one call to deleteClient is not enough
-    for (let at = 0; at < 250; at += 1) {
-      await storage.putRecord(`${recordKeys.tenant(made.id).all}pad-${at}`, { at }, null);
-    }
+    expect((await applyCopy(storage, first, TODAY, undefined, 1)).status).toBe('ok');
+    await pad(storage, made.id);
     expect(await signInStatus(storage, first.code, made.password)).toBe(200);
-    const before = await recordCount(storage, made.id);
-    expect(before.count).toBeGreaterThan(200);
+    expect((await recordCount(storage, made.id)).count).toBeGreaterThan(200);
 
-    const result = await run(['remake']);
-
-    expect(result.status).toBe(0);
-    expect(result.err).toEqual([]);
-    const index = (await indexOf(storage, first.code))!;
-    expect(index.id).not.toBe(made.id);
-    expect(await recordCount(storage, made.id)).toEqual({ count: 0, more: false });
-    expect(await storage.getRecord(recordKeys.clientDeletion(first.code))).toBeNull();
-    expect(await signInStatus(storage, first.code, PASSWORDS[first.partner])).toBe(200);
-    expect(await signInStatus(storage, first.code, made.password)).toBe(401);
-    const ledger = (await readLedger(storage, index.id))!.ledger;
-    expect(ledger.filled).toBe(true);
-    expect(ledger.firstDay).toBe(addDays('2026-10-29', -(HISTORY_DAYS - 1)));
-    expect(result.out).toContain('remake: 6 copies deleted, made again and given their passwords');
-
-    // the rounds: each at most five days, behind until the last, which ends at yesterday
-    let rounds = 0;
-    for (;;) {
-      rounds += 1;
-      const round = await run(['seed', '--round'], null);
-      expect(round.status).toBe(0);
-      if (!round.out.some((line) => line.startsWith('seed: STILL BEHIND'))) break;
-      expect(rounds).toBeLessThan(10);
-    }
-    expect(rounds).toBe(Math.ceil(HISTORY_DAYS / DAYS_PER_ROUND));
-    const done = (await readLedger(storage, index.id))!.ledger;
-    expect(done.lastDay).toBe('2026-10-29');
-  }, 600_000);
-
-  it('row 6: a copy not on the service is made and filled, the others too', async () => {
-    const { storage, run } = await ridge();
-
-    const result = await run(['remake']);
-
-    expect(result.status).toBe(0);
-    for (const copy of copies) {
-      const index = (await indexOf(storage, copy.code))!;
-      expect(index.name, copy.code).toBe(copy.company);
-      const ledger = (await readLedger(storage, index.id))!.ledger;
-      expect(ledger.filled, copy.code).toBe(true);
-      expect(ledger.lastDay, copy.code).toBe(addDays(ledger.firstDay, -1));
-    }
-  }, 600_000);
-
-  it('row 7: an unfinished earlier deletion is finished, then the copy is made', async () => {
-    const { storage, run } = await ridge();
-    const first = copies[0];
-    const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
-    if (made === 'taken') throw new Error('taken');
-    for (let at = 0; at < 250; at += 1) {
-      await storage.putRecord(`${recordKeys.tenant(made.id).all}pad-${at}`, { at }, null);
-    }
+    const half = await createClient(storage, {
+      code: second.code,
+      name: second.company,
+      madeAt: 1,
+    });
+    if (half === 'taken') throw new Error('taken');
+    await pad(storage, half.id);
     // the press that deleted the index and 200 records, and stopped
     const { deleteClient } = await import('@credo/bff/clients');
     const part = await deleteClient(storage, {
-      code: first.code,
+      code: second.code,
       index: {
-        ...(await indexOf(storage, first.code))!,
-        tag: (await storage.getRecord(recordKeys.client(first.code)))!.tag,
+        ...(await indexOf(storage, second.code))!,
+        tag: (await storage.getRecord(recordKeys.client(second.code)))!.tag,
       },
       by: '00000000-0000-0000-0000-000000000000',
       now: () => 1,
     });
     expect(part).not.toEqual({ left: 0 });
-    expect(await indexOf(storage, first.code)).toBeNull();
+    expect(await indexOf(storage, second.code)).toBeNull();
 
     const result = await run(['remake']);
+    Object.assign(shared, {
+      storage,
+      run,
+      used: { id: made.id, password: made.password },
+      halfDeleted: half.id,
+      result,
+    });
+  }, 600_000);
+
+  it('row 5: a used copy is deleted to zero records, made again, signs in with its partner’s password and holds a new ledger filled to yesterday', async () => {
+    const { storage, used, result } = shared;
+    const first = copies[0];
 
     expect(result.status).toBe(0);
-    expect(await recordCount(storage, made.id)).toEqual({ count: 0, more: false });
-    expect((await indexOf(storage, first.code))!.id).not.toBe(made.id);
+    expect(result.err).toEqual([]);
+    const index = (await indexOf(storage, first.code))!;
+    expect(index.id).not.toBe(used.id);
+    expect(await recordCount(storage, used.id)).toEqual({ count: 0, more: false });
+    expect(await storage.getRecord(recordKeys.clientDeletion(first.code))).toBeNull();
     expect(await signInStatus(storage, first.code, PASSWORDS[first.partner])).toBe(200);
-  }, 600_000);
+    expect(await signInStatus(storage, first.code, used.password)).toBe(401);
+    const ledger = (await readLedger(storage, index.id))!.ledger;
+    expect(ledger.filled).toBe(true);
+    expect(ledger.firstDay).toBe(addDays(YESTERDAY, -(HISTORY_DAYS - 1)));
+    expect(ledger.lastDay).toBe(YESTERDAY);
+    expect(result.out.at(-1)).toMatch(
+      /^remake: 6 copies deleted, filled on this Mac and copied whole, \d+\.\d minutes in all$/,
+    );
+  });
+
+  it('row 6: a copy not on the service is made and filled, the others too', async () => {
+    const { storage } = shared;
+
+    for (const copy of copies) {
+      const index = (await indexOf(storage, copy.code))!;
+      expect(index.name, copy.code).toBe(copy.company);
+      const ledger = (await readLedger(storage, index.id))!.ledger;
+      expect(ledger.filled, copy.code).toBe(true);
+      expect(ledger.lastDay, copy.code).toBe(YESTERDAY);
+    }
+  });
+
+  it('row 7: an unfinished earlier deletion is finished, then the copy is made', async () => {
+    const { storage, halfDeleted } = shared;
+    const second = copies[1];
+
+    expect(await recordCount(storage, halfDeleted)).toEqual({ count: 0, more: false });
+    expect((await indexOf(storage, second.code))!.id).not.toBe(halfDeleted);
+    expect(await signInStatus(storage, second.code, PASSWORDS[second.partner])).toBe(200);
+  });
+
+  it('row 8: a partner’s password signs in to that partner’s copies and is refused at the others’', async () => {
+    const { storage } = shared;
+
+    for (const copy of copies) {
+      for (const partner of PARTNERS) {
+        const expected = partner === copy.partner ? 200 : 401;
+        expect(
+          await signInStatus(storage, copy.code, PASSWORDS[partner]),
+          `${copy.code} ${partner}`,
+        ).toBe(expected);
+      }
+    }
+  });
+
+  it('row 11: no line holds a typed password, a first password or a hash', async () => {
+    const { storage, run, result } = shared;
+    const first = copies[0];
+
+    const checked = await run(['remake', '--check'], typed({ ...PASSWORDS, p2: 'Short1!' }));
+
+    const printed = [...result.out, ...result.err, ...checked.out, ...checked.err].join('\n');
+    expect(minted.length).toBeGreaterThan(copies.length);
+    for (const secret of [...Object.values(PASSWORDS), ...minted, 'Short1!', 'scrypt$']) {
+      expect(printed).not.toContain(secret);
+    }
+    const hash = (
+      (await storage.getRecord(
+        recordKeys.tenant((await indexOf(storage, first.code))!.id).user(ROOT_NAME),
+      ))!.data as { passwordHash: string }
+    ).passwordHash;
+    expect(printed).not.toContain(hash);
+    expect(result.status).toBe(0);
+  });
 
   it('row 7: a deletion of another client under the code, still unfinished, stops the run red, naming the code, and deletes nothing more', async () => {
     const { storage, run } = await ridge();
@@ -240,6 +313,27 @@ describe('ridge_cli remake', () => {
     expect((await indexOf(storage, first.code))!.id).toBe(made.id);
   }, 600_000);
 
+  it('row 7: a fill that stops on this Mac is refused, status 2, naming each copy, before any delete on the target', async () => {
+    const { storage, run } = await ridge();
+    const first = copies[0];
+    const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
+    if (made === 'taken') throw new Error('taken');
+    const before = await recordCount(storage, made.id);
+
+    refuseFills.on = true;
+    const result = await run(['remake']).finally(() => {
+      refuseFills.on = false;
+    });
+
+    expect(result.status).toBe(2);
+    expect(result.err).toEqual([
+      `error: nothing was deleted on the target: ${copies.map((copy) => `${copy.code}: another run holds it, left`).join('; ')}`,
+    ]);
+    expect((await indexOf(storage, first.code))!.id).toBe(made.id);
+    expect(await recordCount(storage, made.id)).toEqual(before);
+    expect(await signInStatus(storage, first.code, made.password)).toBe(200);
+  }, 600_000);
+
   it('row 9: no input at all, or a line with no space in it, is refused before anything is written', async () => {
     const { run } = await ridge();
 
@@ -249,47 +343,27 @@ describe('ridge_cli remake', () => {
     }
   });
 
-  it('row 6: a rival that makes the copy’s index, or its ledger, first stops that run red, naming the copy', async () => {
+  // A rival on any other record of the copy meets the copy's own precondition, held by
+  // bff/src/records/company-copy.test.ts's "stops on a record changed in the target after its walk".
+  it('row 6: a rival that makes the copy’s index first stops that run red, naming the copy', async () => {
     const first = copies[0];
-    for (const [rivalKey, said] of [
-      [recordKeys.client(first.code), 'the service still holds it'],
-      ['.seed', 'another run holds it'],
-    ] as const) {
-      const { storage, run } = await ridge();
-      let done = false;
-      const rival: typeof fetch = async (input, init) => {
-        if (!done && init?.method === 'POST' && typeof init.body === 'string') {
-          const { key } = JSON.parse(init.body) as { key: string };
-          const hit = rivalKey === '.seed' ? key.endsWith('.seed') : key === rivalKey;
-          if (hit) {
-            done = true;
-            await storage.putRecord(key, { rival: true }, null);
-          }
-        }
-        return fetch(input, init);
-      };
-
-      const result = await run(['remake'], typed(), rival);
-
-      expect(result.status, said).toBe(1);
-      expect(result.err.join('\n'), said).toContain(said);
-    }
-  }, 600_000);
-
-  it('row 8: a partner’s password signs in to that partner’s copies and is refused at the others’', async () => {
     const { storage, run } = await ridge();
-
-    expect((await run(['remake'])).status).toBe(0);
-
-    for (const copy of copies) {
-      for (const partner of PARTNERS) {
-        const expected = partner === copy.partner ? 200 : 401;
-        expect(
-          await signInStatus(storage, copy.code, PASSWORDS[partner]),
-          `${copy.code} ${partner}`,
-        ).toBe(expected);
+    let done = false;
+    const rival: typeof fetch = async (input, init) => {
+      if (!done && init?.method === 'POST' && typeof init.body === 'string') {
+        const { key } = JSON.parse(init.body) as { key: string };
+        if (key === recordKeys.client(first.code)) {
+          done = true;
+          await storage.putRecord(key, { rival: true }, null);
+        }
       }
-    }
+      return fetch(input, init);
+    };
+
+    const result = await run(['remake'], typed(), rival);
+
+    expect(result.status).toBe(1);
+    expect(result.err.join('\n')).toContain(`error: ${first.code}: the service still holds it`);
   }, 600_000);
 
   it('row 9: a bad or missing password is status 2 before any delete, naming the partner and never the password', async () => {
@@ -320,89 +394,85 @@ describe('ridge_cli remake', () => {
     expect(ok.out).toEqual(['checked: every partner has a password that follows the rule']);
   });
 
-  it('row 10: the first fill applies no day; each round at most five, behind until the last, which ends at yesterday with 21 days in the ledger', async () => {
-    const { storage, run } = await ridge();
-    expect((await run(['remake'])).status).toBe(0);
-    const ids = await Promise.all(
-      copies.map(async (copy) => (await indexOf(storage, copy.code))!.id),
-    );
-    const lastDays = async () =>
-      Promise.all(ids.map(async (id) => (await readLedger(storage, id))!.ledger));
-
-    const applied: number[] = [];
-    let behind: boolean;
-    do {
-      const round = await run(['seed', '--round'], null);
-      expect(round.status).toBe(0);
-      const days = round.out.filter((line) => / applied, \d+ events$/.test(line)).length;
-      applied.push(days / copies.length);
-      behind = round.out.some((line) => line.startsWith('seed: STILL BEHIND'));
-      expect(behind).toBe(applied.length < 5);
-    } while (behind);
-
-    expect(applied).toEqual([5, 5, 5, 5, 1]);
-    for (const ledger of await lastDays()) {
-      expect(ledger.lastDay).toBe('2026-10-29');
-      expect(ledger.firstDay).toBe(addDays('2026-10-29', -20));
-    }
-  }, 900_000);
-
-  it('row 10: a round runs no day while a copy is missing or made without its first fill: it names the copy and ends 1, never first-filling it under the create’s password', async () => {
-    const { storage, run } = await ridge();
-    const [first, ...others] = copies;
-    for (const copy of others) {
-      const made = await createClient(storage, { code: copy.code, name: copy.company, madeAt: 1 });
-      if (made === 'taken') throw new Error('taken');
-      expect((await applyCopy(storage, copy, TODAY, undefined, 0)).status).toBe('ok');
-    }
-
-    const missing = await run(['seed', '--round'], null);
-
-    expect(missing.status).toBe(1);
-    expect(missing.out).toEqual([]);
-    expect(missing.err).toHaveLength(1);
-    expect(missing.err[0]).toContain(
-      `not remade (missing, or made without its first fill): ${first.code};`,
-    );
-    expect(missing.err[0]).toContain('again whole, not with --go-on');
-
-    const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
-    if (made === 'taken') throw new Error('taken');
-
-    const unfilled = await run(['seed', '--round'], null);
-
-    expect(unfilled.status).toBe(1);
-    expect(unfilled.err[0]).toContain(`${first.code};`);
-    expect(unfilled.out).toEqual([]);
-    expect(await readLedger(storage, made.id)).toBeNull();
-
-    expect((await applyCopy(storage, first, TODAY, undefined, 0)).status).toBe('ok');
-    const round = await run(['seed', '--round'], null);
-
-    expect(round.status).toBe(0);
-    expect(round.out.some((line) => line.startsWith('seed: STILL BEHIND'))).toBe(true);
-  }, 600_000);
-
-  it('row 11: no line holds a typed password, a first password or a hash', async () => {
+  it('case 5: a store on this Mac that does not start is refused, status 2, before any delete on the target', async () => {
     const { storage, run } = await ridge();
     const first = copies[0];
     const made = await createClient(storage, { code: first.code, name: first.company, madeAt: 1 });
     if (made === 'taken') throw new Error('taken');
+    const before = await recordCount(storage, made.id);
 
-    const remade = await run(['remake']);
-    const checked = await run(['remake', '--check'], typed({ ...PASSWORDS, p2: 'Short1!' }));
+    // A folder that cannot be made: a path under a file.
+    const result = await run(['remake'], typed(), undefined, true, {
+      REMAKE_STORE_DIR: join(dir, 'c-storage', 'store'),
+    });
 
-    const printed = [...remade.out, ...remade.err, ...checked.out, ...checked.err].join('\n');
-    expect(minted.length).toBeGreaterThan(copies.length);
-    for (const secret of [...Object.values(PASSWORDS), ...minted, 'Short1!', 'scrypt$']) {
-      expect(printed).not.toContain(secret);
+    expect(result.status).toBe(2);
+    expect(result.err).toHaveLength(1);
+    expect(result.err[0]).toMatch(
+      /^error: nothing was deleted on the target, this Mac's store stopped first: /,
+    );
+    expect((await indexOf(storage, first.code))!.id).toBe(made.id);
+    expect(await recordCount(storage, made.id)).toEqual(before);
+    expect(await signInStatus(storage, first.code, made.password)).toBe(200);
+  });
+
+  it('case 3: --go-on with no store a stopped run filled whole is refused, status 2, asking no password', async () => {
+    const { run } = await ridge();
+    const empty = await mkdtemp(join(dir, 'no-fill-'));
+
+    const kepts: Record<string, string>[] = [{}, { REMAKE_STORE_DIR: empty }];
+    for (const kept of kepts) {
+      const result = await run(['remake', '--go-on'], null, undefined, true, kept);
+      expect(result.status, JSON.stringify(kept)).toBe(2);
+      expect(result.err).toEqual([
+        'error: remake --go-on: no store filled whole by a stopped run is kept: run ops/demo-remake.sh ridge whole',
+      ]);
     }
-    const hash = (
-      (await storage.getRecord(
-        recordKeys.tenant((await indexOf(storage, first.code))!.id).user(ROOT_NAME),
-      ))!.data as { passwordHash: string }
-    ).passwordHash;
-    expect(printed).not.toContain(hash);
-    expect(remade.status).toBe(0);
-  }, 600_000);
+  });
+
+  it('case 3b: --go-on refuses a kept store filled on another day or by another commit, before it starts', async () => {
+    const { run } = await ridge();
+    // MORNING is the 30th at 06:00 in Vietnam.
+    const fills: [string, string, string][] = [
+      [
+        '2026-10-28 abc123',
+        'abc123',
+        'filled on 2026-10-28 by commit abc123, not today by commit abc123',
+      ],
+      [
+        '2026-10-30 old000',
+        'new111',
+        'filled on 2026-10-30 by commit old000, not today by commit new111',
+      ],
+      ['2026-10-30', 'new111', 'filled on 2026-10-30 by commit none, not today by commit new111'],
+      ['2026-10-30 old000', '', 'filled on 2026-10-30 by commit old000, not today by commit none'],
+    ];
+    for (const [filled, commit, said] of fills) {
+      const kept = await mkdtemp(join(dir, 'old-fill-'));
+      await writeFile(join(kept, 'filled'), filled);
+      const result = await run(['remake', '--go-on'], null, undefined, true, {
+        REMAKE_STORE_DIR: kept,
+        REMAKE_COMMIT: commit,
+      });
+      expect(result.status, filled).toBe(2);
+      expect(result.err).toEqual([
+        `error: remake --go-on: the kept store was ${said}: run ops/demo-remake.sh ridge whole`,
+      ]);
+    }
+  });
+
+  it('a folder that is no kept store is refused before anything is emptied', async () => {
+    const { run } = await ridge();
+    const stray = await mkdtemp(join(dir, 'stray-'));
+    await writeFile(join(stray, 'notes.txt'), 'mine');
+
+    const result = await run(['remake'], typed(), undefined, true, { REMAKE_STORE_DIR: stray });
+
+    expect(result.status).toBe(2);
+    expect(result.err).toHaveLength(1);
+    expect(result.err[0]).toMatch(
+      /is not a kept store \(no keys\.json in it\): it is not emptied$/,
+    );
+    expect(await readFile(join(stray, 'notes.txt'), 'utf8')).toBe('mine');
+  });
 });
