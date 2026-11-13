@@ -228,9 +228,10 @@ by the Mac's bash 3.2.
 
 The gate is five jobs and the deploy needs all five
 (`.github/workflows/ci.yml`'s `deploy` job, its `needs`); the fifth, `app`, waits on six package jobs
-of its own and is green only when all six are. The app gate's cap was what skipped two deploys (a
-25-minute cap on one job running every package, cut on 11-13 while its tests took about 24 minutes): since
-the split each package job has its own cap, 40 minutes, about 1.5 times the longest whole run measured.
+of its own and is green only when all six are. The app job's 15-minute cap was what
+skipped two deploys (commit 4a15d012 raised it to 25); on 11-13 the 25 cut a run whose tests took about 24 minutes
+on one job running every package. Since the split each package job has its own cap, 40 minutes, about 1.5 times the
+longest whole run measured.
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
 is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first

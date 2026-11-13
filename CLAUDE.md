@@ -26,7 +26,7 @@ one second; for a change to `.md` files only that test is the whole check
 
 Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
 operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the
-Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts#L39` reads `BUNDLE_NODE`, which
+Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts`'s `bundleNode` reads `BUNDLE_NODE`, which
 only the `app-bff` job sets (`ci.yml`'s step `name: Name the runtime's Node`), so locally that one assertion is skipped while row 1
 otherwise runs whole.
 

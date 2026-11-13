@@ -1688,12 +1688,20 @@ app_guards() {
     block=$(job_block "$1" "app-$p")
     if [ -z "$block" ]; then missing="${missing}[no job app-$p] "; continue; fi
     need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[app-$p: $1] "; }
-    need "        run: pnpm --filter @credo/$p check"
+    need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
     need "    timeout-minutes: 40"
     need "          node-version: 26"
     need "    runs-on: ubuntu-24.04"
     need "        run: pnpm install --frozen-lockfile"
     grep -q '^    if:' <<<"$block" && missing="${missing}[app-$p: no if of its own] "
+    # A step-level if or shell could skip the gate step or change how its exit is read, and the job would still be green.
+    grep -qE '^        (if|shell):' <<<"$block" && missing="${missing}[app-$p: no step-level if or shell] "
+    # Go only where a test builds the real service (bff/tests/build.ts, reached by the BFF's route tests and the scripts' stack tests).
+    if [ "$p" = bff ] || [ "$p" = scripts ]; then
+      grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$block" || missing="${missing}[app-$p: Go, since its tests build c-storage] "
+    else
+      grep -q 'setup-go' <<<"$block" && missing="${missing}[app-$p: no Go, none of its tests builds a service] "
+    fi
     grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app-$p: no continue-on-error] "
     if [ "$p" = bff ]; then
       need "          node-version: 24"
@@ -1702,7 +1710,7 @@ app_guards() {
       # Node 24 is named before Node 26 is set up, so the check runs under 26 and the bundle under 24.
       n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
       n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
-      chk=$(grep -n 'run: pnpm --filter @credo/bff check' <<<"$block" | head -n 1 | cut -d: -f1)
+      chk=$(grep -n 'run: pnpm --filter @credo/bff --fail-if-no-match check' <<<"$block" | head -n 1 | cut -d: -f1)
       [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then the BFF's check] "
     fi
   done
@@ -1716,7 +1724,7 @@ app_guards() {
   [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
 passes "the app gate is one job a package, each with its own check and a 40-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
-sed 's#^        run: pnpm --filter @credo/scripts check$#        run: pnpm --filter @credo/scripts lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
+sed 's#^        run: pnpm --filter @credo/scripts --fail-if-no-match check$#        run: pnpm --filter @credo/scripts lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
 refuses "  a package job that does not run its package's check is refused" "app-scripts: " app_guards "$WORK/wf-nocheck.yml"
 sed 's#^          node-version: 24$#          node-version: 26#' "$WORKFLOW" >"$WORK/wf-no24.yml"
 refuses "  an app-bff job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
@@ -1733,6 +1741,16 @@ awk '$0 == "  app-visual:" {f = 1} f && $0 == "    timeout-minutes: 40" {print "
 refuses "  a package job with another cap than 40 minutes is refused" "app-visual:     timeout-minutes: 40" app_guards "$WORK/wf-cap.yml"
 awk '$0 == "  app-walk:" {f = 1} f && $0 == "    runs-on: ubuntu-24.04" {print; print "    continue-on-error: true"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cont.yml"
 refuses "  a package job that may fail and go on is refused" "app-walk: no continue-on-error" app_guards "$WORK/wf-cont.yml"
+awk '$0 == "  app-ui:" {f = 1} f && /^      - name: Gate ui$/ {print; print "        if: always()"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stepif.yml"
+refuses "  a gate step with an if of its own is refused" "app-ui: no step-level if or shell" app_guards "$WORK/wf-stepif.yml"
+awk '$0 == "  app-shared:" {f = 1} f && /^      - name: Gate shared$/ {print; print "        shell: bash {0}"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-shell.yml"
+refuses "  a gate step with a shell of its own is refused" "app-shared: no step-level if or shell" app_guards "$WORK/wf-shell.yml"
+awk '$0 == "  app-ui:" {f = 1} f && /^      - uses: actions\/setup-node/ && !d {print "      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0"; print "        with:"; print "          go-version-file: services/c-storage/go.mod"; d = 1} 1' "$WORKFLOW" >"$WORK/wf-ugo.yml"
+refuses "  a job that does not build a service but sets up Go is refused" "app-ui: no Go" app_guards "$WORK/wf-ugo.yml"
+awk '$0 == "  app-scripts:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nogo.yml"
+refuses "  the scripts' job without Go is refused" "app-scripts: Go" app_guards "$WORK/wf-nogo.yml"
+sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
+refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
 check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
 
 echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
