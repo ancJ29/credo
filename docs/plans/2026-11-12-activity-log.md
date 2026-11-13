@@ -111,7 +111,7 @@ Each gate is the touched package's one command: `make check` in `services/audit-
 `ops/` the three rows (`shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh`,
 `cfn-lint ops/network.yml ops/github.yml ops/env.yml`, `bash ops/test.sh`), plus the citation test.
 
-- [ ] **1. The template's half, landed alone.** `ops/env.yml`: the back end's group gains its second
+- [x] **1. The template's half, landed alone.** `ops/env.yml`: the back end's group gains its second
   egress rule, to the log's writing port on the box's group, and a new `BoxFromBffActivity` admits
   that port from the back end's group alone. The port is a parameter `ops/stack.sh` passes from the
   log's unit, as it passes `BoxPort` (`ops/stack.sh#L167`, guarded at `ops/test.sh#L500-L505`), so
@@ -120,6 +120,21 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   until step 4. The guards at `ops/test.sh#L253-L261` and `#L507-L524` widened. AWS's page on a
   security group's egress update read first (in place, or not). Cases 3 to 6. *Done when:* the three
   `ops/` rows exit 0, each new guard seen red once. **10.** Lands on `pre-merge` alone.
+  *Done, 2026-11-13 (sonnet):* shellcheck and cfn-lint at exit 0 and the whole `ops/test.sh` at exit 0, "all checks
+  passed", after `pre-merge` was taken in. Built against the template as the continuous copy left it, which differs
+  from the step as written: the unit is not a copy of the store's lines 12 to 22, which now wrap Litestream and wait
+  on the records disk, but the store's plain shape (its own user, 0700 under umask 0077, two ports, listen file, key
+  file) without them, the log's copy joining at step 12; the egress rule is inline in the back end's group, so the
+  update modifies that group in place (the box's group does not change, and case 6 reads the back end's group, not
+  the box's); `adds_and_one_modify` pins layer four's names and is left as it was, and the new update is its own
+  guard, `activity_update`, over a hand-written change set, `ops/testdata/changeset-activity.json`; the ports are
+  `PORT` 3184 and `OPEN_PORT` 3185 in the unit, `AuditPort` the writing one. AWS's page on the egress update was not
+  read in this step (no web), so "in place" rests on the change set read at step 2. Each new guard has its refused case
+  on a copy of the real file broken one way: the second egress rule dropped or widened, a third port, an address
+  range, the box rule from another group or for the store's port, a default on the port, a stack run that forgets
+  the port, a change set that replaces the back end's group, adds a rule or modifies the box's group, and six breaks
+  of the unit. `ops/check.sh`'s rule readings still pin the single rule, so a check of ridge after the stack run
+  reads red until step 6 widens them.
 - [ ] 👤 **2. Your stack run,** once step 1 is in `main` and pushed: `ops/stack.sh env ridge --plan`,
   then without it. Your first point. *Done when:* the machine reads the log whole: one addition, a
   modify of the back end's group in place, nothing removed or replaced, `== exit 0`. **5 to read.**

@@ -285,23 +285,27 @@ mut() {
 # must <json> <what the template must hold> <jq test>: dies naming what is wrong
 must() { jq -e "$3" "$1" >/dev/null || die "$2"; }
 
-# row 22: the BFF's group sends to c-storage's port on the box's group alone; the function sits in
-# ridge's subnet under that group alone; the box admits the BFF's group on that port and nothing
-# but ssh from the endpoint's group besides.
+# row 22: the BFF's group sends to c-storage's port and the activity log's writing port on the box's group
+# alone; the function sits in ridge's subnet under that group alone; the box admits the BFF's group on those
+# two ports, one rule each, and nothing but ssh from the endpoint's group besides.
 bff_network_guard() {
-  must "$1" "BffGroup does not send to c-storage's port on the box's group alone" \
-    '.Resources.BffGroup.Properties.SecurityGroupEgress == [{"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]'
+  must "$1" "BffGroup does not send to c-storage's port and the activity log's writing port on the box's group alone" \
+    '.Resources.BffGroup.Properties.SecurityGroupEgress == [{"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}},{"IpProtocol":"tcp","FromPort":{"Ref":"AuditPort"},"ToPort":{"Ref":"AuditPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]'
   must "$1" "BffGroup admits traffic in" '.Resources.BffGroup.Properties.SecurityGroupIngress == null'
   must "$1" "the function is not in ridge's subnet under BffGroup alone" \
     '.Resources.Bff.Properties.VpcConfig == {"SubnetIds":[{"Ref":"Subnet"}],"SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
   must "$1" "the box's second rule is not c-storage's port from BffGroup alone" \
     '.Resources.BoxFromBff.Properties | . == {"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"SourceSecurityGroupId":{"Fn::GetAtt":["BffGroup","GroupId"]}, "Description": .Description}'
-  must "$1" "a rule other than BoxFromBff opens the box" \
-    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::SecurityGroupIngress" or .value.Type == "AWS::EC2::SecurityGroupEgress") | .key] == ["BoxFromBff"]'
+  must "$1" "the box's third rule is not the activity log's writing port from BffGroup alone" \
+    '.Resources.BoxFromBffActivity.Properties | . == {"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":{"Ref":"AuditPort"},"ToPort":{"Ref":"AuditPort"},"SourceSecurityGroupId":{"Fn::GetAtt":["BffGroup","GroupId"]}, "Description": .Description}'
+  must "$1" "a rule other than BoxFromBff and BoxFromBffActivity opens the box" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::SecurityGroupIngress" or .value.Type == "AWS::EC2::SecurityGroupEgress") | .key] == ["BoxFromBff","BoxFromBffActivity"]'
   must "$1" "the box's own rules are not ssh from the endpoint's group alone" \
     '.Resources.BoxGroup.Properties.SecurityGroupIngress | length == 1 and .[0].FromPort == 22 and .[0].ToPort == 22 and (.[0] | keys == ["FromPort","IpProtocol","SourceSecurityGroupId","ToPort"])'
   must "$1" "BoxPort has a default, so a stack.sh that forgets it would not be refused" \
     '.Parameters.BoxPort.Type == "Number" and (.Parameters.BoxPort | has("Default") | not)'
+  must "$1" "AuditPort has a default, so a stack.sh that forgets it would not be refused" \
+    '.Parameters.AuditPort.Type == "Number" and (.Parameters.AuditPort | has("Default") | not)'
 }
 # row 25: the rewrite, the behaviours, no error pages
 rewrite_guard() {
@@ -402,11 +406,23 @@ api_log_guard() {
 }
 
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
-refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
+refuses "  a BFF group that also sends anywhere (a third egress rule) is refused" "writing port on the box's group alone" \
   bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
+refuses "  a BFF group that also sends to a third port on the box (the log's reading port) is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"tcp","FromPort":3185,"ToPort":3185,"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]')"
+refuses "  a BFF group that sends the log's port to an address range is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress[1] |= (del(.DestinationSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
+refuses "  a BFF group that lost the log's rule is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress |= .[0:1]')"
+refuses "  a log rule on the box for the whole VPC is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties |= (del(.SourceSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
+refuses "  a log rule on the box from another group is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties.SourceSecurityGroupId = {"Fn::GetAtt":["BoxGroup","GroupId"]}')"
+refuses "  a log rule on the box for c-storage's port is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties.FromPort = {"Ref":"BoxPort"}')"
 refuses "  a box rule for the whole VPC is refused" "box's second rule" \
   bff_network_guard "$(mut '.Resources.BoxFromBff.Properties |= (del(.SourceSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
-refuses "  a third rule on the box is refused" "other than BoxFromBff opens the box" \
+refuses "  a fourth rule on the box is refused" "other than BoxFromBff and BoxFromBffActivity opens the box" \
   bff_network_guard "$(mut '.Resources.BoxFromAny = {"Type":"AWS::EC2::SecurityGroupIngress","Properties":{"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":3181,"ToPort":3181,"CidrIp":"0.0.0.0/0"}}')"
 refuses "  a function in another group is refused" "ridge's subnet under BffGroup alone" \
   bff_network_guard "$(mut '.Resources.Bff.Properties.VpcConfig.SecurityGroupIds = [{"Fn::GetAtt":["BoxGroup","GroupId"]}]')"
@@ -414,6 +430,8 @@ refuses "  a function out of the subnet is refused" "ridge's subnet under BffGro
   bff_network_guard "$(mut 'del(.Resources.Bff.Properties.VpcConfig)')"
 refuses "  a port with a default is refused" "BoxPort has a default" \
   bff_network_guard "$(mut '.Parameters.BoxPort.Default = 3181')"
+refuses "  the log's port with a default is refused" "AuditPort has a default" \
+  bff_network_guard "$(mut '.Parameters.AuditPort.Default = 3184')"
 
 passes "the page rewrite, the behaviours and no error pages (row 25)" rewrite_guard "$WORK/env.json"
 check "  a path with no extension is the app's page, a file is itself, the query is kept" "$rewrite_wanted" "$(rewrite_run "$WORK/env.json")"
@@ -573,6 +591,16 @@ grep -v '^ *add_slack_params$' "$OPS_DIR/stack.sh" >"$WORK/stack-noslack.sh"
 refuses "  a stack.sh that forgets the Slack IDs is refused" "does not call add_slack_params once" slack_params_guard "$WORK/stack-noslack.sh"
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
+# audit_port_guard <stack.sh>: dies unless the env branch passes AuditPort once, from the log's unit's port, beside BoxPort
+# shellcheck disable=SC2016 # grep patterns, in single quotes
+audit_port_guard() {
+  [ "$(grep -c '^ *add_param AuditPort "\$AUDIT_PORT"$' "$1" || true)" = 1 ] || die "stack.sh does not pass AuditPort from the log's unit's port"
+  grep -B1 '^ *add_param AuditPort' "$1" | grep -q '^ *add_param BoxPort ' || die "AuditPort is not passed beside BoxPort, on both paths"
+}
+passes "stack.sh passes AuditPort from the log's unit's port, on a creation and on an update" audit_port_guard "$OPS_DIR/stack.sh"
+grep -v 'add_param AuditPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noaudit.sh"
+refuses "  a stack.sh that forgets the log's port is refused" "does not pass AuditPort" audit_port_guard "$WORK/stack-noaudit.sh"
+check "the log's port is read from its unit, and is not the store's" "3184 3181" "$AUDIT_PORT $BOX_PORT"
 
 echo "== the watch (plan 2026-11-11-slack-alarm, step 2): four alarms to one topic, the channel behind two IDs and a deny-all guardrail"
 # watch_guard <template json>: dies naming what is wrong. Read from the parsed template, never grepped.
@@ -830,6 +858,27 @@ check "  and stack.sh's guard refuses that box, naming it" "Box (AWS::EC2::Insta
 refuses "  a box shown as Conditional is not that update either" "not a Modify of Box" \
   copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
 
+# activity_update <change set>: dies unless the update is the log's one rule on the box added and the BFF's group
+# modified in place (its second egress rule), nothing else, and the guard names nothing
+activity_update() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  [ "$seen" = "BoxFromBffActivity" ] || die "the change set adds '$seen', not the log's one rule BoxFromBffActivity"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | sort | join(",")' "$1")
+  [ "$seen" = "Modify BffGroup False" ] || die "the change set's other changes are not a Modify of BffGroup in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the update on ridge for the log's port, as CloudFormation shows it, adds the rule and modifies BffGroup in place; the guard passes" \
+  activity_update "$OPS_DIR/testdata/changeset-activity.json"
+refuses "  a BFF group shown as replaced is not that update, and the guard names it" "not a Modify of BffGroup in place" \
+  activity_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "BffGroup") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-replaced.json"; echo "$WORK/cs-act-replaced.json")"
+check "  and stack.sh's guard refuses that group, naming it" "BffGroup (AWS::EC2::SecurityGroup): Modify, replacement True" \
+  "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "BffGroup") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-replaced2.json"; jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$WORK/cs-act-replaced2.json")"
+refuses "  a change set that also adds a second rule is refused" "not the log's one rule" \
+  activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"BoxFromAny","ResourceType":"AWS::EC2::SecurityGroupIngress","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-extra.json"; echo "$WORK/cs-act-extra.json")"
+refuses "  a change set that also modifies the box's group is refused" "not a Modify of BffGroup in place" \
+  activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"BoxGroup","ResourceType":"AWS::EC2::SecurityGroup","Replacement":"False","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-box.json"; echo "$WORK/cs-act-box.json")"
+
 echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
 # need <file> <ERE> <what is missing>: dies unless a line of the file matches
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
@@ -839,6 +888,32 @@ mutated() {
   echo "$WORK/$1"
 }
 need() { grep -qE -- "$2" "$1" || die "$3"; }
+# audit_unit_guard <unit>: the log's unit runs as a user of its own, its directory 0700 under umask 0077, its two ports set once
+# and apart, its key read from a root-only file and written nowhere in the unit
+audit_unit_guard() {
+  need "$1" '^DynamicUser=yes$' "the log's unit does not run as a user of its own"
+  need "$1" '^StateDirectoryMode=0700$' "the log's state directory is not 0700"
+  need "$1" '^UMask=0077$' "the log's files are not made at umask 0077"
+  need "$1" '^EnvironmentFile=/etc/audit-backbone/keys[.]env$' "the log's key is not read from /etc/audit-backbone/keys.env"
+  [ "$(grep -c '^Environment=PORT=[0-9]*$' "$1" || true)" = 1 ] || die "the log's unit does not set PORT once"
+  [ "$(grep -c '^Environment=OPEN_PORT=[0-9]*$' "$1" || true)" = 1 ] || die "the log's unit does not set OPEN_PORT once"
+  [ "$(unit_port "$1")" != "$(sed -n 's/^Environment=OPEN_PORT=//p' "$1")" ] || die "the log's unit sets one port for writing and reading"
+  ! grep -q 'ACTIVITY_WRITE_KEY\|^User=root' "$1" || die "the log's unit holds its key or runs as root"
+}
+passes "the log's unit runs as a user of its own, 0700 under umask 0077, with its ports set once and its key from a root-only file (row 3)" \
+  audit_unit_guard "$OPS_DIR/audit-backbone.service"
+refuses "  a unit that is not a user of its own is refused" "does not run as a user of its own" \
+  audit_unit_guard "$(mutated aud-nouser.service 's#^DynamicUser=yes#DynamicUser=no#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit whose directory is not 0700 is refused" "state directory is not 0700" \
+  audit_unit_guard "$(mutated aud-mode.service 's#^StateDirectoryMode=0700#StateDirectoryMode=0755#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit without the umask is refused" "umask 0077" \
+  audit_unit_guard "$(mutated aud-umask.service '/^UMask=0077/d' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit that reads its key from elsewhere is refused" "keys.env" \
+  audit_unit_guard "$(mutated aud-keyfile.service 's#/etc/audit-backbone/keys.env#/etc/audit-backbone/other.env#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit that holds the key itself is refused" "holds its key or runs as root" \
+  audit_unit_guard "$(mutated aud-key.service 's#^ExecStart=.*#& ACTIVITY_WRITE_KEY=abc#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit with one port for writing and reading is refused" "one port for writing and reading" \
+  audit_unit_guard "$(mutated aud-ports.service 's#^Environment=OPEN_PORT=3185#Environment=OPEN_PORT=3184#' "$OPS_DIR/audit-backbone.service")"
 # first_before <file> <ERE first> <ERE second> <what is wrong>: dies unless the first match comes before the second, both present
 first_before() {
   FB_A=$2 FB_B=$3 awk '$0 ~ ENVIRON["FB_A"] && !x {x=NR} $0 ~ ENVIRON["FB_B"] && !y {y=NR} END{exit !(x && y && x < y)}' "$1" || die "$4"

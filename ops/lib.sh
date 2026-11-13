@@ -516,6 +516,9 @@ unit_port() {
 
 BOX_ID=''
 BOX_PORT=$(unit_port "$OPS_DIR/c-storage.service")
+# The activity log's writing port, from its unit, the one home: the template takes it as AuditPort
+# shellcheck disable=SC2034 # read by stack.sh, which sources this file
+AUDIT_PORT=$(unit_port "$OPS_DIR/audit-backbone.service")
 # The address on the box that c-storage listens on, and that a forward and every read of /health
 # reach it at: the stack's BoxAddress, set by box_open and read by check.sh, tunnel.sh, release.sh
 # and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
