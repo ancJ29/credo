@@ -7,7 +7,7 @@
 
 ## What happened
 
-CloudFront adds a secret key to every call it passes on, and the back end's first hook refuses any call without it. The store gained a route that replaces a service's key. Each key run ends on the app's address answering through the door. Steps 1 to 6 are ticked.
+CloudFront adds a secret key to every call it passes on, and the back end's first hook refuses any call without it. The store gained a route that replaces a service's key. Each key run ends on the app's address answering through the door. Steps 1 to 7 are ticked.
 
 The review found five Mediums and seven Lows; the fix pass fixed, parked or rejected each, and the reread found every fix holding and one runbook sentence, since reworded. Rejected: the stack run before the push, since it reads its template from `main`.
 
@@ -19,7 +19,7 @@ Every check ran on this Mac; none has run on Linux (CI's Ubuntu). Nothing has ru
 
 - Ridge: your push (its deploy ends red once, at the door's key, before anything changes), the stack run adding `DistributionId`, the rerun, the check, then the key runs. <!-- FILL: do not write a result, a count, a time or a log name -->
 - Your point: while a key is replaced its calls are refused for a few seconds, and replacing the back end's service key restarts every sign-in wait and voids open operator challenges. <!-- FILL: do not write a result, a count, a time or a log name -->
-- Items 397 to 399 and 412 to 415. Step 7's prose, and items 121 and 134, come after.
+- Items 397 to 399 and 412 to 414. Step 7 made the prose true, closed items 121, 134 and 415, and re-pointed moved citations; the conventions page's go to `main` by its route.
 
 ## Evidence
 

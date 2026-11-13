@@ -250,7 +250,7 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   backups: the service note removed, the Details clause removed, the app read removed, `add_param` put back, the
   `STOPPED` print removed, the deploy wait removed, the service pre-check turned off. Not seen: a real
   change set's details for a key-only change (the fixture's shape is the reviewer's), CloudFront's own wait.
-- [ ] **7. The prose it makes false, and the recap.** `docs/architecture-detail.md#L321-L330`
+- [x] **7. The prose it makes false, and the recap.** `docs/architecture-detail.md#L321-L330`
   ("answers anyone"); the living line citations the piece moved (item 415: three lines of `docs/conventions/code.md`
   that cite a line of the back end's `server.ts`, by symbol from now on, through the conventions route; the lines
   of `docs/architecture-detail.md` that cite the back end's `env.ts` and count its variables), `docs/client-readiness.md`'s sections on the open address and the keys,

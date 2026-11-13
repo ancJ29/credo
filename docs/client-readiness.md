@@ -128,15 +128,13 @@ client's stack, whatever it is called, meets the rules below.
 
 ### Two logs record a call, both on ridge, and six wrong passwords make a name wait
 
-The API in front of the BFF answers anyone, which the template states in its own words: one
-catch-all route, one stage, 10 requests a second with bursts of 50, "The API's own address
-answers anyone; the throttle bounds what that costs"
-(the comment above `ops/env.yml`'s `Api`, the stage at
-`ApiStage` in the same file). That the address is reachable is recorded, with its history,
-as [open item 121](open-items.md): nobody decided it, it followed from the Region not offering
-Lambda function URLs, and it is parked until a client signs. Read "answers anyone" as *reachable*,
-not *unauthenticated* — a call arriving that way still meets the client header, the session and the
-permission check.
+The API in front of the BFF answered anyone until 2026-11-13: one catch-all route, one stage, 10 requests
+a second with bursts of 50. Nobody had decided it; it followed from the Region not offering Lambda function
+URLs. It now answers a call only if it carries the front door's key: CloudFront adds it to every call it passes
+on (the comment above `ops/env.yml`'s `Api`), the back end's first hook refuses any other with a 403
+(`bff/src/server.ts`'s `buildBff`), and [open item 121](open-items.md), which recorded the history, is
+closed. The throttle still bounds what a stream of refused calls costs, and a call that carries the key still
+meets the client header, the session and the permission check.
 
 What is worth adding to that item is what a guess at a password now meets. Six wrong passwords make
 a name wait: the sign-in and one's own password count a name's wrong tries together, the sixth
@@ -200,7 +198,11 @@ record to list an unfinished deletion — its only two readers are inside `clien
 ([`#L67`](../bff/src/records/clients.ts#L67), [`#L145`](../bff/src/records/clients.ts#L145)). So "deleted whole" is
 true of the door and not necessarily of the data. Open item 133.
 
-### No rotation path for any of the four keys
+### Every key is replaceable by one script
+
+*Closed 2026-11-13 ([open item 134](open-items.md)):* `ops/keys.sh <env> front-door`, `internal`, `admin` or
+`service` replaces one of the four keys in its order and reads the old value back refused; the runbook is
+[`ops/README.md`'s keys](../ops/README.md). What follows is the read as it stood, kept for its reasons.
 
 The keys are made well. c-storage's internal key and super-admin key are 32 bytes from the kernel,
 written root-only, and **a release never rewrites the file** — a release that found them changed
@@ -270,7 +272,7 @@ its steps.
    person can check.
 5. **The two touches bound to the client's code, and an unfinished deletion readable somewhere an
    operator can see it.** A small piece.
-6. **A signed origin, a key or a WAF in front of the API (item 121).** Last of the six: it buys a
+6. **A signed origin, a key or a WAF in front of the API (item 121, closed 2026-11-13 by the front door's key).** As the read stood, last of the six: it buys a
    wall, while the five above buy recoverability, which is what "a real client" actually asks for.
 
 ### What this half verified first-hand, and what it did not
@@ -480,8 +482,8 @@ care.**
   password, shown once ([`bff/src/records/clients.ts#L70-L83`](../bff/src/records/clients.ts#L70)). The demo copies'
   passwords are typed by hand into `ops/root-password.sh` and never printed.
 - **The BFF carries no test switch and no demo mode.** Its whole environment is c-storage's four
-  variables and the app's origin, every one required
-  ([`bff/src/env.ts#L4-L26`](../bff/src/env.ts#L4)).
+  variables, the app's origin and the front door's keys, every one required
+  ([`bff/src/env.ts`'s `envSchema`](../bff/src/env.ts)).
 - **The local stack's unauthenticated seed door** ([open item 18](open-items.md)) lives in the
   `scripts` package, which is not deployed; the deployed BFF is bundled from `bff/src/lambda-main.ts`.
 

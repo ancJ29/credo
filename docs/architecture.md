@@ -216,6 +216,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 
 | What is never there | What stops a breach |
 | --- | --- |
+| **No call reaches the back end but through the front door.** The API's own address answers a 403 to a call without the door's key | **a test.** The hook in `bff/src/server.ts`'s `buildBff` is the first on every route and on the not-found handler, and the case "refuses a call without the key, or with a wrong one" in `bff/src/server.test.ts` fails if a call without it is answered |
 | **No `fetch` in the back end.** It reaches storage only through the one client built for it | nothing. A reviewer reading the diff |
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |

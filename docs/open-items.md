@@ -820,7 +820,9 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
 
-## 121. The API address in front of the BFF answers anyone — the human; *partly closed* by the access log (2026-11-08): the readable half is done and live on ridge, its change set run and three lines read back (2026-11-08); the wall, a signed origin, a key or a WAF, stays *parked* until a client signs or real client data reaches a deployment (the architecture page, 2026-11-07)
+## 121. The API address in front of the BFF answers anyone — the human; `[FIXED]` by the front door's key (`docs/plans/2026-11-11-front-door-keys.md`, 2026-11-13); was *partly closed* by the access log (2026-11-08) and the wall *parked* until a client signs (the architecture page, 2026-11-07)
+
+*Closed 2026-11-13 by the front door's key:* CloudFront sends a key on every call it passes on, and the back end's first hook refuses any call without it; the address answers a 403 to anyone else. Not yet seen on ridge: that stage is the human's. As it stood:
 
 *Readable half, done in the access log (`docs/plans/2026-11-08-access-log.md`):* the one stage now has an access log, `ApiLogs` at `/aws/apigateway/credo-${Env}` for 14 days, and a guard in `ops/test.sh` (`api_log_guard`) that reddens if a later change takes it away. **It is live on ridge**: the change set ran green there at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`) and three lines were read back at 18:12 (`logs/20261108-1809-ridge-access-log-read.log`). **The wall is not done and stays open and parked as the human's**; this closure covers only the readable half, never the signed origin, the key or the WAF. The log does not name the client whose records were read (item 152). **More useful than written, measured 2026-11-08 18:11:** a call through the distribution left a line carrying one public address consistent with the caller's own, so a guessing run against a real client would leave its own address in the log, which is what this item wanted to be able to read; one run, cause open (item 157). As filed:
 
@@ -876,7 +878,9 @@ unfinished deletion is visible and can be pressed on. *Severity:* Low on ridge, 
 what makes the delete's promise in `docs/products.md` true or not for a real client. *Trigger:* a client's deletion
 seen stopping part way, or the first deletion of real records.
 
-## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; *parked* until a key must be replaced, or before a client's own stack (the client-readiness read, 2026-11-07)
+## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; `[FIXED]` for the path (`ops/keys.sh`, 2026-11-13); was *parked* until a key must be replaced (the client-readiness read, 2026-11-07)
+
+*Fixed 2026-11-13 (`docs/plans/2026-11-11-front-door-keys.md`):* `ops/keys.sh <env> front-door`, `internal`, `admin` or `service` replaces one key in its order and reads the old value back refused; the runbook is `ops/README.md`'s keys. **Still true:** the two keys the BFF needs sit in the function's environment as plain variables. Not yet run on ridge. As filed:
 
 c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
 never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L598-L601`). The
@@ -1627,6 +1631,8 @@ The admin run never touches the function and the internal key does not change in
 
 `bff/src/server.ts` replies inside the hook; `bff/src/app.ts` holds the one error handler that turns an `HttpError` into a reply. *Fix, if wanted:* throw. Check first that the not-found path and the log line (case 6) are unchanged. *Trigger:* the next edit of the hook.
 
-## 415. The piece moved living line citations that step 7 did not list: `docs/conventions/code.md` cites a line of the back end's `server.ts` three times, and `docs/architecture-detail.md` cites lines of its `env.ts` and counts "seven" and "five" variables, now eight and six — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; folded into the plan's step 7)
+## 415. The piece moved living line citations that step 7 did not list: `docs/conventions/code.md` cites a line of the back end's `server.ts` three times, and `docs/architecture-detail.md` cites lines of its `env.ts` and counts "seven" and "five" variables, now eight and six — the machine; `[FIXED]` in the plan's step 7 (2026-11-13; the review of the front door's keys, Low)
+
+*Fixed 2026-11-13:* the three lines of `code.md` cite `bff/src/server.ts`'s `buildBff`, the paragraph of `architecture-detail.md` cites `readEnv`, `envSchema` and `readLambdaEnv` and counts eight and six; `code.md`'s edit still goes by the conventions route to `main`. As filed:
 
 Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite line 11 of the back end's `server.ts`, which was `createCStorageClient({` and is `export function buildBff(` now. The paragraph of `docs/architecture-detail.md` near its line 115 cites three lines of the back end's `env.ts`. *Fix:* cite by symbol and correct the counts in step 7; `code.md` is main's convention, so its change goes by the conventions route. *Trigger:* step 7.
