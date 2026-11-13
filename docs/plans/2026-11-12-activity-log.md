@@ -281,8 +281,9 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   410 and 411 (Lows 4 to 7). Rejected: none. The pre-merge take-in waits for the landing. Gates run on this tree:
   `ops/test.sh`, `pnpm --filter @credo/scripts check`; `bash -n` and `shellcheck -x` on the three shell files were
   clean; the service's Go and Makefile did not change, so its `make check` was not run.
-- [ ] **10. The recap**, before the landing; rows 9, 13 and 16 marked not yet known. *Done when:*
+- [x] **10. The recap**, before the landing; rows 9, 13 and 16 marked not yet known. *Done when:*
   committed in `docs/recaps/` with its `docs/products.md` row. **8.**
+  *Done, 2026-11-13 (sonnet):* `docs/recaps/2026-11-13-activity-log.md`, three markers open (the push and stack run, the first entry, the memory reading). No products row changes, since nothing new is open to a partner or operator until ridge runs it.
 - [ ] 👤 **11. Your push of steps 3 to 10**, which deploys onto ridge. Your second point. *Done
   when:* the deploy's log reads the release naming both commits, the function's seven names, and the
   check `== green` with the customer's entry found. **5 to read.**
