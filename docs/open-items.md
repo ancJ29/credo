@@ -820,7 +820,9 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
 
-## 121. The API address in front of the BFF answers anyone — the human; *partly closed* by the access log (2026-11-08): the readable half is done and live on ridge, its change set run and three lines read back (2026-11-08); the wall, a signed origin, a key or a WAF, stays *parked* until a client signs or real client data reaches a deployment (the architecture page, 2026-11-07)
+## 121. The API address in front of the BFF answers anyone — the human; `[FIXED]` by the front door's key (`docs/plans/2026-11-11-front-door-keys.md`, 2026-11-13); was *partly closed* by the access log (2026-11-08) and the wall *parked* until a client signs (the architecture page, 2026-11-07)
+
+*Closed 2026-11-13 by the front door's key:* CloudFront sends a key on every call it passes on, and the back end's first hook refuses any call without it; the address answers a 403 to anyone else. Not yet seen on ridge: that stage is the human's. As it stood:
 
 *Readable half, done in the access log (`docs/plans/2026-11-08-access-log.md`):* the one stage now has an access log, `ApiLogs` at `/aws/apigateway/credo-${Env}` for 14 days, and a guard in `ops/test.sh` (`api_log_guard`) that reddens if a later change takes it away. **It is live on ridge**: the change set ran green there at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`) and three lines were read back at 18:12 (`logs/20261108-1809-ridge-access-log-read.log`). **The wall is not done and stays open and parked as the human's**; this closure covers only the readable half, never the signed origin, the key or the WAF. The log does not name the client whose records were read (item 152). **More useful than written, measured 2026-11-08 18:11:** a call through the distribution left a line carrying one public address consistent with the caller's own, so a guessing run against a real client would leave its own address in the log, which is what this item wanted to be able to read; one run, cause open (item 157). As filed:
 
@@ -876,7 +878,9 @@ unfinished deletion is visible and can be pressed on. *Severity:* Low on ridge, 
 what makes the delete's promise in `docs/products.md` true or not for a real client. *Trigger:* a client's deletion
 seen stopping part way, or the first deletion of real records.
 
-## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; *parked* until a key must be replaced, or before a client's own stack (the client-readiness read, 2026-11-07)
+## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; `[FIXED]` for the path (`ops/keys.sh`, 2026-11-13); was *parked* until a key must be replaced (the client-readiness read, 2026-11-07)
+
+*Fixed 2026-11-13 (`docs/plans/2026-11-11-front-door-keys.md`):* `ops/keys.sh <env> front-door`, `internal`, `admin` or `service` replaces one key in its order and reads the old value back refused; the runbook is `ops/README.md`'s keys. **Still true:** the two keys the BFF needs sit in the function's environment as plain variables. Not yet run on ridge. As filed:
 
 c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
 never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L598-L601`). The
@@ -1428,6 +1432,10 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
 
+## 251. The activity log's key, once it runs on ridge, has no way to be replaced — the machine, the activity log's lane; *parked* until that key reaches a deployed environment (the front door and keys plan, 2026-11-11)
+
+The front door and keys plan (`docs/plans/2026-11-11-front-door-keys.md`) makes `ops/keys.sh` replace the four keys a deployed environment holds once it is built: the store's internal and super-admin keys, the back end's service key and the front door's key. The back end's fifth, `AUDIT_KEY` (`bff/src/env.ts`'s `auditShape`), is set only by the local stack, since `ops/app.sh` sets no `AUDIT` variable; the activity log's own lane carries it to ridge. *Fix:* when that lane writes the key to the box and the function, it adds the key to `ops/keys.sh` as one more kind, in its own order (the service first, then the function), and to the function's variable list in `ops/lib.sh`. *Trigger:* the activity log running on any deployed environment.
+
 ## 301. A revert of what production runs waits for `pre-merge`'s whole check, which runs at most every two hours — the machine, by the conventions kind; *parked* until the production plan's rehearsal reads the way back's minutes (the production plan, 2026-11-12)
 
 The way back from a bad release is a revert that travels the whole path: the piece's branch,
@@ -1445,6 +1453,7 @@ ridge runs and that its run was green ([the plan](plans/2026-11-12-production.md
 decision 2). The seed workflow takes the same role for its own reading. A read-only role for ridge's
 commit would narrow it, at one more role in `ops/env.yml` and one more secret. *Trigger:* a second
 workflow that only reads ridge, or a review finding on the read job's rights.
+
 ## 283. The company's client throws synchronously from methods typed to return a Promise — the machine; `[DEFERRED]` (the storage client that serves one company's review, 2026-11-12, Low)
 
 `bff/src/records/records.ts`'s `tenantStorage` refuses a foreign key by throwing before it sends, from four methods typed to return a Promise, and `bff/src/records/records.test.ts` pins that shape (`expect(() => ...).toThrow`). Every caller today is an `await` inside an async function, so the throw becomes that function's rejection and answers 500. The one place a synchronous throw would escape is a `.map` inside `Promise.all` in `bff/src/records/clients.ts`, where removes already sent would be left with no handler; that site sweeps keys c-storage listed under the company's own prefix, so the throw cannot happen there today. No change is required. *Fix, if taken:* make the four methods `async`, keeping `within` first so nothing is sent, and change the tests to `await expect(client.getRecord(key)).rejects.toThrow(...)`. *Trigger:* a new caller that calls one of the four methods outside an `await`.
@@ -1615,6 +1624,38 @@ The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, 
 ## 395. The demo remake labels its steps one too high, and the runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
 
 `ops/demo-remake.sh` sets `STEPS=6` and calls `step` five times, so its lines read one to five of six; the ridge guide's `[n/6]` matches what prints. In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* set the count to five (or add the sixth step), and say "a run that prints". *Trigger:* the next edit of either script.
+
+
+## 397. `ops/CLAUDE.md`'s counts of scripts (OP4 "thirteen", OP5 and OP9 "10 of 10", OP6 "9 of 10") do not match the folder, and its port line named a taken port — the machine; `[DEFERRED]` (the key script, 2026-11-13, Info)
+
+The folder holds fourteen scripts that call `main_synced` (with `ops/keys.sh`) and about fifteen that print a usage line; the rules say ten and thirteen. The port line said a new script takes 3197, which `ops/demo-remake.sh` already holds; this step set `ops/keys.sh` to 3198 and the line to "3191 to 3198; next 3199". *Fix, if wanted:* drop the counts from the rules (the stance test already holds the glob) or have a test compare them.
+
+
+## 398. A service-key run restarts every sign-in wait and voids every open operator challenge, because both are derived from the service key — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Medium; the cost is now said, the separate secrets are parked)
+
+`bff/src/records/sign-in-wait.ts` (`waitKeyFrom`) names each wait's record by an HMAC under a key derived from the back end's service key, and `bff/src/calling/challenge.ts` (`createChallenges`) signs the operator's challenges under another key derived from the same one. After `ops/keys.sh <env> service`, a name that was in a wait is looked up under a new record name and gets five fresh tries, the old wait records stay in the store, and an operator mid-sign-in fails once (a challenge lives 5 minutes). The script's header, its closing line and the runbook now say so. *Fix, if wanted:* a secret of their own for the waits and for the challenges, held beside the service key on the box and in the function, so a service rekey leaves them alone; it adds one more key to the four. *Trigger:* the first production company, or a service-key replacement that happens during a sign-in wait someone cares about.
+
+## 399. `wait_store`'s failure message in `ops/keys.sh` is shared by the internal and the admin runs, and says "the function still the old" for both — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
+
+The admin run never touches the function and the internal key does not change in it, so the clause is false there. The reread added two more of the same kind. The admin run's `STOPPED` line says no call of the app is refused, but when the store does not come back after its restart (`wait_store`'s 40 seconds) every call is refused. And the service run's rekey-refusal stop says "nothing was changed" even when a rekey that timed out may have landed in the store. *Fix, if wanted:* pass the message in, or word it for both. *Trigger:* the next edit of `ops/keys.sh`.
+
+## 412. `FRONT_DOOR_KEY_FILE` is a switch carried by the shell's environment, so a shell that still exports it turns an ordinary stack run into a key run — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
+
+`ops/stack.sh` reads the variable at four places (the step count, the key, the guard, the box step). A shell that exports it with a valid file makes `ops/stack.sh env <env>` change the door's key with no function update, so every API call is 403 until `ops/app.sh` runs, and the box and GitHub steps are skipped. *Fix, if wanted:* take it as an argument (`--door-key-file <path>`; a path is no secret), which `ops/keys.sh` passes. *Trigger:* the next edit of `ops/stack.sh`, or the first time a key run is left exported in a shell.
+
+## 413. The door header's name is written out three times in TypeScript, while its sibling `CLIENT_HEADER` is declared once — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; `code.md` C2)
+
+`bff/src/server.ts`, `scripts/src/running/front.ts` and `scripts/src/stack.ts` each hold `x-front-door-key`; `shared/src/wire.ts` declares `CLIENT_HEADER` once. *Fix, if wanted:* export `FRONT_DOOR_HEADER` there and import it in the three. *Trigger:* the next edit of any of the three.
+
+## 414. The door hook writes its own 403 reply instead of throwing `HttpError(403, 'Forbidden')` for the one error handler — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; `code.md` C7)
+
+`bff/src/server.ts` replies inside the hook; `bff/src/app.ts` holds the one error handler that turns an `HttpError` into a reply. *Fix, if wanted:* throw. Check first that the not-found path and the log line (case 6) are unchanged. *Trigger:* the next edit of the hook.
+
+## 415. The piece moved living line citations that step 7 did not list: `docs/conventions/code.md` cites a line of the back end's `server.ts` three times, and `docs/architecture-detail.md` cites lines of its `env.ts` and counts "seven" and "five" variables, now eight and six — the machine; `[FIXED]` in the plan's step 7 (2026-11-13; the review of the front door's keys, Low)
+
+*Fixed 2026-11-13:* the three lines of `code.md` cite `bff/src/server.ts`'s `buildBff`, the paragraph of `architecture-detail.md` cites `readEnv`, `envSchema` and `readLambdaEnv` and counts eight and six; `code.md`'s edit still goes by the conventions route to `main`. As filed:
+
+Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite line 11 of the back end's `server.ts`, which was `createCStorageClient({` and is `export function buildBff(` now. The paragraph of `docs/architecture-detail.md` near its line 115 cites three lines of the back end's `env.ts`. *Fix:* cite by symbol and correct the counts in step 7; `code.md` is main's convention, so its change goes by the conventions route. *Trigger:* step 7.
 
 ## 400. `everything` reads pages without `pagesOf`'s check — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
 

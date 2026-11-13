@@ -1,0 +1,27 @@
+{
+  "ChangeSetName": "ops-20261113-000000",
+  "StackName": "ridge",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "Distribution",
+        "PhysicalResourceId": "E1TESTDIST",
+        "ResourceType": "AWS::CloudFront::Distribution",
+        "Replacement": "False",
+        "Scope": ["Properties"],
+        "Details": [
+          {
+            "Target": {"Attribute": "Properties", "Name": "DistributionConfig", "RequiresRecreation": "Never"},
+            "Evaluation": "Dynamic",
+            "ChangeSource": "ParameterReference",
+            "CausingEntity": "FrontDoorKey"
+          }
+        ]
+      }
+    }
+  ]
+}

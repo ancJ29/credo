@@ -47,6 +47,7 @@ func Build(internalKey, superAdminKey string, st *store.Store) *Server {
 
 	admin := auth.New(auth.SuperAdminHeader, superAdminKey)
 	s.handle("POST /api/services/register", admin.Require(unconditional(s.registerService)))
+	s.handle("POST /api/services/rekey", admin.Require(unconditional(s.rekeyService)))
 	return s
 }
 

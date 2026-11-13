@@ -95,6 +95,7 @@ var everyRoute = []route{
 	{"DELETE", "/api/records/svc/k", "", true},
 	{"GET", "/api/records/svc?prefix=k", "", true},
 	{"POST", "/api/services/register", `{"code":"new","accessKey":"k"}`, false},
+	{"POST", "/api/services/rekey", `{"code":"new","accessKey":"k2"}`, false},
 	{"GET", statusPath, "", false},
 }
 
@@ -539,6 +540,26 @@ func TestRegisteringACodeTwiceIsAConflict(t *testing.T) {
 	}
 	for _, bad := range []string{`{"code":"x"}`, `{"accessKey":"k"}`, `{"code":"","accessKey":"k"}`, `[`} {
 		call(t, s, "POST", "/api/services/register", bad, http.StatusBadRequest)
+	}
+}
+
+// A rekey replaces the key: the old one is refused, the new one opens the records that were there;
+// an unknown code is a 404 and a body without both strings a 400. The admin key is refused when
+// missing or wrong by TestEveryServiceRouteRefusesAMissingOrWrongAdminKey.
+func TestARekeyReplacesTheKeyAndKeepsTheRecords(t *testing.T) {
+	s, _ := build(t)
+	call(t, s, "POST", "/api/records/svc", `{"key":"k","data":{"a":1}}`, http.StatusCreated)
+	if got := call(t, s, "POST", "/api/services/rekey", `{"code":"svc","accessKey":"fresh-key"}`, http.StatusOK); got != `{"code":"svc"}` {
+		t.Fatalf("rekey = %s", got)
+	}
+	for key, want := range map[string]int{accessKey: http.StatusForbidden, "fresh-key": http.StatusOK} {
+		if res := serve(s, request("GET", "/api/records/svc/k", "", keys{internalKey, "", key})); res.Code != want {
+			t.Fatalf("a read with %s = %d, want %d", key, res.Code, want)
+		}
+	}
+	call(t, s, "POST", "/api/services/rekey", `{"code":"nobody","accessKey":"x"}`, http.StatusNotFound)
+	for _, bad := range []string{`{"code":"svc"}`, `{"accessKey":"k"}`, `{"code":"","accessKey":"k"}`, `[`} {
+		call(t, s, "POST", "/api/services/rekey", bad, http.StatusBadRequest)
 	}
 }
 

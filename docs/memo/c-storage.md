@@ -105,13 +105,14 @@ backup included, holds no service key. The internal and super-admin keys are not
   random. Registering takes any non-empty key, so no gate refuses a short one, which a copy of the
   file would then give up to guessing. *Trigger to revisit:* the first access key a person
   chooses.
-- *Hazard no gate catches:* a lost access key cannot be read back, and nothing changes or removes
-  a service. Registering a code a second time answers 409 and keeps the first key
-  (`TestRegisteringACodeTwiceIsAConflict`), so a lost key strands its records: the way out is a new
-  service code, with the records carried over from the file by hand. A caller that reads the 409
-  as "registered" learns that the code exists, not that its key is the one stored; a mismatch
-  first shows as every record call answering 403. *Trigger to revisit:* the first lost or leaked
-  key, when a route that replaces a key becomes a decision of its own, behind the admin key.
+- *The promise:* a lost or leaked service key is replaced, not worked around. `POST
+  /api/services/rekey`, behind the super-admin key, replaces a registered service's key hash: the
+  old key is refused from the answer on, the records stay, an unknown code answers 404
+  (`TestARekeyReplacesTheKeyAndKeepsTheRecords`). Registering a code a second time still answers
+  409 and keeps the first key (`TestRegisteringACodeTwiceIsAConflict`), and a caller that reads the
+  409 as "registered" learns that the code exists, not that its key is the one stored; a mismatch
+  first shows as every record call answering 403, and the way out is the rekey. A key cannot be read
+  back, and a rekey is the only way it changes.
 
 ## A write on a moved record is refused
 

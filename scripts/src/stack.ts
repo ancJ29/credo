@@ -116,6 +116,8 @@ export function bffEnvironment(settings: {
   audit: { url: string; key: string };
   /** The address the operator opens: the front's, which every passkey is checked against. */
   appOrigin: string;
+  /** The key the front adds to each call; the BFF refuses a call without it. */
+  frontDoorKey: string;
 }) {
   return {
     PORT: String(settings.port),
@@ -127,6 +129,7 @@ export function bffEnvironment(settings: {
     AUDIT_URL: settings.audit.url,
     AUDIT_KEY: settings.audit.key,
     APP_ORIGIN: settings.appOrigin,
+    FRONT_DOOR_KEYS: settings.frontDoorKey,
   };
 }
 
@@ -238,7 +241,9 @@ export async function startStack(
     // pages are served from the start.
     const bffPort = options.ports?.bff ?? (await freePort());
     const bffUrl = `http://127.0.0.1:${bffPort}`;
-    const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
+    // The door's key is made a run and held by the front and the BFF alone: it is not in the facts file.
+    const frontDoorKey = randomBytes(32).toString('hex');
+    const front = createFront({ staticDir: artifacts.uiDir, bffUrl, frontDoorKey });
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
     const { port: frontPort } = await listening(front, options.ports?.front);
     const appOrigin = `http://localhost:${frontPort}`;
@@ -253,6 +258,7 @@ export async function startStack(
           service,
           audit: { url: auditUrl, key: auditKey },
           appOrigin,
+          frontDoorKey,
         }),
         logFile: join(dataDir, 'bff.log'),
       },
@@ -260,6 +266,7 @@ export async function startStack(
     stops.unshift(bff.stop);
     await waitUntilUp(`${bffUrl}/api/config`, bff, 'the BFF', undefined, {
       'x-client-code': DEMO_CODE,
+      'x-front-door-key': frontDoorKey,
     });
 
     const facts: StackFacts = {

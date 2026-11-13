@@ -18,7 +18,7 @@ import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/ap
 import { vietnamToday } from './demo/days';
 import { readLedger } from './demo/ledger';
 import { allCopies, copyOfCode, type MappedCopy } from './demo/mapping';
-import { ensureService } from './register';
+import { ensureService, rekeyService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
 export type RidgeIo = {
@@ -206,11 +206,12 @@ function demoCopy(code: string) {
 }
 
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
+  'usage: register | rekey (the new key on stdin) | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
- * the BFF's service registered with the super-admin key, the operator's account, and a client made
+ * the BFF's service registered with the super-admin key (and `rekey`, which replaces its key by the
+ * new one on the standard input, the same key), the operator's account, and a client made
  * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
  * (the check's client, with the keys the create used; it prints how many records went), and
  * `clear-checks` deletes every check client older than {@link CHECK_AGE_HOURS}, by the age in its
@@ -263,6 +264,18 @@ export async function runRidge(
       const superAdminKey = env['X_SUPER_ADMIN_KEY'];
       if (!superAdminKey) throw new Error('invalid environment: X_SUPER_ADMIN_KEY');
       io.out(`service ${await ensureService({ ...connection, superAdminKey }, service)}`);
+      return 0;
+    }
+
+    if (command === 'rekey') {
+      const superAdminKey = env['X_SUPER_ADMIN_KEY'];
+      if (!superAdminKey) throw new Error('invalid environment: X_SUPER_ADMIN_KEY');
+      const accessKey = ((await io.stdin?.()) ?? '').split('\n', 1).join('');
+      if (!accessKey)
+        throw new Refused('rekey: the new key is read from the standard input, one line');
+      io.out(
+        `service ${await rekeyService({ ...connection, superAdminKey }, { code: service.code, accessKey })}`,
+      );
       return 0;
     }
 

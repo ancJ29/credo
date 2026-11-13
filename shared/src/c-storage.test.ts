@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { CStorageError, createCStorageClient, registerCStorageService } from './c-storage';
+import {
+  CStorageError,
+  createCStorageClient,
+  registerCStorageService,
+  rekeyCStorageService,
+} from './c-storage';
 
 type Call = { url: string; init: RequestInit };
 
@@ -212,6 +217,26 @@ describe('registering a service', () => {
     const service = { code: 's', accessKey: 'k' };
     expect(await registerCStorageService(connection(call), service)).toBe('exists');
     await expect(registerCStorageService(connection(call), service)).rejects.toMatchObject({
+      status: 401,
+    });
+  });
+
+  it('sends the super-admin key and the new key, never an access key header', async () => {
+    const { calls, call } = fake(new Response('{}', { status: 200 }));
+    expect(await rekeyCStorageService(connection(call), { code: 's', accessKey: 'k2' })).toBe(
+      'rekeyed',
+    );
+    expect(calls[0]?.url).toBe('http://cs.test/api/services/rekey');
+    expect(headersOf(calls[0]).get('x-super-admin-key')).toBe('admin-key');
+    expect(headersOf(calls[0]).get('x-access-key')).toBeNull();
+    expect(calls[0]?.init.body).toBe('{"code":"s","accessKey":"k2"}');
+  });
+
+  it('reads an unknown code by its 404 status, and fails on any other', async () => {
+    const { call } = fake(new Response('{}', { status: 404 }), new Response('{}', { status: 401 }));
+    const service = { code: 's', accessKey: 'k2' };
+    expect(await rekeyCStorageService(connection(call), service)).toBe('unknown');
+    await expect(rekeyCStorageService(connection(call), service)).rejects.toMatchObject({
       status: 401,
     });
   });

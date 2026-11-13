@@ -201,3 +201,22 @@ export async function registerCStorageService(
   if (response.status === 409) return 'exists';
   throw refused(response, what);
 }
+
+/** Replaces a registered service's key. It takes the super-admin key like the registration, and
+ * the new key as the service will hold it; the old key is refused from the answer on and the
+ * records stay. An unknown code is 'unknown' by its 404 status. */
+export async function rekeyCStorageService(
+  connection: Connection & { superAdminKey: string },
+  service: { code: string; accessKey: string },
+): Promise<'rekeyed' | 'unknown'> {
+  const what = 'POST /api/services/rekey';
+  const response = await send(
+    connection,
+    '/api/services/rekey',
+    { method: 'POST', headers: { 'x-super-admin-key': connection.superAdminKey }, body: service },
+    what,
+  );
+  if (response.status === 200) return 'rekeyed';
+  if (response.status === 404) return 'unknown';
+  throw refused(response, what);
+}
