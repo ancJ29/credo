@@ -1631,3 +1631,16 @@ Three of the review's list that the fix pass left. (1) The check for node and `p
 ## 403. `docs/client-readiness.md` holds 14 line citations to `bff/src/routes/orders.ts` that were already wrong — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Info, pre-existing)
 
 The page (a living document) cites `bff/src/routes/orders.ts#L218` to `#L483`; read at their targets at the merge base they were already wrong, and the piece's two added lines in `priced` move them by two more. *Fix, if wanted:* re-derive the 14 citations, as symbols where one exists. *Trigger:* the next change to that page.
+
+## 404. The stand-in's check of the live file looks at the link's target, not at the stand-in box's own path — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+`ops/test.sh` checks that the live file is there at `$S/db/c-storage.db`, the target of the box's symlink, so a wrapper that moved the link itself would not show. *Fix, if wanted:* check `$BOX/records/c-storage.db` too, as a link still pointing at that target. *Trigger:* the next edit of the stand-in section.
+
+## 405. The restored file's path is worked out in two places — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+`ops/company-restore.sh` builds `restored-c<stamp>.db` itself before the restore, and `box_restore` in `ops/lib.sh` builds the same name on the box. The wrapper checks the answer against its own, so a drift stops the run, but the name has two homes. *Fix, if wanted:* one helper in `ops/lib.sh` that both read. *Trigger:* the next change to the name.
+
+## 406. No test reaches the wrapper's 30-second line — the machine; `[DEFERRED]` (the reread of the store pages fix pass, 2026-11-13, Low)
+
+The stand-in's copy ends in seconds, and the slow variants are stopped before 30 seconds, so the "still copying" line is read by no test. *Fix, if wanted:* a variant whose node waits past 30 seconds and a count of the line. *Trigger:* the first real run that shows the line wrong.
+

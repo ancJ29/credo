@@ -138,7 +138,7 @@ got=$(box_restore - 0 "c$stamp") || die "the restore failed on the box; it touch
 echo "restored: $RESTORED_FILE"
 
 step "a second c-storage on the restored file, for this run alone"
-SERVE_ENDS=$(date -r $(($(date +%s) + SERVE_SECONDS + 60)) '+%H:%M')
+SERVE_ENDS=$(clock $(($(date +%s) + SERVE_SECONDS + 60)))
 box_serve_restored "$RESTORED_FILE" "$BOX_RESTORED_PORT" "$SERVE_SECONDS" || die "the second c-storage did not start"
 box_forward "$RESTORED_PORT" "$BOX_RESTORED_PORT" || die "the second forward could not be opened"
 curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$RESTORED_PORT/health" || die "the second c-storage does not answer through its forward"
@@ -152,7 +152,7 @@ drill put "$NEIGHBOUR"
 expect "the named copy holds its drill record" yes "$(drill has "$CODE")"
 
 step "the named copy copied back from the restored file"
-copy_ends=$(date -r $(($(date +%s) + SERVE_SECONDS)) '+%H:%M')
+copy_ends=$(clock $(($(date +%s) + SERVE_SECONDS)))
 echo "the copy's three whole-company walks over the tunnel may take up to $((SERVE_SECONDS / 60)) minutes (the second c-storage ends by itself then), until $copy_ends; a line follows every 30 seconds"
 heartbeat "$copy_ends" &
 HEARTBEAT_PID=$!
