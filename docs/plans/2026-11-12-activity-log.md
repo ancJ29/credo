@@ -252,6 +252,22 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   `Makefile` first lines, the root `CLAUDE.md`'s gate table (a seventh command, CI's `audit` job),
   `ops/README.md`'s release steps. *Done when:* the citation test exits 0 and `git grep -nE
   '/Users/|~/'` finds nothing. **8.**
+  *Done, 2026-11-13 (sonnet):* the scripts package's gate (prettier and the citation test) at exit 0 on the
+  committed tree, and the diff adds no line matching `/Users/|~/` (the tree's own matches, a Go comment's
+  `~/Library/Caches` and four walk snapshots, were there before and are not this step's). Prose only; `ops/test.sh` was
+  not run, since the only `ops/` file changed is its README and no guard reads it. Built to the tree, not the
+  step's list: the box is chosen, not "open", so the activity log page's title, its "Nothing ships it" paragraph
+  (now "How it ships", from the release, the unit, the deploy and the check as they stand) and its "Where it runs"
+  heading and paragraph were rewritten, the last to say the plan put the log on the same box with its memory
+  still to be read; the log's file is said not yet copied (step 12). Said throughout as not yet run on ridge: the
+  release naming the commit on both reads, the customer's entry found, the memory figures (cases 9, 13 and 16).
+  Also changed beyond the list, the same falsehood on the same pages: `docs/architecture.md`'s picture, key and
+  two other lines, `docs/architecture-detail.md`'s row, `docs/README.md`'s two rows (one says "seven commands"), the
+  service's `README.md` and `Makefile` lines. The root `CLAUDE.md` gate table gains a row 7 (`make check` in the
+  service, CI's `audit` job), its first lines now saying seven commands. `ops/README.md` gains the log's half in
+  the release by hand (its stop messages), the deploy job's binary, path list and `needs`. Not touched: the
+  gate row 3 (ShellCheck lists only c-storage's scripts; the service's four scripts are not in it, a gap
+  that predates this step and is for the review).
 - [ ] **8. One review**, on a model other than the author's, with the whole check: code, tests and
   this table (QA's rule 5). *Done when:* a verdict line, each finding with its line. **20.**
 - [ ] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, and

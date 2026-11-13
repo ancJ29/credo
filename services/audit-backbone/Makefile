@@ -1,4 +1,4 @@
-# The project's gate and its build. Nothing here calls `make dist` yet (no ship path for this service).
+# The project's gate and its build. `ops/release.sh` calls `make check` and `make dist` for the box, and the deploy job builds the same target.
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := check

@@ -1,11 +1,11 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: six commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
 ## The gate
 
-Six commands cover this repository, and this is the whole list; which of them a step runs is
+Seven commands cover this repository, and this is the whole list; which of them a step runs is
 [QA](docs/conventions/qa.md#the-rules)'s rule 6. Each is run from the repository root unless its row
 says otherwise.
 
@@ -17,6 +17,7 @@ says otherwise.
 | 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml`'s `ops` job, step `name: cfn-lint`, cfn-lint 1.46.0 |
 | 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml`'s `ops` job, step `name: The guards` |
 | 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml`'s `e2e` job, step `run: bash scripts/e2e.sh` |
+| 7 | `make check`, in `services/audit-backbone/` | gofmt, `go vet`, the race tests at 100 % outside `cmd/server`, and the box's arm64 cross-compile (`services/audit-backbone/Makefile`) | `ci.yml`'s `audit` job, step `name: make check` |
 
 A piece's own check at a commit is its package's `pnpm --filter @credo/<pkg> check` plus row 1's
 citation test run alone, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, about

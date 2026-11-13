@@ -1,5 +1,5 @@
 # audit-backbone
-Stack: Go 1.25 · Gate: make check · Ship: none yet
+Stack: Go 1.25 · Gate: make check · Ship: `ops/release.sh` to the box beside c-storage, and the deploy job (not yet run on ridge)
 
 The activity log: one Go binary, one SQLite file, a keyed writer and a
 token-gated reader on two loopback ports. Repo-wide rules: [`CLAUDE.md`](../../CLAUDE.md).
@@ -110,8 +110,9 @@ minted here, once, and never renumbered.
 **The back end calls this package, in the local copy only.** One hook in `bff/src/app.ts` sends an
 entry for every change a person makes to the keyed write, under a 600 ms bound, and a failure is
 logged and never refuses the change; `pnpm local` starts the service beside c-storage and prints an
-entry's record with `pnpm local activity`. `ops/` ships nothing of it, and the CI workflow has no job
-for it (c-storage's `make check` job is the model), so ridge runs the back end without it.
+entry's record with `pnpm local activity`. `ops/release.sh` ships it to the box as its own unit after c-storage's
+half, and the CI workflow gates it in an `audit` job (`make check`), which the deploy waits on; ridge has not yet
+run a release that carries it.
 `pnpm check` does not run this package: the root `.prettierignore` and `knip.json` leave it out, as
 they do `services/c-storage/`. The decisions are [the activity log](../../docs/activity-log.md).
 

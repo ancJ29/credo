@@ -3,7 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
+A push to `main` releases c-storage and the activity log, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -161,7 +161,14 @@ Only while GitHub Actions is down: its concurrency group cannot see a run made h
    - **/health answered ...:** the new binary is installed and c-storage did not name it. Read the
      journal lines the log prints, then revert the bad commit on `main` and release `main`'s tip
      to put the last good tree back.
-2. Read the log's last lines: `released <sha>`.
+   - **the activity log's half stopped:** the message begins `c-storage <sha> is released and runs; the
+     activity log's half stopped` and names the step: its gate or build failed (by hand the release
+     builds it with `make check` then `make dist`; the job hands it the binary it built, and a job that
+     names none is refused), the binary arrived with a different checksum than was sent, the key could not
+     be made, the unit could not be installed or started, or the log did not name <sha> on its `/health`.
+     c-storage is as it was; read the journal lines the log prints, fix forward, and release again. The
+     log's write key is made by the first release and never rewritten by a later one.
+2. Read the log's last lines: `released <sha>`, printed only after c-storage and the activity log both named the commit.
 
 c-storage listens on the box's private address, the stack's `BoxAddress`, and on no other interface.
 Each release writes `/etc/c-storage/listen.env` from it and the unit reads that file. The first
@@ -172,12 +179,12 @@ old loopback listener does not answer: the log then finds no running commit, and
 
 ## The deploy job
 
-The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
-`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `e2e`,
+The human's push to `main` that touches `services/c-storage/`, `services/audit-backbone/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
+`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `audit`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
 `AWS_ROLE_ARN`), then runs `ops/release.sh ridge`, `ops/app.sh ridge` and `ops/check.sh ridge` over the
-tunnel. It changes no stack: a template change stays your change set. After a change set on ridge,
+tunnel. It also builds the activity log's binary from the same commit and names it to the release (`RELEASE_AUDIT_BINARY`), and waits on the `audit` job as it does on `check`. It changes no stack: a template change stays your change set. After a change set on ridge,
 re-run the latest deploy: the template's `Bff` is a stub with no environment, and a change to it may
 put that back (the BFF then answers 503 until the next deploy).
 

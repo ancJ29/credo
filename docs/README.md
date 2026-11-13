@@ -80,10 +80,10 @@ reach us" faster than reading anything.
 | Page | It answers | For |
 | --- | --- | --- |
 | [`README.md`](../README.md) | what credo is, and three ways to run it on this machine | anyone |
-| [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's six commands, and the facts the code does not show | the machine |
+| [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's seven commands, and the facts the code does not show | the machine |
 | [`docs/architecture.md`](architecture.md) | **how the system is put together** — one sentence, the diagram, one request walked end to end, the nine parts and what each one is for, and what is never there. Opened by anyone who has just arrived and wants the whole system | both |
 | [`docs/architecture-detail.md`](architecture-detail.md) | the detail behind that page: the codemap of where each thing lives, the data, who may do what, how it reaches a machine, how it is checked, and where these two pages' facts came from. Opened by whoever is about to change the code | the machine |
-| [`docs/activity-log.md`](activity-log.md) | the activity log, **built in the back end and not yet on ridge**: what `services/audit-backbone/` is, the path an entry takes, the two prerequisites, what is guaranteed and what cannot be | the machine |
+| [`docs/activity-log.md`](activity-log.md) | the activity log, **built in the back end and shipped to the box, not yet run on ridge**: what `services/audit-backbone/` is, the path an entry takes, the two prerequisites, what is guaranteed and what cannot be | the machine |
 | [`docs/ridge-guide.md`](ridge-guide.md) | how to deploy, check, take down and bring back ridge, make its operator and demo copies, by copy-and-paste blocks | the human |
 | [`docs/products.md`](products.md) | what each part does for whom, and how far each has got | the human |
 | [`docs/client-readiness.md`](client-readiness.md) | can we take a real client: what would happen to their data and access, and what the office cannot do yet | the human |
