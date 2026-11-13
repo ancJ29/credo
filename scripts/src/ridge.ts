@@ -7,6 +7,7 @@ import {
   clientCodeSchema,
   createCStorageClient,
   joinLinkPath,
+  normaliseClientCode,
   normaliseSignInName,
   recordKeys,
   sameOperatorName,
@@ -16,7 +17,7 @@ import { OPERATOR_NAME } from '@credo/shared/demo';
 import { applyAll, applyCopy, DAYS_PER_ROUND, MAX_DAYS_PER_RUN } from './demo/apply';
 import { vietnamToday } from './demo/days';
 import { readLedger } from './demo/ledger';
-import { allCopies, type MappedCopy } from './demo/mapping';
+import { allCopies, copyOfCode, type MappedCopy } from './demo/mapping';
 import { ensureService } from './register';
 import { checkRootPassword, passwordFrom, Refused, setRootPasswords } from './root-password';
 
@@ -193,8 +194,19 @@ const storageNames = {
   SERVICE_ACCESS_KEY: 'SERVICE_ACCESS_KEY',
 };
 
+/** The record ops/company-restore.sh writes into a demo copy to tell it restored from its neighbour,
+ * under the copy's own prefix, so the copy removes it. */
+const DRILL_RECORD = 'drill-restore';
+
+/** The code as the product takes it, when it is one of the demo copies; else a refusal. */
+function demoCopy(code: string) {
+  const normalised = normaliseClientCode(code);
+  if (!copyOfCode(normalised)) throw new Refused(`${code} is not one of the demo copies`);
+  return normalised;
+}
+
 const USAGE =
-  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | copy-company <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
+  'usage: register | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
@@ -227,6 +239,14 @@ export async function runRidge(
     if (command === 'remake' && rest[0] === '--check') {
       partnerPasswords((await io.stdin?.()) ?? '');
       io.out('checked: every partner has a password that follows the rule');
+      return 0;
+    }
+    if (command === 'copy-company' && rest[0] === '--check') {
+      const [code, ...extra] = rest.slice(1);
+      if (!code || extra.length > 0) throw new Refused(USAGE);
+      const demo = demoCopy(code);
+      const neighbour = allCopies().find((copy) => copy.code !== demo)!;
+      io.out(`checked: ${demo} is a demo copy, ${neighbour.code} is its neighbour for the drill`);
       return 0;
     }
     const storage = readStorageEnv(env);
@@ -424,6 +444,20 @@ export async function runRidge(
       }
       if ((await line('after')) !== 0)
         throw new Error(`${code}: the target differs after the copy`);
+      return 0;
+    }
+
+    if (command === 'drill-record') {
+      const [what, code, ...extra] = rest;
+      if (!['put', 'has', 'remove'].includes(what ?? '') || !code || extra.length > 0)
+        throw new Refused(USAGE);
+      const store = client();
+      const held = await store.getRecord(recordKeys.client(demoCopy(code)));
+      if (!held) throw new Refused(`${code} is not on this service`);
+      const key = `${recordKeys.tenant(storedClientSchema.parse(held.data).id).all}${DRILL_RECORD}`;
+      if (what === 'put') await store.putRecord(key, { drill: true });
+      if (what === 'remove') await store.removeRecord(key);
+      io.out(what === 'has' ? ((await store.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
       return 0;
     }
 

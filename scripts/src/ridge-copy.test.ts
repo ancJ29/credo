@@ -6,6 +6,7 @@ import { buildCStorage } from '@credo/bff/tests/build';
 import { freshTenant, type RunningCStorage, startCStorage } from '@credo/bff/tests/c-storage';
 import { recordKeys, type CStorageClient } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { allCopies } from './demo/mapping';
 import { runRidge } from './ridge';
 
 let from: RunningCStorage;
@@ -186,5 +187,69 @@ describe('ridge copy-company', () => {
     expect(red.out.at(-1)).toBe(
       'copy-two after: the source holds 5 records, 1 differ on the target',
     );
+  });
+
+  it('checks a demo copy without a connection, naming the neighbour the drill writes beside', async () => {
+    const { run } = await pair();
+    const [first, second] = allCopies();
+    const none = {};
+    const lines = { out: [] as string[], err: [] as string[] };
+    const status = await runRidge(['copy-company', '--check', first.code], none, {
+      out: (line) => lines.out.push(line),
+      show: () => undefined,
+      err: (line) => lines.err.push(line),
+    });
+    expect({ status, ...lines }).toEqual({
+      status: 0,
+      out: [`checked: ${first.code} is a demo copy, ${second.code} is its neighbour for the drill`],
+      err: [],
+    });
+    const foreign = await run(['copy-company', '--check', 'some-real-client']);
+    expect(foreign).toEqual({
+      status: 2,
+      out: [],
+      err: ['error: some-real-client is not one of the demo copies'],
+    });
+    for (const argv of [
+      ['copy-company', '--check'],
+      ['copy-company', '--check', first.code, second.code],
+    ]) {
+      expect((await run(argv)).status).toBe(2);
+    }
+  });
+
+  it('writes, finds and removes the drill record of a demo copy, and nothing of any other', async () => {
+    const { target, run } = await pair();
+    const [first] = allCopies();
+    const made = await createClient(target.client, {
+      code: first.code,
+      name: first.company,
+      madeAt: Date.now(),
+    });
+    if (made === 'taken') throw new Error('taken');
+    // The drill's run reads and writes the target alone: the source variables are not asked for.
+    const env = { ...envOf(target, target) };
+    const drill = async (what: string, code = first.code) =>
+      run(['drill-record', what, code], { env });
+    expect((await drill('has')).out).toEqual(['no']);
+    expect(await drill('put')).toMatchObject({ status: 0, out: [`put ${first.code}`] });
+    expect((await drill('has')).out).toEqual(['yes']);
+    expect(await held(target.client, made.id)).toContainEqual(
+      expect.stringContaining(`${recordKeys.tenant(made.id).all}drill-restore@`),
+    );
+    expect(await drill('remove')).toMatchObject({ status: 0, out: [`remove ${first.code}`] });
+    expect((await drill('has')).out).toEqual(['no']);
+    expect(await drill('has', 'some-real-client')).toMatchObject({
+      status: 2,
+      err: ['error: some-real-client is not one of the demo copies'],
+    });
+    expect(await drill('has', allCopies()[1].code)).toMatchObject({
+      status: 2,
+      err: [`error: ${allCopies()[1].code} is not on this service`],
+    });
+    expect((await drill('sleep')).status).toBe(2);
+    expect((await run(['drill-record', 'has'], { env })).status).toBe(2);
+    expect((await run(['drill-record'], { env })).status).toBe(2);
+    expect((await run(['drill-record', 'has', first.code, 'x'], { env })).status).toBe(2);
   });
 });

@@ -3197,6 +3197,78 @@ check "a password that reached the log makes the run red, naming it, and the exi
   "$RC $(rp_lines '^RED  the new password is in this log: redact it in this log, and run again with another password')"
 unset ROOT_PASSWORD_LOCAL_PORT
 
+echo "== ops/company-restore.sh (row 16: ridge's demo copies alone, every refusal before the box is touched; the second c-storage ends by itself and at the run's end; nothing live is written by the restore) (docs/plans/2026-11-11-store-pages-copy.md)"
+# The box's helpers and the script that calls them, read as text, as the restore's are.
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+serve_guard() { # <lib.sh> <company-restore.sh>
+  local b=$WORK/serve-block.sh
+  sed -n '/^box_serve_restored() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_serve_restored"
+  need "$b" 'setsid timeout "\$secs" /opt/c-storage/c-storage' "the second c-storage is not started under a timeout of its own"
+  need "$b" '^case \$file in "\$mount"/restored-\*\.db\) ;; \*\) echo' "the second c-storage serves a file that is not a restored one"
+  need "$b" 'DB_PATH=\$file' "the second c-storage is not pointed at the restored file"
+  need "$b" 'LISTEN_ADDR=127\.0\.0\.1' "the second c-storage does not bind the loopback"
+  [ "$(grep -cE 'systemctl|c-storage\.db|/var/lib/c-storage' "$b")" = 0 ] || die "the second c-storage's start touches the live c-storage or its file"
+  need "$2" '^  if \[ -n "\$RESTORED_FILE" \]; then box_stop_restored "\$RESTORED_FILE" \|\| true; fi$' "the run does not end the second c-storage and remove the restored file whatever its end"
+  need "$2" '^cleanup_extra\(\) \{$' "the run has no cleanup at its end"
+}
+passes "the second c-storage starts under its own timeout, on a restored file, on the loopback, touching nothing live; the run ends it at its end (row 16)" \
+  serve_guard "$OPS_DIR/lib.sh" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage without a timeout of its own is refused" "under a timeout of its own" \
+  serve_guard "$(mutated lib-notimeout.sh 's#setsid timeout "$secs" /opt#setsid /opt#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on a file that is not a restored one is refused" "not a restored one" \
+  serve_guard "$(mutated lib-anyfile.sh 's#^case $file in "$mount"/restored-\*\.db) ;; \*) echo.*#true#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on the live file is refused" "pointed at the restored file" \
+  serve_guard "$(mutated lib-livedb.sh '/^box_serve_restored/,/^REMOTE$/s#DB_PATH=$file#DB_PATH=$mount/c-storage.db#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that does not end the second c-storage at its end is refused" "whatever its end" \
+  serve_guard "$OPS_DIR/lib.sh" "$(mutated cr-nocleanup.sh 's#box_stop_restored "$RESTORED_FILE" || true#true#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+restore_call_guard() { # <company-restore.sh>
+  need "$1" '^got=\$\(box_restore - 0 "c\$stamp"\)' "the run restores anything but the newest copy to a new file"
+  first_before "$1" '^refuse_real ' '^box_open ' "the box is opened before the environment is refused"
+  first_before "$1" '^checked=\$\(ridge_cli copy-company --check' '^box_open ' "the box is opened before the code is checked"
+  first_before "$1" '^box_restore|^got=\$\(box_restore' '^WRITTEN=1$' "a record is written before the restore"
+}
+passes "the run restores the newest copy to a new file, and refuses the environment and the code before it opens the box (row 16)" \
+  restore_call_guard "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that restores onto the live file is refused" "anything but the newest copy to a new file" \
+  restore_call_guard "$(mutated cr-live.sh 's#box_restore - 0 "c$stamp"#box_restore - 1 "c$stamp"#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that opens the box before refusing the environment is refused" "box is opened before the environment" \
+  restore_call_guard "$(mutated cr-order.sh '/^refuse_real /d' "$OPS_DIR/company-restore.sh")"
+
+cr_calls() { { cat "$S/aws.calls" "$S/ssh.calls" 2>/dev/null || true; } | wc -l | tr -d ' '; }
+cr_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+crun() { # <args...>: company-restore.sh whole in the clone, its transcript in the run's out file
+  e2e_run company-restore.sh "$@"
+}
+cr_refused() { # <name> <text the refusal names>: RC 2, the line, and no aws or ssh call made since cr_before
+  check "$1" "2 1 0 1" "$RC $(cr_lines "^== refused: .*$2") $(($(cr_calls) - cr_before)) $(cr_lines '^== exit 2$')"
+}
+e2e_fresh crestore
+cr_before=$(cr_calls)
+export OPS_LOG_DIR=$E2E/logs-cr-other-env
+crun other "$c1"
+cr_refused "another environment than ridge is refused before any aws call, naming why" "company-restore.sh holds ridge's demo copies alone"
+export OPS_LOG_DIR=$E2E/logs-cr-foreign
+crun ridge some-real-client
+cr_refused "a code outside the six demo copies is refused before the box is opened" "some-real-client is refused"
+check "  and the log names it" 1 "$(cr_lines 'some-real-client is not one of the demo copies')"
+export OPS_LOG_DIR=$E2E/logs-cr-ops
+printf '# touched\n' >>"$E2E/repo/ops/README.md"
+crun ridge "$c1"
+git -C "$E2E/repo" checkout -q -- ops/README.md
+cr_refused "an ops/ that is not origin/main's is refused before the box is opened" "differs from origin/main's"
+rc=0
+out=$(bash "$E2E/repo/ops/company-restore.sh" ridge 2>&1) || rc=$?
+check "a missing code prints the usage and exits 2" "2 usage: ops/company-restore.sh ridge <code>" "$rc $out"
+check "no refusal above touched the box" 0 "$(($(cr_calls) - cr_before))"
+
 echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"
 build "$WORK/server-newer" "$desc_newer"
 # seed_copy: makes the first mapped copy as the operator's page would, through a c-storage on this
