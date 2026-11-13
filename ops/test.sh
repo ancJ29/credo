@@ -1678,7 +1678,7 @@ refuses "  a build step that does not stamp the commit is refused (row 39)" "CRE
 # app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24. One job a package
 # (every package pnpm-workspace.yaml lists, so none is dropped), each running that package's own check under a
 # 40-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
-job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
+job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1"; }
 app_guards() {
   local pkgs p block missing='' want_needs='' n24 n26 chk have
   pkgs=$(sed -n 's/^  - //p' "$REPO_DIR/pnpm-workspace.yaml")
@@ -1690,12 +1690,13 @@ app_guards() {
     need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[app-$p: $1] "; }
     need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
     need "    timeout-minutes: 40"
-    need "          node-version: 26"
+    need "          node-version-file: .node-version"
     need "    runs-on: ubuntu-24.04"
     need "        run: pnpm install --frozen-lockfile"
     grep -q '^    if:' <<<"$block" && missing="${missing}[app-$p: no if of its own] "
-    # A step-level if or shell could skip the gate step or change how its exit is read, and the job would still be green.
-    grep -qE '^        (if|shell):' <<<"$block" && missing="${missing}[app-$p: no step-level if or shell] "
+    # A step-level if or shell could skip the gate step or change how its exit is read, and the job would still be green;
+    # the key may sit after the name (eight spaces) or be the step's first (`- if:`, six spaces and a dash).
+    grep -qE '^      (- |  )(if|shell):' <<<"$block" && missing="${missing}[app-$p: no step-level if or shell] "
     # Go only where a test builds the real service (bff/tests/build.ts, reached by the BFF's route tests and the scripts' stack tests).
     if [ "$p" = bff ] || [ "$p" = scripts ]; then
       grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$block" || missing="${missing}[app-$p: Go, since its tests build c-storage] "
@@ -1709,7 +1710,7 @@ app_guards() {
       grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
       # Node 24 is named before Node 26 is set up, so the check runs under 26 and the bundle under 24.
       n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
-      n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
+      n26=$(grep -n 'node-version-file: .node-version' <<<"$block" | head -n 1 | cut -d: -f1)
       chk=$(grep -n 'run: pnpm --filter @credo/bff --fail-if-no-match check' <<<"$block" | head -n 1 | cut -d: -f1)
       [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then the BFF's check] "
     fi
@@ -1745,6 +1746,8 @@ awk '$0 == "  app-ui:" {f = 1} f && /^      - name: Gate ui$/ {print; print "   
 refuses "  a gate step with an if of its own is refused" "app-ui: no step-level if or shell" app_guards "$WORK/wf-stepif.yml"
 awk '$0 == "  app-shared:" {f = 1} f && /^      - name: Gate shared$/ {print; print "        shell: bash {0}"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-shell.yml"
 refuses "  a gate step with a shell of its own is refused" "app-shared: no step-level if or shell" app_guards "$WORK/wf-shell.yml"
+awk '$0 == "  app-walk:" {f = 1} f && /^      - name: Gate walk$/ {print "      - if: always()"; print "        name: Gate walk"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stepif1.yml"
+refuses "  a gate step whose first key is an if is refused" "app-walk: no step-level if or shell" app_guards "$WORK/wf-stepif1.yml"
 awk '$0 == "  app-ui:" {f = 1} f && /^      - uses: actions\/setup-node/ && !d {print "      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0"; print "        with:"; print "          go-version-file: services/c-storage/go.mod"; d = 1} 1' "$WORKFLOW" >"$WORK/wf-ugo.yml"
 refuses "  a job that does not build a service but sets up Go is refused" "app-ui: no Go" app_guards "$WORK/wf-ugo.yml"
 awk '$0 == "  app-scripts:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nogo.yml"
@@ -1752,6 +1755,84 @@ refuses "  the scripts' job without Go is refused" "app-scripts: Go" app_guards 
 sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
 refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
 check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
+
+# cache_guards <workflow>: the human's rule that a download a run fetches again is cached and restored. In every job: the
+# toolchain cache (Node from .node-version, Go from go.mod, the npm cache) comes before the setup actions it serves; a job
+# that installs pnpm restores the store, keyed on the lock file with the older stores as fallback, between pnpm's install and the
+# workspace's; every actions/cache is pinned by sha; none fails a job on a miss; no job names Node 26 but through .node-version.
+want_pnpm=$(sed -n 's/^  "packageManager": "pnpm@\(.*\)",$/\1/p' "$REPO_DIR/package.json")
+[ -n "$want_pnpm" ] || die "no packageManager read from package.json"
+cache_guards() {
+  local f=$1 js j block missing='' tl sn sg ni st ws
+  js=$(awk '/^jobs:$/ {f = 1; next} f && /^  [A-Za-z0-9_-]+:$/ {sub(/:$/, "", $1); print $1}' "$f")
+  for j in $js; do
+    block=$(job_block "$f" "$j")
+    grep -E '^ +node-version: ' <<<"$block" | grep -vxE ' +node-version: 24' >/dev/null && missing="${missing}[$j: Node named by number, not by .node-version] "
+    grep -E 'uses: actions/cache' <<<"$block" | grep -vE 'uses: actions/cache@[0-9a-f]{40} # v[0-9.]+$' >/dev/null && missing="${missing}[$j: actions/cache not pinned by its full sha] "
+    grep -qE '^ +(fail-on-cache-miss|lookup-only): ' <<<"$block" && missing="${missing}[$j: a cache miss must install, not fail] "
+    sn=$(grep -nE 'uses: actions/setup-node' <<<"$block" | head -n 1 | cut -d: -f1)
+    sg=$(grep -nE 'uses: actions/setup-go' <<<"$block" | head -n 1 | cut -d: -f1)
+    tl=$(grep -nE '^          key: tools-' <<<"$block" | head -n 1 | cut -d: -f1)
+    if [ -n "$sn" ] || [ -n "$sg" ]; then
+      [ -n "$tl" ] || { missing="${missing}[$j: no toolchain cache] "; continue; }
+      [ -z "$sn" ] || [ "$tl" -lt "$sn" ] || missing="${missing}[$j: the toolchain cache comes after setup-node] "
+      [ -z "$sg" ] || [ "$tl" -lt "$sg" ] || missing="${missing}[$j: the toolchain cache comes after setup-go] "
+      # shellcheck disable=SC2016 # the workflow's literal text
+      [ -z "$sn" ] || grep -qF 'node-${{ steps.pins.outputs.node }}' <<<"$(grep -E '^          key: tools-' <<<"$block")" || missing="${missing}[$j: the toolchain key lacks the Node version] "
+      # shellcheck disable=SC2016 # the workflow's literal text
+      [ -z "$sg" ] || grep -qF 'go-${{ steps.pins.outputs.go }}' <<<"$(grep -E '^          key: tools-' <<<"$block")" || missing="${missing}[$j: the toolchain key lacks the Go version] "
+    fi
+    if grep -q 'npm install -g --ignore-scripts pnpm@' <<<"$block"; then
+      grep -q "npm install -g --ignore-scripts pnpm@$want_pnpm\$" <<<"$block" || missing="${missing}[$j: pnpm other than package.json's $want_pnpm] "
+      grep -qF "tools-" <<<"$block" && ! grep -E '^          key: tools-' <<<"$block" | grep -qF -- "pnpm-$want_pnpm" && missing="${missing}[$j: the toolchain key lacks pnpm $want_pnpm] "
+      ni=$(grep -n 'npm install -g --ignore-scripts pnpm@' <<<"$block" | head -n 1 | cut -d: -f1)
+      st=$(grep -nE '^          key: pnpm-store-' <<<"$block" | head -n 1 | cut -d: -f1)
+      ws=$(grep -n 'run: pnpm install --frozen-lockfile' <<<"$block" | head -n 1 | cut -d: -f1)
+      if [ -z "$st" ]; then missing="${missing}[$j: no pnpm store cache] "
+      else
+        { [ "$ni" -lt "$st" ] && [ "$st" -lt "$ws" ]; } || missing="${missing}[$j: the store cache must sit between pnpm's install and the workspace's] "
+        grep -E '^          key: pnpm-store-' <<<"$block" | grep -qF "hashFiles('pnpm-lock.yaml')" || missing="${missing}[$j: the store's key is not the lock file's hash] "
+        grep -E '^          key: pnpm-store-' <<<"$block" | grep -qF -- "-$want_pnpm-" || missing="${missing}[$j: the store's key lacks pnpm $want_pnpm] "
+        # shellcheck disable=SC2016 # the workflow's literal text
+        { grep -qxF '          path: ${{ steps.store.outputs.path }}' <<<"$block" && grep -qxE '^( {8}|  )id: store$' <<<"$block"; } || missing="${missing}[$j: the store's path is not the one pnpm names] "
+        grep -qxF "            pnpm-store-\${{ runner.os }}-\${{ runner.arch }}-$want_pnpm-" <<<"$block" || missing="${missing}[$j: the store's restore-keys] "
+      fi
+    fi
+  done
+  [ -z "$missing" ] || die "the caches lack: $missing"
+}
+# node_pin_guard <file>: .node-version is one exact Node 26 release, the version the toolchain cache is keyed on.
+node_pin_guard() { grep -qxE '26\.[0-9]+\.[0-9]+' "$1" || die ".node-version is not one exact 26.x.y release"; }
+passes "every job restores what it downloads: toolchains by version, the pnpm store by the lock file, in ci.yml" cache_guards "$WORKFLOW"
+passes "  the same in the seed workflow" cache_guards "$REPO_DIR/.github/workflows/seed.yml"
+passes "  and in the walks workflow" cache_guards "$REPO_DIR/.github/workflows/walks.yml"
+passes ".node-version is one exact Node 26 release" node_pin_guard "$REPO_DIR/.node-version"
+printf '26\n' >"$WORK/node-version-loose"
+refuses "  a loose .node-version, whose cache key would never change with the release, is refused" "exact 26.x.y" node_pin_guard "$WORK/node-version-loose"
+awk '$0 == "  app-ui:" {f = 1} f && !d && /^      - name: Restore the pnpm store$/ {skip = 7; d = 1} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nostore.yml"
+refuses "  a package job with no store cache is refused" "app-ui: no pnpm store cache" cache_guards "$WORK/wf-nostore.yml"
+sed "s/-12.10.1-\${{ hashFiles('pnpm-lock.yaml') }}\$/-12.10.1-v1/" "$WORKFLOW" >"$WORK/wf-fixedkey.yml"
+refuses "  a store key that does not follow the lock file is refused" "the store's key is not the lock file's hash" cache_guards "$WORK/wf-fixedkey.yml"
+sed 's/^          key: pnpm-store-\(.*\)-12.10.1-/          key: pnpm-store-\1-12.10.0-/' "$WORKFLOW" >"$WORK/wf-oldpnpm.yml"
+refuses "  a store key that names another pnpm than the installed one is refused" "the store's key lacks pnpm 12.10.1" cache_guards "$WORK/wf-oldpnpm.yml"
+awk '/^            pnpm-store-/ && !d {d = 1; next} /^          restore-keys: \|$/ && !e {e = 1; next} 1' "$WORKFLOW" >"$WORK/wf-norestore.yml"
+refuses "  a store with no older store to start from is refused" "the store's restore-keys" cache_guards "$WORK/wf-norestore.yml"
+awk '$0 == "  app-shared:" {f = 1} f && /^          restore-keys: \|$/ {print "          fail-on-cache-miss: true"} 1' "$WORKFLOW" >"$WORK/wf-failmiss.yml"
+refuses "  a cache whose miss fails the job is refused" "a cache miss must install, not fail" cache_guards "$WORK/wf-failmiss.yml"
+sed 's#uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 \# v6.1.0#uses: actions/cache@v6#' "$WORKFLOW" >"$WORK/wf-cachetag.yml"
+refuses "  an actions/cache pinned by a tag is refused" "not pinned by its full sha" cache_guards "$WORK/wf-cachetag.yml"
+awk '$0 == "  app-ui:" {f = 1} f && /^          node-version-file: .node-version$/ {print "          node-version: 26"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-node26.yml"
+refuses "  a job that names Node 26 by number, where the cache's key cannot follow it, is refused" "Node named by number" cache_guards "$WORK/wf-node26.yml"
+awk '$0 == "  app-visual:" {f = 1} f && !d && /^      - name: Restore the toolchains$/ {skip = 7; d = 1} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-notools.yml"
+refuses "  a job that downloads Node with no toolchain cache is refused" "app-visual: no toolchain cache" cache_guards "$WORK/wf-notools.yml"
+sed 's#^          key: tools-\(.*\)-node-\${{ steps.pins.outputs.node }}-pnpm-12.10.1$#          key: tools-\1-node-26-pnpm-12.10.1#' "$WORKFLOW" >"$WORK/wf-fixednode.yml"
+refuses "  a toolchain key that does not follow the Node version is refused" "the toolchain key lacks the Node version" cache_guards "$WORK/wf-fixednode.yml"
+sed 's#-go-\${{ steps.pins.outputs.go }}$#-go-1.26#' "$WORKFLOW" >"$WORK/wf-fixedgo.yml"
+refuses "  a toolchain key that does not follow the Go version is refused" "the toolchain key lacks the Go version" cache_guards "$WORK/wf-fixedgo.yml"
+awk '/^      - name: The pnpm store.s path$/ {skip = 4} skip > 0 {skip--; next} 1' "$REPO_DIR/.github/workflows/seed.yml" >"$WORK/seed-nopath.yml"
+refuses "  a seed whose store cache lost its path step is refused" "the store's path is not the one pnpm names" cache_guards "$WORK/seed-nopath.yml"
+awk '/^      - name: Restore Node and the npm cache$/ {skip = 8} skip > 0 {skip--; next} 1' "$REPO_DIR/.github/workflows/walks.yml" >"$WORK/walks-nocache.yml"
+refuses "  the walks deploy's wrangler job with no toolchain cache is refused" "no toolchain cache" cache_guards "$WORK/walks-nocache.yml"
 
 echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml

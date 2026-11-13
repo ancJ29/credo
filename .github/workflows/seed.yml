@@ -44,17 +44,45 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        if: ${{ !env.ACT }}
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        if: ${{ !env.ACT }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
       - name: Set up Node
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       # The install runs third-party code, so it runs before the role is taken, and the seed's code
       # runs without the role's credentials (ops/lib.sh's clean).
       - name: pnpm 12.10.1
         if: ${{ !env.ACT }}
         timeout-minutes: 2
         run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        if: ${{ !env.ACT }}
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        if: ${{ !env.ACT }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
       - name: Install the workspace
         if: ${{ !env.ACT }}
         timeout-minutes: 3
