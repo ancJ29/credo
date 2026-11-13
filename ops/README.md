@@ -210,13 +210,16 @@ put that back (the BFF then answers 503 until the next deploy).
      run uses the old scripts. The way back is to re-run the latest deploy
      ([plan hazard](../docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches)).
    - **the activity log's first landing on ridge: one push, one red deploy, a stack run, a rerun.** The
-     template's half and the code reach `main` in one push, so that deploy runs before ridge's stack has the log's
-     rule and port, and ends red once at the check: the release and `app.sh` have finished (the log runs on the box, the
-     function holds `AUDIT_URL` and `AUDIT_KEY`), and the check names three reds, the box group's rule reading, the back
-     end group's, and the entry count `'0'`, not 1. That red is expected; nothing is half-changed. Then, in this order:
-     `ops/stack.sh env ridge --plan`, read it, `ops/stack.sh env ridge` (it reads its template from `origin/main`, so
-     only after the push), then re-run the latest `ci` run of `main` with "Re-run all jobs"; a rerun of the same
-     commit is not superseded, and the check then ends `== green` with the entry found.
+     template's half and the code reach `main` in one push together with the front door's keys, and that deploy runs
+     before ridge's stack has the log's rule and port, and before it names a distribution: it ends red once, at
+     `app.sh`'s refusal (the stack's `DistributionId` is missing, [the app's order](#the-app)), and the check is
+     not reached. The release has finished by then (the log runs on the box, its key is made); the function holds
+     neither the log's address and key nor the door's key, and keeps answering on the old code. That red is expected;
+     nothing is half-changed. Then, in this order: `ops/stack.sh env ridge --plan`, read it, `ops/stack.sh env ridge`
+     (it reads its template from `origin/main`, so only after the push), then re-run the latest `ci` run of `main` with
+     "Re-run all jobs"; a rerun of the same commit is not superseded. The rerun's `app.sh` sets the function's
+     `AUDIT_URL`, `AUDIT_KEY` and the door's key and ships its code, and the check's three reads of the log (the box
+     group's rule, the back end group's, the customer's entry found) end `== green`.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; run
      `ops/stack.sh env ridge` (plan step 11).
    - The job checks `ops/` against its own commit, not the newer `main`, so a push that lands
@@ -244,7 +247,7 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
    - **the stack names no distribution (its `DistributionId` output is missing):** the deploy reads the front door's
      key from the distribution, and a stack made before this output has none. `ops/stack.sh` reads its template
      from `origin/main`, so on ridge the order is: the push (the piece lands whole); its deploy ends red once,
-     at this refusal, before it changes anything on the box or the function, and the app keeps answering on the
+     at this refusal, before `app.sh` changes anything on the function, and the app keeps answering on the
      old code; then `ops/stack.sh env <env>`; then a rerun of the deploy job; then `ops/check.sh <env>`.
 
 ## The keys

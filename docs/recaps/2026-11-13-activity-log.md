@@ -18,7 +18,7 @@ The log's file does not yet join the continuous copy (plan step 12). The release
 
 ## Still yours
 
-- Your acts in order: one push of the whole piece (its deploy ends red once, since ridge's stack lacks the log's rule), the stack run, a rerun of the deploy job. <!-- FILL: your push, stack run and rerun's verdict; do not write a result, a count, a time or a log name -->
+- Your acts in order: one push of the whole piece (with the front door's keys; its deploy ends red once, at `app.sh`'s refusal, since ridge's stack names no distribution yet and lacks the log's rule, and the function is left as it was), the stack run, a rerun of the deploy job. <!-- FILL: your push, stack run and rerun's verdict; do not write a result, a count, a time or a log name -->
 - The first entry read on ridge. <!-- FILL: the check's reading of the first entry; do not write a result, a count, a time or a log name -->
 - The box's memory reading. <!-- FILL: the memory reading's verdict; do not write a result, a count, a time or a log name -->
 

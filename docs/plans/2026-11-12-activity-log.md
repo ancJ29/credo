@@ -141,7 +141,7 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   on a ridge that has the second rule and on one that has not yet (the stack run comes after the push); any other
   port, address range or group, a lone log rule or a rule too many is still refused. Each of the two readings
   was seen red once by a mutation of the reading (backed up first, reverted).
-- [ ] 👤 **2. Your stack run, after step 11's push and its one red deploy:** `ops/stack.sh env ridge --plan`,
+- [ ] 👤 **2. Your stack run, after step 11's push and its one red deploy (at `app.sh`'s refusal):** `ops/stack.sh env ridge --plan`,
   then without it. Your first point. The piece lands whole, so the template's half (step 1) and steps 3 to 10 reach
   `main` in one push, and the stack run follows it: `ops/stack.sh` reads its template from `origin/main`
   (`ops/stack.sh#L142`), so it can run only after that push. Then re-run the deploy job (step 13). Ridge by then already holds the continuous copy (its stack run is
@@ -290,19 +290,17 @@ Each gate is the touched package's one command: `make check` in `services/audit-
 - [x] **10. The recap**, before the landing; rows 9, 13 and 16 marked not yet known. *Done when:*
   committed in `docs/recaps/` with its `docs/products.md` row. **8.**
   *Done, 2026-11-13 (sonnet):* `docs/recaps/2026-11-13-activity-log.md`, three markers open (the push and stack run, the first entry, the memory reading). No products row changes, since nothing new is open to a partner or operator until ridge runs it.
-- [ ] 👤 **11. Your one push** of step 1 and steps 3 to 10 together, which deploys onto ridge before its stack holds the
-  log's rule and port. Your first act; step 2 follows it. The deploy goes red once, by design, and the order
-  is read off the code: the release (`ops/release.sh#L232-L294`) is all on the box and needs no rule (it installs the log, starts it,
-  makes the key once, and reads `/health` from the box itself); `ops/app.sh#L119-L145` sets the function's `AUDIT_URL`
-  and `AUDIT_KEY` and ships its code; then `ops/check.sh` reads three reds and ends `== red` where it ends:
-  the box group's rule reading (`ops/check.sh#L92-L93`, `ops/lib.sh#L1028-L1045`) and the back end group's
-  (`ops/check.sh#L203-L204`, `ops/lib.sh#L1048-L1060`), each refusing a ridge without the log's rule, and the entry read
-  (`ops/check.sh#L282`, `ops/lib.sh#L1096-L1105`) finding `'0'` customer.create entries, not 1: the back end's write
-  to the closed port fails, is logged in the request log and the customer's add still succeeds
-  (`docs/activity-log.md#L191-L196`). Nothing is half-changed: by then the box runs the log and the function holds
-  its settings and code at the commit; what is missing is only the stack's rule, so the log runs and no entry
-  reaches it. A ridge that already had the rule would read green. *Done when:* the deploy's log reads `released <sha>`
-  naming both commits, the function's seven names, and the check's three reds as above and no other. **5 to read.**
+- [ ] 👤 **11. Your one push** of step 1 and steps 3 to 10 together, with the front door's keys (the merged tree carries both pieces),
+  which deploys onto ridge before its stack holds the log's rule and port and before it names a distribution. Your
+  first act; step 2 follows it. The deploy goes red once, by design, and the order is read off the merged code: the
+  release (`ops/release.sh#L232-L294`) is all on the box and needs no rule (it installs the log, starts it, makes the
+  key once, and reads `/health` from the box itself); then `ops/app.sh` refuses at the door's key read, since the
+  stack has no `DistributionId` output yet (`front_door_key_read` in `ops/lib.sh`; the runbook's order is
+  `ops/README.md#L247-L251`), before it sets anything on the function. The function gets neither the log's address and key
+  nor the door's key in this deploy and keeps answering on its old code, and the check is not reached. Nothing is
+  half-changed: the box runs the log and holds its key, and what is missing is the stack's rule and the distribution's
+  id. *Done when:* the deploy's log reads `released <sha>` naming both commits and ends red at `app.sh`'s refusal
+  naming the missing `DistributionId`, with no setting changed on the function. **5 to read.**
 - [ ] **12. The log's file joins the copy**, once the continuous copy has landed and its release ran
   on ridge (its step 12). The log's unit starts its own `litestream replicate -exec`, the continuous
   copy's `ops/litestream.yml` copied with the log's file and the path `<box>/activity`, on the records
@@ -313,7 +311,7 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   push: press "Re-run all jobs" on the latest `ci` run of `main` (or press `ci` on `main`), or by hand
   `ops/release.sh ridge`, `ops/app.sh ridge` then `ops/check.sh ridge`. A rerun of the same commit is not superseded
   (`ops/release.sh#L9-L12`: only a strict ancestor is) and leaves the log's key as it is. Your third point. *Done when:*
-  the deploy's check prints `== green` with the customer's entry found (the running half, your second point), then
+  the rerun's `app.sh` sets the function's `AUDIT_URL`, `AUDIT_KEY` and the door's key, and its check prints `== green`, the three readings of the log (both groups' rules, the customer's entry) among them, with the customer's entry found (the running half, your second point), then
   each program's memory and the box's free memory, no out-of-memory kill; the recap and item 2's memory half take the
   figure. **5 to read.**
 
@@ -360,7 +358,7 @@ changed in place, nothing replaced. A yes: run it without `--plan`, then re-run 
 A no: the guard has already refused it, nothing changed, and the piece finds another way to open
 the port.
 
-**2, at step 13: the first entry on ridge.** You will read the check's log after the rerun of the deploy job (the push's own deploy ended red once, as step 11 says): a fresh
+**2, at step 13: the first entry on ridge.** You will read the check's log after the rerun of the deploy job (the push's own deploy ended red once at `app.sh`'s refusal, as step 11 says): a fresh
 company's root added a customer through the app's own address, and the check found that change in
 the activity log on the box, no key printed. Does that read as the log running on ridge? A yes
 closes the running half; a no reopens the piece at the line that did not convince you.
