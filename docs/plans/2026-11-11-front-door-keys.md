@@ -196,10 +196,37 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   hash not stored (the old key still admitted), an unknown code answering success, the admin gate
   removed from the route, the shared call reading 404 as success, the ridge command not refusing an
   unregistered service. Not run: a real rekey on ridge (step 8); `ops/` untouched, so `ops/test.sh` not rerun.
-- [ ] **5. The key script.** `ops/keys.sh` and its four orders, the settings helper, its row in
+- [x] **5. The key script.** `ops/keys.sh` and its four orders, the settings helper, its row in
   `ops/README.md`'s table and its runbook section, `ops/README.md#L180-L182` rewritten. Cases 14
   to 16. *Done when:* `shellcheck` and `bash ops/test.sh` exit 0, each case red with its order
   broken. **About 30 min**: four kinds at about 7, the runbook about 3. Your second point here.
+  *Done 2026-11-13:* `ops/keys.sh <env> front-door|internal|admin|service` replaces one key by a new one made on
+  the Mac (masked first, on pipes and 0600 files), in the plan's order, then reads the old key back refused and the
+  new accepted: internal (new `keys.env`, store restarted, the function's copy), admin (new `keys.env`, store
+  restarted), service (the new `bff.env` waits beside the old, the store's rekey, the new file in place, the
+  function's copy), front door (the function takes both keys, `ops/stack.sh` with the new key in a 0600 file,
+  the function takes the new alone). The settings helper (`bff_settings_set`, with `bff_vpc`) is taken out of
+  `ops/app.sh` into `ops/lib.sh`, so the deploy and a key run write the function's settings alike. Cases 14 to 16
+  are held in `ops/test.sh` by whole runs of the script on the stand-ins, with the real store behind the tunnel for
+  the three store keys (each old key read back 401 or 403, the new one 200 or 404) and a stand-in for the
+  door's two addresses. The step counted more parts than it said: the script, the helper, the key run's guard
+  in `ops/stack.sh` (case 15, which step 1 did not hold: a key run is refused when its change set holds anything
+  but a modification of `Distribution`, and it ends at the outputs, opening no box and writing nothing to
+  GitHub), the stand-ins and the test section, the runbook (a row, a section, the old line rewritten). The plan's
+  `ops/README.md#L180-L182` had moved to the bullet on `bff.env` in "The app". Shellcheck as CI runs it, cfn-lint
+  and the whole `bash ops/test.sh` each ended at exit 0 on the committed tree. Each case seen red once by a
+  mutation, reverted: internal with the function's copy set before the restart, or never set, or the store not
+  restarted; admin with the store not restarted; service with the function's copy before the new file in place,
+  or with the store's rekey skipped; front door with the new key alone sent first, or the function never taking
+  the new key alone; case 15 with the guard off (the change set that also modified the deploy role was executed);
+  case 16 with the new key printed (the log named it, exit 1). Two findings the plan did not hold. The
+  super-admin key's "none refused" is the store's restart, a few seconds, which the script now measures and
+  prints, as it does the seconds from the first change to the function's update for the internal and service
+  keys. And the stack run's lines printed the app's address into the key run's log, which the run had masked, so
+  every front-door run ended red; its lines now go to the terminal and its own log. The script also stops a job
+  (GITHUB_ACTIONS) and takes port 3198 (3197 is the demo remake's; `ops/CLAUDE.md`'s line named it free, item 397).
+  Not run: a real key run on ridge, which is step 8; CloudFront accepting the change set's header update, the
+  function's setting taking two comma-separated keys under Lambda, and the seconds a real restart takes.
 - [ ] **6. The review.** Another model reads code, tests and this table (QA's rule 5): one review,
   one fix pass, each finding tagged. *Done when:* each finding is fixed, rejected or deferred with
   its reason, and the fix pass's gates exit 0. **About 20 min.**

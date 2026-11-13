@@ -16,6 +16,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | a release | push to `main`, or a press of `ci` on `main` ([the deploy job](#the-deploy-job)) | under 10 minutes |
 | a release, when GitHub Actions is down | `ops/release.sh <env> [<sha>]` | about 4 minutes |
 | the BFF and the UI, when GitHub Actions is down or a key changed on the box | `ops/app.sh <env> [<sha>]` ([the app](#the-app)) | about 5 minutes by hand, 2 in the job |
+| one of the four keys replaced (the front door's, the store's internal key or super-admin key, the back end's own service key) | `ops/keys.sh <env> <key>` ([the keys](#the-keys)) | under a minute; the front door's about 5 minutes |
 | the operator and their join link on ridge | `ops/operator.sh ridge [--replace] [<name>]` ([the operator](#the-operator)) | about a minute |
 | ridge destroyed, from your terminal | `ops/destroy.sh ridge`, then type `ridge` ([ridge down and back](#ridge-down-and-back)) | about 5 minutes |
 | ridge made again from `main`, and the two workflows turned on | `ops/remake.sh ridge`, then `ops/operator.sh ridge` ([ridge down and back](#ridge-down-and-back)) | about 15 minutes |
@@ -61,6 +62,7 @@ name its stack `ridge`.
 | `ops/stack.sh` | works | a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment |
 | `ops/release.sh` | works | it ships main's commits alone, never backwards, above the box's floor |
 | `ops/app.sh` | works | it ships main's commits alone, never backwards, and changes nothing else |
+| `ops/keys.sh` | works | it replaces one key and reads the old value back refused, and changes nothing else |
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
 | `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, the copy's status (read on the box; its key stays there) and the bucket's listing, layer four's reads and the six reads that need no client stay |
 | `ops/restore.sh` | works, to a new file | by default it writes a new file beside the live one and touches nothing live; `--onto-live` is refused there |
@@ -219,10 +221,44 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
    - **the function runs code of checksum ...:** what the function runs is not what was sent; run it again.
    - **the box holds a bff.env:** the BFF's service code and key, made once by the first run, 0600, root's.
      The function holds a copy, set again at each run: after a key changes on the box, run
-     `ops/app.sh ridge`, or the BFF answers 503. The BFF's service key cannot be replaced (c-storage has
-     no route for it): a leaked one means a new `bff.env` and a new service code, and ridge's clients
-     made again.
+     `ops/app.sh ridge`, or the BFF answers 503. A leaked service key is replaced by
+     `ops/keys.sh ridge service` ([the keys](#the-keys)); the records stay.
    - **a key is in this log:** as in [the check](#the-check).
+
+## The keys
+
+`ops/keys.sh <env> <key>` replaces one of the four keys by a new one made on this Mac from the kernel, in the
+order that keeps calls answered as long as the key allows, then reads the old value back refused and the new one
+accepted. The new key travels on pipes and 0600 files: no command line, log or terminal holds it, and the end of
+the run searches its log for the old and the new. Run it from a worktree at `main` with `pnpm install` done, in a
+terminal holding an AWS session; the deploy job never runs it. Take the key as `front-door`, `internal`, `admin`
+or `service`:
+
+| Key | The order | Calls refused meanwhile |
+| --- | --- | --- |
+| `front-door` | the back end takes the old key and the new; a change set (`ops/stack.sh`, with the new key in a 0600 file) sends the new to the distribution and is refused when it changes anything else; the stack's update waits until the distribution is deployed; then the back end takes the new alone | none |
+| `internal` | a new `keys.env` on the box, the store restarted and answering, then the function's copy set | from the store's restart to the function's update; the seconds are printed |
+| `admin` | a new `keys.env` on the box, the store restarted | the seconds the store takes to restart; the back end never holds this key |
+| `service` | the new `bff.env` beside the old, the store's `rekey`, the new file in place, then the function's copy set | from the rekey to the function's update; the seconds are printed |
+
+1. Read the log's last lines: `== green`, then `replaced the <key> key`. Before them, the read-backs: `the store
+   refuses the old internal key: 401` and `and accepts the new: 200` (internal); `the store refuses the old
+   super-admin key: 401` and a 404 for a service that is not there (admin); `the store refuses the old service
+   key: 403` and a 404 for a record that is not there (service); `the API's own address refuses the old door
+   key: 403`, a 404 for a call with the new one and a 404 through the app's address (front door).
+   The front door's run of `ops/stack.sh` prints on the terminal and in its own log in `logs/`, not in this one.
+   - **the store refuses the internal key the box's file holds:** nothing was changed; the box's file and the
+     store disagree, which a restart of c-storage on the box settles.
+   - **the store does not answer with the new key after 40 seconds:** the box's keys file holds the new key and
+     the function still the old; read the journal on the box (`journalctl -u c-storage`), then run it again.
+   - **the store did not replace the BFF's service key:** the store has no service of that code (the first app
+     deploy makes it) or refused the call; the waiting `bff.env.new` was removed and nothing changed.
+   - **the stack's key run did not finish:** the function still takes both door keys, which answers every call.
+     `REFUSED: a key run changes the distribution alone` names the other change; make it with
+     `ops/stack.sh env <env>` first. Run it again, or `ops/app.sh`, which sets the distribution's key alone.
+   - **a key is in this log:** as in [the check](#the-check); the key was printed by a bug, replace it again.
+2. The deploy follows a replaced key on its own: `ops/app.sh` reads the box's files and the distribution at each
+   run. After a key run nothing else is owed; run `ops/check.sh <env>` to read the whole environment.
 
 ## The operator
 
@@ -676,7 +712,7 @@ Neither ID is a credential, and neither is written into any committed file.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among
-them), `app.sh`, `operator.sh`, `root-password.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
+them), `app.sh`, `keys.sh` (each of the four keys replaced, the old one read back refused), `operator.sh`, `root-password.sh` and `seed.sh` whole on stand-ins for aws and ssh, and the `/health` check against
 the real c-storage, built there, so Go must be installed. The guards also need Ruby (reads `env.yml`
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:

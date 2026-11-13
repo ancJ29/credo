@@ -70,6 +70,8 @@ case "$KIND" in
     TEMPLATE=env.yml
     CAPS=CAPABILITY_IAM
     STEPS=8
+    # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
+    [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
     ;;
 esac
 
@@ -264,6 +266,18 @@ else
     echo "plan step, and taken with --take <LogicalId>."
     exit 1
   fi
+  # A key run (FRONT_DOOR_KEY_FILE) changes the distribution's header and nothing else: a change set that
+  # touches another resource, or does more to the distribution than modify it, is refused before it runs.
+  if [ -n "${FRONT_DOOR_KEY_FILE:-}" ]; then
+    others=$(jq -r '.Changes[]?.ResourceChange | select(.Action != "Modify" or .LogicalResourceId != "Distribution") | "\(.LogicalResourceId) (\(.ResourceType)): \(.Action)"' "$WORK/changes.json")
+    if [ -n "$others" ]; then
+      echo "REFUSED: a key run changes the distribution alone, and this change set also holds:"
+      while IFS= read -r line; do echo "  $line"; done <<<"$others"
+      echo "The change set is deleted and nothing changed. Run ops/stack.sh env $ENVNAME for those changes first."
+      exit 1
+    fi
+    ok "the key run changes the distribution alone"
+  fi
   if [ "$TAKE" = '[]' ]; then
     ok "no removal and no replacement"
   else
@@ -299,7 +313,7 @@ if [ "$KIND" = network ]; then
   echo "zone: $(out Zone)"
 fi
 
-if [ "$KIND" = env ]; then
+if [ "$KIND" = env ] && [ -z "${FRONT_DOOR_KEY_FILE:-}" ]; then
   step "the box over the tunnel"
   # The instance may still be starting its first boot; the key and the tunnel are tried again.
   opened=0

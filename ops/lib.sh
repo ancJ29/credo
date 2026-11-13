@@ -1031,6 +1031,62 @@ front_door_key_read() {
   mask "$FRONT_DOOR_KEY"
 }
 
+# bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
+# only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
+BFF_WAIT=120
+bff_vpc() {
+  printf 'SubnetIds=%s,SecurityGroupIds=%s' "$SUBNET_ID" "$BFF_GROUP"
+}
+
+# bff_settings_set <the door's key or keys, comma-separated>: the function's environment, set from the keys
+# this run holds (INTERNAL_KEY, SERVICE_CODE, SERVICE_ACCESS_KEY, read from the box) and the one it is given.
+# The deploy and a key run write it alike. The environment goes in from a 0600 file, never a command line;
+# the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
+# passkey is checked against: CloudFront's name, kept for good.
+bff_settings_set() {
+  (
+    umask 077
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 \
+      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS}}' \
+      >"$WORK/bff-env.json"
+  )
+  aws lambda update-function-configuration --function-name "$BFF_NAME" \
+    --vpc-config "$(bff_vpc)" --environment "file://$WORK/bff-env.json" \
+    --query LastUpdateStatus --output text >/dev/null
+  rm -f "$WORK/bff-env.json"
+  lambda_wait "$BFF_NAME" "$BFF_WAIT"
+}
+
+# new_key → 64 hex characters from 32 random bytes of the kernel, as the release makes the store's keys
+new_key() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
+# box_secret_write <path on the box>: the standard input becomes the file, root's, 0600, by a temporary file
+# beside it that is renamed over it. The content travels on the pipe: no command line, here or there, holds it.
+box_secret_write() {
+  box "sudo sh -c 'umask 077 && cat >\"\$0.tmp\" && chown root:root \"\$0.tmp\" && chmod 0600 \"\$0.tmp\" && mv -f \"\$0.tmp\" \"\$0\"' $1"
+}
+
+# store_status <local port> <method> <path> <body or -> [<header line>...]: the status the store answers a call
+# through the open tunnel, 000 when it answers none. The header lines (they carry keys) go in a 0600 file for
+# curl to read, never on its command line; the body is no secret.
+store_status() {
+  local port=$1 method=$2 path=$3 body=$4 hdr h
+  shift 4
+  mkwork
+  hdr=$WORK/store.headers
+  (
+    umask 077
+    : >"$hdr"
+    for h in "$@"; do printf '%s\n' "$h" >>"$hdr"; done
+  )
+  if [ "$body" = - ]; then
+    curl -sS -m 10 -X "$method" -H "@$hdr" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  else
+    curl -sS -m 10 -X "$method" -H "@$hdr" -H 'content-type: application/json' -d "$body" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  fi
+  rm -f "$hdr"
+}
+
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
 # empty before layer four> <c-storage's port> → yes, or no. Ssh from a group of the endpoint, and with
 # layer four c-storage's port from BffGroup alone, each a single tcp port from one group: no address
