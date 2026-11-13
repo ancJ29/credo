@@ -10,6 +10,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"path/filepath"
+	"sync/atomic"
+	"syscall"
+	"time"
 	"unicode/utf8"
 )
 
@@ -26,6 +30,9 @@ var (
 
 type Store struct {
 	db *sql.DB
+	// lastWrite is the unix nanoseconds of the last commit this process made, 0 before the first:
+	// no table records when a row was written, so the process keeps it.
+	lastWrite atomic.Int64
 }
 
 func New(db *sql.DB) *Store {
@@ -48,7 +55,30 @@ func (s *Store) Register(ctx context.Context, code, accessKey string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return ErrExists
 	}
+	s.wrote()
 	return nil
+}
+
+// wrote notes a commit that has just landed.
+func (s *Store) wrote() { s.lastWrite.Store(time.Now().UnixNano()) }
+
+// LastWrite is when this process last committed a write, and false before its first.
+func (s *Store) LastWrite() (time.Time, bool) {
+	n := s.lastWrite.Load()
+	return time.Unix(0, n), n != 0
+}
+
+// FreeBytes is what a non-root writer can still use on the disk under the database file.
+func (s *Store) FreeBytes(ctx context.Context) (uint64, error) {
+	var path string
+	if err := s.db.QueryRowContext(ctx, `SELECT file FROM pragma_database_list WHERE name = 'main'`).Scan(&path); err != nil {
+		return 0, err
+	}
+	var fs syscall.Statfs_t
+	if err := syscall.Statfs(filepath.Dir(path), &fs); err != nil {
+		return 0, err
+	}
+	return uint64(fs.Bavail) * uint64(fs.Bsize), nil
 }
 
 // Tag is a record's version: the SHA-256 of its stored text.
@@ -85,7 +115,11 @@ func (s *Store) write(ctx context.Context, code, key string, p *Precondition, qu
 	if _, err := tx.ExecContext(ctx, query, args...); err != nil {
 		return err
 	}
-	return tx.Commit()
+	err = tx.Commit()
+	if err == nil {
+		s.wrote()
+	}
+	return err
 }
 
 // Admits reports whether accessKey is code's key; an unknown code admits

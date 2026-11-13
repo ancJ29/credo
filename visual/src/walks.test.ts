@@ -82,15 +82,15 @@ describe('the walks', () => {
     expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
-  it('holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, and the white frame’s 10 and 11', () => {
+  it('holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, and the sign-in wait’s 12', () => {
     const screens = WALKS[0].screens;
 
-    expect(screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(screens.filter((screen) => screen.path === 'main').map((s) => s.number)).toEqual([
       1, 3, 4, 5, 10, 11,
     ]);
     expect(screens.filter((screen) => screen.path === 'wrong').map((s) => s.number)).toEqual([
-      2, 6, 7, 8, 9,
+      2, 6, 7, 8, 9, 12,
     ]);
   });
 

@@ -96,10 +96,13 @@ describe('ridge_cli seed', () => {
     const lastDay = async () => (await readLedger(storage, id))?.ledger.lastDay;
 
     const first = await run();
-    expect(await lastDay()).toBe('2026-10-24');
+    expect(await lastDay()).toBe('2026-10-10');
     const second = await run();
-    expect(await lastDay()).toBe('2026-10-26');
+    expect(await lastDay()).toBe('2026-10-12');
     const third = await run();
+    expect(await lastDay()).toBe('2026-10-14');
+    // the 21 days are ten runs of two and a last of one
+    for (let night = 0; night < 7; night += 1) await run();
     expect(await lastDay()).toBe('2026-10-28');
     const fourth = await run();
     const fifth = await run();
@@ -107,7 +110,7 @@ describe('ridge_cli seed', () => {
     for (const night of [first, second, third, fourth, fifth]) expect(night.status).toBe(0);
     expect(first.out.at(-2)).toBe(
       'seed: STILL BEHIND, 1 copies have days left (' +
-        `${copies[0].code} 5); this run applied 2 days at most a copy, run it again to go on: 3 more runs`,
+        `${copies[0].code} 19); this run applied 2 days at most a copy, run it again to go on: 10 more runs`,
     );
     expect(first.out.at(-1)).toBe(
       'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',
@@ -161,7 +164,7 @@ describe('ridge_cli seed', () => {
     expect(result.err).toEqual([]);
     expect(result.out.at(-2)).toBe(
       'seed: STILL BEHIND, 1 copies have days left (' +
-        `${copies[0].code} 43); this run applied 2 days at most a copy, run it again to go on: 22 more runs`,
+        `${copies[0].code} 57); this run applied 2 days at most a copy, run it again to go on: 29 more runs`,
     );
     expect(result.out.at(-1)).toBe(
       'seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied',

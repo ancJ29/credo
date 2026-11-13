@@ -9,10 +9,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"credo/c-storage/internal/auth"
 	"credo/c-storage/internal/sqlitedb"
@@ -93,7 +95,10 @@ var everyRoute = []route{
 	{"DELETE", "/api/records/svc/k", "", true},
 	{"GET", "/api/records/svc?prefix=k", "", true},
 	{"POST", "/api/services/register", `{"code":"new","accessKey":"k"}`, false},
+	{"GET", statusPath, "", false},
 }
+
+const statusPath = "/api/status"
 
 func (rt route) String() string { return rt.method + " " + rt.path }
 
@@ -166,7 +171,7 @@ func TestEveryRecordRouteRefusesAMissingOrWrongAccessKeyOrAnUnknownService(t *te
 func TestEveryServiceRouteRefusesAMissingOrWrongAdminKey(t *testing.T) {
 	s, _ := build(t)
 	for _, rt := range everyRoute {
-		if rt.record {
+		if rt.record || rt.path == statusPath {
 			continue
 		}
 		for name, key := range map[string]string{"missing": "", "wrong": wrongKey} {
@@ -486,7 +491,10 @@ func TestAStoreFailureIsAGeneric500(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE records`); err != nil {
 		t.Fatalf("drop: %v", err)
 	}
-	for _, rt := range everyRoute[:4] {
+	for _, rt := range everyRoute {
+		if !rt.record {
+			continue // the routes that read or write records; the register route and the status route do not
+		}
 		res := serve(s, request(rt.method, rt.path, rt.body, allKeys))
 		var body map[string]any
 		_ = json.Unmarshal(res.Body.Bytes(), &body)
@@ -498,6 +506,9 @@ func TestAStoreFailureIsAGeneric500(t *testing.T) {
 		t.Fatalf("drop: %v", err)
 	}
 	for _, rt := range everyRoute {
+		if rt.path == statusPath {
+			continue // the status route reads the store's memory, not a table
+		}
 		if got := rt.send(s, allKeys); got != http.StatusInternalServerError {
 			t.Errorf("%s with no services table = %d, want 500", rt, got)
 		}
@@ -538,5 +549,78 @@ func TestListenBindsTheAddressItIsGiven(t *testing.T) {
 		if got != addr {
 			t.Fatalf("Listen(%s) bound %s", addr, got)
 		}
+	}
+}
+
+// statusOf is GET /api/status with every key, decoded.
+func statusOf(t *testing.T, s *Server) (free uint64, at *time.Time) {
+	t.Helper()
+	var body struct {
+		FreeBytes   uint64     `json:"freeBytes"`
+		LastWriteAt *time.Time `json:"lastWriteAt"`
+	}
+	if err := json.Unmarshal([]byte(call(t, s, "GET", statusPath, "", http.StatusOK)), &body); err != nil {
+		t.Fatalf("status body: %v", err)
+	}
+	return body.FreeBytes, body.LastWriteAt
+}
+
+// buildBare is the real wiring over a fresh file with nothing written to it.
+func buildBare(t *testing.T) (*Server, string) {
+	t.Helper()
+	dir := t.TempDir()
+	db, err := sqlitedb.Open(filepath.Join(dir, "c-storage.db"), store.Schema)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return Build(internalKey, adminKey, store.New(db)), dir
+}
+
+func TestTheStatusHoldsTheFreeBytesAndNoWriteTimeBeforeTheFirstWrite(t *testing.T) {
+	s, _ := buildBare(t)
+	res := call(t, s, "GET", statusPath, "", http.StatusOK)
+	var body map[string]any
+	_ = json.Unmarshal([]byte(res), &body)
+	if len(body) != 2 || body["lastWriteAt"] != nil {
+		t.Errorf("status before any write = %s, want freeBytes and a null lastWriteAt, no more", res)
+	}
+	if free, _ := statusOf(t, s); free == 0 {
+		t.Errorf("status = %s, want the free bytes of a disk with room", res)
+	}
+}
+
+func TestTheStatusNamesTheLastCommittedWriteAndNoRefusedOne(t *testing.T) {
+	s, _ := buildBare(t)
+	before := time.Now()
+	call(t, s, "POST", "/api/services/register", `{"code":"svc","accessKey":"`+accessKey+`"}`, http.StatusCreated)
+	_, registered := statusOf(t, s)
+	if registered == nil || registered.Before(before.Add(-time.Second)) || registered.After(time.Now()) {
+		t.Fatalf("lastWriteAt after a registration = %v, want a time since %v", registered, before)
+	}
+	call(t, s, "POST", "/api/services/register", `{"code":"svc","accessKey":"x"}`, http.StatusConflict)
+	time.Sleep(2 * time.Millisecond)
+	call(t, s, "POST", "/api/records/svc", `{"key":"k","data":{}}`, http.StatusCreated)
+	_, pushed := statusOf(t, s)
+	if pushed == nil || !pushed.After(*registered) {
+		t.Fatalf("lastWriteAt after a push = %v, want later than the registration's %v", pushed, registered)
+	}
+	time.Sleep(2 * time.Millisecond)
+	if got := with(s, "DELETE", "/api/records/svc/k", "", [2]string{"If-Match", strings.Repeat("0", 64)}); got != http.StatusPreconditionFailed {
+		t.Fatalf("a stale delete = %d, want 412", got)
+	}
+	if _, after := statusOf(t, s); after == nil || !after.Equal(*pushed) {
+		t.Errorf("lastWriteAt after a refused write = %v, want it unchanged at %v", after, pushed)
+	}
+}
+
+func TestTheStatusOfADiskThatCannotBeReadIsAGeneric500(t *testing.T) {
+	s, dir := buildBare(t)
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	res := serve(s, request("GET", statusPath, "", allKeys))
+	if res.Code != http.StatusInternalServerError || strings.TrimSpace(res.Body.String()) != `{"error":"Internal server error"}` {
+		t.Errorf("status over a missing directory = %d %s, want a generic 500", res.Code, res.Body)
 	}
 }

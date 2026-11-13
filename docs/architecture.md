@@ -29,7 +29,7 @@ flowchart LR
     bff["the BFF<br/>[Lambda, arm64] bff/ with shared/ · every rule in the system"]
     subgraph box["the services · the environment's box, every tenant in it<br/>[EC2 t4g.nano]"]
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
-      db[("the records<br/>[one SQLite file] the only copy there is · the backup is designed and waits for real records, and ridge holds only invented companies")]
+      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · built, not yet run on an environment; ridge holds only invented companies")]
     end
     more["more boxes, each holding a group of tenants, and one for the operator<br/>[EC2] the pooled shape · intended, not built"]
   end
@@ -219,7 +219,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No `fetch` in the back end.** It reaches storage only through the one client built for it | nothing. A reviewer reading the diff |
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
-| **No second file builds a record key.** The layout has one home | nothing — and this is the one absence worth the most, because tenant separation is a string prefix and nothing else |
+| **No second file builds a record key.** The layout has one home | the company's client (`bff/src/records/records.ts`'s `tenantStorage`), which refuses any key outside the company's prefix before it is sent; no lint rule forces a key through `recordKeys`, and `buildApp` still holds the whole client for the code's index, the deletions' marks, the operator's records and `/health` |
 | **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level, for the sign-in and settings routes (`bff/src/tenants.route.test.ts`), the two operator routes that reach one client only (`bff/src/routes/clients-delete.route.test.ts`, `bff/src/routes/operator-root-password.route.test.ts`), and, with two companies in one service, for the customer and product lists, orders, deliveries and their photo, people (read, save, archive, password set), the drivers list and closed days (`bff/src/routes/cross-tenant.route.test.ts`); `bff/src/routes/lists.route.test.ts` proves only that each company sees its own list, across services. The cross-company file covers some of the orders and deliveries routes; the rest are listed in open item 227 |
 | **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are not yet written ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |

@@ -1,8 +1,8 @@
 # The gates run on every change to c-storage, the app (the BFF, the UI, their shared package and
 # scripts) or ops, on a branch or in a pull request. A red here is a defect to fix, never a run to
-# repeat. On a push to main, once the gates are green, the `deploy` job releases c-storage, ships
+# repeat. On a push to main, or a press of this workflow on main, once the gates are green, the `deploy` job releases c-storage, ships
 # the BFF and the UI, and checks ridge: it never moves ridge backwards (an older commit arriving
-# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main.
+# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main or a newer press.
 name: ci
 
 on:
@@ -42,6 +42,7 @@ on:
       - "knip.json"
       - ".github/workflows/ci.yml"
       - ".github/workflows/seed.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -205,8 +206,8 @@ jobs:
         timeout-minutes: 5
         run: bash ops/test.sh
 
-  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main
-  # is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
+  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main, or
+  # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions for the push, docs/plans/2026-11-12-ridge-by-script.md for the press).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
   # ops/test.sh fails when a step lacks it. Releases only: a template change stays the human's change set.
@@ -214,7 +215,7 @@ jobs:
   # the steps after the release carry that condition as well.
   deploy:
     needs: [check, e2e, ops, app]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: ridge
@@ -277,6 +278,17 @@ jobs:
         timeout-minutes: 5
         working-directory: services/c-storage
         run: make box
+      # Litestream rides the release beside c-storage: the pinned arm64 archive (the box's), fetched from
+      # its release before the role is taken and refused unless its SHA-256 is ops/litestream.pin's, the
+      # one home of the version and the sum. ops/release.sh checks it again before it sends a byte.
+      - name: Litestream, the pinned archive
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: |
+          . ops/litestream.pin
+          archive="$RUNNER_TEMP/litestream.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz"
+          echo "$LITESTREAM_ARM64_SHA256  $archive" | sha256sum -c -
       # No stored key: GitHub's token for environment ridge is exchanged for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
       # AWS's error text carries the account id outside the secret role ARN, and this repository's
@@ -299,6 +311,7 @@ jobs:
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
+          LITESTREAM_ARCHIVE: ${{ runner.temp }}/litestream.tar.gz
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
       # masked first. It skips, saying so, until the stack holds layer four.
