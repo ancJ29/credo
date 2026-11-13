@@ -158,11 +158,30 @@ Each gate is the touched package's one command: `make check` in `services/audit-
   code, reverted and compared equal: the open listener on the configured address, the writing one on loopback,
   `Listen` ignoring its address, the variable never read, the mapped form not unmapped, the unspecified check, the
   zone check, the value printed in the error, and the listener's name dropped from the refusal.
-- [ ] **4. The box's side.** `ops/release.sh` builds the service by hand (`make check`, then
+- [x] **4. The box's side.** `ops/release.sh` builds the service by hand (`make check`, then
   `make dist BUILD_COMMIT=<sha>`) or takes the job's binary, sends it with its checksum, makes the
   key once, installs both units in the one rename command (`ops/release.sh#L117-L121`), and waits on
   both `/health` reads. Cases 7 to 9. *Done when:* the three `ops/` rows exit 0, each case red once.
   **12.**
+  *Done, 2026-11-13 (sonnet), cases 7 and 8 only:* shellcheck, cfn-lint, the citation test and the whole `ops/test.sh`
+  at exit 0 on the committed tree. Built to `ops/release.sh` as the continuous copy left it, which differs from the
+  step as written: the file now carries Litestream, the records disk and a `die` when the stack names no bucket or
+  disk, and writes every `.new` file before any install, so the plan's "both units in the one rename command" and
+  "waits on both reads" do not fit. The log's part is a second half after c-storage's, in two steps of its own
+  (sent, then installed and named): c-storage's binary, unit, disk, keys, install, restart and `/health` are done
+  and read before one line of the log's half runs, so the log's half cannot stop or half-install the store's.
+  A failure in it ends through `audit_die` alone, which says that c-storage is released and runs and that the
+  log's half stopped. What it leaves: before the install, only `.new` files in `/opt/audit-backbone` and perhaps the
+  key; in the install, the log's unit is the last rename, so a failure before it leaves the log unknown to
+  systemd; after it, the log installed and not naming the commit while c-storage is untouched. The job must name
+  `RELEASE_AUDIT_BINARY` (step 5 sets it in `ci.yml`): until then a job's release goes red after c-storage is
+  released, by name. The order is pinned by a case (`audit_half_guard`: the first line naming the log comes after
+  c-storage's restart and `keys_unchanged`, no bare `die` after it, the unit renamed last, c-storage absent from the
+  install). Case 7's refusal of a differing checksum and of a job with no named binary, and case 8's key made once
+  and never rewritten (the box's script extracted and run twice on a folder), are guarded offline and each seen red
+  by a mutation. One old guard was narrowed: the one that counts the release's `LISTEN_ADDR` write now reads
+  c-storage's line (the log's release writes its own, so the count was 2 and it reddened once). Not shown offline, so unticked: case 9, the real release on ridge naming the commit on both
+  `/health` reads, and the checksum refusal and the key on a real box.
 - [ ] **5. The deploy and CI.** `ops/app.sh` adds `AUDIT_URL` and `AUDIT_KEY` to the function's
   settings (`ops/app.sh#L128-L134`) from the box's file; the variable list at `ops/lib.sh#L777`
   gains both; `ci.yml` gains `services/audit-backbone/**` in both path lists, an `audit` job, the

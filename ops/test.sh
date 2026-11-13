@@ -1050,6 +1050,61 @@ refuses "  a release whose refusal never stops it is refused" "does not end the 
 # shellcheck disable=SC2016 # sed programs, in single quotes
 refuses "  a release that lets a hand-formatted disk through to c-storage is refused" "formatted or mounted by hand" \
   blank_guard "$(mutated release-nohand.sh '/^mount "$mnt"$/,/records disk: mounted at/{/copy_held; then refuse_held/d;}' "$OPS_DIR/release.sh")"
+echo "== the release's second half: the activity log's binary, key and unit (cases 7 and 8 of docs/plans/2026-11-12-activity-log.md)"
+# The order is the safety: c-storage's half is installed, restarted and named by its /health before the log's half
+# starts, and a failure in the log's half dies through audit_die alone, so it names itself and c-storage stays as it is.
+# shellcheck disable=SC2016 # the script's source text is searched, not expanded
+audit_half_guard() { # <release.sh>
+  local fb=$1
+  first_before "$fb" '^keys_unchanged "[$]keys_before"' '^[^#]*audit-backbone' "the log's half starts before c-storage's is done"
+  first_before "$fb" 'wait_build "[$]sha" 30 box curl .*BOX_PORT/health' '^audit_die\(\)' "the log's half is defined before c-storage's /health names the commit"
+  first_before "$fb" 'restart c-storage.$' '^[^#]*audit-backbone' "the log's half starts before c-storage's restart"
+  ! awk '/^keys_unchanged "[$]keys_before"/ {on = 1; next} on && !/^audit_die\(\)/ && /^[^#]*(^|[^_a-z])die / {bad = 1} END {exit !bad}' "$fb" || die "a bare die in the log's half (it must end through audit_die, which names the half)"
+  need "$fb" '^\[ "[$]got_audit_sum" = "[$]want_audit_sum" \] \|\| audit_die "the log.s binary arrived as' "a log binary whose checksum differs is not refused"
+  need "$fb" 'elif \[ -n "[$][{]RELEASE_BINARY:-[}]" \]; then$' "the job's missing RELEASE_AUDIT_BINARY is not a case of its own"
+  grep -A1 'elif \[ -n "[$][{]RELEASE_BINARY:-[}]" \]; then$' "$fb" | grep -q 'audit_die "the job names no RELEASE_AUDIT_BINARY' || die "a job that names no log binary is not refused by name"
+  local inst
+  inst=$(sed -n "/^box 'sudo chmod 0755 \/opt\/audit-backbone/,/audit_die \"the log could not be installed/p" "$fb")
+  if [ -z "$inst" ] || grep -q 'c-storage' <<<"$inst"; then die "the log's install is missing or touches c-storage"; fi
+  awk <<<"$inst" '/listen.env.new/ && !a {a = NR} /credo-audit-backbone.new \/opt/ && !b {b = NR} /service.new/ && !c {c = NR} END {exit !(a && b && c && a < b && b < c)}' || die "the log's unit is not renamed last, after its address and binary"
+}
+passes "the log's half starts after c-storage's is installed and named by its /health, dies only through audit_die, refuses a differing checksum and a job with no log binary" \
+  audit_half_guard "$OPS_DIR/release.sh"
+refuses "  a log's half that starts before c-storage's restart is refused" "starts before c-storage's is done" \
+  audit_half_guard "$(mutated release-audit-early.sh 's#^step "the keys, made once"#audit-backbone() { :; }; &#' "$OPS_DIR/release.sh")"
+refuses "  a log's half that dies bare is refused" "a bare die in the log's half" \
+  audit_half_guard "$(mutated release-audit-die.sh 's#audit_die "the log is not active"#die "the log is not active"#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that no longer compares the log binary's checksum is refused" "checksum differs is not refused" \
+  audit_half_guard "$(mutated release-audit-sum.sh '/^\[ "\$got_audit_sum" = /d' "$OPS_DIR/release.sh")"
+refuses "  a job with no named log binary that goes on is refused" "names no log binary is not refused by name" \
+  audit_half_guard "$(mutated release-audit-job.sh 's#audit_die "the job names no RELEASE_AUDIT_BINARY#echo "the job names no RELEASE_AUDIT_BINARY#' "$OPS_DIR/release.sh")"
+refuses "  an install that renames the unit before the binary is refused" "not renamed last" \
+  audit_half_guard "$(mutated release-audit-order.sh 's#credo-audit-backbone.new /opt/audit-backbone/credo-audit-backbone \&\&#audit-backbone.service.new /etc/systemd/system/audit-backbone.service \&\& sudo mv -f /opt/audit-backbone/credo-audit-backbone.new /opt/audit-backbone/credo-audit-backbone \&\&#' "$OPS_DIR/release.sh")"
+# row 8: the key is made by the first release and never rewritten by a later one: the script the release runs on the box,
+# extracted and run twice on a folder of the test's own (chown and stat are the box's; the folder stands for /etc/audit-backbone)
+audit_key_script() { # <release.sh> <folder> → the script, pointed at the folder
+  sed -n "/<<'REMOTE' || audit_die \"the log's key/,/^REMOTE\$/p" "$1" | sed '1d;$d' | sed -e "s#/etc/audit-backbone#$2#g" -e '/chown root:root/d' -e '/^stat -c/d'
+}
+audit_key_run() { # <release.sh> <folder> → "<first line>|<mode>|<same after a second run>"
+  local rel=$1 dir=$2 first mode keep second
+  mkdir -p "$dir"
+  rm -f "$dir/keys.env"
+  audit_key_script "$rel" "$dir" >"$dir/script.sh"
+  first=$(bash "$dir/script.sh")
+  mode=$(find "$dir/keys.env" -perm 600 | wc -l | tr -d ' ')
+  keep=$(cat "$dir/keys.env")
+  second=$(bash "$dir/script.sh")
+  [ "$keep" = "$(cat "$dir/keys.env")" ] && keep=same || keep=rewritten
+  echo "$first|$mode|$second|$keep|$(grep -c '^ACTIVITY_WRITE_KEY=[0-9a-f]\{64\}$' "$dir/keys.env" | tr -d ' ')"
+}
+check "the log's key is made once, root-only, 64 hex characters, and a second release leaves it and says so" \
+  "activity log key: made|1|activity log key: present, left as it is|same|1" "$(audit_key_run "$OPS_DIR/release.sh" "$WORK/audit-key")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+check "  and a release that always writes it is seen: the second run rewrites" \
+  "activity log key: made|1|activity log key: made|rewritten|1" \
+  "$(audit_key_run "$(mutated release-audit-key.sh 's#^if \[ -e "\$f" \]; then$#if false; then#' "$OPS_DIR/release.sh")" "$WORK/audit-key2")"
+echo "== (the release's second half ends here)"
 # the restore reads the address from the same file the unit does (the region is in it), onto a new file, the live path, or a blank disk
 # shellcheck disable=SC2016 # the file's source text is searched, not expanded
 restore_address_guard() { # <lib.sh>
@@ -2018,7 +2073,7 @@ check "the unit reads LISTEN_ADDR from /etc/c-storage/listen.env" 1 "$(grep -c '
 check "  and starts once the network is online" "1 1" "$(grep -c '^After=network-online.target$' "$unit" || true) $(grep -c '^Wants=network-online.target$' "$unit" || true)"
 check "  and sets no LISTEN_ADDR of its own, which would shadow the file" 0 "$(grep -c '^Environment=LISTEN_ADDR' "$unit" || true)"
 check "release.sh writes LISTEN_ADDR from BOX_LISTEN_ADDR, beside the unit, and installs it before the restart" "1 1 1" \
-  "$(grep -cF 'LISTEN_ADDR=%s' "$OPS_DIR/release.sh" || true) $(grep -c 'mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env' "$OPS_DIR/release.sh" || true) $(awk '/listen.env.new \/etc/{a=NR} /systemctl restart/{b=NR} END{print (a>0 && a<b)}' "$OPS_DIR/release.sh")"
+  "$(grep -cF "\"\$BOX_LISTEN_ADDR\" | box 'sudo tee /opt/c-storage/listen.env.new" "$OPS_DIR/release.sh" || true) $(grep -c 'mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env' "$OPS_DIR/release.sh" || true) $(awk '/listen.env.new \/etc/ && !a{a=NR} /systemctl restart/ && !b{b=NR} END{print (a>0 && a<b)}' "$OPS_DIR/release.sh")"
 check "no script reads /health or forwards at 127.0.0.1 on the box" 0 \
   "$(cd "$OPS_DIR" && grep -hE '127[.]0[.]0[.]1:[$][{]?BOX_PORT' lib.sh check.sh drill.sh release.sh tunnel.sh | grep -c . || true)"
 
