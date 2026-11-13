@@ -360,6 +360,23 @@ describe('what the ops scripts ask of ridge', () => {
     expect((await run(['tenant', CHECK, 'Again'], KEYS, call)).status).toBe(0);
   });
 
+  it('tenant-id prints the id the code names, refuses a code with no client and a bad code', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+
+    const result = await run(['tenant-id', 'check-acme'], KEYS, call);
+
+    expect(result).toMatchObject({
+      status: 0,
+      out: [storedClientSchema.parse(records.get(recordKeys.client('check-acme'))).id],
+    });
+    expect(await run(['tenant-id', 'check-none'], KEYS, call)).toMatchObject({
+      status: 1,
+      err: ['error: no client check-none here'],
+    });
+    expect((await run(['tenant-id', 'Bad Code'], KEYS, call)).status).toBe(1);
+  });
+
   it('untenant on a check code with no client is a quiet success', async () => {
     const { call } = memoryCStorage();
 

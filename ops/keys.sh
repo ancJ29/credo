@@ -75,6 +75,7 @@ read_keys
 box test -e /etc/c-storage/bff.env || die "the box holds no bff.env: the first app deploy makes the BFF's service (ops/app.sh $ENVNAME)"
 bff_env_read
 front_door_key_read "$DISTRIBUTION_ID"
+audit_read # the log's address and key too, before anything changes: every settings call below sends them
 [ "$(store_status "$LOCAL_PORT" GET /api/status - "x-internal-access-key: $INTERNAL_KEY")" = 200 ] ||
   die "the store refuses the internal key the box's file holds: nothing was changed"
 # The service key too, for the other three kinds: a service run that stopped half way (the store rekeyed, the box's

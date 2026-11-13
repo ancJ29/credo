@@ -257,14 +257,15 @@ function demoCopy(code: string) {
 }
 
 const USAGE =
-  'usage: register | rekey (the new key on stdin) | operator [--replace] [<name>] | tenant <code> <name> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
+  'usage: register | rekey (the new key on stdin) | operator [--replace] [<name>] | tenant <code> <name> | tenant-id <code> | untenant <code> | clear-checks | seed [--round] | remake [--check] | root-password [--check] <code>… | drill-record put|has|remove <code> | copy-company [--check] <code> (the source in FROM_C_STORAGE_URL, FROM_INTERNAL_ACCESS_KEY, FROM_SERVICE_CODE and FROM_SERVICE_ACCESS_KEY)';
 
 /**
  * What `ops/*.sh` asks of a ridge reached through a tunnel, as the product's own functions do it:
  * the BFF's service registered with the super-admin key (and `rekey`, which replaces its key by the
  * new one on the standard input, the same key), the operator's account, and a client made
  * by the operator's create, and `untenant` deletes one whole by the operator's own delete function
- * (the check's client, with the keys the create used; it prints how many records went), and
+ * (the check's client, with the keys the create used; it prints how many records went), `tenant-id` prints the id a
+ * client's code names (the activity log keeps its entries by that id), and
  * `clear-checks` deletes every check client older than {@link CHECK_AGE_HOURS}, by the age in its
  * code, one line each, the rest still going after a failure and the exit 1. The connection comes from the environment (C_STORAGE_URL and the BFF's
  * three keys; X_SUPER_ADMIN_KEY for `register` alone). Nothing it prints holds a key; a password is
@@ -374,6 +375,15 @@ export async function runRidge(
       const made = await createClient(client(), { code, name, madeAt: Date.now() });
       if (made === 'taken') throw new Error(`the code ${code} names a client already`);
       io.out(made.password);
+      return 0;
+    }
+
+    if (command === 'tenant-id') {
+      const [code] = rest;
+      if (!clientCodeSchema.safeParse(code).success) throw new Error(USAGE);
+      const found = await client().getRecord(recordKeys.client(code));
+      if (!found) throw new Error(`no client ${code} here`);
+      io.out(storedClientSchema.parse(found.data).id);
       return 0;
     }
 

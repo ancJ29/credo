@@ -3,7 +3,7 @@
 The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
 the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
 that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
+A push to `main` releases c-storage and the activity log, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
 
 ## At a glance
 
@@ -165,7 +165,14 @@ Only while GitHub Actions is down: its concurrency group cannot see a run made h
    - **/health answered ...:** the new binary is installed and c-storage did not name it. Read the
      journal lines the log prints, then revert the bad commit on `main` and release `main`'s tip
      to put the last good tree back.
-2. Read the log's last lines: `released <sha>`.
+   - **the activity log's half stopped:** the message begins `c-storage <sha> is released and runs; the
+     activity log's half stopped` and names the step: its gate or build failed (by hand the release
+     builds it with `make check` then `make dist`; the job hands it the binary it built, and a job that
+     names none is refused), the binary arrived with a different checksum than was sent, the key could not
+     be made, the unit could not be installed or started, or the log did not name <sha> on its `/health`.
+     c-storage is as it was; read the journal lines the log prints, fix forward, and release again. The
+     log's write key is made by the first release and never rewritten by a later one.
+2. Read the log's last lines: `released <sha>`, printed only after c-storage and the activity log both named the commit.
 
 c-storage listens on the box's private address, the stack's `BoxAddress`, and on no other interface.
 Each release writes `/etc/c-storage/listen.env` from it and the unit reads that file. The first
@@ -176,12 +183,12 @@ old loopback listener does not answer: the log then finds no running commit, and
 
 ## The deploy job
 
-The human's push to `main` that touches `services/c-storage/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
-`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `e2e`,
+The human's push to `main` that touches `services/c-storage/`, `services/audit-backbone/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
+`scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `audit`, `e2e`,
 `ops` and `app` are green. It builds the binary, the BFF's bundle and the UI (before it holds the
 role, since those run third-party code), takes the deploy role (environment `ridge`, secret
 `AWS_ROLE_ARN`), then runs `ops/release.sh ridge`, `ops/app.sh ridge` and `ops/check.sh ridge` over the
-tunnel. It changes no stack: a template change stays your change set. After a change set on ridge,
+tunnel. It also builds the activity log's binary from the same commit and names it to the release (`RELEASE_AUDIT_BINARY`), and waits on the `audit` job as it does on `check`. It changes no stack: a template change stays your change set. After a change set on ridge,
 re-run the latest deploy: the template's `Bff` is a stub with no environment, and a change to it may
 put that back (the BFF then answers 503 until the next deploy).
 
@@ -202,6 +209,17 @@ put that back (the BFF then answers 503 until the next deploy).
      BFF call answers 503 though its own check reads green. No script can refuse it, since the old
      run uses the old scripts. The way back is to re-run the latest deploy
      ([plan hazard](../docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches)).
+   - **the activity log's first landing on ridge: one push, one red deploy, a stack run, a rerun.** The
+     template's half and the code reach `main` in one push together with the front door's keys, and that deploy runs
+     before ridge's stack has the log's rule and port, and before it names a distribution: it ends red once, at
+     `app.sh`'s refusal (the stack's `DistributionId` is missing, [the app's order](#the-app)), and the check is
+     not reached. The release has finished by then (the log runs on the box, its key is made); the function holds
+     neither the log's address and key nor the door's key, and keeps answering on the old code. That red is expected;
+     nothing is half-changed. Then, in this order: `ops/stack.sh env ridge --plan`, read it, `ops/stack.sh env ridge`
+     (it reads its template from `origin/main`, so only after the push), then re-run the latest `ci` run of `main` with
+     "Re-run all jobs"; a rerun of the same commit is not superseded. The rerun's `app.sh` sets the function's
+     `AUDIT_URL`, `AUDIT_KEY` and the door's key and ships its code, and the check's three reads of the log (the box
+     group's rule, the back end group's, the customer's entry found) end `== green`.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; run
      `ops/stack.sh env ridge` (plan step 11).
    - The job checks `ops/` against its own commit, not the newer `main`, so a push that lands
@@ -229,7 +247,7 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
    - **the stack names no distribution (its `DistributionId` output is missing):** the deploy reads the front door's
      key from the distribution, and a stack made before this output has none. `ops/stack.sh` reads its template
      from `origin/main`, so on ridge the order is: the push (the piece lands whole); its deploy ends red once,
-     at this refusal, before it changes anything on the box or the function, and the app keeps answering on the
+     at this refusal, before `app.sh` changes anything on the function, and the app keeps answering on the
      old code; then `ops/stack.sh env <env>`; then a rerun of the deploy job; then `ops/check.sh <env>`.
 
 ## The keys

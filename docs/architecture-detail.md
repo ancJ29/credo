@@ -24,7 +24,7 @@ needs before touching any of it, is on
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
 | `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy not yet run on an environment |
-| `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; not yet on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
+| `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release, not yet run on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
 | `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |

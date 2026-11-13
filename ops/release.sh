@@ -16,6 +16,12 @@
 #   c-storage restarts: a blank one is formatted once, a file already on the system disk is moved onto it
 #   once (the old one kept), and a blank disk whose box path in the copy's bucket holds a copy is refused,
 #   since a fresh start would copy an empty file over the real one (restore it: the runbook).
+#   The activity log rides the same release as a second half, after c-storage's is installed, restarted and
+#   named by its /health, never before it: a failure in the log's half (no binary named in the job, a
+#   checksum that differs, a unit that will not start) ends the run red naming that half and leaves
+#   c-storage released and running as it is. The log's binary comes from `make check` and `make dist` in
+#   services/audit-backbone by hand, or RELEASE_AUDIT_BINARY in the job; its write key is made once on the box
+#   (/etc/audit-backbone/keys.env, root-only) and never rewritten.
 # Needs `make box` in services/c-storage (the plan's step 6): it writes dist/c-storage stamped with the commit.
 # Expected length: about 4 minutes by hand (the gate and the build), under a minute in the job.
 set -euo pipefail
@@ -28,7 +34,7 @@ set -euo pipefail
   exit 2
 }
 ENVNAME=$1
-STEPS=8
+STEPS=10
 
 log_start release "$ENVNAME"
 mkwork
@@ -221,4 +227,70 @@ if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/
   die "release of $sha failed: the new binary is installed, c-storage did not name it"
 fi
 keys_unchanged "$keys_before" "$(keys_sum)"
+echo "c-storage $sha is released and healthy"
+
+# --- the activity log's half. Everything above is c-storage's and is done: nothing below can stop or undo
+# it. audit_die names which half stopped, so the log reads the same to the person and to the job. ---
+audit_die() { die "c-storage $sha is released and runs; the activity log's half stopped, and c-storage is as it was: $*"; }
+
+step "the activity log: its binary, unit and key, sent"
+audit_unit=$src/ops/audit-backbone.service
+[ -f "$audit_unit" ] || audit_die "$sha holds no ops/audit-backbone.service"
+AUDIT_PORT=$(unit_port "$audit_unit")
+if [ -n "${RELEASE_AUDIT_BINARY:-}" ]; then
+  audit_binary=$RELEASE_AUDIT_BINARY
+  [ -f "$audit_binary" ] || audit_die "RELEASE_AUDIT_BINARY $audit_binary does not exist"
+elif [ -n "${RELEASE_BINARY:-}" ]; then
+  audit_die "the job names no RELEASE_AUDIT_BINARY: the log's binary must be built from the commit the job runs on"
+else
+  echo "building $sha's activity log: its gate, then make dist"
+  make -C "$src/services/audit-backbone" check || audit_die "the activity log's gate failed"
+  make -C "$src/services/audit-backbone" dist BUILD_COMMIT="$sha" || audit_die "the activity log's build failed"
+  audit_binary=$src/services/audit-backbone/dist/credo-audit-backbone
+fi
+[ -f "$audit_binary" ] || audit_die "no activity log binary at $audit_binary"
+want_audit_sum=$(shasum -a 256 "$audit_binary" | cut -d' ' -f1)
+echo "activity log: $(wc -c <"$audit_binary" | tr -d ' ') bytes, sha256 $want_audit_sum"
+# Nothing here changes what runs: the binary, the unit and the address wait in /opt/audit-backbone as .new
+# files until the install below.
+box 'sudo install -d -m 0755 /opt/audit-backbone /etc/audit-backbone' || audit_die "the log's folders could not be made"
+box 'sudo tee /opt/audit-backbone/credo-audit-backbone.new >/dev/null' <"$audit_binary" || audit_die "the log's binary could not be sent"
+got_audit_sum=$(box 'sudo sha256sum /opt/audit-backbone/credo-audit-backbone.new' | cut -d' ' -f1) || audit_die "the log's binary could not be read back"
+[ "$got_audit_sum" = "$want_audit_sum" ] || audit_die "the log's binary arrived as $got_audit_sum, sent as $want_audit_sum"
+box 'sudo tee /opt/audit-backbone/audit-backbone.service.new >/dev/null' <"$audit_unit" || audit_die "the log's unit could not be sent"
+printf 'LISTEN_ADDR=%s\n' "$BOX_LISTEN_ADDR" | box 'sudo tee /opt/audit-backbone/listen.env.new >/dev/null' || audit_die "the log's address could not be sent"
+# 32 random bytes from the kernel, written root-only; a release never rewrites the file.
+box sudo bash -s <<'REMOTE' || audit_die "the log's key could not be made"
+set -euo pipefail
+f=/etc/audit-backbone/keys.env
+if [ -e "$f" ]; then
+  echo "activity log key: present, left as it is"
+else
+  umask 077
+  tmp=$(mktemp /etc/audit-backbone/.keys.XXXXXX)
+  printf 'ACTIVITY_WRITE_KEY=%s\n' "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" >"$tmp"
+  chown root:root "$tmp"
+  chmod 0600 "$tmp"
+  mv "$tmp" "$f"
+  echo "activity log key: made"
+fi
+stat -c 'activity log key file: mode %a, owner %U' "$f"
+REMOTE
+audit_key=$(box sudo cat /etc/audit-backbone/keys.env) || audit_die "the log's key could not be read to be masked"
+mask "$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_key")"
+
+step "the activity log: installed, started, and /health names the commit"
+# The renames come last, in one command; the unit's rename is the last file, so a failure before it leaves
+# the log unnamed to systemd. c-storage's unit is not in this command.
+box 'sudo chmod 0755 /opt/audit-backbone/credo-audit-backbone.new &&
+  sudo mv -f /opt/audit-backbone/listen.env.new /etc/audit-backbone/listen.env &&
+  sudo mv -f /opt/audit-backbone/credo-audit-backbone.new /opt/audit-backbone/credo-audit-backbone &&
+  sudo mv -f /opt/audit-backbone/audit-backbone.service.new /etc/systemd/system/audit-backbone.service &&
+  sudo systemctl daemon-reload && sudo systemctl enable audit-backbone 2>/dev/null && sudo systemctl restart audit-backbone' ||
+  audit_die "the log could not be installed or started"
+box 'systemctl is-active audit-backbone' || audit_die "the log is not active"
+if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$AUDIT_PORT/health"; then
+  box 'sudo journalctl -u audit-backbone -n 20 --no-pager' || true
+  audit_die "the log is installed, and did not name $sha"
+fi
 echo "released $sha"

@@ -516,6 +516,12 @@ unit_port() {
 
 BOX_ID=''
 BOX_PORT=$(unit_port "$OPS_DIR/c-storage.service")
+# The activity log's writing port, from its unit, the one home: the template takes it as AuditPort
+# shellcheck disable=SC2034 # read by stack.sh, which sources this file
+AUDIT_PORT=$(unit_port "$OPS_DIR/audit-backbone.service")
+# and its reading port, on the box's loopback alone, which the check reads an entry through, on the box
+# shellcheck disable=SC2034 # read by check.sh
+AUDIT_OPEN_PORT=$(sed -n 's/^Environment=OPEN_PORT=//p' "$OPS_DIR/audit-backbone.service")
 # The address on the box that c-storage listens on, and that a forward and every read of /health
 # reach it at: the stack's BoxAddress, set by box_open and read by check.sh, tunnel.sh, release.sh
 # and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
@@ -1080,6 +1086,20 @@ front_door_key_read() {
   mask "$FRONT_DOOR_KEY"
 }
 
+# audit_read: AUDIT_URL and AUDIT_KEY, the activity log's address and write key, from the box's own files: the release made
+# the key (once) and started the log. A box without the key file is refused by name, before anything is sent; the key is
+# masked the moment it is read and reaches the function's settings only through a 0600 file.
+AUDIT_URL=''
+AUDIT_KEY=''
+audit_read() {
+  local audit_kv
+  AUDIT_URL=http://$BOX_LISTEN_ADDR:$AUDIT_PORT
+  audit_kv=$(box sudo cat /etc/audit-backbone/keys.env) || die "the box holds no /etc/audit-backbone/keys.env: ops/release.sh $ENVNAME ships the activity log and makes its key; run it first"
+  AUDIT_KEY=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_kv")
+  [ -n "$AUDIT_KEY" ] || die "the box's /etc/audit-backbone/keys.env holds no ACTIVITY_WRITE_KEY: ops/release.sh $ENVNAME makes it"
+  mask "$AUDIT_KEY"
+}
+
 # bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
 # only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
 BFF_WAIT=120
@@ -1093,10 +1113,12 @@ bff_vpc() {
 # the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
 # passkey is checked against: CloudFront's name, kept for good.
 bff_settings_set() {
+  # a settings call replaces the whole environment, so the log's address and key go in each time: the caller read them first
+  [ -n "$AUDIT_KEY" ] || die "bff_settings_set: audit_read first"
   (
     umask 077
-    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 \
-      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS}}' \
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
+      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY}}' \
       >"$WORK/bff-env.json"
   )
   aws lambda update-function-configuration --function-name "$BFF_NAME" \
@@ -1137,31 +1159,89 @@ store_status() {
 }
 
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
-# empty before layer four> <c-storage's port> → yes, or no. Ssh from a group of the endpoint, and with
-# layer four c-storage's port from BffGroup alone, each a single tcp port from one group: no address
-# range, list or other group, and no third rule.
+# empty before layer four> <c-storage's port> <the activity log's writing port> → yes, or no. Ssh from a
+# group of the endpoint, and with layer four c-storage's port and the activity log's writing port from
+# BffGroup, each a single tcp port from one group: no address range, list or other group, no other port
+# and no further rule. A ridge without the log's rule reads red: the stack run that adds it comes before
+# the code that uses it, and a ridge that never had it, or lost it, must not read green. The port is
+# required: without it nothing but ssh before layer four is accepted.
 box_rules_verdict() {
-  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" '
+  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" --argjson audit "${5:-null}" '
     if all(.[]; .IpProtocol == "tcp" and .FromPort == .ToPort and (.IpRanges | length) == 0
         and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0 and (.UserIdGroupPairs | length) == 1)
     then
       [.[] | {port: .FromPort, group: .UserIdGroupPairs[0].GroupId}] as $r
       | ($r | map(select(.port == 22))) as $ssh
-      | ($r | map(select(.port != 22))) as $app
-      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null)
-           and $app == (if $bff == "" then [] else [{port: $port, group: $bff}] end)
+      | ($r | map(select(.port != 22)) | sort_by(.port)) as $app
+      | (if $bff == "" then [[]]
+         elif $audit == null then []
+         else [[{port: $port, group: $bff}, {port: $audit, group: $bff}] | sort_by(.port)] end) as $ok
+      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null) and any($ok[]; . == $app)
         then "yes" else "no" end
     else "no" end' <<<"$1"
 }
 
-# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> →
-# yes, or no: it sends to c-storage's port on the box's group, one rule and nowhere else, and admits nothing
+# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> <the activity
+# log's writing port> → yes, or no: it sends to c-storage's port and to the activity log's port on the box's
+# group, each a single rule to the box's group alone, nothing else, and admits nothing. A group with the
+# store's rule alone reads red (see box_rules_verdict), and so does a call that names no log port.
 bff_rules_verdict() {
-  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" '
-    if $ingress == [] and length == 1 and .[0].IpProtocol == "tcp" and .[0].FromPort == $port and .[0].ToPort == $port
-       and (.[0].IpRanges | length) == 0 and (.[0].Ipv6Ranges | length) == 0 and (.[0].PrefixListIds | length) == 0
-       and (.[0].UserIdGroupPairs | length) == 1 and .[0].UserIdGroupPairs[0].GroupId == $box
-    then "yes" else "no" end' <<<"$1"
+  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" --argjson audit "${5:-null}" '
+    def one($p): .IpProtocol == "tcp" and .FromPort == $p and .ToPort == $p
+       and (.IpRanges | length) == 0 and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0
+       and (.UserIdGroupPairs | length) == 1 and .UserIdGroupPairs[0].GroupId == $box;
+    sort_by(.FromPort) as $r
+    | if $ingress == [] and $audit != null
+         and ($r | length) == 2 and ($r[0] | one([$port, $audit] | min)) and ($r[1] | one([$port, $audit] | max))
+      then "yes" else "no" end' <<<"$1"
+}
+
+# audit_fact <facts> <name> → the value a line "name=value" of the box's facts holds
+audit_fact() { sed -n "s/^$2=//p" <<<"$1"; }
+
+# audit_problems <the log's facts, read on the box> <the box's private address> <the log's writing port> <its reading
+# port> <the commit /health must name> → one problem a line, none when the log is sound: the unit active, the writing
+# listener on the box's private address alone, the reading one on loopback alone, the key file 600 root, the data
+# folder 700 and its files 600, and /health naming the commit. No address is printed, and no key is on the box's lines.
+audit_problems() {
+  local f=$1 addr=$2 w=$3 r=$4 want=$5 got
+  [ "$(audit_fact "$f" unit)" = active ] || echo "the activity log's unit is '$(audit_fact "$f" unit)', not active"
+  [ "$(audit_fact "$f" listen_w)" = "$addr:$w " ] || echo "the activity log's writing listener is not the box's private address alone"
+  [ "$(audit_fact "$f" listen_r)" = "127.0.0.1:$r " ] || echo "the activity log's reading listener is not loopback alone"
+  [ "$(audit_fact "$f" keys)" = "600 root" ] || echo "the activity log's key file is '$(audit_fact "$f" keys)', not '600 root'"
+  [ "$(audit_fact "$f" dir)" = 700 ] || echo "the activity log's data folder is mode '$(audit_fact "$f" dir)', not 700"
+  [ "$(audit_fact "$f" files)" = "600 " ] || echo "the activity log's database files are mode '$(audit_fact "$f" files)', not '600 '"
+  got=$(build_of "$(audit_fact "$f" health)")
+  [ "$got" = "$want" ] || echo "the activity log's /health names '${got:-nothing}', not $want"
+}
+
+# audit_memory_line <facts> → each program's resident memory beside the box's, in MiB; a figure the box did not give
+# (systemd's accounting off) is said as not read, never as zero
+audit_memory_line() {
+  local one name v out=''
+  for name in c-storage audit-backbone; do
+    v=$(audit_fact "$1" "mem_$name")
+    case $v in
+      '' | *[!0-9]*) one="$name not read" ;;
+      *) one="$name $((v / 1048576)) MiB" ;;
+    esac
+    out="$out$one; "
+  done
+  printf '%s' "${out%; }"
+}
+
+# audit_entry_problems <the box's lines from its read of one record's entries> → one problem a line, none when the
+# record holds exactly one customer.create entry, read with a token minted on the box, and no entry holds the write key;
+# when no token was minted nothing was read, and that is the one problem named
+audit_entry_problems() {
+  local f=$1
+  # no token, no read: the box prints minted=no alone, and a count or a leak claimed from nothing would be false
+  if [ "$(audit_fact "$f" minted)" != yes ]; then
+    echo "the box could not mint a read token for the check's client"
+    return 0
+  fi
+  [ "$(audit_fact "$f" created)" = 1 ] || echo "the customer's record holds '$(audit_fact "$f" created)' customer.create entries in the activity log, not 1"
+  [ "$(audit_fact "$f" leak)" = 0 ] || echo "an entry read from the activity log holds the write key ('$(audit_fact "$f" leak)')"
 }
 
 # BFF_FN_QUERY: the only fields of the function's configuration the check reads, as --query. The
@@ -1178,9 +1258,9 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the six variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the eight variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {
@@ -1310,6 +1390,15 @@ edge_reads_client() {
   mask "$auth"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  and is known by its handle" "200 root" "$EDGE_STATUS $(jq -r '.user.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
+  # With EDGE_ADD_CUSTOMER set (check.sh, never the stand-in cases of the reads), the root adds one customer, a change
+  # the back end enters in the activity log; its id is EDGE_RECORD for the box's read of that entry.
+  EDGE_RECORD=''
+  if [ -n "${EDGE_ADD_CUSTOMER:-}" ]; then
+    edge POST /api/customers -H "x-client-code: $code" -H "x-auth-id: $auth" -H 'content-type: application/json' \
+      --data-binary '{"code":"CHK-1","name":"Check customer","extra":{}}'
+    EDGE_RECORD=$(jq -r '.customer.id // empty' <<<"$EDGE_BODY" 2>/dev/null || true)
+    expect "  adds one customer through the edge" "200 yes" "$EDGE_STATUS $([ -n "$EDGE_RECORD" ] && echo yes || echo no)"
+  fi
   edge POST /api/auth/sign-out -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  signs out" 204 "$EDGE_STATUS"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"

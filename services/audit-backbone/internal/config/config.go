@@ -7,10 +7,15 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
 )
+
+// DefaultListenAddr is where the listeners bind when LISTEN_ADDR is unset: the local stack and
+// every test stay on loopback. The open listener binds it whatever LISTEN_ADDR says.
+const DefaultListenAddr = "127.0.0.1"
 
 // Config is the box's .env: a ship writes PORT, OPEN_PORT and DB_PATH, the rest
 // comes from the env's own file.
@@ -18,6 +23,10 @@ type Config struct {
 	// Port carries the keyed listener, OpenPort the open one.
 	Port     string
 	OpenPort string
+
+	// ListenAddr is the one IP address the keyed listener binds. Unset, it is loopback. The
+	// open listener never takes it.
+	ListenAddr string
 
 	// DBPath is the activities database; its directory is created on open.
 	// ship writes it relative to the unit's WorkingDirectory, and the process
@@ -59,6 +68,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	addr, err := listenAddrOf("LISTEN_ADDR")
+	if err != nil {
+		return nil, err
+	}
+
 	key, err := required("ACTIVITY_WRITE_KEY")
 	if err != nil {
 		return nil, err
@@ -69,7 +83,7 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("LOG_LEVEL must be debug, info, warn or error")
 	}
 
-	return &Config{Port: port, OpenPort: openPort, DBPath: path, WriteKey: key, LogLevel: level}, nil
+	return &Config{Port: port, OpenPort: openPort, ListenAddr: addr, DBPath: path, WriteKey: key, LogLevel: level}, nil
 }
 
 func required(name string) (string, error) {
@@ -90,4 +104,23 @@ func portOf(name string) (string, error) {
 		return "", fmt.Errorf("%s must be a port number, 1 to 65535", name)
 	}
 	return strconv.Itoa(n), nil
+}
+
+// listenAddrOf reads the optional address: unset is loopback, and a set one is a single IP
+// address. Never an unspecified one (0.0.0.0, ::), which would leave a firewall as the only wall
+// between the network and the port; never a name, a port, a range or a zone.
+func listenAddrOf(name string) (string, error) {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return DefaultListenAddr, nil
+	}
+	addr, err := netip.ParseAddr(raw)
+	if err == nil {
+		// ::ffff:0.0.0.0 is 0.0.0.0 in a v6 coat, and binds every interface unless unmapped first.
+		addr = addr.Unmap()
+	}
+	if err != nil || addr.IsUnspecified() || addr.Zone() != "" {
+		return "", fmt.Errorf("%s must be one specific IP address (not an unspecified one, a name or a port), or unset for loopback", name)
+	}
+	return addr.String(), nil
 }

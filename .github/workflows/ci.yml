@@ -9,6 +9,7 @@ on:
   push:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -27,6 +28,7 @@ on:
   pull_request:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -67,6 +69,23 @@ jobs:
           cache-dependency-path: services/c-storage/go.sum
       - name: make check
         working-directory: services/c-storage
+        run: make check
+
+  # The activity log's own gate, a copy of c-storage's above: format, vet, race tests at 100 % and the box's
+  # build. The deploy waits on it, and ships the binary this commit builds.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/audit-backbone/go.mod
+          cache-dependency-path: services/audit-backbone/go.sum
+      - name: make check
+        working-directory: services/audit-backbone
         run: make check
 
   # The assembled server on a real socket: scripts/e2e.sh starts the binary on a
@@ -214,7 +233,7 @@ jobs:
   # A superseded release (ridge runs a newer commit, whose own deploy shipped the app) ends the job green:
   # the steps after the release carry that condition as well.
   deploy:
-    needs: [check, e2e, ops, app]
+    needs: [check, audit, e2e, ops, app]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -278,6 +297,15 @@ jobs:
         timeout-minutes: 5
         working-directory: services/c-storage
         run: make box
+      # The activity log's arm64 binary of this commit, stamped with its sha (the Makefile reads BUILD_COMMIT
+      # from the environment); the release sends it as RELEASE_AUDIT_BINARY.
+      - name: Build the activity log's binary
+        if: ${{ !env.ACT }}
+        timeout-minutes: 5
+        working-directory: services/audit-backbone
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+        run: make dist
       # Litestream rides the release beside c-storage: the pinned arm64 archive (the box's), fetched from
       # its release before the role is taken and refused unless its SHA-256 is ops/litestream.pin's, the
       # one home of the version and the sum. ops/release.sh checks it again before it sends a byte.
@@ -311,6 +339,7 @@ jobs:
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
+          RELEASE_AUDIT_BINARY: ${{ github.workspace }}/services/audit-backbone/dist/credo-audit-backbone
           LITESTREAM_ARCHIVE: ${{ runner.temp }}/litestream.tar.gz
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
