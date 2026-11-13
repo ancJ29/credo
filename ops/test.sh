@@ -3976,6 +3976,12 @@ async function main() {
   }
   console.log(`stand-in: remake ${rest[0] ?? 'whole'} begins`);
   await sleep(Number(process.env.FAKE_REMAKE_MS ?? 0));
+  if (process.env.FAKE_DROP_EARLY && rest[0] !== '--go-on') {
+    process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
+    await sleep(30000);
+  }
+  if (rest[0] !== '--go-on') console.log("remake: this Mac's store built and the 6 copies filled on it, 0.1 minutes");
+  if (process.env.FAKE_HANG) await sleep(60000);
   if (process.env.FAKE_DROP && rest[0] !== '--go-on') {
     process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
     await sleep(30000);
@@ -4060,6 +4066,26 @@ check "  --go-on goes on: exit 0, the remake gone on with once, no new whole rem
   "$RC $(grep -c '^remake --go-on$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
 check "  and --go-on needs no terminal and no typing" "yes" "$(grep -q 'refused' "$S/out" && echo no || echo yes)"
 check "  and is handed the store the stopped run filled" "2 1" "$(wc -l <"$S/store.dirs" | tr -d ' ') $(sort -u "$S/store.dirs" | wc -l | tr -d ' ')"
+
+# A tunnel that drops before the store on this Mac is filled: a refusal (nothing on ridge was deleted), never --go-on.
+e2e_fresh dr-drop-early
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run2b FAKE_REMAKE_MS=1000 FAKE_DROP_EARLY=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a tunnel that drops before the fill ends is a refusal (exit 2) saying nothing on ridge was deleted, never naming --go-on" "2 1 0" \
+  "$RC $(dr_lines '^== refused: the tunnel dropped.*nothing on ridge was deleted: run ops/demo-remake.sh ridge again whole$') $(dr_lines 'ridge --go-on')"
+# A Ctrl-C or TERM while the remake runs, after the fill: the exit is the signal's and the log names --go-on.
+e2e_fresh dr-signal
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+export OPS_LOG_DIR=$E2E/logs-dr-sig
+printf '%s\n' "$DRTYPED"$'\n'"remake ridge" >"$S/typed"
+(cd "$E2E/repo" && exec env FAKE_HANG=1 PATH="$PATH" RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY=1 DEMO_REMAKE_TICK=1 DEMO_REMAKE_LOCAL_PORT="$drport" \
+  bash ops/demo-remake.sh ridge) >"$S/out" 2>&1 <"$S/typed" &
+LPID=$!
+for _ in $(seq 1 300); do if [ "$(dr_lines "^remake: this Mac's store built and the 6 copies filled on it")" = 1 ]; then break; fi; sleep 0.1; done
+kill -TERM "$LPID" 2>/dev/null || true
+e2e_reap 30
+check "  a TERM while the remake runs ends 143, naming --go-on in the log, with no closing line" "143 1 0" \
+  "$RC $(dr_lines '^the run was stopped while the remake ran: run ops/demo-remake.sh ridge --go-on to copy again what differs') $(dr_lines '^the 6 demo copies on ridge are remade')"
 
 # A store on this Mac that does not start: the node half's refusal, before any delete, is the run's.
 e2e_fresh dr-store

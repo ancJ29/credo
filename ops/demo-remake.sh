@@ -130,9 +130,28 @@ kill_tree() {
   kill "$1" 2>/dev/null || true
 }
 
-# cleanup_extra: a remake still running when the run ends is ended with it
+# filled_yet: this Mac's store holds the six filled copies (the node half printed its line), or --go-on
+# started from one: a stop after it is gone on with by --go-on, a stop before it deleted nothing on ridge
+filled_yet() {
+  [ "$GO_ON" = 1 ] || grep -q "^remake: this Mac's store built and the [0-9]* copies filled on it" "$LOG" 2>/dev/null
+}
+
+# stop_advice: the line that says what a stop left and the one command to go on, by where the remake stood
+stop_advice() {
+  if filled_yet; then
+    echo "run ops/demo-remake.sh $ENVNAME --go-on to copy again what differs, or the same run again whole"
+  else
+    echo "the store on this Mac was not filled whole and nothing on $ENVNAME was deleted: run ops/demo-remake.sh $ENVNAME again whole"
+  fi
+}
+
+# cleanup_extra: a remake still running when the run ends (a signal ends it here) is ended with it, and
+# the stop says what it left
 cleanup_extra() {
-  if [ -n "$REMAKE_PID" ]; then kill_tree "$REMAKE_PID"; fi
+  if [ -n "$REMAKE_PID" ]; then
+    kill_tree "$REMAKE_PID"
+    echo "the run was stopped while the remake ran: $(stop_advice)"
+  fi
 }
 
 # clock_after <minutes> → HH:MM that many minutes from now, read by date here
@@ -182,10 +201,10 @@ remake_run() {
   local sec=0 rc=0
   WRITTEN=1
   if [ "$GO_ON" = 1 ]; then
-    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR \
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR REMAKE_COMMIT=$sha \
       ridge_cli remake --go-on </dev/null &
   else
-    passwords_pipe | INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR \
+    passwords_pipe | INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT REMAKE_STORE_DIR=$STORE_DIR REMAKE_COMMIT=$sha \
       ridge_cli remake &
   fi
   REMAKE_PID=$!
@@ -195,9 +214,10 @@ remake_run() {
     sec=$((sec + 1))
     if [ $((sec % TICK)) = 0 ]; then
       if ! tunnel_up; then
-        cleanup_extra
+        kill_tree "$REMAKE_PID"
         REMAKE_PID=''
-        die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network) $sec seconds into the remake: run ops/demo-remake.sh $ENVNAME --go-on to copy again what differs"
+        filled_yet || WRITTEN=0
+        die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network) $sec seconds into the remake: $(stop_advice)"
       fi
       echo "   the remake runs, ${sec}s, the tunnel is up ($(clock_after 0))"
     fi
@@ -208,7 +228,10 @@ remake_run() {
     WRITTEN=0
     die "the remake was refused before any delete (the line above): nothing was deleted"
   fi
-  [ "$rc" = 0 ] || die "the remake stopped (the lines above name the copy and why): run ops/demo-remake.sh $ENVNAME --go-on to copy again what differs, or the same run again whole"
+  [ "$rc" = 0 ] || {
+    filled_yet || WRITTEN=0
+    die "the remake stopped (the lines above name the copy and why): $(stop_advice)"
+  }
 }
 
 log_start demo-remake "$ENVNAME"
