@@ -196,8 +196,32 @@ resource, hop or key, so stage 2 stands for it and it reaches ridge with your ne
   *Done 2026-11-13:* the architecture page and its detail page say a list is read in pages (1,000 records or about 4 MiB, the next after the last key) and that the back end reads every page, the detail page's line citation to `records.ts` now a symbol one; the comments at `listRecords` and the day-keyed `order` in `shared` say the same; `every`'s comment already did. The citation test ended 0, and the added lines carry no `/Users/` or `~/` (the 15 matches in the tree are older). The `shared/src/c-storage.ts` and `shared/src/records.ts` edits are comments alone, so no package gate was run for them.
 - [ ] **8. Reviewed, and the whole check.** A model other than the author's reads the code, its tests
   and this table. *Done when:* a verdict line, each finding with its line. *Size:* 20.
-- [ ] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, the
+- [x] **9. The fix pass.** *Done when:* each finding fixed, rejected or deferred with its reason, the
   touched steps' gates at `== exit 0`. *Size:* 6 (the cross-company tests' fix pass).
+  *Done 2026-11-13:* `pre-merge` (the ridge guide) taken in first, clean. **Fixed:** finding 1, the wrapper's cleanup now
+  checks each drill record before removing it and prints a `WARN` line naming the copies that may still hold one and, when
+  the box could not be reached, the restored file's path, the clock time the second c-storage ends by itself and what to
+  remove; the restored file's name is set before `box_restore` writes it (and the answer checked against it); finding 2,
+  `copy-company` reads the target's index for the code before any write and refuses, writing nothing, when it names another
+  company id (an absent index is allowed, the move's case); finding 3, the box's serve and stop refuse a name that holds a
+  `/` after the records folder; finding 6, `copy-company` takes the code as `--check` and `drill-record` do; finding 9, the
+  README's item 3 moved below its sub-bullets and the `WARN` said there; finding 10, the step count (eight) and the line
+  with how long the three walks may take and until what clock time, then a line every 30 seconds; finding 11, the ridge
+  guide's "does not cover" sentence names `ops/company-restore.sh`. **Not fixed, filed in `docs/open-items.md`:** findings 4,
+  5, 7, 8 and 12 as items 392, 393, 394, 400 and 403, finding 10's check order, stop advice and rate as item 401, and the
+  proxy's shielding from Ctrl-C as item 402. **The stand-in:** `ops/test.sh` runs the whole wrapper on a stand-in box (the
+  stand-in `ssh` runs the three box scripts on scratch folders, `litestream restore` is a `sqlite3` backup of the live
+  stand-in's file, `setsid` and `timeout` are shims, the second forward is a no-op through `COMPANY_RESTORE_BOX_PORT`): it
+  ends `== exit 0` with the compare at 1 differing before and 0 after, the named copy's drill record gone, the neighbour's
+  kept then removed, and the restored file, the pid file and the second c-storage gone, the code typed in capitals; one
+  variant sends INT during the copy with the connection alive (exit 130, everything removed, no `WARN`), one drops the
+  connection first (exit 130, both `WARN` lines naming the file, the time and the two copies). Each guard seen red once on a
+  mutation and put back: the code normalising (finding 6), the target's id check (finding 2, in `ridge-copy.test.ts`), the
+  climbing name in the stop and in the serve (finding 3), the restored file's name set before the restore, the step count,
+  the walks line, the cleanup's records, and each of the two `WARN` lines. Not run offline: the real `ssh` proxy under
+  Ctrl-C (item 402), the real `litestream restore` and the walks' time over the endpoint; step 11 is their first run. Gates:
+  the `scripts` gate and `bash ops/test.sh` each ended `== exit 0` on the tree committed, and `shellcheck -x ops/*.sh`
+  ended 0.
 - [ ] **10. Recap.** Half a page: point 1's picture from the committed code, the copy rate and what it
   means for a year's company, case 17 marked not yet known. *Done when:* committed, the citation
   test at exit 0. *Size:* 3 (the cross-company tests' recap).

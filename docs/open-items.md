@@ -1600,6 +1600,34 @@ The old test asserted every run's status; with the 21-day fill the loop of seven
 The shape of the red at `fdfdf90e` in `MyDeliveries.test.tsx` (heading awaited, then a call count at once, while the load starts in a `useEffect`): one more case has it, found by reading every `expect(api.<member>).toHaveBeenCalled…` after an awaited find in `ui/src`. `ui/src/OperatorApp.test.tsx#L449` awaits the heading "Operators", reads the "Add an operator" link, then asserts `listOperators` was called once; `OperatorsPage.tsx` draws both before its load (`ui/src/pages/operator/OperatorsPage.tsx#L19-L25`). The others read were safe: they await text that only the loaded data draws (`pages/client/ListPage.test.tsx#L125`, `#L184`, `#L413`; `pages/client/Reconcile.test.tsx#L41`; `pages/client/OrdersPages.test.tsx#L71`; `pages/client/DeliveriesPages.test.tsx#L36`; `pages/operator/JoinPage.test.tsx#L21`; `pages/operator/OperatorsPage.test.tsx#L43`), or follow a call the app itself waits on (`App.test.tsx#L106`, `OperatorApp.test.tsx#L220`, `pages/client/Access.test.tsx#L97`). The fix is the same one line: the count inside `await waitFor(...)`.
 
 
+## 392. The stop of the second c-storage can signal a reused pid and races the process it stops — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`ops/lib.sh`'s `box_stop_restored` signals the pid in `/run/c-storage-restored.pid` as root, and nothing clears that file when `timeout` ends the process by itself, so a later stop can signal a reused pid. It removes the file without waiting for the process to exit, and a c-storage still running can recreate an empty file at that path (the unit's header says it makes a new, empty file wherever it is pointed). *Fix, if wanted:* read `/proc/<pid>/cmdline` before the kill, wait up to a few seconds for the process to end, then remove the files, and give `timeout -k`. *Trigger:* the first run on ridge that meets a leftover pid file, or the next edit of the helper.
+
+## 393. The second c-storage's health wait cannot tell it from another listener on 3182, and a failed start leaves no reason — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`ops/lib.sh`'s `box_serve_restored` sends the binary's output to `/dev/null` and waits for `/health` on the port. *Fix, if wanted:* check `kill -0 $!` along with the answer, and keep the first lines of the binary's stderr. *Trigger:* a run that stops at "the second c-storage did not start".
+
+## 394. The JavaScript key compare is not the store's key order for characters above U+FFFF — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`bff/src/records/records.ts` (`first.key <= cursor`) and `bff/src/records/company-copy.ts` (`s.key <= t.key`) compare keys in UTF-16 code units, while SQLite orders them by bytes (code-point order). They disagree for a character above U+FFFF set against one in U+E000 to U+FFFF; a sign-in name (`user(name)`) may carry either. At worst: a false "longer than c-storage returns" 500 on a list of more than one page, or a mispaired key in the copy, which shows as a false stop or a red compare; never another company's key and never a silent green. *Fix, if wanted:* one code-point comparator for both sites and one test with that pair of keys. *Trigger:* a key with such a character on a real list, or the next edit of either file.
+
 ## 395. The demo remake labels its steps one too high, and the runbook says the seed ends on STILL BEHIND — the machine; `[DEFERRED]` (the ridge guide's second read, 2026-11-13, Low)
 
 `ops/demo-remake.sh` sets `STEPS=6` and calls `step` five times, so its lines read one to five of six; the ridge guide's `[n/6]` matches what prints. In `ops/README.md`, the seed's third check says a run that ends on the STILL BEHIND line is green, but `scripts/src/ridge.ts` prints that line before the summary and `ops/seed.sh` then prints `seeded <sha>`. *Fix, if wanted:* set the count to five (or add the sixth step), and say "a run that prints". *Trigger:* the next edit of either script.
+
+## 400. `everything` reads pages without `pagesOf`'s check — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+`scripts/src/demo/apply-support.ts`'s `everything` ends silently on a page that says `more` but holds no records, and loops for ever on a c-storage that ignores `after`: the fault `pagesOf` raises. Only tests call it today. *Fix, if wanted:* call `pagesOf` or copy its check. *Trigger:* the first non-test caller.
+
+## 401. The wrapper's smaller faults: the check order, the stop advice, the copy's rate — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low)
+
+Three of the review's list that the fix pass left. (1) The check for node and `pnpm install` in `ops/company-restore.sh` comes after the first `ridge_cli`, so a missing install is reported as "<code> is refused". (2) The stop advice, "the same run again goes on from the compare", does not match a rerun, which restores a new newest copy and starts over. (3) No rate tells whether a demo copy's copy fits inside the second c-storage's 900 s. *Fix, if wanted:* move the two checks above the first `ridge_cli`; reword the advice; print the copy's seconds and records on a run and compare them with 900 after the first real run. *Trigger:* the first real run on ridge (the rate), the next edit of the script.
+
+## 402. Ctrl-C reaches the ssh proxy, so the cleanup's calls may find the connection gone — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Low; needs a real run to be certain)
+
+`box_open`'s `ssh -f` daemonizes only itself; its ProxyCommand (`aws ec2-instance-connect open-tunnel`) was forked before that and stays in the terminal's foreground process group, so it gets the SIGINT and drops the connection before `on_exit` runs. The wrapper now says what it could not remove (a `WARN` line), but a Ctrl-C will still often leave the second c-storage to end by itself. *Fix, if wanted:* shield the proxy (`(trap '' INT; exec ssh -f ...)` in `box_open`); it changes every ops script, so it is a change of its own. *Trigger:* the first real Ctrl-C on a run, or the next change to `box_open`.
+
+## 403. `docs/client-readiness.md` holds 14 line citations to `bff/src/routes/orders.ts` that were already wrong — the machine; `[DEFERRED]` (the review of the store pages and the company copy, 2026-11-13, Info, pre-existing)
+
+The page (a living document) cites `bff/src/routes/orders.ts#L218` to `#L483`; read at their targets at the merge base they were already wrong, and the piece's two added lines in `priced` move them by two more. *Fix, if wanted:* re-derive the 14 citations, as symbols where one exists. *Trigger:* the next change to that page.

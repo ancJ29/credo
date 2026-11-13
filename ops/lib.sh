@@ -779,6 +779,8 @@ box_serve_restored() {
 set -euo pipefail
 mount=$1 file=$2 port=$3 secs=$4
 case $file in "$mount"/restored-*.db) ;; *) echo "not a restored file: $file" >&2; exit 1 ;; esac
+# A case pattern's * also matches a /: the name after the folder holds none, or a name that climbs out of it passes.
+case ${file#"$mount"/} in */*) echo "not a restored file: $file" >&2; exit 1 ;; esac
 [ -s "$file" ] || { echo "no restored file: $file" >&2; exit 1; }
 if [ -e /run/c-storage-restored.pid ] && kill -0 "$(cat /run/c-storage-restored.pid)" 2>/dev/null; then
   echo "a second c-storage is already serving a restored file" >&2
@@ -807,7 +809,8 @@ if [ -e /run/c-storage-restored.pid ]; then
   kill "$(cat /run/c-storage-restored.pid)" 2>/dev/null || true
   rm -f /run/c-storage-restored.pid
 fi
-case $file in "$mount"/restored-*.db) rm -f "$file" "$file-wal" "$file-shm" ;; esac
+# A case pattern's * also matches a /: a name that climbs out of the folder (restored-x/../ and then a live name) removes nothing.
+case $file in "$mount"/restored-*.db) case ${file#"$mount"/} in */*) ;; *) rm -f "$file" "$file-wal" "$file-shm" ;; esac ;; esac
 REMOTE
 }
 

@@ -621,11 +621,6 @@ The drill reads the copy for real.
    its companions are moved aside (`c-storage.db.aside-<stamp>`, never deleted), the restored file takes the live
    path and c-storage starts again. Refused on an environment that may hold real data ([on production](#on-production)):
    restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
-3. To put **one demo copy** back and leave its neighbours as they are now, `ops/company-restore.sh ridge <code>`
-   (ridge's demo copies alone): it restores the newest copy to a new file, serves it with a second c-storage on
-   the box's loopback for the run alone (ended by a `timeout` of 15 minutes and at the run's end), writes a drill
-   record into the named copy and a neighbour, copies the named copy back (`copy-company`), and reads the named
-   copy's record gone, the neighbour's kept and the compare at 0. The restored file is removed at the end.
    - **a records disk that holds no `c-storage.db`, while the bucket holds a copy** (a replacement box, or a
      disk made blank): a release refuses it, blank or mounted by hand alike, and names the one path:
      `ops/restore.sh <env> [--at <time>] --onto-blank`. It formats a disk with no filesystem, mounts it at the
@@ -636,6 +631,11 @@ The drill reads the copy for real.
      c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
      copy. Not yet walked on a real blank disk.
    - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
+3. To put **one demo copy** back and leave its neighbours as they are now, `ops/company-restore.sh ridge <code>`
+   (ridge's demo copies alone): it restores the newest copy to a new file, serves it with a second c-storage on
+   the box's loopback for the run alone (ended by a `timeout` of 15 minutes and at the run's end), writes a drill
+   record into the named copy and a neighbour, copies the named copy back (`copy-company`), and reads the named
+   copy's record gone, the neighbour's kept and the compare at 0. The restored file is removed at the end; if the connection is gone by then, a `WARN` line in the log names the file, the time the second c-storage ends by itself and the copies that may still hold a drill record.
 ## The watch
 
 Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),

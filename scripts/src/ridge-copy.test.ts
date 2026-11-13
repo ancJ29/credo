@@ -134,6 +134,34 @@ describe('ridge copy-company', () => {
     expect(writes).toEqual([]);
   }, 120_000);
 
+  it('takes the code as the product does, and refuses a target that names the code under another id', async () => {
+    const { source, target, run } = await pair();
+    const one = await company(source.client, 'copy-case', 3);
+    // The target's index names the same company: the copy goes on, however the code was typed.
+    const index = await source.client.getRecord(recordKeys.client('copy-case'));
+    await target.client.putRecord(recordKeys.client('copy-case'), index!.data);
+    const typed = await run(['copy-company', ' Copy-Case ']);
+    expect(typed.err).toEqual([]);
+    expect(typed.status).toBe(0);
+    expect(typed.out.at(-1)).toBe(
+      'copy-case after: the source holds 5 records, 0 differ on the target',
+    );
+    expect(await held(target.client, one.id)).toEqual(await held(source.client, one.id));
+
+    // A target remade since: the code names another company there, and nothing is written.
+    const remade = await pair();
+    const two = await company(remade.source.client, 'copy-remade', 3);
+    await company(remade.target.client, 'copy-remade', 2);
+    const refused = await remade.run(['copy-company', 'copy-remade']);
+    expect(refused).toEqual({
+      status: 2,
+      out: [],
+      err: ['error: the target names copy-remade under another company id: nothing was written'],
+    });
+    expect(remade.writes).toEqual([]);
+    expect(await held(remade.target.client, two.id)).toEqual([]);
+  });
+
   it('refuses a code the source has no company for, before anything is written', async () => {
     const { writes, run } = await pair();
     const refused = await run(['copy-company', 'no-such']);

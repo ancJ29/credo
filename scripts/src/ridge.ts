@@ -403,7 +403,8 @@ export async function runRidge(
     }
 
     if (command === 'copy-company') {
-      const [code] = rest;
+      // The code as the product takes it, as --check and drill-record read it: Demo-A is demo-a.
+      const code = normaliseClientCode(rest[0] ?? '');
       if (!clientCodeSchema.safeParse(code).success || rest.length !== 1) throw new Refused(USAGE);
       const from = readStorageEnv(
         Object.fromEntries(
@@ -425,7 +426,13 @@ export async function runRidge(
       const held = await source.getRecord(recordKeys.client(code));
       if (!held) throw new Refused(`the source holds no company with the code ${code}`);
       const id = storedClientSchema.parse(held.data).id;
-      const [one, other] = [tenantStorage(source, id), tenantStorage(client(), id)];
+      // A target remade since the moment restored names the code under another id: the records would go under an
+      // id no index there names. An absent index is allowed (the company is moved onto a store that lacks it).
+      const target = client();
+      const there = await target.getRecord(recordKeys.client(code));
+      if (there && storedClientSchema.parse(there.data).id !== id)
+        throw new Refused(`the target names ${code} under another company id: nothing was written`);
+      const [one, other] = [tenantStorage(source, id), tenantStorage(target, id)];
       const line = async (when: string) => {
         const { records, differ } = await compareCompany(one, other);
         io.out(

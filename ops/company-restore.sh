@@ -25,13 +25,14 @@ set -euo pipefail
 }
 ENVNAME=$1
 CODE=$2
-STEPS=7
+STEPS=8
 # Neither the local stack's port (3181), the check's (3191), the tunnel's (3192), the deploy's (3193), the
 # operator's (3194), the seed's (3195), the root password's (3196) nor the demo remake's (3197).
 LIVE_PORT=${COMPANY_RESTORE_LIVE_PORT:-3198}
 RESTORED_PORT=${COMPANY_RESTORE_RESTORED_PORT:-3199}
 # The second c-storage's port on the box's loopback, and the most seconds it may live: it ends by itself.
-BOX_RESTORED_PORT=3182
+# (ops/test.sh sets it to the local forward's own port, so that the forward is a no-op beside its stand-in box.)
+BOX_RESTORED_PORT=${COMPANY_RESTORE_BOX_PORT:-3182}
 SERVE_SECONDS=900
 
 # A stop before the first write is a refusal (walk/run.sh's form), lib.sh's guards included.
@@ -53,14 +54,40 @@ live_cli() {
   INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LIVE_PORT \
     ridge_cli "$@"
 }
+# drill_clear <code>: 0 when that copy holds no drill record any more; 1 when it may still hold one (the record
+# could not be read or removed). A copy the record is already gone from needs no removal.
+drill_clear() {
+  local had
+  had=$(live_cli drill-record has "$1" 2>/dev/null) || return 1
+  if [ "$had" = no ]; then return 0; fi
+  live_cli drill-record remove "$1" >/dev/null 2>&1
+}
+# The clock time by which the second c-storage has ended by itself, once it is started; empty before.
+SERVE_ENDS=''
+# The line every 30 seconds while the copy's whole-company walks run: a silent wait cannot be told from a freeze.
+HEARTBEAT_PID=''
+heartbeat() { # <clock time to give up by>
+  while :; do
+    for _ in $(seq 1 30); do sleep 1; done
+    echo "still copying ($(date '+%H:%M:%S')); the second c-storage ends by itself by $1"
+  done
+}
 # cleanup_extra: whatever the end, the second c-storage is ended and the restored file removed, and the
-# drill's records are taken out of both copies (best effort: the copy itself removes the named one's).
+# drill's records are taken out of both copies. Both go through the one connection; when it is gone the call
+# fails, and a WARN line names what was left and how to clear it (ops/check.sh's form), the run's verdict kept.
 cleanup_extra() {
+  local left=''
+  if [ -n "$HEARTBEAT_PID" ]; then kill "$HEARTBEAT_PID" 2>/dev/null || true; fi
   if [ "$WRITTEN" = 1 ] && [ "$LIVE_READY" = 1 ]; then
-    live_cli drill-record remove "$CODE" >/dev/null 2>&1 || true
-    if [ -n "$NEIGHBOUR" ]; then live_cli drill-record remove "$NEIGHBOUR" >/dev/null 2>&1 || true; fi
+    if ! drill_clear "$CODE"; then left="$left $CODE"; fi
+    if [ -n "$NEIGHBOUR" ] && ! drill_clear "$NEIGHBOUR"; then left="$left $NEIGHBOUR"; fi
   fi
-  if [ -n "$RESTORED_FILE" ]; then box_stop_restored "$RESTORED_FILE" || true; fi
+  if [ -n "$left" ]; then
+    echo "WARN a drill record may be left in:$left (the key drill-restore under the copy's prefix); the same run again, to its end, takes them out"
+  fi
+  if [ -n "$RESTORED_FILE" ] && ! box_stop_restored "$RESTORED_FILE"; then
+    echo "WARN the restored file $RESTORED_FILE (a whole copy of every company's records), its -wal and -shm, and /run/c-storage-restored.pid may be left on the box, and the second c-storage may still run${SERVE_ENDS:+ (it ends by itself by $SERVE_ENDS)}: on the box, sudo rm -f those three files and the pid file after it has ended"
+  fi
 }
 
 log_start company-restore "$ENVNAME"
@@ -103,12 +130,15 @@ done
 
 step "the box's file restored to a new file"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
+# The name is known before the restore writes (box_restore names its file from the stamp), so a stop inside it
+# still removes the file.
+RESTORED_FILE=$RECORDS_MOUNT/restored-c$stamp.db
 got=$(box_restore - 0 "c$stamp") || die "the restore failed on the box; it touched nothing live"
-RESTORED_FILE=$(sed -n 's/^restored=//p' <<<"$got")
-[ -n "$RESTORED_FILE" ] || die "the restore named no file"
+[ "$(sed -n 's/^restored=//p' <<<"$got")" = "$RESTORED_FILE" ] || die "the restore named another file than $RESTORED_FILE"
 echo "restored: $RESTORED_FILE"
 
 step "a second c-storage on the restored file, for this run alone"
+SERVE_ENDS=$(date -r $(($(date +%s) + SERVE_SECONDS + 60)) '+%H:%M')
 box_serve_restored "$RESTORED_FILE" "$BOX_RESTORED_PORT" "$SERVE_SECONDS" || die "the second c-storage did not start"
 box_forward "$RESTORED_PORT" "$BOX_RESTORED_PORT" || die "the second forward could not be opened"
 curl -fsS -m 5 -o /dev/null "http://127.0.0.1:$RESTORED_PORT/health" || die "the second c-storage does not answer through its forward"
@@ -122,9 +152,15 @@ drill put "$NEIGHBOUR"
 expect "the named copy holds its drill record" yes "$(drill has "$CODE")"
 
 step "the named copy copied back from the restored file"
+copy_ends=$(date -r $(($(date +%s) + SERVE_SECONDS)) '+%H:%M')
+echo "the copy's three whole-company walks over the tunnel may take up to $((SERVE_SECONDS / 60)) minutes (the second c-storage ends by itself then), until $copy_ends; a line follows every 30 seconds"
+heartbeat "$copy_ends" &
+HEARTBEAT_PID=$!
 rc=0
 FROM_C_STORAGE_URL=http://127.0.0.1:$RESTORED_PORT FROM_INTERNAL_ACCESS_KEY=$INTERNAL_KEY FROM_SERVICE_CODE=$SERVICE_CODE FROM_SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY \
   live_cli copy-company "$CODE" || rc=$?
+kill "$HEARTBEAT_PID" 2>/dev/null || true
+HEARTBEAT_PID=''
 [ "$rc" = 0 ] || die "the copy stopped (the lines above say where; the same run again goes on from the compare)"
 
 step "the verdict"
