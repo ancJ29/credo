@@ -17,6 +17,11 @@
           {
             "Target": {"Attribute": "Properties", "Name": "DistributionConfig", "RequiresRecreation": "Never"},
             "Evaluation": "Dynamic",
+            "ChangeSource": "DirectModification"
+          },
+          {
+            "Target": {"Attribute": "Properties", "Name": "DistributionConfig", "RequiresRecreation": "Never"},
+            "Evaluation": "Static",
             "ChangeSource": "ParameterReference",
             "CausingEntity": "FrontDoorKey"
           }
