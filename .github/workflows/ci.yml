@@ -134,16 +134,28 @@ jobs:
   # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
   app:
     runs-on: ubuntu-24.04
-    # 25, not 15: the job's own green run measured over 12 minutes on 11-05, and tests have been
-    # added since. The cap was skipping deploys, not catching a hang.
-    timeout-minutes: 25
+    # No timeout-minutes here, on purpose, for one measuring run (the push of 11-13 20:28 was cut at the
+    # old 25 minutes while an earlier run took about 9): to be set again from the measured runs. Until
+    # then GitHub's own 6-hour default holds, so the DEBUG timing sampler below ends by itself.
     permissions:
       contents: read
     steps:
+      # DEBUG timing, piece 140: remove the DEBUG timing steps when the cause is known. The machine's facts.
+      - name: DEBUG timing, the machine
+        run: |
+          date -u '+%Y-%m-%d %H:%M:%S UTC'
+          echo "processors: $(nproc)"
+          free -m
+          df -h / "$GITHUB_WORKSPACE" "$RUNNER_TEMP"
+          lscpu | grep -E '^(Model name|Architecture|CPU\(s\)|Thread|Core|Socket|CPU MHz|Hypervisor|Virtualization type)' || true
+          cat /proc/loadavg
+          if [ -r /sys/fs/cgroup/cpu.max ]; then echo "cgroup cpu.max: $(cat /sys/fs/cgroup/cpu.max)"; fi
+          if [ -r /sys/fs/cgroup/memory.max ]; then echo "cgroup memory.max: $(cat /sys/fs/cgroup/memory.max)"; fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        id: go # DEBUG timing: the id lets the cache step read cache-hit
         with:
           go-version-file: services/c-storage/go.mod
           cache-dependency-path: services/c-storage/go.sum
@@ -155,14 +167,86 @@ jobs:
           node --version | grep -q '^v24\.'
           echo "BUNDLE_NODE=$(command -v node)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node26 # DEBUG timing: the id lets the cache step read cache-hit
         with:
           node-version: 26
       - name: pnpm 12.10.1
         run: npm install -g --ignore-scripts pnpm@12.10.1
       - name: Install
         run: pnpm install --frozen-lockfile
+      # DEBUG timing, piece 140: remove when the cause is known. Whether each cache restored, and the
+      # workers each package's vitest resolves here (the env's VITEST_MAX_WORKERS is read the way the run reads it).
+      - name: DEBUG timing, caches and workers
+        env:
+          GO_CACHE_HIT: ${{ steps.go.outputs.cache-hit }}
+          NODE_CACHE_HIT: ${{ steps.node26.outputs.cache-hit }}
+        run: |
+          echo "cache setup-go (Go modules and build cache): cache-hit='${GO_CACHE_HIT:-}' (true is a hit, false a miss, empty none asked for or reported)"
+          echo "cache setup-node 26 (package manager): cache-hit='${NODE_CACHE_HIT:-}'"
+          echo "cache pnpm store: none is configured in this job (the Install step's 'reused' and 'downloaded' counts above are the fact)"
+          echo "node: availableParallelism=$(node -p 'require("os").availableParallelism()') VITEST_MAX_WORKERS=${VITEST_MAX_WORKERS:-unset}"
+          for pkg in bff scripts shared ui visual; do
+            pnpm --filter "@credo/$pkg" exec node --input-type=module -e "
+              const { createVitest } = await import('vitest/node');
+              const v = await createVitest('test', { watch: false, root: process.cwd() });
+              console.log('vitest ' + '$pkg' + ': pool=' + v.config.pool + ' maxWorkers=' + v.config.maxWorkers + ' fileParallelism=' + v.config.fileParallelism);
+              await v.close();
+            " || echo "vitest $pkg: the resolved workers could not be read (exit $?)"
+          done
+      # DEBUG timing, piece 140: remove when the cause is known. The load sampler: one line every 30 s into a
+      # file (a step's own output is closed to a process outliving it), 120 samples at most (60 minutes), and it
+      # ends sooner when the stop file appears, which the step after pnpm check always writes. It is
+      # started here because the pnpm check step below is pinned to its one line by ops/test.sh.
+      - name: DEBUG timing, start the load sampler
+        run: |
+          samples="$RUNNER_TEMP/debug-timing-samples.log"
+          stop="$RUNNER_TEMP/debug-timing-stop"
+          rm -f "$stop"
+          cat > "$RUNNER_TEMP/debug-timing-sampler.sh" <<'SAMPLER'
+          out=$1
+          stop=$2
+          n=0
+          while [ "$n" -lt 120 ] && [ ! -e "$stop" ]; do
+            printf '%s load=%s mem_available_mb=%s swap_used_mb=%s cpu_steal_jiffies=%s procs_running=%s node_procs=%s psi_cpu="%s"\n' \
+              "$(date -u +%H:%M:%S)" "$(cut -d' ' -f1-3 /proc/loadavg)" \
+              "$(free -m | awk '/^Mem:/ {print $7}')" "$(free -m | awk '/^Swap:/ {print $3}')" \
+              "$(awk '/^cpu / {print $9}' /proc/stat)" "$(awk '/^procs_running/ {print $2}' /proc/stat)" \
+              "$(pgrep -c node || true)" "$(head -n 1 /proc/pressure/cpu 2>/dev/null || true)" >>"$out"
+            n=$((n + 1))
+            i=0
+            while [ "$i" -lt 30 ] && [ ! -e "$stop" ]; do
+              sleep 1
+              i=$((i + 1))
+            done
+          done
+          if [ -e "$stop" ]; then why='stop file'; else why='sample bound'; fi
+          printf '%s sampler ended after %s samples (%s)\n' "$(date -u +%H:%M:%S)" "$n" "$why" >>"$out"
+          SAMPLER
+          : > "$samples"
+          bash "$RUNNER_TEMP/debug-timing-sampler.sh" "$samples" "$stop" >/dev/null 2>&1 </dev/null &
+          echo "$!" > "$RUNNER_TEMP/debug-timing-sampler.pid"
+          echo "sampler started, pid $!, at most 120 samples 30 s apart, ends at the stop file"
       - name: pnpm check
         run: pnpm check
+      # DEBUG timing, piece 140: remove when the cause is known. Always runs: stops the sampler (the stop file,
+      # then a kill if it has not ended within 40 s) and prints what it wrote.
+      - name: DEBUG timing, stop the load sampler and print it
+        if: always()
+        run: |
+          samples="$RUNNER_TEMP/debug-timing-samples.log"
+          touch "$RUNNER_TEMP/debug-timing-stop"
+          pid=$(cat "$RUNNER_TEMP/debug-timing-sampler.pid" 2>/dev/null || true)
+          waited=0
+          while [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && [ "$waited" -lt 40 ]; do
+            sleep 1
+            waited=$((waited + 1))
+          done
+          if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid" || true
+            echo "the sampler had to be killed after 40 s"
+          fi
+          echo "== load and memory every 30 s through the gate (UTC; GitHub's line stamps give the rest)"
+          cat "$samples" 2>/dev/null || echo "no samples file"
 
   # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
   # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
