@@ -15,7 +15,7 @@ You need three things in the terminal you paste into, and none of them is a bloc
 
 - An AWS session for the account, opened in that same terminal.
 - `gh` logged in with rights on the repository (`gh auth login` if it is not).
-- Node 26 and pnpm 12.
+- Node 26, pnpm 12, Go and `jq`.
 
 Then these two, once:
 
@@ -33,7 +33,7 @@ You will see npm add one package. The check (step 2) and the bring-back (step 4)
 this version of the Bruno command line.
 
 Every block below runs from the `main` folder and reads `ops/` there. Each script fetches `origin/main` itself
-and stops, changing nothing, when the `ops/` in that folder is not the same as `origin/main`'s, so bring the
+and stops, changing nothing, when the code in that folder is not the same as `origin/main`'s, so bring the
 `main` folder up to date first.
 
 ## 1. Deploy a change
@@ -49,7 +49,7 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 The log's last line is `released` and the commit it put on the box. If ridge already runs something newer it
-ends `superseded: ridge runs` and that commit, sends nothing and still exits 0: ridge never moves backwards.
+says `superseded: ridge runs` and that commit, sends nothing and still exits 0: ridge never moves backwards.
 
 ```sh
 cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/app.sh ridge
@@ -82,7 +82,8 @@ reach ridge (`ci` and `seed`, never `walks`), deletes everything of ridge's one 
 back as gone. The log's verdict is `== verdict: ridge is destroyed, ci.yml and seed.yml are off`, and it ends
 `== exit 0`. If it stops part-way, run the same block again: it looks again and skips what is gone.
 
-While ridge is down, a push to `main` does not deploy, because the workflow is off.
+While ridge is down, a push to `main` runs nothing of `ci`, the four gates included: GitHub starts no
+workflow that is off.
 
 ## 4. Bring ridge back (Monday morning)
 
@@ -126,7 +127,8 @@ days filled up to yesterday`.
 
 A stop before the first delete reads `== refused:` and changed nothing. A stop after it reads `error:`: run the
 block again whole if the log's last `[n/6]` line is in the remake, or add `--go-on` after `ridge` if it is in the
-fill (that asks nothing and deletes nothing).
+fill (that asks nothing and deletes nothing), unless the lines above say a copy is not remade: then the block
+again whole.
 
 ## 7. Bring the demo copies up to yesterday
 
@@ -144,8 +146,8 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 Up to about 15 minutes; it applies 2 days a copy a run. It prints `seed:` with how many copies are mapped, up to
-date, not on the service and how many days it applied, then `seeded` and the commit. If it ends
-`seed: STILL BEHIND` it is green and you run it again to go on.
+date, not on the service and how many days it applied, then `seeded` and the commit. A `seed: STILL BEHIND`
+line just before that `seed:` line means it is green but not yet at yesterday: run it again to go on.
 
 ## 8. Give a demo copy's root a new password
 
@@ -167,7 +169,7 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 ```
 
 About a minute. It names the box, restores on it, and says the live file is untouched, with the command to
-swap the restore in. That swap, `--onto-live`, stops the storage service and moves the live file aside, never
+swap a fresh restore in. That swap, `--onto-live`, stops the storage service and moves the live file aside, never
 deleting it. It does not apply after a take-down: the copy bucket goes with the destroy.
 
 ## Two things worth knowing
@@ -181,8 +183,9 @@ in the runbook.
 
 ## What has not run yet
 
-- Step 6 (`ops/demo-remake.sh`) is in the repository and tested on stand-ins, but no recap in `docs/recaps/`
-  records a run of it on the real ridge. Its timings above are the script's own estimates.
+- Steps 6 and 8 (`ops/demo-remake.sh`, `ops/root-password.sh`) are in the repository and tested on stand-ins,
+  but no recap in `docs/recaps/` records a run of either on the real ridge. Step 6's timings above are the
+  script's own estimates.
 - Step 9 (`ops/restore.sh`) and the copy it reads are built and tested on this Mac; the continuous-copy recap
   says nothing of it has run on ridge yet. Treat it as untried.
 - Steps 3, 4 and 5 ran on the real ridge on 2026-11-12: the take-down took about 5.5 minutes, the bring-back
