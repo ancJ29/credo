@@ -4,7 +4,7 @@
 # the deploy role's rights go (docs/plans/2026-10-28-ridge-app.md#layer-four). The deploy job runs it
 # after ops/release.sh, and so can the human while GitHub Actions is down, or after a key changed on the
 # box (the function holds a copy of the BFF's keys, set again at every run).
-#   In order: reads the keys from the box's files and masks them first; makes sure of the BFF's
+#   In order: reads the keys from the box's files, and the front door's from the distribution, and masks them first; makes sure of the BFF's
 #   service in c-storage; sets the function's environment from a 0600 file that is deleted at once
 #   (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the
 #   function's CodeSha256 with the one sent; only then sets the function's description to the commit;
@@ -115,6 +115,8 @@ fi
 stat -c 'bff.env: mode %a, owner %U' "$f"
 REMOTE
 bff_env_read
+# The door's key is read from the distribution, its one home, so the function's copy is what the door sends.
+front_door_key_read "$DISTRIBUTION_ID"
 storage_url=http://$BOX_LISTEN_ADDR:$BOX_PORT
 
 step "the BFF's service in c-storage"
@@ -132,8 +134,8 @@ bff_wait=120 # seconds each of the function's three updates may take
 (
   umask 077
   # APP_ORIGIN is the app's own address, which every passkey is checked against: CloudFront's name, kept for good.
-  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} \
-    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN}}' \
+  INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=$storage_url APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$FRONT_DOOR_KEY \
+    jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS}}' \
     >"$WORK/bff-env.json"
 )
 aws lambda update-function-configuration --function-name "$BFF_NAME" \

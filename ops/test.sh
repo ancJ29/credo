@@ -2123,6 +2123,7 @@ case "$*" in
     layer4=''
     if [ -n "${FAKE_LAYER4:-}" ]; then
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
+      [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
   *"send-ssh-public-key"*)
@@ -2151,6 +2152,13 @@ case "$*" in
       Description) if [ -n "${FAKE_RUNNING:-}" ]; then echo "$FAKE_RUNNING"; elif [ -f "$S/description" ]; then cat "$S/description"; else echo None; fi ;;
       *) echo "stand-in aws: unknown query: $*" >&2; exit 1 ;;
     esac ;;
+  *"cloudfront get-distribution-config"*)
+    # the API origin's header carries the door's key (FAKE_DOOR_NONE: it carries none)
+    if [ -n "${FAKE_DOOR_NONE:-}" ]; then
+      echo '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"api","CustomHeaders":{"Quantity":0}}]}}}'
+    else
+      printf '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"ui","CustomHeaders":{"Quantity":0}},{"Id":"api","CustomHeaders":{"Quantity":1,"Items":[{"HeaderName":"x-front-door-key","HeaderValue":"%s"}]}}]}}}\n' "$FAKE_DKEY"
+    fi ;;
   *"s3 cp"*) : ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -2222,6 +2230,7 @@ case $cmd in
 esac
 STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
+export FAKE_DKEY=c0ffee11c0ffee22c0ffee33c0ffee44c0ffee55c0ffee66c0ffee77c0ffee88
 export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c
 export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
@@ -2450,15 +2459,15 @@ check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$
 check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
 
 # The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN"],"AppOrigin":"https://app.example.test","Url":"u"}'
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN","FRONT_DOOR_KEYS"],"AppOrigin":"https://app.example.test","Url":"u"}'
 check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
 check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
-check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+check "the function holds the six variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
   "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
@@ -2625,7 +2634,9 @@ CHK=$E2E/chk
 mkdir -p "$CHK/bin"
 chk_port=$(free_port)
 chk_sha=$e2e_sha
-export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://api-test-host.invalid:9 FAKE_LAYER4=1
+# the API's own address, which refuses a call without the front door's key (door_reads asks it)
+chk_api_port=$(free_port)
+export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://127.0.0.1:$chk_api_port FAKE_LAYER4=1
 rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
 jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
@@ -2708,6 +2719,21 @@ STANDIN
 chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
 chk_edge=$!
+cat >"$WORK/api.py" <<'PY'
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+STATUS = int(sys.argv[2])
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        self.send_response(STATUS)
+        self.send_header('content-length', '0')
+        self.end_headers()
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+python3 -I "$WORK/api.py" "$chk_api_port" 403 >/dev/null 2>&1 &
+chk_api=$!
+for _ in $(seq 1 50); do if port_taken "$chk_api_port"; then break; fi; sleep 0.1; done
 for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
 chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
   local name=$1
@@ -2798,6 +2824,35 @@ check "  and --onto-blank with --onto-live together is its usage, exit 2, before
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
 check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+# ---- the front door, as the check reads it (docs/plans/2026-11-11-front-door-keys.md, step 3, case 12)
+echo "== ops/check.sh reads the front door: the API's own address refuses, the app answers a wrong key of the caller's own"
+chk_run door check.sh ridge --reads-only
+check "case 12: the check reads the API's own address refusing a call, and the app answering one sent with a wrong key" "0 1 1" \
+  "$RC $(chk_has "^ok   the API's own address refuses a call that did not come through the front door: 403" "$S/out") $(chk_has "^ok   the app's address answers a call sent with a wrong door key of its own: 404" "$S/out")"
+check "  and the function's variables now name FRONT_DOOR_KEYS among the six" 1 \
+  "$(chk_has "^ok   the function's variables (names only; never the super-admin key): APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS," "$S/out")"
+door_case() { # <the API's status> <the edge's mode> → the reds door_reads finds, with those two stand-ins
+  local aport eport out apid epid
+  aport=$(free_port)
+  eport=$(free_port)
+  python3 -I "$WORK/api.py" "$aport" "$1" >/dev/null 2>&1 &
+  apid=$!
+  FAKE_EDGE_MODE=$2 python3 -I "$WORK/edge.py" "$eport" >/dev/null 2>&1 &
+  epid=$!
+  for _ in $(seq 1 50); do if port_taken "$aport" && port_taken "$eport"; then break; fi; sleep 0.1; done
+  out=$( (REDS=''; door_reads "http://127.0.0.1:$eport" "http://127.0.0.1:$aport" >/dev/null; printf '%s' "$REDS") 2>&1 )
+  kill "$apid" "$epid" 2>/dev/null || true
+  echo "$out"
+}
+check "the door reads are green when the API refuses and the app answers the BFF's 404" "" "$(door_case 403 '')"
+refuses_door() { # <name> <the API's status> <the edge's mode> <text the red names>
+  local got
+  got=$(door_case "$2" "$3")
+  if grep -qF -- "$4" <<<"$got"; then echo "  ok   $1"; else echo "  FAIL $1: wanted a red naming '$4', got '$got'"; fail=1; fi
+}
+refuses_door "  an API that answers a call without the key is red" 200 '' "the API's own address refuses a call that did not come through the front door"
+refuses_door "  an app that does not answer a call with a wrong key as the BFF does is red" 403 unknown-is-page "the app's address answers a call sent with a wrong door key"
+kill "$chk_api" 2>/dev/null || true
 kill "$chk_edge" 2>/dev/null || true
 unset FAKE_LAYER4 FAKE_APP FAKE_API
 
@@ -2847,7 +2902,7 @@ $([ "$(line_of 'get-function-configuration .*CodeSha256')" -lt "$(line_of 'lambd
 $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
-check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+check "  it names the six variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
 check "  and holds the app's address as the origin its passkeys are bound to" "$FAKE_APP" "$(jq -r .Variables.APP_ORIGIN "$S/envfile.seen")"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
@@ -2867,6 +2922,26 @@ check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this lo
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
   "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# ---- the deploy copies the door's key (docs/plans/2026-11-11-front-door-keys.md, step 3, case 11)
+echo "== ops/app.sh sets the function's FRONT_DOOR_KEYS from the distribution's header"
+e2e_fresh app-door
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "case 11: app.sh sets the function's key from the distribution's, read once before the function is changed" "0 1 yes" \
+  "$RC $(grep -c 'cloudfront get-distribution-config --id E1TESTDIST' "$S/aws.calls" || true) \
+$([ "$(line_of 'cloudfront get-distribution-config')" -lt "$(line_of 'lambda update-function-configuration')" ] && echo yes || echo no)"
+check "  the function's environment holds that key as FRONT_DOOR_KEYS, and the key is in no other variable" "$FAKE_DKEY 1" \
+  "$(jq -r .Variables.FRONT_DOOR_KEYS "$S/envfile.seen") $(grep -c "$FAKE_DKEY" "$S/envfile.seen" || true)"
+check "  the key is masked first, and is in no log, no aws or ssh call, and not on the terminal but in GitHub's mask line" "1 0 0 0 0" \
+  "$(grep -cF "::add-mask::$FAKE_DKEY" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_DKEY" || true) $(grep -cF "$FAKE_DKEY" "$S/aws.calls" || true) $(grep -cF "$FAKE_DKEY" "$S/ssh.calls" || true) $(grep -vE '^::add-mask::' "$S/out" | grep -cF "$FAKE_DKEY" || true)"
+e2e_fresh app-door-none
+FAKE_DOOR_NONE=1 e2e_run app.sh ridge
+check "  a distribution whose API origin carries no key stops the deploy by name, before the function is changed" "1 1 0 0" \
+  "$RC $(grep -c "carries no x-front-door-key of 64 hex characters" "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+e2e_fresh app-door-noid
+FAKE_DISTID_NONE=1 e2e_run app.sh ridge
+check "  a stack that names no distribution stops the deploy by name, and the aws call for it is never made" "1 1 0" \
+  "$RC $(grep -c "names no distribution" "$S/out" || true) $(grep -c 'cloudfront get-distribution-config' "$S/aws.calls" || true)"
 
 # the function runs other code than was sent
 e2e_fresh app-sha

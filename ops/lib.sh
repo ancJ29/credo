@@ -977,6 +977,7 @@ SUBNET_ID=''
 UI_BUCKET=''
 APP_ADDRESS=''
 API_ADDRESS=''
+DISTRIBUTION_ID=''
 
 # app_load: the layer-four outputs of STACK_JSON, masked before anything can print them. Fails when
 # the stack does not hold layer four yet (the change set of the plan's step 15 is the human's), which
@@ -988,6 +989,8 @@ app_load() {
   UI_BUCKET=$(out UiBucketName)
   APP_ADDRESS=$(out AppAddress)
   API_ADDRESS=$(out ApiAddress)
+  # shellcheck disable=SC2034 # app.sh reads it
+  DISTRIBUTION_ID=$(out DistributionId)
   [ -n "$BFF_NAME" ] || return 1
   # Both addresses are public in nothing but the human's local log, and in no committed file: the
   # whole address and its host are masked, as well as the bare host the tools print.
@@ -1010,6 +1013,22 @@ bff_env_read() {
   SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
   [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
   mask "$SERVICE_ACCESS_KEY"
+}
+
+# front_door_key_read <the distribution's id>: FRONT_DOOR_KEY from the header the distribution's API origin adds
+# (x-front-door-key), masked before anything is printed. The key reaches this shell through a pipe, never a
+# command line or a temp file; a stack or a distribution without it is refused by name, never by value.
+FRONT_DOOR_KEY=''
+front_door_key_read() {
+  [ -n "${1:-}" ] || die "the stack names no distribution (its DistributionId output is missing): ops/stack.sh makes it"
+  FRONT_DOOR_KEY=$(aws cloudfront get-distribution-config --id "$1" --output json |
+    jq -r '[.DistributionConfig.Origins.Items[]? | select(.Id == "api") | .CustomHeaders.Items[]? | select(.HeaderName == "x-front-door-key") | .HeaderValue] | first // empty') ||
+    die "the distribution's configuration could not be read"
+  [[ $FRONT_DOOR_KEY =~ ^[0-9a-f]{64}$ ]] || {
+    FRONT_DOOR_KEY=''
+    die "the distribution's API origin carries no x-front-door-key of 64 hex characters: ops/stack.sh makes it"
+  }
+  mask "$FRONT_DOOR_KEY"
 }
 
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
@@ -1054,9 +1073,9 @@ function_network_verdict() {
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the six variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {
@@ -1076,7 +1095,8 @@ function_url() {
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
 # blocks on, and one statement, an allow of s3:GetObject to CloudFront's service under a condition on
-# the distribution's source ARN (the id is not readable by the deploy role, which holds no CloudFront right)
+# the distribution's source ARN (the id is not readable by the deploy role, whose one CloudFront right reads the
+# distribution's configuration)
 bucket_verdict() {
   local policy
   policy=$(jq -r '.Policy // empty' <<<"$2" 2>/dev/null) || policy=''
@@ -1196,6 +1216,19 @@ edge_reads_client() {
 edge_reads() {
   edge_reads_client "$@"
   edge_reads_open "$1"
+}
+
+# door_reads <app address> <API address>: the front door's two sides, each a read that writes nothing: the API's
+# own address refuses a call that did not come through the door, and the app's address answers a call that
+# carries a door key of the caller's own (the door replaces it with its key), here the BFF's 404 for a code it
+# does not know. The wrong key is made for the call and is no key of ours.
+door_reads() {
+  EDGE_BASE=$2
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "the API's own address refuses a call that did not come through the front door" 403 "$EDGE_STATUS"
+  EDGE_BASE=$1
+  edge GET /api/config -H 'x-client-code: check-no-such-client' -H "x-front-door-key: wrong-$(random_hex)"
+  expect "the app's address answers a call sent with a wrong door key of its own" 404 "$EDGE_STATUS"
 }
 
 # workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name

@@ -157,11 +157,26 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   the step's list: `pnpm local status` read the back end's own port for a 200, which is now the
   refusal; it now expects 403 with no key (an answer that refuses a stranger is "up"), and a back end
   that answers 200 there is read as down.
-- [ ] **3. The deploy copies the key; the check reads the door.** `ops/app.sh` reads and sets it;
+- [x] **3. The deploy copies the key; the check reads the door.** `ops/app.sh` reads and sets it;
   `ops/lib.sh#L777`'s variable list gains `FRONT_DOOR_KEYS`; `ops/check.sh` reads case 12; the
   comment at `ops/env.yml#L262`, true until now, rewritten. Cases 11
   and 12. *Done when:* `shellcheck` and `bash ops/test.sh` exit 0, each case red once. **About 14
   min**: two scripts at about 7. Your first point here (stage 3).
+  *Done 2026-11-13, offline half only:* `ops/app.sh` reads the key from the distribution's API origin at each
+  deploy (`front_door_key_read` in `ops/lib.sh`, masked first, through a pipe), refuses by name when the stack
+  names no distribution or the origin carries no key, and sets it as the function's `FRONT_DOOR_KEYS`;
+  `BFF_ENV_NAMES` now lists six; `ops/check.sh` reads the API's own address refusing a call (403) and the app
+  answering one sent with a wrong key of the caller's own (404) (`door_reads`); the comment in `ops/env.yml`
+  that said the address answers anyone is rewritten. The plan did not name one thing the tree needs: the
+  stack gains a `DistributionId` output, because the deploy role cannot list distributions and reads its own
+  by id; ridge's stack change in step 8 (a new output, no resource) must come before the deploy that
+  uses it. The whole `bash ops/test.sh` ended `== exit 0` on the committed tree, ShellCheck as CI runs it
+  and cfn-lint at 0, the citation test at 0. Each guard seen red by a mutation, reverted: the variable
+  left out of the function's settings, the key's check removed, the mask removed, the distribution guard
+  removed, and the API read changed to expect 200. Left open, only a real deploy shows it: that the
+  function's setting is accepted by Lambda with the key as read, and that CloudFront replaces a key the
+  caller sends (case 12 on ridge). Stage 3's picture, your first point, waits for the diagram and the two
+  check lines from that run.
 - [ ] **4. The store replaces a service's key.** The route and its tests, its Bruno request, the
   call beside `registerCStorageService`, a `rekey` command in `scripts/src/ridge.ts`, and the
   memo's hazard rewritten as the promise it now is. Case 13. *Done when:* `make check` in
