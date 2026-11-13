@@ -39,7 +39,7 @@ export const recordKeys = {
     product: (productId: string) => `tenant.${id}.product.${productId}`,
     productPrefix: `tenant.${id}.product.`,
     /** An order and a delivery request, each by its day and minted id: a list reads one day's prefix,
-     * since c-storage answers at most 1,000 records a read. */
+     * which keeps it to a page however long the company has traded. */
     order: (day: string, orderId: string) => `tenant.${id}.order.${day}.${orderId}`,
     orderDayPrefix: (day: string) => `tenant.${id}.order.${day}.`,
     delivery: (day: string, requestId: string) => `tenant.${id}.delivery.${day}.${requestId}`,

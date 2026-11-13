@@ -90,7 +90,7 @@ export type CStorageClient = {
   /** A record that is not there is null; the tag is the one to send back in `ifTag`. */
   getRecord(key: string): Promise<StoredRecord | null>;
   /** A page of the records whose key starts with `prefix`, a non-empty literal, in key order, at
-   * most 1,000, and those past `after` when it is given. */
+   * most 1,000 or about 4 MiB, and those past `after` when it is given. */
   listRecords(prefix: string, after?: string): Promise<RecordList>;
   /** `ifTag` a string writes only over the record as that tag read it, null only where none
    * exists, undefined over whatever is there. A moved record is 'moved', not an error. */
