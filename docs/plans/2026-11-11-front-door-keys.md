@@ -140,11 +140,23 @@ nothing checks until the rest lands. It waits for ridge's re-creation (step 1 of
   string parameter"), row 9 with the role's resource set to `*` ("does not read its own
   distribution's configuration"), row 10 with `stack.sh` printing the key (the "prints as (not
   printed)" cases wanted `1 0`, got `0 2`); each reverted, the files equal to their backups.
-- [ ] **2. The cheap end-to-end, on the local stack.** The check and its variable; the front, the
+- [x] **2. The cheap end-to-end, on the local stack.** The check and its variable; the front, the
   stack's key and its wait. Cases 1 to 7. *Done when:* `pnpm --filter @credo/bff check` and `pnpm
   --filter @credo/scripts check` each end `== exit 0`, each case red once; one `pnpm stack --
   <command>` run prints a call through the front answered and the same call to the back end's own
   port 403. **About 18 min**: the back end about 10, the stack about 8.
+  *Done 2026-11-13:* the back end's first hook refuses a call without `x-front-door-key` (403, the
+  not-found handler too) in `bff/src/server.ts`, the variable `FRONT_DOOR_KEYS` (one key or two) required
+  by both environment readers; the local front adds the stack's per-run key to every `/api` call and
+  replaces any the caller sent; the stack's wait sends it. Both package gates (`bff`, `scripts`) ended
+  green, exit 0, and the pre-merge take-in was proved by ShellCheck, cfn-lint and the whole
+  `ops/test.sh` at exit 0. Each case seen red by a mutation, reverted: hook disabled (cases 1 to 4 and 6,
+  and the stack's own-port 403), second key dropped (3), the variable left out of the Lambda reader (5),
+  the sent key logged (6), the front's key not added or the caller's not replaced (7). Not an
+  end-to-end `pnpm stack -- <command>` run: the stack test makes the same two calls. One finding outside
+  the step's list: `pnpm local status` read the back end's own port for a 200, which is now the
+  refusal; it now expects 403 with no key (an answer that refuses a stranger is "up"), and a back end
+  that answers 200 there is read as down.
 - [ ] **3. The deploy copies the key; the check reads the door.** `ops/app.sh` reads and sets it;
   `ops/lib.sh#L777`'s variable list gains `FRONT_DOOR_KEYS`; `ops/check.sh` reads case 12; the
   comment at `ops/env.yml#L262`, true until now, rewritten. Cases 11

@@ -93,6 +93,24 @@ describe('pnpm stack', () => {
     });
   });
 
+  it('A call through the front is answered and the same call to the BFF’s own port is 403', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-door-'));
+    const stack = await startStack(artifacts, { dataDir });
+    try {
+      const headers = { [CLIENT_HEADER]: stack.clientCode };
+      expect((await fetch(`${stack.url}/api/config`, { headers })).status).toBe(200);
+      const around = `http://127.0.0.1:${stack.facts.ports.bff}/api/config`;
+      expect((await fetch(around, { headers })).status).toBe(403);
+      // A caller's own key is no key: the front replaces it with the stack's.
+      const guessed = { ...headers, 'x-front-door-key': 'guessed' };
+      expect((await fetch(`${stack.url}/api/config`, { headers: guessed })).status).toBe(200);
+      expect((await fetch(around, { headers: guessed })).status).toBe(403);
+    } finally {
+      await stack.stop();
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
   it('The data set’s office person signs in on the demo client with the password the stack made, and is refused what their unit and position do not allow', async () => {
     await withStack(artifacts, async (stack) => {
       const office = await signIn(stack.url, 'EMP-0001', stack.people['EMP-0001']);
@@ -389,12 +407,14 @@ describe('what the BFF is given', () => {
       service: { code: 'demo', accessKey: 'service' },
       audit: { url: 'http://127.0.0.1:4003', key: 'audit-key' },
       appOrigin: 'http://localhost:4002',
+      frontDoorKey: 'door-key',
     });
 
     expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
     expect(environment.HOST).toBe('127.0.0.1');
     expect(environment.APP_ORIGIN).toBe('http://localhost:4002');
     expect(environment.AUDIT_URL).toBe('http://127.0.0.1:4003');
+    expect(environment.FRONT_DOOR_KEYS).toBe('door-key');
   });
 });
 
