@@ -198,7 +198,7 @@ case $RECORDS_RC in
   4) die "the records disk holds no c-storage.db and the bucket holds a copy of this box's records: nothing was started. Run ops/restore.sh $ENVNAME --onto-blank (it formats a blank disk, mounts it and restores onto it before c-storage ever starts), then release again" ;;
   *) die "the records disk could not be mounted (exit $RECORDS_RC): c-storage was not restarted" ;;
 esac
-box "mountpoint -q $RECORDS_MOUNT" || die "the records disk is not mounted at $RECORDS_MOUNT: c-storage is not restarted"
+box "sudo mountpoint -q $RECORDS_MOUNT" || die "the records disk is not mounted at $RECORDS_MOUNT: c-storage is not restarted"
 
 step "installed, and c-storage restarted"
 # The renames come last, one after another, in one command: a failure before it leaves the box

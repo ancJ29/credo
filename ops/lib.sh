@@ -595,7 +595,7 @@ RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s "$RECORDS_MOUNT" <<'REMOTE'
+    box sudo bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
 df -Pm / | awk 'NR==2{printf "%s ", $4}'
 if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi
@@ -768,6 +768,55 @@ else
   echo "restored=$new"
 fi
 REMOTE
+}
+
+# box_serve_restored <the restored file> <port> <seconds> → serves a restored file (box_restore's restored-*.db)
+# with a second c-storage on the box's loopback at <port>, with the keys the live one reads, and ends it by
+# itself after <seconds> (timeout, in its own arguments); box_stop_restored ends it sooner. The live c-storage,
+# its file and its port are not touched. Prints serving=<port>.
+box_serve_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" <<'REMOTE'
+set -euo pipefail
+mount=$1 file=$2 port=$3 secs=$4
+case $file in "$mount"/restored-*.db) ;; *) echo "not a restored file: $file" >&2; exit 1 ;; esac
+# A case pattern's * also matches a /: the name after the folder holds none, or a name that climbs out of it passes.
+case ${file#"$mount"/} in */*) echo "not a restored file: $file" >&2; exit 1 ;; esac
+[ -s "$file" ] || { echo "no restored file: $file" >&2; exit 1; }
+if [ -e /run/c-storage-restored.pid ] && kill -0 "$(cat /run/c-storage-restored.pid)" 2>/dev/null; then
+  echo "a second c-storage is already serving a restored file" >&2
+  exit 1
+fi
+set -a
+. /etc/c-storage/keys.env
+set +a
+PORT=$port LISTEN_ADDR=127.0.0.1 DB_PATH=$file setsid timeout "$secs" /opt/c-storage/c-storage </dev/null >/dev/null 2>&1 &
+echo $! >/run/c-storage-restored.pid
+for _ in $(seq 1 30); do
+  if curl -fsS -m 2 -o /dev/null "http://127.0.0.1:$port/health"; then echo "serving=$port"; exit 0; fi
+  sleep 1
+done
+echo "the second c-storage did not answer" >&2
+exit 1
+REMOTE
+}
+
+# box_stop_restored <the restored file>: ends the second c-storage and removes the restored file it served
+# with its companions, whatever state they are in (a stop that finds nothing is quiet).
+box_stop_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" <<'REMOTE'
+mount=$1 file=$2
+if [ -e /run/c-storage-restored.pid ]; then
+  kill "$(cat /run/c-storage-restored.pid)" 2>/dev/null || true
+  rm -f /run/c-storage-restored.pid
+fi
+# A case pattern's * also matches a /: a name that climbs out of the folder (restored-x/../ and then a live name) removes nothing.
+case $file in "$mount"/restored-*.db) case ${file#"$mount"/} in */*) ;; *) rm -f "$file" "$file-wal" "$file-shm" ;; esac ;; esac
+REMOTE
+}
+
+# box_forward <local port> <box loopback port>: a second forward over the open connection, to the box's loopback
+box_forward() {
+  ssh -S "$WORK/cm" -O forward -L "127.0.0.1:$1:127.0.0.1:$2" -o LogLevel=ERROR "$BOX_USER@$BOX_ID"
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release

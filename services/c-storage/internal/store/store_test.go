@@ -136,7 +136,7 @@ func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
 				want = append(want, key)
 			}
 		}
-		listed, more, err := s.List(ctx, "svc", prefix)
+		listed, more, err := s.List(ctx, "svc", prefix, "")
 		if err != nil || more {
 			t.Fatalf("list %q: more %v, %v", prefix, more, err)
 		}
@@ -150,13 +150,50 @@ func TestAListHoldsExactlyTheKeysThatStartWithThePrefix(t *testing.T) {
 	}
 }
 
+// A page ends at about MaxListBytes of data with more left, and holds one record however large.
+func TestAListEndsAtAboutFourMebibytesAndHoldsOneRecordHoweverLarge(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	put := func(key string, size int) {
+		t.Helper()
+		data := json.RawMessage(`{"p":"` + strings.Repeat("x", size) + `"}`)
+		if err := s.Put(ctx, "svc", key, data, nil); err != nil {
+			t.Fatalf("put: %v", err)
+		}
+	}
+	keysOf := func(listed []Listed) string {
+		var keys []string
+		for _, l := range listed {
+			keys = append(keys, l.Key)
+		}
+		return strings.Join(keys, "|")
+	}
+	for _, key := range []string{"a.1", "a.2", "a.3"} {
+		put(key, 3<<19) // 1.5 MiB each
+	}
+	listed, more, err := s.List(ctx, "svc", "a.", "")
+	if err != nil || !more || keysOf(listed) != "a.1|a.2" {
+		t.Fatalf("three of 1.5 MiB: %q, more %v, %v; want a.1|a.2 and more", keysOf(listed), more, err)
+	}
+	listed, more, err = s.List(ctx, "svc", "a.", "a.2")
+	if err != nil || more || keysOf(listed) != "a.3" {
+		t.Fatalf("the page after: %q, more %v, %v; want a.3 and no more", keysOf(listed), more, err)
+	}
+	put("b.1", MaxListBytes+1)
+	put("b.2", 10)
+	listed, more, err = s.List(ctx, "svc", "b.", "")
+	if err != nil || !more || keysOf(listed) != "b.1" {
+		t.Fatalf("one record past the bound: %q, more %v, %v; want b.1 alone and more", keysOf(listed), more, err)
+	}
+}
+
 // A list that cannot read is an error, never a short list.
 func TestAListThatFailsIsAnError(t *testing.T) {
 	s := open(t)
 	ctx := context.Background()
 	gone, cancel := context.WithCancel(ctx)
 	cancel()
-	if _, _, err := s.List(gone, "svc", "k"); err == nil {
+	if _, _, err := s.List(gone, "svc", "k", ""); err == nil {
 		t.Fatal("a list under a cancelled context succeeded")
 	}
 }

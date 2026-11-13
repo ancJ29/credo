@@ -62,8 +62,8 @@ with what is tested, what is held by review alone, and which routes resolve a co
 What a session reads here instead is where key design does real work — a person's photo and a delivery's photo
 deliberately sit outside their list's prefix so a list read never drags them in
 ([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
-orders and deliveries are keyed by day because a prefix read answers at most 1,000 records
-([`records.ts#L41`](../shared/src/records.ts#L41),
+orders and deliveries are keyed by day so a day's list stays one page, a page being at most 1,000
+records or about 4 MiB ([`order` in `shared/src/records.ts`](../shared/src/records.ts),
 [`MaxList` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)).
 
 **How a record is written safely.** The version token is a `tag`: the hex SHA-256 of the record's

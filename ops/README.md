@@ -32,6 +32,7 @@ A push to `main` releases c-storage, ships the BFF and the UI, and checks ridge 
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
 | the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
+| one demo copy back to the copy's newest moment, alone | `ops/company-restore.sh ridge <code>` ([restoring the records](#restoring-the-records)) | about two minutes |
 | the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
 
@@ -66,6 +67,7 @@ name its stack `ridge`.
 | `ops/operator.sh` | works | production's first operator comes from it, and it refuses GitHub's job |
 | `ops/check.sh` | works, reads only | no key off the box, none of the function's keys read (only its variables' names and two non-secret values), no Bruno file, no collection, no client made or swept; every AWS read, the box's facts, `/health`, the copy's status (read on the box; its key stays there) and the bucket's listing, layer four's reads and the six reads that need no client stay |
 | `ops/restore.sh` | works, to a new file | by default it writes a new file beside the live one and touches nothing live; `--onto-live` is refused there |
+| `ops/company-restore.sh` | refuses | it holds ridge's demo copies alone, and a client's own stack is never reached by it |
 | `ops/drill.sh` | refuses | it kills the store and reboots the box; ridge's drill proves the same template and unit |
 | `ops/tunnel.sh` | refuses | another stack's admin keys would land on this disk, and the collection would write test records into it |
 | `ops/seed.sh` | refuses | a client's stack must never receive demo data |
@@ -683,6 +685,11 @@ The drill reads the copy for real.
      c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
      copy. Not yet walked on a real blank disk.
    - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
+3. To put **one demo copy** back and leave its neighbours as they are now, `ops/company-restore.sh ridge <code>`
+   (ridge's demo copies alone): it restores the newest copy to a new file, serves it with a second c-storage on
+   the box's loopback for the run alone (ended by a `timeout` of 15 minutes and at the run's end), writes a drill
+   record into the named copy and a neighbour, copies the named copy back (`copy-company`), and reads the named
+   copy's record gone, the neighbour's kept and the compare at 0. The restored file is removed at the end; if the connection is gone by then, a `WARN` line in the log names the file, the time the second c-storage ends by itself and the copies that may still hold a drill record.
 ## The watch
 
 Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),
