@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { tenantConfigSchema } from './config';
 import { permissionLayerSchema } from './permissions';
-import { clientCodeSchema } from './records';
+import { boxNameSchema, clientCodeSchema } from './records';
 
 export const ROUTES = {
   config: '/api/config',
@@ -18,6 +18,7 @@ export const ROUTES = {
   operatorClients: '/api/operator/clients',
   operatorOperators: '/api/operator/operators',
   operatorServices: '/api/operator/services',
+  operatorBoxes: '/api/operator/boxes',
   staffSetup: '/api/staff-setup',
   employees: '/api/employees',
   customers: '/api/customers',
@@ -175,6 +176,8 @@ export const createClientRequestSchema = z.strictObject({
   code: clientCodeSchema,
   /** The company's name as made, which is also its first settings' name. */
   name: z.string().trim().min(1).max(200),
+  /** The box the company's records sit on; absent is the home box. */
+  box: boxNameSchema.optional(),
 });
 export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;
 
@@ -230,6 +233,19 @@ export type RootPasswordReply = z.infer<typeof rootPasswordReplySchema>;
 /** What a read of the operator's says in its query when it must not count as use: the status
  * page's timed read each minute, so a tab left in view does not hold a sign-in open. */
 export const NO_RENEW_QUERY = 'renew=0';
+
+/** One box as the operator's list shows it: its name, how many companies it holds, and its free
+ * disk in bytes, null when the box did not answer (shown so, the others still). */
+export const boxItemSchema = z.strictObject({
+  name: boxNameSchema,
+  companies: z.number().int().nonnegative(),
+  freeBytes: z.number().int().nonnegative().nullable(),
+});
+export type BoxItem = z.infer<typeof boxItemSchema>;
+
+/** What the boxes route answers: every box the back end was handed, the home box first. */
+export const boxesReplySchema = z.strictObject({ boxes: z.array(boxItemSchema) });
+export type BoxesReply = z.infer<typeof boxesReplySchema>;
 
 /** What the services status call answers: the BFF's build, and c-storage's build with how long the
  * BFF's read of its `/health` took, in milliseconds. It exists only when c-storage answered; with

@@ -1,5 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
 import { type CStorageClient, recordKeys } from '@credo/shared';
+
+/** The two record calls the ledger needs: a company's client offers them. */
+type LedgerStore = Pick<CStorageClient, 'getRecord' | 'putRecord'>;
 import { SCENARIO_IDS, type ScenarioId } from './scenarios';
 
 /** The blocks that come after the staff and the lists, each a piece's own: a day's orders, the
@@ -45,7 +48,7 @@ export function parseLedger(data: unknown): Ledger {
   return ledger as Ledger;
 }
 
-export async function readLedger(storage: CStorageClient, tenantId: string) {
+export async function readLedger(storage: LedgerStore, tenantId: string) {
   const found = await storage.getRecord(recordKeys.tenant(tenantId).seed);
   return found ? { ledger: parseLedger(found.data), tag: found.tag } : null;
 }
@@ -53,7 +56,7 @@ export async function readLedger(storage: CStorageClient, tenantId: string) {
 /** Writes the ledger over the tag it was read at (null for a first write). Gives the new tag, or
  * null when the ledger moved, which means another run holds this copy. */
 export async function writeLedger(
-  storage: CStorageClient,
+  storage: LedgerStore,
   tenantId: string,
   ledger: Ledger,
   tag: string | null,

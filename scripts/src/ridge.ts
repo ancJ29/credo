@@ -8,6 +8,7 @@ import {
   type CStorageClient,
   clientCodeSchema,
   createCStorageClient,
+  HOME_BOX,
   joinLinkPath,
   normaliseClientCode,
   normaliseSignInName,
@@ -574,7 +575,11 @@ export async function runRidge(
       });
       const held = await source.getRecord(recordKeys.client(code));
       if (!held) throw new Refused(`the source holds no company with the code ${code}`);
-      const id = storedClientSchema.parse(held.data).id;
+      const { id, box = HOME_BOX } = storedClientSchema.parse(held.data);
+      // The copy reads the source's home box alone: a line naming another is refused by name, as the
+      // seed refuses one, before anything is written.
+      if (box !== HOME_BOX)
+        throw new Refused(`the source's line for ${code} names box ${box}: nothing was written`);
       // A target remade since the moment restored names the code under another id: the records would go under an
       // id no index there names. An absent index is allowed (the company is moved onto a store that lacks it).
       const target = client();
@@ -592,10 +597,14 @@ export async function runRidge(
       const store = client();
       const held = await store.getRecord(recordKeys.client(demoCopy(code)));
       if (!held) throw new Refused(`${code} is not on this service`);
-      const key = `${recordKeys.tenant(storedClientSchema.parse(held.data).id).all}${DRILL_RECORD}`;
-      if (what === 'put') await store.putRecord(key, { drill: true });
-      if (what === 'remove') await store.removeRecord(key);
-      io.out(what === 'has' ? ((await store.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
+      const { id, box = HOME_BOX } = storedClientSchema.parse(held.data);
+      if (box !== HOME_BOX)
+        throw new Refused(`${code}'s line names box ${box}, and the drill serves the home box`);
+      const company = tenantStorage(store, id);
+      const key = `${recordKeys.tenant(id).all}${DRILL_RECORD}`;
+      if (what === 'put') await company.putRecord(key, { drill: true });
+      if (what === 'remove') await company.removeRecord(key);
+      io.out(what === 'has' ? ((await company.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
       return 0;
     }
 

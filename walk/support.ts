@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -84,6 +85,48 @@ export async function shot(
   }
   throw new Error(`${name} did not settle in ${MAX_SHOTS} shots: the last two differ by ${moved}`);
 }
+
+/** A mask for the figures of an add-company form's list of boxes alone. Each line reads
+ * `<name>: <free disk> GB … <companies> …` in one translated string, and the figures are real on a stack and
+ * invented on the fake, so they differ in width and the words after the first figure move with them. The
+ * mask is therefore a block of one fixed width laid from the first figure to the end of the line (the
+ * name, its radio and which one is chosen stay in the picture), drawn as an element of its own over the
+ * page, which no layout reads and which React does not own. The figure is found after the first ": ",
+ * since a box's name may hold digits. A line that wraps, or whose figures outrun the block, is a red:
+ * the picture would then differ between the fake and the stack outside the mask. Held by
+ * ui/src/parts/NewClientBoxes.test.tsx ("C9: The form lists each box with its free disk and its
+ * companies, the home box chosen"). Call it just before the picture; it replaces its own earlier blocks. */
+export async function boxFigures(group: Locator): Promise<Locator[]> {
+  await group.evaluate((root, attribute) => {
+    root.ownerDocument.querySelectorAll(`[${attribute}]`).forEach((old) => old.remove());
+    const doc = root.ownerDocument;
+    const groupRight = root.getBoundingClientRect().right + doc.defaultView!.scrollX;
+    for (const label of Array.from(root.querySelectorAll('.mantine-Radio-label'))) {
+      const walker = doc.createTreeWalker(label, NodeFilter.SHOW_TEXT);
+      const text = walker.nextNode();
+      const content = text?.textContent ?? '';
+      const colon = content.indexOf(': ');
+      const digit = colon < 0 ? -1 : content.slice(colon).search(/\d/);
+      if (!text || digit < 0) continue; // a box that did not answer has no figure
+      const range = doc.createRange();
+      range.setStart(text, colon + digit);
+      range.setEnd(text, content.length);
+      const rects = Array.from(range.getClientRects());
+      if (rects.length !== 1) throw new Error(`a box's line wraps: ${content}`);
+      const rect = rects[0];
+      const view = doc.defaultView!;
+      const left = rect.left + view.scrollX;
+      const width = Math.min(200, groupRight - left);
+      if (rect.width > width) throw new Error(`a box's figures outrun the mask: ${content}`);
+      const block = doc.createElement('div');
+      block.setAttribute(attribute, '');
+      block.style.cssText = `position:absolute;pointer-events:none;left:${left}px;top:${rect.top + view.scrollY}px;width:${width}px;height:${rect.height}px;`;
+      doc.body.append(block);
+    }
+  }, FIGURES);
+  return group.page().locator(`[${FIGURES}]`).all();
+}
+const FIGURES = 'data-walk-box-figures';
 
 /**
  * Chromium's virtual authenticator, added to this page alone through the DevTools protocol: an

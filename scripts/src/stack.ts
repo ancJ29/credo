@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -70,7 +70,13 @@ export type RunningStack = {
   /** The BFF's own c-storage service, for `pnpm demo` to make its copies in this process. Never
    * handed to a command. */
   storage: CStorageClient;
+  /** Each box beyond the home box, by name: the BFF's service on a store of its own, so a test or a
+   * command reads what the stack wrote there. Never handed to a command. */
+  boxes: Record<string, CStorageClient>;
 };
+
+/** The boxes `pnpm stack` runs besides the home box: one, `b2`, so the operator's form has a real second box. */
+export const STACK_BOXES = ['b2'];
 
 /** Listens on loopback alone, on a free port or the one given, and answers where it is bound. */
 export const listening = (server: Server, port = 0) =>
@@ -115,6 +121,8 @@ export function bffEnvironment(settings: {
   appOrigin: string;
   /** The key the front adds to each call; the BFF refuses a call without it. */
   frontDoorKey: string;
+  /** The boxes beyond the home box, each with its address and keys; none by default. */
+  boxes?: Record<string, { url: string; internalKey: string; serviceKey: string }>;
 }) {
   return {
     PORT: String(settings.port),
@@ -127,6 +135,8 @@ export function bffEnvironment(settings: {
     AUDIT_KEY: settings.audit.key,
     APP_ORIGIN: settings.appOrigin,
     FRONT_DOOR_KEYS: settings.frontDoorKey,
+    // The home box's four variables are above; the others are handed in here, none by default.
+    STORAGE_BOXES: JSON.stringify(settings.boxes ?? {}),
   };
 }
 
@@ -150,6 +160,10 @@ export type StartOptions = {
   ports?: Partial<StackFacts['ports']>;
   /** The audit service's two ports: the keyed one and the open one. */
   auditPorts?: { keyed: number; open: number };
+  /** The names of boxes to run besides the home box, each a c-storage of its own on a folder of its
+   * own under `dataDir`, the BFF's service registered on it. A stack started again on kept data
+   * (`resume`) runs none: its keys are not kept. */
+  moreBoxes?: string[];
   /** Stands the stack up again on data a stopped stack left: the keys that open it, kept from the
    * first start, and what the first start printed. The demo set is not made again, so the people
    * and the operator's session are not known to the resumed stack. */
@@ -204,6 +218,20 @@ export async function startStack(
     stops.unshift(auditProcess.stop);
     await waitUntilUp(`${auditUrl}/health`, auditProcess, 'the audit service');
 
+    const boxes: Record<string, CStorageClient> = {};
+    const boxSettings: NonNullable<Parameters<typeof bffEnvironment>[0]['boxes']> = {};
+    for (const name of options.moreBoxes ?? []) {
+      const boxDir = join(dataDir, `box-${name}`);
+      await mkdir(boxDir, { recursive: true, mode: 0o700 });
+      const box = await startStore(artifacts.cStorage, boxDir, stops);
+      boxes[name] = box.storage;
+      boxSettings[name] = {
+        url: box.url,
+        internalKey: box.internalAccessKey,
+        serviceKey: box.service.accessKey,
+      };
+    }
+
     const seededDemo = resume ? null : await seedDemo(storage);
     let seeded = 0;
     const seeding = createSeeding(
@@ -238,6 +266,7 @@ export async function startStack(
           audit: { url: auditUrl, key: auditKey },
           appOrigin,
           frontDoorKey,
+          boxes: boxSettings,
         }),
         logFile: join(dataDir, 'bff.log'),
       },
@@ -272,6 +301,7 @@ export async function startStack(
       dataDir,
       activityTarget: activityTargetOf(facts),
       storage,
+      boxes,
       facts,
       stop,
     };
@@ -282,7 +312,8 @@ export async function startStack(
 }
 
 /**
- * The local stack for the length of `use`, on a fresh data folder: `startStack`, and everything
+ * The local stack for the length of `use`, on a fresh data folder and with a second box, `b2`:
+ * `startStack`, and everything
  * goes down when `use` ends, however it ends, and the database with it.
  */
 export async function withStack<T>(
@@ -292,7 +323,7 @@ export async function withStack<T>(
 ): Promise<T> {
   const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-'));
   try {
-    const stack = await startStack(artifacts, { ...options, dataDir });
+    const stack = await startStack(artifacts, { ...options, moreBoxes: STACK_BOXES, dataDir });
     try {
       return await use(stack);
     } finally {
