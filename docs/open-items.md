@@ -1781,3 +1781,19 @@ The wrap in `bff/src/boxes.route.test.ts` covers `getRecord` and `listRecords` o
 ## 445. The pooled shape's row 18 ("no existing test changed to pass") is checked by a command that cannot see most test files — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
 
 The row's check, `git diff --stat pre-merge -- '*.test.ts'`, misses `*.test.tsx`, `*.spec.ts` and the walks' base pictures, so a loosened ui test or a rewritten base passes it unseen; the first landing's screens 2, 4, 8, 9 and passkeys' 6 gained a mask, with their bases rewritten, outside it (disclosed in step 4's tick). *Fix, if taken:* the check's pathspec lists `*.test.ts`, `*.test.tsx`, `*.spec.ts` and the walks' `bases` folder, and the plan row says which of them it expects to move. *Trigger:* the next plan with a row of this kind.
+
+## 458. A local refresh of the shard table measures something other than CI's shards, and a partial refresh mixes units — the machine; `[DEFERRED]` when the table is next refreshed (the table of times review, 2026-11-14, Low B)
+
+`pnpm --filter @credo/scripts times` runs on this Mac without `--coverage` and outside the gate lock, a `-t` filter writes skipped tests' near-zero times as real, a run of some files overwrites only those over GitHub's times, and the first whole refresh rewrites about 41 lines, so two branches that both refresh conflict. Review section "The table of times at 5af37fc3", Low B; the effect on CI's balance needs a GitHub run to know. A partial refresh also drops the entries of other edited files, which then fall back to bytes until a whole refresh (`scripts/src/shard-times.ts#L76-L77`; review section "Reread at 0556d766", Low I).
+
+## 459. The shard balance case's name claims more than it holds — the machine; at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low F)
+
+"Keeps the slowest shard near a third of the table time, so the table is worth keeping" measures the greedy's balance over the weights it is handed, so it stays green with the table emptied or stale; only the presence case goes red. Review section "The table of times at 5af37fc3", Low F.
+
+## 460. Nothing checks that the config wires `TableShardSequencer` or the reporter switch, and the vite file-extension warning is three lines — the machine; at the next change to `scripts/vitest.config.ts` (the table of times review, 2026-11-14, Low G)
+
+A config that dropped the sequencer would give vitest's hash split with every case green, and the "import without a file extension" notice of `configLoader: 'native'` names three imports now. Review section "The table of times at 5af37fc3", Low G, carried from the review of 600f0eff.
+
+## 461. The package's own sequencer cases print each miss six more times into the test output — the machine; `[DEFERRED]` at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low H)
+
+The cases at `scripts/src/shard-sequencer.test.ts#L12`, `#L49` and `#L58` run the real sequencer, whose `say` writes each miss to the process output, so a gate shows the lines six more times beside the shard step's. Review section "Reread at 0556d766", Low H.
