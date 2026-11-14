@@ -1752,9 +1752,9 @@ The e2e job's cache holds the Node prefix, and `npm install -g @usebruno/cli@4.2
 
 The app's row is the commit compiled into the scripts the tab loaded (`ui/src/main.tsx#L32`), while the BFF's and c-storage's are asked each minute (`ui/src/pages/operator/ServicesPage.tsx#L84-L99`). After a deploy, a tab opened before it marks the app's page "Different build", and the sentence above the rows (`ui/src/i18n/en.ts#L260-L261`) says c-storage is updated first, then the BFF and the app, which reads as "wait" when a reload is the whole remedy: `index.html` is served `no-cache` (`ops/app.sh#L156-L157`), so a reload shows the new build. It bites at a deploy's look and in the rehearsal of the way back, both read on this page. *Fix:* the sentence also says "or this page was opened before it: reload it", in both languages, which moves the services walk's half-done screen. *Trigger:* the next change to the Services page, or a no at the build version plan's look.
 
-## 458. A local refresh of the shard table measures something other than CI's shards, and a partial refresh mixes units — the machine; when the table is next refreshed (the table of times review, 2026-11-14, Low B)
+## 458. A local refresh of the shard table measures something other than CI's shards, and a partial refresh mixes units — the machine; `[DEFERRED]` when the table is next refreshed (the table of times review, 2026-11-14, Low B)
 
-`pnpm --filter @credo/scripts times` runs on this Mac without `--coverage` and outside the gate lock, a `-t` filter writes skipped tests' near-zero times as real, a run of some files overwrites only those over GitHub's times, and the first whole refresh rewrites about 41 lines, so two branches that both refresh conflict. Review section "The table of times at 5af37fc3", Low B; the effect on CI's balance needs a GitHub run to know.
+`pnpm --filter @credo/scripts times` runs on this Mac without `--coverage` and outside the gate lock, a `-t` filter writes skipped tests' near-zero times as real, a run of some files overwrites only those over GitHub's times, and the first whole refresh rewrites about 41 lines, so two branches that both refresh conflict. Review section "The table of times at 5af37fc3", Low B; the effect on CI's balance needs a GitHub run to know. A partial refresh also drops the entries of other edited files, which then fall back to bytes until a whole refresh (`scripts/src/shard-times.ts#L76-L77`; review section "Reread at 0556d766", Low I).
 
 ## 459. The shard balance case's name claims more than it holds — the machine; at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low F)
 
@@ -1763,3 +1763,7 @@ The app's row is the commit compiled into the scripts the tab loaded (`ui/src/ma
 ## 460. Nothing checks that the config wires `TableShardSequencer` or the reporter switch, and the vite file-extension warning is three lines — the machine; at the next change to `scripts/vitest.config.ts` (the table of times review, 2026-11-14, Low G)
 
 A config that dropped the sequencer would give vitest's hash split with every case green, and the "import without a file extension" notice of `configLoader: 'native'` names three imports now. Review section "The table of times at 5af37fc3", Low G, carried from the review of 600f0eff.
+
+## 461. The package's own sequencer cases print each miss six more times into the test output — the machine; `[DEFERRED]` at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low H)
+
+The cases at `scripts/src/shard-sequencer.test.ts#L12`, `#L49` and `#L58` run the real sequencer, whose `say` writes each miss to the process output, so a gate shows the lines six more times beside the shard step's. Review section "Reread at 0556d766", Low H.
