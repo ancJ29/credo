@@ -1788,7 +1788,7 @@ Two AWS pages disagree: the Parameters page says a `CommaDelimitedList` "should 
 
 ## 447. A box added has no alarm, and the destroy's list of what a stack delete keeps names the home box's ids alone — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
 
-`ops/env.yml`'s `AlarmBox` watches `Box` alone, so a box added that fails its status check says nothing to Slack; and `DESTROY_BY_HAND` in `ops/lib.sh` (read by `ops/destroy.sh` and compared with the template by `ops/test.sh`) lists the home box's ids, while a stack delete also keeps each box added's instance and records disk (`Boxb2`, `RecordsVolumeb2`), which the destroy's own check of retained resources would not name. Ridge runs one box and returns to one after each rehearsal (the plan's acts), so neither bites yet; a client's stack with a box added needs both first.
+`ops/env.yml`'s `AlarmBox` watches `Box` alone, so a box added that fails its status check says nothing to Slack; and `DESTROY_BY_HAND` in `ops/lib.sh` (read by `ops/destroy.sh` and compared with the template by `ops/test.sh`) lists the home box's ids, while a stack delete also keeps each box added's instance and records disk (`MoreBoxb2`, `MoreRecordsVolumeb2`), which the destroy's own check of retained resources would not name. Ridge runs one box and returns to one after each rehearsal (the plan's acts), so neither bites yet; a client's stack with a box added needs both first.
 
 ## 448. A key run drops `STORAGE_BOXES` from the function's settings — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
 
@@ -1818,3 +1818,14 @@ The cases at `scripts/src/shard-sequencer.test.ts#L12`, `#L49` and `#L58` run th
 
 The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/env.yml`, `PushKeyToOwnBox`); case 14 reads the role alone and case 12 compares the loop's instance with `Box`, so with `Env` taken off both, both are green. A lost tag fails closed (the push is denied at `box_open`, before anything is sent). Case 14's guard asserting that `Box` carries `{"Key":"Env","Value":{"Ref":"Env"}}` closes it, and case 12 then carries it to every box added.
 
+## 463. The box-list condition joins the names with nothing between them, so a list spelling `none` reads as no box — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`HasMoreBoxes` in `ops/env.yml` is `!Join ['', !Ref MoreBoxes]` against `none`, so `--more-boxes no,ne` or `n,one` (both accepted by `boxes_list_refusal`) joins to `none` and an add silently makes nothing; and a blank set outside `stack.sh` (the console, the CLI by hand) is one empty name on AWS's Parameters page, so the condition is true and CloudFormation would make a box named nothing (`MoreBox`), which `stack_boxes` cannot see, so no script releases or reads it. Neither case reaches the home box. Joining with `','` (a name holds no comma), making the condition false for `''` as well, and keying case 12's `expand` on `$names == ["none"]` closes it.
+
+## 464. The box name `es` makes the loop's instance id `MoreBoxes`, the parameter's own name — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`boxes_list_refusal` accepts `es`, and `MoreBox${Name}` (`ops/env.yml`) is then `MoreBoxes`; cfn-lint 1.59.0 answers `E3007 Resources and Parameters must not share name`, and AWS's Parameters page says a logical name must be unique within the template, so the change set is refused before anything runs. Refusing a name for which `MoreBox<name>` is an existing logical name, or `es` by name, closes it.
+
+## 465. Not run: AWS's conditions page does not list `Fn::Join` inside `Fn::Equals` — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functions as usable inside `Fn::Equals` and `Fn::Or`, and `Fn::Join` only for `Fn::If`; `HasMoreBoxes` (`ops/env.yml`) puts it inside `Fn::Equals`. cfn-lint 1.59.0 accepts the template and the idiom is common, but if CloudFormation refuses it, every change set made from this template fails at its creation, before anything runs. The sitting's first `--plan` on ridge is the run that settles it; the condition would then need another shape (item 463's fix may change it anyway).
