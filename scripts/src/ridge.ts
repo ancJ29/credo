@@ -592,10 +592,12 @@ export async function runRidge(
       const store = client();
       const held = await store.getRecord(recordKeys.client(demoCopy(code)));
       if (!held) throw new Refused(`${code} is not on this service`);
-      const key = `${recordKeys.tenant(storedClientSchema.parse(held.data).id).all}${DRILL_RECORD}`;
-      if (what === 'put') await store.putRecord(key, { drill: true });
-      if (what === 'remove') await store.removeRecord(key);
-      io.out(what === 'has' ? ((await store.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
+      const id = storedClientSchema.parse(held.data).id;
+      const company = tenantStorage(store, id);
+      const key = `${recordKeys.tenant(id).all}${DRILL_RECORD}`;
+      if (what === 'put') await company.putRecord(key, { drill: true });
+      if (what === 'remove') await company.removeRecord(key);
+      io.out(what === 'has' ? ((await company.getRecord(key)) ? 'yes' : 'no') : `${what} ${code}`);
       return 0;
     }
 

@@ -158,12 +158,22 @@ milestone if the orchestrator wants one.
   `pnpm check` ended `== exit 0`; new test files alone, and `bff/tests/tenant.ts`'s `bffOn`
   gained a `boxes` option; the local stack's BFF environment carries `STORAGE_BOXES` as `{}`, which the
   old test of its exact variable list needed until step 4 hands it a second box.
-- [ ] **2. Every act on its box, and the scripts.** Two parts. The delete and the root password
+- [x] **2. Every act on its box, and the scripts.** Two parts. The delete and the root password
   (decision 6): *done when* the bff gate ends `== exit 0`, cases 6 and 10 red once; *size* 10, the
   same shape. Item 246's four scripts (decision 9): *done when* the scripts gate ends `== exit 0`,
   case 11 red once, and `grep -rnE 'recordKeys\.tenant\(' scripts/src --include='*.ts'
   --exclude='*.test.ts'` shows calls on a company's client alone; *size* 15, the last step that
   taught the seed where to write (the local copy's fourth, 15).
+  *Ticked 2026-11-14:* the delete and the root password take the company's store from the line's
+  box (503 for one not held); the deletion record names a box that is not home, so a resumed press
+  sweeps the right one; a delete whose box lists none of the company's records answers 409 and
+  removes nothing, the line included (a check on the route before the touch, not inside
+  `deleteClient`, so the terminal scripts' deletes keep their answers). Cases 6 and 10 red once
+  (the 409 check disabled; the company's client made over the home box). The seed, its ledger, its
+  freshness check, the support readers, the root password script and the drill record go through
+  `tenantStorage`; the seed and the root password script refuse a copy whose line names another box,
+  naming it, writing nothing; case 11 red once in each (the refusal disabled). The grep shows
+  calls keyed on a company's client alone. `pnpm check` ended `== exit 0`.
 - [ ] **3. The operator's choice.** Two parts. The form's list on the fake first (`pnpm fake`,
   `ui/src/fake.ts` answering two boxes): *done when* the ui gate ends `== exit 0`, case 9 red once;
   *size* 8 (the shared record page's add screen, 8). Then the boxes route and the status call

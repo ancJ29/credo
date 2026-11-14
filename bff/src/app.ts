@@ -495,8 +495,8 @@ export function buildApp({
     origin,
     serviceKey,
   });
-  registerRootPasswordRoutes(app, { storage, now, operatorSignedIn, confirmed });
-  registerDeleteClientRoutes(app, { storage, now, operatorSignedIn, confirmed });
+  registerRootPasswordRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
+  registerDeleteClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {

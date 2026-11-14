@@ -5,6 +5,7 @@ import {
   clientLinkPath,
   CStorageError,
   CREDO_COLOUR,
+  HOME_BOX,
   newestFirst,
   type CStorageClient,
   type StoredClient,
@@ -147,11 +148,15 @@ export async function deleteClient(
     index,
     by,
     now,
+    box,
   }: {
     code: string;
     index: (StoredClient & { tag: string }) | null;
     by: string;
     now: () => number;
+    /** The box the company sits on, as the caller read it from the line (or the deletion record):
+     * its store, which every record of the company is listed and removed in. None, `storage`. */
+    box?: CStorageClient;
   },
 ): Promise<{ left: number } | 'unknown' | 'busy' | 'moved'> {
   const key = recordKeys.clientDeletion(code);
@@ -159,7 +164,13 @@ export async function deleteClient(
   if (index) {
     const prior = await storage.getRecord(key);
     if (prior && storedClientDeletionSchema.parse(prior.data).id !== index.id) return 'busy';
-    deletion = { id: index.id, name: index.name, by, startedAt: now() };
+    deletion = {
+      id: index.id,
+      name: index.name,
+      by,
+      startedAt: now(),
+      ...(index.box && index.box !== HOME_BOX ? { box: index.box } : {}),
+    };
     if ((await storage.putRecord(key, deletion, prior?.tag ?? null)) === 'moved') return 'busy';
     if ((await storage.removeRecord(recordKeys.client(code), index.tag)) === 'moved') {
       if (!prior) await storage.removeRecord(key);
@@ -170,7 +181,7 @@ export async function deleteClient(
     if (!held) return 'unknown';
     deletion = storedClientDeletionSchema.parse(held.data);
   }
-  const company = tenantStorage(storage, deletion.id);
+  const company = tenantStorage(box ?? storage, deletion.id);
   const prefix = recordKeys.tenant(deletion.id).all;
   const listed = await company.listRecords(prefix);
   const batch = listed.records.slice(0, DELETE_BOUND);

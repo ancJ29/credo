@@ -6,6 +6,7 @@ import {
   type CStorageClient,
   type DeleteClientReply,
   deleteClientRequestSchema,
+  HOME_BOX,
   recordKeys,
   storedClientDeletionSchema,
   storedClientSchema,
@@ -14,9 +15,12 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { declare, operatorOf } from '../audit';
 import { deleteClient } from '../records/clients';
 import { HttpError, parse } from '../errors';
+import { tenantStorage } from '../records/records';
 
 type Deps = {
   storage: CStorageClient;
+  /** The store of a box this back end holds, or none. */
+  boxStorage: (box: string) => CStorageClient | undefined;
   now: () => number;
   /** The operator's live session, or a 401. */
   operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
@@ -37,7 +41,7 @@ type Deps = {
  */
 export function registerDeleteClientRoutes(
   app: FastifyInstance,
-  { storage, now, operatorSignedIn, confirmed }: Deps,
+  { storage, boxStorage, now, operatorSignedIn, confirmed }: Deps,
 ) {
   app.delete<{ Params: { code: string } }>(
     clientDeleteRoute(':code'),
@@ -56,11 +60,34 @@ export function registerDeleteClientRoutes(
         index?.id ?? (resuming ? storedClientDeletionSchema.parse(resuming.data).id : null);
       const entry = id ? declare(request, operatorOf(operator), id, id) : null;
       if (!entry) request.audit = []; // declared on purpose: no client to name
+      const box =
+        index?.box ??
+        (resuming ? storedClientDeletionSchema.parse(resuming.data).box : undefined) ??
+        HOME_BOX;
+      const onBox = boxStorage(box);
+      if (!onBox) {
+        request.log.error({ box }, 'a company names a box this back end does not hold');
+        throw new HttpError(503, 'Service unavailable');
+      }
       if (index) {
+        // A line naming a box that holds nothing of the company is a wrong line: a delete would sweep
+        // nothing and remove the line. Nothing is written, the line included.
+        const there = await tenantStorage(onBox, index.id).listRecords(
+          recordKeys.tenant(index.id).all,
+        );
+        if (there.records.length === 0) {
+          throw new HttpError(409, 'The client’s records are not on its box');
+        }
         const body = parse(deleteClientRequestSchema, request.body);
         await confirmed(operator, 'delete-client', body.confirm);
       }
-      const done = await deleteClient(storage, { code: code.data, index, by: operator.id, now });
+      const done = await deleteClient(storage, {
+        code: code.data,
+        index,
+        by: operator.id,
+        now,
+        box: onBox,
+      });
       if (done === 'unknown') throw new HttpError(404, 'Unknown client');
       if (done === 'busy' || done === 'moved') throw new HttpError(409, 'The client changed');
       entry?.saved({ code: code.data }, null);
