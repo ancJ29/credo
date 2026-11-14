@@ -57,7 +57,11 @@ export default defineConfig({
         'src/demo/apply-support.ts',
       ],
       reporter: [['text', { skipFull: true }]],
-      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
+      // A shard on GitHub (CREDO_SHARD set by the workflow) sees a third of the files, so it holds no
+      // threshold; the job that merges the shards' blobs does, and sets nothing.
+      thresholds: process.env.CREDO_SHARD
+        ? {}
+        : { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 });

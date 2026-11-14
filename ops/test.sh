@@ -1688,7 +1688,12 @@ app_guards() {
     block=$(job_block "$1" "app-$p")
     if [ -z "$block" ]; then missing="${missing}[no job app-$p] "; continue; fi
     need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[app-$p: $1] "; }
-    need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
+    # The scripts' gate is split (scripts_guards below): app-scripts is the job that merges the shards' coverage.
+    if [ "$p" = scripts ]; then
+      need "        run: pnpm exec vitest --merge-reports --coverage"
+    else
+      need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
+    fi
     need "    timeout-minutes: 40"
     need "          node-version-file: .node-version"
     need "    runs-on: ubuntu-24.04"
@@ -1697,8 +1702,9 @@ app_guards() {
     # A step-level if or shell could skip the gate step or change how its exit is read, and the job would still be green;
     # the key may sit after the name (eight spaces) or be the step's first (`- if:`, six spaces and a dash).
     grep -qE '^      (- |  )(if|shell):' <<<"$block" && missing="${missing}[app-$p: no step-level if or shell] "
-    # Go only where a test builds the real service (bff/tests/build.ts, reached by the BFF's route tests and the scripts' stack tests).
-    if [ "$p" = bff ] || [ "$p" = scripts ]; then
+    # Go only where a test builds the real service (bff/tests/build.ts, reached by the BFF's route tests and the scripts' stack
+    # tests, which run in scripts-shard, not in app-scripts, where the shards are only merged).
+    if [ "$p" = bff ]; then
       grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$block" || missing="${missing}[app-$p: Go, since its tests build c-storage] "
     else
       grep -q 'setup-go' <<<"$block" && missing="${missing}[app-$p: no Go, none of its tests builds a service] "
@@ -1725,8 +1731,10 @@ app_guards() {
   [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
 passes "the app gate is one job a package, each with its own check and a 40-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
-sed 's#^        run: pnpm --filter @credo/scripts --fail-if-no-match check$#        run: pnpm --filter @credo/scripts lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
-refuses "  a package job that does not run its package's check is refused" "app-scripts: " app_guards "$WORK/wf-nocheck.yml"
+sed 's#^        run: pnpm --filter @credo/bff --fail-if-no-match check$#        run: pnpm --filter @credo/bff lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
+refuses "  a package job that does not run its package's check is refused" "app-bff: " app_guards "$WORK/wf-nocheck.yml"
+sed 's#^        run: pnpm exec vitest --merge-reports --coverage$#        run: pnpm exec vitest --merge-reports#' "$WORKFLOW" >"$WORK/wf-nomergecov.yml"
+refuses "  an app-scripts job that merges the shards without their coverage is refused" "app-scripts: " app_guards "$WORK/wf-nomergecov.yml"
 sed 's#^          node-version: 24$#          node-version: 26#' "$WORKFLOW" >"$WORK/wf-no24.yml"
 refuses "  an app-bff job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
 # shellcheck disable=SC2016 # the workflow's literal text
@@ -1752,8 +1760,44 @@ awk '$0 == "  app-shared:" {f = 1} f && /^      - name: Gate shared$/ {print "  
 refuses "  a gate step whose first key is a shell is refused" "app-shared: no step-level if or shell" app_guards "$WORK/wf-shell1.yml"
 awk '$0 == "  app-ui:" {f = 1} f && /^      - uses: actions\/setup-node/ && !d {print "      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0"; print "        with:"; print "          go-version-file: services/c-storage/go.mod"; d = 1} 1' "$WORKFLOW" >"$WORK/wf-ugo.yml"
 refuses "  a job that does not build a service but sets up Go is refused" "app-ui: no Go" app_guards "$WORK/wf-ugo.yml"
-awk '$0 == "  app-scripts:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nogo.yml"
-refuses "  the scripts' job without Go is refused" "app-scripts: Go" app_guards "$WORK/wf-nogo.yml"
+# scripts_guards <workflow>: the scripts package's gate in three kinds of job (piece 140). Every stage of ops/gate.sh runs
+# somewhere in CI: the tests in three shards, each its own runner, keeping a blob; typecheck, eslint, prettier and knip once;
+# and app-scripts, which waits on both, merges the blobs with coverage (the package's 100 % thresholds, switched off in a shard
+# by CREDO_SHARD, are checked there). Go sits in the shards, where the stack tests build c-storage.
+scripts_guards() {
+  local missing='' b
+  b=$(job_block "$1" scripts-shard)
+  [ -n "$b" ] || die "no job scripts-shard"
+  # shellcheck disable=SC2016 # the workflow's literal text
+  grep -qxF -- "        shard: [1, 2, 3]" <<<"$b" || missing="${missing}[three shards] "
+  # shellcheck disable=SC2016 # the workflow's literal text
+  grep -qxF -- '        run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3' <<<"$b" || missing="${missing}[the shard's run] "
+  # shellcheck disable=SC2016 # the workflow's literal text
+  grep -qxF -- '          CREDO_SHARD: ${{ matrix.shard }}' <<<"$b" || missing="${missing}[CREDO_SHARD in a shard] "
+  grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$b" || missing="${missing}[Go in a shard] "
+  grep -qxF -- "          include-hidden-files: true" <<<"$b" || missing="${missing}[the blob's hidden folder kept] "
+  grep -qxF -- "    timeout-minutes: 40" <<<"$b" || missing="${missing}[a shard's 40-minute cap] "
+  b=$(job_block "$1" scripts-stages)
+  [ -n "$b" ] || die "no job scripts-stages"
+  grep -qxF -- "        run: pnpm --filter @credo/scripts run typecheck" <<<"$b" || missing="${missing}[stages: typecheck] "
+  grep -qxF -- "        run: pnpm exec eslint ." <<<"$b" || missing="${missing}[stages: eslint] "
+  grep -qxF -- "        run: pnpm exec prettier --check ." <<<"$b" || missing="${missing}[stages: prettier] "
+  grep -qxF -- "        run: pnpm exec knip" <<<"$b" || missing="${missing}[stages: knip] "
+  b=$(job_block "$1" app-scripts)
+  grep -qxF -- "    needs: [scripts-shard, scripts-stages]" <<<"$b" || missing="${missing}[app-scripts: needs both] "
+  grep -qxF -- "          merge-multiple: true" <<<"$b" || missing="${missing}[app-scripts: the blobs together] "
+  grep -q 'CREDO_SHARD' <<<"$b" && missing="${missing}[app-scripts: no CREDO_SHARD, it holds the thresholds] "
+  [ -z "$missing" ] || die "the scripts' gate lacks: $missing"
+}
+passes "the scripts' gate is three shards, the four other stages once, and the merge that holds the thresholds (piece 140)" scripts_guards "$WORKFLOW"
+sed 's#shard: \[1, 2, 3\]#shard: [1, 2]#' "$WORKFLOW" >"$WORK/wf-2shards.yml"
+refuses "  a scripts gate with two shards, the third third of the files run nowhere, is refused" "three shards" scripts_guards "$WORK/wf-2shards.yml"
+sed 's#^        run: pnpm exec knip$#        run: true#' "$WORKFLOW" >"$WORK/wf-noknip.yml"
+refuses "  a scripts gate whose stages job drops knip is refused" "stages: knip" scripts_guards "$WORK/wf-noknip.yml"
+sed 's#^    needs: \[scripts-shard, scripts-stages\]$#    needs: [scripts-shard]#' "$WORKFLOW" >"$WORK/wf-oneneed.yml"
+refuses "  a merge job that does not wait on the stages job is refused" "app-scripts: needs both" scripts_guards "$WORK/wf-oneneed.yml"
+awk '$0 == "  scripts-shard:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nogo.yml"
+refuses "  the scripts' shards without Go are refused" "Go in a shard" scripts_guards "$WORK/wf-nogo.yml"
 sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
 refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
 check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"

@@ -178,7 +178,7 @@ jobs:
   # The app's own gate, one job a package, so the longest job is the slowest package (the scripts tests, about
   # 15 minutes on GitHub's runner) and not their sum (about 24 minutes, measured on 11-13): each job runs
   # `pnpm --filter @credo/<package> check`, that package's typecheck and tests at 100 % and the repository-wide
-  # eslint, prettier and knip, all through ops/gate.sh. Each is capped at 40 minutes, about 1.5 times the longest whole
+  # eslint, prettier and knip, all through ops/gate.sh; the scripts package's is split in three kinds of job, below. Each is capped at 40 minutes, about 1.5 times the longest whole
   # run measured (25.5 minutes). The job `app` below waits on all six and is the name the deploy waits on.
   # Go is set up in the BFF's job and the scripts' alone: the one `go build` the tests make is bff/tests/build.ts, reached
   # by the BFF's route tests and the scripts' stack tests. `--fail-if-no-match` makes a package name that matches nothing a red, not a green no-op.
@@ -243,11 +243,22 @@ jobs:
       - name: Gate bff
         run: pnpm --filter @credo/bff --fail-if-no-match check
 
-  app-scripts:
+  # The scripts package's gate, split so the longest job is a third of its tests and not all of them (the tests
+  # were 94 % of the 10 to 15 minutes, bound by two workers): `scripts-shard` runs a third of the test files on a runner
+  # of its own and keeps a blob of its results and coverage; `scripts-stages` runs the typecheck, eslint, prettier and
+  # knip once, the four stages of ops/gate.sh beside the test; `app-scripts` (the name `app` waits on) merges the three
+  # blobs and holds the package's 100 % thresholds, which no third of the files can meet alone (CREDO_SHARD switches
+  # them off in a shard, scripts/vitest.config.ts). The blobs are the reporter's own, hidden folder included.
+  # Go is set up in the shards alone: the stack tests build c-storage.
+  scripts-shard:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -291,8 +302,124 @@ jobs:
             pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Gate scripts
-        run: pnpm --filter @credo/scripts --fail-if-no-match check
+      - name: Test shard
+        working-directory: scripts
+        env:
+          CREDO_SHARD: ${{ matrix.shard }}
+        run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3
+      - name: Keep the blob
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scripts-blob-${{ matrix.shard }}
+          path: scripts/.vitest/blob/blob-${{ matrix.shard }}-3.json
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  # The four stages of ops/gate.sh that are not the test, each run whatever the one before did, as the gate does.
+  scripts-stages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter @credo/scripts run typecheck
+      - name: Eslint
+        if: ${{ !cancelled() }}
+        run: pnpm exec eslint .
+      - name: Prettier
+        if: ${{ !cancelled() }}
+        run: pnpm exec prettier --check .
+      - name: Knip
+        if: ${{ !cancelled() }}
+        run: pnpm exec knip
+
+  # Waits on both, with no `if`: a red shard or a red stages job leaves it skipped, so `app` and the deploy are skipped too.
+  app-scripts:
+    needs: [scripts-shard, scripts-stages]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: The shards' blobs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: scripts-blob-*
+          merge-multiple: true
+          path: scripts/.vitest/blob
+      - name: Merge the shards
+        working-directory: scripts
+        run: pnpm exec vitest --merge-reports --coverage
 
   app-shared:
     runs-on: ubuntu-24.04
