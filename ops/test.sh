@@ -3528,9 +3528,13 @@ check "case 13: the check adds a customer through the edge, makes the client's i
   "$(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^ok   the customer the root added is in the activity log on the box, read by its record, with no key in it' "$S/out") $(chk_has '-- entry 10.20.30.40 3184 3185 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 rec-0001$' "$S/ssh.calls") $(chk_has '^RED' "$S/out")"
 check "case 13: where the stack names no domain the check says 'skipped' by name and reads one company address, the app's" "1 1 1" \
   "$(chk_has "^skipped: ridge's stack names no domain, so no company's own address is read" "$S/out") $(chk_has "^ok   the app's page at the client's link" "$S/out") $(chk_has '^ok   the root signs in through the edge' "$S/out")"
+check "  and its two passes are told apart: the app's address's header once, the own address's none" "1 0" \
+  "$(chk_has "^the check's company, through the app's address:$" "$S/out") $(chk_has "^the check's company, through its own address:$" "$S/out")"
 FAKE_DOMAIN=1 CHECK_OWN_BASE=$FAKE_APP chk_run own check.sh ridge
 check "case 13: where the stack names a domain the check reads the company's page, settings and sign-in a second time through its own address, adding no second customer, green" "0 1 2 2 2 1 0" \
   "$RC $(chk_has '^== green' "$S/out") $(chk_has "^ok   the app's page at the client's link" "$S/out") $(chk_has '^ok   the root signs in through the edge' "$S/out") $(chk_has '^ok   /api/config reaches the BFF' "$S/out") $(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^skipped: ridge.s stack names no domain' "$S/out")"
+check "  and each pass has its header once, the own address's before the first page read and the app's address's after the own pass's last" "1 1 yes" \
+  "$(chk_has "^the check's company, through its own address:$" "$S/out") $(chk_has "^the check's company, through the app's address:$" "$S/out") $(awk '/^the check.s company, through its own address:$/ {o = NR} /^ok   the app.s page at the client.s link/ {if (!f) f = NR; l = NR} /^the check.s company, through the app.s address:$/ {a = NR} END {print (o && a && o < f && f < a && a < l) ? "yes" : "no"}' "$S/out")"
 check "  and the key goes to curl on a pipe as a config, never on a command line or back off the box" "1 0 0" \
   "$(grep -c "printf 'header = \"x-internal-access-key: %s" "$OPS_DIR/check.sh" || true) $(grep -cE 'curl .*(-H|--header) .?.?x-internal-access-key' "$OPS_DIR/check.sh" || true) $(grep -cE 'echo "[^"]*[$][{]?key' "$OPS_DIR/check.sh" || true)"
 check "case 11: the log's unit, listeners, key file, folder, files and /health read sound on the box, green" "1 0" \

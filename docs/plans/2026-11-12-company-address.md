@@ -190,7 +190,7 @@ address in the same run.
   citation test passes alone and `git grep -nE '/Users/|~/'` finds nothing new. **About 10 min.**
 - [ ] **7. Ridge, stage 4.** 👤 Your acts, in [the order below](#your-acts-in-order); 🤖 one one-off
   for the operator's link and the reads, and each log read whole. *Done when:* `ops/check.sh ridge`
-  ends `== green` with the company's-own-address lines ok, and your look is answered. **About 8 min**
+  ends `== green` with the lines under "the check's company, through its own address:" ok, and your look is answered. **About 8 min**
   of the machine's.
 
 Summed: about 85 minutes of the machine's.

@@ -1833,3 +1833,23 @@ The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/
 ## 465. Not run: AWS's conditions page does not list `Fn::Join` inside `Fn::Equals` — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
 
 The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functions as usable inside `Fn::Equals` and `Fn::Or`, and `Fn::Join` only for `Fn::If`; `HasMoreBoxes` (`ops/env.yml`) puts it inside `Fn::Equals`. cfn-lint 1.59.0 accepts the template and the idiom is common, but if CloudFormation refuses it, every change set made from this template fails at its creation, before anything runs. The sitting's first `--plan` on ridge is the run that settles it; the condition would then need another shape (item 463's fix may change it anyway).
+
+## 472. The company's own address on a ridge run is built in no tested line, and the setting that replaces it is honoured outside the tests — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`ops/check.sh`'s `"${CHECK_OWN_BASE:-https://$tenant.$own_domain}"` is only ever run with `CHECK_OWN_BASE` set, so a wrong default that still answers (the app's address) would pass every test and read the operator's address twice on ridge, green; and nothing limits `CHECK_OWN_BASE` to the tests, as `OPS_TESTS_RUNNING` limits the other switches. Fix: one `own_address <code> <domain>` in `ops/lib.sh` with a test of its output, and `CHECK_OWN_BASE` read only under `OPS_TESTS_RUNNING`, refused by name otherwise.
+
+## 473. The template guard does not read which condition each address branch names, nor the rule's logic or the domain's pattern — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`resolved()` in `ops/test.sh` takes every `Fn::If` one way and the rule's check asks only for one rule mentioning both names; six mutations of a copied guard (aliases or certificate under `HasSlack`, the app's address under `HasMoreBoxes`, the rule asserting `Domain` alone or always true, `AllowedPattern` set to `.*`) all passed it. Fix: `resolved` takes only `Fn::If`s on `HasDomain` and asserts the three conditionals name it; the rule and the pattern pinned by value.
+
+## 474. The operator's name has three homes, the script's refusal message says a client exists when none does, and the fake makes the kept-back codes — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`https://operator.${Domain}` in `ops/env.yml`, `'operator'` in `KEPT_CODES` and `OPERATOR_PART` in `shared/src/wire.ts` agree today and no check ties them (one exported `OPERATOR_NAME`, and the domain guard comparing it with `AppAddress`); `ridge_cli tenant` answers "names a client already" for a kept-back code, where `tenant-id` then finds none (the message says it is taken or kept back); `ui/src/fake.ts`'s create refuses only a code it holds, so a fake walk typing `operator` or `www` shows the made screen where ridge says taken (`KEPT_CODES.includes(code)` joins the refusal).
+
+## 475. The company address's reader-facing text: an orphaned comment, a case-5 label, four living citations and a stale comment — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`normaliseClientCode`'s doc comment in `shared/src/records.ts` now sits above `KEPT_CODES`'s own and wants moving back; a case-5 test in `ops/test.sh` is labelled "masks neither" but checks only the domain, since `DistributionName` stays masked; `docs/conventions/code.md` (three lines) and `docs/README.md` cite `App.tsx` and `ClientApp.tsx` lines the piece moved, to become file and symbol at step 6; the comment above `bff_settings_set` in `ops/lib.sh` still says the passkeys' address is "CloudFront's name, kept for good", where under a domain it is `operator.<Domain>`.
+
+## 476. The plan's order of acts assumes step 1 lands alone; landing whole, an app deploy must follow the stack run before the operator's passkey — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `ops/app.sh` and `ops/keys.sh` call, so a push before the stack run leaves it at CloudFront's name and the passkey at the operator's address is refused until a later deploy. Fix at step 6 and in step 7's one-off: push, certificate, stack run, wildcard record, then `ops/app.sh ridge` or any deploy, before the passkey; and one line that the check is red on the own-address pass until the wildcard record exists.

@@ -275,10 +275,12 @@ else
   # read names the operator's host. CHECK_OWN_BASE stands in for that address in the stand-in cases, whose edge has no name.
   own_domain=$(out Domain)
   if [ -n "$own_domain" ]; then
+    echo "the check's company, through its own address:"
     EDGE_ADD_CUSTOMER='' edge_reads_client "${CHECK_OWN_BASE:-https://$tenant.$own_domain}" "$tenant" "$tenant_pass" "$tenant_name"
   else
     echo "skipped: $ENVNAME's stack names no domain, so no company's own address is read"
   fi
+  echo "the check's company, through the app's address:"
   EDGE_ADD_CUSTOMER=1
   edge_reads "$APP_ADDRESS" "$tenant" "$tenant_pass" "$tenant_name"
   # The customer the root added is read back from the activity log on the box itself: the box mints a read token
