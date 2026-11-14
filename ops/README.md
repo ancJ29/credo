@@ -586,6 +586,44 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
    - **a key is in this log:** as in [the check](#the-check).
    - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
+## Adding a box
+
+A box is added to the environment's one stack by naming it, never by a stack of its own: `ops/env.yml` holds the home
+box (`Box`) and one block for each name in the list `MoreBoxes` (`Fn::ForEach`), and `ops/test.sh` holds that block equal
+to the home box's but for its names ([the plan](../docs/plans/2026-11-11-pooled-shape.md#the-steps), decision 10). A name
+is a lowercase letter, then lowercase letters and digits, 16 at most, never `home`, none twice; it is also the box's path
+in the copy's bucket (`<name>/records`).
+
+1. `ops/stack.sh env <env> --more-boxes b2 --plan`, and read it as [a change to a template](#a-change-to-a-template): it
+   adds the box (`MoreBoxb2`), its role and profile, its records disk and the disk's attachment, and three outputs
+   (`MoreBoxb2Id`, `MoreBoxb2Address`, `MoreRecordsVolumeb2Id`), and leaves the home box and everything else as they are. Anything
+   changed or replaced, stop. The flag names the **whole** list: `--more-boxes b2,b3` on a stack holding `b2` adds `b3`,
+   and a run without the flag keeps the list the stack has.
+2. Run it again without `--plan`. The new box is empty: no release has been to it.
+3. `ops/release.sh <env>` goes to the home box and then to each box added, each its own run with its own log
+   (`...-release-<env>-b2.log`); `ops/release.sh <env> --box b2` is that one box alone.
+4. `ops/app.sh <env>` opens each box in turn, makes the BFF's service in its c-storage and hands the back end every box in
+   `STORAGE_BOXES` (names, addresses and keys, never printed). A box that does not answer stops it before any setting of
+   the function is written. **A key run (`ops/keys.sh`) sets the function's environment without `STORAGE_BOXES`**, so
+   after one on an environment that holds a box added, run `ops/app.sh <env>` again (open item 448).
+5. `ops/check.sh <env>` reads the home box whole and then each box added, alone; `ops/check.sh <env> --box b2` is one box
+   alone. `ops/tunnel.sh <env> --box b2` and `ops/drill.sh <env> --box b2` take the box in the same way.
+6. Taking a box out is a removal. First write down the box's id and zone (the stack's output `MoreBox<name>Id`, which
+   goes with the box). Then `ops/stack.sh env <env> --more-boxes none --plan` (or the list as it should be): **never a
+   blank list**, which AWS reads as one empty name, so no box is the word `none`. The fence refuses the removal and
+   names the five (`MoreBoxb2`, `MoreBoxProfileb2`, `MoreBoxRoleb2`, `MoreRecordsAttachmentb2`, `MoreRecordsVolumeb2`);
+   it passes when each is named with `--take`. What is left: the instance and its root disk are kept, and the records
+   disk is **snapshotted and then deleted** (its policy is `Snapshot`: AWS, "CloudFormation creates a snapshot for the
+   resource before deleting it"), so a snapshot stays and bills until `aws ec2 delete-snapshot` removes it. A company
+   still on the box is not moved by this: move the companies off first. To find the instance left, look it up by **its
+   own tag**, `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env>-<name> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name]' --output text`;
+   the tag `credo-<env>` alone is the home box, which is running in the stack and is never the one to stop or remove.
+   Then follow [a retained box](#a-retained-box) from its step 2, with that instance's id, and
+   [a left-behind volume](#a-left-behind-volume) for the disk.
+
+The deploy role needs no change for a box added: it pushes a key to any instance tagged for its environment and opens the
+tunnel to its subnet's range. No alarm watches a box added (open item 447).
+
 ## Reading what the fence kept
 
 `Box` carries `RetainExceptOnCreate` on a stack delete (it retains on every act but the rollback of its own creation, which deletes a box that never served) and `Retain` on a replacement, and its root disk carries
@@ -610,7 +648,8 @@ The stack was deleted (or a replacement set the old box aside) and the instance 
 outside any stack.
 
 1. Find it. `BoxId` was a stack output and went with the stack, so look the instance up by the tag
-   `ops/env.yml` gives it, `Name` = `credo-<env>`:
+   `ops/env.yml` gives it, `Name` = `credo-<env>` (for a box added, `credo-<env>-<name>`, and only that: `credo-<env>` is the
+   home box, which a stack still holds):
    `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name,LaunchTime]' --output text`.
    After a replacement two boxes carry the name: the older `LaunchTime` is the retained one. *Untested:*
    that the tag survives on a retained instance (the tag is the template's own property, so it should).

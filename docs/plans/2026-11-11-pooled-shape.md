@@ -241,20 +241,109 @@ milestone if the orchestrator wants one.
 
 **Second landing: a box added by command** (after the continuous copy is on `pre-merge`).
 
-- [ ] **6. The loop, the role, the scripts.** Four parts, in order, each *done when* `bash ops/test.sh`
+- [x] **6. The loop, the role, the scripts.** Four parts, in order, each *done when* `bash ops/test.sh`
   exits 0 with its cases red once: AWS's and cfn-lint's reading, quoted in the tick (done when each
   of the six questions has a sentence of AWS's own, or the fallback is taken and said; *size* 5, a
   first run); the loop and its guard, cases 12 and 13 (*size* 10, the box's retention step, 10); the
   deploy role, case 14 (*size* 8, the access log's guard, 8); the scripts learning a box, case 15,
   `shellcheck -x ops/*.sh` at 0 too (*size* 14, the ten scripts' guard, 14). The runbook gains
   "Adding a box".
-- [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
+  *Part 1 ticked 2026-11-14 (AWS's and cfn-lint's reading; the loop stands, no fallback).* Pages fetched:
+  the `Fn::ForEach` and `AWS::LanguageExtensions` pages of the Template Reference, its Outputs examples,
+  `CreateChangeSet`'s API page, and the service reference JSON for `ec2-instance-connect`.
+  (1) *Where it may stand:* "`Fn::ForEach` can contain other intrinsic functions, including `Fn::ForEach`
+  itself, and be used within the `Conditions`, `Outputs`, and `Resources` (including the resource
+  properties) sections." (`https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-foreach.html`);
+  and "If you use the `Fn::ForEach` intrinsic function in your template, you must also use the
+  `AWS::LanguageExtensions` transform." (same page).
+  (2) *An empty list:* not found on the pages fetched (the `Fn::ForEach` page, its Resources, Outputs
+  and Conditions examples index, the transform's page); the loop's collection is "an array in this
+  parameter, or ... a `Ref` to a `CommaDelimitedList`" (same first page), so the loop takes
+  `MoreBoxes` as a `CommaDelimitedList` with default `''`, and ridge's `--plan` (point 2) is where an
+  empty one is first read by CloudFormation itself; item 446.
+  (3) *Outputs from the loop:* "These examples demonstrate using the `Fn::ForEach` intrinsic function
+  in the `Outputs` section." with an output key `S3Bucket${Identifier}${Property}` per item
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-foreach-example-outputs.html`);
+  the key is built from the identifier as a resource's logical id is, so `Box${Name}Id`.
+  (4) *The capability:* "This capacity doesn't apply to creating change sets, and specifying it when
+  creating change sets has no effect." about `CAPABILITY_AUTO_EXPAND`
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateChangeSet.html`); the
+  transform page itself names "when you create or update a stack using a change set" and no
+  capability. So the change set needs none beyond `CAPABILITY_IAM`; `stack.sh` still passes
+  `CAPABILITY_AUTO_EXPAND` beside it, which AWS says has no effect there.
+  (5) *Instance Connect's two actions under a tag and a subnet*, from the service reference JSON
+  (`https://servicereference.us-east-1.amazonaws.com/v1/ec2-instance-connect/ec2-instance-connect.json`):
+  `SendSSHPublicKey` has the resource `instance` (`arn:${Partition}:ec2:${Region}:${Account}:instance/${InstanceId}`),
+  its resource condition keys `aws:ResourceTag/${TagKey}` and `ec2:ResourceTag/${TagKey}`, its action
+  condition key `ec2:osuser`, and no subnet key; `OpenTunnel` has the resource `instance-connect-endpoint`
+  with the condition keys `ec2-instance-connect:privateIpAddress`, `ec2-instance-connect:remotePort`,
+  `ec2-instance-connect:MaxTunnelDuration` and the two tag keys. So a tag scopes the key push, and the
+  subnet scopes the tunnel by its address range (`privateIpAddress` as the subnet's CIDR), which is
+  what the deploy role will say.
+  (6) *cfn-lint:* 1.46.0 would not install here (no package host in the sandbox) and its source path
+  404s, so this was read at the installed 1.59.0, its `_language_extensions.py`: a collection that is a
+  `Ref` is resolved from the parameter's default or value, and an inline empty list raises "Fn::ForEach
+  could not be resolved" (E0001), while a `CommaDelimitedList` parameter whose default is `''` passes with
+  no loop error; run on a loop in `Resources` and `Outputs` it printed only the hardcoded-zone warning of
+  the scratch template. CI pins 1.46.0, so the loop's commit is the first proof at that version; its
+  `ops` job reads it.
+  *Part 2 ticked 2026-11-14 (the loop and its guard, cases 12 and 13).* `ops/env.yml` gains the transform,
+  `MoreBoxes` (a `CommaDelimitedList`, default none), one loop in `Resources` whose body is the home box's
+  block (instance, role, profile, records disk, attachment) with the box's name as its path in the copy's
+  bucket, and one in `Outputs` (`Box<name>Id`, `Box<name>Address`, `RecordsVolume<name>Id`); `Box` and every
+  other resource are as they were. `ops/stack.sh env <env> --more-boxes b2,b3` passes the list (checked first:
+  a lowercase name, not `home`, none twice, blank is none) and without the flag keeps the stack's own, none
+  for a stack made before the parameter; the change set carries `CAPABILITY_AUTO_EXPAND` beside IAM. The
+  guards read `env-full.json` for the loop and `env.json` (the loop taken out) for everything they read
+  before. Case 12 red once (before the loop existed: the transform missing; then by ten mutations of the
+  loop, put back: another instance type, an unencrypted records disk, a disk without its keeping, an
+  attachment to the home disk, a role over `Box/`, a wider list prefix, a sixth resource, an output
+  missing, an output reading the home box, the transform missing). Case 13 red once by four mutations of
+  `stack.sh` (the kept list not passed, the flag's value not passed, `home` allowed, no capability), put
+  back; a removed box is named by the fence and taken by its names (`testdata/changeset-boxremoved.json`).
+  `cfn-lint` at 1.59.0 passes on all three templates; CI's 1.46.0 is the first run at that version.
+  *Part 3 ticked 2026-11-14 (the deploy role, case 14).* The role's two box statements no longer name
+  `${Box}`: the key push is on any instance (`instance/*`) whose `Env` tag is this environment's, as
+  `ec2-user` (the service reference gives `SendSSHPublicKey` no subnet key, so the tag holds it), and the
+  tunnel opens to an address in this environment's subnet (`privateIpAddress` is `SubnetCidr`) on port 22
+  alone, through the shared endpoint. Case 14 was red first on the old statements, then passes, and is red
+  once by eight mutations of the role, put back: the tag condition removed, another tag, the home box's
+  instance alone, a tunnel to `0.0.0.0/0`, to the home box's address alone, on port 2222, a third Instance
+  Connect action, a statement naming `${Box}`. `shellcheck -x ops/*.sh` and `cfn-lint` exit 0.
+  *Part 4 ticked 2026-11-14 (the scripts learning a box, case 15; the step is done).* `box_open <env> [<port> [<box>]]`
+  opens a box by name from the stack's `Box<name>Id` and `Box<name>Address` outputs (`stack_boxes`, `box_out`), sets the
+  box's path in the copy's bucket to its name, and refuses a name the stack does not hold, naming those it does.
+  `ops/app.sh` makes the BFF's service on every box (`other_boxes_read`: each opened in turn, its keys read, before any
+  setting of the function is written) and writes `STORAGE_BOXES` beside the eight variables, which are the eight
+  alone when the stack holds no box added. `release.sh`, `check.sh`, `drill.sh` and `tunnel.sh` take `--box <name>`;
+  `release.sh` and `check.sh` go over the home box and then each box added, each its own run and its own log, with the
+  terminal for its lines and, for the release, the binaries the first run built. The runbook gains "Adding a box"
+  (`ops/README.md`). Case 15 was red first on the old scripts (no `STORAGE_BOXES`), then passes, and is red once by three
+  mutations of `app.sh` and `lib.sh`, put back: the boxes read nowhere, the boxes read after the settings (a setting
+  written before the box that does not answer stops it), the home box's address written for the box added; the unknown-box
+  refusals and the usage lines were red on the old scripts. Two old checks of `ops/test.sh` changed their wanted text, the
+  usage lines of `tunnel.sh` and `check.sh`, which now name `--box`; no other old check changed. Items filed: 446 (an empty `MoreBoxes` on CloudFormation),
+  447 (no alarm on a box added, and the destroy's list names the home box's ids alone), 448 (a key run drops
+  `STORAGE_BOXES`). `shellcheck -x ops/*.sh` and `cfn-lint` exit 0. Not run, as the plan says: the human's acts on ridge.
+- [x] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
-- [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then
-  `ops/stack.sh env ridge --more-boxes b2 --plan`, point 2, then without `--plan`. *Done when:* the
-  machine reads the log: the box and its disk added, the home box unchanged, `== exit 0`.
-- [ ] 👤 **`ops/release.sh ridge`, `ops/app.sh ridge`, then `ops/check.sh ridge`.** *Done when:* each
-  log ends `== exit 0`, the check reading both boxes.
+  *Fix pass of the review of the second landing, 2026-11-14 (not yet the step's tick):* High 1, a blank
+  `MoreBoxes` is one empty name on AWS's Parameters page, so the loop's ids were the home box's: the loop's ids
+  and outputs now have the stem `More` (`MoreBoxb2`, `MoreBoxb2Id`), "no box" is the word `none` (the default,
+  the runbook's removal; `stack.sh` turns a blank into it and refuses it as a name), and `HasMoreBoxes` keeps
+  every loop resource and output out for it; case 12 expands the loop for the word, an empty name and one name
+  and sets the ids beside the template's own, red when the stem is gone. Medium 2 and Low 3, the runbook's removal
+  looks the box up by `credo-<env>-<name>` (a guard refuses a command that can match the home box's tag) and says
+  the records disk is snapshotted and deleted. Low 4, `release.sh` names the commit given. Items 446 rewritten,
+  449 and 462 filed.
+  *Ticked 2026-11-14:* opus reviewed the second landing (red: High 1, Medium 2, Lows 3 to 6) and reread the fix at `b19807d8`, may merge, four new Lows; the fix pass's `ops/test.sh` ended "all checks passed"; the Lows are items 449, 462 and, from the reread, 463 to 465, with item 447's names corrected; `pre-merge` is taken in and the citation test exits 0; the recap is committed with its markers for the sitting and the whole check.
+- [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one
+  sitting, ridge being a test environment that returns to one box: `ops/stack.sh env ridge
+  --more-boxes b2 --plan`, point 2, then without `--plan`; `ops/release.sh ridge`, `ops/app.sh ridge`,
+  then `ops/check.sh ridge`; then `b2` taken out of the list and its retained box removed by the
+  runbook's "A retained box". *Done when:* the machine reads the logs: the box and its disk added, the
+  home box unchanged, each log ending `== exit 0`, the check reading both boxes, then the removal
+  ending `== exit 0` with ridge on its one box.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
@@ -262,9 +351,10 @@ milestone if the orchestrator wants one.
   page. Two parts, *size* 10 and 8, the shapes of steps 1 and 3. *Done when:* `pnpm check` ends `==
   exit 0`; cases 16 and 17 red once.
 - [ ] **7r. Reviewed, fixed, recapped**, done and sized as 5r: 14 and 3.
-- [ ] 👤 **On ridge:** a company added on `b2` at `/operator`, signed into, then moved to the home
-  box: point 3. Then `b2` taken out of the list and its retained box removed by the runbook's "A
-  retained box", since a second box on ridge is a fixed charge with no need after the rehearsal.
+- [ ] 👤 **On ridge, in its own sitting:** `b2` added again (`ops/stack.sh env ridge --more-boxes b2`),
+  a company added on `b2` at `/operator`, signed into, then moved to the home box: point 3. Then `b2`
+  taken out of the list and its retained box removed by the runbook's "A retained box", since ridge
+  runs one box and a second one is a fixed charge with no need after the rehearsal.
 
 ## The case table
 

@@ -264,7 +264,11 @@ tojson() {
     puts JSON.generate(conv(YAML.parse(File.read(ARGV[0])).root))
   ' "$1"
 }
-tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
+tojson "$OPS_DIR/env.yml" >"$WORK/env-full.json"
+# env.json is the home box's template: the loop that adds boxes (Fn::ForEach, a key of Resources and one of Outputs whose
+# value is a list, not a resource) is taken out, so every guard below reads what it read before; the loop has its own
+# section (cases 12 and 13 of docs/plans/2026-11-11-pooled-shape.md), which reads env-full.json.
+jq 'del(.Resources["Fn::ForEach::Boxes"], .Outputs["Fn::ForEach::BoxOutputs"])' "$WORK/env-full.json" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
 # the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
@@ -881,6 +885,157 @@ refuses "  a change set that also adds a second rule is refused" "not the log's 
   activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"BoxFromAny","ResourceType":"AWS::EC2::SecurityGroupIngress","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-extra.json"; echo "$WORK/cs-act-extra.json")"
 refuses "  a change set that also modifies the box's group is refused" "not a Modify of BffGroup in place" \
   activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"BoxGroup","ResourceType":"AWS::EC2::SecurityGroup","Replacement":"False","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-box.json"; echo "$WORK/cs-act-box.json")"
+
+echo "== a box added by command: the loop is the home box's block but for its names (case 12 of docs/plans/2026-11-11-pooled-shape.md)"
+# The loop's body, with "${Name}" taken out of every name and the loop's way of naming a neighbour (Ref and GetAtt through
+# Fn::Sub) read as the plain name, is what the home box's block says: so a change to the home box that the loop lacks, or
+# to the loop that the home box lacks, is red. The names that differ on purpose are the resource ids, the tag and the
+# records disk's name, and the box's path in the copy's bucket (Box/ for the home box, <name>/ for each box added).
+# shellcheck disable=SC2016 # jq programs, in single quotes
+UNNAME='def unname: walk(
+    if type == "object" then
+      (if has("Ref") and (.Ref | type) == "object" and (.Ref | has("Fn::Sub")) then {Ref: (.Ref["Fn::Sub"] | sub("^More"; "") | sub("\\$\\{Name\\}$"; ""))}
+       elif has("Fn::GetAtt") and (.["Fn::GetAtt"][0] | type) == "object" then {"Fn::GetAtt": [(.["Fn::GetAtt"][0]["Fn::Sub"] | sub("^More"; "") | sub("\\$\\{Name\\}$"; "")), .["Fn::GetAtt"][1:][]]}
+       else . end)
+    elif type == "string" then gsub("-\\$\\{Name\\}"; "") | gsub("/\\$\\{Name\\}/"; "/Box/") | sub("^\\$\\{Name\\}/"; "Box/")
+    else . end);
+def loopbody($section; $loop): .[$section][$loop][2] | with_entries(.key |= (gsub("\\$\\{Name\\}"; "") | sub("^More"; ""))) | map_values(del(.Condition) | unname);
+# expand($names): the loop as CloudFormation expands it for a list of names (every ${Name} in its body is the name), or
+# nothing when the list is the word none, which HasMoreBoxes reads as no box.
+def expand($names): .Resources["Fn::ForEach::Boxes"][2] as $r | .Outputs["Fn::ForEach::BoxOutputs"][2] as $o | if ($names | join("")) == "none" then {r: {}, o: {}} else {r: ($names | map(. as $n | $r | tojson | gsub("\\$\\{Name\\}"; $n) | fromjson) | add // {}), o: ($names | map(. as $n | $o | tojson | gsub("\\$\\{Name\\}"; $n) | fromjson) | add // {})} end;
+def home: {r: [.Resources | keys[] | select(startswith("Fn::") | not)], o: [.Outputs | keys[] | select(startswith("Fn::") | not)]};'
+# shellcheck disable=SC2016 # jq programs, in single quotes
+boxes_loop_guard() {
+  must "$1" "the template does not declare the transform AWS::LanguageExtensions, so the loop is not read" '.Transform == "AWS::LanguageExtensions"'
+  must "$1" "MoreBoxes is not a CommaDelimitedList that defaults to the word none (a blank is one empty name on AWS)" '.Parameters.MoreBoxes | .Type == "CommaDelimitedList" and .Default == "none"'
+  must "$1" "Resources does not hold the one loop, over MoreBoxes, with Name as its identifier" \
+    '[.Resources | keys[] | select(startswith("Fn::ForEach::"))] == ["Fn::ForEach::Boxes"] and .Resources["Fn::ForEach::Boxes"][0] == "Name" and .Resources["Fn::ForEach::Boxes"][1] == {"Ref":"MoreBoxes"}'
+  must "$1" "a box in the list is more or less than the home box's instance, records disk, attachment, role and profile" \
+    "$UNNAME"'loopbody("Resources"; "Fn::ForEach::Boxes") | keys == ["Box","BoxProfile","BoxRole","RecordsAttachment","RecordsVolume"]'
+  local id what
+  for id in "Box:instance" "RecordsVolume:records disk" "RecordsAttachment:attachment" "BoxRole:role (its path in the copy's bucket included)" "BoxProfile:profile"; do
+    what=${id#*:}
+    id=${id%%:*}
+    must "$1" "a box in the list is not the home box's $what but for its names" \
+      "$UNNAME"'(. | loopbody("Resources"; "Fn::ForEach::Boxes")) as $l | .Resources.'"$id"' as $h | $h != null and $l.'"$id"' == $h'
+  done
+  # The unnamed reading cannot tell a reference to the box's own neighbour from one to the home box's, so the body
+  # holds no plain name of the home box's five, and no path that starts in Box/: a neighbour is reached through Fn::Sub.
+  must "$1" "a box in the list reaches the home box by its own name (a plain Box, BoxRole, BoxProfile, RecordsVolume or RecordsAttachment, or the path Box/), not its neighbour through Fn::Sub" \
+    '[(.Resources["Fn::ForEach::Boxes"][2], .Outputs["Fn::ForEach::BoxOutputs"][2]) | .. | strings | select(IN("Box","BoxRole","BoxProfile","RecordsVolume","RecordsAttachment") or test("(^|/)Box/"))] == []'
+  must "$1" "Outputs does not hold the one loop, over MoreBoxes, with Name as its identifier" \
+    '[.Outputs | keys[] | select(startswith("Fn::ForEach::"))] == ["Fn::ForEach::BoxOutputs"] and .Outputs["Fn::ForEach::BoxOutputs"][0] == "Name" and .Outputs["Fn::ForEach::BoxOutputs"][1] == {"Ref":"MoreBoxes"}'
+  must "$1" "a box in the list does not output its id, its address and its records disk, as the home box does but for the names" \
+    "$UNNAME"'(. | loopbody("Outputs"; "Fn::ForEach::BoxOutputs")) as $l | $l == {BoxId: .Outputs.BoxId, BoxAddress: .Outputs.BoxAddress, RecordsVolumeId: .Outputs.RecordsVolumeId}'
+  must "$1" "HasMoreBoxes is not true for any list but the word none, or a resource or an output of the loop lacks it" \
+    '.Conditions.HasMoreBoxes == {"Fn::Not":[{"Fn::Equals":[{"Fn::Join":["",{"Ref":"MoreBoxes"}]},"none"]}]} and ([.Resources["Fn::ForEach::Boxes"][2][], .Outputs["Fn::ForEach::BoxOutputs"][2][]] | length == 8 and all(.Condition == "HasMoreBoxes"))'
+  # case 12's second half: the loop expanded, as AWS reads a list. A blank list is one empty name there, so the empty name, the
+  # default and one name are each expanded and set beside the template's own ids.
+  must "$1" "the loop expanded for the default (the word none) makes a resource or an output" \
+    "$UNNAME"'expand(["none"]) | .r == {} and .o == {}'
+  must "$1" "the loop expanded for an empty name makes an id the template already has, or none at all (a blank list would write over the home box)" \
+    "$UNNAME"'home as $h | expand([""]) as $e | ($e.r | keys) as $rk | ($e.o | keys) as $ok | ($rk | length) == 5 and ($ok | length) == 3 and ($rk - $h.r) == $rk and ($ok - $h.o) == $ok'
+  must "$1" "the loop expanded for one name makes other than five resources and three outputs, or an id the template already has" \
+    "$UNNAME"'home as $h | expand(["b2"]) as $e | ($e.r | keys) as $rk | ($e.o | keys) as $ok | ($rk | length) == 5 and ($ok | length) == 3 and ($rk - $h.r) == $rk and ($ok - $h.o) == $ok and ($rk | all(endswith("b2")))'
+}
+# lmut <jq program> → a copy of the whole template's JSON, the loop in it, with the program applied
+lmut() {
+  jq -c "$1" "$WORK/env-full.json" >"$WORK/env-lmut.json"
+  echo "$WORK/env-lmut.json"
+}
+passes "a box in the list is the home box's instance, disk, attachment, role (its path in the bucket) and profile but for its names, and its outputs are the home box's (case 12)" \
+  boxes_loop_guard "$WORK/env-full.json"
+# The runbook's way to take a box out finds the box added by its own tag, and no command in it can match the home box's
+# (Name = credo-<env> alone), which is running in the stack; it says the records disk is snapshotted, and never a blank list.
+removal_guard() { # <README.md>
+  local sec
+  sec=$(awk '/^## Adding a box/ {on = 1; next} on && /^## / {exit} on' "$1")
+  grep -qF -- 'Values=credo-<env>-<name>' <<<"$sec" || die "the removal does not look the box up by its own tag credo-<env>-<name>"
+  ! grep -qE -- 'Values=credo-<env>([^-]|$)' <<<"$sec" || die "a command in the removal can match the home box's tag credo-<env>"
+  grep -qF -- 'snapshotted and then deleted' <<<"$sec" || die "the removal does not say the records disk is snapshotted and deleted"
+  grep -qF -- '--more-boxes none' <<<"$sec" || die "the removal does not name the list as the word none"
+  ! grep -qE -- "--more-boxes ''" <<<"$sec" || die "the removal passes a blank list"
+}
+passes "the runbook's removal looks the box added up by its own tag, says what the Snapshot policy leaves, and passes the word none (the review of the second landing)" \
+  removal_guard "$OPS_DIR/README.md"
+refuses "  a removal that looks up the home box's tag is refused" "can match the home box's tag" \
+  removal_guard "$(sed 's/Values=credo-<env>-<name>/Values=credo-<env>-<name> Values=credo-<env>/' "$OPS_DIR/README.md" >"$WORK/README-home.md"; echo "$WORK/README-home.md")"
+refuses "  and one with no tag of its own" "its own tag" \
+  removal_guard "$(sed 's/Values=credo-<env>-<name>/Values=credo-x/' "$OPS_DIR/README.md" >"$WORK/README-notag.md"; echo "$WORK/README-notag.md")"
+refuses "  and one that calls the records disk kept" "snapshotted" \
+  removal_guard "$(sed 's/snapshotted and then deleted/kept/' "$OPS_DIR/README.md" >"$WORK/README-kept.md"; echo "$WORK/README-kept.md")"
+
+# shellcheck disable=SC2016 # jq programs, in single quotes
+loop_refusals() {
+refuses "  a template with no loop is refused" "the one loop" boxes_loop_guard "$(lmut 'del(.Resources["Fn::ForEach::Boxes"])')"
+refuses "  a box in the list of another instance type is refused, naming the instance" "not the home box's instance" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["MoreBox${Name}"].Properties.InstanceType = "t4g.large"')"
+refuses "  a box in the list whose records disk is not encrypted is refused, naming the disk" "not the home box's records disk" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["MoreRecordsVolume${Name}"].Properties.Encrypted = false')"
+refuses "  a box in the list whose disk loses its keeping on a delete is refused" "not the home box's records disk" \
+  boxes_loop_guard "$(lmut 'del(.Resources["Fn::ForEach::Boxes"][2]["MoreRecordsVolume${Name}"].DeletionPolicy)')"
+refuses "  a box in the list attached to the home box's disk is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["MoreRecordsAttachment${Name}"].Properties.VolumeId = {"Ref":"RecordsVolume"}')"
+refuses "  a box in the list whose role reaches the home box's path in the bucket is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["MoreBoxRole${Name}"].Properties.Policies[0].PolicyDocument.Statement[0].Resource = {"Fn::Sub":"${CopyBucket.Arn}/Box/*"}')"
+refuses "  a box in the list whose list of the bucket is wider is refused, naming the role" "not the home box's role" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["MoreBoxRole${Name}"].Properties.Policies[0].PolicyDocument.Statement[1].Condition.StringLike["s3:prefix"] = ["*"]')"
+refuses "  a box in the list with a resource beyond the five is refused" "more or less than" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["Extra${Name}"] = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a box in the list that outputs no address is refused, naming the outputs" "does not output its id, its address" \
+  boxes_loop_guard "$(lmut 'del(.Outputs["Fn::ForEach::BoxOutputs"][2]["MoreBox${Name}Address"])')"
+refuses "  and one whose output reads the home box is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Outputs["Fn::ForEach::BoxOutputs"][2]["MoreBox${Name}Id"].Value = {"Ref":"Box"}')"
+refuses "  a loop whose ids have no stem of their own (an empty name makes the home box's) is refused" "an id the template already has" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2] |= with_entries(.key |= sub("^More"; "")) | .Outputs["Fn::ForEach::BoxOutputs"][2] |= with_entries(.key |= sub("^More"; ""))')"
+refuses "  a default of blank (one empty name) is refused" "defaults to the word none" boxes_loop_guard "$(lmut '.Parameters.MoreBoxes.Default = ""')"
+refuses "  a resource of the loop without its condition is refused" "lacks it" \
+  boxes_loop_guard "$(lmut 'del(.Resources["Fn::ForEach::Boxes"][2]["MoreBox${Name}"].Condition)')"
+refuses "  an output of the loop without its condition is refused" "lacks it" \
+  boxes_loop_guard "$(lmut 'del(.Outputs["Fn::ForEach::BoxOutputs"][2]["MoreBox${Name}Id"].Condition)')"
+refuses "  a condition that is true for the word none is refused" "lacks it" \
+  boxes_loop_guard "$(lmut '.Conditions.HasMoreBoxes = {"Fn::Equals":[{"Fn::Join":["",{"Ref":"MoreBoxes"}]},"none"]}')"
+refuses "  and a template without the transform is refused" "LanguageExtensions" boxes_loop_guard "$(lmut 'del(.Transform)')"
+}
+loop_refusals
+
+echo "== the deploy role reaches this environment's boxes by tag and subnet, and no other (case 14 of docs/plans/2026-11-11-pooled-shape.md)"
+# The role's two box statements name no box: a box added is one more instance with the environment's Env tag in the
+# environment's subnet, and the role reaches it unchanged. The key push is held by the tag (the service reference gives
+# the key push no subnet condition); the tunnel by the subnet's range, on port 22 alone.
+# shellcheck disable=SC2016 # jq programs, in single quotes
+deploy_boxes_guard() {
+  must "$1" "the key push is not held to this environment's boxes by the Env tag and the ec2-user" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox")] | length == 1 and .[0] == {"Sid":"PushKeyToOwnBox","Effect":"Allow","Action":"ec2-instance-connect:SendSSHPublicKey","Resource":{"Fn::Sub":"arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"},"Condition":{"StringEquals":{"ec2:osuser":"ec2-user","ec2:ResourceTag/Env":{"Ref":"Env"}}}}'
+  must "$1" "the tunnel is not held to the environment's subnet, port 22 and the shared endpoint" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox")] | length == 1 and .[0] == {"Sid":"TunnelToOwnBox","Effect":"Allow","Action":"ec2-instance-connect:OpenTunnel","Resource":{"Fn::Sub":["arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance-connect-endpoint/${EndpointId}",{"EndpointId":{"Fn::ImportValue":{"Fn::Sub":"${Network}-EndpointId"}}}]},"Condition":{"IpAddress":{"ec2-instance-connect:privateIpAddress":{"Ref":"SubnetCidr"}},"NumericEquals":{"ec2-instance-connect:remotePort":22}}}'
+  must "$1" "the deploy role names a box of its own (a Box id or address), so a box added is not reached" \
+    '[.Resources.DeployRole | .. | strings | select(test("\\$\\{Box[.}]"))] == [] and ([.Resources.DeployRole | .. | objects | select(has("Ref") and (.Ref | startswith("Box")))] == []) and ([.Resources.DeployRole | .. | objects | select(has("Fn::GetAtt") and (.["Fn::GetAtt"][0] | startswith("Box")))] == [])'
+  must "$1" "the deploy role holds an Instance Connect action beyond the two" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end | select(startswith("ec2-instance-connect:"))] | sort == ["ec2-instance-connect:OpenTunnel","ec2-instance-connect:SendSSHPublicKey"]'
+}
+passes "the deploy role pushes a key to any instance tagged for this environment and opens the tunnel to its subnet's range, and names no box of its own (case 14)" \
+  deploy_boxes_guard "$WORK/env.json"
+# shellcheck disable=SC2016 # jq programs, in single quotes
+deploy_refusals() {
+refuses "  a key push with no Env tag condition (any instance of the account) is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut 'del(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox") | .Condition.StringEquals["ec2:ResourceTag/Env"])')"
+refuses "  a key push held to another tag is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox") | .Condition.StringEquals) |= (del(.["ec2:ResourceTag/Env"]) | .["ec2:ResourceTag/Name"] = {"Ref":"Env"})')"
+refuses "  a key push to the home box alone (the old statement) is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox")) |= (.Resource = {"Fn::Sub":"arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Box}"} | del(.Condition.StringEquals["ec2:ResourceTag/Env"]))')"
+refuses "  a tunnel to any address is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.IpAddress["ec2-instance-connect:privateIpAddress"]) = "0.0.0.0/0"')"
+refuses "  a tunnel to the home box's address alone (the old statement) is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.IpAddress["ec2-instance-connect:privateIpAddress"]) = {"Fn::Sub":"${Box.PrivateIp}/32"}')"
+refuses "  a tunnel on a port other than 22 is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.NumericEquals["ec2-instance-connect:remotePort"]) = 2222')"
+refuses "  a third Instance Connect action is refused" "beyond the two" \
+  deploy_boxes_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement += [{"Sid":"X","Effect":"Allow","Action":"ec2-instance-connect:SendSerialConsoleSSHPublicKey","Resource":"*"}]')"
+refuses "  a role that names a box of its own beside the two is refused" "names a box of its own" \
+  deploy_boxes_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement += [{"Sid":"X","Effect":"Allow","Action":"ec2:DescribeInstances","Resource":{"Fn::Sub":"arn:aws:ec2:*:*:instance/${Box}"}}]')"
+}
+deploy_refusals
 
 echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
 # need <file> <ERE> <what is missing>: dies unless a line of the file matches
@@ -2537,6 +2692,8 @@ case "$*" in
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
       [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
+    # a box added to the home box (FAKE_BOX2): its id, address and records disk, as the loop's outputs name them
+    [ -z "${FAKE_BOX2:-}" ] || layer4="$layer4"',{"OutputKey":"MoreBoxb2Id","OutputValue":"i-test-b2"},{"OutputKey":"MoreBoxb2Address","OutputValue":"10.20.30.41"},{"OutputKey":"MoreRecordsVolumeb2Id","OutputValue":"vol-test-b2"}'
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"},{"ParameterKey":"FrontDoorKey","ParameterValue":"****"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
   # the key run's change set (ops/keys.sh front-door): the parameters are kept, executing it makes the distribution send the new key
   *"create-change-set"*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "$S/params.json" ;;
@@ -2549,6 +2706,7 @@ case "$*" in
   *"delete-change-set"* | *"wait stack-update-complete"*) : ;;
   *"send-ssh-public-key"*)
     [ ! -e "$S/send-fails" ] || { echo "stand-in aws: send-ssh-public-key failed (the session ended)" >&2; exit 254; }
+    if [[ "$*" == *"--instance-id i-test-b2 "* ]] && [ -n "${FAKE_BOX2_DOWN:-}" ]; then echo "stand-in aws: box b2 does not answer" >&2; exit 254; fi
     echo True ;;
   *"lambda update-function-code"*)
     [ -z "${FAKE_CODE_FAIL:-}" ] || { echo "stand-in aws: update-function-code failed" >&2; exit 254; }
@@ -2867,7 +3025,7 @@ check "  before any aws call" gone "$(file_state "$S/aws.calls")"
 check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
 rc=0
 out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
-check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env>" "$rc $out"
+check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env> [--box <name>]" "$rc $out"
 
 # check.sh refuses a taken port, whatever answers on it, before any aws call
 start_server "$WORK/server-new"
@@ -3360,7 +3518,7 @@ check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys
   "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
-check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only] [--box <name>]" "$rc $out"
 # the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
 check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
   "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ --query' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
@@ -3512,6 +3670,44 @@ check "  the log's key is masked first, and is in no log and nowhere on the term
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
   "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# case 15 of docs/plans/2026-11-11-pooled-shape.md: a stack that holds a box beside the home box
+echo "== ops/app.sh with a box added: the back end is handed every box, and a box that does not answer stops the run before any setting (case 15)"
+export FAKE_BOX2=1
+e2e_fresh app-box2
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "15: with a box added, app.sh ships, and hands the back end that box beside the home box" "0 1 b2" \
+  "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true) $(jq -r '.Variables.STORAGE_BOXES | fromjson | keys | join(",")' "$S/envfile.seen")"
+check "  the box's address, its internal key and the BFF's service key on it are written as the box's own" "http://10.20.30.41:$BOX_PORT $FAKE_IKEY $FAKE_SKEY" \
+  "$(jq -r '.Variables.STORAGE_BOXES | fromjson | .b2 | "\(.url) \(.internalKey) \(.serviceKey)"' "$S/envfile.seen")"
+check "  the home box's variables are as they were, with STORAGE_BOXES beside them" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,STORAGE_BOXES http://10.20.30.40:$BOX_PORT" \
+  "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
+check "  the BFF's service is made sure of on the box added too, through its own instance and its own forward" "1 yes 1" \
+  "$(grep -c '^box b2: service ' "$S/out" || true) $([ "$(grep -c 'ec2-user@i-test-b2' "$S/ssh.calls" || true)" -gt 0 ] && echo yes || echo no) $(grep -c -e "-L 127.0.0.1:$APP_LOCAL:10.20.30.41:$BOX_PORT" "$S/ssh.calls" || true)"
+check "  the box's address is masked and in no log, the keys are in no log, and each of the two connections is closed once" "1 0 0 2" \
+  "$(grep -cF "::add-mask::10.20.30.41" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.41 || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(grep -c -e '-O exit' "$S/ssh.calls" || true)"
+e2e_fresh app-box2-down
+FAKE_BOX2_DOWN=1 e2e_run app.sh ridge
+check "  a box that does not answer stops the run, naming it, with no setting written, no code and no file sent" "nonzero 1 gone 0 0" \
+  "$([ "$RC" != 0 ] && echo nonzero || echo "$RC") $(grep -c 'the box b2 does not answer through the endpoint' "$S/out" || true) $(file_state "$S/code.zip") $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+check "  and the home box's connection was closed on the way out" 1 "$(grep -c -e '-O exit' "$S/ssh.calls" || true)"
+# a name the stack does not hold is refused by the four scripts that take one, before they send, change or open anything on a box
+e2e_fresh box-nope-tunnel
+e2e_run tunnel.sh ridge --box nope
+check "a box the stack does not hold is refused by tunnel.sh, naming the ones it does" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope' (the boxes added: b2 )" "$S/out" || true)"
+e2e_fresh box-nope-drill
+e2e_run drill.sh ridge --box nope
+check "  by drill.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true)"
+e2e_fresh box-nope-check
+e2e_run check.sh ridge --box nope
+check "  by check.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true)"
+e2e_fresh box-nope-release
+RELEASE_BINARY=$WORK/server-e2e e2e_run release.sh ridge --box nope
+check "  by release.sh, with nothing sent" "1 1 gone" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true) $(file_state "$S/ssh.calls")"
+for sc in release check drill tunnel; do
+  check "  $sc.sh's usage names --box" 1 "$(grep -c -e "usage: ops/$sc.sh .*--box <name>" "$OPS_DIR/$sc.sh" || true)"
+done
+unset FAKE_BOX2
 
 # ---- the deploy copies the door's key (docs/plans/2026-11-11-front-door-keys.md, step 3, case 11)
 echo "== ops/app.sh sets the function's FRONT_DOOR_KEYS from the distribution's header"
@@ -4371,10 +4567,11 @@ case "$*" in
   *get-region-opt-status*) echo ENABLED ;;
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
   *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
-  *create-change-set* | *delete-change-set*) : ;;
+  *create-change-set*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json"; echo "$*" >"${FAKE_STATE:?}/create.args" ;;
+  *delete-change-set*) : ;;
   *send-ssh-public-key*) echo True ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -4438,6 +4635,39 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+# case 13: the list of boxes added is the stack's own unless the run names one (docs/plans/2026-11-11-pooled-shape.md, step 6)
+echo "== ops/stack.sh env --more-boxes (case 13: without the flag the stack keeps its list; the list is checked before anything runs)"
+more_param() { jq -c '[.[] | select(.ParameterKey == "MoreBoxes")]' "$S/params.json"; }
+FAKE_MOREBOXES=b2 stack_run stack-keeps --plan
+check "13: without --more-boxes a stack that holds a list keeps it (the previous value is passed)" '[{"ParameterKey":"MoreBoxes","UsePreviousValue":true}]' "$(more_param)"
+stack_run stack-nolist-yet --plan
+check "  a stack made before the parameter is passed none, so the template's default, the word none, stands" '[]' "$(more_param)"
+FAKE_MOREBOXES=b2 stack_run stack-names --plan --more-boxes b2,b3
+check "  --more-boxes b2,b3 passes the whole list, whatever the stack held" '[{"ParameterKey":"MoreBoxes","ParameterValue":"b2,b3"}]' "$(more_param)"
+FAKE_MOREBOXES=b2 stack_run stack-none --plan --more-boxes ''
+check "  --more-boxes '' passes the word none (every box taken out of the list, never a blank, which AWS reads as one empty name), not the previous list" '[{"ParameterKey":"MoreBoxes","ParameterValue":"none"}]' "$(more_param)"
+FAKE_MOREBOXES=b2 stack_run stack-none-word --plan --more-boxes none
+check "  --more-boxes none passes the same word" '[{"ParameterKey":"MoreBoxes","ParameterValue":"none"}]' "$(more_param)"
+check "  the change set is made with both capabilities, the transform's beside IAM" 1 \
+  "$(grep -c -- '--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND' "$S/create.args" || true)"
+check "  and the run prints the list it passes" 1 "$(grep -c '^  MoreBoxes=' "$S/out" || true)"
+for bad in "home" "b2,none" "none,b2" "B2" "2b" "b-2" "b2,,b3" "b2," ",b2" "b2,b2" "xxxxxxxxxxxxxxxxx"; do
+  stack_run stack-bad --plan --more-boxes "$bad"
+  check "  --more-boxes '$bad' is refused before any aws call" "1 gone" "$RC $(file_state "$S/aws.calls")"
+done
+stack_run stack-usage --plan --more-boxes
+check "  --more-boxes with no list is a usage error" 2 "$RC"
+stack_run stack-twice --plan --more-boxes b2 --more-boxes b3
+check "  and two of them are too" 2 "$RC"
+# a box taken out of the list is a removal: the guard names its five, and --take lets through what it names
+check "  a box taken out of the list is refused, the guard naming its five" "MoreBoxb2 (AWS::EC2::Instance): Remove, replacement none
+MoreBoxProfileb2 (AWS::IAM::InstanceProfile): Remove, replacement none
+MoreBoxRoleb2 (AWS::IAM::Role): Remove, replacement none
+MoreRecordsAttachmentb2 (AWS::EC2::VolumeAttachment): Remove, replacement none
+MoreRecordsVolumeb2 (AWS::EC2::Volume): Remove, replacement none" "$(filter changeset-boxremoved.json '[]')"
+check "  and each taken by its own name lets that one through" "MoreBoxRoleb2 (AWS::IAM::Role): Remove, replacement none" \
+  "$(filter changeset-boxremoved.json '["MoreBoxb2","MoreBoxProfileb2","MoreRecordsAttachmentb2","MoreRecordsVolumeb2"]')"
 
 echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
 # row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default

@@ -5,7 +5,7 @@
 # after ops/release.sh, and so can the human while GitHub Actions is down, or after a key changed on the
 # box (the function holds a copy of the BFF's keys, set again at every run).
 #   In order: reads the keys from the box's files, and the front door's from the distribution, and masks them first; makes sure of the BFF's
-#   service in c-storage; sets the function's environment from a 0600 file that is deleted at once
+#   service in c-storage, on each box the stack holds (the home box's, then the others' in turn, so STORAGE_BOXES can be written); sets the function's environment from a 0600 file that is deleted at once
 #   (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the
 #   function's CodeSha256 with the one sent; only then sets the function's description to the commit;
 #   sends the UI's files, index.html last, with the commit in its metadata.
@@ -98,22 +98,7 @@ fi
 step "the keys, from the box's files"
 read_keys
 # bff.env is made once, as keys.env is: the BFF's service code, and a key for it, root's alone.
-box sudo bash -s <<'REMOTE'
-set -euo pipefail
-f=/etc/c-storage/bff.env
-if [ -e "$f" ]; then
-  echo "bff.env: present, left as it is"
-else
-  umask 077
-  tmp=$(mktemp /etc/c-storage/.bff.XXXXXX)
-  printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" >"$tmp"
-  chown root:root "$tmp"
-  chmod 0600 "$tmp"
-  mv "$tmp" "$f"
-  echo "bff.env: made"
-fi
-stat -c 'bff.env: mode %a, owner %U' "$f"
-REMOTE
+bff_env_make
 bff_env_read
 # The activity log's address and write key, from the box's own files (lib.sh's audit_read): refused by name before
 # anything is sent when the box has none.
@@ -126,6 +111,11 @@ step "the BFF's service in c-storage"
 registered=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY X_SUPER_ADMIN_KEY=$ADMIN_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY \
   C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT ridge_cli register) || die "the BFF's service could not be made sure of"
 echo "$registered"
+# The boxes the stack holds beyond the home box: each opened in turn, its service made sure of and its keys read, before
+# anything of the function's is set, so one that does not answer stops the run with the function as it was. They are
+# handed to the back end in STORAGE_BOXES, in the settings below.
+other_boxes_read "$ENVNAME" "$LOCAL_PORT"
+if [ -n "$STORAGE_BOXES_JSON" ]; then ok "the back end is handed $(jq -r 'keys | join(", ")' <<<"$STORAGE_BOXES_JSON") beside the home box"; fi
 
 step "the BFF: settings, then code, then the description"
 # Settings go first, so the new code never runs for a moment on the old environment. The environment
