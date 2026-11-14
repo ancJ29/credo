@@ -247,7 +247,7 @@ jobs:
   # were 94 % of the 10 to 15 minutes, bound by two workers): `scripts-shard` runs a third of the test files on a runner
   # of its own and keeps a blob of its results and coverage; `scripts-stages` runs the typecheck, eslint, prettier and
   # knip once, the four stages of ops/gate.sh beside the test; `app-scripts` (the name `app` waits on) merges the three
-  # blobs and holds the package's 100 % thresholds, which no third of the files can meet alone (CREDO_SHARD switches
+  # blobs and holds the package's 100 % thresholds, which no third of the files can meet alone (SCRIPTS_SHARD switches
   # them off in a shard, scripts/vitest.config.ts). The blobs are the reporter's own, hidden folder included.
   # Go is set up in the shards alone: the stack tests build c-storage.
   scripts-shard:
@@ -305,7 +305,7 @@ jobs:
       - name: Test shard
         working-directory: scripts
         env:
-          CREDO_SHARD: ${{ matrix.shard }}
+          SCRIPTS_SHARD: ${{ matrix.shard }}
         run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3
       - name: Keep the blob
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
