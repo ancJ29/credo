@@ -45,6 +45,7 @@ export function SceneView({
         drift: scene.drift,
         out: scene.out,
         noDrivers: scene.noDrivers,
+        photoLost: scene.photoLost,
         language,
       }),
     [scene, language],

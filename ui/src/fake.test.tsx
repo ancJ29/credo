@@ -2107,6 +2107,21 @@ describe('the fake Api’s orders and delivery requests', () => {
     expect(await api.listDrivers()).toEqual([]);
   });
 
+  it('`photo-lost` has the second driver’s waiting request delivered with no picture sent: its address leads nowhere', async () => {
+    const signedIn = { 'credo.session': 'fake.session' };
+    const parts = fakeParts('?fake&photo-lost', memory(signedIn));
+    const plain = fakeParts('?fake', memory(signedIn));
+    const lost = DEMO_DELIVERIES.find(
+      (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+    )!;
+
+    expect((await parts!.api.getDelivery(lost.day, lost.id)).request.state).toBe('delivered');
+    expect(await parts!.api.getDeliveryPhoto(lost.day, lost.id)).toEqual({
+      url: `https://photos.invalid/never-arrived/${lost.id}`,
+    });
+    expect((await plain!.api.getDelivery(lost.day, lost.id)).request.state).toBe('waiting');
+  });
+
   it('?fake gives the pages the data set’s today, whatever day the page is opened on, and `no-drivers` takes the right away', async () => {
     const parts = fakeParts('?fake&no-drivers', memory());
 

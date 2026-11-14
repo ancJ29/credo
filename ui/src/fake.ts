@@ -202,6 +202,9 @@ type Options = {
   drift?: boolean;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
   noDrivers?: boolean;
+  /** The week's waiting request of the second driver was delivered without its picture: the driver
+   * asked where to send it and never sent, so its address leads nowhere. */
+  photoLost?: boolean;
 };
 
 /**
@@ -215,6 +218,7 @@ export function createFakeApi({
   signIns = false,
   drift = false,
   noDrivers = false,
+  photoLost = false,
 }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
@@ -424,6 +428,13 @@ export function createFakeApi({
     order.state = 'fulfilled';
     orderMoved(order);
   };
+  // The walk's request delivered with no picture sent, as the stack's walk has its driver do.
+  if (photoLost) {
+    const lost = DEMO_DELIVERIES.find(
+      (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+    )!;
+    deliverRequest(requests.get(lost.id)!, null);
+  }
   /** A save's customer and lines as the BFF prices them: a customer or a product the lists lack
    * is a 400. */
   const priced = (request: SaveOrderRequest) => {
@@ -1529,6 +1540,7 @@ export function fakeParts(search: string, storage: Parameters<typeof createDevic
       signIns: params.has('sign-ins'),
       drift: params.has('drift'),
       noDrivers: params.has('no-drivers'),
+      photoLost: params.has('photo-lost'),
     }),
     device,
     passkeys: createFakePasskeys({ cue }),

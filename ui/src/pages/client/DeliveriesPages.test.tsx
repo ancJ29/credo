@@ -215,6 +215,21 @@ describe('a delivered request', () => {
     ).toBeNull();
   });
 
+  it('The walk’s fifteenth screen: the second driver’s request delivered with no picture sent, opened from the list as the office does, says “The photo did not arrive.”', async () => {
+    openApp('/deliveries', { as: LAN, photoLost: true });
+
+    await userEvent.click(await screen.findByRole('link', { name: waiting.number }));
+    expect(await heading(`Delivery request ${waiting.number}`)).toBeTruthy();
+    expect(screen.getByText('Delivered')).toBeTruthy();
+    const picture = await screen.findByRole('img', {
+      name: 'The goods as the driver delivered them',
+    });
+    expect(picture.getAttribute('src')).toBe(`https://photos.invalid/never-arrived/${waiting.id}`);
+    fireEvent.error(picture);
+
+    expect((await screen.findByRole('alert')).textContent).toBe('The photo did not arrive.');
+  });
+
   it('says the photo could not be loaded, and tries again', async () => {
     openApp(at(delivered), {
       as: LAN,

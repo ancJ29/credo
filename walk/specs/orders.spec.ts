@@ -1,4 +1,10 @@
-import { addDays, type Language, STACK_ENV } from '@credo/shared';
+import {
+  addDays,
+  deliveryRoutes,
+  type Language,
+  photoAddressRequestOf,
+  STACK_ENV,
+} from '@credo/shared';
 import {
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
@@ -6,14 +12,15 @@ import {
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
+  DEMO_WALK_PROOF,
 } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * An order, sent to a driver: the office's walk of fourteen screens, each in Vietnamese and in English at
- * the three widths (14 × 2 × 3 = 84). The `orders-fake` project runs it on `pnpm fake -- …` and the
+ * An order, sent to a driver: the office's walk of fifteen screens, each in Vietnamese and in English at
+ * the three widths (15 × 2 × 3 = 90). The `orders-fake` project runs it on `pnpm fake -- …` and the
  * `orders-full` project on the stack (`pnpm stack -- …`); both write their pictures for `walk/run.sh`
  * to compare, raw. Each screen opens on a client of its own, signed in as the office's manager of the
  * data set, and the browser's clock is fixed at the data set's today, so the day an order is filed
@@ -22,6 +29,8 @@ import { required, shot, WIDTHS } from '../support';
 
 const FULL = () => test.info().project.name === 'orders-full';
 const OFFICE = 'EMP-0001';
+/** The driver of the waiting request the photo walk's driver delivers without sending its picture. */
+const LOST_DRIVER = 'EMP-0006';
 const DRIVER = 'EMP-0005 · Võ Thanh Tùng';
 /** A customer or a product as the order form lists it in its choice. */
 const customerChoice = (code: string) => {
@@ -70,6 +79,8 @@ type Opening = {
   cue?: string;
   /** No one is allowed to deliver yet: the fake leaves the right out, the full run saves the setup so. */
   noDrivers?: true;
+  /** The waiting request delivered with no picture sent: the fake is told so, the full run does it. */
+  photoLost?: true;
 };
 
 /** What the office person holds on a client of the stack: the headers of a call as they are. */
@@ -94,16 +105,17 @@ async function open(page: Page, language: Language, opening: Opening): Promise<O
         [language, handle],
       ),
     );
-    const { path, cue, noDrivers } = opening;
+    const { path, cue, noDrivers, photoLost } = opening;
     const glue = path.includes('?') ? '&' : '?';
     await page.goto(
-      `${path}${glue}fake${cue ? `&cue=${cue}` : ''}${noDrivers ? '&no-drivers' : ''}`,
+      `${path}${glue}fake${cue ? `&cue=${cue}` : ''}${noDrivers ? '&no-drivers' : ''}${photoLost ? '&photo-lost' : ''}`,
     );
     return null;
   }
   const client = await seed();
   const root = await signIn(page, client.code, 'root', client.rootPassword);
   if (opening.noDrivers) await withoutDriversAllowed(page, client.code, root);
+  if (opening.photoLost) await deliveredUnsent(page, client);
   const authId = await signIn(page, client.code, OFFICE, client.people[OFFICE]);
   setups.set(
     page,
@@ -148,6 +160,33 @@ async function withoutDriversAllowed(page: Page, code: string, authId: string) {
     data: { setup: { ...setup, departments }, version },
   });
   expect(saved.ok(), 'the setup is saved without the right to deliver').toBe(true);
+}
+
+/** The driver delivers the waiting request through the real API as the phone does, but stops short
+ * of sending the picture: he asks where to send it, then marks the request delivered. The office
+ * then finds a delivered request whose picture never arrived. */
+async function deliveredUnsent(page: Page, client: Seeded) {
+  const authId = await signIn(page, client.code, LOST_DRIVER, client.people[LOST_DRIVER]);
+  const headers = { 'x-client-code': client.code, 'x-auth-id': authId };
+  const mine = (await (
+    await page.request.get(`/api/my-deliveries?day=${DEMO_TODAY}`, { headers })
+  ).json()) as { deliveries: { id: string; number: string }[] };
+  const request = mine.deliveries.find((one) => one.number === waiting.number)!;
+  const read = (await (
+    await page.request.get(`/api/deliveries/${DEMO_TODAY}/${request.id}`, { headers })
+  ).json()) as { version: string };
+  // The data set's picture is a PNG and the back end takes a JPEG alone, so the ask says JPEG for
+  // the same length, as the seed's does.
+  const asked = await page.request.post(deliveryRoutes.photoAddress(DEMO_TODAY, request.id), {
+    headers,
+    data: { ...photoAddressRequestOf(DEMO_WALK_PROOF), type: 'image/jpeg' },
+  });
+  expect(asked.ok(), 'the driver asks where to send the picture').toBe(true);
+  const delivered = await page.request.post(deliveryRoutes.deliver(DEMO_TODAY, request.id), {
+    headers,
+    data: { version: read.version },
+  });
+  expect(delivered.ok(), 'the driver delivers the request without sending the picture').toBe(true);
 }
 
 /** Someone else's save of the draft, made through the real API while the page holds the version it
@@ -332,6 +371,16 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toContainText(words.orders.done.saved);
   await expect(moved).toHaveCount(0);
   await at('orders-14-repriced');
+
+  // 15. A delivered request whose picture never arrived: the driver asked where to send it and
+  // delivered without sending, so the office reads that it did not arrive, never a broken picture.
+  await open(page, language, { path: '/deliveries', photoLost: true });
+  await page.getByRole('link', { name: waiting.number, exact: true }).click();
+  await expect(
+    title(words.orders.requestTitle.replace('{{number}}', waiting.number)),
+  ).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText(words.orders.proofMissing);
+  await at('orders-15-photo-missing');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -342,7 +391,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all fourteen screens in ${name}`, async ({ page }) => {
+      test(`walks all fifteen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

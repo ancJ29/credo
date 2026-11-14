@@ -85,7 +85,7 @@ out of the network. The check the back end can make is that an address was asked
 | 2 | A photo another company asks for, to send or to read, is a 404: no address signed, nothing written | BFF route, `cross-tenant.route.test.ts` |
 | 3 | A photo that cannot be sent (no address, the picture refused, or no answer in 20 seconds) stays on the phone, the driver reads that it could not be sent, the request stays waiting, and Send again asks for a new address | UI, `MyDeliveries.test.tsx`; walk screen `driver-5-send-failed` |
 | 4 | A delivery done without one: marking delivered with no address asked for that request is refused with a 400 naming the photo, and the request stays waiting | BFF route |
-| 5 | A delivered request whose picture never arrived shows the office "the photo did not arrive", never a broken picture | UI, `DeliveriesPages.test.tsx`; walk screen `orders-15` |
+| 5 | A delivered request whose picture never arrived shows the office "the photo did not arrive", never a broken picture | UI, `DeliveriesPages.test.tsx`; walk screen `orders-15-photo-missing` |
 | 6 | Anyone but the request's own driver (the root, the office, another driver) asking for an upload address is a 403, nothing written | BFF route |
 | 7 | A request already delivered or cancelled gets no upload address: a 409 carrying it as it is now | BFF route |
 | 8 | A read address goes only to those who may read the request today, only once it is delivered, and lives five minutes | BFF route |
@@ -179,11 +179,23 @@ minutes a part.
   bucket's rule for each company's own address, once each opens at `<company>.ridge.<domain>`, is step 6's
   question (whether R2's rule takes a wildcard origin is on no page read). Items 469 to 471.
 - [ ] **Step 5. The walk: one screen appended, every other screen unmoved** (about 15 minutes: walk
-  steps ran 15 and 26). `orders-15`, after `orders-14-repriced`: the office opens a delivery whose
+  steps ran 15 and 26). `orders-15-photo-missing`, after `orders-14-repriced`: the office opens a delivery whose
   picture never arrived. On the fake its address leads nowhere; on the stack the walk asks and delivers
   by request without sending, as `reconcile.spec.ts` delivers. The human's one walk run (stage 3,
   their act, step 7's list). *Done when:* the run's log shows 0 moved pixels on every screen of the
-  driver's, the orders and the reconcile walks but `orders-15`, which is new, in all three lanes.
+  driver's, the orders and the reconcile walks but `orders-15-photo-missing`, which is new, in all three lanes.
+  *Written 2026-11-14 (the human's walk run still owed):* the `ui`, `visual` and `walk` gates ended `== exit 0` and
+  the citation test exit 0; the screen's id is `orders-15-photo-missing` (every screen's id carries a name). The
+  fake and the stack must open the same request, so both use today's waiting request of `EMP-0006`: the fake
+  gained a `?photo-lost` flag (`ui/src/fake.ts`, passed by `scene.ts`, `visual/src/scene.tsx` and `ui/tests/open.tsx`)
+  that has it delivered with no picture sent, and the spec's stack lane has the driver ask for the address and
+  deliver without sending (`deliveredUnsent`, `walk/specs/orders.spec.ts`); step 1's lost past-day request stays
+  for its unit case. The screen is on the wrong path in `visual/src/walks.ts` with its Vietnamese question in
+  `visual/site/questions-vi.json`. Seen red by one mutation each, reverted and compared equal: the flag ignored
+  (the fake's test and the page's replay of the screen, `DeliveriesPages.test.tsx`, both red), and the spec's opening
+  without `photoLost: true` (`visual/src/walks.test.ts`'s opening test red); the spec's `deliveredUnsent` has no
+  guard but the typecheck. The first `visual` run ended red on two counts that moved with the new screen (the
+  Vietnamese question, the list of signed-in persons), both fixed in the same commit.
 - [ ] **Step 6. The key's way to the function** (about 15 minutes: ops steps ran 8, 8 and 15).
   `ops/app.sh` sets the function's whole environment at every deploy (`#L131-L132`), so a setting left
   out of that line is wiped by the next one: it reads `photo-store.env` from the box as it reads the

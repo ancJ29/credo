@@ -70,6 +70,8 @@ export type Scene = {
   out?: true;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
   noDrivers?: true;
+  /** A delivered request whose picture never arrived: the driver asked where to send it and delivered. */
+  photoLost?: true;
   steps?: Step[];
 };
 
@@ -1716,6 +1718,21 @@ export const WALKS: Walk[] = [
           vi: 'Bản nháp được lưu lại: dòng đã đổi giá được tính lại, và tổng tiền mới',
         },
         question: 'Would the office know the saved draft now carries today’s price and total?',
+      },
+      {
+        id: 'orders-15-photo-missing',
+        number: 15,
+        path: 'wrong',
+        scene: {
+          path: `/deliveries/${WAITING_TODAY.day}/${WAITING_TODAY.id}`,
+          as: 'EMP-0001',
+          photoLost: true,
+        },
+        sentence: {
+          en: 'A delivered request whose photo did not arrive, said where the photo would be',
+          vi: 'Một yêu cầu đã giao mà ảnh không đến: trang nói rõ ở chỗ lẽ ra có ảnh',
+        },
+        question: 'Does this line tell the office enough to ask the driver for the photo?',
       },
     ],
   },
