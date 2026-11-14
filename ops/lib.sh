@@ -549,20 +549,49 @@ AUDIT_OPEN_PORT=$(sed -n 's/^Environment=OPEN_PORT=//p' "$OPS_DIR/audit-backbone
 # and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
 BOX_LISTEN_ADDR=''
 box_ready=0
+# The box in hand: home, or the name of one the stack holds beyond it (its Box<name>Id output). box_open sets it.
+BOX_NAME=home
 
-# box_open <env> [<local port>]: mints a key for this run, pushes it through Instance Connect (it
+# stack_boxes: the names of the boxes added to the home box, one a line, sorted, read from the stack's outputs
+# (Box<name>Id: a name is lowercase letters and digits, so BoxId, BoxGroupId and the like are not one).
+stack_boxes() {
+  jq -r '.Stacks[0].Outputs // [] | map(.OutputKey | select(test("^Box[a-z0-9]+Id$")) | sub("^Box"; "") | sub("Id$"; "")) | sort | .[]' <<<"$STACK_JSON"
+}
+
+# require_box <env> <name>: dies unless the stack in STACK_JSON holds a box added of that name, naming those it does
+require_box() {
+  [[ "$2" =~ ^[a-z][a-z0-9]{0,15}$ ]] || die "'$2' is not a box name"
+  grep -qx -- "$2" <<<"$(stack_boxes)" ||
+    die "stack $1 holds no box '$2' (the boxes added: $(stack_boxes | tr '\n' ' ')): ops/stack.sh env $1 --more-boxes names them"
+}
+
+# box_out <the home box's output key>: that output for the box in hand. The home box's are BoxId, BoxAddress and
+# RecordsVolumeId; a box added has its name before the last word (Boxb2Id, Boxb2Address, RecordsVolumeb2Id).
+box_out() {
+  if [ "$BOX_NAME" = home ]; then out "$1"; else out "$(sed -E "s/(Id|Address)\$/$BOX_NAME\\1/" <<<"$1")"; fi
+}
+
+# box_open <env> [<local port> [<box>]]: mints a key for this run, pushes it through Instance Connect (it
 # holds 60 s), and opens one connection through the endpoint that every box call then rides. With
 # a local port, that port forwards to c-storage's port on the box's private address. Returns non-zero when
-# the box does not answer, so a reboot's wait can try again.
+# the box does not answer, so a reboot's wait can try again. With a box's name (home when none), the connection is to
+# that box of the stack, and the box's path in the copy's bucket is its name (COPY_PATH, COPY_FULL_PREFIX): a name the
+# stack does not hold is refused, naming the ones it does.
 box_open() {
-  local zone
+  local zone want=${3:-home}
   mkwork
   stack_load "$1"
   [ -n "$STACK_JSON" ] || die "stack $1 does not exist: ops/stack.sh env $1"
-  BOX_ID=$(out BoxId)
+  BOX_NAME=$want
+  if [ "$want" != home ]; then
+    require_box "$1" "$want"
+    COPY_PATH=$want/records
+    COPY_FULL_PREFIX=$COPY_PATH/0009/
+  fi
+  BOX_ID=$(box_out BoxId)
   zone=$(out Zone)
   [ -n "$BOX_ID" ] || die "stack $1 names no box"
-  BOX_LISTEN_ADDR=$(out BoxAddress)
+  BOX_LISTEN_ADDR=$(box_out BoxAddress)
   [[ "$BOX_LISTEN_ADDR" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || die "stack $1 names no private address for its box (BoxAddress)"
   # No log holds the box's private address (the plan's "no key, address or password"), and GitHub masks it.
   mask "$BOX_LISTEN_ADDR" "the box's private address"
@@ -1079,6 +1108,27 @@ app_load() {
     die "the stack names the BFF but not the rest of layer four (AppAddress, UiBucketName, SubnetId, BffGroupId)"
 }
 
+# bff_env_make: the box's bff.env, made once (the BFF's service code, and a key for it, root's alone), left as it is
+# when present
+bff_env_make() {
+  box sudo bash -s <<'REMOTE'
+set -euo pipefail
+f=/etc/c-storage/bff.env
+if [ -e "$f" ]; then
+  echo "bff.env: present, left as it is"
+else
+  umask 077
+  tmp=$(mktemp /etc/c-storage/.bff.XXXXXX)
+  printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')" >"$tmp"
+  chown root:root "$tmp"
+  chmod 0600 "$tmp"
+  mv "$tmp" "$f"
+  echo "bff.env: made"
+fi
+stat -c 'bff.env: mode %a, owner %U' "$f"
+REMOTE
+}
+
 # bff_env_read: SERVICE_CODE and SERVICE_ACCESS_KEY from the box's bff.env, masked before anything
 # is printed
 SERVICE_CODE=''
@@ -1090,6 +1140,37 @@ bff_env_read() {
   SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
   [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
   mask "$SERVICE_ACCESS_KEY"
+}
+
+# STORAGE_BOXES_JSON: the boxes added, as the back end is handed them in STORAGE_BOXES: each name with its address, its
+# internal key and the BFF's service key on it. Empty when the stack holds none.
+STORAGE_BOXES_JSON=''
+
+# other_boxes_read <env> <local port>: for each box the stack holds beyond the home box, opens it (the home box's
+# connection is closed first), makes its bff.env if it has none, reads its keys, makes sure of the BFF's service in its
+# c-storage, and adds it to STORAGE_BOXES_JSON; then puts back what the run held of the home box. A box that does not
+# answer dies naming it, before anything of the function's is set.
+other_boxes_read() {
+  local env=$1 port=$2 name registered none='{}'
+  local home_id=$BOX_ID home_addr=$BOX_LISTEN_ADDR home_ik=$INTERNAL_KEY home_ak=$ADMIN_KEY home_sc=$SERVICE_CODE home_sk=$SERVICE_ACCESS_KEY
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    box_close
+    echo "box $name: opening"
+    box_open "$env" "$port" "$name" ||
+      die "the box $name does not answer through the endpoint, or 127.0.0.1:$port could not be bound: nothing of the function's was set"
+    read_keys
+    bff_env_make
+    bff_env_read
+    registered=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY X_SUPER_ADMIN_KEY=$ADMIN_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY \
+      C_STORAGE_URL=http://127.0.0.1:$port ridge_cli register) || die "the BFF's service could not be made sure of on box $name"
+    echo "box $name: $registered"
+    STORAGE_BOXES_JSON=$(NAME=$name URL=http://$BOX_LISTEN_ADDR:$BOX_PORT IK=$INTERNAL_KEY SK=$SERVICE_ACCESS_KEY \
+      jq -c '. + {(env.NAME): {url: env.URL, internalKey: env.IK, serviceKey: env.SK}}' <<<"${STORAGE_BOXES_JSON:-$none}")
+  done <<<"$(stack_boxes)"
+  box_close
+  BOX_NAME=home
+  BOX_ID=$home_id BOX_LISTEN_ADDR=$home_addr INTERNAL_KEY=$home_ik ADMIN_KEY=$home_ak SERVICE_CODE=$home_sc SERVICE_ACCESS_KEY=$home_sk
 }
 
 # front_door_key_read <the distribution's id>: FRONT_DOOR_KEY from the header the distribution's API origin adds
@@ -1139,8 +1220,10 @@ bff_settings_set() {
   [ -n "$AUDIT_KEY" ] || die "bff_settings_set: audit_read first"
   (
     umask 077
-    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
-      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY}}' \
+    # STORAGE_BOXES goes in only when the stack holds boxes beyond the home box (other_boxes_read made it); without
+    # them the environment is the eight variables it always was.
+    STORAGE_BOXES=${STORAGE_BOXES_JSON:-} INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
+      jq -n '{Variables: ({C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY} + (if env.STORAGE_BOXES != "" then {STORAGE_BOXES: env.STORAGE_BOXES} else {} end))}' \
       >"$WORK/bff-env.json"
   )
   aws lambda update-function-configuration --function-name "$BFF_NAME" \

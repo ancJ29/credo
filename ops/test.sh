@@ -2572,6 +2572,8 @@ case "$*" in
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
       [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
+    # a box added to the home box (FAKE_BOX2): its id, address and records disk, as the loop's outputs name them
+    [ -z "${FAKE_BOX2:-}" ] || layer4="$layer4"',{"OutputKey":"Boxb2Id","OutputValue":"i-test-b2"},{"OutputKey":"Boxb2Address","OutputValue":"10.20.30.41"},{"OutputKey":"RecordsVolumeb2Id","OutputValue":"vol-test-b2"}'
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"},{"ParameterKey":"FrontDoorKey","ParameterValue":"****"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
   # the key run's change set (ops/keys.sh front-door): the parameters are kept, executing it makes the distribution send the new key
   *"create-change-set"*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "$S/params.json" ;;
@@ -2584,6 +2586,7 @@ case "$*" in
   *"delete-change-set"* | *"wait stack-update-complete"*) : ;;
   *"send-ssh-public-key"*)
     [ ! -e "$S/send-fails" ] || { echo "stand-in aws: send-ssh-public-key failed (the session ended)" >&2; exit 254; }
+    if [[ "$*" == *"--instance-id i-test-b2 "* ]] && [ -n "${FAKE_BOX2_DOWN:-}" ]; then echo "stand-in aws: box b2 does not answer" >&2; exit 254; fi
     echo True ;;
   *"lambda update-function-code"*)
     [ -z "${FAKE_CODE_FAIL:-}" ] || { echo "stand-in aws: update-function-code failed" >&2; exit 254; }
@@ -2902,7 +2905,7 @@ check "  before any aws call" gone "$(file_state "$S/aws.calls")"
 check "the tunnel's port is fixed: no override" "3192 0" "$(sed -n 's/^TUNNEL_PORT=//p' "$OPS_DIR/tunnel.sh") $(grep -c 'TUNNEL_PORT:-' "$OPS_DIR/tunnel.sh" || true)"
 rc=0
 out=$(bash "$OPS_DIR/tunnel.sh" 2>&1) || rc=$?
-check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env>" "$rc $out"
+check "tunnel.sh with no environment prints its usage and exits 2" "2 usage: ops/tunnel.sh <env> [--box <name>]" "$rc $out"
 
 # check.sh refuses a taken port, whatever answers on it, before any aws call
 start_server "$WORK/server-new"
@@ -3395,7 +3398,7 @@ check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys
   "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
 rc=0
 out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
-check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only] [--box <name>]" "$rc $out"
 # the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
 check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
   "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ --query' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
@@ -3547,6 +3550,44 @@ check "  the log's key is masked first, and is in no log and nowhere on the term
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
   "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# case 15 of docs/plans/2026-11-11-pooled-shape.md: a stack that holds a box beside the home box
+echo "== ops/app.sh with a box added: the back end is handed every box, and a box that does not answer stops the run before any setting (case 15)"
+export FAKE_BOX2=1
+e2e_fresh app-box2
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "15: with a box added, app.sh ships, and hands the back end that box beside the home box" "0 1 b2" \
+  "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true) $(jq -r '.Variables.STORAGE_BOXES | fromjson | keys | join(",")' "$S/envfile.seen")"
+check "  the box's address, its internal key and the BFF's service key on it are written as the box's own" "http://10.20.30.41:$BOX_PORT $FAKE_IKEY $FAKE_SKEY" \
+  "$(jq -r '.Variables.STORAGE_BOXES | fromjson | .b2 | "\(.url) \(.internalKey) \(.serviceKey)"' "$S/envfile.seen")"
+check "  the home box's variables are as they were, with STORAGE_BOXES beside them" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,STORAGE_BOXES http://10.20.30.40:$BOX_PORT" \
+  "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
+check "  the BFF's service is made sure of on the box added too, through its own instance and its own forward" "1 yes 1" \
+  "$(grep -c '^box b2: service ' "$S/out" || true) $([ "$(grep -c 'ec2-user@i-test-b2' "$S/ssh.calls" || true)" -gt 0 ] && echo yes || echo no) $(grep -c -e "-L 127.0.0.1:$APP_LOCAL:10.20.30.41:$BOX_PORT" "$S/ssh.calls" || true)"
+check "  the box's address is masked and in no log, the keys are in no log, and each of the two connections is closed once" "1 0 0 2" \
+  "$(grep -cF "::add-mask::10.20.30.41" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF 10.20.30.41 || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(grep -c -e '-O exit' "$S/ssh.calls" || true)"
+e2e_fresh app-box2-down
+FAKE_BOX2_DOWN=1 e2e_run app.sh ridge
+check "  a box that does not answer stops the run, naming it, with no setting written, no code and no file sent" "nonzero 1 gone 0 0" \
+  "$([ "$RC" != 0 ] && echo nonzero || echo "$RC") $(grep -c 'the box b2 does not answer through the endpoint' "$S/out" || true) $(file_state "$S/code.zip") $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+check "  and the home box's connection was closed on the way out" 1 "$(grep -c -e '-O exit' "$S/ssh.calls" || true)"
+# a name the stack does not hold is refused by the four scripts that take one, before they send, change or open anything on a box
+e2e_fresh box-nope-tunnel
+e2e_run tunnel.sh ridge --box nope
+check "a box the stack does not hold is refused by tunnel.sh, naming the ones it does" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope' (the boxes added: b2 )" "$S/out" || true)"
+e2e_fresh box-nope-drill
+e2e_run drill.sh ridge --box nope
+check "  by drill.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true)"
+e2e_fresh box-nope-check
+e2e_run check.sh ridge --box nope
+check "  by check.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true)"
+e2e_fresh box-nope-release
+RELEASE_BINARY=$WORK/server-e2e e2e_run release.sh ridge --box nope
+check "  by release.sh, with nothing sent" "1 1 gone" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true) $(file_state "$S/ssh.calls")"
+for sc in release check drill tunnel; do
+  check "  $sc.sh's usage names --box" 1 "$(grep -c -e "usage: ops/$sc.sh .*--box <name>" "$OPS_DIR/$sc.sh" || true)"
+done
+unset FAKE_BOX2
 
 # ---- the deploy copies the door's key (docs/plans/2026-11-11-front-door-keys.md, step 3, case 11)
 echo "== ops/app.sh sets the function's FRONT_DOOR_KEYS from the distribution's header"

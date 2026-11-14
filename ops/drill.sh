@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ops/drill.sh <env>
+# ops/drill.sh <env> [--box <name>]
 # The human's drill, run once on a new box and again when the unit, the templates or the box change:
 #   row 13: c-storage is killed (SIGKILL) and must answer again within 10 s, as a new process; the unit's
 #   main process is Litestream, c-storage its child, so both must come back new;
@@ -14,14 +14,17 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-[ $# -eq 1 ] || {
-  echo "usage: ops/drill.sh <env>" >&2
+usage() {
+  echo "usage: ops/drill.sh <env> [--box <name>]" >&2
   exit 2
 }
+[ $# -eq 1 ] || { [ $# -eq 3 ] && [ "$2" = --box ]; } || usage
 ENVNAME=$1
+# The home box, or one added: the drill breaks one box alone.
+BOX_WANTED=${3:-home}
 STEPS=8
 
-log_start drill "$ENVNAME"
+log_start drill "$ENVNAME$([ "$BOX_WANTED" = home ] || echo "-$BOX_WANTED")"
 mkwork
 refuse_real "$ENVNAME" "drill.sh holds the environments that keep invented data alone (ridge): it kills the store and reboots the box, and another environment may hold a real company's records"
 main_synced
@@ -42,7 +45,7 @@ REMOTE
 }
 
 step "the tunnel to $ENVNAME's box"
-box_open "$ENVNAME" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "" "$BOX_WANTED" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
 
 step "the box's disk and memory, read first"
@@ -86,7 +89,7 @@ box_close
 sleep 20
 back=0
 for _ in $(seq 1 18); do
-  if box_open "$ENVNAME" 2>/dev/null; then
+  if box_open "$ENVNAME" "" "$BOX_WANTED" 2>/dev/null; then
     back=1
     break
   fi

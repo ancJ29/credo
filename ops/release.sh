@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ops/release.sh <env> [<sha>]
+# ops/release.sh <env> [<sha>] [--box <name>]
 # Ships c-storage's arm64 binary from main to <env>'s box over the Instance Connect tunnel, runs it
 # under systemd, and reads /health until it names the commit shipped. The deploy job runs it, and
 # so can the human while GitHub Actions is down.
@@ -29,14 +29,35 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-[ $# -ge 1 ] && [ $# -le 2 ] || {
-  echo "usage: ops/release.sh <env> [<sha>]" >&2
+usage() {
+  echo "usage: ops/release.sh <env> [<sha>] [--box <name>]" >&2
   exit 2
 }
+[ $# -ge 1 ] || usage
 ENVNAME=$1
+shift
+SHA_ARG=''
+BOX_WANTED=home
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --box)
+      [ $# -ge 2 ] || usage
+      [ "$BOX_WANTED" = home ] || usage
+      BOX_WANTED=$2
+      shift
+      ;;
+    *)
+      [ -z "$SHA_ARG" ] || usage
+      SHA_ARG=$1
+      ;;
+  esac
+  shift
+done
 STEPS=10
 
-log_start release "$ENVNAME"
+# With no --box the release goes to the home box and then to each box added, each in its own run and log; --box <name> is
+# one run on that box alone.
+log_start release "$ENVNAME$([ "$BOX_WANTED" = home ] || echo "-$BOX_WANTED")"
 mkwork
 real_ok "$ENVNAME" "it ships main's commits alone, never backwards, above the box's floor"
 
@@ -48,16 +69,17 @@ step "the commit, which main must hold"
 main_synced
 if [ -n "${RELEASE_BINARY:-}" ]; then
   [ -f "$RELEASE_BINARY" ] || die "RELEASE_BINARY $RELEASE_BINARY does not exist"
-  sha=$(git -C "$REPO_DIR" rev-parse HEAD)
+  # A run for a box added is handed the home box's run's commit and tree (RELEASE_SHA, RELEASE_SRC), so it builds nothing again.
+  sha=${RELEASE_SHA:-$(git -C "$REPO_DIR" rev-parse HEAD)}
 else
-  sha=$(git -C "$REPO_DIR" rev-parse --verify -q "${2:-origin/main}^{commit}") || die "'${2:-origin/main}' is not a commit"
+  sha=$(git -C "$REPO_DIR" rev-parse --verify -q "${SHA_ARG:-origin/main}^{commit}") || die "'${2:-origin/main}' is not a commit"
 fi
 git -C "$REPO_DIR" merge-base --is-ancestor "$sha" origin/main || die "$sha is not a commit of main: only main is released"
 echo "commit: $sha"
 
 if [ -n "${RELEASE_BINARY:-}" ]; then
   binary=$RELEASE_BINARY
-  src=$REPO_DIR
+  src=${RELEASE_SRC:-$REPO_DIR}
 else
   echo "building $sha in a throwaway worktree: c-storage's gate, then make box"
   git -C "$REPO_DIR" worktree add -q --detach "$WORK/src" "$sha"
@@ -74,7 +96,7 @@ want_sum=$(shasum -a 256 "$binary" | cut -d' ' -f1)
 echo "binary: $(wc -c <"$binary" | tr -d ' ') bytes, sha256 $want_sum"
 
 step "the tunnel to $ENVNAME's box"
-box_open "$ENVNAME" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "" "$BOX_WANTED" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
 # Read before anything is sent: a superseded release changes nothing on the box.
 if superseded "$ENVNAME" "$sha" box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$BOX_PORT/health"; then
@@ -106,7 +128,7 @@ box 'sudo tee /opt/c-storage/c-storage.service.new >/dev/null' <"$unit"
 # while the box lives), and installed beside the unit.
 printf 'LISTEN_ADDR=%s\n' "$BOX_LISTEN_ADDR" | box 'sudo tee /opt/c-storage/listen.env.new >/dev/null'
 # Litestream, its configuration and the copy's address: the bucket and the disk are the stack's outputs.
-RECORDS_VOLUME=$(out RecordsVolumeId)
+RECORDS_VOLUME=$(box_out RecordsVolumeId)
 COPY_BUCKET=$(out CopyBucketName)
 [ -n "$RECORDS_VOLUME" ] && [ -n "$COPY_BUCKET" ] || die "stack $ENVNAME names no records disk or copy bucket (RecordsVolumeId, CopyBucketName): run ops/stack.sh env $ENVNAME first"
 box 'sudo tee /opt/c-storage/litestream.new >/dev/null' <"$litestream_bin"
@@ -294,3 +316,16 @@ if ! wait_build "$sha" 30 box curl -fsS -m 5 "http://$BOX_LISTEN_ADDR:$AUDIT_POR
   audit_die "the log is installed, and did not name $sha"
 fi
 echo "released $sha"
+# The boxes added, each its own run, in its own log, with the terminal for its lines and the binaries this run built
+# (a run for the home box only: a named box's run goes to that box alone).
+if [ "$BOX_WANTED" = home ]; then
+  while IFS= read -r other; do
+    [ -n "$other" ] || continue
+    echo "the box $other: its own run and log"
+    RELEASE_BINARY=$binary RELEASE_AUDIT_BINARY=${audit_binary:-} RELEASE_SRC=$src RELEASE_SHA=$sha \
+      bash "$0" "$ENVNAME" "$sha" --box "$other" >&3 2>&3 || {
+      echo "the release of box $other failed: its own log says why"
+      exit 1
+    }
+  done <<<"$(stack_boxes)"
+fi

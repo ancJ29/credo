@@ -586,6 +586,37 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
    - **a key is in this log:** as in [the check](#the-check).
    - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
+## Adding a box
+
+A box is added to the environment's one stack by naming it, never by a stack of its own: `ops/env.yml` holds the home
+box (`Box`) and one block for each name in the list `MoreBoxes` (`Fn::ForEach`), and `ops/test.sh` holds that block equal
+to the home box's but for its names ([the plan](../docs/plans/2026-11-11-pooled-shape.md#the-steps), decision 10). A name
+is a lowercase letter, then lowercase letters and digits, 16 at most, never `home`, none twice; it is also the box's path
+in the copy's bucket (`<name>/records`).
+
+1. `ops/stack.sh env <env> --more-boxes b2 --plan`, and read it as [a change to a template](#a-change-to-a-template): it
+   adds the box (`Boxb2`), its role and profile, its records disk and the disk's attachment, and three outputs
+   (`Boxb2Id`, `Boxb2Address`, `RecordsVolumeb2Id`), and leaves the home box and everything else as they are. Anything
+   changed or replaced, stop. The flag names the **whole** list: `--more-boxes b2,b3` on a stack holding `b2` adds `b3`,
+   and a run without the flag keeps the list the stack has.
+2. Run it again without `--plan`. The new box is empty: no release has been to it.
+3. `ops/release.sh <env>` goes to the home box and then to each box added, each its own run with its own log
+   (`...-release-<env>-b2.log`); `ops/release.sh <env> --box b2` is that one box alone.
+4. `ops/app.sh <env>` opens each box in turn, makes the BFF's service in its c-storage and hands the back end every box in
+   `STORAGE_BOXES` (names, addresses and keys, never printed). A box that does not answer stops it before any setting of
+   the function is written. **A key run (`ops/keys.sh`) sets the function's environment without `STORAGE_BOXES`**, so
+   after one on an environment that holds a box added, run `ops/app.sh <env>` again (open item 448).
+5. `ops/check.sh <env>` reads the home box whole and then each box added, alone; `ops/check.sh <env> --box b2` is one box
+   alone. `ops/tunnel.sh <env> --box b2` and `ops/drill.sh <env> --box b2` take the box in the same way.
+6. Taking a box out is a removal: `--more-boxes` with the list as it should be (`''` for none). The fence refuses it and
+   names the five (`Boxb2`, `BoxProfileb2`, `BoxRoleb2`, `RecordsAttachmentb2`, `RecordsVolumeb2`); it passes when each
+   is named with `--take`. The instance and the records disk are kept by their policies, and a company still on the box
+   is not moved by this: read [a retained box](#a-retained-box) and [a left-behind volume](#a-left-behind-volume) for
+   what is left, and move the companies off first.
+
+The deploy role needs no change for a box added: it pushes a key to any instance tagged for its environment and opens the
+tunnel to its subnet's range. No alarm watches a box added (open item 447).
+
 ## Reading what the fence kept
 
 `Box` carries `RetainExceptOnCreate` on a stack delete (it retains on every act but the rollback of its own creation, which deletes a box that never served) and `Retain` on a replacement, and its root disk carries

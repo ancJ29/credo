@@ -1785,3 +1785,11 @@ The row's check, `git diff --stat pre-merge -- '*.test.ts'`, misses `*.test.tsx`
 ## 446. What CloudFormation does with an empty `MoreBoxes` is read from no page of AWS's — the machine; `[DEFERRED]` (the pooled shape's step 6, reading, 2026-11-14, Low)
 
 None of the pages fetched for `Fn::ForEach` says what a collection with no item expands to, and cfn-lint resolves a `CommaDelimitedList` parameter whose default is `''` without a loop error (read at 1.59.0; 1.46.0 would not install here). If CloudFormation reads `''` as one item with an empty name, the loop makes a resource named `Box` beside the home box's and the first change set after the template lands fails in its creation, before anything runs. The stack's own `--plan` shows it; the fix is a default that names no box and a loop that skips it.
+
+## 447. A box added has no alarm, and the destroy's list of what a stack delete keeps names the home box's ids alone — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
+
+`ops/env.yml`'s `AlarmBox` watches `Box` alone, so a box added that fails its status check says nothing to Slack; and `DESTROY_BY_HAND` in `ops/lib.sh` (read by `ops/destroy.sh` and compared with the template by `ops/test.sh`) lists the home box's ids, while a stack delete also keeps each box added's instance and records disk (`Boxb2`, `RecordsVolumeb2`), which the destroy's own check of retained resources would not name. Ridge runs one box and returns to one after each rehearsal (the plan's acts), so neither bites yet; a client's stack with a box added needs both first.
+
+## 448. A key run drops `STORAGE_BOXES` from the function's settings — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
+
+`ops/keys.sh` sets the function's environment through `bff_settings_set` from the keys it holds, and a settings call replaces the whole environment; `STORAGE_BOXES` is written only by `ops/app.sh` (`other_boxes_read`), so after a key run on a stack that holds a box added, a company on that box answers 503 until `ops/app.sh` runs again. The runbook's "Adding a box" says so. A key run that reads the function's own `STORAGE_BOXES` first, or refuses on a stack with boxes added, closes it.

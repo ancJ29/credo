@@ -241,7 +241,7 @@ milestone if the orchestrator wants one.
 
 **Second landing: a box added by command** (after the continuous copy is on `pre-merge`).
 
-- [ ] **6. The loop, the role, the scripts.** Four parts, in order, each *done when* `bash ops/test.sh`
+- [x] **6. The loop, the role, the scripts.** Four parts, in order, each *done when* `bash ops/test.sh`
   exits 0 with its cases red once: AWS's and cfn-lint's reading, quoted in the tick (done when each
   of the six questions has a sentence of AWS's own, or the fallback is taken and said; *size* 5, a
   first run); the loop and its guard, cases 12 and 13 (*size* 10, the box's retention step, 10); the
@@ -310,6 +310,21 @@ milestone if the orchestrator wants one.
   once by eight mutations of the role, put back: the tag condition removed, another tag, the home box's
   instance alone, a tunnel to `0.0.0.0/0`, to the home box's address alone, on port 2222, a third Instance
   Connect action, a statement naming `${Box}`. `shellcheck -x ops/*.sh` and `cfn-lint` exit 0.
+  *Part 4 ticked 2026-11-14 (the scripts learning a box, case 15; the step is done).* `box_open <env> [<port> [<box>]]`
+  opens a box by name from the stack's `Box<name>Id` and `Box<name>Address` outputs (`stack_boxes`, `box_out`), sets the
+  box's path in the copy's bucket to its name, and refuses a name the stack does not hold, naming those it does.
+  `ops/app.sh` makes the BFF's service on every box (`other_boxes_read`: each opened in turn, its keys read, before any
+  setting of the function is written) and writes `STORAGE_BOXES` beside the eight variables, which are the eight
+  alone when the stack holds no box added. `release.sh`, `check.sh`, `drill.sh` and `tunnel.sh` take `--box <name>`;
+  `release.sh` and `check.sh` go over the home box and then each box added, each its own run and its own log, with the
+  terminal for its lines and, for the release, the binaries the first run built. The runbook gains "Adding a box"
+  (`ops/README.md`). Case 15 was red first on the old scripts (no `STORAGE_BOXES`), then passes, and is red once by three
+  mutations of `app.sh` and `lib.sh`, put back: the boxes read nowhere, the boxes read after the settings (a setting
+  written before the box that does not answer stops it), the home box's address written for the box added; the unknown-box
+  refusals and the usage lines were red on the old scripts. Two old checks of `ops/test.sh` changed their wanted text, the
+  usage lines of `tunnel.sh` and `check.sh`, which now name `--box`; no other old check changed. Items filed: 446 (an empty `MoreBoxes` on CloudFormation),
+  447 (no alarm on a box added, and the destroy's list names the home box's ids alone), 448 (a key run drops
+  `STORAGE_BOXES`). `shellcheck -x ops/*.sh` and `cfn-lint` exit 0. Not run, as the plan says: the human's acts on ridge.
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
 - [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one
