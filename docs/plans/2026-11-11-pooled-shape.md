@@ -146,11 +146,18 @@ milestone if the orchestrator wants one.
 
 **First landing: the box in the record and the operator's choice** (after the one-company client).
 
-- [ ] **1. One company on a second box, end to end.** Decisions 2 to 5 and 7, with a route test whose
+- [x] **1. One company on a second box, end to end.** Decisions 2 to 5 and 7, with a route test whose
   second service on the file's c-storage stands for a second box. *Done when:* `pnpm check` ends `==
   exit 0`; cases 1 to 5 and 7 red once; `git diff --stat pre-merge -- '*.test.ts'` names new files
   alone. *Size:* 10, the last step adding one mechanism with its test and routes on it (the activity
-  log's third, 10).
+  log's third, 10). *Ticked 2026-11-14:* a line's `box` and the form's, `STORAGE_BOXES` read at
+  start, the lookup over the box a line names (503 for one not held), the create on the chosen
+  box; cases 1 to 5 and 7 each red once by a mutation of its code (a default box `b2`, settings
+  written on the home box, the company's client made over the home box, a held-box fallback to
+  home, a malformed value read as no boxes, the form's unheld-box check removed), put back;
+  `pnpm check` ended `== exit 0`; new test files alone, and `bff/tests/tenant.ts`'s `bffOn`
+  gained a `boxes` option; the local stack's BFF environment carries `STORAGE_BOXES` as `{}`, which the
+  old test of its exact variable list needed until step 4 hands it a second box.
 - [ ] **2. Every act on its box, and the scripts.** Two parts. The delete and the root password
   (decision 6): *done when* the bff gate ends `== exit 0`, cases 6 and 10 red once; *size* 10, the
   same shape. Item 246's four scripts (decision 9): *done when* the scripts gate ends `== exit 0`,

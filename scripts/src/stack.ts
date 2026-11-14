@@ -127,6 +127,8 @@ export function bffEnvironment(settings: {
     AUDIT_KEY: settings.audit.key,
     APP_ORIGIN: settings.appOrigin,
     FRONT_DOOR_KEYS: settings.frontDoorKey,
+    // The local stack has one box: no other is handed in, until the stack registers a second.
+    STORAGE_BOXES: '{}',
   };
 }
 

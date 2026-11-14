@@ -60,7 +60,16 @@ export async function createClient(
     name,
     madeAt,
     settings = {},
-  }: { code: string; name: string; madeAt: number; settings?: Partial<TenantConfig> },
+    box,
+  }: {
+    code: string;
+    name: string;
+    madeAt: number;
+    settings?: Partial<TenantConfig>;
+    /** The box the company lives on: its settings and root are written there and its line names
+     * it. None, they sit in `storage` and the line names no box. */
+    box?: { name: string; storage: CStorageClient };
+  },
 ): Promise<{ id: string; password: string } | 'taken'> {
   if (await storage.getRecord(recordKeys.client(code))) return 'taken';
   // A deletion of an earlier client of this code still unfinished keeps the code, or its records
@@ -68,7 +77,7 @@ export async function createClient(
   if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
-  const company = tenantStorage(storage, id);
+  const company = tenantStorage(box?.storage ?? storage, id);
   const password = newPassword();
   const config = startingConfig(name, settings);
   const root: StoredUser = {
@@ -80,7 +89,7 @@ export async function createClient(
   };
   await createRecord(company, keys.config, config);
   await createRecord(company, keys.user(ROOT_NAME), root);
-  const index: StoredClient = { id, name, madeAt };
+  const index: StoredClient = { id, name, madeAt, ...(box ? { box: box.name } : {}) };
   const saved = await storage.putRecord(recordKeys.client(code), index, null);
   return saved === 'saved' ? { id, password } : 'taken';
 }

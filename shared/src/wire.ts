@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { tenantConfigSchema } from './config';
 import { permissionLayerSchema } from './permissions';
-import { clientCodeSchema } from './records';
+import { boxNameSchema, clientCodeSchema } from './records';
 
 export const ROUTES = {
   config: '/api/config',
@@ -175,6 +175,8 @@ export const createClientRequestSchema = z.strictObject({
   code: clientCodeSchema,
   /** The company's name as made, which is also its first settings' name. */
   name: z.string().trim().min(1).max(200),
+  /** The box the company's records sit on; absent is the home box. */
+  box: boxNameSchema.optional(),
 });
 export type CreateClientRequest = z.infer<typeof createClientRequestSchema>;
 

@@ -18,6 +18,7 @@ import {
   type MeReplyBody,
   type PermissionId,
   normaliseSignInName,
+  HOME_BOX,
   recordKeys,
   resolvePermissions,
   ROUTES,
@@ -78,6 +79,9 @@ type SetupRead = Awaited<ReturnType<typeof readSetup>>;
 export type AppDeps = {
   /** The one c-storage service this BFF is. Every tenant's records sit in it under its id. */
   storage: CStorageClient;
+  /** The other boxes, each by name: a company whose line names one has its records there, and
+   * only its line on `storage`. None, there is the home box alone. */
+  boxes?: Record<string, CStorageClient>;
   /** The audit service, or none where it is not configured: the change is saved and the lost entry
    * logged, never refused. */
   activity?: ActivityClient | null;
@@ -99,6 +103,7 @@ const unauthorized = () => new HttpError(401, 'Unauthorized');
 
 export function buildApp({
   storage,
+  boxes = {},
   activity = null,
   now,
   origin,
@@ -167,14 +172,25 @@ export function buildApp({
 
   /** Runs first on every client route, before the body is read and before any session: the code
    * names the tenant or the call goes no further. It scopes and never authenticates. */
+  /** The client over a box the back end holds, or none. */
+  const boxStorage = (box: string) =>
+    box === HOME_BOX ? storage : new Map(Object.entries(boxes)).get(box);
+
   async function resolveTenant(request: FastifyRequest) {
     const code = clientCodeSchema.safeParse(request.headers[CLIENT_HEADER]);
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });
     const found = await storage.getRecord(recordKeys.client(code.data));
     if (!found) throw new HttpError(404, 'Unknown client');
-    const { id } = storedClientSchema.parse(found.data);
+    const { id, box = HOME_BOX } = storedClientSchema.parse(found.data);
+    const held = boxStorage(box);
+    if (!held) {
+      // The line names a box this back end was not handed: a fault of the setting, like a store
+      // that does not answer, so the screens offer a retry. The log names the box, never a key.
+      request.log.error({ box }, 'a company names a box this back end does not hold');
+      throw new HttpError(503, 'Service unavailable');
+    }
     request.tenantId = id;
-    request.storage = tenantStorage(storage, id);
+    request.storage = tenantStorage(held, id);
   }
   const forClient = { onRequest: resolveTenant };
 
@@ -504,7 +520,15 @@ export function buildApp({
     async (request, reply): Promise<CreateClientReply> => {
       const operator = await operatorSignedIn(request);
       const body = parse(createClientRequestSchema, request.body);
-      const made = await createClient(storage, { ...body, madeAt: now() });
+      const box = body.box ?? HOME_BOX;
+      const held = boxStorage(box);
+      if (!held) throw new HttpError(400, 'Bad request', { details: 'box' });
+      const made = await createClient(storage, {
+        code: body.code,
+        name: body.name,
+        madeAt: now(),
+        box: { name: box, storage: held },
+      });
       if (made === 'taken') throw new HttpError(409, 'That code is taken');
       // The client has no id until it is made, so a refusal before has no client to name.
       declare(request, operatorOf(operator), made.id, made.id).saved(null, {

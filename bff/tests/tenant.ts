@@ -117,6 +117,8 @@ export async function bffOn(
   options: {
     now?: () => number;
     wrap?: (client: CStorageClient) => CStorageClient;
+    /** Other boxes, each by name, as `STORAGE_BOXES` hands them in. */
+    boxes?: Record<string, CStorageClient>;
     activity?: ActivityClient;
     logger?: Parameters<typeof buildApp>[0]['logger'];
     build?: string;
@@ -127,6 +129,7 @@ export async function bffOn(
   const storage = options.wrap ? options.wrap(service.client) : service.client;
   const app = buildApp({
     storage,
+    ...(options.boxes === undefined ? {} : { boxes: options.boxes }),
     ...(options.activity === undefined ? {} : { activity: options.activity }),
     now: options.now ?? time.now,
     origin: ORIGIN,

@@ -79,6 +79,12 @@ export const recordKeys = {
 
 /** A client's code: 3 to 32 lowercase letters, digits and hyphens, a letter first and a letter
  * or digit last. The BFF takes this exact form alone. */
+/** The first box, which holds the list of companies and every company whose line names no box. */
+export const HOME_BOX = 'home';
+/** A box's name: a few lowercase letters and digits, as it is told to the back end and kept in a
+ * company's line. */
+export const boxNameSchema = z.string().regex(/^[a-z][a-z0-9]{0,15}$/);
+
 export const clientCodeSchema = z.string().regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$/);
 
 /** A code as typed or linked, to the form the BFF takes: spaces around it go and capitals fall. */
@@ -86,11 +92,13 @@ export const normaliseClientCode = (raw: string) => raw.trim().toLowerCase();
 
 /** The index record: the tenant's minted id, the name as made for the reader, and the time it was
  * made, in milliseconds since the epoch. An index written before the time was kept has none, and
- * reads as none; nothing rewrites it. */
+ * reads as none; nothing rewrites it. `box` names the box the company's records sit on; a line with
+ * none is on the home box, so a company made before boxes were named reads as it did. */
 export const storedClientSchema = z.strictObject({
   id: z.uuid(),
   name: z.string(),
   madeAt: z.number().optional(),
+  box: boxNameSchema.optional(),
 });
 export type StoredClient = z.infer<typeof storedClientSchema>;
 
