@@ -1,8 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import { TableShardSequencer } from './src/shard-sequencer';
+import { TimesReporter } from './src/shard-times';
 
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    // A shard's files are split by their time in src/shard-times.json, not by vitest's path hash (src/shard-sequencer.ts).
+    // `pnpm times` (SCRIPTS_WRITE_TIMES set) writes that table after a green local run.
+    sequence: { sequencer: TableShardSequencer },
+    // Vitest's own default list stays unless the table is to be written (then `default` beside the writer).
+    ...(process.env.SCRIPTS_WRITE_TIMES ? { reporters: ['default', new TimesReporter()] } : {}),
     // The tests build the UI in this process, and a build under `test` ships React's development
     // build, a third larger: past the bundle warning's 1000 kB, where the real build is about 700.
     env: { NODE_ENV: 'production' },
@@ -57,7 +64,11 @@ export default defineConfig({
         'src/demo/apply-support.ts',
       ],
       reporter: [['text', { skipFull: true }]],
-      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
+      // A shard on GitHub (SCRIPTS_SHARD set by the workflow) sees a third of the files, so it holds no
+      // threshold; the job that merges the shards' blobs does, and sets nothing.
+      thresholds: process.env.SCRIPTS_SHARD
+        ? {}
+        : { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 });

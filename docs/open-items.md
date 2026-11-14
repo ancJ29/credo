@@ -1798,6 +1798,22 @@ Two AWS pages disagree: the Parameters page says a `CommaDelimitedList` "should 
 
 `ops/release.sh`'s run for each box added is handed the c-storage and activity log binaries, the tree and the commit, but not `LITESTREAM_ARCHIVE`, so `litestream_binary` fetches the pinned archive once more for each box (`ops/lib.sh`), though the home box's run checked one into its own work folder. In the deploy job the variable is the job's own and the sub-run inherits it. Passing `LITESTREAM_ARCHIVE=${LITESTREAM_ARCHIVE:-$WORK/litestream.tar.gz}` to the sub-run closes it; ridge runs one box, so it does not bite yet.
 
+## 458. A local refresh of the shard table measures something other than CI's shards, and a partial refresh mixes units — the machine; `[DEFERRED]` when the table is next refreshed (the table of times review, 2026-11-14, Low B)
+
+`pnpm --filter @credo/scripts times` runs on this Mac without `--coverage` and outside the gate lock, a `-t` filter writes skipped tests' near-zero times as real, a run of some files overwrites only those over GitHub's times, and the first whole refresh rewrites about 41 lines, so two branches that both refresh conflict. Review section "The table of times at 5af37fc3", Low B; the effect on CI's balance needs a GitHub run to know. A partial refresh also drops the entries of other edited files, which then fall back to bytes until a whole refresh (`scripts/src/shard-times.ts#L76-L77`; review section "Reread at 0556d766", Low I).
+
+## 459. The shard balance case's name claims more than it holds — the machine; at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low F)
+
+"Keeps the slowest shard near a third of the table time, so the table is worth keeping" measures the greedy's balance over the weights it is handed, so it stays green with the table emptied or stale; only the presence case goes red. Review section "The table of times at 5af37fc3", Low F.
+
+## 460. Nothing checks that the config wires `TableShardSequencer` or the reporter switch, and the vite file-extension warning is three lines — the machine; at the next change to `scripts/vitest.config.ts` (the table of times review, 2026-11-14, Low G)
+
+A config that dropped the sequencer would give vitest's hash split with every case green, and the "import without a file extension" notice of `configLoader: 'native'` names three imports now. Review section "The table of times at 5af37fc3", Low G, carried from the review of 600f0eff.
+
+## 461. The package's own sequencer cases print each miss six more times into the test output — the machine; `[DEFERRED]` at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low H)
+
+The cases at `scripts/src/shard-sequencer.test.ts#L12`, `#L49` and `#L58` run the real sequencer, whose `say` writes each miss to the process output, so a gate shows the lines six more times beside the shard step's. Review section "Reread at 0556d766", Low H.
+
 ## 462. No check pins `Box`'s `Env` tag, which the deploy role's key push now rests on — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
 
 The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/env.yml`, `PushKeyToOwnBox`); case 14 reads the role alone and case 12 compares the loop's instance with `Box`, so with `Env` taken off both, both are green. A lost tag fails closed (the push is denied at `box_open`, before anything is sent). Case 14's guard asserting that `Box` carries `{"Key":"Env","Value":{"Ref":"Env"}}` closes it, and case 12 then carries it to every box added.
