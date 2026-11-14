@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitest/config';
+import { SizeShardSequencer } from './src/shard-sequencer';
 
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    // A shard's files are split by size, not by vitest's path hash (src/shard-sequencer.ts).
+    sequence: { sequencer: SizeShardSequencer },
     // The tests build the UI in this process, and a build under `test` ships React's development
     // build, a third larger: past the bundle warning's 1000 kB, where the real build is about 700.
     env: { NODE_ENV: 'production' },
