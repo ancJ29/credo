@@ -157,7 +157,7 @@ minutes a part.
   `#L58-L60`; `records.ts#L47-L50` and `audit.ts#L84-L88` did not move. The old picture schemas are gone from
   `shared`; the seed and the generator still write the old record and move with step 4, and `scripts/src/stack.test.ts`
   leaves the three settings out of its list of the back end's variables until step 4 hands them.
-- [ ] **Step 4. The stand-in for R2, the stack and the seed** (about 25 minutes: four parts, the
+- [x] **Step 4. The stand-in for R2, the stack and the seed** (about 25 minutes: four parts, the
   stand-in a first shape, the rest the same call changed in place, plus the whole check).
   `scripts/src/running/photo-store.ts` keeps pictures in memory behind the same signed addresses,
   checking each with the back end's own signer and answering the browser's cross-origin preflight as
@@ -167,6 +167,17 @@ minutes a part.
   that delivers by request (`walk/specs/reconcile.spec.ts#L118-L126`) ask, send, then deliver.
   *Done when:* `pnpm check` ends `== exit 0`; case 14 seen red; `pnpm stack -- <a command that
   delivers one request and reads its photo back by its address>` exits 0.
+  *Done 2026-11-14:* the `scripts`, `walk` and `bff` gates ended `== exit 0` on the committed tree, with the
+  citation test alone (the whole `pnpm check` runs on `pre-merge`); case 14 was seen red by two mutations of
+  `photo-store.ts`, each reverted and compared equal (the expiry test removed, and the signature compared to
+  `!== null ||`, each leaving the refusal case at 200 where 403 is expected); `pnpm stack -- node --import tsx
+  <the command>` exited 0, the command asking, sending to the stand-in, reading the preflight of the app's own
+  address, delivering and reading the same bytes back (the same command is a case in `scripts/src/stack.test.ts`).
+  The stand-in is `scripts/src/running/photo-store.ts`, the seed's and the generator's way into it a `PhotoSink`
+  (the seed's clock is the data set's past, so it hands bytes in by the address's path, not by a signed PUT; the
+  walk sends by a real PUT). The stand-in allows the stack's own app address as the stack serves it today; the
+  bucket's rule for each company's own address, once each opens at `<company>.ridge.<domain>`, is step 6's
+  question (whether R2's rule takes a wildcard origin is on no page read). Items 469 to 471.
 - [ ] **Step 5. The walk: one screen appended, every other screen unmoved** (about 15 minutes: walk
   steps ran 15 and 26). `orders-15`, after `orders-14-repriced`: the office opens a delivery whose
   picture never arrived. On the fake its address leads nowhere; on the stack the walk asks and delivers

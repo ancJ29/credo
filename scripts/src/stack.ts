@@ -10,6 +10,7 @@ import { type CStorageClient, joinLinkPath } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './running/front';
+import { createPhotoStore, newPhotoKey, type PhotoSink } from './running/photo-store';
 import { ROOT_NAME, seedClient, seedDemo } from './generator';
 import { newKey, startStore } from './local-store';
 import { freePort, startProcess, waitUntilUp } from './running/processes';
@@ -70,6 +71,9 @@ export type RunningStack = {
   /** The BFF's own c-storage service, for `pnpm demo` to make its copies in this process. Never
    * handed to a command. */
   storage: CStorageClient;
+  /** Where the seed's pictures go: the photo stand-in's settings and its way in. Never handed to a
+   * command. */
+  photos: PhotoSink;
   /** Each box beyond the home box, by name: the BFF's service on a store of its own, so a test or a
    * command reads what the stack wrote there. Never handed to a command. */
   boxes: Record<string, CStorageClient>;
@@ -121,6 +125,8 @@ export function bffEnvironment(settings: {
   appOrigin: string;
   /** The key the front adds to each call; the BFF refuses a call without it. */
   frontDoorKey: string;
+  /** The photo store's address and key, as the stand-in holds them; none leaves photos off. */
+  photoStore?: { url: string; keyId: string; keySecret: string };
   /** The boxes beyond the home box, each with its address and keys; none by default. */
   boxes?: Record<string, { url: string; internalKey: string; serviceKey: string }>;
 }) {
@@ -137,6 +143,13 @@ export function bffEnvironment(settings: {
     FRONT_DOOR_KEYS: settings.frontDoorKey,
     // The home box's four variables are above; the others are handed in here, none by default.
     STORAGE_BOXES: JSON.stringify(settings.boxes ?? {}),
+    ...(settings.photoStore
+      ? {
+          PHOTO_STORE_URL: settings.photoStore.url,
+          PHOTO_STORE_KEY_ID: settings.photoStore.keyId,
+          PHOTO_STORE_KEY_SECRET: settings.photoStore.keySecret,
+        }
+      : {}),
   };
 }
 
@@ -232,10 +245,23 @@ export async function startStack(
       };
     }
 
-    const seededDemo = resume ? null : await seedDemo(storage);
+    // The stand-in for the photo bucket, with a key made for this stack and held by it and the BFF
+    // alone. It allows the app's address, which is known once the front binds, below.
+    let appOrigin = '';
+    const photoKey = newPhotoKey();
+    const photoStore = createPhotoStore({
+      keyId: photoKey.keyId,
+      secret: photoKey.secret,
+      allowedOrigin: () => appOrigin,
+    });
+    stops.unshift(() => new Promise((resolve) => photoStore.server.close(resolve)));
+    const { port: photoPort } = await listening(photoStore.server);
+    const photos: PhotoSink = { store: photoStore.settingsAt(photoPort), keep: photoStore.keep };
+
+    const seededDemo = resume ? null : await seedDemo(storage, undefined, photos);
     let seeded = 0;
     const seeding = createSeeding(
-      () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
+      () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`, undefined, undefined, photos),
       logToStderr,
     );
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
@@ -253,7 +279,7 @@ export async function startStack(
     const front = createFront({ staticDir: artifacts.uiDir, bffUrl, frontDoorKey });
     stops.unshift(() => new Promise((resolve) => front.close(resolve)));
     const { port: frontPort } = await listening(front, options.ports?.front);
-    const appOrigin = `http://localhost:${frontPort}`;
+    appOrigin = `http://localhost:${frontPort}`;
     const bff = await startProcess(
       process.execPath,
       ['--import', import.meta.resolve('tsx'), join(ROOT, 'bff/src/main.ts')],
@@ -266,6 +292,7 @@ export async function startStack(
           audit: { url: auditUrl, key: auditKey },
           appOrigin,
           frontDoorKey,
+          photoStore: photos.store,
           boxes: boxSettings,
         }),
         logFile: join(dataDir, 'bff.log'),
@@ -301,6 +328,7 @@ export async function startStack(
       dataDir,
       activityTarget: activityTargetOf(facts),
       storage,
+      photos,
       boxes,
       facts,
       stop,

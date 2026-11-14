@@ -1837,3 +1837,15 @@ The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/
 ## 465. Not run: AWS's conditions page does not list `Fn::Join` inside `Fn::Equals` — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
 
 The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functions as usable inside `Fn::Equals` and `Fn::Or`, and `Fn::Join` only for `Fn::If`; `HasMoreBoxes` (`ops/env.yml`) puts it inside `Fn::Equals`. cfn-lint 1.59.0 accepts the template and the idiom is common, but if CloudFormation refuses it, every change set made from this template fails at its creation, before anything runs. The sitting's first `--plan` on ridge is the run that settles it; the condition would then need another shape (item 463's fix may change it anyway).
+
+## 469. The data set's pictures are PNGs and the back end takes a JPEG alone, so the seed, the generator and the walk ask for `image/jpeg` for a PNG's bytes — the machine; `[DEFERRED]` (the delivery photos' plan, step 4, 2026-11-14, Low)
+
+`DEMO_PROOFS` in `shared/src/demo-proofs.ts` are drawn PNG data URLs; the ask (`bff/src/routes/delivery-photo.ts`) refuses any type but `image/jpeg`. `sendPicture` in `scripts/src/running/photo-store.ts` says JPEG for the same length and the stand-in keeps the bytes under that type; a browser sniffs a PNG shown as JPEG, but a real bucket holds a mislabelled object. Real JPEG pictures in the data set end it; wanted before the ridge seed sends pictures to the real bucket.
+
+## 470. The ridge seed asks photo addresses and keeps no picture, so its delivered requests name objects the bucket does not hold — the machine; `[DEFERRED]` to step 8 of the delivery photos' plan (2026-11-14, Low)
+
+`applyAll` and `applyCopy` called from `scripts/src/ridge.ts` use `FORGETTING_SINK` (`scripts/src/running/photo-store.ts`): the record names an object and the picture goes nowhere, since the ridge seed has no key of the real bucket. `pnpm demo` and `pnpm stack` pass the stand-in's sink and keep every picture. A photo read on ridge's seeded deliveries answers an address that leads to a 404 until step 8 gives the seed the bucket's key or the seed's delivered requests are left without photos there.
+
+## 471. A request that its users delivered between the seed's read and its ask of the photo address stops the run red instead of being skipped — the machine; `[DEFERRED]` (the delivery photos' plan, step 4, 2026-11-14, Low)
+
+In `dayDeliveries` (`scripts/src/demo/apply.ts`) the ask is `driver.must`, so a 409 or a 404 from it throws, where the deliver after it was a skip (`unlessChanged`, "only a 409 or a 404 is a skip"). The read just before shows the request waiting, so only users acting within milliseconds reach it; no test provokes it, since the ask writes no delivery record to hook. Wanted: the ask through `unlessChanged`, with a case that moves the request between the read and the ask.

@@ -44,6 +44,7 @@ import {
 } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
 import { ROOT_NAME, seedClient, seedDemo } from './generator';
+import { FORGETTING_SINK } from './running/photo-store';
 
 /** A c-storage service in memory: records, each with a tag of c-storage's form that changes at every
  * write, and a write over a tag that moved refused. */
@@ -86,7 +87,14 @@ function memoryStorage() {
 const ORIGIN = 'http://localhost:3181';
 /** The app on the generator's storage, as a stack's BFF is, with the address the operator opens. */
 const appOn = (storage: CStorageClient) =>
-  buildApp({ storage, now: () => Date.now(), origin: ORIGIN, serviceKey: 'a-key', logger: false });
+  buildApp({
+    storage,
+    now: () => Date.now(),
+    origin: ORIGIN,
+    serviceKey: 'a-key',
+    photoStore: FORGETTING_SINK.store,
+    logger: false,
+  });
 
 describe('the demo generator', () => {
   it('The demo client is made by the operator’s create, its root signs in through the BFF, and the invited operator joins by the link', async () => {
@@ -371,7 +379,11 @@ describe('the demo generator', () => {
 
     it('The week of orders and requests the BFF lists is the data set’s, with its numbers, days, states, drivers and times', async () => {
       const { storage } = memoryStorage();
-      const { code, rootPassword } = await seedClient(storage, 'walk-1');
+      const kept = new Map<string, Buffer>();
+      const { code, rootPassword } = await seedClient(storage, 'walk-1', undefined, undefined, {
+        store: FORGETTING_SINK.store,
+        keep: (address, bytes) => void kept.set(new URL(address).pathname, bytes),
+      });
       const { call, signIn } = bff(storage, code);
       const root = (await signIn(ROOT_NAME, rootPassword))!;
 
@@ -420,13 +432,15 @@ describe('the demo generator', () => {
       expect(requests.map(requestShape).sort(byNumber)).toEqual(
         DEMO_DELIVERIES.map(requestShape).sort(byNumber),
       );
-      // each delivered request holds its drawn photo, read back through the route
+      // each delivered request holds its drawn photo: the route's address names an object the seed
+      // sent, with the drawn picture's bytes
       for (const request of requests.filter((one) => one.state === 'delivered')) {
         const mine = DEMO_DELIVERIES.find((one) => one.number === request.number)!;
-        const photo = (
+        const { url } = (
           await call('GET', `/api/deliveries/${request.day}/${request.id}/photo`, root)
-        ).json<{ photo: string }>().photo;
-        expect(photo, request.number).toBe(DEMO_DELIVERY_PHOTOS[mine.id]);
+        ).json<{ url: string }>();
+        const drawn = Buffer.from(DEMO_DELIVERY_PHOTOS[mine.id].split(',')[1], 'base64');
+        expect(kept.get(new URL(url).pathname)?.equals(drawn), request.number).toBe(true);
       }
     });
 

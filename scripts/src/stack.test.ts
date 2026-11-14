@@ -432,7 +432,7 @@ describe('what the BFF is given', () => {
   });
 
   it('The BFF never holds the super-admin key: its environment is exactly the variables it reads', () => {
-    const environment = bffEnvironment({
+    const settings = {
       port: 4000,
       cStorageUrl: 'http://127.0.0.1:4001',
       internalAccessKey: 'internal',
@@ -440,11 +440,19 @@ describe('what the BFF is given', () => {
       audit: { url: 'http://127.0.0.1:4003', key: 'audit-key' },
       appOrigin: 'http://localhost:4002',
       frontDoorKey: 'door-key',
+    };
+    const environment = bffEnvironment({
+      ...settings,
+      photoStore: { url: 'http://127.0.0.1:4004/photos', keyId: 'id', keySecret: 'secret' },
     });
 
-    // The photo store's three settings are handed by step 4 of the delivery photos' plan, with its stand-in.
-    const handed = BFF_ENV_KEYS.filter((name) => !name.startsWith('PHOTO_STORE_'));
-    expect(Object.keys(environment).sort()).toEqual([...handed].sort());
+    // The photo store's three settings come with the stand-in's address and the key made for the stack;
+    // given no store, the BFF is handed none of the three and photos are off.
+    expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
+    expect(environment.PHOTO_STORE_URL).toBe('http://127.0.0.1:4004/photos');
+    expect(Object.keys(bffEnvironment(settings)).sort()).toEqual(
+      BFF_ENV_KEYS.filter((name) => !name.startsWith('PHOTO_STORE_')).sort(),
+    );
     expect(environment.HOST).toBe('127.0.0.1');
     expect(environment.APP_ORIGIN).toBe('http://localhost:4002');
     expect(environment.AUDIT_URL).toBe('http://127.0.0.1:4003');
@@ -559,6 +567,66 @@ describe('pnpm stack -- <command>', () => {
     expect(status).toBe(7);
     expect(printed.join('\n')).toMatch(/the stack is up at http:\/\/localhost:\d+/);
     expect(printed.join('\n')).not.toContain('password');
+  });
+
+  it('Case 14, whole: a driver asks where to send a delivery’s photo, sends it, the app’s address is allowed to, delivers, and reads the picture back by its address', async () => {
+    // The phone's order on the stack: the stand-in for the bucket answers the back end's own addresses.
+    const file = join(dir, 'deliver.mts');
+    const script = `
+      import { DEMO_DELIVERIES, DEMO_EMPLOYEES, DEMO_TODAY, DEMO_WALK_PROOF } from ${JSON.stringify(import.meta.resolve('@credo/shared/demo'))};
+      const env = process.env;
+      const driver = DEMO_EMPLOYEES.find((one) => one.code === 'EMP-0005');
+      const waiting = DEMO_DELIVERIES.find(
+        (one) => one.day === DEMO_TODAY && one.driver.id === driver.id && one.state === 'waiting',
+      );
+      const seeded = await (await fetch(env.CREDO_SEED_URL, { method: 'POST' })).json();
+      const call = async (path, { auth, body, method } = {}) => {
+        const response = await fetch(env.CREDO_URL + path, {
+          method: method ?? (body ? 'POST' : 'GET'),
+          body: body && JSON.stringify(body),
+          headers: {
+            ...(body ? { 'content-type': 'application/json' } : {}),
+            'x-device-id': 'device-aaaa-0001',
+            'x-client-code': seeded.code,
+            ...(auth ? { 'x-auth-id': auth } : {}),
+          },
+        });
+        return { status: response.status, json: await response.json().catch(() => null) };
+      };
+      const signed = await call('/api/auth/sign-in', {
+        body: { name: 'EMP-0005', password: seeded.people['EMP-0005'] },
+      });
+      const auth = signed.json.authId;
+      const mine = await call(\`/api/my-deliveries?day=\${DEMO_TODAY}\`, { auth });
+      const request = mine.json.deliveries.find((one) => one.number === waiting.number);
+      const base = \`/api/deliveries/\${DEMO_TODAY}/\${request.id}\`;
+      const read = await call(base, { auth });
+      const bytes = Buffer.from(DEMO_WALK_PROOF.split(',')[1], 'base64');
+      const asked = await call(\`\${base}/photo-address\`, { auth, body: { type: 'image/jpeg', bytes: bytes.length } });
+      const sent = await fetch(asked.json.url, {
+        method: 'PUT',
+        headers: { 'content-type': 'image/jpeg', origin: env.CREDO_URL },
+        body: bytes,
+      });
+      const preflight = await fetch(asked.json.url, {
+        method: 'OPTIONS',
+        headers: { origin: env.CREDO_URL, 'access-control-request-method': 'PUT' },
+      });
+      const delivered = await call(\`\${base}/deliver\`, { auth, body: { version: read.json.version } });
+      const where = await call(\`\${base}/photo\`, { auth });
+      const back = await fetch(where.json.url, { headers: { origin: env.CREDO_URL } });
+      const same = Buffer.from(await back.arrayBuffer()).equals(bytes);
+      const steps = [asked.status, sent.status, preflight.status, delivered.status, where.status, back.status, same];
+      process.exit(steps.join() === '200,200,200,200,200,200,true' ? 0 : 1);`;
+    await writeFile(file, script);
+
+    const status = await runStack(
+      ['--', process.execPath, '--import', import.meta.resolve('tsx'), file],
+      build,
+      out,
+    );
+
+    expect(status).toBe(0);
   });
 
   it('gives the command the address, the demo client’s code and the two sign-ins, each under the name CLAUDE.md documents', async () => {
