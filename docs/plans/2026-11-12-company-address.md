@@ -179,15 +179,23 @@ address in the same run.
   adds no customer (the log's one entry stays one). `CHECK_OWN_BASE` stands in for the company's address in the
   stand-in cases, whose edge has no name. The stand-in edge's sign-out is now undone by a new sign-in. Case 13 seen red
   by one mutation, reverted, file compared equal: the domain's condition made `false` (the second read vanished).
-- [ ] **5. The review.** Another model reads the code, the tests and this table (QA's rule 5): one
+- [x] **5. The review.** Another model reads the code, the tests and this table (QA's rule 5): one
   review, one fix pass, each finding tagged. *Done when:* every finding is tagged and each touched
   package's gate ends `== exit 0` after the fix pass. **About 20 min.**
-- [ ] **6. The prose it makes false, and the recap.** `docs/architecture-detail.md`'s "The code comes
+  *Done 2026-11-14:* Opus's review at `e8a6d5b7` said fix first for one Medium (the check's two passes printed the same
+  words), fixed at `58a24141`; its reread there says may merge. Ten Lows are items 472 to 476 in `docs/open-items.md`,
+  each `[DEFERRED]` (472 Low 1; 473 Low 2; 474 Lows 3, 4, 7; 475 Lows 5, 6, 8, 10; 476 Low 9). The fix touched `ops/` only: the
+  ops gate after it ended `ops/test.sh: all checks passed`, ShellCheck and cfn-lint printing nothing.
+- [x] **6. The prose it makes false, and the recap.** `docs/architecture-detail.md`'s "The code comes
   from the screens, never from the address" and its intended "The address", `docs/architecture.md`'s
   "The address" line, `docs/memo/ui.md`'s price of a device's link (a company's address keeps its
   own device storage), open item 4's address sentence, `ops/README.md`'s stack run with the two
   settings and the certificate's commands; the recap and its `docs/products.md` row. *Done when:* the
   citation test passes alone and `git grep -nE '/Users/|~/'` finds nothing new. **About 10 min.**
+  *Done 2026-11-14:* the prose in `docs/architecture-detail.md` (two bullets), `docs/architecture.md`, `docs/memo/ui.md`,
+  open item 4, `ops/README.md` (a new section, "A company's own address") now says what the piece built; the four line
+  citations (`docs/conventions/code.md`, three; `docs/README.md`, one) are file and symbol, and item 475's part is closed;
+  the recap and the Clients row of `docs/products.md` are written.
 - [ ] **7. Ridge, stage 4.** 👤 Your acts, in [the order below](#your-acts-in-order); 🤖 one one-off
   for the operator's link and the reads, and each log read whole. *Done when:* `ops/check.sh ridge`
   ends `== green` with the lines under "the check's company, through its own address:" ok, and your look is answered. **About 8 min**

@@ -99,7 +99,9 @@ learns its session has lapsed only from the 401 on its next call.
   swallowed.
 - *Price of the choice:* a device that once followed a client's link boots that client forever from
   the bare address, and following a second client's link replaces the first — whereupon the first
-  company's handle is refused at the second and dropped.
+  company's handle is refused at the second and dropped. *Except at a company's own address:* each
+  company's address is its own origin, so its device storage is its own, and the address, not the
+  stored code, names the company.
 - *Hazard no gate catches:* every read and write of browser storage is unguarded. A browser with
   site data blocked, or a private window that throws on access, is untested territory.
 

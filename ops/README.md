@@ -315,9 +315,32 @@ GitHub's job and without a terminal.
    - **the run was killed with `kill -9`:** the trap that deletes the scratch folder did not run, and
      the link stays in `$TMPDIR` (`credo-ops.*/shown`). Delete that folder, then run again with
      `--replace`.
-2. The link opens at the app's address, which a passkey is bound to for good: CloudFront's own name.
+2. The link opens at the app's address, which a passkey is bound to for good: CloudFront's own name, or
+   `operator.<domain>` once the stack names a domain ([a company's own address](#a-companys-own-address)).
    The address is in the local log of `ops/stack.sh env ridge` (never in a committed file or a
    public log).
+
+## A company's own address
+
+With a domain set, each company opens at `https://<its code>.<domain>/login` and the operator at
+`https://operator.<domain>/operator`; with none set, the stack is as it was (CloudFront's own name).
+The domain and the certificate are two settings of the stack, taken together or not at all, and never
+written in a committed file.
+
+1. The certificate, once, in `us-east-1` (CloudFront takes none from another Region):
+   `aws acm request-certificate --region us-east-1 --domain-name '*.<domain>' --validation-method DNS`.
+   Put its validation record in Cloudflare as DNS only (no proxy), then
+   `aws acm wait certificate-validated --region us-east-1 --certificate-arn <the certificate>`.
+2. `CREDO_DOMAIN=<domain> CREDO_CERTIFICATE_ARN=<the certificate> bash ops/stack.sh env <env> --plan`:
+   read one `Modify` of `Distribution` and nothing removed or replaced; then the same without `--plan`.
+   It prints CloudFront's own name. Later runs keep both settings; one alone, or a certificate outside
+   `us-east-1`, is refused before any change set.
+3. In Cloudflare, one wildcard record, `*.<the domain's first part>`, to CloudFront's own name, DNS only.
+4. Deploy the app (`ops/app.sh <env>`, or any push's deploy) after the stack run: the function's
+   `APP_ORIGIN` is set only there, and a passkey made at the operator's name is refused until it is.
+5. `ops/operator.sh <env> --replace` if an operator already holds passkeys at the old address.
+   [The check](#the-check) then reads a fresh company through its own address and is red on that pass
+   until the record in step 3 exists.
 
 ## Ridge down and back
 

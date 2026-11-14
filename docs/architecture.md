@@ -203,7 +203,8 @@ not built yet.
   reads nothing about tenants at all.
 - **The address.** Each tenant at `<tenant-code>.<credo-domain>`, through the distribution that
   already serves the screens, under one wildcard certificate, and the operator at one name of its
-  own: intended, not built. The domain is a setting, never written into the code.
+  own (`operator.<credo-domain>`): built in the code and the template, to be run on ridge. The domain
+  is a setting of the stack, never written into the code.
 - **What it costs.** The one back end holds every box's key, and on a shared box the back end's own
   check is the only wall between that box's tenants: one box down stops all of them, and a restore
   rolls all of them back. A tenant whose contract needs its keys or its code kept apart takes a stack

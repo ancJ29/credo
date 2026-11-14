@@ -43,7 +43,8 @@ gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. Production is one more stack from `env.yml`,
 and still waits for a client; in the pooled shape, intended and not built, it holds every tenant
-group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`,
+group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`
+(the stack's `Domain` and `CertificateArn` settings; ridge's is the next act of the human's),
 with one wildcard name in Cloudflare
 ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)). A
 tenant takes a stack of its own only where its contract needs its keys apart.
@@ -1846,7 +1847,7 @@ The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functio
 
 `https://operator.${Domain}` in `ops/env.yml`, `'operator'` in `KEPT_CODES` and `OPERATOR_PART` in `shared/src/wire.ts` agree today and no check ties them (one exported `OPERATOR_NAME`, and the domain guard comparing it with `AppAddress`); `ridge_cli tenant` answers "names a client already" for a kept-back code, where `tenant-id` then finds none (the message says it is taken or kept back); `ui/src/fake.ts`'s create refuses only a code it holds, so a fake walk typing `operator` or `www` shows the made screen where ridge says taken (`KEPT_CODES.includes(code)` joins the refusal).
 
-## 475. The company address's reader-facing text: an orphaned comment, a case-5 label, four living citations and a stale comment — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+## 475. The company address's reader-facing text: an orphaned comment, a case-5 label, four living citations and a stale comment — the machine; *partly closed* by the company address's step 6 (2026-11-14): the four living citations are `[FIXED]` (file and symbol now), the orphaned comment, the case-5 label and the stale comment stay `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
 
 `normaliseClientCode`'s doc comment in `shared/src/records.ts` now sits above `KEPT_CODES`'s own and wants moving back; a case-5 test in `ops/test.sh` is labelled "masks neither" but checks only the domain, since `DistributionName` stays masked; `docs/conventions/code.md` (three lines) and `docs/README.md` cite `App.tsx` and `ClientApp.tsx` lines the piece moved, to become file and symbol at step 6; the comment above `bff_settings_set` in `ops/lib.sh` still says the passkeys' address is "CloudFront's name, kept for good", where under a domain it is `operator.<Domain>`.
 
