@@ -1,6 +1,20 @@
+import { boxNameSchema, HOME_BOX } from '@credo/shared';
 import { z } from 'zod';
 
 /** What the BFF needs to reach c-storage, whether a listener or a Lambda runs it. */
+/** The boxes beyond the home box, as JSON: each box by name with its address, internal key and
+ * service key. Absent, there is the home box alone. A malformed value is refused naming the
+ * variable and never its text, which holds keys. */
+const boxesSchema = z.record(
+  boxNameSchema.refine((name) => name !== HOME_BOX),
+  z.strictObject({
+    url: z.url(),
+    internalKey: z.string().min(1),
+    serviceKey: z.string().min(1),
+  }),
+);
+export type StorageBoxes = z.infer<typeof boxesSchema>;
+
 const storageShape = {
   C_STORAGE_URL: z.url(),
   /** c-storage's `x-internal-access-key`, the stack's. */
@@ -8,6 +22,22 @@ const storageShape = {
   /** The one service this BFF is, which is the tenant. */
   SERVICE_CODE: z.string().min(1),
   SERVICE_ACCESS_KEY: z.string().min(1),
+  STORAGE_BOXES: z
+    .string()
+    .optional()
+    .transform((raw, context) => {
+      if (raw === undefined) return undefined;
+      let json: unknown = null;
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        // `json` stays null, which the boxes' schema refuses.
+      }
+      const read = boxesSchema.safeParse(json);
+      if (read.success) return read.data;
+      context.addIssue({ code: 'custom', message: 'not the boxes' });
+      return z.NEVER;
+    }),
 };
 
 /** The address the operator opens, which every passkey ceremony is checked against: an origin with
@@ -17,6 +47,11 @@ const originShape = {
     const url = URL.parse(value);
     return url?.origin === value && (url.protocol === 'https:' || url.hostname === 'localhost');
   }),
+};
+/** The keys the front door sends as `x-front-door-key`: one, or two while a key is replaced. A
+ * call without one of them is refused before anything is read. */
+const frontDoorShape = {
+  FRONT_DOOR_KEYS: z.string().regex(/^[^,\s]+(,[^,\s]+)?$/),
 };
 /** The audit service's keyed address and its key. Both or neither: without them the BFF saves a
  * change and logs that the log is not configured, so a release that lacks them keeps working. */
@@ -35,6 +70,7 @@ const envSchema = z
     HOST: z.string().min(1).default('127.0.0.1'),
     ...storageShape,
     ...originShape,
+    ...frontDoorShape,
     ...auditShape,
   })
   .refine(auditTogether, auditPair);
@@ -45,6 +81,7 @@ export const BFF_ENV_KEYS = Object.keys(envSchema.shape);
 export type StorageEnv = z.infer<z.ZodObject<typeof storageShape>>;
 export type BffEnv = StorageEnv &
   z.infer<z.ZodObject<typeof originShape>> &
+  z.infer<z.ZodObject<typeof frontDoorShape>> &
   z.infer<z.ZodObject<typeof auditShape>>;
 
 function failure(error: z.ZodError): never {
@@ -61,11 +98,11 @@ export function readEnv(env: Record<string, string | undefined>) {
   return parsed.data;
 }
 
-/** The Lambda's environment: the same four c-storage variables, the audit pair if set, the app's address and no
+/** The Lambda's environment: the same four c-storage variables, the audit pair if set, the app's address, the front door's keys and no
  * listener, since API Gateway is the listener. Errors as `readEnv` does. */
 export function readLambdaEnv(env: Record<string, string | undefined>): BffEnv {
   const parsed = z
-    .object({ ...storageShape, ...originShape, ...auditShape })
+    .object({ ...storageShape, ...originShape, ...frontDoorShape, ...auditShape })
     .refine(auditTogether, auditPair)
     .safeParse(env);
   if (!parsed.success) return failure(parsed.error);

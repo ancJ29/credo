@@ -5,11 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SoftwareAuthenticator } from '@credo/bff/tests/authenticator';
 import {
+  AUTH_HEADER,
+  boxesReplySchema,
   CLIENT_HEADER,
   joinOptionsReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   optionsReplySchema,
+  recordKeys,
+  storedClientSchema,
   tokenOfFragment,
 } from '@credo/shared';
 import { DEMO_INVITED_NAME, DEMO_PASSKEYS } from '@credo/shared/demo';
@@ -91,6 +95,24 @@ describe('pnpm stack', () => {
       expect(await signedIn.json()).toMatchObject({ user: { name: 'root', root: true } });
       expect((await signIn(stack.url, stack.rootName, 'not the password')).status).toBe(401);
     });
+  });
+
+  it('A call through the front is answered and the same call to the BFF’s own port is 403', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-door-'));
+    const stack = await startStack(artifacts, { dataDir });
+    try {
+      const headers = { [CLIENT_HEADER]: stack.clientCode };
+      expect((await fetch(`${stack.url}/api/config`, { headers })).status).toBe(200);
+      const around = `http://127.0.0.1:${stack.facts.ports.bff}/api/config`;
+      expect((await fetch(around, { headers })).status).toBe(403);
+      // A caller's own key is no key: the front replaces it with the stack's.
+      const guessed = { ...headers, 'x-front-door-key': 'guessed' };
+      expect((await fetch(`${stack.url}/api/config`, { headers: guessed })).status).toBe(200);
+      expect((await fetch(around, { headers: guessed })).status).toBe(403);
+    } finally {
+      await stack.stop();
+      await rm(dataDir, { recursive: true, force: true });
+    }
   });
 
   it('The data set’s office person signs in on the demo client with the password the stack made, and is refused what their unit and position do not allow', async () => {
@@ -208,6 +230,34 @@ describe('pnpm stack', () => {
         response: stranger.authenticate(again.options),
       });
       expect(refused.status).toBe(401);
+    });
+  });
+
+  it('A company the operator adds on b2 through the stack’s front is read back from b2’s service, with its line alone on the home box', async () => {
+    await withStack(artifacts, async (stack) => {
+      const made = await post(
+        stack.url,
+        '/api/operator/clients',
+        { code: 'on-box-two', name: 'On Box Two', box: 'b2' },
+        stack.operatorHandle,
+      );
+      expect(made.status).toBe(201);
+
+      const line = storedClientSchema.parse(
+        (await stack.storage.getRecord(recordKeys.client('on-box-two')))?.data,
+      );
+      expect(line.box).toBe('b2');
+      const { config } = recordKeys.tenant(line.id);
+      expect((await stack.boxes.b2.getRecord(config))?.data).toMatchObject({ name: 'On Box Two' });
+      expect(await stack.storage.getRecord(config)).toBeNull();
+      const listed = boxesReplySchema.parse(
+        await (
+          await fetch(`${stack.url}/api/operator/boxes`, {
+            headers: { [AUTH_HEADER]: stack.operatorHandle },
+          })
+        ).json(),
+      );
+      expect(listed.boxes.map(({ name }) => name)).toEqual(['home', 'b2']);
     });
   });
 
@@ -389,12 +439,14 @@ describe('what the BFF is given', () => {
       service: { code: 'demo', accessKey: 'service' },
       audit: { url: 'http://127.0.0.1:4003', key: 'audit-key' },
       appOrigin: 'http://localhost:4002',
+      frontDoorKey: 'door-key',
     });
 
     expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
     expect(environment.HOST).toBe('127.0.0.1');
     expect(environment.APP_ORIGIN).toBe('http://localhost:4002');
     expect(environment.AUDIT_URL).toBe('http://127.0.0.1:4003');
+    expect(environment.FRONT_DOOR_KEYS).toBe('door-key');
   });
 });
 
@@ -684,6 +736,24 @@ describe('a stack that is started and stopped on its own', () => {
       await expect(startStack(artifacts, { dataDir, ports: { cStorage, bff } })).rejects.toThrow(
         'the BFF exited',
       );
+      await expect(fetch(`http://127.0.0.1:${cStorage}/health`)).rejects.toThrow();
+    } finally {
+      await new Promise((resolve) => taken.close(resolve));
+      await rm(dataDir, { recursive: true, force: true });
+    }
+  });
+
+  it('fails at once, naming the port, when the front’s port is taken, and takes down what it had started', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-start-'));
+    const taken = createServer();
+    const { port: front } = await listening(taken);
+    const cStorage = await freePort();
+    const began = Date.now();
+    try {
+      await expect(startStack(artifacts, { dataDir, ports: { cStorage, front } })).rejects.toThrow(
+        'EADDRINUSE',
+      );
+      expect(Date.now() - began).toBeLessThan(30_000);
       await expect(fetch(`http://127.0.0.1:${cStorage}/health`)).rejects.toThrow();
     } finally {
       await new Promise((resolve) => taken.close(resolve));

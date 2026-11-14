@@ -94,11 +94,11 @@ describe('the walks', () => {
     ]);
   });
 
-  it('puts the operator’s walk after piece 1’s: nine screens, numbered 1 to 9, each a scene and none from the mock, the failures on the wrong path', () => {
+  it('puts the operator’s walk after piece 1’s: ten screens, numbered 1 to 10, each a scene and none from the mock, the failures on the wrong path', () => {
     const walk = WALKS[1];
 
     expect(walk.id).toBe('operator-setup');
-    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(walk.screens.filter((s) => s.path === 'wrong').map((s) => s.id)).toEqual([
       'op-4-code-taken',
       'op-7-list-failed',

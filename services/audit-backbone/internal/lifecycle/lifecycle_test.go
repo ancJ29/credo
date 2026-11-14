@@ -28,7 +28,7 @@ const writeKey = "lifecycle-write-key"
 // taken binds a loopback port and keeps it, so a Run asked for it must fail.
 func taken(t *testing.T) string {
 	t.Helper()
-	ln, err := server.Listen("0")
+	ln, err := server.Listen(config.DefaultListenAddr, "0")
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
@@ -38,7 +38,7 @@ func taken(t *testing.T) string {
 
 func cfg(t *testing.T, port, openPort string) *config.Config {
 	return &config.Config{
-		Port: port, OpenPort: openPort, WriteKey: writeKey,
+		Port: port, OpenPort: openPort, ListenAddr: config.DefaultListenAddr, WriteKey: writeKey,
 		DBPath: filepath.Join(t.TempDir(), "data", "activities.db"),
 	}
 }
@@ -85,7 +85,7 @@ func started(t *testing.T, grace time.Duration, before func(*sql.DB)) (db *sql.D
 		before(db)
 	}
 	for _, ln := range []*net.Listener{&keyed, &open} {
-		if *ln, err = server.Listen("0"); err != nil {
+		if *ln, err = server.Listen(config.DefaultListenAddr, "0"); err != nil {
 			t.Fatalf("Listen: %v", err)
 		}
 	}
@@ -277,5 +277,39 @@ func TestASweepCutShortByTheStopIsNotAFailure(t *testing.T) {
 	}
 	if log.failed.Load() {
 		t.Fatal("a sweep cut short by the stop was logged as a failure")
+	}
+}
+
+// The keyed listener takes the configured address and the open one stays on loopback whatever that
+// address is: ::1 tells them apart from the default 127.0.0.1.
+func TestTheKeyedListenerTakesTheConfiguredAddressAndTheOpenOneStaysOnLoopback(t *testing.T) {
+	probe, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("no IPv6 loopback on this host: %v", err)
+	}
+	probe.Close()
+	c := cfg(t, "0", "0")
+	c.ListenAddr = "::1"
+	keyed, open, err := bind(c)
+	if err != nil {
+		t.Fatalf("bind: %v", err)
+	}
+	defer keyed.Close()
+	defer open.Close()
+	if got := keyed.Addr().(*net.TCPAddr).IP.String(); got != "::1" {
+		t.Errorf("keyed bound %s, want ::1", got)
+	}
+	if got := open.Addr().(*net.TCPAddr).IP.String(); got != config.DefaultListenAddr {
+		t.Errorf("open bound %s, want %s", got, config.DefaultListenAddr)
+	}
+}
+
+// An address the host does not own stops the start naming the keyed listener, with nothing left bound.
+func TestRunRefusesAKeyedAddressTheHostDoesNotOwn(t *testing.T) {
+	c := cfg(t, "0", "0")
+	c.ListenAddr = "192.0.2.1"
+	err := Run(context.Background(), c, "v")
+	if err == nil || !strings.Contains(err.Error(), server.Keyed) {
+		t.Fatalf("Run = %v, want a refusal naming the %s listener", err, server.Keyed)
 	}
 }

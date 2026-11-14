@@ -39,7 +39,7 @@ import {
 useCStorage();
 
 describe('the copy’s orders, deliveries and closed days, written with the first fill', () => {
-  const FIRST = '2026-10-22';
+  const FIRST = '2026-10-08';
   const PAST = Array.from({ length: HISTORY_DAYS }, (_, at) => addDays(FIRST, at));
   const read = async (root: Awaited<ReturnType<typeof asRoot>>, url: string) =>
     (await root('GET', url)).json<Record<string, unknown[]>>();
@@ -88,7 +88,7 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     expect(lines).toContain(`${A1.code}: 2026-10-25 applied, 0 events`);
     expect(
       lines.some((line) =>
-        /: 2026-10-22 orders: \d+ saved, \d+ sent, \d+ cancelled, \d+ left drafts$/.test(line),
+        /: 2026-10-08 orders: \d+ saved, \d+ sent, \d+ cancelled, \d+ left drafts$/.test(line),
       ),
     ).toBe(true);
   });
@@ -444,7 +444,7 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     expect(
       report.skipped.some((line) => /^DH-\d+: no driver who delivers, left a draft$/.test(line)),
     ).toBe(true);
-    const held = await ordersOf(noDriversRoot, '2026-10-22');
+    const held = await ordersOf(noDriversRoot, FIRST);
     expect(held.length).toBeGreaterThan(0);
     expect(held.every((one) => one.state === 'draft')).toBe(true);
 

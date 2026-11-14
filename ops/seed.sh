@@ -3,7 +3,7 @@
 # Brings every demo copy that exists on <env> up to yesterday: the first fill of a fresh copy, then
 # each missed day, through the BFF's own code run here over a tunnel (scripts/src/demo/apply.ts,
 # by ridge_cli seed), so every rule of the product holds and each event is stamped on its own day.
-# It makes no client and no password: the human makes each copy at /operator (docs/plans/2026-10-29-demo-seed.md).
+# It makes no client and no password: ops/demo-remake.sh makes the six copies (docs/plans/2026-10-29-demo-seed.md).
 #   In order: main and this commit; the stack; the tunnel; the box's disk, memory and swap, which
 #   must be above the release's floor; /health and the BFF's function, which must both name this very
 #   commit, or an earlier one of main that differs from it in no path ci.yml deploys on (a push

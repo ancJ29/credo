@@ -42,16 +42,27 @@ func Run(ctx context.Context, cfg *config.Config, buildVersion string) error {
 	}
 	defer db.Close()
 
-	keyed, err := server.Listen(cfg.Port)
+	keyed, open, err := bind(cfg)
 	if err != nil {
-		return fmt.Errorf("bind the %s listener: %w", server.Keyed, err)
-	}
-	open, err := server.Listen(cfg.OpenPort)
-	if err != nil {
-		keyed.Close()
-		return fmt.Errorf("bind the %s listener: %w", server.Open, err)
+		return err
 	}
 	return serve(ctx, db, cfg.WriteKey, buildVersion, keyed, open, shutdownGrace)
+}
+
+// bind opens the two listeners: the keyed one on the configured address (the box's private
+// address on a box, loopback elsewhere), the open one on loopback whatever that address is, so
+// the reading door is never reachable from the network.
+func bind(cfg *config.Config) (keyed, open net.Listener, err error) {
+	keyed, err = server.Listen(cfg.ListenAddr, cfg.Port)
+	if err != nil {
+		return nil, nil, fmt.Errorf("bind the %s listener: %w", server.Keyed, err)
+	}
+	open, err = server.Listen(config.DefaultListenAddr, cfg.OpenPort)
+	if err != nil {
+		keyed.Close()
+		return nil, nil, fmt.Errorf("bind the %s listener: %w", server.Open, err)
+	}
+	return keyed, open, nil
 }
 
 // serve runs the process on two bound listeners until ctx ends or one of them

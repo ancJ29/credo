@@ -1,0 +1,40 @@
+info:
+  name: Rekey an unknown code
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/rekey"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Super-Admin-Key
+      value: "{{superAdminKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}-nobody",
+        "accessKey": "{{accessKey}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("404, no such service", function() {
+          expect(res.getStatus()).to.equal(404);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Rekey a code no one registered. **Expected: 404**; nothing is created.

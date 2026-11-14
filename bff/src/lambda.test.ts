@@ -45,6 +45,7 @@ function httpApiEvent(call: {
   };
 }
 
+const DOOR = 'door-key-one';
 const context = { callbackWaitsForEmptyEventLoop: false };
 
 async function setUp() {
@@ -56,18 +57,23 @@ async function setUp() {
     SERVICE_CODE: tenant.serviceCode,
     SERVICE_ACCESS_KEY: tenant.accessKey,
     APP_ORIGIN: ORIGIN,
+    FRONT_DOOR_KEYS: DOOR,
   };
   const port = await freePort();
+  const door = { 'x-front-door-key': DOOR };
   const listener = await startBff({ ...env, PORT: String(port) }, { logger: false });
   const handler = createLambdaHandler(env, { logger: false });
   /** The same call to the listener and to the handler, as the one answer each gives. */
   async function both(call: Parameters<typeof httpApiEvent>[0]) {
     const heard = await fetch(`http://127.0.0.1:${port}${call.path}`, {
       method: call.method,
-      headers: call.headers,
+      headers: { ...door, ...call.headers },
       body: call.body,
     });
-    const answered = await handler(httpApiEvent(call), context);
+    const answered = await handler(
+      httpApiEvent({ ...call, headers: { ...door, ...call.headers } }),
+      context,
+    );
     return {
       listener: { status: heard.status, body: await heard.text() },
       lambda: { status: answered.statusCode, body: answered.body },
@@ -75,7 +81,7 @@ async function setUp() {
       listenerHeaders: heard.headers,
     };
   }
-  return { both, close: () => listener.close() };
+  return { both, close: () => listener.close(), handler, env, port };
 }
 
 describe('the Lambda entry', () => {
@@ -146,8 +152,50 @@ describe('the Lambda entry', () => {
       createLambdaHandler({ C_STORAGE_URL: 'not a url', INTERNAL_ACCESS_KEY: secret }),
     ).toThrowError(
       expect.objectContaining({
-        message: 'invalid environment: C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN',
+        message:
+          'invalid environment: C_STORAGE_URL, SERVICE_CODE, SERVICE_ACCESS_KEY, APP_ORIGIN, FRONT_DOOR_KEYS',
       }) as Error,
     );
+  });
+
+  // Case 4: the Lambda refuses a call without the key, as the listener does.
+  it('refuses a call without the front door’s key, as the listener does', async () => {
+    const { both, close, handler } = await setUp();
+    try {
+      const bare = await both({
+        method: 'GET',
+        path: '/api/config',
+        headers: { 'x-client-code': CODE, 'x-front-door-key': 'a-wrong-key' },
+      });
+      expect(bare.listener.status).toBe(403);
+      expect(bare.lambda).toEqual(bare.listener);
+      const none = await handler(
+        httpApiEvent({ method: 'GET', path: '/api/config', headers: { 'x-client-code': CODE } }),
+        context,
+      );
+      expect(none.statusCode).toBe(403);
+    } finally {
+      await close();
+    }
+  });
+
+  // Case 5: a back end without FRONT_DOOR_KEYS does not start, and the error names the variable only.
+  it('does not start without FRONT_DOOR_KEYS and never echoes a value', async () => {
+    const { env, close } = await setUp();
+    try {
+      const without: Record<string, string> = { ...env };
+      delete without.FRONT_DOOR_KEYS;
+      expect(() => createLambdaHandler(without)).toThrowError(
+        'invalid environment: FRONT_DOOR_KEYS',
+      );
+      expect(() => createLambdaHandler({ ...env, FRONT_DOOR_KEYS: 'a,b,c' })).toThrowError(
+        'invalid environment: FRONT_DOOR_KEYS',
+      );
+      expect(() => createLambdaHandler({ ...env, FRONT_DOOR_KEYS: 'a,b,c' })).not.toThrowError(
+        /a,b,c/,
+      );
+    } finally {
+      await close();
+    }
   });
 });

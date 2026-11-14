@@ -36,6 +36,7 @@ function memoryStorage(): CStorageClient {
       return Promise.resolve('removed');
     },
     health: () => Promise.resolve({ buildVersion: 'dev' }),
+    status: () => Promise.resolve({ freeBytes: 1, lastWriteAt: null }),
   };
 }
 

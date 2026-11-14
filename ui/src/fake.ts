@@ -58,6 +58,7 @@ import {
   sameIds,
   type SaveOrderRequest,
   type SendOrderRequest,
+  HOME_BOX,
   sendableOn,
   setRootPasswordRequestSchema,
   staffConfig,
@@ -67,6 +68,7 @@ import {
   waitAfter,
 } from '@credo/shared';
 import {
+  DEMO_BOXES,
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
@@ -303,6 +305,9 @@ export function createFakeApi({
     }
     return await answer();
   }
+
+  /** The box each company made since the page loaded was put on; the data set's are on the home box. */
+  const boxOf = new Map<string, string>();
 
   /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
   const clients = new Map<string, ClientListItem>(
@@ -1465,11 +1470,26 @@ export function createFakeApi({
         return { made: parsed.data.password === null ? MADE_PASSWORD : null };
       }),
 
-    makeClient: (code, name) =>
+    operatorBoxes: () =>
+      call('operatorBoxes', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        const onBox = (name: string) =>
+          name === HOME_BOX
+            ? clients.size - boxOf.size
+            : [...boxOf.values()].filter((box) => box === name).length;
+        return DEMO_BOXES.map(({ name, freeBytes }) => ({
+          name,
+          companies: onBox(name),
+          freeBytes,
+        }));
+      }),
+
+    makeClient: (code, name, box) =>
       call(
         'makeClient',
         () => {
           if (clients.has(code)) return { kind: 'taken' as const };
+          if (box !== undefined && box !== HOME_BOX) boxOf.set(code, box);
           clients.set(code, { code, name, madeAt: Date.now(), link: clientLinkPath(code) });
           return {
             kind: 'made' as const,

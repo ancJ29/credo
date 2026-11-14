@@ -139,9 +139,10 @@ func cors(next http.Handler) http.Handler {
 	})
 }
 
-// Listen binds the loopback interface only: Caddy on the same box is the one
-// public door, and a firewall rule is not something this binary can check.
-// TestListenersBindLoopbackOnly.
-func Listen(port string) (net.Listener, error) {
-	return net.Listen("tcp", net.JoinHostPort("127.0.0.1", port))
+// Listen binds one address, which config has already made a single IP address and never an
+// unspecified one: loopback by default, or the box's private address for the keyed listener, so
+// no other interface answers whatever a firewall says. The open listener is always handed
+// loopback. TestListenBindsTheAddressItIsGiven.
+func Listen(addr, port string) (net.Listener, error) {
+	return net.Listen("tcp", net.JoinHostPort(addr, port))
 }

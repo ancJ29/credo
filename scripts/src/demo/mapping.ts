@@ -3,7 +3,7 @@ import type { ScenarioId } from './scenarios';
 /** A partner's label by the walks' rule: 1 to 20 lowercase letters, digits or hyphens. */
 export const PARTNER_LABEL = /^[a-z0-9-]{1,20}$/;
 
-/** One partner's own copy of a client: the code the human makes it under at `/operator`. */
+/** One partner's own copy of a client: the code `ops/demo-remake.sh` makes it under. */
 type Copy = { partner: string; code: string };
 
 export type DemoClient = {

@@ -2,7 +2,8 @@
 
 **Decided** 2026-08-31. **Amended** 2026-10-04 (trimmed; ported to opus with
 one key, `/health` on both listeners, loopback binding); 2026-10-16 (a gate on
-each mux, the read token on the open one).
+each mux, the read token on the open one); 2026-11-13 (the keyed listener binds
+the box's private address on ridge, the open one stays on loopback).
 
 A reader a browser calls and a keyed writer share one process, so "a browser's
 token cannot write" has to be a fact about the code. It is made structural,
@@ -46,7 +47,14 @@ body that leaked its environment. The answer is a test that pins the body to
 *Rejected:* verify reading the unit's journal. That is a second kind of
 verdict for one app, and verify would stop reading what callers see.
 
-**Both listeners bind 127.0.0.1.** Caddy on the same box is the one public
-door, with one hostname per listener. *Rejected:* binding every interface and
+**The open listener binds 127.0.0.1; the keyed one binds `LISTEN_ADDR`.** Caddy on the same box
+is the one public door, with one hostname per listener. *Rejected:* binding every interface and
 trusting the box's firewall, which this binary cannot check.
-`TestListenersBindLoopbackOnly`.
+*Amended* 2026-11-13: the app's back end, in Lambda, writes to the log across the network, so the
+keyed listener binds the one address `LISTEN_ADDR` names (a single IP, never an unspecified or a
+named one, loopback when unset; on ridge the box's private address, with the box's two group rules
+as the network's wall, as the store's). The open listener, which the browser's token reads
+through Caddy, stays on 127.0.0.1 whatever is set. `TestListenBindsTheAddressItIsGiven` holds
+the bind, and `internal/lifecycle`'s
+`TestTheKeyedListenerTakesTheConfiguredAddressAndTheOpenOneStaysOnLoopback` holds the split. The
+test that said both were loopback, `TestListenersBindLoopbackOnly`, is gone.

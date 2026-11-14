@@ -85,6 +85,10 @@ export const en = {
       '3 to 32 characters: lowercase letters, digits and hyphens, starting with a letter. It cannot be changed later.',
     companyName: 'Company name',
     make: 'Make the client',
+    box: 'Box',
+    boxHint: 'Where this company’s records are kept. It starts on the box chosen here.',
+    boxLine: '{{name}}: {{free}} GB free, {{companies}} companies',
+    boxDown: '{{name}}: not answering',
     failed: 'The client was not made. What you typed is still here: try again.',
     taken:
       'That code already belongs to another client, and nothing was changed. Choose a different code.',

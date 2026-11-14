@@ -447,6 +447,7 @@ describe('the fake Api', () => {
         'operatorPasskeyAdd',
         'operatorPasskeyRemove',
         'operatorServices',
+        'operatorBoxes',
         'operatorMe',
         'getStaffSetup',
         'saveStaffSetup',

@@ -366,9 +366,9 @@ async function status(io: LocalIo) {
     [
       PART_NAMES.bff,
       ports.bff,
-      answers(`http://127.0.0.1:${ports.bff}/api/config`, 200, {
-        'x-client-code': handle.demo.clientCode,
-      }),
+      // Up means it answers and refuses a stranger: no key is sent, and a 200 would be a back end
+      // that answers a call that did not come through the front door.
+      answers(`http://127.0.0.1:${ports.bff}/api/config`, 403),
       pids.bff,
     ],
     [PART_NAMES.front, ports.front, answers(`${handle.url}/`, 200), handle.keeper],

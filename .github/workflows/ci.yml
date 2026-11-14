@@ -9,6 +9,7 @@ on:
   push:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -17,6 +18,7 @@ on:
       - "visual/**"
       - "walk/**"
       - "package.json"
+      - ".node-version"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "tsconfig.base.json"
@@ -27,6 +29,7 @@ on:
   pull_request:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -35,6 +38,7 @@ on:
       - "visual/**"
       - "walk/**"
       - "package.json"
+      - ".node-version"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "tsconfig.base.json"
@@ -48,8 +52,8 @@ permissions:
   contents: read
 
 # Vitest starts a worker per core for each test file, ~2 s of startup each under load. With the
-# jobs running at once (act runs all four on one Mac), a test that takes 2 s alone passes its 5 s
-# limit. Two workers a package: GitHub's runner has four cores and runs one package at a time.
+# jobs running at once (act runs them all on one Mac), a test that takes 2 s alone passes its 5 s
+# limit. Two workers a package: GitHub's runner has four cores and each package job has a runner of its own.
 env:
   VITEST_MAX_WORKERS: 2
 
@@ -61,12 +65,57 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The version the toolchain cache below is keyed on: Go's own, read from services/c-storage/go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+          key: tools-${{ runner.os }}-${{ runner.arch }}-go-${{ steps.pins.outputs.go }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: services/c-storage/go.mod
           cache-dependency-path: services/c-storage/go.sum
       - name: make check
         working-directory: services/c-storage
+        run: make check
+
+  # The activity log's own gate, a copy of c-storage's above: format, vet, race tests at 100 % and the box's
+  # build. The deploy waits on it, and ships the binary this commit builds.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: Go's own, read from services/audit-backbone/go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/audit-backbone/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/audit-backbone/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+          key: tools-${{ runner.os }}-${{ runner.arch }}-go-${{ steps.pins.outputs.go }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/audit-backbone/go.mod
+          cache-dependency-path: services/audit-backbone/go.sum
+      - name: make check
+        working-directory: services/audit-backbone
         run: make check
 
   # The assembled server on a real socket: scripts/e2e.sh starts the binary on a
@@ -80,13 +129,30 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-bruno-4.2.0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: services/c-storage/go.mod
           cache-dependency-path: services/c-storage/go.sum
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       # --ignore-scripts: the CLI's hundreds of unpinned npm dependencies run no install script, in
       # this job or in `deploy` (which holds the role), and e2e proves bru works without them.
       - name: Install Bruno CLI
@@ -109,21 +175,42 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # The app's own gate: pnpm check (typecheck, lint, format, every package's tests at 100 %, knip).
+  # The app's own gate, one job a package, so the longest job is the slowest package (the scripts tests, about
+  # 15 minutes on GitHub's runner) and not their sum (about 24 minutes, measured on 11-13): each job runs
+  # `pnpm --filter @credo/<package> check`, that package's typecheck and tests at 100 % and the repository-wide
+  # eslint, prettier and knip, all through ops/gate.sh; the scripts package's is split in three kinds of job, below. Each is capped at 40 minutes, about 1.5 times the longest whole
+  # run measured (25.5 minutes). The job `app` below waits on all six and is the name the deploy waits on.
+  # Go is set up in the BFF's job and the scripts' alone: the one `go build` the tests make is bff/tests/build.ts, reached
+  # by the BFF's route tests and the scripts' stack tests. `--fail-if-no-match` makes a package name that matches nothing a red, not a green no-op.
   # The BFF's tests build the real c-storage, hence Go. The Lambda bundle's test runs the bundle in
   # the Node named by BUNDLE_NODE, Node 24, the runtime's: a Node 26 API that Lambda lacks fails
-  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
-  app:
+  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches); only the BFF's job sets it.
+  app-bff:
     runs-on: ubuntu-24.04
-    # 25, not 15: the job's own green run measured over 12 minutes on 11-05, and tests have been
-    # added since. The cap was skipping deploys, not catching a hang.
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-pnpm-12.10.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: services/c-storage/go.mod
@@ -137,13 +224,384 @@ jobs:
           echo "BUNDLE_NODE=$(command -v node)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       - name: pnpm 12.10.1
         run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: pnpm check
-        run: pnpm check
+      - name: Gate bff
+        run: pnpm --filter @credo/bff --fail-if-no-match check
+
+  # The scripts package's gate, split so the longest job is a third of its tests and not all of them (the tests
+  # were 94 % of the 10 to 15 minutes, bound by two workers): `scripts-shard` runs a third of the test files on a runner
+  # of its own and keeps a blob of its results and coverage; `scripts-stages` runs the typecheck, eslint, prettier and
+  # knip once, the four stages of ops/gate.sh beside the test; `app-scripts` (the name `app` waits on) merges the three
+  # blobs and holds the package's 100 % thresholds, which no third of the files can meet alone (SCRIPTS_SHARD switches
+  # them off in a shard, scripts/vitest.config.ts). The blobs are the reporter's own, hidden folder included.
+  # Go is set up in the shards alone: the stack tests build c-storage.
+  scripts-shard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-pnpm-12.10.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Test shard
+        working-directory: scripts
+        env:
+          SCRIPTS_SHARD: ${{ matrix.shard }}
+        run: pnpm exec vitest run --coverage --reporter=default --reporter=blob --shard=${{ matrix.shard }}/3
+      - name: Keep the blob
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: scripts-blob-${{ matrix.shard }}
+          path: scripts/.vitest/blob/blob-${{ matrix.shard }}-3.json
+          include-hidden-files: true
+          retention-days: 1
+          if-no-files-found: error
+
+  # The four stages of ops/gate.sh that are not the test, each run whatever the one before did, as the gate does.
+  scripts-stages:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter @credo/scripts run typecheck
+      - name: Eslint
+        if: ${{ !cancelled() }}
+        run: pnpm exec eslint .
+      - name: Prettier
+        if: ${{ !cancelled() }}
+        run: pnpm exec prettier --check .
+      - name: Knip
+        if: ${{ !cancelled() }}
+        run: pnpm exec knip
+
+  # Waits on both, with no `if`: a red shard or a red stages job leaves it skipped, so `app` and the deploy are skipped too.
+  app-scripts:
+    needs: [scripts-shard, scripts-stages]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: The shards' blobs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: scripts-blob-*
+          merge-multiple: true
+          path: scripts/.vitest/blob
+      - name: Merge the shards
+        working-directory: scripts
+        run: pnpm exec vitest --merge-reports --coverage
+
+  app-shared:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate shared
+        run: pnpm --filter @credo/shared --fail-if-no-match check
+
+  app-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate ui
+        run: pnpm --filter @credo/ui --fail-if-no-match check
+
+  app-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate visual
+        run: pnpm --filter @credo/visual --fail-if-no-match check
+
+  app-walk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate walk
+        run: pnpm --filter @credo/walk --fail-if-no-match check
+
+  # The app's gate as the deploy knows it: green only when all six package jobs are. No `if` here, on purpose: the
+  # default `success()` leaves this job skipped when a job it needs failed, was cancelled or was skipped, and the
+  # deploy, which needs this one and also has no status function in its `if`, is then skipped too.
+  app:
+    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo "all six package gates are green"
 
   # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
   # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
@@ -160,6 +618,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-pnpm-12.10.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: services/c-storage/go.mod
@@ -168,9 +643,20 @@ jobs:
       # CloudFront Function and the ridge scripts under Node, so the job names its Node.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       - name: pnpm 12.10.1
         run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
       - name: Install
         run: pnpm install --frozen-lockfile
       # GitHub's runner image holds Ruby; act's (catthehacker/ubuntu:act-latest) installs none.
@@ -206,7 +692,7 @@ jobs:
         timeout-minutes: 5
         run: bash ops/test.sh
 
-  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main, or
+  # Ridge's release, the app's ship and the check, after the five gates above (check, audit, e2e, ops and app) are green. The human's push to main, or
   # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions for the push, docs/plans/2026-11-12-ridge-by-script.md for the press).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
@@ -214,7 +700,7 @@ jobs:
   # A superseded release (ridge runs a newer commit, whose own deploy shipped the app) ends the job green:
   # the steps after the release carry that condition as well.
   deploy:
-    needs: [check, e2e, ops, app]
+    needs: [check, audit, e2e, ops, app]
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -242,12 +728,13 @@ jobs:
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: services/c-storage/go.mod
-          cache-dependency-path: services/c-storage/go.sum
+          # No cache here: this job holds the role and the environment's credentials.
+          cache: false
       - name: Set up Node
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       - name: Install Bruno CLI
         if: ${{ !env.ACT }}
         timeout-minutes: 3
@@ -278,6 +765,26 @@ jobs:
         timeout-minutes: 5
         working-directory: services/c-storage
         run: make box
+      # The activity log's arm64 binary of this commit, stamped with its sha (the Makefile reads BUILD_COMMIT
+      # from the environment); the release sends it as RELEASE_AUDIT_BINARY.
+      - name: Build the activity log's binary
+        if: ${{ !env.ACT }}
+        timeout-minutes: 5
+        working-directory: services/audit-backbone
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+        run: make dist
+      # Litestream rides the release beside c-storage: the pinned arm64 archive (the box's), fetched from
+      # its release before the role is taken and refused unless its SHA-256 is ops/litestream.pin's, the
+      # one home of the version and the sum. ops/release.sh checks it again before it sends a byte.
+      - name: Litestream, the pinned archive
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: |
+          . ops/litestream.pin
+          archive="$RUNNER_TEMP/litestream.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz"
+          echo "$LITESTREAM_ARM64_SHA256  $archive" | sha256sum -c -
       # No stored key: GitHub's token for environment ridge is exchanged for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
       # AWS's error text carries the account id outside the secret role ARN, and this repository's
@@ -300,6 +807,8 @@ jobs:
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
+          RELEASE_AUDIT_BINARY: ${{ github.workspace }}/services/audit-backbone/dist/credo-audit-backbone
+          LITESTREAM_ARCHIVE: ${{ runner.temp }}/litestream.tar.gz
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
       # masked first. It skips, saying so, until the stack holds layer four.
