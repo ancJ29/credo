@@ -302,6 +302,14 @@ milestone if the orchestrator wants one.
   `stack.sh` (the kept list not passed, the flag's value not passed, `home` allowed, no capability), put
   back; a removed box is named by the fence and taken by its names (`testdata/changeset-boxremoved.json`).
   `cfn-lint` at 1.59.0 passes on all three templates; CI's 1.46.0 is the first run at that version.
+  *Part 3 ticked 2026-11-14 (the deploy role, case 14).* The role's two box statements no longer name
+  `${Box}`: the key push is on any instance (`instance/*`) whose `Env` tag is this environment's, as
+  `ec2-user` (the service reference gives `SendSSHPublicKey` no subnet key, so the tag holds it), and the
+  tunnel opens to an address in this environment's subnet (`privateIpAddress` is `SubnetCidr`) on port 22
+  alone, through the shared endpoint. Case 14 was red first on the old statements, then passes, and is red
+  once by eight mutations of the role, put back: the tag condition removed, another tag, the home box's
+  instance alone, a tunnel to `0.0.0.0/0`, to the home box's address alone, on port 2222, a third Instance
+  Connect action, a statement naming `${Box}`. `shellcheck -x ops/*.sh` and `cfn-lint` exit 0.
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
 - [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one

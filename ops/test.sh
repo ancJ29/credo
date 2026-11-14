@@ -956,6 +956,44 @@ refuses "  and a template without the transform is refused" "LanguageExtensions"
 }
 loop_refusals
 
+echo "== the deploy role reaches this environment's boxes by tag and subnet, and no other (case 14 of docs/plans/2026-11-11-pooled-shape.md)"
+# The role's two box statements name no box: a box added is one more instance with the environment's Env tag in the
+# environment's subnet, and the role reaches it unchanged. The key push is held by the tag (the service reference gives
+# the key push no subnet condition); the tunnel by the subnet's range, on port 22 alone.
+# shellcheck disable=SC2016 # jq programs, in single quotes
+deploy_boxes_guard() {
+  must "$1" "the key push is not held to this environment's boxes by the Env tag and the ec2-user" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox")] | length == 1 and .[0] == {"Sid":"PushKeyToOwnBox","Effect":"Allow","Action":"ec2-instance-connect:SendSSHPublicKey","Resource":{"Fn::Sub":"arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"},"Condition":{"StringEquals":{"ec2:osuser":"ec2-user","ec2:ResourceTag/Env":{"Ref":"Env"}}}}'
+  must "$1" "the tunnel is not held to the environment's subnet, port 22 and the shared endpoint" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox")] | length == 1 and .[0] == {"Sid":"TunnelToOwnBox","Effect":"Allow","Action":"ec2-instance-connect:OpenTunnel","Resource":{"Fn::Sub":["arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance-connect-endpoint/${EndpointId}",{"EndpointId":{"Fn::ImportValue":{"Fn::Sub":"${Network}-EndpointId"}}}]},"Condition":{"IpAddress":{"ec2-instance-connect:privateIpAddress":{"Ref":"SubnetCidr"}},"NumericEquals":{"ec2-instance-connect:remotePort":22}}}'
+  must "$1" "the deploy role names a box of its own (a Box id or address), so a box added is not reached" \
+    '[.Resources.DeployRole | .. | strings | select(test("\\$\\{Box[.}]"))] == [] and ([.Resources.DeployRole | .. | objects | select(has("Ref") and (.Ref | startswith("Box")))] == []) and ([.Resources.DeployRole | .. | objects | select(has("Fn::GetAtt") and (.["Fn::GetAtt"][0] | startswith("Box")))] == [])'
+  must "$1" "the deploy role holds an Instance Connect action beyond the two" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end | select(startswith("ec2-instance-connect:"))] | sort == ["ec2-instance-connect:OpenTunnel","ec2-instance-connect:SendSSHPublicKey"]'
+}
+passes "the deploy role pushes a key to any instance tagged for this environment and opens the tunnel to its subnet's range, and names no box of its own (case 14)" \
+  deploy_boxes_guard "$WORK/env.json"
+# shellcheck disable=SC2016 # jq programs, in single quotes
+deploy_refusals() {
+refuses "  a key push with no Env tag condition (any instance of the account) is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut 'del(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox") | .Condition.StringEquals["ec2:ResourceTag/Env"])')"
+refuses "  a key push held to another tag is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox") | .Condition.StringEquals) |= (del(.["ec2:ResourceTag/Env"]) | .["ec2:ResourceTag/Name"] = {"Ref":"Env"})')"
+refuses "  a key push to the home box alone (the old statement) is refused" "is not held to this environment's boxes" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "PushKeyToOwnBox")) |= (.Resource = {"Fn::Sub":"arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Box}"} | del(.Condition.StringEquals["ec2:ResourceTag/Env"]))')"
+refuses "  a tunnel to any address is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.IpAddress["ec2-instance-connect:privateIpAddress"]) = "0.0.0.0/0"')"
+refuses "  a tunnel to the home box's address alone (the old statement) is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.IpAddress["ec2-instance-connect:privateIpAddress"]) = {"Fn::Sub":"${Box.PrivateIp}/32"}')"
+refuses "  a tunnel on a port other than 22 is refused" "is not held to the environment's subnet" \
+  deploy_boxes_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Sid == "TunnelToOwnBox") | .Condition.NumericEquals["ec2-instance-connect:remotePort"]) = 2222')"
+refuses "  a third Instance Connect action is refused" "beyond the two" \
+  deploy_boxes_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement += [{"Sid":"X","Effect":"Allow","Action":"ec2-instance-connect:SendSerialConsoleSSHPublicKey","Resource":"*"}]')"
+refuses "  a role that names a box of its own beside the two is refused" "names a box of its own" \
+  deploy_boxes_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement += [{"Sid":"X","Effect":"Allow","Action":"ec2:DescribeInstances","Resource":{"Fn::Sub":"arn:aws:ec2:*:*:instance/${Box}"}}]')"
+}
+deploy_refusals
+
 echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
 # need <file> <ERE> <what is missing>: dies unless a line of the file matches
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
