@@ -125,7 +125,13 @@ async function walk(page: Page, language: Language, width: number) {
   await press(words.operator.make);
   await expect(page.getByRole('dialog', { name: words.passkey.endedTitle })).toBeVisible();
   await expect(field(words.operator.code)).toHaveValue('minh-phat');
-  await at('pk-6-sign-in-ended');
+  // The form behind the dialog lists the boxes, whose free disk and companies are real on a stack and
+  // invented on the fake: the list is covered. A dialog hides it from role queries, so it is found by
+  // its role attribute. Held by ui/src/parts/NewClientBoxes.test.tsx ("C9: The form lists each box
+  // with its free disk and its companies, the home box chosen").
+  const boxes = page.locator('[role=radiogroup]');
+  await expect(boxes).toBeVisible();
+  await at('pk-6-sign-in-ended', [boxes]);
 }
 
 /** Opens a screen on the stack (the full walk takes its pictures with `picture`, not `at`, which
@@ -253,7 +259,13 @@ async function walkFull(page: Page, language: Language, width: number) {
   await press(words.operator.make);
   await expect(page.getByRole('dialog', { name: words.passkey.endedTitle })).toBeVisible();
   await expect(field(words.operator.code)).toHaveValue('minh-phat');
-  await picture('pk-6-sign-in-ended');
+  // The form behind the dialog lists the boxes, whose free disk and companies are real on a stack and
+  // invented on the fake: the list is covered. A dialog hides it from role queries, so it is found by
+  // its role attribute. Held by ui/src/parts/NewClientBoxes.test.tsx ("C9: The form lists each box
+  // with its free disk and its companies, the home box chosen").
+  const boxes = page.locator('[role=radiogroup]');
+  await expect(boxes).toBeVisible();
+  await picture('pk-6-sign-in-ended', [boxes]);
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {

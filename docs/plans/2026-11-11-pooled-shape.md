@@ -199,13 +199,25 @@ milestone if the orchestrator wants one.
   pinned list of routes gained the new line, and three scripts tests' in-memory stand-ins of the
   client (`dashboard-list`, `generator`, `local`) one `status` line each. Gates: shared, bff, ui and
   scripts each `== exit 0`.
-- [ ] **4. Two boxes on this machine, and the screen to look at.** `pnpm stack` registers a second
+- [x] **4. Two boxes on this machine, and the screen to look at.** `pnpm stack` registers a second
   service as box `b2` and hands it in `STORAGE_BOXES`; the operator walk gains, appended and never
   inserted, the form with its list of boxes. *Done when:* `pnpm --filter @credo/scripts check` and
   `pnpm --filter @credo/walk check` end `== exit 0`, `scripts/src/stack.test.ts` gaining the case
   that a company added on `b2` through the stack's own front is read back from `b2`'s service, red
   once. *Size:* 10, the last step that taught the local stack a part (the local copy's second, 10).
   Then 👤 point 1: `bash walk/run.sh operator`, in your terminal.
+  *Ticked 2026-11-14:* `pnpm stack` (`withStack`) starts a second c-storage as box `b2` on a folder of
+  its own, registers the BFF's service there and hands it in `STORAGE_BOXES`; `startStack` takes the
+  names in `moreBoxes` and runs none by default, so `pnpm local` keeps one box (its handle holds no
+  second box's keys, a resume runs none). The stack hands a command no box's keys. The walk's operator
+  spec gains screen 10, appended (`op-10-box-chosen`: the form with `b2` chosen, then made), its
+  visual scene and question (Vietnamese line added), and `walks.test.ts`'s count of the walk's screens
+  went from nine to ten. The list's lines hold the machine's own free disk, so screens 2, 4, 8, 9, 10
+  and the passkeys walk's screen 6 mask the list; screens 2, 4, 8 and 9 show the list now and move
+  against their bases (`--moved op-2-new-client,op-4-code-taken,op-8-code-invalid,op-9-make-failed`
+  with passkeys' `pk-6-sign-in-ended`). `stack.test.ts` gains the case that a company added on `b2`
+  through the front is read back from `b2`'s service and not from the home box's, red once (the
+  stack's BFF handed no boxes: the make answers 400). The walk was not run: it is the human's.
 - [ ] **5. Hardened, the pages true.** Coverage at 100 % with no new hint; `docs/architecture.md`'s
   and `docs/architecture-detail.md`'s pooled sections rewritten to what is built (no figure of
   companies a box, no box of the operator's own, no memory of the lookup), `docs/memo/bff.md` on the
