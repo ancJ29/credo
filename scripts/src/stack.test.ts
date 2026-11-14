@@ -5,11 +5,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SoftwareAuthenticator } from '@credo/bff/tests/authenticator';
 import {
+  AUTH_HEADER,
+  boxesReplySchema,
   CLIENT_HEADER,
   joinOptionsReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   optionsReplySchema,
+  recordKeys,
+  storedClientSchema,
   tokenOfFragment,
 } from '@credo/shared';
 import { DEMO_INVITED_NAME, DEMO_PASSKEYS } from '@credo/shared/demo';
@@ -226,6 +230,34 @@ describe('pnpm stack', () => {
         response: stranger.authenticate(again.options),
       });
       expect(refused.status).toBe(401);
+    });
+  });
+
+  it('A company the operator adds on b2 through the stack’s front is read back from b2’s service, with its line alone on the home box', async () => {
+    await withStack(artifacts, async (stack) => {
+      const made = await post(
+        stack.url,
+        '/api/operator/clients',
+        { code: 'on-box-two', name: 'On Box Two', box: 'b2' },
+        stack.operatorHandle,
+      );
+      expect(made.status).toBe(201);
+
+      const line = storedClientSchema.parse(
+        (await stack.storage.getRecord(recordKeys.client('on-box-two')))?.data,
+      );
+      expect(line.box).toBe('b2');
+      const { config } = recordKeys.tenant(line.id);
+      expect((await stack.boxes.b2.getRecord(config))?.data).toMatchObject({ name: 'On Box Two' });
+      expect(await stack.storage.getRecord(config)).toBeNull();
+      const listed = boxesReplySchema.parse(
+        await (
+          await fetch(`${stack.url}/api/operator/boxes`, {
+            headers: { [AUTH_HEADER]: stack.operatorHandle },
+          })
+        ).json(),
+      );
+      expect(listed.boxes.map(({ name }) => name)).toEqual(['home', 'b2']);
     });
   });
 

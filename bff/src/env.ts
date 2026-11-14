@@ -1,6 +1,20 @@
+import { boxNameSchema, HOME_BOX } from '@credo/shared';
 import { z } from 'zod';
 
 /** What the BFF needs to reach c-storage, whether a listener or a Lambda runs it. */
+/** The boxes beyond the home box, as JSON: each box by name with its address, internal key and
+ * service key. Absent, there is the home box alone. A malformed value is refused naming the
+ * variable and never its text, which holds keys. */
+const boxesSchema = z.record(
+  boxNameSchema.refine((name) => name !== HOME_BOX),
+  z.strictObject({
+    url: z.url(),
+    internalKey: z.string().min(1),
+    serviceKey: z.string().min(1),
+  }),
+);
+export type StorageBoxes = z.infer<typeof boxesSchema>;
+
 const storageShape = {
   C_STORAGE_URL: z.url(),
   /** c-storage's `x-internal-access-key`, the stack's. */
@@ -8,6 +22,22 @@ const storageShape = {
   /** The one service this BFF is, which is the tenant. */
   SERVICE_CODE: z.string().min(1),
   SERVICE_ACCESS_KEY: z.string().min(1),
+  STORAGE_BOXES: z
+    .string()
+    .optional()
+    .transform((raw, context) => {
+      if (raw === undefined) return undefined;
+      let json: unknown = null;
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        // `json` stays null, which the boxes' schema refuses.
+      }
+      const read = boxesSchema.safeParse(json);
+      if (read.success) return read.data;
+      context.addIssue({ code: 'custom', message: 'not the boxes' });
+      return z.NEVER;
+    }),
 };
 
 /** The address the operator opens, which every passkey ceremony is checked against: an origin with

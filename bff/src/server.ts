@@ -18,6 +18,17 @@ export function buildBff(
     serviceCode: config.SERVICE_CODE,
     accessKey: config.SERVICE_ACCESS_KEY,
   });
+  const boxes = Object.fromEntries(
+    Object.entries(config.STORAGE_BOXES ?? {}).map(([name, box]) => [
+      name,
+      createCStorageClient({
+        baseUrl: box.url,
+        internalAccessKey: box.internalKey,
+        serviceCode: config.SERVICE_CODE,
+        accessKey: box.serviceKey,
+      }),
+    ]),
+  );
   const activity =
     config.AUDIT_URL === undefined
       ? null
@@ -25,6 +36,7 @@ export function buildBff(
         createActivityClient({ baseUrl: config.AUDIT_URL, key: config.AUDIT_KEY as string });
   const app = buildApp({
     storage,
+    boxes,
     activity,
     now,
     origin: config.APP_ORIGIN,

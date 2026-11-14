@@ -66,6 +66,7 @@ function setup(
     deleteClient: vi.fn(() => Promise.reject(new ApiError(null))),
     setRootPassword: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
+    operatorBoxes: vi.fn(() => Promise.reject(new ApiError(null))),
     ...staffCalls,
     ...passkeyCalls,
     ...(typeof overrides === 'function' ? overrides(device) : overrides),

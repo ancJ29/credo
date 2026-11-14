@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApp } from '@credo/bff';
+import { tenantStorage } from '@credo/bff/company-copy';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
 import { buildCStorage } from '@credo/bff/tests/build';
 import { freshTenant, type RunningCStorage, startCStorage } from '@credo/bff/tests/c-storage';
@@ -58,9 +59,8 @@ export const make = async (storage: CStorageClient, copy: MappedCopy) => {
 export const tenantOf = async (storage: CStorageClient, code: string) =>
   storedClientSchema.parse((await storage.getRecord(recordKeys.client(code)))!.data).id;
 export const staffOf = async (storage: CStorageClient, code: string) => {
-  const listed = await storage.listRecords(
-    recordKeys.tenant(await tenantOf(storage, code)).employeePrefix,
-  );
+  const id = await tenantOf(storage, code);
+  const listed = await tenantStorage(storage, id).listRecords(recordKeys.tenant(id).employeePrefix);
   return listed.records
     .map((record) => employeeSchema.parse(record.data))
     .sort((a, b) => (a.code < b.code ? -1 : 1));
@@ -68,10 +68,12 @@ export const staffOf = async (storage: CStorageClient, code: string) => {
 /** Every record of a company, page after page: c-storage answers a prefix in pages, and one page
  * of a whole company is short once it holds more than a page. */
 export const everything = async (storage: CStorageClient, code: string) => {
-  const prefix = recordKeys.tenant(await tenantOf(storage, code)).all;
+  const id = await tenantOf(storage, code);
+  const company = tenantStorage(storage, id);
+  const prefix = recordKeys.tenant(id).all;
   const all: Awaited<ReturnType<CStorageClient['listRecords']>>['records'] = [];
   for (let more = true; more;) {
-    const page = await storage.listRecords(prefix, all.at(-1)?.key);
+    const page = await company.listRecords(prefix, all.at(-1)?.key);
     all.push(...page.records);
     more = page.more && page.records.length > 0;
   }

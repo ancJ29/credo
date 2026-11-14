@@ -78,6 +78,7 @@ function setup(
     ...staffCalls,
     listClients: vi.fn(() => Promise.resolve(CLIENTS)),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
+    operatorBoxes: vi.fn(() => Promise.reject(new ApiError(null))),
     ...overrides,
   } satisfies Api;
   const drawn = drawApp(

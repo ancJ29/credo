@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME, startingConfig } from '@credo/bff/clients';
+import { tenantStorage } from '@credo/bff/company-copy';
 import { createSessions } from '@credo/bff/sessions';
 import {
   type AddEmployeeReply,
@@ -31,6 +32,7 @@ import {
   recordKeys,
   ROUTES,
   type StaffSetupDoc,
+  HOME_BOX,
   storedClientSchema,
   storedUserSchema,
   tenantConfigSchema,
@@ -88,7 +90,12 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
   let clock = 0;
   const now = () => clock;
   const app = buildApp({ storage, now, ...NO_OPERATOR, logger: false });
-  const sessions = createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
+  const company = tenantStorage(storage, tenantId);
+  const sessions = createSessions({
+    storage: company,
+    now,
+    keyOf: recordKeys.tenant(tenantId).session,
+  });
   let authId = '';
   /** The sessions issued to people of the copy during the day, by their sign-in name. */
   const people = new Map<string, string>();
@@ -127,7 +134,7 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     async open(ms: number) {
       clock = ms;
       const root = storedUserSchema.parse(
-        (await storage.getRecord(recordKeys.tenant(tenantId).user(ROOT_NAME)))!.data,
+        (await company.getRecord(recordKeys.tenant(tenantId).user(ROOT_NAME)))!.data,
       );
       authId = (await sessions.issue(DEVICE, ROOT_NAME, root.generation)).authId;
     },
@@ -137,7 +144,7 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     async sessionOf(name: string) {
       const held = people.get(name);
       if (held) return held;
-      const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
+      const found = await company.getRecord(recordKeys.tenant(tenantId).user(name));
       if (!found) return null;
       const user = storedUserSchema.parse(found.data);
       const issued = await sessions.issue(DEVICE, name, user.generation);
@@ -157,7 +164,11 @@ type Driver = ReturnType<typeof driverFor>;
  * settings as `createClient` writes them (`startingConfig` under the index's name, whole), and
  * sessions, which a root signing in leaves and nothing sweeps, and sign-in waits, which one wrong
  * name typed leaves. */
-async function isFresh(storage: CStorageClient, tenantId: string, name: string) {
+async function isFresh(
+  storage: Pick<CStorageClient, 'listRecords'>,
+  tenantId: string,
+  name: string,
+) {
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
   const asMade = (data: unknown) => {
@@ -638,11 +649,17 @@ export async function applyCopy(
 
   const index = await storage.getRecord(recordKeys.client(copy.code));
   if (!index) return done('missing', 'not on this service, left');
-  const { id: tenantId, name } = storedClientSchema.parse(index.data);
+  const { id: tenantId, name, box = HOME_BOX } = storedClientSchema.parse(index.data);
+  // The seed serves the home box alone (item 271): a copy moved off it is named and left, nothing
+  // written, and no client over another box is made from here.
+  if (box !== HOME_BOX) {
+    return done('refused', `its line names box ${box}, and the seed serves the home box, left`);
+  }
+  const company = tenantStorage(storage, tenantId);
 
-  let current = await readLedger(storage, tenantId);
+  let current = await readLedger(company, tenantId);
   if (!current) {
-    if (!(await isFresh(storage, tenantId, name))) {
+    if (!(await isFresh(company, tenantId, name))) {
       return done('refused', 'holds more than a new client does, left');
     }
     const firstDay = addDays(through, -(HISTORY_DAYS - 1));
@@ -654,7 +671,7 @@ export async function applyCopy(
       filled: false,
       blocks: SEED_BLOCKS,
     };
-    const tag = await writeLedger(storage, tenantId, first, null);
+    const tag = await writeLedger(company, tenantId, first, null);
     if (tag === null) return done('refused', 'another run holds it, left');
     current = { ledger: first, tag };
   }
@@ -682,7 +699,7 @@ export async function applyCopy(
       await driver.close();
     }
     ledger = { ...ledger, filled: true };
-    const next = await writeLedger(storage, tenantId, ledger, tag);
+    const next = await writeLedger(company, tenantId, ledger, tag);
     if (next === null) return done('refused', 'the ledger moved under the run, stopped');
     tag = next;
     filled = true;
@@ -724,7 +741,7 @@ export async function applyCopy(
       await driver.close();
     }
     ledger = { ...ledger, lastDay: day };
-    const next = await writeLedger(storage, tenantId, ledger, tag);
+    const next = await writeLedger(company, tenantId, ledger, tag);
     if (next === null) return done('refused', 'the ledger moved under the run, stopped');
     tag = next;
     days.push(day);
