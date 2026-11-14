@@ -48,7 +48,7 @@ jobs:
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       # The install runs third-party code, so it runs before the role is taken, and the seed's code
       # runs without the role's credentials (ops/lib.sh's clean).
       - name: pnpm 12.10.1
