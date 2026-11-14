@@ -175,8 +175,10 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 10. The second box chosen, which the stack runs as `b2`: its line is picked by its name, since
   // its free disk is the machine's own, and the client is made on it.
+  // A stack keeps what screen 3 made, so this client's code and name differ from `fillClient`'s.
   await open(page, language, { path: '/operator/clients/new', operator: true });
-  await fillClient();
+  await typed(words.operator.code, 'minh-phat-b2');
+  await typed(words.operator.companyName, 'Minh Phát B2');
   await boxes().getByRole('radio', { name: /^b2:/ }).check();
   await unfocus();
   await at('op-10-box-chosen', [boxes()]);
