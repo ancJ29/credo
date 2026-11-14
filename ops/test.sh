@@ -264,7 +264,11 @@ tojson() {
     puts JSON.generate(conv(YAML.parse(File.read(ARGV[0])).root))
   ' "$1"
 }
-tojson "$OPS_DIR/env.yml" >"$WORK/env.json"
+tojson "$OPS_DIR/env.yml" >"$WORK/env-full.json"
+# env.json is the home box's template: the loop that adds boxes (Fn::ForEach, a key of Resources and one of Outputs whose
+# value is a list, not a resource) is taken out, so every guard below reads what it read before; the loop has its own
+# section (cases 12 and 13 of docs/plans/2026-11-11-pooled-shape.md), which reads env-full.json.
+jq 'del(.Resources["Fn::ForEach::Boxes"], .Outputs["Fn::ForEach::BoxOutputs"])' "$WORK/env-full.json" >"$WORK/env.json"
 check "the template reads as JSON, its tags in long form" '{"Ref":"Subnet"} {"Fn::GetAtt":["Box","PrivateIp"]}' \
   "$(jq -c '.Resources.Box.Properties.NetworkInterfaces[0].SubnetId, .Outputs.BoxAddress.Value' "$WORK/env.json" | tr '\n' ' ' | sed 's/ $//')"
 # the API stage's access log (plan 2026-11-08-access-log, step 1): the stage sends one JSON line a call to this
@@ -881,6 +885,76 @@ refuses "  a change set that also adds a second rule is refused" "not the log's 
   activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"BoxFromAny","ResourceType":"AWS::EC2::SecurityGroupIngress","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-extra.json"; echo "$WORK/cs-act-extra.json")"
 refuses "  a change set that also modifies the box's group is refused" "not a Modify of BffGroup in place" \
   activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"BoxGroup","ResourceType":"AWS::EC2::SecurityGroup","Replacement":"False","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-box.json"; echo "$WORK/cs-act-box.json")"
+
+echo "== a box added by command: the loop is the home box's block but for its names (case 12 of docs/plans/2026-11-11-pooled-shape.md)"
+# The loop's body, with "${Name}" taken out of every name and the loop's way of naming a neighbour (Ref and GetAtt through
+# Fn::Sub) read as the plain name, is what the home box's block says: so a change to the home box that the loop lacks, or
+# to the loop that the home box lacks, is red. The names that differ on purpose are the resource ids, the tag and the
+# records disk's name, and the box's path in the copy's bucket (Box/ for the home box, <name>/ for each box added).
+# shellcheck disable=SC2016 # jq programs, in single quotes
+UNNAME='def unname: walk(
+    if type == "object" then
+      (if has("Ref") and (.Ref | type) == "object" and (.Ref | has("Fn::Sub")) then {Ref: (.Ref["Fn::Sub"] | sub("\\$\\{Name\\}$"; ""))}
+       elif has("Fn::GetAtt") and (.["Fn::GetAtt"][0] | type) == "object" then {"Fn::GetAtt": [(.["Fn::GetAtt"][0]["Fn::Sub"] | sub("\\$\\{Name\\}$"; "")), .["Fn::GetAtt"][1:][]]}
+       else . end)
+    elif type == "string" then gsub("-\\$\\{Name\\}"; "") | gsub("/\\$\\{Name\\}/"; "/Box/") | sub("^\\$\\{Name\\}/"; "Box/")
+    else . end);
+def loopbody($section; $loop): .[$section][$loop][2] | with_entries(.key |= gsub("\\$\\{Name\\}"; "")) | map_values(unname);'
+# shellcheck disable=SC2016 # jq programs, in single quotes
+boxes_loop_guard() {
+  must "$1" "the template does not declare the transform AWS::LanguageExtensions, so the loop is not read" '.Transform == "AWS::LanguageExtensions"'
+  must "$1" "MoreBoxes is not a CommaDelimitedList that defaults to no box" '.Parameters.MoreBoxes | .Type == "CommaDelimitedList" and .Default == ""'
+  must "$1" "Resources does not hold the one loop, over MoreBoxes, with Name as its identifier" \
+    '[.Resources | keys[] | select(startswith("Fn::ForEach::"))] == ["Fn::ForEach::Boxes"] and .Resources["Fn::ForEach::Boxes"][0] == "Name" and .Resources["Fn::ForEach::Boxes"][1] == {"Ref":"MoreBoxes"}'
+  must "$1" "a box in the list is more or less than the home box's instance, records disk, attachment, role and profile" \
+    "$UNNAME"'loopbody("Resources"; "Fn::ForEach::Boxes") | keys == ["Box","BoxProfile","BoxRole","RecordsAttachment","RecordsVolume"]'
+  local id what
+  for id in "Box:instance" "RecordsVolume:records disk" "RecordsAttachment:attachment" "BoxRole:role (its path in the copy's bucket included)" "BoxProfile:profile"; do
+    what=${id#*:}
+    id=${id%%:*}
+    must "$1" "a box in the list is not the home box's $what but for its names" \
+      "$UNNAME"'(. | loopbody("Resources"; "Fn::ForEach::Boxes")) as $l | .Resources.'"$id"' as $h | $h != null and $l.'"$id"' == $h'
+  done
+  # The unnamed reading cannot tell a reference to the box's own neighbour from one to the home box's, so the body
+  # holds no plain name of the home box's five, and no path that starts in Box/: a neighbour is reached through Fn::Sub.
+  must "$1" "a box in the list reaches the home box by its own name (a plain Box, BoxRole, BoxProfile, RecordsVolume or RecordsAttachment, or the path Box/), not its neighbour through Fn::Sub" \
+    '[(.Resources["Fn::ForEach::Boxes"][2], .Outputs["Fn::ForEach::BoxOutputs"][2]) | .. | strings | select(IN("Box","BoxRole","BoxProfile","RecordsVolume","RecordsAttachment") or test("(^|/)Box/"))] == []'
+  must "$1" "Outputs does not hold the one loop, over MoreBoxes, with Name as its identifier" \
+    '[.Outputs | keys[] | select(startswith("Fn::ForEach::"))] == ["Fn::ForEach::BoxOutputs"] and .Outputs["Fn::ForEach::BoxOutputs"][0] == "Name" and .Outputs["Fn::ForEach::BoxOutputs"][1] == {"Ref":"MoreBoxes"}'
+  must "$1" "a box in the list does not output its id, its address and its records disk, as the home box does but for the names" \
+    "$UNNAME"'(. | loopbody("Outputs"; "Fn::ForEach::BoxOutputs")) as $l | $l == {BoxId: .Outputs.BoxId, BoxAddress: .Outputs.BoxAddress, RecordsVolumeId: .Outputs.RecordsVolumeId}'
+}
+# lmut <jq program> → a copy of the whole template's JSON, the loop in it, with the program applied
+lmut() {
+  jq -c "$1" "$WORK/env-full.json" >"$WORK/env-lmut.json"
+  echo "$WORK/env-lmut.json"
+}
+passes "a box in the list is the home box's instance, disk, attachment, role (its path in the bucket) and profile but for its names, and its outputs are the home box's (case 12)" \
+  boxes_loop_guard "$WORK/env-full.json"
+# shellcheck disable=SC2016 # jq programs, in single quotes
+loop_refusals() {
+refuses "  a template with no loop is refused" "the one loop" boxes_loop_guard "$(lmut 'del(.Resources["Fn::ForEach::Boxes"])')"
+refuses "  a box in the list of another instance type is refused, naming the instance" "not the home box's instance" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["Box${Name}"].Properties.InstanceType = "t4g.large"')"
+refuses "  a box in the list whose records disk is not encrypted is refused, naming the disk" "not the home box's records disk" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["RecordsVolume${Name}"].Properties.Encrypted = false')"
+refuses "  a box in the list whose disk loses its keeping on a delete is refused" "not the home box's records disk" \
+  boxes_loop_guard "$(lmut 'del(.Resources["Fn::ForEach::Boxes"][2]["RecordsVolume${Name}"].DeletionPolicy)')"
+refuses "  a box in the list attached to the home box's disk is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["RecordsAttachment${Name}"].Properties.VolumeId = {"Ref":"RecordsVolume"}')"
+refuses "  a box in the list whose role reaches the home box's path in the bucket is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["BoxRole${Name}"].Properties.Policies[0].PolicyDocument.Statement[0].Resource = {"Fn::Sub":"${CopyBucket.Arn}/Box/*"}')"
+refuses "  a box in the list whose list of the bucket is wider is refused, naming the role" "not the home box's role" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["BoxRole${Name}"].Properties.Policies[0].PolicyDocument.Statement[1].Condition.StringLike["s3:prefix"] = ["*"]')"
+refuses "  a box in the list with a resource beyond the five is refused" "more or less than" \
+  boxes_loop_guard "$(lmut '.Resources["Fn::ForEach::Boxes"][2]["Extra${Name}"] = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a box in the list that outputs no address is refused, naming the outputs" "does not output its id, its address" \
+  boxes_loop_guard "$(lmut 'del(.Outputs["Fn::ForEach::BoxOutputs"][2]["Box${Name}Address"])')"
+refuses "  and one whose output reads the home box is refused" "reaches the home box by its own name" \
+  boxes_loop_guard "$(lmut '.Outputs["Fn::ForEach::BoxOutputs"][2]["Box${Name}Id"].Value = {"Ref":"Box"}')"
+refuses "  and a template without the transform is refused" "LanguageExtensions" boxes_loop_guard "$(lmut 'del(.Transform)')"
+}
+loop_refusals
 
 echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
 # need <file> <ERE> <what is missing>: dies unless a line of the file matches
@@ -4294,10 +4368,11 @@ case "$*" in
   *get-region-opt-status*) echo ENABLED ;;
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
   *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
-  *create-change-set* | *delete-change-set*) : ;;
+  *create-change-set*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json"; echo "$*" >"${FAKE_STATE:?}/create.args" ;;
+  *delete-change-set*) : ;;
   *send-ssh-public-key*) echo True ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -4361,6 +4436,37 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+# case 13: the list of boxes added is the stack's own unless the run names one (docs/plans/2026-11-11-pooled-shape.md, step 6)
+echo "== ops/stack.sh env --more-boxes (case 13: without the flag the stack keeps its list; the list is checked before anything runs)"
+more_param() { jq -c '[.[] | select(.ParameterKey == "MoreBoxes")]' "$S/params.json"; }
+FAKE_MOREBOXES=b2 stack_run stack-keeps --plan
+check "13: without --more-boxes a stack that holds a list keeps it (the previous value is passed)" '[{"ParameterKey":"MoreBoxes","UsePreviousValue":true}]' "$(more_param)"
+stack_run stack-nolist-yet --plan
+check "  a stack made before the parameter is passed none, so the template's default (no box) stands" '[]' "$(more_param)"
+FAKE_MOREBOXES=b2 stack_run stack-names --plan --more-boxes b2,b3
+check "  --more-boxes b2,b3 passes the whole list, whatever the stack held" '[{"ParameterKey":"MoreBoxes","ParameterValue":"b2,b3"}]' "$(more_param)"
+FAKE_MOREBOXES=b2 stack_run stack-none --plan --more-boxes ''
+check "  --more-boxes '' passes an empty list (every box taken out of the list), not the previous one" '[{"ParameterKey":"MoreBoxes","ParameterValue":""}]' "$(more_param)"
+check "  the change set is made with both capabilities, the transform's beside IAM" 1 \
+  "$(grep -c -- '--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND' "$S/create.args" || true)"
+check "  and the run prints the list it passes" 1 "$(grep -c '^  MoreBoxes=' "$S/out" || true)"
+for bad in "home" "B2" "2b" "b-2" "b2,,b3" "b2," ",b2" "b2,b2" "xxxxxxxxxxxxxxxxx"; do
+  stack_run stack-bad --plan --more-boxes "$bad"
+  check "  --more-boxes '$bad' is refused before any aws call" "1 gone" "$RC $(file_state "$S/aws.calls")"
+done
+stack_run stack-usage --plan --more-boxes
+check "  --more-boxes with no list is a usage error" 2 "$RC"
+stack_run stack-twice --plan --more-boxes b2 --more-boxes b3
+check "  and two of them are too" 2 "$RC"
+# a box taken out of the list is a removal: the guard names its five, and --take lets through what it names
+check "  a box taken out of the list is refused, the guard naming its five" "Boxb2 (AWS::EC2::Instance): Remove, replacement none
+BoxProfileb2 (AWS::IAM::InstanceProfile): Remove, replacement none
+BoxRoleb2 (AWS::IAM::Role): Remove, replacement none
+RecordsAttachmentb2 (AWS::EC2::VolumeAttachment): Remove, replacement none
+RecordsVolumeb2 (AWS::EC2::Volume): Remove, replacement none" "$(filter changeset-boxremoved.json '[]')"
+check "  and each taken by its own name lets that one through" "BoxRoleb2 (AWS::IAM::Role): Remove, replacement none" \
+  "$(filter changeset-boxremoved.json '["Boxb2","BoxProfileb2","RecordsAttachmentb2","RecordsVolumeb2"]')"
 
 echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
 # row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default

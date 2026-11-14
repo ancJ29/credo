@@ -1,0 +1,13 @@
+{
+  "ChangeSetName": "ops-20261114-000001",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {"Type": "Resource", "ResourceChange": {"Action": "Remove", "LogicalResourceId": "Boxb2", "ResourceType": "AWS::EC2::Instance", "Scope": [], "Details": []}},
+    {"Type": "Resource", "ResourceChange": {"Action": "Remove", "LogicalResourceId": "BoxProfileb2", "ResourceType": "AWS::IAM::InstanceProfile", "Scope": [], "Details": []}},
+    {"Type": "Resource", "ResourceChange": {"Action": "Remove", "LogicalResourceId": "BoxRoleb2", "ResourceType": "AWS::IAM::Role", "Scope": [], "Details": []}},
+    {"Type": "Resource", "ResourceChange": {"Action": "Remove", "LogicalResourceId": "RecordsAttachmentb2", "ResourceType": "AWS::EC2::VolumeAttachment", "Scope": [], "Details": []}},
+    {"Type": "Resource", "ResourceChange": {"Action": "Remove", "LogicalResourceId": "RecordsVolumeb2", "ResourceType": "AWS::EC2::Volume", "Scope": [], "Details": []}}
+  ]
+}

@@ -287,6 +287,21 @@ milestone if the orchestrator wants one.
   no loop error; run on a loop in `Resources` and `Outputs` it printed only the hardcoded-zone warning of
   the scratch template. CI pins 1.46.0, so the loop's commit is the first proof at that version; its
   `ops` job reads it.
+  *Part 2 ticked 2026-11-14 (the loop and its guard, cases 12 and 13).* `ops/env.yml` gains the transform,
+  `MoreBoxes` (a `CommaDelimitedList`, default none), one loop in `Resources` whose body is the home box's
+  block (instance, role, profile, records disk, attachment) with the box's name as its path in the copy's
+  bucket, and one in `Outputs` (`Box<name>Id`, `Box<name>Address`, `RecordsVolume<name>Id`); `Box` and every
+  other resource are as they were. `ops/stack.sh env <env> --more-boxes b2,b3` passes the list (checked first:
+  a lowercase name, not `home`, none twice, blank is none) and without the flag keeps the stack's own, none
+  for a stack made before the parameter; the change set carries `CAPABILITY_AUTO_EXPAND` beside IAM. The
+  guards read `env-full.json` for the loop and `env.json` (the loop taken out) for everything they read
+  before. Case 12 red once (before the loop existed: the transform missing; then by ten mutations of the
+  loop, put back: another instance type, an unencrypted records disk, a disk without its keeping, an
+  attachment to the home disk, a role over `Box/`, a wider list prefix, a sixth resource, an output
+  missing, an output reading the home box, the transform missing). Case 13 red once by four mutations of
+  `stack.sh` (the kept list not passed, the flag's value not passed, `home` allowed, no capability), put
+  back; a removed box is named by the fence and taken by its names (`testdata/changeset-boxremoved.json`).
+  `cfn-lint` at 1.59.0 passes on all three templates; CI's 1.46.0 is the first run at that version.
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
 - [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one

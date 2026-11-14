@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]...
+# ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]... [--more-boxes <list>]
 # Makes or changes one stack through a change set built from the template in origin/main, so only a
 # reviewed template reaches AWS. A change set that removes or replaces anything is deleted and
 # named, unless the plan's step names that logical id with --take. --plan builds and reads the
 # change set, deletes it, and changes nothing: for a first creation it also deletes the empty stack
 # that CloudFormation keeps for the change set (REVIEW_IN_PROGRESS), so the next run is a creation too.
+# --more-boxes b2,b3 (env only) is the names of the boxes added to the home box, one block each in the template
+# (the loop over MoreBoxes); a blank value is none. Without the flag the stack keeps the list it has: a box is
+# added or taken out by naming the whole list. A box taken out is a removal, which the guard refuses unless it is
+# named with --take (its instance, its records disk, its attachment, its role and its profile).
 # Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
 # Expected length: about 5 minutes for network and env (the endpoint and the box take the time),
 # about a minute for github.
@@ -18,7 +22,7 @@ GITHUB_STACK=credo-github
 GITHUB_ISSUER=token.actions.githubusercontent.com
 
 usage() {
-  echo "usage: ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]..." >&2
+  echo "usage: ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]... [--more-boxes <list>]" >&2
   exit 2
 }
 
@@ -37,6 +41,8 @@ case "$KIND" in
 esac
 PLAN_ONLY=0
 TAKE='[]'
+MORE_BOXES=''
+MORE_BOXES_GIVEN=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan) PLAN_ONLY=1 ;;
@@ -46,10 +52,19 @@ while [ $# -gt 0 ]; do
       TAKE=$(jq -c --arg id "$2" '. + [$id]' <<<"$TAKE")
       shift
       ;;
+    --more-boxes)
+      [ $# -ge 2 ] || usage
+      [ "$KIND" = env ] || usage
+      [ "$MORE_BOXES_GIVEN" = 0 ] || usage
+      MORE_BOXES=$2
+      MORE_BOXES_GIVEN=1
+      shift
+      ;;
     *) usage ;;
   esac
   shift
 done
+if [ "$MORE_BOXES_GIVEN" = 1 ]; then boxes_list_refusal "$MORE_BOXES" || exit 1; fi
 
 case "$KIND" in
   network)
@@ -68,7 +83,8 @@ case "$KIND" in
     [[ "$ENVNAME" =~ ^[a-z][a-z0-9-]{1,20}$ ]] || die "'$ENVNAME' is not an environment name (a-z, 0-9, -)"
     STACK=$ENVNAME
     TEMPLATE=env.yml
-    CAPS=CAPABILITY_IAM
+    # CAPABILITY_AUTO_EXPAND beside it for the loop's transform: AWS says it has no effect on a change set (docs/plans/2026-11-11-pooled-shape.md, step 6)
+    CAPS='CAPABILITY_IAM CAPABILITY_AUTO_EXPAND'
     STEPS=8
     # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
     [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
@@ -197,6 +213,12 @@ case "$KIND" in
     add_param AuditPort "$AUDIT_PORT"
     # The Slack alarm's two IDs, from the environment: both or neither, the stack's own kept on an update
     add_slack_params
+    # The boxes added: the list given, else the stack's own kept (a stack made before the parameter has none to keep)
+    if [ "$MORE_BOXES_GIVEN" = 1 ]; then
+      add_param MoreBoxes "$MORE_BOXES"
+    elif [ "$CS_TYPE" = UPDATE ] && stack_has_param MoreBoxes; then
+      add_param MoreBoxes
+    fi
     if [ "$CS_TYPE" = CREATE ]; then
       repo=$(repository)
       add_param Repository "$repo"
@@ -234,7 +256,10 @@ echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(if .ParameterKey == "FrontDo
 step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"
 caps=()
-if [ -n "$CAPS" ]; then caps=(--capabilities "$CAPS"); fi
+if [ -n "$CAPS" ]; then
+  read -ra cap_list <<<"$CAPS"
+  caps=(--capabilities "${cap_list[@]}")
+fi
 CS_OPEN=1
 printf '%s\n' "$PARAMS" >"$WORK/params.json"
 aws cloudformation create-change-set --stack-name "$STACK" --change-set-name "$CS" --change-set-type "$CS_TYPE" \

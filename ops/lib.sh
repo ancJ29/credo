@@ -337,6 +337,28 @@ stack_param() {
   jq -r --arg k "$1" '.Stacks[0].Parameters // [] | map(select(.ParameterKey == $k))[0].ParameterValue // empty' <<<"$STACK_JSON"
 }
 
+# stack_has_param <key>: the stack holds a parameter of that name, whatever its value (a blank one included)
+stack_has_param() {
+  jq -e --arg k "$1" '.Stacks[0].Parameters // [] | map(select(.ParameterKey == $k)) | length > 0' <<<"$STACK_JSON" >/dev/null
+}
+
+# boxes_list_refusal <list>: prints why a list of box names is refused and returns 1, nothing for a good one. A name is
+# the shape shared/src/records.ts accepts (a lowercase letter, then lowercase letters and digits, 16 at most) and not
+# home, the first box's name; no name twice; blank is no box. Each name is a path in the copy's bucket and part of
+# four logical ids.
+boxes_list_refusal() {
+  local list=$1 name seen=','
+  [ -n "$list" ] || return 0
+  [[ "$list" != *, && "$list" != ,* && "$list" != *,,* ]] || { echo "--more-boxes: '$list' holds a blank name" >&2; return 1; }
+  while IFS= read -r name; do
+    [[ "$name" =~ ^[a-z][a-z0-9]{0,15}$ ]] || { echo "--more-boxes: '$name' is not a box name (a lowercase letter, then lowercase letters and digits, 16 at most)" >&2; return 1; }
+    [ "$name" != home ] || { echo "--more-boxes: home is the first box's name, which the stack already holds" >&2; return 1; }
+    case "$seen" in *",$name,"*) echo "--more-boxes: '$name' is named twice" >&2; return 1 ;; esac
+    seen="$seen$name,"
+  done < <(tr ',' '\n' <<<"$list")
+  return 0
+}
+
 # rolled_back_refusal: dies on a stack in ROLLBACK_COMPLETE, whatever kind of stack it is. That status
 # exists only after a failed (or cancelled) stack creation, and only a delete is allowed on such a stack: the creation's
 # rollback deleted what it had made, Box included (its DeletionPolicy is RetainExceptOnCreate, which retains
