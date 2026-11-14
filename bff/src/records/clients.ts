@@ -144,6 +144,20 @@ export const DELETE_BOUND = 200;
 /** How many of a press's removals run at once. */
 const DELETE_AT_ONCE = 20;
 
+/** A caller that hands no box sweeps `storage` alone, so a company named on another box is refused
+ * by name, before any write: its records would stay on that box, named by nothing. */
+function refuseOtherBox(
+  code: string,
+  named: string | undefined,
+  handed: CStorageClient | undefined,
+) {
+  if (!handed && named && named !== HOME_BOX) {
+    throw new Error(
+      `the company ${code} is on the box ${named}, not the one this was handed: nothing was deleted`,
+    );
+  }
+}
+
 /**
  * Deletes a client whole, as the mirror of `createClient`. With the client's index in hand (read
  * with its tag), it writes the deletion record first, then removes the index only if it is still as
@@ -171,13 +185,15 @@ export async function deleteClient(
     by: string;
     now: () => number;
     /** The box the company sits on, as the caller read it from the line (or the deletion record):
-     * its store, which every record of the company is listed and removed in. None, `storage`. */
+     * its store, which every record of the company is listed and removed in. None, `storage`, and
+     * a line or a deletion record naming another box is then refused (an Error), nothing written. */
     box?: CStorageClient;
   },
 ): Promise<{ left: number } | 'unknown' | 'busy' | 'moved'> {
   const key = recordKeys.clientDeletion(code);
   let deletion;
   if (index) {
+    refuseOtherBox(code, index.box, box);
     const prior = await storage.getRecord(key);
     if (prior && storedClientDeletionSchema.parse(prior.data).id !== index.id) return 'busy';
     deletion = {
@@ -196,6 +212,7 @@ export async function deleteClient(
     const held = await storage.getRecord(key);
     if (!held) return 'unknown';
     deletion = storedClientDeletionSchema.parse(held.data);
+    refuseOtherBox(code, deletion.box, box);
   }
   const company = tenantStorage(box ?? storage, deletion.id);
   const prefix = recordKeys.tenant(deletion.id).all;

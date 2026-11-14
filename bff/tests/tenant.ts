@@ -11,6 +11,7 @@ import {
 } from '@credo/shared';
 import { buildApp } from '../src/app';
 import { hashPassword } from '../src/calling/password';
+import { startingConfig } from '../src/records/clients';
 import { freshTenant, type RunningCStorage } from './c-storage';
 
 export const DEVICE = 'device-aaaa-0001';
@@ -110,6 +111,12 @@ const forgottenEntryFails = {
     },
   },
 };
+
+/** The settings every made company has, which `seedTenant` leaves out (many tests need them absent):
+ * the operator's delete reads them to know a line names the company's own box. */
+export async function seedSettings(storage: CStorageClient, id: string) {
+  await storage.putRecord(recordKeys.tenant(id).config, startingConfig('Acme'), null);
+}
 
 /** The BFF over a service of its own on the running c-storage, where tests keep apart. */
 export async function bffOn(

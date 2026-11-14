@@ -204,7 +204,9 @@ without the listener's two, since API Gateway is the listener
   the audit store's own box. The box's check that it holds the company is an absence, not a read:
   sessions, people and the root exist only on the company's own box, so a wrong line meets a refusal;
   only a delete would harm, so the delete route (`bff/src/routes/clients-delete.ts`) first reads the
-  company's settings on the named box, and answers 409, removing nothing, when there are none.
+  company's settings on the named box, and answers 409, removing nothing, when there are none (a
+  sign-in try leaves a wait record there, so any record would not do). `deleteClient` itself,
+  handed no box (the terminal's callers), refuses a line or a deletion record naming another.
 - **The boxes and their keys.** Built: the keys stay in the back end's environment
   (`STORAGE_BOXES`), and the operator's list is the boxes that environment holds. **Not built:** the
   list from the stack's outputs at each deploy; a stack's box is added by the human's command in a

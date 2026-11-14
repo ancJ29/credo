@@ -440,6 +440,20 @@ describe('what the ops scripts ask of ridge', () => {
     });
   });
 
+  it('untenant refuses a client whose line names another box, deleting nothing', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', CHECK, 'Check Co'], KEYS, call);
+    const line = records.get(`client.${CHECK}`) as object;
+    records.set(`client.${CHECK}`, { ...line, box: 'b2' });
+    const before = new Map(records);
+
+    expect(await run(['untenant', CHECK], KEYS, call)).toMatchObject({
+      status: 1,
+      err: [expect.stringMatching(new RegExp(`${CHECK}.*box b2.*nothing was deleted`))],
+    });
+    expect(records).toEqual(before);
+  });
+
   it('untenant says how many records are left when the sweep could not remove them', async () => {
     const { call } = memoryCStorage();
     await run(['tenant', CHECK, 'Check Co'], KEYS, call);

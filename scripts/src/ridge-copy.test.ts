@@ -162,6 +162,25 @@ describe('ridge copy-company', () => {
     expect(await held(remade.target.client, two.id)).toEqual([]);
   });
 
+  it('refuses a source line naming another box by name, writing nothing and reading no records', async () => {
+    const { source, writes, run } = await pair();
+    const one = await company(source.client, 'copy-b2', 3);
+    const line = await source.client.getRecord(recordKeys.client('copy-b2'));
+    await source.client.putRecord(
+      recordKeys.client('copy-b2'),
+      { ...(line!.data as object), box: 'b2' },
+      line!.tag,
+    );
+    const refused = await run(['copy-company', 'copy-b2']);
+    expect(refused).toEqual({
+      status: 2,
+      out: [],
+      err: ["error: the source's line for copy-b2 names box b2: nothing was written"],
+    });
+    expect(writes).toEqual([]);
+    expect((await held(source.client, one.id)).length).toBeGreaterThan(0);
+  });
+
   it('refuses a code the source has no company for, before anything is written', async () => {
     const { writes, run } = await pair();
     const refused = await run(['copy-company', 'no-such']);
@@ -275,6 +294,17 @@ describe('ridge copy-company', () => {
       status: 2,
       err: [`error: ${allCopies()[1].code} is not on this service`],
     });
+    const line = await target.client.getRecord(recordKeys.client(first.code));
+    await target.client.putRecord(
+      recordKeys.client(first.code),
+      { ...(line!.data as object), box: 'b2' },
+      line!.tag,
+    );
+    expect(await drill('put')).toMatchObject({
+      status: 2,
+      err: [`error: ${first.code}'s line names box b2, and the drill serves the home box`],
+    });
+    expect((await drill('has')).status).toBe(2);
     expect((await drill('sleep')).status).toBe(2);
     expect((await run(['drill-record', 'has'], { env })).status).toBe(2);
     expect((await run(['drill-record'], { env })).status).toBe(2);

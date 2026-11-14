@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { freshTenant, type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { joinedOperator, touchFor } from '../../tests/operator';
 import { deleteClient } from '../records/clients';
-import { bffOn, scoped, seedTenant, signIn, withAuth } from '../../tests/tenant';
+import { bffOn, scoped, seedSettings, seedTenant, signIn, withAuth } from '../../tests/tenant';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -119,12 +119,17 @@ describe('Case 6: a delete whose box holds nothing of the company stops and remo
   it('answers 409 and leaves the line, the home box’s records and the second box as they were', async () => {
     const t = await setup();
     const id = await seedTenant(t.client, 'wrongline');
+    await seedSettings(t.client, id);
     const line = await t.client.getRecord(recordKeys.client('wrongline'));
     await t.client.putRecord(
       recordKeys.client('wrongline'),
       { id, name: 'Acme', box: 'b2' },
       line!.tag,
     );
+    // The company's people try to sign in, and each try leaves a wait record on the box the line
+    // names: so `b2` holds a record under the company's prefix, though not its settings.
+    expect((await signIn(scoped(t.app, 'wrongline'))).response.statusCode).toBe(401);
+    expect((await recordsOf(t.second, id)).length).toBe(1);
     const home = await recordsOf(t.client, id);
     t.writes.length = 0;
     const answer = await t.press('wrongline');
@@ -167,6 +172,7 @@ describe('The terminal’s delete names no box: the store it is handed holds the
   it('sweeps a home company through deleteClient with no box given', async () => {
     const t = await setup();
     const id = await seedTenant(t.client, 'terminal');
+    await seedSettings(t.client, id);
     const held = await t.client.getRecord(recordKeys.client('terminal'));
     const done = await deleteClient(t.client, {
       code: 'terminal',
@@ -176,5 +182,45 @@ describe('The terminal’s delete names no box: the store it is handed holds the
     });
     expect(done).toEqual({ left: 0 });
     expect(await recordsOf(t.client, id)).toEqual([]);
+  });
+
+  it('refuses a line naming b2 when it is handed no box, writing nothing, the line and the deletion record included', async () => {
+    const t = await setup();
+    const { id } = await t.onB2('terminalb2');
+    const held = await t.client.getRecord(recordKeys.client('terminalb2'));
+    const before = await recordsOf(t.second, id);
+    expect(before.length).toBeGreaterThan(1);
+    const calls: string[] = [];
+    const logged: CStorageClient = {
+      ...t.client,
+      putRecord: (key, data, tag) => (calls.push(`put ${key}`), t.client.putRecord(key, data, tag)),
+      removeRecord: (key, tag) => (calls.push(`remove ${key}`), t.client.removeRecord(key, tag)),
+    };
+    await expect(
+      deleteClient(logged, {
+        code: 'terminalb2',
+        index: { ...storedClientSchema.parse(held?.data), tag: held!.tag },
+        by: randomUUID(),
+        now: () => 1,
+      }),
+    ).rejects.toThrow(/terminalb2.*b2/);
+    expect(calls).toEqual([]);
+    expect(await t.client.getRecord(recordKeys.client('terminalb2'))).not.toBeNull();
+    expect(await recordsOf(t.second, id)).toEqual(before);
+  });
+
+  it('refuses a resumed deletion whose record names b2 when it is handed no box', async () => {
+    const t = await setup();
+    const { id } = await t.onB2('resumeb2');
+    await t.client.putRecord(
+      recordKeys.clientDeletion('resumeb2'),
+      { id, name: 'resumeb2', by: randomUUID(), startedAt: 1, box: 'b2' },
+      null,
+    );
+    await t.client.removeRecord(recordKeys.client('resumeb2'));
+    await expect(
+      deleteClient(t.client, { code: 'resumeb2', index: null, by: randomUUID(), now: () => 1 }),
+    ).rejects.toThrow(/resumeb2.*b2/);
+    expect(await t.client.getRecord(recordKeys.clientDeletion('resumeb2'))).not.toBeNull();
   });
 });
