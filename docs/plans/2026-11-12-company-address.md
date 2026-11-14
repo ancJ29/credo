@@ -164,9 +164,12 @@ address in the same run.
   operator's branch of `clientAddress` made unreachable; its `startsWith` clause alone changes no test, since the
   three-part test also holds for the sample name). The address reaches `ClientApp` as the property `address`, passed
   by `main.tsx` only outside the fake build.
-- [ ] **3. The kept codes and the scripts' link.** `createClient`'s refusal; `local.ts#L445` through
+- [x] **3. The kept codes and the scripts' link.** `createClient`'s refusal; `local.ts#L445` through
   the link maker. Cases 11 and 12. *Done when:* `pnpm --filter @credo/bff check` and `pnpm --filter
   @credo/scripts check` each end `== exit 0`, each case red once. **About 8 min.**
+  *Done 2026-11-14:* `pnpm --filter @credo/bff check` and `pnpm --filter @credo/scripts check` each `== exit 0`. Each case
+  seen red by one mutation, reverted, files compared equal: 11 (the refusal removed from `createClient`: the route's test
+  and the script's test both red), 12 (`local.ts`'s printed line back to the query form).
 - [ ] **4. The check through a company's own address.** `ops/check.sh`'s second `edge_reads` and
   its skip. Case 13. *Done when:* the ops gate's three commands exit 0, the case red once. **About
   7 min.**
